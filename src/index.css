@@ -2,41 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Mifumo WMS Design System - African-inspired enterprise platform
+All colors MUST be HSL for consistency and theming.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Background & Surface Colors */
+    --background: 220 20% 97%;
+    --foreground: 230 15% 15%;
+    --surface: 220 25% 98%;
+    --surface-variant: 220 15% 94%;
 
+    /* Card & Container Colors */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 230 15% 15%;
+    --card-glass: 220 25% 98%;
 
+    /* Popover & Overlay Colors */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 230 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary Brand Colors - Deep Blue */
+    --primary: 220 70% 25%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 220 65% 35%;
+    --primary-dark: 220 75% 20%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary Brand Colors - Warm Orange */
+    --secondary: 35 90% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 35 85% 60%;
+    --secondary-dark: 35 95% 40%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Success Colors - African Green */
+    --success: 155 65% 35%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 155 60% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Earth Tone Accents */
+    --earth-clay: 25 45% 55%;
+    --earth-terracotta: 15 65% 50%;
+    --earth-sand: 45 25% 75%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Muted & Text Colors */
+    --muted: 220 15% 94%;
+    --muted-foreground: 230 10% 45%;
+    --text-subtle: 230 8% 60%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Accent & Interactive Colors */
+    --accent: 220 15% 94%;
+    --accent-foreground: 230 15% 15%;
 
-    --radius: 0.5rem;
+    /* Status Colors */
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 35 90% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Border & Input Colors */
+    --border: 220 15% 88%;
+    --border-subtle: 220 10% 92%;
+    --input: 220 15% 88%;
+    --ring: 220 70% 25%;
+
+    /* Glass Effect Variables */
+    --glass-bg: 0 0% 100% / 0.8;
+    --glass-border: 220 15% 88% / 0.6;
+    --glass-shadow: 220 50% 15% / 0.08;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-light)));
+    --gradient-surface: linear-gradient(135deg, hsl(var(--surface)), hsl(var(--surface-variant)));
+    --gradient-glass: linear-gradient(135deg, hsl(var(--glass-bg)), hsl(0 0% 100% / 0.4));
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(var(--glass-shadow));
+    --shadow-md: 0 4px 16px hsl(var(--glass-shadow));
+    --shadow-lg: 0 8px 32px hsl(var(--glass-shadow));
+    --shadow-glass: 0 8px 32px hsl(220 50% 15% / 0.12);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +107,84 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Core Background & Surface Colors - Dark Mode */
+    --background: 230 20% 8%;
+    --foreground: 220 15% 90%;
+    --surface: 230 25% 10%;
+    --surface-variant: 230 20% 12%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* Card & Container Colors */
+    --card: 230 25% 10%;
+    --card-foreground: 220 15% 90%;
+    --card-glass: 230 25% 12%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    /* Popover & Overlay Colors */
+    --popover: 230 25% 10%;
+    --popover-foreground: 220 15% 90%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary Brand Colors - Deep Blue (Adjusted for dark) */
+    --primary: 220 65% 65%;
+    --primary-foreground: 230 20% 8%;
+    --primary-light: 220 60% 75%;
+    --primary-dark: 220 70% 55%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary Brand Colors - Warm Orange */
+    --secondary: 35 85% 60%;
+    --secondary-foreground: 230 20% 8%;
+    --secondary-light: 35 80% 70%;
+    --secondary-dark: 35 90% 50%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Success Colors */
+    --success: 155 60% 50%;
+    --success-foreground: 230 20% 8%;
+    --success-light: 155 55% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Earth Tone Accents - Dark Mode */
+    --earth-clay: 25 40% 65%;
+    --earth-terracotta: 15 60% 60%;
+    --earth-sand: 45 20% 60%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* Muted & Text Colors */
+    --muted: 230 20% 12%;
+    --muted-foreground: 220 10% 60%;
+    --text-subtle: 220 8% 50%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Accent & Interactive Colors */
+    --accent: 230 20% 12%;
+    --accent-foreground: 220 15% 90%;
+
+    /* Status Colors */
+    --destructive: 0 70% 65%;
+    --destructive-foreground: 230 20% 8%;
+    --warning: 35 85% 60%;
+    --warning-foreground: 230 20% 8%;
+
+    /* Border & Input Colors */
+    --border: 230 15% 18%;
+    --border-subtle: 230 10% 15%;
+    --input: 230 15% 18%;
+    --ring: 220 65% 65%;
+
+    /* Glass Effect Variables - Dark Mode */
+    --glass-bg: 230 25% 10% / 0.8;
+    --glass-border: 230 15% 18% / 0.6;
+    --glass-shadow: 230 80% 5% / 0.3;
+
+    /* Shadows - Enhanced for dark mode */
+    --shadow-sm: 0 2px 8px hsl(var(--glass-shadow));
+    --shadow-md: 0 4px 16px hsl(var(--glass-shadow));
+    --shadow-lg: 0 8px 32px hsl(var(--glass-shadow));
+    --shadow-glass: 0 8px 32px hsl(230 80% 5% / 0.4);
+    
+    /* Sidebar Colors */
+    --sidebar-background: 230 25% 8%;
+    --sidebar-foreground: 220 15% 90%;
+    --sidebar-primary: 220 65% 65%;
+    --sidebar-primary-foreground: 230 20% 8%;
+    --sidebar-accent: 230 20% 12%;
+    --sidebar-accent-foreground: 220 15% 90%;
+    --sidebar-border: 230 15% 18%;
+    --sidebar-ring: 220 65% 65%;
   }
 }
 
@@ -100,6 +194,74 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  /* Glass Effect Utility Classes */
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-subtle {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(8px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* African-inspired gradient backgrounds */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+
+  .gradient-surface {
+    background: var(--gradient-surface);
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  /* Custom scrollbar for webkit browsers */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground)) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground));
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--foreground));
   }
 }

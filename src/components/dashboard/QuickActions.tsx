@@ -1,0 +1,80 @@
+import { Send, MessageSquare, Users, FileText, Plus, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+const quickActions = [
+  {
+    name: "Send Message",
+    description: "Quick WhatsApp or SMS",
+    icon: MessageSquare,
+    variant: "default" as const,
+    shortcut: "⌘ + N",
+  },
+  {
+    name: "New Campaign",
+    description: "Bulk messaging campaign",
+    icon: Send,
+    variant: "secondary" as const,
+    shortcut: "⌘ + C",
+  },
+  {
+    name: "Add Contacts",
+    description: "Import or add manually",
+    icon: Users,
+    variant: "outline" as const,
+    shortcut: "⌘ + U",
+  },
+  {
+    name: "Create Template",
+    description: "Message template",
+    icon: FileText,
+    variant: "outline" as const,
+    shortcut: "⌘ + T",
+  },
+];
+
+export function QuickActions() {
+  return (
+    <Card className="p-6 glass border-0">
+      <div className="flex items-center gap-2 mb-6">
+        <Zap className="w-5 h-5 text-secondary" />
+        <h3 className="font-heading text-lg font-semibold text-foreground">
+          Quick Actions
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Button
+              key={action.name}
+              variant={action.variant}
+              className="h-auto p-4 flex-col items-start text-left"
+            >
+              <div className="flex items-center gap-3 w-full mb-2">
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{action.name}</span>
+                <span className="ml-auto text-xs opacity-70">
+                  {action.shortcut}
+                </span>
+              </div>
+              <p className="text-xs opacity-80 text-left">
+                {action.description}
+              </p>
+            </Button>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-border-subtle">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-text-subtle">Need help getting started?</span>
+          <Button variant="link" size="sm" className="h-auto p-0 text-primary">
+            View tutorials
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
