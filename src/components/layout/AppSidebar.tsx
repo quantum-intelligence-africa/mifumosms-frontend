@@ -13,9 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Link, useLocation } from "react-router-dom";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home, current: true },
+  { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
   { name: "Conversations", href: "/conversations", icon: MessageSquare, count: 12 },
   { name: "Contacts", href: "/contacts", icon: Users, count: 1240 },
   { name: "Campaigns", href: "/campaigns", icon: Send },
@@ -25,6 +26,7 @@ const navigation = [
 ];
 
 export function AppSidebar() {
+  const location = useLocation();
   return (
     <div className="flex h-screen w-64 flex-col glass border-r border-border-subtle">
       {/* Header */}
@@ -51,20 +53,23 @@ export function AppSidebar() {
         <ul className="space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
+            const isActive = location.pathname === item.href;
             return (
               <li key={item.name}>
-                <Button
-                  variant={item.current ? "secondary" : "ghost"}
-                  className="w-full justify-start h-11 px-3"
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="flex-1 text-left">{item.name}</span>
-                  {item.count && (
-                    <Badge variant="secondary" className="ml-auto text-xs px-2 py-0.5">
-                      {item.count}
-                    </Badge>
-                  )}
-                </Button>
+                <Link to={item.href} className="block">
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    className="w-full justify-start h-11 px-3"
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    {item.count && (
+                      <Badge variant="secondary" className="ml-auto text-xs px-2 py-0.5">
+                        {item.count}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
               </li>
             );
           })}
