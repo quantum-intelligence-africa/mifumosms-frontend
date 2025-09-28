@@ -14,8 +14,11 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
+  const { user } = useAuth();
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -32,7 +35,7 @@ const Dashboard = () => {
             {/* Welcome Section */}
             <div className="mb-8">
               <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
-                Welcome back, Mkuu! 👋
+                Welcome back, {user?.first_name || 'User'}! 👋
               </h1>
               <p className="text-text-subtle">
                 Here's what's happening with your communication platform today.

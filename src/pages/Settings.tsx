@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, 
   Bell, 
@@ -54,10 +54,36 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Settings = () => {
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const { toast } = useToast();
+  const { user, updateProfile } = useAuth();
+
+  // Initialize profile data from user context
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+        phone: user.phone_number || "",
+      });
+    }
+  }, [user]);
 
   const apiKeys = [
     {
@@ -130,6 +156,76 @@ const Settings = () => {
     });
   };
 
+  const handleProfileUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const result = await updateProfile({
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone_number: profileData.phone,
+      });
+
+      if (result.success) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully."
+        });
+      } else {
+        toast({
+          title: "Update failed",
+          description: result.error || "Failed to update profile. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please ensure both passwords are identical.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // This would need to be implemented in the API client
+      toast({
+        title: "Password change",
+        description: "Password change functionality will be implemented soon.",
+        variant: "destructive"
+      });
+    } catch (error) {
+      toast({
+        title: "Password change failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
@@ -174,17 +270,17 @@ const Settings = () => {
                       <CardContent className="space-y-6">
                         <div className="flex items-center gap-6">
                           <Avatar className="w-20 h-20">
-                            <AvatarImage src="/placeholder-avatar.jpg" />
+                            <AvatarImage src="" alt={user?.full_name || user?.first_name} />
                             <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                              JD
+                              {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <Button variant="outline" size="sm" className="mb-2">
+                            <Button variant="outline" size="sm" className="mb-2" disabled>
                               Change Photo
                             </Button>
                             <p className="text-sm text-text-subtle">
-                              JPG, PNG or GIF. Max size 2MB.
+                              Photo upload coming soon
                             </p>
                           </div>
                         </div>
@@ -194,7 +290,8 @@ const Settings = () => {
                             <Label htmlFor="firstName">First Name</Label>
                             <Input 
                               id="firstName" 
-                              defaultValue="John" 
+                              value={profileData.firstName}
+                              onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
                               className="glass-subtle border-0" 
                             />
                           </div>
@@ -202,7 +299,8 @@ const Settings = () => {
                             <Label htmlFor="lastName">Last Name</Label>
                             <Input 
                               id="lastName" 
-                              defaultValue="Doe" 
+                              value={profileData.lastName}
+                              onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
                               className="glass-subtle border-0" 
                             />
                           </div>
@@ -211,16 +309,19 @@ const Settings = () => {
                             <Input 
                               id="email" 
                               type="email" 
-                              defaultValue="john@company.com" 
-                              className="glass-subtle border-0" 
+                              value={profileData.email}
+                              disabled
+                              className="glass-subtle border-0 bg-muted/50" 
                             />
+                            <p className="text-xs text-text-subtle">Email cannot be changed</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="phone">Phone Number</Label>
                             <Input 
                               id="phone" 
                               type="tel" 
-                              defaultValue="+1 234 567 8900" 
+                              value={profileData.phone}
+                              onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
                               className="glass-subtle border-0" 
                             />
                           </div>
@@ -229,13 +330,15 @@ const Settings = () => {
                             <Input 
                               id="company" 
                               defaultValue="Tech Corp" 
-                              className="glass-subtle border-0" 
+                              disabled
+                              className="glass-subtle border-0 bg-muted/50" 
                             />
+                            <p className="text-xs text-text-subtle">Company management coming soon</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="timezone">Timezone</Label>
-                            <Select defaultValue="africa-nairobi">
-                              <SelectTrigger className="glass-subtle border-0">
+                            <Select defaultValue="africa-nairobi" disabled>
+                              <SelectTrigger className="glass-subtle border-0 bg-muted/50">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="glass">
@@ -245,13 +348,14 @@ const Settings = () => {
                                 <SelectItem value="africa-johannesburg">Africa/Johannesburg (SAST)</SelectItem>
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-text-subtle">Timezone settings coming soon</p>
                           </div>
                         </div>
 
                         <div className="flex justify-end">
-                          <Button>
+                          <Button onClick={handleProfileUpdate} disabled={isLoading}>
                             <Save className="w-4 h-4 mr-2" />
-                            Save Changes
+                            {isLoading ? "Saving..." : "Save Changes"}
                           </Button>
                         </div>
                       </CardContent>
@@ -372,21 +476,33 @@ const Settings = () => {
                               <Input 
                                 type="password" 
                                 placeholder="Current password" 
+                                value={passwordData.currentPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                                 className="glass-subtle border-0" 
                               />
                               <Input 
                                 type="password" 
                                 placeholder="New password" 
+                                value={passwordData.newPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                                 className="glass-subtle border-0" 
                               />
                               <Input 
                                 type="password" 
                                 placeholder="Confirm password" 
+                                value={passwordData.confirmPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                                 className="glass-subtle border-0" 
                               />
                             </div>
-                            <Button variant="outline" size="sm" className="mt-2">
-                              Update Password
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-2"
+                              onClick={handlePasswordChange}
+                              disabled={isLoading}
+                            >
+                              {isLoading ? "Updating..." : "Update Password"}
                             </Button>
                           </div>
                           
