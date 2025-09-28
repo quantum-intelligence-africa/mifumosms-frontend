@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
   Search, 
   Filter, 
@@ -14,7 +14,10 @@ import {
   User,
   Tag,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -26,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -49,108 +54,55 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  tags: string[];
-  status: "active" | "inactive" | "blocked";
-  lastContact: string;
-  createdAt: string;
-  avatar?: string;
-  country: string;
-  totalMessages: number;
-  lastMessage?: string;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useContacts } from "@/hooks/useContacts";
+import { Contact, CreateContactRequest } from "@/lib/api";
 
 const Contacts = () => {
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("all");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
+    name: "",
+    phone_e164: "",
+    email: "",
+    tags: [],
+    attributes: {}
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const contacts: Contact[] = [
-    {
-      id: "1",
-      name: "Sarah Mwangi",
-      email: "sarah@example.com",
-      phone: "+254 700 123 456",
-      company: "TechCorp Kenya",
-      tags: ["VIP", "Customer", "Enterprise"],
-      status: "active",
-      lastContact: "2 hours ago",
-      createdAt: "2024-01-15",
-      country: "Kenya",
-      totalMessages: 45,
-      lastMessage: "Thank you for the quick response!"
-    },
-    {
-      id: "2",
-      name: "Ahmed Hassan",
-      email: "ahmed@company.eg",
-      phone: "+20 100 567 890",
-      company: "Cairo Solutions",
-      tags: ["Lead", "Enterprise", "Hot"],
-      status: "active",
-      lastContact: "1 day ago",
-      createdAt: "2024-02-20",
-      country: "Egypt",
-      totalMessages: 12,
-      lastMessage: "When can we schedule a demo?"
-    },
-    {
-      id: "3",
-      name: "Marie Dubois",
-      email: "marie@startup.sn",
-      phone: "+221 77 123 4567",
-      company: "Dakar Innovation",
-      tags: ["Customer", "French", "SME"],
-      status: "active",
-      lastContact: "3 days ago",
-      createdAt: "2024-01-08",
-      country: "Senegal",
-      totalMessages: 28,
-      lastMessage: "Merci beaucoup!"
-    },
-    {
-      id: "4",
-      name: "John Okafor",
-      email: "john@business.ng",
-      phone: "+234 803 456 7890",
-      company: "Lagos Enterprises",
-      tags: ["Prospect", "Nigeria"],
-      status: "inactive",
-      lastContact: "1 week ago",
-      createdAt: "2024-03-01",
-      country: "Nigeria",
-      totalMessages: 8
-    },
-    {
-      id: "5",
-      name: "Fatima Al-Zahra",
-      email: "fatima@tech.ma",
-      phone: "+212 6 78 90 12 34",
-      company: "Casablanca Tech",
-      tags: ["Customer", "Arabic", "Premium"],
-      status: "active",
-      lastContact: "5 hours ago",
-      createdAt: "2024-02-14",
-      country: "Morocco",
-      totalMessages: 67,
-      lastMessage: "شكرا لكم على الخدمة الممتازة"
-    }
-  ];
+  const { 
+    contacts, 
+    isLoading, 
+    totalCount, 
+    fetchContacts, 
+    createContact, 
+    updateContact, 
+    deleteContact, 
+    bulkImportContacts 
+  } = useContacts();
 
+  // Get all unique tags from contacts
   const allTags = Array.from(new Set(contacts.flatMap(c => c.tags)));
 
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         contact.phone.includes(searchQuery) ||
-                         contact.company?.toLowerCase().includes(searchQuery.toLowerCase());
+                         contact.phone_e164.includes(searchQuery) ||
+                         (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesTag = filterTag === "all" || contact.tags.includes(filterTag);
     
@@ -173,13 +125,57 @@ const Contacts = () => {
     );
   };
 
-  const getStatusColor = (status: Contact["status"]) => {
-    switch (status) {
-      case "active": return "bg-success";
-      case "inactive": return "bg-amber-500";
-      case "blocked": return "bg-destructive";
-      default: return "bg-text-subtle";
+  const handleCreateContact = async () => {
+    if (!createFormData.name || !createFormData.phone_e164) return;
+
+    const success = await createContact(createFormData);
+    if (success) {
+      setIsCreateDialogOpen(false);
+      setCreateFormData({
+        name: "",
+        phone_e164: "",
+        email: "",
+        tags: [],
+        attributes: {}
+      });
     }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete) return;
+
+    const success = await deleteContact(contactToDelete.id);
+    if (success) {
+      setIsDeleteDialogOpen(false);
+      setContactToDelete(null);
+      setSelectedContact(null);
+    }
+  };
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    await bulkImportContacts(file);
+    setIsImporting(false);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? "text-success" : "text-text-subtle";
+  };
+
+  const getStatusIcon = (isActive: boolean) => {
+    return isActive ? CheckCircle : XCircle;
   };
 
   return (
@@ -199,19 +195,35 @@ const Contacts = () => {
                     Contacts
                   </h1>
                   <p className="text-text-subtle">
-                    Manage your customer database and relationships
+                    Manage your customer database and relationships ({totalCount} total)
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" className="glass-subtle border-0">
-                    <Upload className="w-4 h-4 mr-2" />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileImport}
+                    accept=".csv,.xlsx,.xls"
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="glass-subtle border-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
                     Import
                   </Button>
                   <Button variant="outline" className="glass-subtle border-0">
                     <Download className="w-4 h-4 mr-2" />
                     Export
                   </Button>
-                  <Dialog>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
                       <Button>
                         <Plus className="w-4 h-4 mr-2" />
@@ -226,13 +238,52 @@ const Contacts = () => {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
-                        <Input placeholder="Full Name" className="glass-subtle border-0" />
-                        <Input placeholder="Email Address" className="glass-subtle border-0" />
-                        <Input placeholder="Phone Number" className="glass-subtle border-0" />
-                        <Input placeholder="Company" className="glass-subtle border-0" />
-                        <div className="flex gap-2">
-                          <Button className="flex-1">Add Contact</Button>
-                          <Button variant="outline" className="flex-1">Cancel</Button>
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Full Name *</Label>
+                          <Input
+                            id="name"
+                            placeholder="John Doe"
+                            value={createFormData.name}
+                            onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
+                            className="glass-subtle border-0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone Number *</Label>
+                          <Input
+                            id="phone"
+                            placeholder="+1234567890"
+                            value={createFormData.phone_e164}
+                            onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
+                            className="glass-subtle border-0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email Address</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="john@example.com"
+                            value={createFormData.email}
+                            onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
+                            className="glass-subtle border-0"
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            onClick={handleCreateContact}
+                            disabled={!createFormData.name || !createFormData.phone_e164}
+                            className="flex-1"
+                          >
+                            Add Contact
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsCreateDialogOpen(false)}
+                            className="flex-1"
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </div>
                     </DialogContent>
@@ -296,121 +347,133 @@ const Contacts = () => {
               {/* Contacts Table */}
               <Card className="flex-1 glass border-0 overflow-hidden">
                 <div className="overflow-auto h-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border-subtle">
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={selectedContacts.length === filteredContacts.length}
-                            onCheckedChange={handleSelectAll}
-                          />
-                        </TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Tags</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Messages</TableHead>
-                        <TableHead>Last Contact</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredContacts.map((contact) => (
-                        <TableRow 
-                          key={contact.id}
-                          className="border-border-subtle cursor-pointer hover:bg-accent/50"
-                          onClick={() => setSelectedContact(contact)}
-                        >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                  {isLoading ? (
+                    <div className="p-6 space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border-subtle">
+                          <TableHead className="w-12">
                             <Checkbox
-                              checked={selectedContacts.includes(contact.id)}
-                              onCheckedChange={() => handleSelectContact(contact.id)}
+                              checked={selectedContacts.length === filteredContacts.length && filteredContacts.length > 0}
+                              onCheckedChange={handleSelectAll}
                             />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="w-10 h-10">
-                                <AvatarImage src={contact.avatar} />
-                                <AvatarFallback className="bg-primary/10 text-primary">
-                                  {contact.name.split(" ").map(n => n[0]).join("")}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-foreground">{contact.name}</p>
-                                <div className="flex items-center gap-3 text-sm text-text-subtle">
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="w-3 h-3" />
-                                    {contact.email}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="w-3 h-3" />
-                                    {contact.phone}
+                          </TableHead>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Tags</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredContacts.map((contact) => {
+                          const StatusIcon = getStatusIcon(contact.is_active);
+                          return (
+                            <TableRow 
+                              key={contact.id}
+                              className="border-border-subtle cursor-pointer hover:bg-accent/50"
+                              onClick={() => setSelectedContact(contact)}
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={selectedContacts.includes(contact.id)}
+                                  onCheckedChange={() => handleSelectContact(contact.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="w-10 h-10">
+                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                      {contact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-foreground">{contact.name}</p>
+                                    <div className="flex items-center gap-3 text-sm text-text-subtle">
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="w-3 h-3" />
+                                        {contact.phone_e164}
+                                      </span>
+                                      {contact.email && (
+                                        <span className="flex items-center gap-1">
+                                          <Mail className="w-3 h-3" />
+                                          {contact.email}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 flex-wrap">
+                                  {contact.tags.slice(0, 2).map((tag) => (
+                                    <Badge key={tag} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                  {contact.tags.length > 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{contact.tags.length - 2}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <StatusIcon className={`w-4 h-4 ${getStatusColor(contact.is_active)}`} />
+                                  <span className="text-sm capitalize">
+                                    {contact.is_active ? "Active" : "Inactive"}
                                   </span>
                                 </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-text-subtle">{contact.company || "—"}</span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 flex-wrap">
-                              {contact.tags.slice(0, 2).map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {contact.tags.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{contact.tags.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${getStatusColor(contact.status)}`} />
-                              <span className="text-sm capitalize">{contact.status}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-foreground font-medium">{contact.totalMessages}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-text-subtle">{contact.lastContact}</span>
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="glass">
-                                <DropdownMenuItem>
-                                  <MessageSquare className="w-4 h-4 mr-2" />
-                                  Send Message
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Contact
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <ExternalLink className="w-4 h-4 mr-2" />
-                                  View Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Contact
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-text-subtle">{formatDate(contact.created_at)}</span>
+                              </TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="glass">
+                                    <DropdownMenuItem>
+                                      <MessageSquare className="w-4 h-4 mr-2" />
+                                      Send Message
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit Contact
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      View Profile
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        setContactToDelete(contact);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Contact
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
                 </div>
               </Card>
             </div>
@@ -431,102 +494,93 @@ const Contacts = () => {
             
             <div className="text-center mb-6">
               <Avatar className="w-16 h-16 mx-auto mb-3">
-                <AvatarImage src={selectedContact.avatar} />
                 <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                  {selectedContact.name.split(" ").map(n => n[0]).join("")}
+                  {selectedContact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <h4 className="font-medium text-foreground mb-1">{selectedContact.name}</h4>
-              <p className="text-sm text-text-subtle">{selectedContact.company}</p>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <div className={`w-2 h-2 rounded-full ${getStatusColor(selectedContact.status)}`} />
-                <span className="text-sm capitalize">{selectedContact.status}</span>
+              <h4 className="font-semibold text-foreground mb-1">{selectedContact.name}</h4>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Badge variant={selectedContact.is_active ? "default" : "secondary"}>
+                  {selectedContact.is_active ? "Active" : "Inactive"}
+                </Badge>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-text-subtle" />
-                <span className="text-sm text-foreground">{selectedContact.email}</span>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-text-subtle mb-1">Phone Number</p>
+                <p className="text-foreground">{selectedContact.phone_e164}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-text-subtle" />
-                <span className="text-sm text-foreground">{selectedContact.phone}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-text-subtle" />
-                <span className="text-sm text-foreground">{selectedContact.country}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-text-subtle" />
-                <span className="text-sm text-foreground">
-                  Joined {new Date(selectedContact.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+              
+              {selectedContact.email && (
+                <div>
+                  <p className="text-sm text-text-subtle mb-1">Email</p>
+                  <p className="text-foreground">{selectedContact.email}</p>
+                </div>
+              )}
 
-            <div className="mt-4">
-              <p className="text-sm font-medium text-foreground mb-2">Tags</p>
-              <div className="flex gap-1 flex-wrap">
-                {selectedContact.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
+              <div>
+                <p className="text-sm text-text-subtle mb-1">Tags</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedContact.tags.length > 0 ? (
+                    selectedContact.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-text-subtle text-sm">No tags</p>
+                  )}
+                </div>
               </div>
+
+              <div>
+                <p className="text-sm text-text-subtle mb-1">Created</p>
+                <p className="text-foreground">{formatDate(selectedContact.created_at)}</p>
+              </div>
+
+              {selectedContact.opt_in_at && (
+                <div>
+                  <p className="text-sm text-text-subtle mb-1">Opted In</p>
+                  <p className="text-foreground">{formatDate(selectedContact.opt_in_at)}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 mt-6">
-              <Button className="flex-1" size="sm">
+              <Button size="sm" className="flex-1">
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Message
               </Button>
-              <Button variant="outline" size="sm">
-                <Edit className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="flex-1">
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
               </Button>
             </div>
           </div>
-
-          <div className="flex-1 p-6">
-            <Tabs defaultValue="activity" className="h-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="stats">Stats</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="activity" className="mt-4 space-y-4">
-                <Card className="glass border-0">
-                  <CardContent className="p-4">
-                    <p className="text-sm text-text-subtle mb-2">Last Message</p>
-                    <p className="text-sm text-foreground">
-                      {selectedContact.lastMessage || "No recent messages"}
-                    </p>
-                    <p className="text-xs text-text-subtle mt-2">{selectedContact.lastContact}</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="stats" className="mt-4 space-y-4">
-                <Card className="glass border-0">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Message Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-text-subtle">Total Messages</span>
-                      <span className="text-sm font-medium">{selectedContact.totalMessages}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-text-subtle">Last Contact</span>
-                      <span className="text-sm font-medium">{selectedContact.lastContact}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="glass">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {contactToDelete?.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteContact}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
