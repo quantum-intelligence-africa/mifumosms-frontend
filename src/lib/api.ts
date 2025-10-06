@@ -263,7 +263,7 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -384,7 +384,7 @@ class ApiClient {
         body: JSON.stringify({ refresh: refreshToken }),
       });
     }
-    
+
     this.setToken(null);
     localStorage.removeItem('refresh_token');
     return { status: 200, success: true };
@@ -472,7 +472,7 @@ class ApiClient {
   async bulkImportContacts(file: File): Promise<ApiResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     return this.request('/messaging/contacts/bulk-import/', {
       method: 'POST',
       headers: {}, // Don't set Content-Type for FormData

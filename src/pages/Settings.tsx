@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Bell,
@@ -17,7 +17,9 @@ import {
   Plus,
   Trash2,
   Edit,
-  MoreVertical
+  MoreVertical,
+  Upload,
+  X
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -70,6 +72,9 @@ const Settings = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
 
@@ -82,6 +87,10 @@ const Settings = () => {
         email: user.email || "",
         phone: user.phone_number || "",
       });
+      // Set profile photo if available
+      if (user.profile_photo) {
+        setProfilePhoto(user.profile_photo);
+      }
     }
   }, [user]);
 
@@ -156,20 +165,75 @@ const Settings = () => {
     });
   };
 
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setPhotoFile(file);
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePhoto(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    setProfilePhoto(null);
+    setPhotoFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleProfileUpdate = async () => {
     setIsLoading(true);
     try {
-      const result = await updateProfile({
+      const updateData: any = {
         first_name: profileData.firstName,
         last_name: profileData.lastName,
         phone_number: profileData.phone,
-      });
+      };
+
+      // If there's a new photo file, add it to the update data
+      if (photoFile) {
+        updateData.profile_photo = photoFile;
+      }
+
+      const result = await updateProfile(updateData);
 
       if (result.success) {
         toast({
           title: "Profile updated",
           description: "Your profile has been updated successfully."
         });
+        // Clear the photo file after successful upload
+        setPhotoFile(null);
       } else {
         toast({
           title: "Update failed",
@@ -249,8 +313,9 @@ const Settings = () => {
               {/* Settings Tabs */}
               <div className="flex-1 overflow-hidden">
                 <Tabs defaultValue="profile" className="h-full">
-                  <TabsList className="grid w-full grid-cols-6">
+                  <TabsList className="grid w-full grid-cols-7">
                     <TabsTrigger value="profile">Profile</TabsTrigger>
+                    <TabsTrigger value="preferences">Preferences</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                     <TabsTrigger value="security">Security</TabsTrigger>
                     <TabsTrigger value="api">API & Webhooks</TabsTrigger>
@@ -269,19 +334,57 @@ const Settings = () => {
                       </CardHeader>
                       <CardContent className="space-y-6">
                         <div className="flex items-center gap-6">
-                          <Avatar className="w-20 h-20">
-                            <AvatarImage src="" alt={user?.full_name || user?.first_name} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                              {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <Button variant="outline" size="sm" className="mb-2" disabled>
-                              Change Photo
-                            </Button>
+                          <div className="relative">
+                            <Avatar className="w-20 h-20">
+                              <AvatarImage src={profilePhoto || ""} alt={user?.full_name || user?.first_name} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                                {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            {profilePhoto && (
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                onClick={handlePhotoRemove}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={triggerFileInput}
+                                disabled={isLoading}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                              </Button>
+                              {profilePhoto && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handlePhotoRemove}
+                                  disabled={isLoading}
+                                >
+                                  <X className="w-4 h-4 mr-2" />
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
                             <p className="text-sm text-text-subtle">
-                              Photo upload coming soon
+                              JPG, PNG or GIF. Max size 5MB.
                             </p>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePhotoSelect}
+                              className="hidden"
+                            />
                           </div>
                         </div>
 
@@ -361,45 +464,51 @@ const Settings = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="glass border-0">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Globe className="w-5 h-5" />
-                          Preferences
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="language">Language</Label>
-                            <Select defaultValue="en">
-                              <SelectTrigger className="glass-subtle border-0">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="glass">
-                                <SelectItem value="en">🇺🇸 English</SelectItem>
-                                <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
-                                <SelectItem value="fr">🇫🇷 Français</SelectItem>
-                                <SelectItem value="ar">🇸🇦 العربية</SelectItem>
-                              </SelectContent>
-                            </Select>
+                  </TabsContent>
+
+                  {/* Preferences */}
+                  <TabsContent value="preferences" className="h-full overflow-y-auto">
+                    <div className="space-y-6 pb-8">
+                      <Card className="glass border-0">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Globe className="w-5 h-5" />
+                            Preferences
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="language">Language</Label>
+                              <Select defaultValue="en">
+                                <SelectTrigger className="glass-subtle border-0">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="glass">
+                                  <SelectItem value="en">🇺🇸 English</SelectItem>
+                                  <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
+                                  <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                                  <SelectItem value="ar">🇸🇦 العربية</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="dateFormat">Date Format</Label>
+                              <Select defaultValue="dd-mm-yyyy">
+                                <SelectTrigger className="glass-subtle border-0">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="glass">
+                                  <SelectItem value="dd-mm-yyyy">DD/MM/YYYY</SelectItem>
+                                  <SelectItem value="mm-dd-yyyy">MM/DD/YYYY</SelectItem>
+                                  <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="dateFormat">Date Format</Label>
-                            <Select defaultValue="dd-mm-yyyy">
-                              <SelectTrigger className="glass-subtle border-0">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="glass">
-                                <SelectItem value="dd-mm-yyyy">DD/MM/YYYY</SelectItem>
-                                <SelectItem value="mm-dd-yyyy">MM/DD/YYYY</SelectItem>
-                                <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </TabsContent>
 
                   {/* Notifications */}
