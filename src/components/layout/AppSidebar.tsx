@@ -6,18 +6,47 @@ import {
   BarChart3,
   Settings,
   Home,
-  Bell,
-  Search,
   Plus,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  CreditCard,
+  Tag,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  count?: number;
+  children?: NavItem[];
+}
+
+const navigation: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
   { name: "Conversations", href: "/conversations", icon: MessageSquare, count: 12 },
+  { 
+    name: "SMS", 
+    href: "#", 
+    icon: Send,
+    children: [
+      { name: "Send SMS", href: "/sms/send", icon: Zap },
+      { name: "Purchase SMS", href: "/sms/purchase", icon: CreditCard },
+      { name: "Sender Names", href: "/sms/sender-names", icon: Tag },
+      { name: "Purchase History", href: "/sms/purchase-history", icon: History },
+    ]
+  },
   { name: "Contacts", href: "/contacts", icon: Users, count: 1240 },
   { name: "Campaigns", href: "/campaigns", icon: Send },
   { name: "Templates", href: "/templates", icon: FileText },
@@ -27,6 +56,8 @@ const navigation = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const [smsOpen, setSmsOpen] = useState(true);
+  
   return (
     <div className="flex h-screen w-64 flex-col glass border-r border-border-subtle">
       {/* Header */}
@@ -54,6 +85,53 @@ export function AppSidebar() {
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
+            const hasChildren = item.children && item.children.length > 0;
+            
+            if (hasChildren) {
+              return (
+                <li key={item.name}>
+                  <Collapsible open={smsOpen} onOpenChange={setSmsOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start h-11 px-3"
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        {smsOpen ? (
+                          <ChevronDown className="w-4 h-4 ml-auto" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 ml-auto" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-1">
+                      <ul className="space-y-1 ml-4 pl-4 border-l-2 border-border-subtle">
+                        {item.children!.map((child) => {
+                          const ChildIcon = child.icon;
+                          const childActive = location.pathname === child.href;
+                          return (
+                            <li key={child.name}>
+                              <Link to={child.href} className="block">
+                                <Button
+                                  variant={childActive ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="w-full justify-start h-9"
+                                >
+                                  <ChildIcon className="w-4 h-4" />
+                                  <span className="text-sm">{child.name}</span>
+                                </Button>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </li>
+              );
+            }
+            
             return (
               <li key={item.name}>
                 <Link to={item.href} className="block">

@@ -15,6 +15,10 @@ import Campaigns from "./pages/Campaigns";
 import Templates from "./pages/Templates";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import SendSMS from "./pages/sms/SendSMS";
+import PurchaseSMS from "./pages/sms/PurchaseSMS";
+import SenderNames from "./pages/sms/SenderNames";
+import PurchaseHistory from "./pages/sms/PurchaseHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +69,10 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
+            <Route path="/sms/send" element={<ProtectedRoute><SendSMS /></ProtectedRoute>} />
+            <Route path="/sms/purchase" element={<ProtectedRoute><PurchaseSMS /></ProtectedRoute>} />
+            <Route path="/sms/sender-names" element={<ProtectedRoute><SenderNames /></ProtectedRoute>} />
+            <Route path="/sms/purchase-history" element={<ProtectedRoute><PurchaseHistory /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
