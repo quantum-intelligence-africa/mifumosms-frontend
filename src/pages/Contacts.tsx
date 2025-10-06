@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Upload, 
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Plus,
+  Upload,
   Download,
   MoreVertical,
   Edit,
@@ -85,16 +86,25 @@ const Contacts = () => {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { 
-    contacts, 
-    isLoading, 
-    totalCount, 
-    fetchContacts, 
-    createContact, 
-    updateContact, 
-    deleteContact, 
-    bulkImportContacts 
+  const {
+    contacts,
+    isLoading,
+    totalCount,
+    fetchContacts,
+    createContact,
+    updateContact,
+    deleteContact,
+    bulkImportContacts
   } = useContacts();
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "create") {
+      setIsCreateDialogOpen(true);
+    }
+  }, [location.search]);
 
   // Get all unique tags from contacts
   const allTags = Array.from(new Set(contacts.flatMap(c => c.tags)));
@@ -103,15 +113,15 @@ const Contacts = () => {
     const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          contact.phone_e164.includes(searchQuery) ||
                          (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     const matchesTag = filterTag === "all" || contact.tags.includes(filterTag);
-    
+
     return matchesSearch && matchesTag;
   });
 
   const handleSelectContact = (contactId: string) => {
-    setSelectedContacts(prev => 
-      prev.includes(contactId) 
+    setSelectedContacts(prev =>
+      prev.includes(contactId)
         ? prev.filter(id => id !== contactId)
         : [...prev, contactId]
     );
@@ -119,7 +129,7 @@ const Contacts = () => {
 
   const handleSelectAll = () => {
     setSelectedContacts(
-      selectedContacts.length === filteredContacts.length 
+      selectedContacts.length === filteredContacts.length
         ? []
         : filteredContacts.map(c => c.id)
     );
@@ -159,7 +169,7 @@ const Contacts = () => {
     setIsImporting(true);
     await bulkImportContacts(file);
     setIsImporting(false);
-    
+
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -181,10 +191,10 @@ const Contacts = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -206,8 +216,8 @@ const Contacts = () => {
                     accept=".csv,.xlsx,.xls"
                     className="hidden"
                   />
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="glass-subtle border-0"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
@@ -270,15 +280,15 @@ const Contacts = () => {
                           />
                         </div>
                         <div className="flex gap-2 pt-4">
-                          <Button 
+                          <Button
                             onClick={handleCreateContact}
                             disabled={!createFormData.name || !createFormData.phone_e164}
                             className="flex-1"
                           >
                             Add Contact
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             onClick={() => setIsCreateDialogOpen(false)}
                             className="flex-1"
                           >
@@ -374,7 +384,7 @@ const Contacts = () => {
                         {filteredContacts.map((contact) => {
                           const StatusIcon = getStatusIcon(contact.is_active);
                           return (
-                            <TableRow 
+                            <TableRow
                               key={contact.id}
                               className="border-border-subtle cursor-pointer hover:bg-accent/50"
                               onClick={() => setSelectedContact(contact)}
@@ -455,7 +465,7 @@ const Contacts = () => {
                                       View Profile
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       className="text-destructive"
                                       onClick={() => {
                                         setContactToDelete(contact);
@@ -491,7 +501,7 @@ const Contacts = () => {
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="text-center mb-6">
               <Avatar className="w-16 h-16 mx-auto mb-3">
                 <AvatarFallback className="bg-primary/10 text-primary text-lg">
@@ -511,7 +521,7 @@ const Contacts = () => {
                 <p className="text-sm text-text-subtle mb-1">Phone Number</p>
                 <p className="text-foreground">{selectedContact.phone_e164}</p>
               </div>
-              
+
               {selectedContact.email && (
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Email</p>
@@ -572,7 +582,7 @@ const Contacts = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteContact}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

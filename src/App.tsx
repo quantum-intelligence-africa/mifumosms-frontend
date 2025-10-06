@@ -20,6 +20,8 @@ import PurchaseSMS from "./pages/sms/PurchaseSMS";
 import SenderNames from "./pages/sms/SenderNames";
 import PurchaseHistory from "./pages/sms/PurchaseHistory";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

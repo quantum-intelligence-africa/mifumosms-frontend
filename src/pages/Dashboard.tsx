@@ -1,8 +1,8 @@
-import { 
-  MessageSquare, 
-  Send, 
-  Users, 
-  TrendingUp, 
+import {
+  MessageSquare,
+  Send,
+  Users,
+  TrendingUp,
   Clock,
   DollarSign,
   Target,
@@ -65,7 +65,7 @@ const Dashboard = () => {
                   Monitor your communication platform performance in real-time.
                 </p>
               </div>
-              
+
               {/* Tenant Selector */}
               {tenants.length > 0 && (
                 <Card className="glass border-0 mt-4 sm:mt-0 sm:w-80">
@@ -182,7 +182,7 @@ const Dashboard = () => {
                   />
                   <MetricCard
                     title="Revenue"
-                    value="$4,280"
+                    value="Tsh 4,280"
                     change="+18.7%"
                     changeType="positive"
                     icon={DollarSign}
@@ -238,7 +238,7 @@ const Dashboard = () => {
             {/* Activity Feed and Top Templates */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ActivityFeed />
-              
+
               {/* Top Templates */}
               <Card className="glass border-0">
                 <CardHeader>

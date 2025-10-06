@@ -14,11 +14,13 @@ import {
   Tag,
   History,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,17 +30,17 @@ import {
 interface NavItem {
   name: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
   count?: number;
   children?: NavItem[];
 }
 
 const navigation: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
-  { name: "Conversations", href: "/conversations", icon: MessageSquare, count: 12 },
-  { 
-    name: "SMS", 
-    href: "#", 
+  // { name: "Conversations", href: "/conversations", icon: MessageSquare, count: 12 },
+  {
+    name: "SMS",
+    href: "#",
     icon: Send,
     children: [
       { name: "Send SMS", href: "/sms/send", icon: Zap },
@@ -57,7 +59,17 @@ const navigation: NavItem[] = [
 export function AppSidebar() {
   const location = useLocation();
   const [smsOpen, setSmsOpen] = useState(true);
-  
+  const { user } = useAuth();
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="flex h-screen w-64 flex-col glass border-r border-border-subtle">
       {/* Header */}
@@ -86,7 +98,7 @@ export function AppSidebar() {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
             const hasChildren = item.children && item.children.length > 0;
-            
+
             if (hasChildren) {
               return (
                 <li key={item.name}>
@@ -131,7 +143,7 @@ export function AppSidebar() {
                 </li>
               );
             }
-            
+
             return (
               <li key={item.name}>
                 <Link to={item.href} className="block">
@@ -158,17 +170,17 @@ export function AppSidebar() {
       <div className="p-4 border-t border-border-subtle">
         <div className="flex items-center gap-3 p-3 rounded-xl glass-subtle">
           <Avatar className="h-10 w-10">
-            <AvatarImage src="/placeholder.svg" alt="User" />
+            <AvatarImage src="" alt={user?.full_name || user?.first_name} />
             <AvatarFallback className="bg-primary text-primary-foreground">
-              MK
+              {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">
-              Mkuu Kariuki
+              {user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User'}
             </p>
             <p className="text-xs text-text-subtle truncate">
-              African SME Hub
+              {user?.email || 'No email'}
             </p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8">

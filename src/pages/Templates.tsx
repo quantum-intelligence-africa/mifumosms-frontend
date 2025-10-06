@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { 
-  Plus, 
-  Search, 
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  Plus,
+  Search,
   Filter,
   Copy,
   Edit,
@@ -65,6 +66,15 @@ const Templates = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [languageFilter, setLanguageFilter] = useState("all");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "new") {
+      setIsCreateDialogOpen(true);
+    }
+  }, [location.search]);
 
   const templates: Template[] = [
     {
@@ -190,17 +200,17 @@ const Templates = () => {
     const matchesType = typeFilter === "all" || template.type === typeFilter;
     const matchesCategory = categoryFilter === "all" || template.category === categoryFilter;
     const matchesLanguage = languageFilter === "all" || template.language === languageFilter;
-    
+
     return matchesSearch && matchesType && matchesCategory && matchesLanguage;
   });
 
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -214,7 +224,7 @@ const Templates = () => {
                     Create and manage reusable message templates
                   </p>
                 </div>
-                <Dialog>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="w-4 h-4 mr-2" />
@@ -231,10 +241,10 @@ const Templates = () => {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="templateName">Template Name</Label>
-                        <Input 
+                        <Input
                           id="templateName"
-                          placeholder="Enter template name" 
-                          className="glass-subtle border-0" 
+                          placeholder="Enter template name"
+                          className="glass-subtle border-0"
                         />
                       </div>
                       <div className="space-y-2">
@@ -267,7 +277,7 @@ const Templates = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="content">Message Content</Label>
-                        <Textarea 
+                        <Textarea
                           id="content"
                           placeholder="Enter your message content. Use {{variable}} for dynamic content."
                           className="glass-subtle border-0"
@@ -333,8 +343,8 @@ const Templates = () => {
               <div className="flex-1 overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 h-full overflow-y-auto">
                   {filteredTemplates.map((template) => (
-                    <Card 
-                      key={template.id} 
+                    <Card
+                      key={template.id}
                       className="glass border-0 hover:shadow-lg transition-smooth cursor-pointer"
                       onClick={() => setSelectedTemplate(template)}
                     >
@@ -356,7 +366,7 @@ const Templates = () => {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-1">
                             {template.isStarred && (
                               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
@@ -394,7 +404,7 @@ const Templates = () => {
                           </div>
                         </div>
                       </CardHeader>
-                      
+
                       <CardContent>
                         <div className="flex items-center gap-2 mb-3">
                           {getStatusIcon(template.status)}
@@ -402,11 +412,11 @@ const Templates = () => {
                             {template.status}
                           </span>
                         </div>
-                        
+
                         <p className="text-sm text-text-subtle mb-4 line-clamp-3">
                           {template.content}
                         </p>
-                        
+
                         {template.variables.length > 0 && (
                           <div className="mb-4">
                             <p className="text-xs text-text-subtle mb-2">Variables:</p>
@@ -424,7 +434,7 @@ const Templates = () => {
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="flex items-center justify-between text-xs text-text-subtle">
                           <span>Used {template.usageCount} times</span>
                           <span>
@@ -451,7 +461,7 @@ const Templates = () => {
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -523,7 +533,7 @@ const Templates = () => {
                 <TabsTrigger value="content">Content</TabsTrigger>
                 <TabsTrigger value="variables">Variables</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="content" className="mt-4">
                 <div className="space-y-4">
                   <div>
@@ -536,7 +546,7 @@ const Templates = () => {
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="variables" className="mt-4">
                 <div className="space-y-4">
                   <div>

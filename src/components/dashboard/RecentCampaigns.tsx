@@ -85,7 +85,7 @@ export function RecentCampaigns() {
         {campaigns.map((campaign) => {
           const StatusIcon = statusConfig[campaign.status as keyof typeof statusConfig]?.icon || Send;
           const statusColor = statusConfig[campaign.status as keyof typeof statusConfig]?.color || "muted";
-          
+
           return (
             <div
               key={campaign.id}
@@ -99,7 +99,7 @@ export function RecentCampaigns() {
                       {campaign.type}
                     </Badge>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <StatusIcon className={`w-4 h-4 text-${statusColor}`} />
                     <span className={`text-sm text-${statusColor} capitalize`}>
@@ -148,12 +148,7 @@ export function RecentCampaigns() {
                     </span>
                   )}
                 </div>
-                
-                {campaign.delivered > 0 && (
-                  <span className="text-xs text-success">
-                    {((campaign.delivered / campaign.sent) * 100).toFixed(1)}% delivery rate
-                  </span>
-                )}
+
               </div>
             </div>
           );

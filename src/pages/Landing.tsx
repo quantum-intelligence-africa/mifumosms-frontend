@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MessageSquare, 
-  Users, 
-  Send, 
-  TrendingUp, 
-  Shield, 
+import {
+  MessageSquare,
+  Users,
+  Send,
+  TrendingUp,
+  Shield,
   Globe,
   Star,
   Check,
@@ -64,7 +64,7 @@ const Landing = () => {
   const pricing = [
     {
       name: "Starter",
-      price: "$29",
+      price: "Tsh 29",
       description: "Perfect for small businesses",
       features: [
         "Up to 1,000 messages/month",
@@ -76,7 +76,7 @@ const Landing = () => {
     },
     {
       name: "Professional",
-      price: "$99",
+      price: "Tsh 99",
       description: "For growing businesses",
       popular: true,
       features: [
@@ -103,26 +103,7 @@ const Landing = () => {
     }
   ];
 
-  const testimonials = [
-    {
-      name: "Sarah Mwangi",
-      role: "Marketing Director, KenyaCorp",
-      content: "Mifumo WMS transformed our customer communication. We increased engagement by 300% in just 3 months.",
-      avatar: "SM"
-    },
-    {
-      name: "Ahmed Hassan",
-      role: "CEO, Cairo Retail",
-      content: "The multi-language support helped us expand across North Africa. Excellent platform for growing businesses.",
-      avatar: "AH"
-    },
-    {
-      name: "Marie Dubois",
-      role: "Operations Manager, Dakar Logistics",
-      content: "The automation features saved us 20 hours per week. Customer satisfaction improved dramatically.",
-      avatar: "MD"
-    }
-  ];
+  // Testimonials section removed
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,18 +132,15 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-20 pb-16 px-6">
+      <section id="about" className="pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6">
-            <Zap className="w-4 h-4 mr-1" />
-            Africa's #1 Messaging Platform
-          </Badge>
+
           <h1 className="font-heading text-5xl lg:text-6xl font-bold text-foreground mb-6">
             Connect with Customers
             <span className="gradient-text block">Across Africa</span>
           </h1>
           <p className="text-xl text-text-subtle mb-8 max-w-2xl mx-auto">
-            Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses 
+            Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
             with multi-language support and local payment integration.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -183,7 +161,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-6 bg-gradient-surface">
+      <section id="features" className="py-20 px-6 bg-gradient-surface">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
@@ -193,7 +171,7 @@ const Landing = () => {
               Powerful features designed for African businesses to scale their customer communication
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <Card key={index} className="glass border-0 hover:shadow-lg transition-smooth">
@@ -212,44 +190,10 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
-              Trusted by businesses across Africa
-            </h2>
-            <div className="flex items-center justify-center gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-primary text-primary" />
-              ))}
-              <span className="ml-2 text-text-subtle">4.9/5 from 1,200+ reviews</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="glass border-0">
-                <CardContent className="p-6">
-                  <p className="text-text-subtle mb-4 italic">"{testimonial.content}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium">
-                      {testimonial.avatar}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{testimonial.name}</p>
-                      <p className="text-sm text-text-subtle">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Testimonials removed */}
 
       {/* Pricing */}
-      <section className="py-20 px-6 bg-gradient-surface">
+      <section id="pricing" className="py-20 px-6 bg-gradient-surface">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
@@ -259,7 +203,7 @@ const Landing = () => {
               Choose the plan that fits your business needs
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricing.map((plan, index) => (
               <Card key={index} className={`glass border-0 relative ${plan.popular ? 'scale-105 shadow-xl' : ''}`}>
@@ -296,7 +240,7 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
+      <section id="contact" className="py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
             Ready to transform your customer communication?
@@ -314,52 +258,42 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="glass border-t border-border-subtle py-12 px-6">
+      <footer className="glass border-t border-border-subtle py-6 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-heading text-xl font-bold text-foreground">
-                  Mifumo WMS
-                </span>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-white" />
               </div>
-              <p className="text-text-subtle">
-                Africa's leading messaging platform for businesses
-              </p>
+              <span className="font-heading text-xl font-bold text-foreground">
+                Mifumo WMS
+              </span>
             </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Product</h4>
-              <ul className="space-y-2 text-text-subtle">
-                <li>Features</li>
-                <li>Pricing</li>
-                <li>API Docs</li>
-                <li>Integrations</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Company</h4>
-              <ul className="space-y-2 text-text-subtle">
-                <li>About</li>
-                <li>Blog</li>
-                <li>Careers</li>
-                <li>Contact</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Support</h4>
-              <ul className="space-y-2 text-text-subtle">
-                <li>Help Center</li>
-                <li>Community</li>
-                <li>Status</li>
-                <li>Security</li>
-              </ul>
+
+            {/* Nav */}
+            <nav className="flex items-center gap-8 text-sm text-foreground/80">
+              <a className="hover:underline" href="#about">About</a>
+              <a className="hover:underline" href="#features">Features</a>
+              <a className="hover:underline" href="#pricing">Pricing</a>
+            </nav>
+
+            {/* Contact */}
+            <div className="flex items-center gap-3">
+              <span className="text-foreground/80">+255 614 459 923</span>
+              <a
+                href="https://wa.me/255614459923"
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90"
+              >
+                WhatsApp
+              </a>
             </div>
           </div>
-          <div className="border-t border-border-subtle mt-8 pt-8 text-center text-text-subtle">
-            <p>&copy; 2024 Mifumo WMS. All rights reserved.</p>
+
+          <div className="border-t border-border-subtle mt-4 pt-4 text-center text-text-subtle">
+            <p>&copy; 2025 Mifumo WMS. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -1,12 +1,12 @@
-import { 
-  MessageSquare, 
-  Send, 
-  Users, 
-  TrendingUp, 
+import {
+  MessageSquare,
+  Send,
+  Users,
+  TrendingUp,
   Clock,
   DollarSign,
   Target,
-  Zap 
+  Zap
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -67,7 +67,7 @@ const Index = () => {
               />
               <MetricCard
                 title="Revenue"
-                value="$4,280"
+                value="Tsh 4,280"
                 change="+18.7%"
                 changeType="positive"
                 icon={DollarSign}
@@ -91,7 +91,7 @@ const Index = () => {
             {/* Activity Feed */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ActivityFeed />
-              
+
               {/* Performance Chart Placeholder */}
               <div className="p-6 glass border-0 rounded-xl">
                 <div className="flex items-center gap-2 mb-6">

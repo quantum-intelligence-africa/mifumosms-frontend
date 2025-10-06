@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  Key, 
-  Globe, 
+import {
+  User,
+  Bell,
+  Shield,
+  Key,
+  Globe,
   CreditCard,
   Users,
   Webhook,
@@ -229,10 +229,10 @@ const Settings = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -257,7 +257,7 @@ const Settings = () => {
                     <TabsTrigger value="team">Team</TabsTrigger>
                     <TabsTrigger value="billing">Billing</TabsTrigger>
                   </TabsList>
-                  
+
                   {/* Profile Settings */}
                   <TabsContent value="profile" className="space-y-6 h-full overflow-y-auto">
                     <Card className="glass border-0">
@@ -288,50 +288,50 @@ const Settings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="firstName">First Name</Label>
-                            <Input 
-                              id="firstName" 
+                            <Input
+                              id="firstName"
                               value={profileData.firstName}
                               onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
-                              className="glass-subtle border-0" 
+                              className="glass-subtle border-0"
                             />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="lastName">Last Name</Label>
-                            <Input 
-                              id="lastName" 
+                            <Input
+                              id="lastName"
                               value={profileData.lastName}
                               onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
-                              className="glass-subtle border-0" 
+                              className="glass-subtle border-0"
                             />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="email">Email Address</Label>
-                            <Input 
-                              id="email" 
-                              type="email" 
+                            <Input
+                              id="email"
+                              type="email"
                               value={profileData.email}
                               disabled
-                              className="glass-subtle border-0 bg-muted/50" 
+                              className="glass-subtle border-0 bg-muted/50"
                             />
                             <p className="text-xs text-text-subtle">Email cannot be changed</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="phone">Phone Number</Label>
-                            <Input 
-                              id="phone" 
-                              type="tel" 
+                            <Input
+                              id="phone"
+                              type="tel"
                               value={profileData.phone}
                               onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-                              className="glass-subtle border-0" 
+                              className="glass-subtle border-0"
                             />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="company">Company</Label>
-                            <Input 
-                              id="company" 
-                              defaultValue="Tech Corp" 
+                            <Input
+                              id="company"
+                              defaultValue="Tech Corp"
                               disabled
-                              className="glass-subtle border-0 bg-muted/50" 
+                              className="glass-subtle border-0 bg-muted/50"
                             />
                             <p className="text-xs text-text-subtle">Company management coming soon</p>
                           </div>
@@ -420,9 +420,9 @@ const Settings = () => {
                             </div>
                             <Switch defaultChecked />
                           </div>
-                          
+
                           <Separator />
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Campaign Alerts</h4>
@@ -430,7 +430,7 @@ const Settings = () => {
                             </div>
                             <Switch defaultChecked />
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Delivery Failures</h4>
@@ -438,7 +438,7 @@ const Settings = () => {
                             </div>
                             <Switch defaultChecked />
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Weekly Reports</h4>
@@ -446,7 +446,7 @@ const Settings = () => {
                             </div>
                             <Switch />
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Product Updates</h4>
@@ -473,31 +473,31 @@ const Settings = () => {
                           <div>
                             <h4 className="font-medium text-foreground mb-2">Change Password</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <Input 
-                                type="password" 
-                                placeholder="Current password" 
+                              <Input
+                                type="password"
+                                placeholder="Current password"
                                 value={passwordData.currentPassword}
                                 onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                                className="glass-subtle border-0" 
+                                className="glass-subtle border-0"
                               />
-                              <Input 
-                                type="password" 
-                                placeholder="New password" 
+                              <Input
+                                type="password"
+                                placeholder="New password"
                                 value={passwordData.newPassword}
                                 onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                                className="glass-subtle border-0" 
+                                className="glass-subtle border-0"
                               />
-                              <Input 
-                                type="password" 
-                                placeholder="Confirm password" 
+                              <Input
+                                type="password"
+                                placeholder="Confirm password"
                                 value={passwordData.confirmPassword}
                                 onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                className="glass-subtle border-0" 
+                                className="glass-subtle border-0"
                               />
                             </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="mt-2"
                               onClick={handlePasswordChange}
                               disabled={isLoading}
@@ -505,9 +505,9 @@ const Settings = () => {
                               {isLoading ? "Updating..." : "Update Password"}
                             </Button>
                           </div>
-                          
+
                           <Separator />
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Two-Factor Authentication</h4>
@@ -517,7 +517,7 @@ const Settings = () => {
                               Enable 2FA
                             </Button>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
                             <div>
                               <h4 className="font-medium text-foreground">Login Sessions</h4>
@@ -558,10 +558,10 @@ const Settings = () => {
                               <div className="space-y-4">
                                 <div className="space-y-2">
                                   <Label htmlFor="keyName">Key Name</Label>
-                                  <Input 
+                                  <Input
                                     id="keyName"
-                                    placeholder="e.g., Production API Key" 
-                                    className="glass-subtle border-0" 
+                                    placeholder="e.g., Production API Key"
+                                    className="glass-subtle border-0"
                                   />
                                 </div>
                                 <div className="space-y-2">
@@ -603,15 +603,15 @@ const Settings = () => {
                                     <code className="text-sm bg-gradient-surface px-2 py-1 rounded">
                                       {showApiKey ? key.key : key.key.replace(/./g, '•').slice(0, 20) + '...'}
                                     </code>
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="icon"
                                       onClick={() => setShowApiKey(!showApiKey)}
                                     >
                                       {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="icon"
                                       onClick={() => copyToClipboard(key.key)}
                                     >
@@ -702,7 +702,7 @@ const Settings = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
+                                  <Badge
                                     variant={webhook.status === "active" ? "default" : "secondary"}
                                     className="capitalize"
                                   >
@@ -783,7 +783,7 @@ const Settings = () => {
                                   <Badge variant="outline">{member.role}</Badge>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
+                                  <Badge
                                     variant={member.status === "active" ? "default" : "secondary"}
                                     className="capitalize"
                                   >
@@ -836,7 +836,7 @@ const Settings = () => {
                                 <h5 className="font-semibold text-foreground">Professional</h5>
                                 <Badge variant="default">Active</Badge>
                               </div>
-                              <p className="text-2xl font-bold text-foreground mb-1">$99/month</p>
+                              <p className="text-2xl font-bold text-foreground mb-1">Tsh 99/month</p>
                               <p className="text-sm text-text-subtle">
                                 Up to 10,000 messages/month
                               </p>
@@ -845,7 +845,7 @@ const Settings = () => {
                               </Button>
                             </div>
                           </div>
-                          
+
                           <div>
                             <h4 className="font-medium text-foreground mb-4">Usage This Month</h4>
                             <div className="space-y-3">
@@ -858,14 +858,14 @@ const Settings = () => {
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-text-subtle">Next billing: April 1, 2024</span>
-                                <span className="text-success">$99.00</span>
+                                <span className="text-success">Tsh 99.00</span>
                               </div>
                             </div>
                           </div>
                         </div>
-                        
+
                         <Separator />
-                        
+
                         <div>
                           <h4 className="font-medium text-foreground mb-4">Payment Method</h4>
                           <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-surface border border-border-subtle">

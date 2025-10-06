@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   TrendingDown,
   BarChart3,
   PieChart,
@@ -128,10 +128,10 @@ const Analytics = () => {
   ];
 
   const topCampaigns = [
-    { name: "Welcome Series", sent: 12500, delivered: 12100, opened: 10200, clicked: 2800, revenue: "$4,200" },
-    { name: "Product Launch", sent: 8900, delivered: 8650, opened: 6200, clicked: 1580, revenue: "$8,900" },
-    { name: "Customer Survey", sent: 6200, delivered: 6050, opened: 4100, clicked: 920, revenue: "$1,200" },
-    { name: "Flash Sale", sent: 4800, delivered: 4720, opened: 4350, clicked: 1680, revenue: "$15,600" },
+    { name: "Welcome Series", sent: 12500, delivered: 12100, opened: 10200, clicked: 2800, revenue: "Tsh 4,200" },
+    { name: "Product Launch", sent: 8900, delivered: 8650, opened: 6200, clicked: 1580, revenue: "Tsh 8,900" },
+    { name: "Customer Survey", sent: 6200, delivered: 6050, opened: 4100, clicked: 920, revenue: "Tsh 1,200" },
+    { name: "Flash Sale", sent: 4800, delivered: 4720, opened: 4350, clicked: 1680, revenue: "Tsh 15,600" },
   ];
 
   const metrics = [
@@ -177,7 +177,7 @@ const Analytics = () => {
     },
     {
       title: "Revenue Impact",
-      value: "$42,800",
+      value: "Tsh 42,800",
       change: "+18.7%",
       changeType: "positive" as const,
       icon: DollarSign,
@@ -227,10 +227,10 @@ const Analytics = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -289,16 +289,6 @@ const Analytics = () => {
                       <p className="text-sm font-medium text-text-subtle mb-1">{metric.title}</p>
                       <div className="flex items-baseline gap-2">
                         <h3 className="text-xl font-bold text-foreground">{metric.value}</h3>
-                        <span className={`text-xs font-medium flex items-center gap-1 ${
-                          metric.changeType === "positive" ? "text-success" : "text-destructive"
-                        }`}>
-                          {metric.changeType === "positive" ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3" />
-                          )}
-                          {metric.change}
-                        </span>
                       </div>
                       <p className="text-xs text-text-subtle mt-1">{metric.description}</p>
                     </CardContent>
@@ -315,7 +305,7 @@ const Analytics = () => {
                     <TabsTrigger value="audience">Audience</TabsTrigger>
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="overview" className="space-y-6 h-full overflow-y-auto">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Message Volume */}
@@ -358,8 +348,8 @@ const Analytics = () => {
                         </CardHeader>
                         <CardContent>
                           <div className="h-64">
-                            <Doughnut 
-                              data={channelDistributionData} 
+                            <Doughnut
+                              data={channelDistributionData}
                               options={{
                                 ...chartOptions,
                                 plugins: {
@@ -372,7 +362,7 @@ const Analytics = () => {
                                     },
                                   },
                                 },
-                              }} 
+                              }}
                             />
                           </div>
                         </CardContent>
@@ -402,7 +392,7 @@ const Analytics = () => {
                                 <div className="text-right">
                                   <p className="font-medium text-foreground">{country.percentage}%</p>
                                   <div className="w-16 h-2 bg-gradient-surface rounded-full overflow-hidden">
-                                    <div 
+                                    <div
                                       className="h-full bg-primary rounded-full"
                                       style={{ width: `${country.percentage}%` }}
                                     />

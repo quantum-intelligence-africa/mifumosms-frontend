@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { 
-  Send, 
-  Users, 
-  Upload, 
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  Send,
+  Users,
+  Upload,
   Calendar,
   Zap,
   DollarSign,
@@ -75,6 +76,16 @@ const SendSMS = () => {
   const segmentCount = Math.ceil(messageLength / 160);
   const costPerSMS = 25; // TZS
   const estimatedCost = recipients.length * segmentCount * costPerSMS;
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const modeParam = params.get("mode");
+    if (modeParam === "single" || modeParam === "bulk" || modeParam === "segment") {
+      setSelectedMode(modeParam);
+    }
+  }, [location.search]);
 
   const addRecipient = () => {
     if (newRecipient && !recipients.includes(newRecipient)) {
@@ -155,10 +166,10 @@ const SendSMS = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
@@ -386,7 +397,7 @@ const SendSMS = () => {
                       <AlertDescription>
                         <div className="font-medium">Cost Estimate</div>
                         <div className="text-sm mt-1">
-                          {recipients.length} recipients × {segmentCount} segment(s) × TZS {costPerSMS} = 
+                          {recipients.length} recipients × {segmentCount} segment(s) × TZS {costPerSMS} =
                           <span className="font-semibold ml-1">TZS {estimatedCost.toLocaleString()}</span>
                         </div>
                       </AlertDescription>

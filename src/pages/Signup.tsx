@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare, ArrowLeft, Check } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +64,7 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.agreeToTerms) {
       toast({
         title: "Terms required",
@@ -125,14 +125,10 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-6">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-text-subtle hover:text-foreground mb-6">
-            <ArrowLeft className="w-4 h-4" />
-            Back to homepage
-          </Link>
-          <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="text-center mb-4">
+          <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-white" />
             </div>
@@ -150,13 +146,13 @@ const Signup = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First name</Label>
                   <Input
                     id="firstName"
-                    placeholder="John"
+                    placeholder="Enter Name"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange("firstName", e.target.value)}
                     required
@@ -167,7 +163,7 @@ const Signup = () => {
                   <Label htmlFor="lastName">Last name</Label>
                   <Input
                     id="lastName"
-                    placeholder="Doe"
+                    placeholder="Enter Last Name"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange("lastName", e.target.value)}
                     required
@@ -181,7 +177,7 @@ const Signup = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@company.com"
+                  placeholder="example@company.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
@@ -189,13 +185,13 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone number</Label>
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="+254 700 000 000"
+                    placeholder="+255 700 000 000"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     className="glass-subtle border-0"
@@ -256,10 +252,10 @@ const Signup = () => {
                     )}
                   </Button>
                 </div>
-                
+
                 {/* Password Strength Indicator */}
                 {formData.password && (
-                  <div className="space-y-2 mt-3">
+                  <div className="space-y-2 mt-2">
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className={`flex items-center gap-1 ${passwordStrength.length ? 'text-success' : 'text-text-subtle'}`}>
                         <Check className={`w-3 h-3 ${passwordStrength.length ? 'opacity-100' : 'opacity-30'}`} />
@@ -316,7 +312,7 @@ const Signup = () => {
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="terms"
@@ -347,17 +343,20 @@ const Signup = () => {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={isLoading || !formData.agreeToTerms}
               >
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-text-subtle">
+            <div className="mt-4 flex items-center justify-between">
+              <Link to="/" className="text-sm text-primary hover:underline">
+                Home
+              </Link>
+              <p className="text-text-subtle text-sm">
                 Already have an account?{" "}
                 <Link to="/login" className="text-primary hover:underline">
                   Sign in
