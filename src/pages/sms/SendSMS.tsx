@@ -62,7 +62,7 @@ const SendSMS = () => {
   // Demo data - replace with actual API calls
   const senderNames: SenderName[] = [
     { id: "1", name: "MIFUMO", status: "approved", is_default: true },
-    { id: "2", name: "TAARIFA", status: "approved", is_default: false },
+    { id: "2", name: "Taarifa-SMS", status: "approved", is_default: false },
     { id: "3", name: "ALERT", status: "pending", is_default: false },
   ];
 

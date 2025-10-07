@@ -80,7 +80,7 @@ const SenderNames = () => {
     },
     {
       id: "2",
-      name: "TAARIFA",
+      name: "Taarifa-SMS",
       status: "approved",
       provider: "Beem Africa",
       is_default: false,
