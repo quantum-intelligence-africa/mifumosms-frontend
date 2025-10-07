@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   MessageSquare,
@@ -16,11 +18,39 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const Landing = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const [customCredits, setCustomCredits] = useState<string>("");
+
+  type Tier = { name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
+  const tiers: Tier[] = [
+    { name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
+    { name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
+    { name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
+    { name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
+  ];
+
+  const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
+  const activeTier = useMemo(() => {
+    if (parsedCredits === 0) return null;
+    if (parsedCredits <= 5000) return tiers[0];
+    if (parsedCredits <= 50000) return tiers[1];
+    if (parsedCredits <= 250000) return tiers[2];
+    return tiers[3];
+  }, [parsedCredits]);
+
+  const customPrice = useMemo(() => {
+    if (!parsedCredits) return 0;
+    if (!activeTier) return 0;
+    if (activeTier.name === "Enterprise") {
+      // Show an estimated maximum (≤ rate)
+      return parsedCredits * (activeTier.rate || 12);
+    }
+    return parsedCredits * (activeTier.rate as number);
+  }, [parsedCredits, activeTier]);
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -63,43 +93,47 @@ const Landing = () => {
 
   const pricing = [
     {
-      name: "Starter",
-      price: "Tsh 29",
-      description: "Perfect for small businesses",
+      name: "Lite",
+      rate: "TZS 30/SMS",
+      credits: "1 – 5,000 SMS",
       features: [
-        "Up to 1,000 messages/month",
-        "Basic analytics",
-        "Email support",
-        "Contact management",
-        "Template library"
-      ]
+        "Instant top-up",
+        "Basic delivery reports",
+        "Email receipt",
+      ],
     },
     {
-      name: "Professional",
-      price: "Tsh 99",
-      description: "For growing businesses",
-      popular: true,
+      name: "Standard",
+      rate: "TZS 25/SMS",
+      credits: "5,001 – 50,000 SMS",
       features: [
-        "Up to 10,000 messages/month",
+        "Priority top-up & support",
+        "Advanced delivery analytics",
+        "Campaign scheduling",
+        "Team access",
+      ],
+      popular: true,
+    },
+    {
+      name: "Pro",
+      rate: "TZS 18/SMS",
+      credits: "50,001 – 250,000 SMS",
+      features: [
+        "Bulk campaign tools",
         "Advanced analytics",
-        "Priority support",
-        "Campaign automation",
-        "Custom integrations",
-        "Team collaboration"
-      ]
+        "API access",
+      ],
     },
     {
       name: "Enterprise",
-      price: "Custom",
-      description: "For large organizations",
+      rate: "Custom (≤12 TZS/SMS)",
+      credits: "Enterprise (1M+ SMS)",
       features: [
-        "Unlimited messages",
-        "Custom analytics",
-        "Dedicated support",
-        "White-label solution",
-        "API access",
-        "Advanced security"
-      ]
+        "Dedicated account manager",
+        "Custom invoicing & contracts",
+        "Priority routing SLA",
+        "Enterprise API & SSO",
+      ],
     }
   ];
 
@@ -204,38 +238,88 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {pricing.map((plan, index) => (
-              <Card key={index} className={`glass border-0 relative ${plan.popular ? 'scale-105 shadow-xl' : ''}`}>
+              <Card
+                key={index}
+                className={`group glass border-0 relative transition-smooth will-change-transform
+                  ${plan.popular ? 'shadow-xl' : ''}
+                  hover:-translate-y-1 hover:scale-[1.02] hover:shadow-2xl hover:ring-1 hover:ring-primary/30`}
+              >
                 {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 transition-smooth group-hover:scale-105 group-hover:-translate-y-0.5">
                     Most Popular
                   </Badge>
                 )}
-                <CardContent className="p-8">
+                <CardContent className="p-8 transition-smooth">
                   <h3 className="font-heading text-2xl font-bold text-foreground mb-2">
                     {plan.name}
                   </h3>
-                  <p className="text-text-subtle mb-4">{plan.description}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                    {plan.price !== "Custom" && <span className="text-text-subtle">/month</span>}
+                  <div className="mb-1">
+                    <span className="text-2xl font-bold text-foreground transition-smooth group-hover:text-primary">{plan.rate}</span>
                   </div>
+                  <p className="text-text-subtle mb-6 transition-smooth group-hover:text-foreground/80">{plan.credits}</p>
+
                   <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, i) => (
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-success" />
+                      <span className="text-text-subtle">{plan.rate}</span>
+                    </li>
+                    {/* Savings display not used in tiered pricing */}
+                    {plan.features?.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-success" />
                         <span className="text-text-subtle">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
-                    {plan.price === "Custom" ? "Contact Sales" : "Start Free Trial"}
+                  <Link to="/login">
+                    <Button className="w-full transition-smooth group-hover:translate-y-[-1px]" variant={plan.popular ? "default" : "outline"}>
+                      Get Started
                   </Button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Custom Amount Calculator (public view) */}
+      <section className="py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Card className="p-6 glass">
+            <h3 className="font-heading text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Number of SMS Credits</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 5000"
+                  value={customCredits}
+                  onChange={(e) => setCustomCredits(e.target.value)}
+                  className="glass-subtle border-0"
+                  min="100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Total Cost</Label>
+                <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-lg font-semibold">
+                  TZS {customPrice.toLocaleString()}
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 text-sm text-text-subtle flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <span>
+                Active tier: {activeTier ? (
+                  <>
+                    <b>{activeTier.name}</b> — {activeTier.rangeLabel} — {activeTier.name === 'Enterprise' ? (activeTier.note || 'Custom') : `TZS ${activeTier.rate}/SMS`}
+                  </>
+                ) : '—'}
+              </span>
+              <span>Minimum 100 credits</span>
+            </div>
+          </Card>
         </div>
       </section>
 
@@ -263,13 +347,13 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Brand */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-heading text-xl font-bold text-foreground">
+                  Mifumo WMS
+                </span>
               </div>
-              <span className="font-heading text-xl font-bold text-foreground">
-                Mifumo WMS
-              </span>
-            </div>
 
             {/* Nav */}
             <nav className="flex items-center gap-8 text-sm text-foreground/80">
