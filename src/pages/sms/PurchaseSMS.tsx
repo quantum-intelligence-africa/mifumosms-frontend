@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { 
-  CreditCard, 
-  Wallet, 
+import { useMemo, useState } from "react";
+import {
+  CreditCard,
+  Wallet,
   Zap,
   Check,
   ArrowRight,
@@ -34,6 +34,7 @@ interface SMSPackage {
   unitPrice: number;
   popular?: boolean;
   savings?: string;
+  features?: string[];
 }
 
 interface PaymentMethod {
@@ -54,30 +55,58 @@ const PurchaseSMS = () => {
   // Demo balance - replace with actual API call
   const currentBalance = 1250;
 
+  // Four SMS tiers to match Landing page
   const packages: SMSPackage[] = [
     {
-      id: "starter",
-      name: "Starter",
-      credits: 500,
-      price: 10000,
-      unitPrice: 20,
+      id: "lite",
+      name: "Lite",
+      credits: 5000,
+      price: 5000 * 30,
+      unitPrice: 30,
+      features: [
+        "Instant top-up",
+        "Basic delivery reports",
+        "Email receipt",
+      ],
     },
     {
-      id: "business",
-      name: "Business",
-      credits: 2000,
-      price: 35000,
-      unitPrice: 17.5,
+      id: "standard",
+      name: "Standard",
+      credits: 50000,
+      price: 50000 * 25,
+      unitPrice: 25,
       popular: true,
-      savings: "12%",
+      features: [
+        "Priority top-up & support",
+        "Advanced delivery analytics",
+        "Campaign scheduling",
+        "Team access",
+      ],
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      credits: 250000,
+      price: 250000 * 18,
+      unitPrice: 18,
+      features: [
+        "Bulk campaign tools",
+        "Advanced analytics",
+        "API access",
+      ],
     },
     {
       id: "enterprise",
       name: "Enterprise",
-      credits: 10000,
-      price: 150000,
-      unitPrice: 15,
-      savings: "25%",
+      credits: 1000000,
+      price: 1000000 * 12,
+      unitPrice: 12,
+      features: [
+        "Dedicated account manager",
+        "Custom invoicing & contracts",
+        "Priority routing SLA",
+        "Enterprise API & SSO",
+      ],
     },
   ];
 
@@ -89,8 +118,31 @@ const PurchaseSMS = () => {
     { id: "bank", name: "Bank Transfer", icon: "🏦" },
   ];
 
+  // Tiered pricing helpers
+  type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
+  const tiers: Tier[] = [
+    { id: "lite", name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
+    { id: "standard", name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
+    { id: "pro", name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
+    { id: "enterprise", name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
+  ];
+
   const selectedPkg = packages.find(p => p.id === selectedPackage);
-  const customPrice = customCredits ? parseInt(customCredits) * 20 : 0;
+  const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
+  const activeTier = useMemo(() => {
+    if (parsedCredits === 0) return null;
+    if (parsedCredits <= 5000) return tiers[0];
+    if (parsedCredits <= 50000) return tiers[1];
+    if (parsedCredits <= 250000) return tiers[2];
+    return tiers[3];
+  }, [parsedCredits]);
+
+  const customPrice = useMemo(() => {
+    if (!parsedCredits) return 0;
+    if (!activeTier) return 0;
+    if (activeTier.id === "enterprise") return parsedCredits * (activeTier.rate || 12);
+    return parsedCredits * (activeTier.rate as number);
+  }, [parsedCredits, activeTier]);
 
   const handlePurchase = async () => {
     if (!selectedPackage && !customCredits) {
@@ -134,10 +186,10 @@ const PurchaseSMS = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
@@ -168,7 +220,7 @@ const PurchaseSMS = () => {
             {/* Package Selection */}
             <div>
               <h2 className="font-heading text-xl font-semibold mb-4">Choose a Package</h2>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
                 {packages.map((pkg) => (
                   <Card
                     key={pkg.id}
@@ -199,16 +251,16 @@ const PurchaseSMS = () => {
                         <Check className="w-4 h-4 mr-2 text-success" />
                         <span>TZS {pkg.unitPrice}/SMS</span>
                       </div>
-                      {pkg.savings && (
-                        <div className="flex items-center text-sm">
-                          <Zap className="w-4 h-4 mr-2 text-warning" />
-                          <span>Save {pkg.savings}</span>
-                        </div>
-                      )}
                       <div className="flex items-center text-sm">
                         <Check className="w-4 h-4 mr-2 text-success" />
                         <span>Never expires</span>
                       </div>
+                      {pkg.features?.map((feature, i) => (
+                        <div key={i} className="flex items-center text-sm">
+                          <Check className="w-4 h-4 mr-2 text-success" />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
                     </div>
                     {selectedPackage === pkg.id && (
                       <Badge variant="secondary" className="w-full justify-center">
@@ -245,9 +297,16 @@ const PurchaseSMS = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-text-subtle mt-2">
-                Custom rate: TZS 20/SMS (minimum 100 credits)
-              </p>
+              <div className="mt-2 text-sm text-text-subtle flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <span>
+                  Active tier: {activeTier ? (
+                    <>
+                      <b>{activeTier.name}</b> — {activeTier.rangeLabel} — {activeTier.id === 'enterprise' ? (activeTier.note || 'Custom') : `TZS ${activeTier.rate}/SMS`}
+                    </>
+                  ) : '—'}
+                </span>
+                <span>Minimum 100 credits</span>
+              </div>
             </Card>
 
             {/* Payment Method */}
