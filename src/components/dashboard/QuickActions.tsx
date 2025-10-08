@@ -18,7 +18,7 @@ const quickActions = [
     icon: Send,
     variant: "secondary" as const,
     shortcut: "⌘ + C",
-    to: "/sms/send?mode=segment",
+    to: "/campaigns?new=true",
   },
   {
     name: "Add Contacts",

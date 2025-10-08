@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { 
-  Plus, 
-  Search, 
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  Plus,
+  Search,
   Filter,
   Play,
   Pause,
@@ -64,6 +65,17 @@ const Campaigns = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Check if we should open the new campaign dialog
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      setIsNewCampaignOpen(true);
+      // Remove the parameter from URL after opening
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const campaigns: Campaign[] = [
     {
@@ -170,7 +182,7 @@ const Campaigns = () => {
                          campaign.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
     const matchesType = typeFilter === "all" || campaign.type === typeFilter;
-    
+
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -189,10 +201,10 @@ const Campaigns = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -206,9 +218,9 @@ const Campaigns = () => {
                     Create and manage your messaging campaigns
                   </p>
                 </div>
-                <Dialog>
+                <Dialog open={isNewCampaignOpen} onOpenChange={setIsNewCampaignOpen}>
                   <DialogTrigger asChild>
-                    <Button>
+                    <Button onClick={() => setIsNewCampaignOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" />
                       New Campaign
                     </Button>
@@ -223,10 +235,10 @@ const Campaigns = () => {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="campaignName">Campaign Name</Label>
-                        <Input 
+                        <Input
                           id="campaignName"
-                          placeholder="Enter campaign name" 
-                          className="glass-subtle border-0" 
+                          placeholder="Enter campaign name"
+                          className="glass-subtle border-0"
                         />
                       </div>
                       <div className="space-y-2">
@@ -244,7 +256,7 @@ const Campaigns = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
-                        <Textarea 
+                        <Textarea
                           id="description"
                           placeholder="Brief description of the campaign"
                           className="glass-subtle border-0"
@@ -252,7 +264,13 @@ const Campaigns = () => {
                       </div>
                       <div className="flex gap-2">
                         <Button className="flex-1">Create Campaign</Button>
-                        <Button variant="outline" className="flex-1">Cancel</Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setIsNewCampaignOpen(false)}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -309,7 +327,7 @@ const Campaigns = () => {
                     <p className="text-2xl font-bold text-foreground">{campaigns.length}</p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="glass border-0">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -323,7 +341,7 @@ const Campaigns = () => {
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="glass border-0">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -337,7 +355,7 @@ const Campaigns = () => {
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="glass border-0">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -386,7 +404,7 @@ const Campaigns = () => {
                               )}
                             </div>
                           </div>
-                          
+
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -472,7 +490,7 @@ const Campaigns = () => {
                                 {Math.round((campaign.sent / campaign.audience) * 100)}% complete
                               </span>
                             </div>
-                            <Progress 
+                            <Progress
                               value={(campaign.sent / campaign.audience) * 100}
                               className="w-full"
                             />

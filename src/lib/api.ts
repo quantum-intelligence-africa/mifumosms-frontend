@@ -1,7 +1,7 @@
 // API Configuration and Client for Mifumo WMS
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   message?: string;
   error?: string;
@@ -83,7 +83,7 @@ export interface Contact {
   is_active: boolean;
   opt_in_at?: string;
   tags: string[];
-  attributes?: Record<string, any>;
+  attributes?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -93,7 +93,7 @@ export interface CreateContactRequest {
   phone_e164: string;
   email?: string;
   tags?: string[];
-  attributes?: Record<string, any>;
+  attributes?: Record<string, unknown>;
 }
 
 // Segment Types
@@ -102,7 +102,7 @@ export interface Segment {
   name: string;
   description?: string;
   contact_count: number;
-  filter_json: Record<string, any>;
+  filter_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -110,7 +110,7 @@ export interface Segment {
 export interface CreateSegmentRequest {
   name: string;
   description?: string;
-  filter_json: Record<string, any>;
+  filter_json: Record<string, unknown>;
 }
 
 // Template Types
@@ -729,7 +729,7 @@ class ApiClient {
     sender_id?: string;
     template_id?: string;
   }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/send/', {
+    return this.request('/messaging/sms/sms/beem/send/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -741,7 +741,7 @@ class ApiClient {
     sender_id?: string;
     template_id?: string;
   }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/send-bulk/', {
+    return this.request('/messaging/sms/sms/beem/send/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -753,6 +753,19 @@ class ApiClient {
 
   async getSMSStats(): Promise<ApiResponse> {
     return this.request('/messaging/sms/sms/stats/');
+  }
+
+  async sendBeemSMS(data: {
+    message: string;
+    recipients: string[];
+    sender_id?: string;
+    template_id?: string;
+    scheduled_at?: string;
+  }): Promise<ApiResponse> {
+    return this.request('/messaging/sms/sms/beem/send/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // =============================================
