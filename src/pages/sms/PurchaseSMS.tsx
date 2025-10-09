@@ -49,6 +49,7 @@ const PurchaseSMS = () => {
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [customCredits, setCustomCredits] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [userPaymentNumber, setUserPaymentNumber] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [processing, setProcessing] = useState(false);
 
@@ -118,6 +119,30 @@ const PurchaseSMS = () => {
     { id: "bank", name: "Bank Transfer", icon: "🏦" },
   ];
 
+  // Payment details for each method
+  const paymentDetails = {
+    mpesa: {
+      number: "0762 123 456",
+      instructions: "Send money to this M-Pesa number and include your account reference"
+    },
+    tigopesa: {
+      number: "0652 123 456",
+      instructions: "Send money to this Tigo Pesa number and include your account reference"
+    },
+    airtel: {
+      number: "0682 123 456",
+      instructions: "Send money to this Airtel Money number and include your account reference"
+    },
+    card: {
+      number: "Account: 1234567890",
+      instructions: "Use this account number for card payments"
+    },
+    bank: {
+      number: "Account: 9876543210",
+      instructions: "Transfer to this bank account number"
+    }
+  };
+
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = [
@@ -163,6 +188,15 @@ const PurchaseSMS = () => {
       return;
     }
 
+    if (!userPaymentNumber.trim()) {
+      toast({
+        title: "Payment details required",
+        description: "Please enter your payment number or account details",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setShowInvoice(true);
   };
 
@@ -180,6 +214,7 @@ const PurchaseSMS = () => {
       setSelectedPackage("");
       setCustomCredits("");
       setPaymentMethod("");
+      setUserPaymentNumber("");
     }, 2000);
   };
 
@@ -240,17 +275,16 @@ const PurchaseSMS = () => {
                     <h3 className="font-heading text-xl font-semibold mb-2">{pkg.name}</h3>
                     <div className="mb-4">
                       <p className="text-3xl font-bold text-foreground">
-                        TZS {pkg.price.toLocaleString()}
+                        TZS {pkg.unitPrice}/SMS
                       </p>
                       <p className="text-sm text-text-subtle">
-                        {pkg.credits.toLocaleString()} SMS credits
+                        {pkg.id === 'lite' ? '1 – 5,000 SMS' :
+                         pkg.id === 'standard' ? '5,001 – 50,000 SMS' :
+                         pkg.id === 'pro' ? '50,001 – 250,000 SMS' :
+                         'Enterprise (1M+ SMS)'}
                       </p>
                     </div>
                     <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm">
-                        <Check className="w-4 h-4 mr-2 text-success" />
-                        <span>TZS {pkg.unitPrice}/SMS</span>
-                      </div>
                       <div className="flex items-center text-sm">
                         <Check className="w-4 h-4 mr-2 text-success" />
                         <span>Never expires</span>
@@ -337,6 +371,39 @@ const PurchaseSMS = () => {
                     ))}
                   </div>
                 </RadioGroup>
+
+                {/* Payment Number Input */}
+                {paymentMethod && (
+                  <div className="mt-6 space-y-2">
+                    <Label htmlFor="paymentNumber">
+                      {paymentMethod === 'mpesa' ? 'M-Pesa Number' :
+                       paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
+                       paymentMethod === 'airtel' ? 'Airtel Money Number' :
+                       paymentMethod === 'card' ? 'Card Number' :
+                       'Bank Account Number'}
+                    </Label>
+                    <Input
+                      id="paymentNumber"
+                      type="text"
+                      placeholder={
+                        paymentMethod === 'mpesa' ? 'e.g., 0762 123 456' :
+                        paymentMethod === 'tigopesa' ? 'e.g., 0652 123 456' :
+                        paymentMethod === 'airtel' ? 'e.g., 0682 123 456' :
+                        paymentMethod === 'card' ? 'e.g., 1234 5678 9012 3456' :
+                        'e.g., 1234567890'
+                      }
+                      value={userPaymentNumber}
+                      onChange={(e) => setUserPaymentNumber(e.target.value)}
+                      className="glass-subtle border-0"
+                    />
+                    <p className="text-xs text-text-subtle">
+                      {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
+                        ? 'Enter the phone number associated with your mobile money account'
+                        : 'Enter your account or card number for payment processing'
+                      }
+                    </p>
+                  </div>
+                )}
               </Card>
             )}
 
@@ -385,6 +452,38 @@ const PurchaseSMS = () => {
                       TZS {(selectedPkg?.price || customPrice).toLocaleString()}
                     </span>
                   </div>
+
+                  {/* Payment Details Section */}
+                  {paymentMethod && (
+                    <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        Payment Instructions
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-text-subtle mb-1">Your Payment Details:</p>
+                          <p className="font-mono text-lg font-semibold text-primary bg-background px-3 py-2 rounded border">
+                            {userPaymentNumber}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-text-subtle mb-1">Instructions:</p>
+                          <p className="text-sm text-foreground">
+                            {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
+                              ? `Send money to our ${paymentMethods.find(m => m.id === paymentMethod)?.name} number and include your account reference`
+                              : `Use this ${paymentMethods.find(m => m.id === paymentMethod)?.name} for payment processing`
+                            }
+                          </p>
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-3">
+                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                            <strong>Important:</strong> Please include your account reference in the payment description to ensure proper credit allocation.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter>

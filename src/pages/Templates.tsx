@@ -160,7 +160,7 @@ const Templates = () => {
       isStarred: true
     }
   ];
-  
+
 
   const categories = Array.from(new Set(templates.map(t => t.category)));
   const languages = Array.from(new Set(templates.map(t => t.language)));

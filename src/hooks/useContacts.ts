@@ -20,7 +20,7 @@ export const useContacts = () => {
       setIsLoading(true);
       setError(null);
       const response = await apiClient.getContacts(params);
-      
+
       if (response.success && response.data) {
         setContacts(response.data.results);
         setTotalCount(response.data.count);
@@ -47,7 +47,7 @@ export const useContacts = () => {
   const createContact = async (contactData: CreateContactRequest): Promise<boolean> => {
     try {
       const response = await apiClient.createContact(contactData);
-      
+
       if (response.success && response.data) {
         setContacts(prev => [...prev, response.data!]);
         setTotalCount(prev => prev + 1);
@@ -77,7 +77,7 @@ export const useContacts = () => {
   const updateContact = async (contactId: string, contactData: Partial<CreateContactRequest>): Promise<boolean> => {
     try {
       const response = await apiClient.updateContact(contactId, contactData);
-      
+
       if (response.success && response.data) {
         setContacts(prev => prev.map(c => c.id === contactId ? response.data! : c));
         toast({
@@ -106,7 +106,7 @@ export const useContacts = () => {
   const deleteContact = async (contactId: string): Promise<boolean> => {
     try {
       const response = await apiClient.deleteContact(contactId);
-      
+
       if (response.success) {
         setContacts(prev => prev.filter(c => c.id !== contactId));
         setTotalCount(prev => prev - 1);
@@ -136,7 +136,7 @@ export const useContacts = () => {
   const bulkImportContacts = async (file: File): Promise<boolean> => {
     try {
       const response = await apiClient.bulkImportContacts(file);
-      
+
       if (response.success) {
         await fetchContacts(); // Refresh the contacts list
         toast({

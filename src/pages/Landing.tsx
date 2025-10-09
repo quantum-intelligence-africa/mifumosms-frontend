@@ -188,9 +188,9 @@ const Landing = () => {
               Watch Demo
             </Button>
           </div>
-          <p className="text-sm text-text-subtle mt-4">
+          {/* <p className="text-sm text-text-subtle mt-4">
             14-day free trial • No credit card required
-          </p>
+          </p> */}
         </div>
       </section>
 

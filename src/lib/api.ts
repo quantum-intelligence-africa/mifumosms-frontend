@@ -281,20 +281,44 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+
+      let parsed: unknown = null;
+      let rawText: string | null = null;
+
+      if (response.status === 204) {
+        parsed = null;
+      } else if (contentType.includes('application/json')) {
+        parsed = await response.json();
+      } else {
+        rawText = await response.text();
+        // Many backends return HTML login pages when unauthenticated; treat as error
+      }
+
+      // Treat non-JSON bodies as errors even if HTTP status is 2xx
+      if (!contentType.includes('application/json')) {
+        const preview = (rawText || '').slice(0, 200);
+        return {
+          status: response.status,
+          success: false,
+          error: `HTTP ${response.status}: Non-JSON response${preview ? ` — ${preview}` : ''}`,
+        };
+      }
+
+      const data = parsed as Record<string, unknown> | null;
 
       if (!response.ok) {
         return {
-          data: data,
-          error: data.message || data.error || 'An error occurred',
+          data: data as unknown as T,
+          error: (data && (data.message as string)) || (data && (data.error as string)) || 'An error occurred',
           status: response.status,
           success: false,
-          errors: data.errors || data,
+          errors: (data && (data.errors as Record<string, string[]>)) || undefined,
         };
       }
 
       return {
-        data: data,
+        data: data as unknown as T,
         status: response.status,
         success: true,
       };

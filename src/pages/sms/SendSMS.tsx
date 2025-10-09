@@ -246,25 +246,25 @@ const SendSMS = () => {
 
       if (response.success) {
         // Simulate progress for better UX
-        const interval = setInterval(() => {
-          setSendProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              setSending(false);
-              toast({
-                title: "SMS sent successfully",
+    const interval = setInterval(() => {
+      setSendProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setSending(false);
+          toast({
+            title: "SMS sent successfully",
                 description: `Sent to ${apiRecipients.length} recipient(s)`,
-              });
-              // Reset form
-              setRecipients([]);
-              setMessage("");
-              setSelectedMode(null);
-              setSelectedSegment("");
-              return 100;
-            }
-            return prev + 10;
           });
-        }, 300);
+          // Reset form
+          setRecipients([]);
+          setMessage("");
+          setSelectedMode(null);
+              setSelectedSegment("");
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 300);
       } else {
         setSending(false);
         // Enhanced error handling with more details
@@ -345,11 +345,11 @@ const SendSMS = () => {
             description: `Found ${phoneNumbers.length} phone numbers`,
           });
         } else {
-          toast({
+      toast({
             title: "No valid numbers found",
             description: "Please check your CSV format",
             variant: "destructive"
-          });
+      });
         }
       };
       reader.readAsText(file);
