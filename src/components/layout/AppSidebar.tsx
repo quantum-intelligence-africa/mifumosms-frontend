@@ -85,10 +85,12 @@ export function AppSidebar() {
 
       {/* Quick Actions */}
       <div className="px-4 py-4 border-b border-border-subtle">
-        <Button variant="hero" size="sm" className="w-full">
-          <Plus className="w-4 h-4" />
-          New Campaign
-        </Button>
+        <Link to="/campaigns?new=true">
+          <Button variant="hero" size="sm" className="w-full">
+            <Plus className="w-4 h-4" />
+            New Campaign
+          </Button>
+        </Link>
       </div>
 
       {/* Navigation */}

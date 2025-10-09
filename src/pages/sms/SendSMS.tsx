@@ -32,6 +32,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api";
 
 interface SenderName {
   id: string;
@@ -59,10 +60,27 @@ const SendSMS = () => {
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
 
+  // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
+  const normalizeToApi = (input: string): string | null => {
+    const digitsOnly = input.replace(/\D/g, "");
+    if (digitsOnly.startsWith("255") && digitsOnly.length === 12) {
+      return digitsOnly;
+    }
+    // Convert local TZ format 0XXXXXXXXX (10 digits) to 255XXXXXXXXX
+    if (digitsOnly.startsWith("0") && digitsOnly.length === 10) {
+      return `255${digitsOnly.slice(1)}`;
+    }
+    // Convert E.164 +255XXXXXXXXX to 255XXXXXXXXX
+    if (input.startsWith("+") && digitsOnly.startsWith("255") && digitsOnly.length === 12) {
+      return digitsOnly;
+    }
+    return null;
+  };
+
   // Demo data - replace with actual API calls
   const senderNames: SenderName[] = [
-    { id: "1", name: "MIFUMO", status: "approved", is_default: true },
-    { id: "2", name: "Taarifa-SMS", status: "approved", is_default: false },
+    { id: "1", name: "MIFUMO", status: "approved", is_default: false },
+    { id: "2", name: "Taarifa-SMS", status: "approved", is_default: true },
     { id: "3", name: "ALERT", status: "pending", is_default: false },
   ];
 
@@ -75,7 +93,18 @@ const SendSMS = () => {
   const messageLength = message.length;
   const segmentCount = Math.ceil(messageLength / 160);
   const costPerSMS = 25; // TZS
-  const estimatedCost = recipients.length * segmentCount * costPerSMS;
+
+  // Calculate cost based on current mode
+  const getRecipientCount = () => {
+    if (selectedMode === "single") return recipients.length;
+    if (selectedMode === "segment" && selectedSegment) {
+      const selectedSegmentData = segments.find(s => s.id === selectedSegment);
+      return selectedSegmentData?.contact_count || 0;
+    }
+    return 0;
+  };
+
+  const estimatedCost = getRecipientCount() * segmentCount * costPerSMS;
 
   const location = useLocation();
 
@@ -87,12 +116,28 @@ const SendSMS = () => {
     }
   }, [location.search]);
 
+  // Ensure default sender is Taarifa-SMS if not selected
+  useEffect(() => {
+    if (!selectedSender) {
+      const defaultSender = senderNames.find(s => s.name === "Taarifa-SMS");
+      if (defaultSender) setSelectedSender(defaultSender.id);
+    }
+  }, [selectedSender]);
+
   const addRecipient = () => {
-    if (newRecipient && !recipients.includes(newRecipient)) {
-      // Basic E.164 validation
-      const normalized = newRecipient.startsWith("+") ? newRecipient : `+${newRecipient}`;
-      setRecipients([...recipients, normalized]);
+    if (!newRecipient) return;
+    const apiNumber = normalizeToApi(newRecipient);
+    if (apiNumber) {
+      if (!recipients.includes(apiNumber)) {
+        setRecipients([...recipients, apiNumber]);
+      }
       setNewRecipient("");
+    } else {
+      toast({
+        title: "Invalid phone number",
+        description: "Use 12 digits starting with 255 (e.g., 255700000000)",
+        variant: "destructive"
+      });
     }
   };
 
@@ -128,38 +173,186 @@ const SendSMS = () => {
       return;
     }
 
+    if (selectedMode === "segment" && !selectedSegment) {
+      toast({
+        title: "Segment required",
+        description: "Please select a segment",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSending(true);
     setSendProgress(0);
 
-    // Simulate sending progress
-    const interval = setInterval(() => {
-      setSendProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setSending(false);
-          toast({
-            title: "SMS sent successfully",
-            description: `Sent to ${recipients.length} recipient(s)`,
-          });
-          // Reset form
-          setRecipients([]);
-          setMessage("");
-          setSelectedMode(null);
-          return 100;
+    try {
+      // Determine recipients based on mode
+      let targetRecipients: string[] = [];
+
+      if (selectedMode === "single") {
+        targetRecipients = recipients;
+      } else if (selectedMode === "segment") {
+        // For demo purposes, generate mock phone numbers based on segment count
+        const selectedSegmentData = segments.find(s => s.id === selectedSegment);
+        if (selectedSegmentData) {
+          // Generate mock 12-digit TZ numbers without plus, starting with 255
+          targetRecipients = Array.from({ length: selectedSegmentData.contact_count }, (_, i) => `255700000${String(i).padStart(3, '0')}`);
         }
-        return prev + 10;
+      }
+
+      if (targetRecipients.length === 0) {
+        setSending(false);
+        toast({
+          title: "No recipients",
+          description: "No recipients found for the selected mode",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Force sender name to Taarifa-SMS as required by backend
+      const senderName = "Taarifa-SMS";
+
+      // Ensure all recipients are normalized for the API
+      const apiRecipients = targetRecipients
+        .map(r => normalizeToApi(r))
+        .filter((r): r is string => Boolean(r));
+
+      // Prepare the data for the Beem SMS API
+      const smsData: Record<string, unknown> = {
+        message: message.trim(),
+        recipients: apiRecipients,
+        sender_id: senderName
+      };
+
+      // Only add optional fields if they have values
+      if (scheduleType === "later" && scheduledDate) {
+        smsData.scheduled_at = scheduledDate;
+      }
+
+      // Debug: Log the data being sent
+      console.log('Sending SMS data:', smsData);
+      console.log('Recipients count:', apiRecipients.length);
+      console.log('Sender name:', senderName);
+
+      // Call the Beem SMS API
+      const response = await apiClient.sendBeemSMS(smsData as {
+        message: string;
+        recipients: string[];
+        sender_id?: string;
+        template_id?: string;
+        scheduled_at?: string;
       });
-    }, 300);
+
+      if (response.success) {
+        // Simulate progress for better UX
+        const interval = setInterval(() => {
+          setSendProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(interval);
+              setSending(false);
+              toast({
+                title: "SMS sent successfully",
+                description: `Sent to ${apiRecipients.length} recipient(s)`,
+              });
+              // Reset form
+              setRecipients([]);
+              setMessage("");
+              setSelectedMode(null);
+              setSelectedSegment("");
+              return 100;
+            }
+            return prev + 10;
+          });
+        }, 300);
+      } else {
+        setSending(false);
+        // Enhanced error handling with more details
+        let errorMessage = "An error occurred while sending SMS";
+
+        console.error('SMS API Error:', response);
+
+        if (response.status === 400) {
+          // Try to get more specific error details
+          if (response.data && typeof response.data === 'object') {
+            const errorData = response.data as Record<string, unknown>;
+            if ('errors' in errorData && errorData.errors) {
+              errorMessage = `Validation errors: ${JSON.stringify(errorData.errors)}`;
+            } else if ('message' in errorData && typeof errorData.message === 'string') {
+              errorMessage = errorData.message as string;
+            } else if ('error' in errorData && typeof errorData.error === 'string') {
+              errorMessage = errorData.error as string;
+            } else {
+              errorMessage = "Invalid data. Please check your input.";
+            }
+          } else {
+            errorMessage = "Invalid data. Please check your input.";
+          }
+        } else if (response.status === 401) {
+          errorMessage = "Session expired. Please log in again.";
+        } else if (response.status === 403) {
+          errorMessage = "Insufficient credits. Please purchase more SMS credits.";
+        } else if (response.status === 429) {
+          errorMessage = "Rate limit exceeded. Please try again later.";
+        } else if (response.error) {
+          errorMessage = response.error;
+        }
+
+        toast({
+          title: "Failed to send SMS",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setSending(false);
+      console.error('SMS sending error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send SMS. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // In production, parse CSV and extract phone numbers
-      toast({
-        title: "File uploaded",
-        description: `Processing ${file.name}...`,
-      });
+      // Parse CSV and extract phone numbers
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const csv = event.target?.result as string;
+        const lines = csv.split('\n');
+        const phoneNumbers: string[] = [];
+
+        // Skip header row and process each line
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line) {
+            const columns = line.split(',');
+            // Assuming phone is in first column, adjust as needed
+            const phone = columns[0]?.trim();
+            if (phone && phone.startsWith('+255') && phone.length === 13) {
+              phoneNumbers.push(phone);
+            }
+          }
+        }
+
+        if (phoneNumbers.length > 0) {
+          setRecipients(phoneNumbers);
+          toast({
+            title: "File processed",
+            description: `Found ${phoneNumbers.length} phone numbers`,
+          });
+        } else {
+          toast({
+            title: "No valid numbers found",
+            description: "Please check your CSV format",
+            variant: "destructive"
+          });
+        }
+      };
+      reader.readAsText(file);
     }
   };
 
@@ -391,13 +584,13 @@ const SendSMS = () => {
                   </div>
 
                   {/* Cost Preview */}
-                  {recipients.length > 0 && message && (
+                  {getRecipientCount() > 0 && message && (
                     <Alert className="glass-subtle border-0">
                       <DollarSign className="w-4 h-4" />
                       <AlertDescription>
                         <div className="font-medium">Cost Estimate</div>
                         <div className="text-sm mt-1">
-                          {recipients.length} recipients × {segmentCount} segment(s) × TZS {costPerSMS} =
+                          {getRecipientCount()} recipients × {segmentCount} segment(s) × TZS {costPerSMS} =
                           <span className="font-semibold ml-1">TZS {estimatedCost.toLocaleString()}</span>
                         </div>
                       </AlertDescription>
