@@ -81,7 +81,9 @@ export interface Contact {
   phone_e164: string;
   email?: string;
   is_active: boolean;
+  is_opted_in: boolean;
   opt_in_at?: string;
+  last_contacted_at?: string;
   tags: string[];
   attributes?: Record<string, unknown>;
   created_at: string;
@@ -281,44 +283,31 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const contentType = response.headers.get('content-type') || '';
-
-      let parsed: unknown = null;
-      let rawText: string | null = null;
-
-      if (response.status === 204) {
-        parsed = null;
-      } else if (contentType.includes('application/json')) {
-        parsed = await response.json();
-      } else {
-        rawText = await response.text();
-        // Many backends return HTML login pages when unauthenticated; treat as error
-      }
-
-      // Treat non-JSON bodies as errors even if HTTP status is 2xx
-      if (!contentType.includes('application/json')) {
-        const preview = (rawText || '').slice(0, 200);
-        return {
-          status: response.status,
-          success: false,
-          error: `HTTP ${response.status}: Non-JSON response${preview ? ` — ${preview}` : ''}`,
-        };
-      }
-
-      const data = parsed as Record<string, unknown> | null;
+      const data = await response.json();
 
       if (!response.ok) {
         return {
-          data: data as unknown as T,
-          error: (data && (data.message as string)) || (data && (data.error as string)) || 'An error occurred',
+          data: data,
+          error: data?.message || data?.error || 'An error occurred',
           status: response.status,
           success: false,
-          errors: (data && (data.errors as Record<string, string[]>)) || undefined,
+          errors: data?.errors || data,
+        };
+      }
+
+      // Handle backend response format: { "success": true, "data": {...} }
+      if (data && typeof data === 'object' && 'success' in data) {
+        return {
+          data: data.data,
+          status: response.status,
+          success: data.success,
+          message: data.message,
+          error: data.success ? undefined : (data.message || data.error),
         };
       }
 
       return {
-        data: data as unknown as T,
+        data: data,
         status: response.status,
         success: true,
       };
@@ -454,14 +443,14 @@ class ApiClient {
   async getContacts(params?: {
     search?: string;
     is_active?: boolean;
-    tags?: string[];
+    is_opted_in?: boolean;
     page?: number;
     page_size?: number;
   }): Promise<ApiResponse<{ results: Contact[]; count: number; next?: string; previous?: string }>> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
-    if (params?.tags) queryParams.append('tags', JSON.stringify(params.tags));
+    if (params?.is_opted_in !== undefined) queryParams.append('is_opted_in', params.is_opted_in.toString());
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 

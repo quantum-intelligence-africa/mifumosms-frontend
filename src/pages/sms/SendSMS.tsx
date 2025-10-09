@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Send,
@@ -78,17 +78,17 @@ const SendSMS = () => {
   };
 
   // Demo data - replace with actual API calls
-  const senderNames: SenderName[] = [
+  const senderNames: SenderName[] = useMemo(() => [
     { id: "1", name: "MIFUMO", status: "approved", is_default: false },
     { id: "2", name: "Taarifa-SMS", status: "approved", is_default: true },
     { id: "3", name: "ALERT", status: "pending", is_default: false },
-  ];
+  ], []);
 
-  const segments: Segment[] = [
+  const segments: Segment[] = useMemo(() => [
     { id: "1", name: "VIP Customers", contact_count: 150 },
     { id: "2", name: "All Contacts", contact_count: 1240 },
     { id: "3", name: "Active Users", contact_count: 450 },
-  ];
+  ], []);
 
   const messageLength = message.length;
   const segmentCount = Math.ceil(messageLength / 160);
@@ -97,6 +97,7 @@ const SendSMS = () => {
   // Calculate cost based on current mode
   const getRecipientCount = () => {
     if (selectedMode === "single") return recipients.length;
+    if (selectedMode === "bulk") return recipients.length;
     if (selectedMode === "segment" && selectedSegment) {
       const selectedSegmentData = segments.find(s => s.id === selectedSegment);
       return selectedSegmentData?.contact_count || 0;
@@ -122,7 +123,7 @@ const SendSMS = () => {
       const defaultSender = senderNames.find(s => s.name === "Taarifa-SMS");
       if (defaultSender) setSelectedSender(defaultSender.id);
     }
-  }, [selectedSender]);
+  }, [selectedSender, senderNames]);
 
   const addRecipient = () => {
     if (!newRecipient) return;
@@ -164,10 +165,10 @@ const SendSMS = () => {
       return;
     }
 
-    if (selectedMode === "single" && recipients.length === 0) {
+    if ((selectedMode === "single" || selectedMode === "bulk") && recipients.length === 0) {
       toast({
         title: "Recipients required",
-        description: "Please add at least one recipient",
+        description: selectedMode === "bulk" ? "Please upload a CSV file with phone numbers" : "Please add at least one recipient",
         variant: "destructive"
       });
       return;
@@ -189,7 +190,7 @@ const SendSMS = () => {
       // Determine recipients based on mode
       let targetRecipients: string[] = [];
 
-      if (selectedMode === "single") {
+      if (selectedMode === "single" || selectedMode === "bulk") {
         targetRecipients = recipients;
       } else if (selectedMode === "segment") {
         // For demo purposes, generate mock phone numbers based on segment count
@@ -317,23 +318,79 @@ const SendSMS = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Parse CSV and extract phone numbers
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const csv = event.target?.result as string;
-        const lines = csv.split('\n');
-        const phoneNumbers: string[] = [];
+    if (!file) return;
 
-        // Skip header row and process each line
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a CSV file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csv = event.target?.result as string;
+        const lines = csv.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+          toast({
+            title: "Invalid CSV",
+            description: "CSV file must contain at least a header and one data row",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Parse CSV header to find phone column
+        const header = lines[0].split(',').map(col => col.trim().toLowerCase());
+        const phoneColumnIndex = header.findIndex(col =>
+          col.includes('phone') || col.includes('number') || col.includes('mobile')
+        );
+
+        if (phoneColumnIndex === -1) {
+          toast({
+            title: "Phone column not found",
+            description: "CSV must contain a column with 'phone', 'number', or 'mobile' in the header",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const phoneNumbers: string[] = [];
+        const invalidNumbers: string[] = [];
+
+        // Process each data row
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
-          if (line) {
-            const columns = line.split(',');
-            // Assuming phone is in first column, adjust as needed
-            const phone = columns[0]?.trim();
-            if (phone && phone.startsWith('+255') && phone.length === 13) {
-              phoneNumbers.push(phone);
+          if (!line) continue;
+
+          // Handle CSV parsing with proper quote handling
+          const columns = parseCSVLine(line);
+          const phone = columns[phoneColumnIndex]?.trim().replace(/['"]/g, '');
+
+          if (phone) {
+            // Normalize phone number to API format
+            const normalizedPhone = normalizeToApi(phone);
+            if (normalizedPhone) {
+              if (!phoneNumbers.includes(normalizedPhone)) {
+                phoneNumbers.push(normalizedPhone);
+              }
+            } else {
+              invalidNumbers.push(phone);
             }
           }
         }
@@ -341,19 +398,49 @@ const SendSMS = () => {
         if (phoneNumbers.length > 0) {
           setRecipients(phoneNumbers);
           toast({
-            title: "File processed",
-            description: `Found ${phoneNumbers.length} phone numbers`,
+            title: "File processed successfully",
+            description: `Found ${phoneNumbers.length} valid phone numbers${invalidNumbers.length > 0 ? ` (${invalidNumbers.length} invalid numbers skipped)` : ''}`,
           });
         } else {
-      toast({
+          toast({
             title: "No valid numbers found",
-            description: "Please check your CSV format",
+            description: "Please check your CSV format and ensure phone numbers are in E.164 format (+255XXXXXXXXX)",
             variant: "destructive"
-      });
+          });
         }
-      };
-      reader.readAsText(file);
+      } catch (error) {
+        console.error('CSV parsing error:', error);
+        toast({
+          title: "Error processing file",
+          description: "Failed to parse CSV file. Please check the format.",
+          variant: "destructive"
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Helper function to parse CSV line with proper quote handling
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
     }
+
+    result.push(current);
+    return result;
   };
 
   return (
@@ -496,9 +583,9 @@ const SendSMS = () => {
 
                   {/* Recipients - Bulk Mode */}
                   {selectedMode === "bulk" && (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <Label>Upload CSV File</Label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
                         <Upload className="w-8 h-8 mx-auto mb-2 text-text-subtle" />
                         <p className="text-sm text-text-subtle mb-2">
                           Upload CSV file with phone numbers
@@ -516,10 +603,46 @@ const SendSMS = () => {
                           </Button>
                         </label>
                       </div>
+
+                      {/* Uploaded File Preview */}
+                      {recipients.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label>Uploaded Recipients ({recipients.length})</Label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setRecipients([])}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Clear
+                            </Button>
+                          </div>
+                          <div className="max-h-32 overflow-y-auto border rounded-lg p-3 bg-muted/30">
+                            <div className="flex flex-wrap gap-1">
+                              {recipients.slice(0, 20).map((phone) => (
+                                <Badge key={phone} variant="secondary" className="text-xs">
+                                  {phone}
+                                </Badge>
+                              ))}
+                              {recipients.length > 20 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{recipients.length - 20} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <Alert>
                         <AlertCircle className="w-4 h-4" />
                         <AlertDescription>
-                          CSV must contain a 'phone' column with E.164 formatted numbers
+                          <div className="space-y-1">
+                            <div>CSV must contain a column with 'phone', 'number', or 'mobile' in the header</div>
+                            <div className="text-xs">Supported formats: +255XXXXXXXXX, 255XXXXXXXXX, 0XXXXXXXXX</div>
+                          </div>
                         </AlertDescription>
                       </Alert>
                     </div>
