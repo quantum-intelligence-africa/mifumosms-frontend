@@ -35,6 +35,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
+  password_confirm: string;
   first_name: string;
   last_name: string;
   phone_number?: string;
@@ -720,6 +721,75 @@ class ApiClient {
   }
 
   // =============================================
+  // DASHBOARD ENDPOINTS
+  // =============================================
+
+  async getDashboardOverview(): Promise<ApiResponse<{
+    metrics: {
+      total_messages: number;
+      active_contacts: number;
+      campaign_success_rate: number;
+      revenue_this_month: number;
+    };
+    recent_campaigns: Array<{
+      id: string;
+      name: string;
+      type: string;
+      status: string;
+      sent: number;
+      delivered: number;
+      opened: number;
+      progress: number;
+      created_at: string;
+      created_at_human: string;
+    }>;
+    message_stats: {
+      today: number;
+      this_week: number;
+      this_month: number;
+      growth_rate: number;
+    };
+    contact_stats: {
+      total: number;
+      active: number;
+      new_this_month: number;
+      growth_rate: number;
+    };
+    last_updated: string;
+  }>> {
+    return this.request('/messaging/dashboard/overview/');
+  }
+
+  async getDashboardMetrics(): Promise<ApiResponse<{
+    total_messages: {
+      value: number;
+      change: string;
+      change_type: 'positive' | 'negative' | 'neutral';
+      description: string;
+    };
+    active_contacts: {
+      value: number;
+      change: string;
+      change_type: 'positive' | 'negative' | 'neutral';
+      description: string;
+    };
+    campaign_success: {
+      value: string;
+      change: string;
+      change_type: 'positive' | 'negative' | 'neutral';
+      description: string;
+    };
+    revenue: {
+      value: string;
+      change: string;
+      change_type: 'positive' | 'negative' | 'neutral';
+      description: string;
+    };
+  }>> {
+    return this.request('/messaging/dashboard/metrics/');
+  }
+
+  // =============================================
   // SMS ENDPOINTS
   // =============================================
 
@@ -728,44 +798,40 @@ class ApiClient {
     recipients: string[];
     sender_id?: string;
     template_id?: string;
+    scheduled_at?: string;
   }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/beem/send/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async sendBulkSMS(data: {
-    message: string;
-    recipients: string[];
-    sender_id?: string;
-    template_id?: string;
-  }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/beem/send/', {
+    return this.request('/messaging/sms/send/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async getSMSBalance(): Promise<ApiResponse<{ balance: number; currency: string }>> {
-    return this.request<{ balance: number; currency: string }>('/messaging/sms/sms/balance/');
+    return this.request<{ balance: number; currency: string }>('/messaging/sms/balance/');
   }
 
-  async getSMSStats(): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/stats/');
+  async getSMSStats(): Promise<ApiResponse<{
+    total_sent: number;
+    total_delivered: number;
+    total_failed: number;
+    delivery_rate: number;
+    this_month_sent: number;
+    this_month_delivered: number;
+    this_month_failed: number;
+    cost_this_month: number;
+  }>> {
+    return this.request('/messaging/sms/stats/');
   }
 
-  async sendBeemSMS(data: {
-    message: string;
-    recipients: string[];
-    sender_id?: string;
-    template_id?: string;
-    scheduled_at?: string;
-  }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/sms/beem/send/', {
+  async validatePhoneNumber(phone: string): Promise<ApiResponse<{ valid: boolean; formatted: string }>> {
+    return this.request('/messaging/sms/validate-phone/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ phone }),
     });
+  }
+
+  async testSMSConnection(): Promise<ApiResponse<{ connected: boolean; message: string }>> {
+    return this.request('/messaging/sms/test-connection/');
   }
 
   // =============================================
@@ -799,6 +865,377 @@ class ApiClient {
 
   async getBillingOverview(): Promise<ApiResponse> {
     return this.request('/billing/overview/');
+  }
+
+  // =============================================
+  // SMS BILLING ENDPOINTS
+  // =============================================
+
+  async getSMSPackages(): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    package_type: string;
+    credits: number;
+    price: number;
+    unit_price: number;
+    is_popular: boolean;
+    features: string[];
+    savings_percentage: number;
+  }>>> {
+    return this.request('/billing/sms/packages/');
+  }
+
+  async getSMSBalance(): Promise<ApiResponse<{
+    id: string;
+    credits: number;
+    total_purchased: number;
+    total_used: number;
+    last_updated: string;
+    created_at: string;
+  }>> {
+    return this.request('/billing/sms/balance/');
+  }
+
+  async createSMSPurchase(data: {
+    package_id: string;
+    payment_method: string;
+    payment_reference?: string;
+  }): Promise<ApiResponse<{
+    purchase_id: string;
+    invoice_number: string;
+    credits: number;
+    amount: number;
+    status: string;
+    new_balance: number;
+  }>> {
+    return this.request('/billing/sms/purchase/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getSMSPurchases(): Promise<ApiResponse<Array<{
+    id: string;
+    invoice_number: string;
+    package_name: string;
+    credits: number;
+    amount: number;
+    unit_price: number;
+    payment_method: string;
+    payment_method_display: string;
+    status: string;
+    status_display: string;
+    created_at: string;
+    completed_at: string | null;
+  }>>> {
+    return this.request('/billing/sms/purchases/');
+  }
+
+  async getSMSPurchaseHistory(params?: {
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<{
+    purchases: Array<{
+      id: string;
+      invoice_number: string;
+      package_name: string;
+      credits: number;
+      amount: number;
+      unit_price: number;
+      payment_method: string;
+      status: string;
+      created_at: string;
+      completed_at: string | null;
+    }>;
+    pagination: {
+      page: number;
+      page_size: number;
+      total_count: number;
+      total_pages: number;
+      has_next: boolean;
+      has_previous: boolean;
+    };
+  }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+    const endpoint = `/billing/sms/purchases/history/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.request(endpoint);
+  }
+
+  async getSMSUsageStatistics(): Promise<ApiResponse<{
+    current_balance: number;
+    total_usage: {
+      credits: number;
+      cost: number;
+    };
+    monthly_usage: {
+      credits: number;
+      cost: number;
+    };
+    weekly_usage: {
+      credits: number;
+      cost: number;
+    };
+  }>> {
+    return this.request('/billing/sms/usage/statistics/');
+  }
+
+  // =============================================
+  // SMART CAMPAIGN ENDPOINTS
+  // =============================================
+
+  async getCampaigns(params?: {
+    status?: string;
+    type?: string;
+  }): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    description: string;
+    campaign_type: string;
+    campaign_type_display: string;
+    message_text: string;
+    template: string | null;
+    status: string;
+    status_display: string;
+    scheduled_at: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    total_recipients: number;
+    sent_count: number;
+    delivered_count: number;
+    read_count: number;
+    failed_count: number;
+    estimated_cost: number;
+    actual_cost: number;
+    progress_percentage: number;
+    delivery_rate: number;
+    read_rate: number;
+    is_active: boolean;
+    can_edit: boolean;
+    can_start: boolean;
+    can_pause: boolean;
+    can_cancel: boolean;
+    is_recurring: boolean;
+    recurring_schedule: any;
+    settings: any;
+    created_by: string;
+    created_by_name: string;
+    created_at: string;
+    updated_at: string;
+    target_contact_count: number;
+    target_segment_names: string[];
+  }>>> {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.type) queryParams.append('type', params.type);
+
+    const endpoint = `/messaging/campaigns/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.request(endpoint);
+  }
+
+  async getCampaignSummary(): Promise<ApiResponse<{
+    summary: {
+      total_campaigns: number;
+      active_campaigns: number;
+      completed_campaigns: number;
+      total_recipients: number;
+      total_sent: number;
+      total_delivered: number;
+      total_read: number;
+      total_cost: number;
+    };
+    recent_campaigns: Array<{
+      id: string;
+      name: string;
+      type: string;
+      status: string;
+      progress: number;
+      recipients: number;
+      sent: number;
+      delivered: number;
+      created_at: string;
+      created_at_human: string;
+    }>;
+  }>> {
+    return this.request('/messaging/campaigns/summary/');
+  }
+
+  async getCampaign(id: string): Promise<ApiResponse<{
+    id: string;
+    name: string;
+    description: string;
+    campaign_type: string;
+    campaign_type_display: string;
+    message_text: string;
+    template: string | null;
+    status: string;
+    status_display: string;
+    scheduled_at: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    total_recipients: number;
+    sent_count: number;
+    delivered_count: number;
+    read_count: number;
+    failed_count: number;
+    estimated_cost: number;
+    actual_cost: number;
+    progress_percentage: number;
+    delivery_rate: number;
+    read_rate: number;
+    is_active: boolean;
+    can_edit: boolean;
+    can_start: boolean;
+    can_pause: boolean;
+    can_cancel: boolean;
+    is_recurring: boolean;
+    recurring_schedule: any;
+    settings: any;
+    created_by: string;
+    created_by_name: string;
+    created_at: string;
+    updated_at: string;
+    target_contact_count: number;
+    target_segment_names: string[];
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/`);
+  }
+
+  async createCampaign(data: {
+    name: string;
+    description?: string;
+    campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
+    message_text: string;
+    template?: string;
+    scheduled_at?: string;
+    target_contact_ids?: string[];
+    target_segment_ids?: string[];
+    target_criteria?: any;
+    settings?: any;
+    is_recurring?: boolean;
+    recurring_schedule?: any;
+  }): Promise<ApiResponse<{
+    id: string;
+    name: string;
+    status: string;
+    total_recipients: number;
+  }>> {
+    return this.request('/messaging/campaigns/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCampaign(id: string, data: {
+    name?: string;
+    description?: string;
+    message_text?: string;
+    template?: string;
+    scheduled_at?: string;
+    target_contact_ids?: string[];
+    target_segment_ids?: string[];
+    target_criteria?: any;
+    settings?: any;
+    is_recurring?: boolean;
+    recurring_schedule?: any;
+  }): Promise<ApiResponse<{
+    id: string;
+    name: string;
+    status: string;
+    total_recipients: number;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCampaign(id: string): Promise<ApiResponse> {
+    return this.request(`/messaging/campaigns/${id}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async startCampaign(id: string): Promise<ApiResponse<{
+    campaign_id: string;
+    status: string;
+    started_at: string | null;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/start/`, {
+      method: 'POST',
+    });
+  }
+
+  async pauseCampaign(id: string): Promise<ApiResponse<{
+    campaign_id: string;
+    status: string;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/pause/`, {
+      method: 'POST',
+    });
+  }
+
+  async cancelCampaign(id: string): Promise<ApiResponse<{
+    campaign_id: string;
+    status: string;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/cancel/`, {
+      method: 'POST',
+    });
+  }
+
+  async getCampaignAnalytics(id: string): Promise<ApiResponse<{
+    campaign_id: string;
+    campaign_name: string;
+    status: string;
+    overview: {
+      total_recipients: number;
+      sent_count: number;
+      delivered_count: number;
+      read_count: number;
+      failed_count: number;
+      progress_percentage: number;
+      delivery_rate: number;
+      read_rate: number;
+    };
+    costs: {
+      estimated_cost: number;
+      actual_cost: number;
+    };
+    timing: {
+      created_at: string;
+      scheduled_at: string | null;
+      started_at: string | null;
+      completed_at: string | null;
+    };
+    daily_breakdown?: Array<{
+      date: string;
+      sent: number;
+      delivered: number;
+      read: number;
+      failed: number;
+      cost: number;
+    }>;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/analytics/`);
+  }
+
+  async duplicateCampaign(id: string): Promise<ApiResponse<{
+    original_id: string;
+    duplicate_id: string;
+    duplicate_name: string;
+  }>> {
+    return this.request(`/messaging/campaigns/${id}/duplicate/`, {
+      method: 'POST',
+    });
   }
 }
 

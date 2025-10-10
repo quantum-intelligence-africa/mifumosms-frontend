@@ -89,6 +89,7 @@ const Signup = () => {
       const result = await register({
         email: formData.email,
         password: formData.password,
+        password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
         phone_number: formData.phone || undefined,

@@ -19,6 +19,7 @@ import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useTenants } from "@/hooks/useTenants";
+import { useDashboard } from "@/hooks/useDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
-  // Simplified version - always show content
-  console.log('Dashboard component rendering...');
+  const { dashboardData, metrics, isLoading } = useDashboard();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-background">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AppHeader />
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Loading skeletons */}
+              <div className="mb-8">
+                <Skeleton className="h-8 w-64 mb-2" />
+                <Skeleton className="h-4 w-96" />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-32" />
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64 lg:col-span-2" />
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -50,35 +81,35 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <MetricCard
                 title="Total Messages"
-                value="12,450"
-                change="+12.5%"
-                changeType="positive"
+                value={metrics?.total_messages?.value?.toLocaleString() || "0"}
+                change={metrics?.total_messages?.change || "0%"}
+                changeType={metrics?.total_messages?.change_type || "neutral"}
                 icon={MessageSquare}
-                description="Last 30 days"
+                description={metrics?.total_messages?.description || "Last 30 days"}
               />
               <MetricCard
                 title="Active Contacts"
-                value="3,240"
-                change="+8.2%"
-                changeType="positive"
+                value={metrics?.active_contacts?.value?.toLocaleString() || "0"}
+                change={metrics?.active_contacts?.change || "0%"}
+                changeType={metrics?.active_contacts?.change_type || "neutral"}
                 icon={Users}
-                description="Engaged this month"
+                description={metrics?.active_contacts?.description || "Engaged this month"}
               />
               <MetricCard
                 title="Campaign Success"
-                value="94.2%"
-                change="+2.1%"
-                changeType="positive"
+                value={metrics?.campaign_success?.value || "0%"}
+                change={metrics?.campaign_success?.change || "0%"}
+                changeType={metrics?.campaign_success?.change_type || "neutral"}
                 icon={Target}
-                description="Delivery rate"
+                description={metrics?.campaign_success?.description || "Delivery rate"}
               />
               <MetricCard
                 title="Revenue"
-                value="Tsh 4,280"
-                change="+18.7%"
-                changeType="positive"
+                value={metrics?.revenue?.value || "Tsh 0"}
+                change={metrics?.revenue?.change || "0%"}
+                changeType={metrics?.revenue?.change_type || "neutral"}
                 icon={DollarSign}
-                description="This month"
+                description={metrics?.revenue?.description || "This month"}
               />
             </div>
 
@@ -91,7 +122,7 @@ const Dashboard = () => {
 
               {/* Recent Campaigns */}
               <div className="lg:col-span-2">
-                <RecentCampaigns />
+                <RecentCampaigns campaigns={dashboardData?.recent_campaigns || []} />
               </div>
             </div>
 

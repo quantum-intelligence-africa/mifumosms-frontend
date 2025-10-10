@@ -235,8 +235,8 @@ const SendSMS = () => {
       console.log('Recipients count:', apiRecipients.length);
       console.log('Sender name:', senderName);
 
-      // Call the Beem SMS API
-      const response = await apiClient.sendBeemSMS(smsData as {
+      // Call the SMS API
+      const response = await apiClient.sendSMS(smsData as {
         message: string;
         recipients: string[];
         sender_id?: string;

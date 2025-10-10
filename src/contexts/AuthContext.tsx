@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.login(credentials);
       
-      if (response.data) {
+      if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
         setUser(userData);
         apiClient.setToken(tokens.access);
@@ -102,16 +102,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.register(userData);
       
-      if (response.data) {
+      // Debug logging to help troubleshoot
+      console.log('Registration request data:', userData);
+      console.log('Registration response:', response);
+      
+      if (response.data && response.data.tokens) {
         const { user: newUser, tokens } = response.data;
         setUser(newUser);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
         return { success: true };
       } else {
-        return { success: false, error: response.error || 'Registration failed' };
+        console.error('Registration failed - no tokens in response:', response);
+        
+        // Extract specific validation errors
+        let errorMessage = response.error || 'Registration failed';
+        if (response.errors) {
+          const errorDetails = Object.entries(response.errors)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          errorMessage = `Validation failed: ${errorDetails}`;
+        }
+        
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
+      console.error('Registration error:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Registration failed' 

@@ -10,41 +10,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const campaigns = [
-  {
-    id: 1,
-    name: "Mother's Day Special Offers",
-    type: "WhatsApp",
-    status: "completed",
-    sent: 1250,
-    delivered: 1225,
-    opened: 890,
-    progress: 100,
-    createdAt: "2 hours ago",
-  },
-  {
-    id: 2,
-    name: "Product Launch - African Textiles",
-    type: "SMS",
-    status: "sending",
-    sent: 450,
-    delivered: 420,
-    opened: 0,
-    progress: 65,
-    createdAt: "1 day ago",
-  },
-  {
-    id: 3,
-    name: "Customer Satisfaction Survey",
-    type: "WhatsApp",
-    status: "scheduled",
-    sent: 0,
-    delivered: 0,
-    opened: 0,
-    progress: 0,
-    createdAt: "3 days ago",
-  },
-];
+interface Campaign {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  sent: number;
+  delivered: number;
+  opened: number;
+  progress: number;
+  created_at: string;
+  created_at_human: string;
+}
+
+interface RecentCampaignsProps {
+  campaigns?: Campaign[];
+}
 
 const statusConfig = {
   completed: {
@@ -69,7 +50,7 @@ const statusConfig = {
   },
 };
 
-export function RecentCampaigns() {
+export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   return (
     <Card className="p-6 glass border-0">
       <div className="flex items-center justify-between mb-6">
@@ -82,7 +63,13 @@ export function RecentCampaigns() {
       </div>
 
       <div className="space-y-4">
-        {campaigns.map((campaign) => {
+        {campaigns.length === 0 ? (
+          <div className="text-center py-8 text-text-subtle">
+            <p>No campaigns yet</p>
+            <p className="text-sm">Create your first campaign to get started</p>
+          </div>
+        ) : (
+          campaigns.map((campaign) => {
           const StatusIcon = statusConfig[campaign.status as keyof typeof statusConfig]?.icon || Send;
           const statusColor = statusConfig[campaign.status as keyof typeof statusConfig]?.color || "muted";
 
@@ -106,7 +93,7 @@ export function RecentCampaigns() {
                       {statusConfig[campaign.status as keyof typeof statusConfig]?.label}
                     </span>
                     <span className="text-sm text-text-subtle">•</span>
-                    <span className="text-sm text-text-subtle">{campaign.createdAt}</span>
+                    <span className="text-sm text-text-subtle">{campaign.created_at_human}</span>
                   </div>
                 </div>
 
@@ -152,7 +139,8 @@ export function RecentCampaigns() {
               </div>
             </div>
           );
-        })}
+        })
+        )}
       </div>
     </Card>
   );
