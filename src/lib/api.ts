@@ -652,48 +652,8 @@ class ApiClient {
   }
 
   // =============================================
-  // CAMPAIGNS ENDPOINTS
+  // CAMPAIGNS ENDPOINTS (MOVED TO SMART CAMPAIGNS SECTION)
   // =============================================
-
-  async getCampaigns(): Promise<ApiResponse<Campaign[]>> {
-    return this.request<Campaign[]>('/messaging/campaigns/');
-  }
-
-  async createCampaign(campaignData: CreateCampaignRequest): Promise<ApiResponse<Campaign>> {
-    return this.request<Campaign>('/messaging/campaigns/', {
-      method: 'POST',
-      body: JSON.stringify(campaignData),
-    });
-  }
-
-  async getCampaign(campaignId: string): Promise<ApiResponse<Campaign>> {
-    return this.request<Campaign>(`/messaging/campaigns/${campaignId}/`);
-  }
-
-  async updateCampaign(campaignId: string, campaignData: Partial<CreateCampaignRequest>): Promise<ApiResponse<Campaign>> {
-    return this.request<Campaign>(`/messaging/campaigns/${campaignId}/`, {
-      method: 'PUT',
-      body: JSON.stringify(campaignData),
-    });
-  }
-
-  async startCampaign(campaignId: string): Promise<ApiResponse> {
-    return this.request(`/messaging/campaigns/${campaignId}/start/`, {
-      method: 'POST',
-    });
-  }
-
-  async pauseCampaign(campaignId: string): Promise<ApiResponse> {
-    return this.request(`/messaging/campaigns/${campaignId}/pause/`, {
-      method: 'POST',
-    });
-  }
-
-  async cancelCampaign(campaignId: string): Promise<ApiResponse> {
-    return this.request(`/messaging/campaigns/${campaignId}/cancel/`, {
-      method: 'POST',
-    });
-  }
 
   // =============================================
   // AI FEATURES ENDPOINTS
@@ -819,8 +779,15 @@ class ApiClient {
     });
   }
 
-  async getSMSBalance(): Promise<ApiResponse<{ balance: number; currency: string }>> {
-    return this.request<{ balance: number; currency: string }>('/messaging/sms/balance/');
+  async getSMSBalance(): Promise<ApiResponse<{
+    id: string;
+    credits: number;
+    total_purchased: number;
+    total_used: number;
+    last_updated: string;
+    created_at: string;
+  }>> {
+    return this.request('/billing/sms/balance/');
   }
 
   async getSMSStats(): Promise<ApiResponse<{
@@ -896,17 +863,6 @@ class ApiClient {
     savings_percentage: number;
   }>>> {
     return this.request('/billing/sms/packages/');
-  }
-
-  async getSMSBalance(): Promise<ApiResponse<{
-    id: string;
-    credits: number;
-    total_purchased: number;
-    total_used: number;
-    last_updated: string;
-    created_at: string;
-  }>> {
-    return this.request('/billing/sms/balance/');
   }
 
   async createSMSPurchase(data: {
@@ -1008,78 +964,64 @@ class ApiClient {
   async getCampaigns(params?: {
     status?: string;
     type?: string;
-  }): Promise<ApiResponse<Array<{
-    id: string;
-    name: string;
-    description: string;
-    campaign_type: string;
-    campaign_type_display: string;
-    message_text: string;
-    template: string | null;
-    status: string;
-    status_display: string;
-    scheduled_at: string | null;
-    started_at: string | null;
-    completed_at: string | null;
-    total_recipients: number;
-    sent_count: number;
-    delivered_count: number;
-    read_count: number;
-    failed_count: number;
-    estimated_cost: number;
-    actual_cost: number;
-    progress_percentage: number;
-    delivery_rate: number;
-    read_rate: number;
-    is_active: boolean;
-    can_edit: boolean;
-    can_start: boolean;
-    can_pause: boolean;
-    can_cancel: boolean;
-    is_recurring: boolean;
-    recurring_schedule: any;
-    settings: any;
-    created_by: string;
-    created_by_name: string;
-    created_at: string;
-    updated_at: string;
-    target_contact_count: number;
-    target_segment_names: string[];
-  }>>> {
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<{
+    results: Array<{
+      id: string;
+      name: string;
+      description: string;
+      campaign_type: string;
+      campaign_type_display: string;
+      message_text: string;
+      template: string | null;
+      status: string;
+      status_display: string;
+      scheduled_at: string | null;
+      started_at: string | null;
+      completed_at: string | null;
+      total_recipients: number;
+      sent_count: number;
+      delivered_count: number;
+      read_count: number;
+      failed_count: number;
+      estimated_cost: number;
+      actual_cost: number;
+      progress_percentage: number;
+      delivery_rate: number;
+      read_rate: number;
+      is_active: boolean;
+      can_edit: boolean;
+      can_start: boolean;
+      can_pause: boolean;
+      can_cancel: boolean;
+      is_recurring: boolean;
+      recurring_schedule: Record<string, unknown>;
+      settings: Record<string, unknown>;
+      created_by: string;
+      created_by_name: string;
+      created_at: string;
+      updated_at: string;
+      target_contact_count: number;
+      target_segment_names: string[];
+    }>;
+    count: number;
+    next?: string;
+    previous?: string;
+  }>> {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
     if (params?.type) queryParams.append('type', params.type);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
     const endpoint = `/messaging/campaigns/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return this.request(endpoint);
   }
 
-  async getCampaignSummary(): Promise<ApiResponse<{
-    summary: {
-      total_campaigns: number;
-      active_campaigns: number;
-      completed_campaigns: number;
-      total_recipients: number;
-      total_sent: number;
-      total_delivered: number;
-      total_read: number;
-      total_cost: number;
-    };
-    recent_campaigns: Array<{
-      id: string;
-      name: string;
-      type: string;
-      status: string;
-      progress: number;
-      recipients: number;
-      sent: number;
-      delivered: number;
-      created_at: string;
-      created_at_human: string;
-    }>;
-  }>> {
-    return this.request('/messaging/campaigns/summary/');
-  }
+  // =============================================
+  // CAMPAIGN SUMMARY (REMOVED - NOT IN BACKEND API)
+  // =============================================
 
   async getCampaign(id: string): Promise<ApiResponse<{
     id: string;
@@ -1110,8 +1052,8 @@ class ApiClient {
     can_pause: boolean;
     can_cancel: boolean;
     is_recurring: boolean;
-    recurring_schedule: any;
-    settings: any;
+    recurring_schedule: Record<string, unknown>;
+    settings: Record<string, unknown>;
     created_by: string;
     created_by_name: string;
     created_at: string;
@@ -1127,19 +1069,30 @@ class ApiClient {
     description?: string;
     campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
     message_text: string;
-    template?: string;
-    scheduled_at?: string;
+    template?: string | null;
+    scheduled_at?: string | null;
     target_contact_ids?: string[];
     target_segment_ids?: string[];
-    target_criteria?: any;
-    settings?: any;
+    target_criteria?: {
+      tags?: string[];
+      opt_in_status?: string;
+    };
+    settings?: {
+      send_time?: string;
+      timezone?: string;
+    };
     is_recurring?: boolean;
-    recurring_schedule?: any;
+    recurring_schedule?: Record<string, unknown>;
   }): Promise<ApiResponse<{
     id: string;
     name: string;
+    description: string;
+    campaign_type: string;
     status: string;
     total_recipients: number;
+    created_at: string;
+    target_contact_count: number;
+    target_segment_names: string[];
   }>> {
     return this.request('/messaging/campaigns/', {
       method: 'POST',
@@ -1151,19 +1104,30 @@ class ApiClient {
     name?: string;
     description?: string;
     message_text?: string;
-    template?: string;
-    scheduled_at?: string;
+    template?: string | null;
+    scheduled_at?: string | null;
     target_contact_ids?: string[];
     target_segment_ids?: string[];
-    target_criteria?: any;
-    settings?: any;
+    target_criteria?: {
+      tags?: string[];
+      opt_in_status?: string;
+    };
+    settings?: {
+      send_time?: string;
+      timezone?: string;
+    };
     is_recurring?: boolean;
-    recurring_schedule?: any;
+    recurring_schedule?: Record<string, unknown>;
   }): Promise<ApiResponse<{
     id: string;
     name: string;
+    description: string;
+    campaign_type: string;
     status: string;
     total_recipients: number;
+    created_at: string;
+    target_contact_count: number;
+    target_segment_names: string[];
   }>> {
     return this.request(`/messaging/campaigns/${id}/`, {
       method: 'PUT',
@@ -1178,9 +1142,13 @@ class ApiClient {
   }
 
   async startCampaign(id: string): Promise<ApiResponse<{
-    campaign_id: string;
-    status: string;
-    started_at: string | null;
+    success: boolean;
+    message: string;
+    campaign: {
+      id: string;
+      status: string;
+      started_at: string;
+    };
   }>> {
     return this.request(`/messaging/campaigns/${id}/start/`, {
       method: 'POST',
@@ -1188,8 +1156,12 @@ class ApiClient {
   }
 
   async pauseCampaign(id: string): Promise<ApiResponse<{
-    campaign_id: string;
-    status: string;
+    success: boolean;
+    message: string;
+    campaign: {
+      id: string;
+      status: string;
+    };
   }>> {
     return this.request(`/messaging/campaigns/${id}/pause/`, {
       method: 'POST',
@@ -1197,8 +1169,13 @@ class ApiClient {
   }
 
   async cancelCampaign(id: string): Promise<ApiResponse<{
-    campaign_id: string;
-    status: string;
+    success: boolean;
+    message: string;
+    campaign: {
+      id: string;
+      status: string;
+      completed_at: string;
+    };
   }>> {
     return this.request(`/messaging/campaigns/${id}/cancel/`, {
       method: 'POST',

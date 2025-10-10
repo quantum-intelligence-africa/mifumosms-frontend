@@ -49,7 +49,7 @@ const navigation: NavItem[] = [
       { name: "Purchase History", href: "/sms/purchase-history", icon: History },
     ]
   },
-  { name: "Contacts", href: "/contacts", icon: Users, count: 1240 },
+  { name: "Contacts", href: "/contacts", icon: Users },
   { name: "Campaigns", href: "/campaigns", icon: Send },
   { name: "Templates", href: "/templates", icon: FileText },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },

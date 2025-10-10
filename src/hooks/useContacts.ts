@@ -57,9 +57,21 @@ export const useContacts = () => {
         });
         return true;
       } else {
+        // Build a helpful error message from backend validation errors if present
+        let detailedError = response.error || "Please check your input and try again";
+        if (response.errors && typeof response.errors === 'object') {
+          const parts: string[] = [];
+          for (const [field, messages] of Object.entries(response.errors)) {
+            const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
+            parts.push(`${field}: ${joined}`);
+          }
+          if (parts.length > 0) {
+            detailedError = parts.join(' | ');
+          }
+        }
         toast({
           title: "Failed to create contact",
-          description: response.error || 'Please check your input and try again',
+          description: detailedError,
           variant: "destructive"
         });
         return false;

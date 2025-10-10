@@ -71,7 +71,12 @@ export const useCampaigns = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchCampaigns = async (params?: { status?: string; type?: string }) => {
+  const fetchCampaigns = async (params?: {
+    status?: string;
+    type?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -79,7 +84,7 @@ export const useCampaigns = () => {
       const response = await apiClient.getCampaigns(params);
 
       if (response.success && response.data) {
-        setCampaigns(response.data);
+        setCampaigns(response.data.results);
       } else {
         setError(response.error || 'Failed to fetch campaigns');
         setCampaigns([]); // Ensure campaigns is always an array
@@ -104,22 +109,68 @@ export const useCampaigns = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await apiClient.getCampaignSummary();
-
-      if (response.success && response.data) {
-        setSummary(response.data);
+      // Since getCampaignSummary endpoint doesn't exist in the backend,
+      // we'll calculate summary from the campaigns list
+      if (campaigns && campaigns.length > 0) {
+        const calculatedSummary = {
+          summary: {
+            total_campaigns: campaigns.length,
+            active_campaigns: campaigns.filter(c => c.is_active).length,
+            completed_campaigns: campaigns.filter(c => c.status === 'completed').length,
+            total_recipients: campaigns.reduce((sum, c) => sum + c.total_recipients, 0),
+            total_sent: campaigns.reduce((sum, c) => sum + c.sent_count, 0),
+            total_delivered: campaigns.reduce((sum, c) => sum + c.delivered_count, 0),
+            total_read: campaigns.reduce((sum, c) => sum + c.read_count, 0),
+            total_cost: campaigns.reduce((sum, c) => sum + c.actual_cost, 0),
+          },
+          recent_campaigns: campaigns
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5)
+            .map(campaign => ({
+              id: campaign.id,
+              name: campaign.name,
+              type: campaign.campaign_type,
+              status: campaign.status,
+              progress: campaign.progress_percentage,
+              recipients: campaign.total_recipients,
+              sent: campaign.sent_count,
+              delivered: campaign.delivered_count,
+              created_at: campaign.created_at,
+              created_at_human: new Date(campaign.created_at).toLocaleDateString(),
+            }))
+        };
+        setSummary(calculatedSummary);
       } else {
-        toast({
-          title: "Failed to load campaign summary",
-          description: response.error || 'Please try again',
-          variant: "destructive"
+        // Set default empty summary
+        setSummary({
+          summary: {
+            total_campaigns: 0,
+            active_campaigns: 0,
+            completed_campaigns: 0,
+            total_recipients: 0,
+            total_sent: 0,
+            total_delivered: 0,
+            total_read: 0,
+            total_cost: 0,
+          },
+          recent_campaigns: []
         });
       }
     } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to load campaign summary",
-        variant: "destructive"
+      console.error('Error calculating campaign summary:', error);
+      // Set default empty summary on error
+      setSummary({
+        summary: {
+          total_campaigns: 0,
+          active_campaigns: 0,
+          completed_campaigns: 0,
+          total_recipients: 0,
+          total_sent: 0,
+          total_delivered: 0,
+          total_read: 0,
+          total_cost: 0,
+        },
+        recent_campaigns: []
       });
     }
   };
@@ -129,12 +180,18 @@ export const useCampaigns = () => {
     description?: string;
     campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
     message_text: string;
-    template?: string;
-    scheduled_at?: string;
+    template?: string | null;
+    scheduled_at?: string | null;
     target_contact_ids?: string[];
     target_segment_ids?: string[];
-    target_criteria?: any;
-    settings?: any;
+    target_criteria?: {
+      tags?: string[];
+      opt_in_status?: string;
+    };
+    settings?: {
+      send_time?: string;
+      timezone?: string;
+    };
     is_recurring?: boolean;
     recurring_schedule?: any;
   }): Promise<boolean> => {
@@ -255,7 +312,7 @@ export const useCampaigns = () => {
       if (response.success && response.data) {
         toast({
           title: "Campaign started successfully",
-          description: `Campaign is now ${response.data.status}`,
+          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
         });
 
         // Refresh campaigns list
@@ -288,7 +345,7 @@ export const useCampaigns = () => {
       if (response.success && response.data) {
         toast({
           title: "Campaign paused successfully",
-          description: `Campaign is now ${response.data.status}`,
+          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
         });
 
         // Refresh campaigns list
@@ -321,7 +378,7 @@ export const useCampaigns = () => {
       if (response.success && response.data) {
         toast({
           title: "Campaign cancelled successfully",
-          description: `Campaign is now ${response.data.status}`,
+          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
         });
 
         // Refresh campaigns list
@@ -385,10 +442,8 @@ export const useCampaigns = () => {
       setIsLoading(true);
       setError(null);
 
-      await Promise.all([
-        fetchCampaigns(params),
-        fetchSummary()
-      ]);
+      await fetchCampaigns(params);
+      // fetchSummary will be called automatically when campaigns are loaded
     } catch (error) {
       setError('Failed to load campaign data');
     } finally {
@@ -399,6 +454,13 @@ export const useCampaigns = () => {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  // Calculate summary whenever campaigns change
+  useEffect(() => {
+    if (campaigns) {
+      fetchSummary();
+    }
+  }, [campaigns]);
 
   return {
     campaigns,

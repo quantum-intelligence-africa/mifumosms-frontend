@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  RefreshCw
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -84,9 +85,18 @@ const Contacts = () => {
     phone_e164: "",
     email: "",
     tags: [],
-    attributes: {}
+    attributes: {
+      company: "",
+      department: ""
+    } as Record<string, unknown>
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Predefined tags for selection
+  const predefinedTags = [
+    "vip", "marketing", "sales", "support", "premium", "basic",
+    "new", "returning", "inactive", "active", "lead", "customer"
+  ];
 
   const {
     contacts,
@@ -137,8 +147,49 @@ const Contacts = () => {
     );
   };
 
+  const handleTagToggle = (tag: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }));
+  };
+
+  const handleAttributeChange = (key: string, value: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      attributes: {
+        ...prev.attributes,
+        [key]: value
+      }
+    }));
+  };
+
   const handleCreateContact = async () => {
     if (!createFormData.name || !createFormData.phone_e164) return;
+
+    // Basic phone number validation
+    const phoneNumber = createFormData.phone_e164.trim();
+    if (!phoneNumber.startsWith('+')) {
+      toast({
+        title: "Invalid phone number",
+        description: "Phone number must start with + (e.g., +1234567890)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if phone number has at least 10 digits after +
+    const digitsOnly = phoneNumber.slice(1).replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      toast({
+        title: "Invalid phone number",
+        description: "Phone number must have at least 10 digits",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const success = await createContact(createFormData);
     if (success) {
@@ -148,7 +199,10 @@ const Contacts = () => {
         phone_e164: "",
         email: "",
         tags: [],
-        attributes: {}
+        attributes: {
+          company: "",
+          department: ""
+        } as Record<string, unknown>
       });
     }
   };
@@ -306,6 +360,19 @@ const Contacts = () => {
                   <Button
                     variant="outline"
                     className="glass-subtle border-0"
+                    onClick={fetchContacts}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="glass-subtle border-0"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
                   >
@@ -353,23 +420,89 @@ const Contacts = () => {
                           <Label htmlFor="phone">Phone Number *</Label>
                           <Input
                             id="phone"
+                            type="tel"
                             placeholder="+1234567890"
                             value={createFormData.phone_e164}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
                             className="glass-subtle border-0"
                           />
+                          <p className="text-xs text-text-subtle">
+                            Enter phone number in international format (e.g., +1234567890)
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="email">Email Address</Label>
                           <Input
                             id="email"
                             type="email"
-                            placeholder="john@example.com"
+                            placeholder="sway@example.com"
                             value={createFormData.email}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
                             className="glass-subtle border-0"
                           />
                         </div>
+
+                        {/* Attributes Section */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-foreground">Additional Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="company">Company</Label>
+                              <Input
+                                id="company"
+                                placeholder="Acme Corp"
+                                value={(createFormData.attributes.company as string) || ""}
+                                onChange={(e) => handleAttributeChange("company", e.target.value)}
+                                className="glass-subtle border-0"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="department">Department</Label>
+                              <Input
+                                id="department"
+                                placeholder="Marketing"
+                                value={(createFormData.attributes.department as string) || ""}
+                                onChange={(e) => handleAttributeChange("department", e.target.value)}
+                                className="glass-subtle border-0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tags Section */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-foreground">Tags</h4>
+                          <div className="space-y-2">
+                            <Label>Select Tags</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {predefinedTags.map((tag) => (
+                                <div key={tag} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`tag-${tag}`}
+                                    checked={createFormData.tags.includes(tag)}
+                                    onCheckedChange={() => handleTagToggle(tag)}
+                                  />
+                                  <Label
+                                    htmlFor={`tag-${tag}`}
+                                    className="text-sm font-normal cursor-pointer"
+                                  >
+                                    {tag}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                            {createFormData.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {createFormData.tags.map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
                         <div className="flex gap-2 pt-4">
                           <Button
                             onClick={handleCreateContact}
@@ -637,6 +770,21 @@ const Contacts = () => {
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Email</p>
                   <p className="text-foreground">{selectedContact.email}</p>
+                </div>
+              )}
+
+              {/* Display attributes if they exist */}
+              {selectedContact.attributes && Object.keys(selectedContact.attributes).length > 0 && (
+                <div>
+                  <p className="text-sm text-text-subtle mb-1">Additional Information</p>
+                  <div className="space-y-1">
+                    {Object.entries(selectedContact.attributes).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="text-sm text-text-subtle capitalize">{key}:</span>
+                        <span className="text-sm text-foreground">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

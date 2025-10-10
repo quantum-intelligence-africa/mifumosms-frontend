@@ -47,10 +47,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     description: '',
     campaign_type: 'sms' as 'sms' | 'whatsapp' | 'email' | 'mixed',
     message_text: '',
-    template: '',
-    scheduled_at: '',
+    template: null as string | null,
+    scheduled_at: null as string | null,
     target_contact_ids: [] as string[],
     target_segment_ids: [] as string[],
+    target_criteria: {
+      tags: [] as string[],
+      opt_in_status: 'opted_in' as string
+    },
+    settings: {
+      send_time: '09:00',
+      timezone: 'Africa/Dar_es_Salaam'
+    },
     is_recurring: false,
     recurring_schedule: {},
   });
@@ -97,10 +105,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         description: formData.description.trim() || undefined,
         campaign_type: formData.campaign_type,
         message_text: formData.message_text.trim(),
-        template: formData.template || undefined,
-        scheduled_at: formData.scheduled_at || undefined,
+        template: formData.template || null,
+        scheduled_at: formData.scheduled_at || null,
         target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
         target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
+        target_criteria: {
+          tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
+          opt_in_status: formData.target_criteria.opt_in_status
+        },
+        settings: {
+          send_time: formData.settings.send_time,
+          timezone: formData.settings.timezone
+        },
         is_recurring: formData.is_recurring,
         recurring_schedule: formData.recurring_schedule,
       });
@@ -113,10 +129,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           description: '',
           campaign_type: 'sms',
           message_text: '',
-          template: '',
-          scheduled_at: '',
+          template: null,
+          scheduled_at: null,
           target_contact_ids: [],
           target_segment_ids: [],
+          target_criteria: {
+            tags: [],
+            opt_in_status: 'opted_in'
+          },
+          settings: {
+            send_time: '09:00',
+            timezone: 'Africa/Dar_es_Salaam'
+          },
           is_recurring: false,
           recurring_schedule: {},
         });
@@ -218,8 +242,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <Input
                     id="scheduled_at"
                     type="datetime-local"
-                    value={formData.scheduled_at}
-                    onChange={(e) => handleInputChange('scheduled_at', e.target.value)}
+                    value={formData.scheduled_at || ''}
+                    onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
                   />
                 </div>
 
@@ -230,6 +254,39 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     onCheckedChange={(checked) => handleInputChange('is_recurring', checked)}
                   />
                   <Label htmlFor="is_recurring">Recurring Campaign</Label>
+                </div>
+              </div>
+
+              {/* Settings Section */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground">Campaign Settings</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="send_time">Send Time</Label>
+                    <Input
+                      id="send_time"
+                      type="time"
+                      value={formData.settings.send_time}
+                      onChange={(e) => handleInputChange('settings', { ...formData.settings, send_time: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Select
+                      value={formData.settings.timezone}
+                      onValueChange={(value) => handleInputChange('settings', { ...formData.settings, timezone: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar_es_Salaam</SelectItem>
+                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -292,6 +349,52 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </div>
                 </div>
               )}
+
+              {/* Target Criteria Section */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-foreground">Target Criteria</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tags Filter</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['vip', 'premium', 'basic', 'new', 'returning', 'active', 'inactive'].map((tag) => (
+                        <div key={tag} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`tag-${tag}`}
+                            checked={formData.target_criteria.tags.includes(tag)}
+                            onCheckedChange={(checked) => {
+                              const newTags = checked
+                                ? [...formData.target_criteria.tags, tag]
+                                : formData.target_criteria.tags.filter(t => t !== tag);
+                              handleInputChange('target_criteria', { ...formData.target_criteria, tags: newTags });
+                            }}
+                          />
+                          <Label htmlFor={`tag-${tag}`} className="text-sm font-normal cursor-pointer">
+                            {tag}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="opt_in_status">Opt-in Status</Label>
+                    <Select
+                      value={formData.target_criteria.opt_in_status}
+                      onValueChange={(value) => handleInputChange('target_criteria', { ...formData.target_criteria, opt_in_status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select opt-in status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="opted_in">Opted In</SelectItem>
+                        <SelectItem value="opted_out">Opted Out</SelectItem>
+                        <SelectItem value="all">All Contacts</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
