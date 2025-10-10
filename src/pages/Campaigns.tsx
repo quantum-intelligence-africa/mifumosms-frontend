@@ -72,15 +72,24 @@ const Campaigns = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  // Reset dialog state when it closes
+  const handleDialogClose = (open: boolean) => {
+    setIsNewCampaignOpen(open);
+    if (!open) {
+      // Reset form state when dialog closes
+      setSearchParams({});
+    }
+  };
+
   // Filter campaigns based on search and filters
-  const filteredCampaigns = campaigns.filter(campaign => {
+  const filteredCampaigns = Array.isArray(campaigns) ? campaigns.filter(campaign => {
     const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          campaign.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
     const matchesType = typeFilter === "all" || campaign.campaign_type === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
-  });
+  }) : [];
 
   const handleCampaignAction = async (action: string, campaignId: string) => {
     switch (action) {
@@ -159,18 +168,44 @@ const Campaigns = () => {
                 <Skeleton className="h-8 w-64" />
                 <Skeleton className="h-10 w-32" />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-32" />
                 ))}
               </div>
-              
+
               <div className="space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-24" />
                 ))}
               </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-background">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AppHeader />
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            <div className="max-w-7xl mx-auto">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Campaigns</h3>
+                  <p className="text-text-subtle mb-4">{error}</p>
+                  <Button onClick={() => refetch()}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </main>
         </div>
@@ -193,11 +228,14 @@ const Campaigns = () => {
                   Manage and track your marketing campaigns
                   </p>
                 </div>
-              <CreateCampaignDialog>
+              <CreateCampaignDialog
+                open={isNewCampaignOpen}
+                onOpenChange={handleDialogClose}
+              >
                 <Button className="gap-2">
                   <Plus className="w-4 h-4" />
-                      New Campaign
-                    </Button>
+                  New Campaign
+                </Button>
               </CreateCampaignDialog>
             </div>
 
@@ -257,7 +295,7 @@ const Campaigns = () => {
                   />
                 </div>
                   </div>
-                  
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-48">
                     <SelectValue placeholder="Filter by status" />
@@ -298,149 +336,183 @@ const Campaigns = () => {
                   </CardContent>
                 </Card>
 
-            {/* Campaigns List */}
-            <div className="space-y-4">
-              {filteredCampaigns.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
+            {/* Campaigns Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Campaigns</span>
+                  <span className="text-sm font-normal text-text-subtle">
+                    {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campaign' : 'campaigns'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {filteredCampaigns.length === 0 ? (
+                  <div className="p-12 text-center">
                     <MessageSquare className="w-12 h-12 text-text-subtle mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">No campaigns found</h3>
-                    <p className="text-text-subtle mb-4">
+                    <p className="text-text-subtle">
                       {searchQuery || statusFilter !== "all" || typeFilter !== "all"
                         ? "Try adjusting your filters to see more campaigns."
-                        : "Create your first campaign to get started."}
+                        : "No campaigns have been created yet."}
                     </p>
-                    {!searchQuery && statusFilter === "all" && typeFilter === "all" && (
-                      <CreateCampaignDialog>
-                        <Button>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Campaign
-                        </Button>
-                      </CreateCampaignDialog>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredCampaigns.map((campaign) => (
-                  <Card key={campaign.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-foreground truncate">
-                              {campaign.name}
-                            </h3>
-                            <Badge className={getStatusColor(campaign.status)}>
-                              {getStatusIcon(campaign.status)}
-                              <span className="ml-1 capitalize">{campaign.status_display}</span>
-                            </Badge>
-                            <Badge variant="outline">
-                              {campaign.campaign_type_display}
-                            </Badge>
-                          </div>
-                          
-                          {campaign.description && (
-                            <p className="text-text-subtle text-sm mb-3 line-clamp-2">
-                              {campaign.description}
-                            </p>
-                          )}
-
-                          <div className="flex items-center gap-6 text-sm text-text-subtle mb-3">
-                            <div className="flex items-center gap-1">
-                              <Users className="w-4 h-4" />
-                              <span>{campaign.total_recipients.toLocaleString()} recipients</span>
+                  </div>
+                ) : (
+                  <div className="space-y-0">
+                    {/* Table Header */}
+                    <div className="px-6 py-3 bg-muted/50 border-b border-border-subtle">
+                      <div className="grid grid-cols-12 gap-4 text-sm font-medium text-text-subtle">
+                        <div className="col-span-4">Campaign</div>
+                        <div className="col-span-2">Status</div>
+                        <div className="col-span-2">Type</div>
+                        <div className="col-span-2">Recipients</div>
+                        <div className="col-span-1">Progress</div>
+                        <div className="col-span-1">Actions</div>
                       </div>
-                            <div className="flex items-center gap-1">
-                              <Send className="w-4 h-4" />
-                              <span>{campaign.sent_count.toLocaleString()} sent</span>
                     </div>
-                            <div className="flex items-center gap-1">
-                              <CheckCircle className="w-4 h-4" />
-                              <span>{campaign.delivered_count.toLocaleString()} delivered</span>
-              </div>
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span>{campaign.delivery_rate}% delivery rate</span>
-                            </div>
-                                </div>
 
-                          {campaign.status === 'running' && (
-                            <div className="mb-3">
-                              <div className="flex items-center justify-between text-sm text-text-subtle mb-1">
-                                <span>Progress</span>
-                                <span>{campaign.progress_percentage}%</span>
+                    {filteredCampaigns.map((campaign) => (
+                      <div key={campaign.id} className="border-b border-border-subtle last:border-b-0 hover:bg-muted/50 transition-colors">
+                        <div className="px-6 py-4">
+                          <div className="grid grid-cols-12 gap-4 items-center">
+                            {/* Campaign Column */}
+                            <div className="col-span-4">
+                              <div className="flex flex-col">
+                                <h3 className="text-sm font-semibold text-foreground truncate">
+                                  {campaign.name}
+                                </h3>
+                                {campaign.description && (
+                                  <p className="text-xs text-text-subtle truncate mt-1">
+                                    {campaign.description}
+                                  </p>
+                                )}
                               </div>
-                              <Progress value={campaign.progress_percentage} className="h-2" />
                             </div>
-                          )}
 
-                          <div className="flex items-center gap-4 text-xs text-text-subtle">
-                            <span>Created by {campaign.created_by_name}</span>
-                            <span>•</span>
-                            <span>{new Date(campaign.created_at).toLocaleDateString()}</span>
-                            {campaign.scheduled_at && (
-                              <>
-                                <span>•</span>
-                                <span>Scheduled: {new Date(campaign.scheduled_at).toLocaleString()}</span>
-                              </>
-                            )}
+                            {/* Status Column */}
+                            <div className="col-span-2">
+                              <Badge className={getStatusColor(campaign.status)}>
+                                {getStatusIcon(campaign.status)}
+                                <span className="ml-1 capitalize">{campaign.status_display}</span>
+                              </Badge>
+                            </div>
+
+                            {/* Type Column */}
+                            <div className="col-span-2">
+                              <Badge variant="outline">
+                                {campaign.campaign_type_display}
+                              </Badge>
+                            </div>
+
+                            {/* Recipients Column */}
+                            <div className="col-span-2">
+                              <div className="text-sm text-text-subtle">
+                                {campaign.total_recipients.toLocaleString()}
+                              </div>
+                            </div>
+
+                            {/* Progress Column */}
+                            <div className="col-span-1">
+                              {campaign.status === 'running' ? (
+                                <div className="text-xs text-text-subtle">
+                                  {campaign.progress_percentage}%
+                                </div>
+                              ) : (
+                                <div className="text-xs text-text-subtle">-</div>
+                              )}
+                            </div>
+
+                            {/* Actions Column */}
+                            <div className="col-span-1">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="glass">
+                                  {campaign.can_start && (
+                                    <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
+                                      <Play className="w-4 h-4 mr-2" />
+                                      Start Campaign
+                                    </DropdownMenuItem>
+                                  )}
+                                  {campaign.can_pause && (
+                                    <DropdownMenuItem onClick={() => handleCampaignAction('pause', campaign.id)}>
+                                      <Pause className="w-4 h-4 mr-2" />
+                                      Pause Campaign
+                                    </DropdownMenuItem>
+                                  )}
+                                  {campaign.can_cancel && (
+                                    <DropdownMenuItem onClick={() => handleCampaignAction('cancel', campaign.id)}>
+                                      <Square className="w-4 h-4 mr-2" />
+                                      Cancel Campaign
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Analytics
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Campaign
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Duplicate
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleCampaignAction('delete', campaign.id)}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass">
-                            {campaign.can_start && (
-                              <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
-                                <Play className="w-4 h-4 mr-2" />
-                                Start Campaign
-                              </DropdownMenuItem>
+                          {/* Additional Details Row */}
+                          <div className="mt-3 pt-3 border-t border-border-subtle">
+                            <div className="flex items-center gap-6 text-xs text-text-subtle">
+                              <div className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                <span>{campaign.total_recipients.toLocaleString()} recipients</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Send className="w-3 h-3" />
+                                <span>{campaign.sent_count.toLocaleString()} sent</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                <span>{campaign.delivered_count.toLocaleString()} delivered</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                <span>{campaign.delivery_rate}% delivery rate</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>Created {new Date(campaign.created_at).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+
+                            {campaign.status === 'running' && (
+                              <div className="mt-2">
+                                <Progress value={campaign.progress_percentage} className="h-1" />
+                              </div>
                             )}
-                            {campaign.can_pause && (
-                              <DropdownMenuItem onClick={() => handleCampaignAction('pause', campaign.id)}>
-                                  <Pause className="w-4 h-4 mr-2" />
-                                  Pause Campaign
-                                </DropdownMenuItem>
-                              )}
-                            {campaign.can_cancel && (
-                              <DropdownMenuItem onClick={() => handleCampaignAction('cancel', campaign.id)}>
-                                <Square className="w-4 h-4 mr-2" />
-                                Cancel Campaign
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Analytics
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Campaign
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
-                              <Copy className="w-4 h-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleCampaignAction('delete', campaign.id)}
-                              className="text-red-600"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                ))
-              )}
-            </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>

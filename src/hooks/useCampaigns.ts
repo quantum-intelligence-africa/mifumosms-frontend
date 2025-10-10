@@ -41,7 +41,7 @@ export const useCampaigns = () => {
     target_contact_count: number;
     target_segment_names: string[];
   }>>([]);
-  
+
   const [summary, setSummary] = useState<{
     summary: {
       total_campaigns: number;
@@ -66,7 +66,7 @@ export const useCampaigns = () => {
       created_at_human: string;
     }>;
   } | null>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -75,13 +75,14 @@ export const useCampaigns = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await apiClient.getCampaigns(params);
-      
+
       if (response.success && response.data) {
         setCampaigns(response.data);
       } else {
         setError(response.error || 'Failed to fetch campaigns');
+        setCampaigns([]); // Ensure campaigns is always an array
         toast({
           title: "Failed to load campaigns",
           description: response.error || 'Please try again',
@@ -90,6 +91,7 @@ export const useCampaigns = () => {
       }
     } catch (error) {
       setError('Network error while fetching campaigns');
+      setCampaigns([]); // Ensure campaigns is always an array
       toast({
         title: "Network error",
         description: "Failed to connect to server",
@@ -103,7 +105,7 @@ export const useCampaigns = () => {
   const fetchSummary = async () => {
     try {
       const response = await apiClient.getCampaignSummary();
-      
+
       if (response.success && response.data) {
         setSummary(response.data);
       } else {
@@ -138,17 +140,17 @@ export const useCampaigns = () => {
   }): Promise<boolean> => {
     try {
       const response = await apiClient.createCampaign(data);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign created successfully",
           description: `Campaign "${response.data.name}" has been created with ${response.data.total_recipients} recipients`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -183,17 +185,17 @@ export const useCampaigns = () => {
   }): Promise<boolean> => {
     try {
       const response = await apiClient.updateCampaign(id, data);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign updated successfully",
           description: `Campaign "${response.data.name}" has been updated`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -216,17 +218,17 @@ export const useCampaigns = () => {
   const deleteCampaign = async (id: string): Promise<boolean> => {
     try {
       const response = await apiClient.deleteCampaign(id);
-      
+
       if (response.success) {
         toast({
           title: "Campaign deleted successfully",
           description: "The campaign has been permanently deleted",
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -249,17 +251,17 @@ export const useCampaigns = () => {
   const startCampaign = async (id: string): Promise<boolean> => {
     try {
       const response = await apiClient.startCampaign(id);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign started successfully",
           description: `Campaign is now ${response.data.status}`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -282,17 +284,17 @@ export const useCampaigns = () => {
   const pauseCampaign = async (id: string): Promise<boolean> => {
     try {
       const response = await apiClient.pauseCampaign(id);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign paused successfully",
           description: `Campaign is now ${response.data.status}`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -315,17 +317,17 @@ export const useCampaigns = () => {
   const cancelCampaign = async (id: string): Promise<boolean> => {
     try {
       const response = await apiClient.cancelCampaign(id);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign cancelled successfully",
           description: `Campaign is now ${response.data.status}`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -348,17 +350,17 @@ export const useCampaigns = () => {
   const duplicateCampaign = async (id: string): Promise<boolean> => {
     try {
       const response = await apiClient.duplicateCampaign(id);
-      
+
       if (response.success && response.data) {
         toast({
           title: "Campaign duplicated successfully",
           description: `Campaign "${response.data.duplicate_name}" has been created`,
         });
-        
+
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
-        
+
         return true;
       } else {
         toast({
@@ -382,7 +384,7 @@ export const useCampaigns = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       await Promise.all([
         fetchCampaigns(params),
         fetchSummary()

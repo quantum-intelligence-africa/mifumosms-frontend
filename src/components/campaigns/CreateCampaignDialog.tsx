@@ -28,13 +28,19 @@ import { useContacts } from '@/hooks/useContacts';
 interface CreateCampaignDialogProps {
   children?: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange }: CreateCampaignDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
-  
+
+  // Use external open state if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+
   // Form data
   const [formData, setFormData] = useState({
     name: '',
@@ -48,7 +54,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
     is_recurring: false,
     recurring_schedule: {},
   });
-  
+
   const { createCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
 
@@ -70,7 +76,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
 
   const handleSelectAllContacts = () => {
     if (contacts.length === 0) return;
-    
+
     const allContactIds = contacts.map(contact => contact.id);
     setFormData(prev => ({
       ...prev,
@@ -84,7 +90,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const success = await createCampaign({
         name: formData.name.trim(),
@@ -161,7 +167,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
                     onChange={(e) => handleInputChange('name', e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="campaign_type">Campaign Type *</Label>
                   <Select
@@ -216,7 +222,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
                     onChange={(e) => handleInputChange('scheduled_at', e.target.value)}
                   />
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="is_recurring"
@@ -295,7 +301,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
               <div className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
               <div className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
             </div>
-            
+
             <div className="flex items-center space-x-2">
               {step > 1 && (
                 <Button
@@ -305,7 +311,7 @@ export function CreateCampaignDialog({ children, onSuccess }: CreateCampaignDial
                   Previous
                 </Button>
               )}
-              
+
               {step < 2 ? (
                 <Button
                   onClick={() => setStep(2)}
