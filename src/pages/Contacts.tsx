@@ -66,9 +66,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useContacts } from "@/hooks/useContacts";
+import { useToast } from "@/hooks/use-toast";
 import { Contact, CreateContactRequest } from "@/lib/api";
 
 const Contacts = () => {
+  const { toast } = useToast();
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("all");
@@ -180,12 +182,97 @@ const Contacts = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const getStatusColor = (isActive: boolean) => {
-    return isActive ? "text-success" : "text-text-subtle";
+  const getStatusColor = (isActive: boolean, isOptedIn: boolean) => {
+    if (isActive && isOptedIn) return "text-success";
+    if (isActive && !isOptedIn) return "text-warning";
+    return "text-text-subtle";
   };
 
-  const getStatusIcon = (isActive: boolean) => {
-    return isActive ? CheckCircle : XCircle;
+  const getStatusIcon = (isActive: boolean, isOptedIn: boolean) => {
+    if (isActive && isOptedIn) return CheckCircle;
+    if (isActive && !isOptedIn) return XCircle;
+    return XCircle;
+  };
+
+  const getStatusText = (isActive: boolean, isOptedIn: boolean) => {
+    if (isActive && isOptedIn) return "Active & Opted In";
+    if (isActive && !isOptedIn) return "Active (Not Opted In)";
+    return "Inactive";
+  };
+
+  // Export functions
+  const exportToCSV = (contactsToExport: Contact[], filename: string) => {
+    // Create CSV header
+    const headers = ['name', 'phone', 'email', 'tags', 'status', 'created_at'];
+
+    // Convert contacts to CSV format
+    const csvContent = [
+      headers.join(','),
+      ...contactsToExport.map(contact => {
+        const row = [
+          `"${contact.name.replace(/"/g, '""')}"`, // Escape quotes in names
+          contact.phone_e164, // Already in E.164 format
+          contact.email ? `"${contact.email.replace(/"/g, '""')}"` : '', // Escape quotes in emails
+          `"${contact.tags.join('; ')}"`, // Join tags with semicolon
+          contact.is_active ? 'Active' : 'Inactive',
+          contact.created_at
+        ];
+        return row.join(',');
+      })
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportSelected = () => {
+    if (selectedContacts.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select contacts to export",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const contactsToExport = contacts.filter(contact =>
+      selectedContacts.includes(contact.id)
+    );
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    exportToCSV(contactsToExport, `selected-contacts-${timestamp}.csv`);
+
+    toast({
+      title: "Export successful",
+      description: `Exported ${contactsToExport.length} selected contacts to CSV`,
+    });
+  };
+
+  const handleExportAll = () => {
+    if (filteredContacts.length === 0) {
+      toast({
+        title: "No contacts to export",
+        description: "No contacts match the current filters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    exportToCSV(filteredContacts, `all-contacts-${timestamp}.csv`);
+
+    toast({
+      title: "Export successful",
+      description: `Exported ${filteredContacts.length} contacts to CSV`,
+    });
   };
 
   return (
@@ -229,9 +316,13 @@ const Contacts = () => {
                     )}
                     Import
                   </Button>
-                  <Button variant="outline" className="glass-subtle border-0">
+                  <Button
+                    variant="outline"
+                    className="glass-subtle border-0"
+                    onClick={handleExportAll}
+                  >
                     <Download className="w-4 h-4 mr-2" />
-                    Export
+                    Export All
                   </Button>
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
@@ -252,7 +343,7 @@ const Contacts = () => {
                           <Label htmlFor="name">Full Name *</Label>
                           <Input
                             id="name"
-                            placeholder="John Doe"
+                            placeholder="Enter Name"
                             value={createFormData.name}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
                             className="glass-subtle border-0"
@@ -341,9 +432,13 @@ const Contacts = () => {
                         <MessageSquare className="w-4 h-4 mr-1" />
                         Send Message
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportSelected}
+                      >
                         <Download className="w-4 h-4 mr-1" />
-                        Export
+                        Export Selected
                       </Button>
                       <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
                         <Trash2 className="w-4 h-4 mr-1" />
@@ -382,7 +477,7 @@ const Contacts = () => {
                       </TableHeader>
                       <TableBody>
                         {filteredContacts.map((contact) => {
-                          const StatusIcon = getStatusIcon(contact.is_active);
+                          const StatusIcon = getStatusIcon(contact.is_active, contact.is_opted_in);
                           return (
                             <TableRow
                               key={contact.id}
@@ -435,9 +530,9 @@ const Contacts = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <StatusIcon className={`w-4 h-4 ${getStatusColor(contact.is_active)}`} />
-                                  <span className="text-sm capitalize">
-                                    {contact.is_active ? "Active" : "Inactive"}
+                                  <StatusIcon className={`w-4 h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
+                                  <span className="text-sm">
+                                    {getStatusText(contact.is_active, contact.is_opted_in)}
                                   </span>
                                 </div>
                               </TableCell>
@@ -482,6 +577,19 @@ const Contacts = () => {
                           );
                         })}
                       </TableBody>
+                      {filteredContacts.length === 0 && (
+                        <TableBody>
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8">
+                              <div className="text-text-subtle">
+                                {searchQuery || filterTag !== "all"
+                                  ? "No contacts match your current search or filter criteria."
+                                  : "No contacts available. Click 'Add Contact' to get started."}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      )}
                     </Table>
                   )}
                 </div>
@@ -512,6 +620,9 @@ const Contacts = () => {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Badge variant={selectedContact.is_active ? "default" : "secondary"}>
                   {selectedContact.is_active ? "Active" : "Inactive"}
+                </Badge>
+                <Badge variant={selectedContact.is_opted_in ? "default" : "outline"}>
+                  {selectedContact.is_opted_in ? "Opted In" : "Not Opted In"}
                 </Badge>
               </div>
             </div>
@@ -553,6 +664,13 @@ const Contacts = () => {
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Opted In</p>
                   <p className="text-foreground">{formatDate(selectedContact.opt_in_at)}</p>
+                </div>
+              )}
+
+              {selectedContact.last_contacted_at && (
+                <div>
+                  <p className="text-sm text-text-subtle mb-1">Last Contacted</p>
+                  <p className="text-foreground">{formatDate(selectedContact.last_contacted_at)}</p>
                 </div>
               )}
             </div>

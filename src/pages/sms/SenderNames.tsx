@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { 
+import {
   Plus,
   Check,
   X,
@@ -62,8 +62,7 @@ const SenderNames = () => {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [newSenderName, setNewSenderName] = useState("");
   const [useCase, setUseCase] = useState("");
-  const [sampleMessage1, setSampleMessage1] = useState("");
-  const [sampleMessage2, setSampleMessage2] = useState("");
+  const [sampleMessage, setSampleMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Demo data - replace with actual API calls
@@ -161,10 +160,10 @@ const SenderNames = () => {
       return;
     }
 
-    if (!sampleMessage1.trim()) {
+    if (!sampleMessage.trim()) {
       toast({
         title: "Sample message required",
-        description: "Please provide at least one sample message",
+        description: "Please provide a sample message",
         variant: "destructive"
       });
       return;
@@ -183,18 +182,17 @@ const SenderNames = () => {
         created_by: "Mkuu Kariuki",
         created_at: new Date().toISOString(),
         use_case: useCase,
-        sample_messages: [sampleMessage1, sampleMessage2].filter(Boolean),
+        sample_messages: [sampleMessage],
       };
 
       setSenderNames([newSender, ...senderNames]);
       setSubmitting(false);
       setShowRequestDialog(false);
-      
+
       // Reset form
       setNewSenderName("");
       setUseCase("");
-      setSampleMessage1("");
-      setSampleMessage2("");
+      setSampleMessage("");
 
       toast({
         title: "Request submitted",
@@ -228,10 +226,10 @@ const SenderNames = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Header */}
@@ -273,7 +271,6 @@ const SenderNames = () => {
                   <TableRow className="border-border-subtle">
                     <TableHead>Sender Name</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Provider</TableHead>
                     <TableHead>Use Case</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -291,7 +288,6 @@ const SenderNames = () => {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(sender.status)}</TableCell>
-                      <TableCell className="text-text-subtle">{sender.provider}</TableCell>
                       <TableCell>
                         <div className="max-w-xs truncate text-text-subtle">
                           {sender.use_case || "—"}
@@ -386,24 +382,13 @@ const SenderNames = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Sample Message 1 *</Label>
+                    <Label>Sample Message *</Label>
                     <Textarea
                       placeholder="Provide a sample message you will send..."
-                      value={sampleMessage1}
-                      onChange={(e) => setSampleMessage1(e.target.value)}
+                      value={sampleMessage}
+                      onChange={(e) => setSampleMessage(e.target.value)}
                       className="glass-subtle border-0"
-                      rows={2}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Sample Message 2 (Optional)</Label>
-                    <Textarea
-                      placeholder="Provide another sample message..."
-                      value={sampleMessage2}
-                      onChange={(e) => setSampleMessage2(e.target.value)}
-                      className="glass-subtle border-0"
-                      rows={2}
+                      rows={3}
                     />
                   </div>
 
@@ -425,8 +410,8 @@ const SenderNames = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowRequestDialog(false)}
                     disabled={submitting}
                   >
