@@ -8,7 +8,7 @@ export const useDashboard = () => {
       total_messages: number;
       active_contacts: number;
       campaign_success_rate: number;
-      revenue_this_month: number;
+      sender_ids_this_month: number;
     };
     recent_campaigns: Array<{
       id: string;
@@ -36,7 +36,7 @@ export const useDashboard = () => {
     };
     last_updated: string;
   } | null>(null);
-  
+
   const [metrics, setMetrics] = useState<{
     total_messages: {
       value: number;
@@ -56,14 +56,14 @@ export const useDashboard = () => {
       change_type: 'positive' | 'negative' | 'neutral';
       description: string;
     };
-    revenue: {
-      value: string;
+    sender_id: {
+      value: number;
       change: string;
       change_type: 'positive' | 'negative' | 'neutral';
       description: string;
     };
   } | null>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -72,12 +72,12 @@ export const useDashboard = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const [overviewResponse, metricsResponse] = await Promise.all([
         apiClient.getDashboardOverview(),
         apiClient.getDashboardMetrics()
       ]);
-      
+
       if (overviewResponse.success && overviewResponse.data) {
         setDashboardData(overviewResponse.data);
       } else {
@@ -88,7 +88,7 @@ export const useDashboard = () => {
           variant: "destructive"
         });
       }
-      
+
       if (metricsResponse.success && metricsResponse.data) {
         setMetrics(metricsResponse.data);
       } else {
@@ -113,10 +113,10 @@ export const useDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    
+
     // Set up polling for real-time updates every 30 seconds
     const interval = setInterval(fetchDashboardData, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 

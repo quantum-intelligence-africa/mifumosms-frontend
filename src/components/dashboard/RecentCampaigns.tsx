@@ -9,6 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface Campaign {
   id: string;
@@ -51,13 +53,36 @@ const statusConfig = {
 };
 
 export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleViewAll = () => {
+    navigate('/campaigns');
+  };
+
+  const handleViewDetails = (campaignId: string) => {
+    navigate(`/campaigns/${campaignId}`);
+  };
+
+  const handleDuplicate = (campaignId: string) => {
+    // TODO: Implement duplicate functionality
+    toast({
+      title: "Duplicate Campaign",
+      description: `Duplicating campaign ${campaignId}. This feature will be implemented soon.`,
+    });
+  };
+
+  const handleEdit = (campaignId: string) => {
+    navigate(`/campaigns/${campaignId}/edit`);
+  };
+
   return (
     <Card className="p-6 glass border-0">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-heading text-lg font-semibold text-foreground">
           Recent Campaigns
         </h3>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleViewAll}>
           View all
         </Button>
       </div>
@@ -76,7 +101,8 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
           return (
             <div
               key={campaign.id}
-              className="p-4 rounded-lg glass-subtle hover:bg-accent/30 transition-smooth"
+              className="p-4 rounded-lg glass-subtle hover:bg-accent/30 transition-smooth cursor-pointer"
+              onClick={() => handleViewDetails(campaign.id)}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -99,14 +125,34 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="glass">
-                    <DropdownMenuItem>View details</DropdownMenuItem>
-                    <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                    <DropdownMenuItem>Edit</DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(campaign.id);
+                    }}>
+                      View details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicate(campaign.id);
+                    }}>
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(campaign.id);
+                    }}>
+                      Edit
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

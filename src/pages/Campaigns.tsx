@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,8 @@ import { useCampaigns } from "@/hooks/useCampaigns";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Campaigns = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -158,10 +161,10 @@ const Campaigns = () => {
   if (isLoading) {
     return (
       <div className="flex h-screen bg-background">
-        <AppSidebar />
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AppHeader />
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Loading skeletons */}
               <div className="flex items-center justify-between">
@@ -169,9 +172,9 @@ const Campaigns = () => {
                 <Skeleton className="h-10 w-32" />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-2 lg:gap-6">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-32" />
+                  <Skeleton key={i} className="h-24 lg:h-32" />
                 ))}
               </div>
 
@@ -190,10 +193,10 @@ const Campaigns = () => {
   if (error) {
     return (
       <div className="flex h-screen bg-background">
-        <AppSidebar />
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <AppHeader />
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
             <div className="max-w-7xl mx-auto">
               <Card>
                 <CardContent className="p-12 text-center">
@@ -215,16 +218,16 @@ const Campaigns = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
           <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                <h1 className="text-3xl font-bold text-foreground">Campaigns</h1>
-                  <p className="text-text-subtle">
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Campaigns</h1>
+                  <p className="text-sm lg:text-base text-text-subtle">
                   Manage and track your marketing campaigns
                   </p>
                 </div>
@@ -232,48 +235,54 @@ const Campaigns = () => {
                 open={isNewCampaignOpen}
                 onOpenChange={handleDialogClose}
               >
-                <Button className="gap-2">
+                <Button className="gap-2 text-sm" size="sm">
                   <Plus className="w-4 h-4" />
-                  New Campaign
-                </Button>
+                  <span className="hidden sm:inline">New Campaign</span>
+                    </Button>
               </CreateCampaignDialog>
             </div>
 
             {/* Summary Cards */}
             {summary && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-2 lg:gap-6">
                 <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-text-subtle">Total Campaigns</p>
-                        <p className="text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
+                  <CardContent className="p-3 lg:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
+                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Total Campaigns</p>
+                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
                       </div>
-                      <MessageSquare className="w-8 h-8 text-primary" />
+                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
+                        <MessageSquare className="w-3 h-3 lg:w-5 lg:h-5 text-primary" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-text-subtle">Active Campaigns</p>
-                        <p className="text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
+                  <CardContent className="p-3 lg:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
+                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Active Campaigns</p>
+                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
                       </div>
-                      <Play className="w-8 h-8 text-green-500" />
+                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
+                        <Play className="w-3 h-3 lg:w-5 lg:h-5 text-green-500" />
+                      </div>
                       </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-text-subtle">Total Recipients</p>
-                        <p className="text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
+                  <CardContent className="p-3 lg:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
+                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Total Recipients</p>
+                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
                       </div>
-                      <Users className="w-8 h-8 text-blue-500" />
+                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
+                        <Users className="w-3 h-3 lg:w-5 lg:h-5 text-blue-500" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -282,8 +291,8 @@ const Campaigns = () => {
 
               {/* Filters */}
             <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row gap-4">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
                   <div className="flex-1">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
@@ -291,13 +300,13 @@ const Campaigns = () => {
                     placeholder="Search campaigns..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
+                    className="pl-10 text-sm"
                   />
                 </div>
                   </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
+                    <SelectTrigger className="w-full sm:w-48 text-sm">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                     <SelectContent>
@@ -312,7 +321,7 @@ const Campaigns = () => {
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
+                    <SelectTrigger className="w-full sm:w-48 text-sm">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                     <SelectContent>
@@ -338,20 +347,20 @@ const Campaigns = () => {
 
             {/* Campaigns Table */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Campaigns</span>
-                  <span className="text-sm font-normal text-text-subtle">
+              <CardHeader className="p-3 lg:p-6">
+                <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-base lg:text-xl">Campaigns</span>
+                  <span className="text-xs lg:text-sm font-normal text-text-subtle">
                     {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campaign' : 'campaigns'}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {filteredCampaigns.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <MessageSquare className="w-12 h-12 text-text-subtle mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No campaigns found</h3>
-                    <p className="text-text-subtle">
+              {filteredCampaigns.length === 0 ? (
+                  <div className="p-4 lg:p-12 text-center">
+                    <MessageSquare className="w-6 h-6 lg:w-12 lg:h-12 text-text-subtle mx-auto mb-3" />
+                    <h3 className="text-sm lg:text-lg font-semibold text-foreground mb-2">No campaigns found</h3>
+                    <p className="text-xs lg:text-base text-text-subtle">
                       {searchQuery || statusFilter !== "all" || typeFilter !== "all"
                         ? "Try adjusting your filters to see more campaigns."
                         : "No campaigns have been created yet."}
@@ -360,29 +369,29 @@ const Campaigns = () => {
                 ) : (
                   <div className="space-y-0">
                     {/* Table Header */}
-                    <div className="px-6 py-3 bg-muted/50 border-b border-border-subtle">
-                      <div className="grid grid-cols-12 gap-4 text-sm font-medium text-text-subtle">
-                        <div className="col-span-4">Campaign</div>
-                        <div className="col-span-2">Status</div>
-                        <div className="col-span-2">Type</div>
-                        <div className="col-span-2">Recipients</div>
-                        <div className="col-span-1">Progress</div>
-                        <div className="col-span-1">Actions</div>
+                    <div className="px-2 lg:px-6 py-2 bg-muted/50 border-b border-border-subtle">
+                      <div className="grid grid-cols-12 gap-1 lg:gap-4 text-xs font-medium text-text-subtle">
+                        <div className="col-span-6 sm:col-span-4">Campaign</div>
+                        <div className="col-span-3 sm:col-span-2 hidden sm:block">Status</div>
+                        <div className="col-span-3 sm:col-span-2 hidden md:block">Type</div>
+                        <div className="col-span-0 sm:col-span-2 hidden lg:block">Recipients</div>
+                        <div className="col-span-0 sm:col-span-1 hidden lg:block">Progress</div>
+                        <div className="col-span-3 sm:col-span-1">Actions</div>
                       </div>
                     </div>
 
                     {filteredCampaigns.map((campaign) => (
                       <div key={campaign.id} className="border-b border-border-subtle last:border-b-0 hover:bg-muted/50 transition-colors">
-                        <div className="px-6 py-4">
-                          <div className="grid grid-cols-12 gap-4 items-center">
+                        <div className="px-2 lg:px-6 py-2 lg:py-3">
+                          <div className="grid grid-cols-12 gap-1 lg:gap-4 items-center">
                             {/* Campaign Column */}
-                            <div className="col-span-4">
+                            <div className="col-span-6 sm:col-span-4">
                               <div className="flex flex-col">
-                                <h3 className="text-sm font-semibold text-foreground truncate">
-                                  {campaign.name}
-                                </h3>
+                                <h3 className="text-xs font-semibold text-foreground truncate">
+                              {campaign.name}
+                            </h3>
                                 {campaign.description && (
-                                  <p className="text-xs text-text-subtle truncate mt-1">
+                                  <p className="text-xs text-text-subtle truncate mt-0.5">
                                     {campaign.description}
                                   </p>
                                 )}
@@ -390,94 +399,94 @@ const Campaigns = () => {
                             </div>
 
                             {/* Status Column */}
-                            <div className="col-span-2">
-                              <Badge className={getStatusColor(campaign.status)}>
-                                {getStatusIcon(campaign.status)}
-                                <span className="ml-1 capitalize">{campaign.status_display}</span>
-                              </Badge>
+                            <div className="col-span-3 sm:col-span-2 hidden sm:block">
+                              <Badge className={`${getStatusColor(campaign.status)} text-xs px-1.5 py-0.5`}>
+                              {getStatusIcon(campaign.status)}
+                              <span className="ml-1 capitalize">{campaign.status_display}</span>
+                            </Badge>
                             </div>
 
                             {/* Type Column */}
-                            <div className="col-span-2">
-                              <Badge variant="outline">
-                                {campaign.campaign_type_display}
-                              </Badge>
-                            </div>
+                            <div className="col-span-3 sm:col-span-2 hidden md:block">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                              {campaign.campaign_type_display}
+                            </Badge>
+                          </div>
 
                             {/* Recipients Column */}
-                            <div className="col-span-2">
-                              <div className="text-sm text-text-subtle">
+                            <div className="col-span-0 sm:col-span-2 hidden lg:block">
+                              <div className="text-xs text-text-subtle">
                                 {campaign.total_recipients.toLocaleString()}
-                              </div>
                             </div>
+                                </div>
 
                             {/* Progress Column */}
-                            <div className="col-span-1">
+                            <div className="col-span-0 sm:col-span-1 hidden lg:block">
                               {campaign.status === 'running' ? (
                                 <div className="text-xs text-text-subtle">
                                   {campaign.progress_percentage}%
-                                </div>
+                              </div>
                               ) : (
                                 <div className="text-xs text-text-subtle">-</div>
                               )}
-                            </div>
+                          </div>
 
                             {/* Actions Column */}
-                            <div className="col-span-1">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="glass">
-                                  {campaign.can_start && (
-                                    <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
-                                      <Play className="w-4 h-4 mr-2" />
-                                      Start Campaign
-                                    </DropdownMenuItem>
-                                  )}
-                                  {campaign.can_pause && (
-                                    <DropdownMenuItem onClick={() => handleCampaignAction('pause', campaign.id)}>
-                                      <Pause className="w-4 h-4 mr-2" />
-                                      Pause Campaign
-                                    </DropdownMenuItem>
-                                  )}
-                                  {campaign.can_cancel && (
-                                    <DropdownMenuItem onClick={() => handleCampaignAction('cancel', campaign.id)}>
-                                      <Square className="w-4 h-4 mr-2" />
-                                      Cancel Campaign
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View Analytics
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Campaign
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Duplicate
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleCampaignAction('delete', campaign.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                            <div className="col-span-3 sm:col-span-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <MoreVertical className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="glass">
+                            {campaign.can_start && (
+                              <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
+                                <Play className="w-3 h-3 mr-2" />
+                                Start Campaign
+                              </DropdownMenuItem>
+                            )}
+                            {campaign.can_pause && (
+                              <DropdownMenuItem onClick={() => handleCampaignAction('pause', campaign.id)}>
+                                  <Pause className="w-3 h-3 mr-2" />
+                                  Pause Campaign
+                                </DropdownMenuItem>
+                              )}
+                            {campaign.can_cancel && (
+                              <DropdownMenuItem onClick={() => handleCampaignAction('cancel', campaign.id)}>
+                                <Square className="w-3 h-3 mr-2" />
+                                Cancel Campaign
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Eye className="w-3 h-3 mr-2" />
+                              View Analytics
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="w-3 h-3 mr-2" />
+                              Edit Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
+                              <Copy className="w-3 h-3 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleCampaignAction('delete', campaign.id)}
+                              className="text-red-600"
+                            >
+                                <Trash2 className="w-3 h-3 mr-2" />
+                              Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                           </div>
 
                           {/* Additional Details Row */}
-                          <div className="mt-3 pt-3 border-t border-border-subtle">
-                            <div className="flex items-center gap-6 text-xs text-text-subtle">
+                          <div className="mt-2 pt-2 border-t border-border-subtle">
+                            <div className="flex items-center gap-4 text-xs text-text-subtle">
                               <div className="flex items-center gap-1">
                                 <Users className="w-3 h-3" />
                                 <span>{campaign.total_recipients.toLocaleString()} recipients</span>
@@ -504,8 +513,8 @@ const Campaigns = () => {
                               <div className="mt-2">
                                 <Progress value={campaign.progress_percentage} className="h-1" />
                               </div>
-                            )}
-                          </div>
+              )}
+            </div>
                         </div>
                       </div>
                     ))}

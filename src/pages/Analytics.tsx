@@ -14,14 +14,19 @@ import {
   Eye,
   MousePointer,
   DollarSign,
-  Globe
+  Globe,
+  ArrowLeft,
+  ChevronRight,
+  Activity,
+  Zap,
+  TrendingUp as RevenueIcon
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   Chart as ChartJS,
@@ -49,9 +54,51 @@ ChartJS.register(
   ArcElement
 );
 
+interface AnalyticsCategory {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
 const Analytics = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("30d");
   const [selectedChannel, setSelectedChannel] = useState("all");
+
+  const analyticsCategories: AnalyticsCategory[] = [
+    {
+      id: "overview",
+      title: "Overview",
+      description: "Key metrics and performance insights",
+      icon: Activity,
+      color: "bg-blue-500"
+    },
+    {
+      id: "campaigns",
+      title: "Campaigns",
+      description: "Campaign performance and analytics",
+      icon: Send,
+      color: "bg-green-500"
+    },
+    {
+      id: "audience",
+      title: "Audience",
+      description: "Audience insights and engagement",
+      icon: Users,
+      color: "bg-purple-500"
+    },
+    {
+      id: "revenue",
+      title: "Revenue",
+      description: "Revenue attribution and ROI analysis",
+      icon: RevenueIcon,
+      color: "bg-emerald-500"
+    }
+  ];
 
   // Mock data for charts
   const messageVolumeData = {
@@ -194,6 +241,9 @@ const Analytics = () => {
         labels: {
           usePointStyle: true,
           color: 'hsl(var(--foreground))',
+          font: {
+            size: 12
+          }
         },
       },
       tooltip: {
@@ -202,6 +252,12 @@ const Analytics = () => {
         bodyColor: 'hsl(var(--popover-foreground))',
         borderColor: 'hsl(var(--border))',
         borderWidth: 1,
+        titleFont: {
+          size: 12
+        },
+        bodyFont: {
+          size: 11
+        }
       },
     },
     scales: {
@@ -211,6 +267,9 @@ const Analytics = () => {
         },
         ticks: {
           color: 'hsl(var(--muted-foreground))',
+          font: {
+            size: 10
+          }
         },
       },
       y: {
@@ -219,35 +278,388 @@ const Analytics = () => {
         },
         ticks: {
           color: 'hsl(var(--muted-foreground))',
+          font: {
+            size: 10
+          }
         },
       },
     },
   };
 
+  const renderCategoryContent = () => {
+    const category = analyticsCategories.find(cat => cat.id === currentCategory);
+    if (!category) return null;
+
+    switch (currentCategory) {
+      case "overview":
+        return (
+          <div className="space-y-4">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {metrics.map((metric, index) => (
+                <Card key={index} className="glass border-0">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <metric.icon className="w-3 h-3 text-primary" />
+                      </div>
+                    </div>
+                    <p className="text-xs font-medium text-text-subtle mb-1 truncate">{metric.title}</p>
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-sm font-bold text-foreground">{metric.value}</h3>
+                    </div>
+                    <p className="text-xs text-text-subtle mt-1 line-clamp-2">{metric.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Message Volume */}
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <BarChart3 className="w-4 h-4 text-primary" />
+                    Message Volume
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="h-48">
+                    <Line data={messageVolumeData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Delivery Rate */}
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Target className="w-4 h-4 text-success" />
+                    Delivery Rate Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="h-48">
+                    <Line data={deliveryRateData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Channel Distribution */}
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <PieChart className="w-4 h-4 text-secondary" />
+                    Channel Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="h-48">
+                    <Doughnut
+                      data={channelDistributionData}
+                      options={{
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: {
+                            position: 'bottom' as const,
+                            labels: {
+                              usePointStyle: true,
+                              color: 'hsl(var(--foreground))',
+                              font: {
+                                size: 10
+                              }
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Geographic Distribution */}
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Globe className="w-4 h-4 text-primary" />
+                    Top Countries
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    {countryData.map((country, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{country.flag}</span>
+                          <div>
+                            <p className="font-medium text-foreground text-sm">{country.country}</p>
+                            <p className="text-xs text-text-subtle">
+                              {country.messages.toLocaleString()} messages
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
+                          <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full"
+                              style={{ width: `${country.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+
+      case "campaigns":
+        return (
+          <div className="space-y-4">
+            {/* Campaign Performance Chart */}
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Send className="w-4 h-4 text-primary" />
+                  Campaign Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="h-48">
+                  <Bar data={campaignPerformanceData} options={chartOptions} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Campaigns Table */}
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm">Top Performing Campaigns</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-3">
+                  {topCampaigns.map((campaign, index) => (
+                    <div key={index} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-sm">{campaign.name}</h5>
+                        <Badge variant="outline" className="text-xs">{campaign.revenue}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <p className="text-text-subtle">Sent</p>
+                          <p className="font-medium">{campaign.sent.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-text-subtle">Delivered</p>
+                          <p className="font-medium">{campaign.delivered.toLocaleString()}</p>
+                          <p className="text-success">
+                            {Math.round((campaign.delivered / campaign.sent) * 100)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-subtle">Opened</p>
+                          <p className="font-medium">{campaign.opened.toLocaleString()}</p>
+                          <p className="text-primary">
+                            {Math.round((campaign.opened / campaign.delivered) * 100)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-subtle">Clicked</p>
+                          <p className="font-medium">{campaign.clicked.toLocaleString()}</p>
+                          <p className="text-amber-600">
+                            {Math.round((campaign.clicked / campaign.opened) * 100)}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "audience":
+        return (
+          <div className="space-y-4">
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Users className="w-4 h-4 text-primary" />
+                  Audience Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-2xl font-bold text-primary">8,940</p>
+                      <p className="text-xs text-text-subtle">Active Contacts</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-2xl font-bold text-success">78.4%</p>
+                      <p className="text-xs text-text-subtle">Engagement Rate</p>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-2">Engagement Patterns</h4>
+                    <p className="text-xs text-text-subtle">Peak engagement times: 9-11 AM and 6-8 PM</p>
+                    <p className="text-xs text-text-subtle mt-1">Most active day: Tuesday</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Globe className="w-4 h-4 text-primary" />
+                  Geographic Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-3">
+                  {countryData.map((country, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{country.flag}</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">{country.country}</p>
+                          <p className="text-xs text-text-subtle">
+                            {country.messages.toLocaleString()} contacts
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
+                        <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${country.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "revenue":
+        return (
+          <div className="space-y-4">
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <RevenueIcon className="w-4 h-4 text-primary" />
+                  Revenue Attribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-2xl font-bold text-success">Tsh 42,800</p>
+                      <p className="text-xs text-text-subtle">Total Revenue</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-2xl font-bold text-primary">+18.7%</p>
+                      <p className="text-xs text-text-subtle">Growth Rate</p>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-2">Top Revenue Campaigns</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">Flash Sale</span>
+                        <span className="text-xs font-medium">Tsh 15,600</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">Product Launch</span>
+                        <span className="text-xs font-medium">Tsh 8,900</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">Welcome Series</span>
+                        <span className="text-xs font-medium">Tsh 4,200</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  ROI Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                    <p className="text-2xl font-bold text-success">4.2x</p>
+                    <p className="text-xs text-text-subtle">Return on Investment</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-2">Cost Breakdown</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">SMS Costs</span>
+                        <span className="text-xs font-medium">Tsh 8,200</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">WhatsApp Costs</span>
+                        <span className="text-xs font-medium">Tsh 2,100</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs">Platform Fees</span>
+                        <span className="text-xs font-medium">Tsh 1,500</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-6">
+          <div className="h-full p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
                 <div>
-                  <h1 className="font-heading text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
                     Analytics
                   </h1>
-                  <p className="text-text-subtle">
+                  <p className="text-sm lg:text-base text-text-subtle">
                     Track performance and insights across all channels
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
                   <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger className="w-40 glass-subtle border-0">
-                      <Calendar className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-full sm:w-40 glass-subtle border-0 text-sm">
+                      <Calendar className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -258,8 +670,8 @@ const Analytics = () => {
                     </SelectContent>
                   </Select>
                   <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-                    <SelectTrigger className="w-40 glass-subtle border-0">
-                      <Filter className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-full sm:w-40 glass-subtle border-0 text-sm">
+                      <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
                       <SelectValue placeholder="All channels" />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -269,269 +681,117 @@ const Analytics = () => {
                       <SelectItem value="email">Email</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" className="glass-subtle border-0">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
+                  <Button variant="outline" className="glass-subtle border-0 text-sm" size="sm">
+                    <Download className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
+                    <span className="hidden sm:inline">Export</span>
                   </Button>
                 </div>
               </div>
 
-              {/* Key Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-                {metrics.map((metric, index) => (
-                  <Card key={index} className="glass border-0">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <metric.icon className="w-4 h-4 text-primary" />
+              {/* Mobile Category Navigation */}
+              {isMobile ? (
+                <div className="flex-1 overflow-hidden">
+                  {!currentCategory ? (
+                    <div className="space-y-3 h-full overflow-y-auto pb-6">
+                      {analyticsCategories.map((category) => (
+                        <Card
+                          key={category.id}
+                          className="glass border-0 cursor-pointer hover:shadow-lg transition-all duration-200"
+                          onClick={() => setCurrentCategory(category.id)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg ${category.color} flex items-center justify-center`}>
+                                <category.icon className="w-5 h-5 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-medium text-foreground text-sm">{category.title}</h3>
+                                <p className="text-xs text-text-subtle">{category.description}</p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-text-subtle" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col">
+                      {/* Category Header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setCurrentCategory(null)}
+                          className="h-8 w-8"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                        </Button>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg ${analyticsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
+                            {(() => {
+                              const category = analyticsCategories.find(cat => cat.id === currentCategory);
+                              const IconComponent = category?.icon;
+                              return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
+                            })()}
+                          </div>
+                          <div>
+                            <h2 className="font-medium text-foreground text-sm">
+                              {analyticsCategories.find(cat => cat.id === currentCategory)?.title}
+                            </h2>
+                            <p className="text-xs text-text-subtle">
+                              {analyticsCategories.find(cat => cat.id === currentCategory)?.description}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-sm font-medium text-text-subtle mb-1">{metric.title}</p>
-                      <div className="flex items-baseline gap-2">
-                        <h3 className="text-xl font-bold text-foreground">{metric.value}</h3>
+
+                      {/* Category Content */}
+                      <div className="flex-1 overflow-y-auto pb-6">
+                        {renderCategoryContent()}
                       </div>
-                      <p className="text-xs text-text-subtle mt-1">{metric.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Charts and Tables */}
-              <div className="flex-1 overflow-hidden">
-                <Tabs defaultValue="overview" className="h-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-                    <TabsTrigger value="audience">Audience</TabsTrigger>
-                    <TabsTrigger value="revenue">Revenue</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="overview" className="space-y-6 h-full overflow-y-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Message Volume */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-primary" />
-                            Message Volume
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <Line data={messageVolumeData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Delivery Rate */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Target className="w-5 h-5 text-success" />
-                            Delivery Rate Trend
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <Line data={deliveryRateData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Channel Distribution */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <PieChart className="w-5 h-5 text-secondary" />
-                            Channel Distribution
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <Doughnut
-                              data={channelDistributionData}
-                              options={{
-                                ...chartOptions,
-                                plugins: {
-                                  ...chartOptions.plugins,
-                                  legend: {
-                                    position: 'bottom' as const,
-                                    labels: {
-                                      usePointStyle: true,
-                                      color: 'hsl(var(--foreground))',
-                                    },
-                                  },
-                                },
-                              }}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Geographic Distribution */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Globe className="w-5 h-5 text-primary" />
-                            Top Countries
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            {countryData.map((country, index) => (
-                              <div key={index} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-lg">{country.flag}</span>
-                                  <div>
-                                    <p className="font-medium text-foreground">{country.country}</p>
-                                    <p className="text-sm text-text-subtle">
-                                      {country.messages.toLocaleString()} messages
-                                    </p>
-                                  </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Desktop Layout - Keep original tabs */
+                <div className="flex-1 overflow-hidden">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+                    {/* Categories Sidebar */}
+                    <div className="lg:col-span-1">
+                      <div className="space-y-2">
+                        {analyticsCategories.map((category) => (
+                          <Card
+                            key={category.id}
+                            className={`glass border-0 cursor-pointer transition-all duration-200 ${
+                              currentCategory === category.id ? 'ring-2 ring-primary' : 'hover:shadow-lg'
+                            }`}
+                            onClick={() => setCurrentCategory(category.id)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg ${category.color} flex items-center justify-center`}>
+                                  <category.icon className="w-4 h-4 text-white" />
                                 </div>
-                                <div className="text-right">
-                                  <p className="font-medium text-foreground">{country.percentage}%</p>
-                                  <div className="w-16 h-2 bg-gradient-surface rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary rounded-full"
-                                      style={{ width: `${country.percentage}%` }}
-                                    />
-                                  </div>
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-foreground text-sm">{category.title}</h3>
+                                  <p className="text-xs text-text-subtle">{category.description}</p>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
-                  </TabsContent>
 
-                  <TabsContent value="campaigns" className="space-y-6 h-full overflow-y-auto">
-                    <div className="grid gap-6">
-                      {/* Campaign Performance Chart */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Send className="w-5 h-5 text-primary" />
-                            Campaign Performance
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-64">
-                            <Bar data={campaignPerformanceData} options={chartOptions} />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Top Campaigns Table */}
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle>Top Performing Campaigns</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b border-border-subtle">
-                                  <th className="text-left py-3 text-sm font-medium text-text-subtle">Campaign</th>
-                                  <th className="text-right py-3 text-sm font-medium text-text-subtle">Sent</th>
-                                  <th className="text-right py-3 text-sm font-medium text-text-subtle">Delivered</th>
-                                  <th className="text-right py-3 text-sm font-medium text-text-subtle">Opened</th>
-                                  <th className="text-right py-3 text-sm font-medium text-text-subtle">Clicked</th>
-                                  <th className="text-right py-3 text-sm font-medium text-text-subtle">Revenue</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {topCampaigns.map((campaign, index) => (
-                                  <tr key={index} className="border-b border-border-subtle">
-                                    <td className="py-3">
-                                      <p className="font-medium text-foreground">{campaign.name}</p>
-                                    </td>
-                                    <td className="text-right py-3 text-foreground">
-                                      {campaign.sent.toLocaleString()}
-                                    </td>
-                                    <td className="text-right py-3">
-                                      <div className="text-foreground">
-                                        {campaign.delivered.toLocaleString()}
-                                      </div>
-                                      <div className="text-xs text-success">
-                                        {Math.round((campaign.delivered / campaign.sent) * 100)}%
-                                      </div>
-                                    </td>
-                                    <td className="text-right py-3">
-                                      <div className="text-foreground">
-                                        {campaign.opened.toLocaleString()}
-                                      </div>
-                                      <div className="text-xs text-primary">
-                                        {Math.round((campaign.opened / campaign.delivered) * 100)}%
-                                      </div>
-                                    </td>
-                                    <td className="text-right py-3">
-                                      <div className="text-foreground">
-                                        {campaign.clicked.toLocaleString()}
-                                      </div>
-                                      <div className="text-xs text-amber-600">
-                                        {Math.round((campaign.clicked / campaign.opened) * 100)}%
-                                      </div>
-                                    </td>
-                                    <td className="text-right py-3 font-semibold text-foreground">
-                                      {campaign.revenue}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {/* Content Area */}
+                    <div className="lg:col-span-3">
+                      <div className="h-full overflow-y-auto pb-6">
+                        {renderCategoryContent()}
+                      </div>
                     </div>
-                  </TabsContent>
-
-                  <TabsContent value="audience" className="space-y-6 h-full overflow-y-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle>Audience Insights</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-text-subtle">Audience analytics coming soon...</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle>Engagement Patterns</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-text-subtle">Engagement patterns coming soon...</p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="revenue" className="space-y-6 h-full overflow-y-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle>Revenue Attribution</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-text-subtle">Revenue analytics coming soon...</p>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass border-0">
-                        <CardHeader>
-                          <CardTitle>ROI Analysis</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-text-subtle">ROI analysis coming soon...</p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

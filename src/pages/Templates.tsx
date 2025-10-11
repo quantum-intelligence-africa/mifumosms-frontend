@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,8 @@ interface Template {
 }
 
 const Templates = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -207,29 +210,29 @@ const Templates = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-6">
+          <div className="h-full p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
                 <div>
-                  <h1 className="font-heading text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
                     Templates
                   </h1>
-                  <p className="text-text-subtle">
+                  <p className="text-sm lg:text-base text-text-subtle">
                     Create and manage reusable message templates
                   </p>
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button>
+                    <Button size="sm" className="text-sm">
                       <Plus className="w-4 h-4 mr-2" />
-                      New Template
+                      <span className="hidden sm:inline">New Template</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="glass max-w-md">
@@ -295,18 +298,18 @@ const Templates = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex flex-col lg:flex-row gap-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 mb-4 lg:mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
                     placeholder="Search templates..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 glass-subtle border-0"
+                    className="pl-10 glass-subtle border-0 text-sm"
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-48 glass-subtle border-0">
+                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
                     <SelectValue placeholder="All channels" />
                   </SelectTrigger>
                   <SelectContent className="glass">
@@ -317,7 +320,7 @@ const Templates = () => {
                   </SelectContent>
                 </Select>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-48 glass-subtle border-0">
+                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
                   <SelectContent className="glass">
@@ -328,7 +331,7 @@ const Templates = () => {
                   </SelectContent>
                 </Select>
                 <Select value={languageFilter} onValueChange={setLanguageFilter}>
-                  <SelectTrigger className="w-48 glass-subtle border-0">
+                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
                     <SelectValue placeholder="All languages" />
                   </SelectTrigger>
                   <SelectContent className="glass">
@@ -342,22 +345,22 @@ const Templates = () => {
 
               {/* Templates Grid */}
               <div className="flex-1 overflow-hidden">
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 h-full overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 h-full overflow-y-auto">
                   {filteredTemplates.map((template) => (
                     <Card
                       key={template.id}
                       className="glass border-0 hover:shadow-lg transition-smooth cursor-pointer"
                       onClick={() => setSelectedTemplate(template)}
                     >
-                      <CardHeader className="pb-3">
+                      <CardHeader className="pb-3 p-4 lg:p-6">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-primary/10">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="p-1.5 lg:p-2 rounded-lg bg-primary/10 flex-shrink-0">
                               {getTypeIcon(template.type)}
                             </div>
-                            <div>
-                              <CardTitle className="text-lg">{template.name}</CardTitle>
-                              <div className="flex items-center gap-2 mt-1">
+                            <div className="min-w-0 flex-1">
+                              <CardTitle className="text-sm lg:text-lg truncate">{template.name}</CardTitle>
+                              <div className="flex items-center gap-1 lg:gap-2 mt-1 flex-wrap">
                                 <Badge variant="outline" className="text-xs">
                                   {template.category}
                                 </Badge>
@@ -368,14 +371,14 @@ const Templates = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             {template.isStarred && (
-                              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                              <Star className="w-3 h-3 lg:w-4 lg:h-4 fill-amber-400 text-amber-400" />
                             )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 lg:h-8 lg:w-8">
+                                  <MoreVertical className="w-3 h-3 lg:w-4 lg:h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="glass">
@@ -406,15 +409,15 @@ const Templates = () => {
                         </div>
                       </CardHeader>
 
-                      <CardContent>
+                      <CardContent className="p-4 lg:p-6 pt-0">
                         <div className="flex items-center gap-2 mb-3">
                           {getStatusIcon(template.status)}
-                          <span className={`text-sm font-medium capitalize ${getStatusColor(template.status)}`}>
+                          <span className={`text-xs lg:text-sm font-medium capitalize ${getStatusColor(template.status)}`}>
                             {template.status}
                           </span>
                         </div>
 
-                        <p className="text-sm text-text-subtle mb-4 line-clamp-3">
+                        <p className="text-xs lg:text-sm text-text-subtle mb-4 line-clamp-3">
                           {template.content}
                         </p>
 
@@ -422,23 +425,23 @@ const Templates = () => {
                           <div className="mb-4">
                             <p className="text-xs text-text-subtle mb-2">Variables:</p>
                             <div className="flex flex-wrap gap-1">
-                              {template.variables.slice(0, 3).map((variable) => (
+                              {template.variables.slice(0, 2).map((variable) => (
                                 <Badge key={variable} variant="outline" className="text-xs">
                                   {variable}
                                 </Badge>
                               ))}
-                              {template.variables.length > 3 && (
+                              {template.variables.length > 2 && (
                                 <Badge variant="outline" className="text-xs">
-                                  +{template.variables.length - 3}
+                                  +{template.variables.length - 2}
                                 </Badge>
                               )}
                             </div>
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between text-xs text-text-subtle">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-text-subtle gap-1">
                           <span>Used {template.usageCount} times</span>
-                          <span>
+                          <span className="truncate">
                             {template.lastUsed ? `Last used ${template.lastUsed}` : "Never used"}
                           </span>
                         </div>
@@ -454,93 +457,93 @@ const Templates = () => {
 
       {/* Template Detail Panel */}
       {selectedTemplate && (
-        <div className="w-96 border-l border-border-subtle glass flex flex-col">
-          <div className="p-6 border-b border-border-subtle">
+        <div className="w-full lg:w-96 border-l border-border-subtle glass flex flex-col">
+          <div className="p-4 lg:p-6 border-b border-border-subtle">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-heading text-lg font-semibold">Template Details</h3>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedTemplate(null)}>
+              <h3 className="font-heading text-base lg:text-lg font-semibold">Template Details</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedTemplate(null)} className="h-8 w-8">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                <div className="flex items-center gap-2 lg:gap-3 mb-2">
+                  <div className="p-1.5 lg:p-2 rounded-lg bg-primary/10 flex-shrink-0">
                     {getTypeIcon(selectedTemplate.type)}
                   </div>
-                  <div>
-                    <h4 className="font-medium text-foreground">{selectedTemplate.name}</h4>
-                    <p className="text-sm text-text-subtle capitalize">{selectedTemplate.type}</p>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-medium text-foreground text-sm lg:text-base truncate">{selectedTemplate.name}</h4>
+                    <p className="text-xs lg:text-sm text-text-subtle capitalize">{selectedTemplate.type}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 {getStatusIcon(selectedTemplate.status)}
-                <span className={`text-sm font-medium capitalize ${getStatusColor(selectedTemplate.status)}`}>
+                <span className={`text-xs lg:text-sm font-medium capitalize ${getStatusColor(selectedTemplate.status)}`}>
                   {selectedTemplate.status}
                 </span>
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Category</p>
-                <Badge variant="outline">{selectedTemplate.category}</Badge>
+                <p className="text-xs lg:text-sm font-medium text-foreground">Category</p>
+                <Badge variant="outline" className="text-xs">{selectedTemplate.category}</Badge>
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Language</p>
+                <p className="text-xs lg:text-sm font-medium text-foreground">Language</p>
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-text-subtle" />
-                  <span className="text-sm text-foreground">{selectedTemplate.language}</span>
+                  <Globe className="w-3 h-3 lg:w-4 lg:h-4 text-text-subtle" />
+                  <span className="text-xs lg:text-sm text-foreground">{selectedTemplate.language}</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Usage Statistics</p>
+                <p className="text-xs lg:text-sm font-medium text-foreground">Usage Statistics</p>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs lg:text-sm">
                     <span className="text-text-subtle">Total uses</span>
                     <span className="text-foreground">{selectedTemplate.usageCount}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs lg:text-sm">
                     <span className="text-text-subtle">Last used</span>
                     <span className="text-foreground">
                       {selectedTemplate.lastUsed || "Never"}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs lg:text-sm">
                     <span className="text-text-subtle">Created</span>
                     <span className="text-foreground">{selectedTemplate.createdAt}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1" size="sm">
-                  <Edit className="w-4 h-4 mr-1" />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button className="flex-1" size="sm" className="text-xs">
+                  <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                   Edit
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Copy className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="text-xs">
+                  <Copy className="w-3 h-3 lg:w-4 lg:h-4" />
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-4 lg:p-6">
             <Tabs defaultValue="content" className="h-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="content">Content</TabsTrigger>
-                <TabsTrigger value="variables">Variables</TabsTrigger>
+                <TabsTrigger value="content" className="text-xs lg:text-sm">Content</TabsTrigger>
+                <TabsTrigger value="variables" className="text-xs lg:text-sm">Variables</TabsTrigger>
               </TabsList>
 
               <TabsContent value="content" className="mt-4">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-2">Message Content</p>
+                    <p className="text-xs lg:text-sm font-medium text-foreground mb-2">Message Content</p>
                     <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <p className="text-sm text-foreground whitespace-pre-wrap">
+                      <p className="text-xs lg:text-sm text-foreground whitespace-pre-wrap">
                         {selectedTemplate.content}
                       </p>
                     </div>
@@ -551,20 +554,20 @@ const Templates = () => {
               <TabsContent value="variables" className="mt-4">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-2">
+                    <p className="text-xs lg:text-sm font-medium text-foreground mb-2">
                       Template Variables ({selectedTemplate.variables.length})
                     </p>
                     <div className="space-y-2">
                       {selectedTemplate.variables.map((variable) => (
                         <div key={variable} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                          <Tag className="w-4 h-4 text-text-subtle" />
-                          <span className="text-sm text-foreground font-mono">
+                          <Tag className="w-3 h-3 lg:w-4 lg:h-4 text-text-subtle" />
+                          <span className="text-xs lg:text-sm text-foreground font-mono">
                             {`{{${variable}}}`}
                           </span>
                         </div>
                       ))}
                       {selectedTemplate.variables.length === 0 && (
-                        <p className="text-sm text-text-subtle">No variables in this template</p>
+                        <p className="text-xs lg:text-sm text-text-subtle">No variables in this template</p>
                       )}
                     </div>
                   </div>

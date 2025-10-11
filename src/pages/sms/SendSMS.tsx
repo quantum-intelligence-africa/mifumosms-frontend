@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +49,8 @@ interface Segment {
 }
 
 const SendSMS = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const [selectedMode, setSelectedMode] = useState<"single" | "bulk" | "segment" | null>(null);
   const [recipients, setRecipients] = useState<string[]>([]);
@@ -445,61 +448,61 @@ const SendSMS = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 lg:p-6">
+          <div className="max-w-6xl mx-auto space-y-4 lg:space-y-6">
             {/* Header */}
             <div>
-              <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground mb-2">
                 Send SMS
               </h1>
-              <p className="text-text-subtle">
+              <p className="text-sm lg:text-base text-text-subtle">
                 Send single SMS, bulk messages, or target specific segments
               </p>
             </div>
 
             {/* Mode Selection */}
             {!selectedMode && (
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card
-                  className="p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("single")}
                 >
-                  <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4">
-                    <Zap className="w-6 h-6 text-primary-foreground" />
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl gradient-primary flex items-center justify-center mb-3 lg:mb-4">
+                    <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-primary-foreground" />
                   </div>
-                  <h3 className="font-heading text-lg font-semibold mb-2">Quick SMS</h3>
-                  <p className="text-sm text-text-subtle">
+                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">Quick SMS</h3>
+                  <p className="text-xs lg:text-sm text-text-subtle">
                     Send instant messages to individual recipients
                   </p>
                 </Card>
 
                 <Card
-                  className="p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("bulk")}
                 >
-                  <div className="w-12 h-12 rounded-xl gradient-secondary flex items-center justify-center mb-4">
-                    <Upload className="w-6 h-6 text-secondary-foreground" />
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl gradient-secondary flex items-center justify-center mb-3 lg:mb-4">
+                    <Upload className="w-5 h-5 lg:w-6 lg:h-6 text-secondary-foreground" />
                   </div>
-                  <h3 className="font-heading text-lg font-semibold mb-2">File SMS</h3>
-                  <p className="text-sm text-text-subtle">
+                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">File SMS</h3>
+                  <p className="text-xs lg:text-sm text-text-subtle">
                     Upload CSV file with multiple recipients
                   </p>
                 </Card>
 
                 <Card
-                  className="p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("segment")}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-success flex items-center justify-center mb-4">
-                    <Users className="w-6 h-6 text-success-foreground" />
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-success flex items-center justify-center mb-3 lg:mb-4">
+                    <Users className="w-5 h-5 lg:w-6 lg:h-6 text-success-foreground" />
                   </div>
-                  <h3 className="font-heading text-lg font-semibold mb-2">Group SMS</h3>
-                  <p className="text-sm text-text-subtle">
+                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">Group SMS</h3>
+                  <p className="text-xs lg:text-sm text-text-subtle">
                     Target contacts from saved segments
                   </p>
                 </Card>

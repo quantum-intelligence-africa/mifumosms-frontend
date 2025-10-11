@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search,
   Filter,
@@ -19,7 +20,11 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  Smartphone,
+  Users,
+  FileText,
+  QrCode
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -72,6 +77,8 @@ import { Contact, CreateContactRequest } from "@/lib/api";
 
 const Contacts = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("all");
@@ -80,6 +87,10 @@ const Contacts = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
+  const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
   const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
     name: "",
     phone_e164: "",
@@ -101,6 +112,7 @@ const Contacts = () => {
   const {
     contacts,
     isLoading,
+    error,
     totalCount,
     fetchContacts,
     createContact,
@@ -118,10 +130,15 @@ const Contacts = () => {
     }
   }, [location.search]);
 
-  // Get all unique tags from contacts
-  const allTags = Array.from(new Set(contacts.flatMap(c => c.tags)));
+  // Fetch contacts on component mount
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
-  const filteredContacts = contacts.filter(contact => {
+  // Get all unique tags from contacts
+  const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
+
+  const filteredContacts = (contacts || []).filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          contact.phone_e164.includes(searchQuery) ||
                          (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -191,19 +208,34 @@ const Contacts = () => {
       return;
     }
 
-    const success = await createContact(createFormData);
-    if (success) {
-      setIsCreateDialogOpen(false);
-      setCreateFormData({
-        name: "",
-        phone_e164: "",
-        email: "",
-        tags: [],
-        attributes: {
-          company: "",
-          department: ""
-        } as Record<string, unknown>
+    try {
+      setIsCreating(true);
+      const success = await createContact(createFormData);
+      if (success) {
+        setIsCreateDialogOpen(false);
+        setCreateFormData({
+          name: "",
+          phone_e164: "",
+          email: "",
+          tags: [],
+          attributes: {
+            company: "",
+            department: ""
+          } as Record<string, unknown>
+        });
+        toast({
+          title: "Contact created",
+          description: "Contact has been successfully added to your database",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to create contact",
+        description: "Please try again",
+        variant: "destructive"
       });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -329,27 +361,197 @@ const Contacts = () => {
     });
   };
 
+  // Mobile contact import functions
+  const handleMobileContactImport = async () => {
+    // Check if Navigator Contacts API is available
+    if (!navigator.contacts) {
+      toast({
+        title: "Contact Import Options",
+        description: "Direct contact import is not supported on this device. You can use CSV upload or manual entry instead.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+
+      // Use a more compatible approach for contact selection
+      const contacts = await navigator.contacts.select(['name', 'phone', 'email'], {
+        multiple: true
+      });
+
+      const formattedContacts: CreateContactRequest[] = contacts.map(contact => ({
+        name: contact.name?.[0] || '',
+        phone_e164: contact.phone?.[0] || '',
+        email: contact.email?.[0] || '',
+        tags: [],
+        attributes: {}
+      }));
+
+      setImportedContacts(formattedContacts);
+      setIsImportDialogOpen(true);
+
+      toast({
+        title: "Contacts imported",
+        description: `Successfully imported ${formattedContacts.length} contacts from your device.`,
+      });
+    } catch (error) {
+      console.error('Contact import error:', error);
+      toast({
+        title: "Import failed",
+        description: "Failed to import contacts from your device. Please try CSV upload or manual entry instead.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleWebShareImport = async () => {
+    if (!navigator.share) {
+      toast({
+        title: "Not supported",
+        description: "Web Share API is not supported on this device.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: 'Import Contacts',
+        text: 'Please share your contacts to import them into Mifumo Connect',
+        url: window.location.href
+      });
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        toast({
+          title: "Share failed",
+          description: "Failed to share contacts. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleQRCodeImport = () => {
+    toast({
+      title: "QR Code Import",
+      description: "QR code import feature will be available soon. Please use manual entry or CSV upload for now.",
+    });
+  };
+
+  const handleBulkCreateContacts = async () => {
+    if (importedContacts.length === 0) return;
+
+    try {
+      setIsCreating(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const contact of importedContacts) {
+        try {
+          await createContact(contact);
+          successCount++;
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: "Bulk import completed",
+        description: `Successfully imported ${successCount} contacts. ${errorCount} failed.`,
+      });
+
+      setImportedContacts([]);
+      setIsImportDialogOpen(false);
+      fetchContacts();
+    } catch (error) {
+      toast({
+        title: "Bulk import failed",
+        description: "Failed to import contacts. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-background">
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full p-3 lg:p-6">
+              <div className="max-w-7xl mx-auto h-full flex flex-col">
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                    <p className="text-text-subtle">Loading contacts...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex h-screen bg-background">
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full p-3 lg:p-6">
+              <div className="max-w-7xl mx-auto h-full flex flex-col">
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
+                    <p className="text-destructive mb-4">Failed to load contacts</p>
+                    <p className="text-text-subtle mb-4">{error}</p>
+                    <Button onClick={() => fetchContacts()} variant="outline">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-6">
+          <div className="h-full p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
                 <div>
-                  <h1 className="font-heading text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
                     Contacts
                   </h1>
-                  <p className="text-text-subtle">
-                    Manage your customer database and relationships ({totalCount} total)
+                  <p className="text-sm lg:text-base text-text-subtle">
+                    Manage your customer database and relationships ({totalCount || 0} total)
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -357,45 +559,71 @@ const Contacts = () => {
                     accept=".csv,.xlsx,.xls"
                     className="hidden"
                   />
+
+                  {/* Mobile Contact Import Button */}
+                  {isMobile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleMobileContactImport}
+                      disabled={isImporting}
+                      className="glass-subtle border-0 text-xs lg:text-sm"
+                    >
+                      {isImporting ? (
+                        <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                      ) : (
+                        <Smartphone className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                      )}
+                      <span className="hidden sm:inline">Import from Phone</span>
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0"
-                    onClick={fetchContacts}
+                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    onClick={() => fetchContacts()}
                     disabled={isLoading}
+                    size="sm"
                   >
                     {isLoading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
                     ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
+                      <RefreshCw className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                     )}
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0"
+                    className="glass-subtle border-0 text-xs lg:text-sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
+                    size="sm"
                   >
                     {isImporting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
                     ) : (
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                     )}
-                    Import
+                    <span className="hidden sm:inline">Import</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0"
+                    className="glass-subtle border-0 text-xs lg:text-sm"
                     onClick={handleExportAll}
+                    size="sm"
                   >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export All
+                    <Download className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                    <span className="hidden sm:inline">Export All</span>
                   </Button>
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Contact
+                      <Button size="sm" className="text-xs lg:text-sm" disabled={isCreating}>
+                        {isCreating ? (
+                          <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                        )}
+                        <span className="hidden sm:inline">Add Contact</span>
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="glass">
@@ -413,7 +641,7 @@ const Contacts = () => {
                             placeholder="Enter Name"
                             value={createFormData.name}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="glass-subtle border-0"
+                            className="glass-subtle border-0 text-sm"
                           />
                         </div>
                         <div className="space-y-2">
@@ -421,10 +649,11 @@ const Contacts = () => {
                           <Input
                             id="phone"
                             type="tel"
+                            inputMode="tel"
                             placeholder="+1234567890"
                             value={createFormData.phone_e164}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
-                            className="glass-subtle border-0"
+                            className="glass-subtle border-0 text-sm"
                           />
                           <p className="text-xs text-text-subtle">
                             Enter phone number in international format (e.g., +1234567890)
@@ -435,10 +664,11 @@ const Contacts = () => {
                           <Input
                             id="email"
                             type="email"
+                            inputMode="email"
                             placeholder="sway@example.com"
                             value={createFormData.email}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
-                            className="glass-subtle border-0"
+                            className="glass-subtle border-0 text-sm"
                           />
                         </div>
 
@@ -506,10 +736,17 @@ const Contacts = () => {
                         <div className="flex gap-2 pt-4">
                           <Button
                             onClick={handleCreateContact}
-                            disabled={!createFormData.name || !createFormData.phone_e164}
+                            disabled={!createFormData.name || !createFormData.phone_e164 || isCreating}
                             className="flex-1"
                           >
-                            Add Contact
+                            {isCreating ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              "Add Contact"
+                            )}
                           </Button>
                           <Button
                             variant="outline"
@@ -526,18 +763,18 @@ const Contacts = () => {
               </div>
 
               {/* Search and Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-4 lg:mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
                     placeholder="Search contacts..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 glass-subtle border-0"
+                    className="pl-10 glass-subtle border-0 text-sm"
                   />
                 </div>
                 <Select value={filterTag} onValueChange={setFilterTag}>
-                  <SelectTrigger className="w-48 glass-subtle border-0">
+                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
                     <SelectValue placeholder="Filter by tag" />
                   </SelectTrigger>
                   <SelectContent className="glass">
@@ -586,28 +823,30 @@ const Contacts = () => {
               <Card className="flex-1 glass border-0 overflow-hidden">
                 <div className="overflow-auto h-full">
                   {isLoading ? (
-                    <div className="p-6 space-y-4">
+                    <div className="p-4 lg:p-6 space-y-4">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Skeleton key={i} className="h-16 w-full" />
+                        <Skeleton key={i} className="h-12 lg:h-16 w-full" />
                       ))}
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border-subtle">
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={selectedContacts.length === filteredContacts.length && filteredContacts.length > 0}
-                              onCheckedChange={handleSelectAll}
-                            />
-                          </TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Tags</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border-subtle">
+                            <TableHead className="w-8 lg:w-12">
+                              <Checkbox
+                                checked={selectedContacts.length === filteredContacts.length && filteredContacts.length > 0}
+                                onCheckedChange={handleSelectAll}
+                                className="h-4 w-4"
+                              />
+                            </TableHead>
+                            <TableHead className="text-xs lg:text-sm">Contact</TableHead>
+                            <TableHead className="text-xs lg:text-sm hidden sm:table-cell">Tags</TableHead>
+                            <TableHead className="text-xs lg:text-sm hidden md:table-cell">Status</TableHead>
+                            <TableHead className="text-xs lg:text-sm hidden lg:table-cell">Created</TableHead>
+                            <TableHead className="w-8 lg:w-12"></TableHead>
+                          </TableRow>
+                        </TableHeader>
                       <TableBody>
                         {filteredContacts.map((contact) => {
                           const StatusIcon = getStatusIcon(contact.is_active, contact.is_opted_in);
@@ -621,33 +860,34 @@ const Contacts = () => {
                                 <Checkbox
                                   checked={selectedContacts.includes(contact.id)}
                                   onCheckedChange={() => handleSelectContact(contact.id)}
+                                  className="h-4 w-4"
                                 />
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="w-10 h-10">
-                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                <div className="flex items-center gap-2 lg:gap-3">
+                                  <Avatar className="w-8 h-8 lg:w-10 lg:h-10">
+                                    <AvatarFallback className="bg-primary/10 text-primary text-xs lg:text-sm">
                                       {contact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                    <p className="font-medium text-foreground">{contact.name}</p>
-                                    <div className="flex items-center gap-3 text-sm text-text-subtle">
-                                      <span className="flex items-center gap-1">
-                                        <Phone className="w-3 h-3" />
-                                        {contact.phone_e164}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-foreground text-sm lg:text-base truncate">{contact.name}</p>
+                                    <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-3 text-xs lg:text-sm text-text-subtle">
+                                      <span className="flex items-center gap-1 truncate">
+                                        <Phone className="w-3 h-3 flex-shrink-0" />
+                                        <span className="truncate">{contact.phone_e164}</span>
                                       </span>
                                       {contact.email && (
-                                        <span className="flex items-center gap-1">
-                                          <Mail className="w-3 h-3" />
-                                          {contact.email}
+                                        <span className="flex items-center gap-1 truncate">
+                                          <Mail className="w-3 h-3 flex-shrink-0" />
+                                          <span className="truncate">{contact.email}</span>
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden sm:table-cell">
                                 <div className="flex gap-1 flex-wrap">
                                   {contact.tags.slice(0, 2).map((tag) => (
                                     <Badge key={tag} variant="secondary" className="text-xs">
@@ -661,16 +901,16 @@ const Contacts = () => {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden md:table-cell">
                                 <div className="flex items-center gap-2">
-                                  <StatusIcon className={`w-4 h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
-                                  <span className="text-sm">
+                                  <StatusIcon className={`w-3 h-3 lg:w-4 lg:h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
+                                  <span className={`text-xs lg:text-sm ${getStatusColor(contact.is_active, contact.is_opted_in)}`}>
                                     {getStatusText(contact.is_active, contact.is_opted_in)}
                                   </span>
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <span className="text-text-subtle">{formatDate(contact.created_at)}</span>
+                              <TableCell className="hidden lg:table-cell">
+                                <span className="text-xs lg:text-sm text-text-subtle">{formatDate(contact.created_at)}</span>
                               </TableCell>
                               <TableCell onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
@@ -713,7 +953,7 @@ const Contacts = () => {
                       {filteredContacts.length === 0 && (
                         <TableBody>
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8">
+                            <TableCell colSpan={6} className="text-center py-8 text-sm">
                               <div className="text-text-subtle">
                                 {searchQuery || filterTag !== "all"
                                   ? "No contacts match your current search or filter criteria."
@@ -724,6 +964,7 @@ const Contacts = () => {
                         </TableBody>
                       )}
                     </Table>
+                    </div>
                   )}
                 </div>
               </Card>
@@ -857,6 +1098,110 @@ const Contacts = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="glass max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import Contacts from Mobile Device</DialogTitle>
+            <DialogDescription>
+              Review and import {importedContacts.length} contacts from your device
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Import Method Selection */}
+            <div className="mb-4">
+              <Tabs value={importMethod} onValueChange={(value) => setImportMethod(value as 'mobile' | 'csv' | 'manual')}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="mobile" className="text-xs">
+                    <Smartphone className="w-3 h-3 mr-1" />
+                    Mobile
+                  </TabsTrigger>
+                  <TabsTrigger value="csv" className="text-xs">
+                    <FileText className="w-3 h-3 mr-1" />
+                    CSV
+                  </TabsTrigger>
+                  <TabsTrigger value="manual" className="text-xs">
+                    <Users className="w-3 h-3 mr-1" />
+                    Manual
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Imported Contacts List */}
+            <div className="flex-1 overflow-y-auto border rounded-lg p-4 space-y-3">
+              {importedContacts.map((contact, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="w-4 h-4 text-text-subtle" />
+                      <span className="font-medium text-sm">{contact.name || 'No name'}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-text-subtle">
+                      {contact.phone_e164 && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          <span>{contact.phone_e164}</span>
+                        </div>
+                      )}
+                      {contact.email && (
+                        <div className="flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          <span>{contact.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const updatedContacts = importedContacts.filter((_, i) => i !== index);
+                      setImportedContacts(updatedContacts);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-text-subtle">
+                {importedContacts.length} contacts ready to import
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setImportedContacts([]);
+                    setIsImportDialogOpen(false);
+                  }}
+                  disabled={isCreating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleBulkCreateContacts}
+                  disabled={isCreating || importedContacts.length === 0}
+                  className="gap-2"
+                >
+                  {isCreating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  Import {importedContacts.length} Contacts
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

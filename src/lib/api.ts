@@ -702,7 +702,7 @@ class ApiClient {
       total_messages: number;
       active_contacts: number;
       campaign_success_rate: number;
-      revenue_this_month: number;
+      sender_ids_this_month: number;
     };
     recent_campaigns: Array<{
       id: string;
@@ -752,8 +752,8 @@ class ApiClient {
       change_type: 'positive' | 'negative' | 'neutral';
       description: string;
     };
-    revenue: {
-      value: string;
+    sender_id: {
+      value: number;
       change: string;
       change_type: 'positive' | 'negative' | 'neutral';
       description: string;

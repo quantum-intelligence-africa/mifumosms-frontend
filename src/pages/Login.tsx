@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, MessageSquare, ArrowLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
+  const isMobile = useIsMobile();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,35 +72,35 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-3 lg:p-6">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-text-subtle hover:text-foreground mb-6">
+        <div className="text-center mb-6 lg:mb-8">
+          <Link to="/" className="inline-flex items-center gap-2 text-text-subtle hover:text-foreground mb-4 lg:mb-6">
             <ArrowLeft className="w-4 h-4" />
-            Back to homepage
+            <span className="text-sm lg:text-base">Back to homepage</span>
           </Link>
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-6">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </div>
-            <span className="font-heading text-2xl font-bold text-foreground">
+            <span className="font-heading text-xl lg:text-2xl font-bold text-foreground">
               Mifumo WMS
             </span>
           </div>
         </div>
 
         <Card className="glass border-0 shadow-xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription>
+          <CardHeader className="text-center p-4 lg:p-6">
+            <CardTitle className="text-xl lg:text-2xl font-bold">Welcome back</CardTitle>
+            <CardDescription className="text-sm lg:text-base">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <CardContent className="p-4 lg:p-6 pt-0">
+            <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email" className="text-sm lg:text-base">Email address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -106,12 +108,12 @@ const Login = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
-                  className="glass-subtle border-0"
+                  className="glass-subtle border-0 text-sm lg:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm lg:text-base">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -120,7 +122,7 @@ const Login = () => {
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     required
-                    className="glass-subtle border-0 pr-10"
+                    className="glass-subtle border-0 pr-10 text-sm lg:text-base"
                   />
                   <Button
                     type="button"
@@ -130,9 +132,9 @@ const Login = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-text-subtle" />
+                      <EyeOff className="w-3 h-3 lg:w-4 lg:h-4 text-text-subtle" />
                     ) : (
-                      <Eye className="w-4 h-4 text-text-subtle" />
+                      <Eye className="w-3 h-3 lg:w-4 lg:h-4 text-text-subtle" />
                     )}
                   </Button>
                 </div>
@@ -145,13 +147,13 @@ const Login = () => {
                     checked={formData.rememberMe}
                     onCheckedChange={(checked) => handleInputChange("rememberMe", checked as boolean)}
                   />
-                  <Label htmlFor="remember" className="text-sm text-text-subtle">
+                  <Label htmlFor="remember" className="text-xs lg:text-sm text-text-subtle">
                     Remember me
                   </Label>
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-primary hover:underline"
+                  className="text-xs lg:text-sm text-primary hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -159,17 +161,17 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full text-sm lg:text-base"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-text-subtle">
+            <div className="mt-4 lg:mt-6 text-center">
+              <p className="text-xs lg:text-sm text-text-subtle">
                 Don't have an account?{" "}
-                <Link to="/signup" className="text-primary hover:underline">
+                <Link to="/signup" className="text-primary hover:underline font-medium">
                   Sign up
                 </Link>
               </p>
