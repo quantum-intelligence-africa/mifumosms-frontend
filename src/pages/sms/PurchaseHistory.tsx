@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { 
+import {
   Download,
   FileText,
   Filter,
@@ -165,10 +165,10 @@ const PurchaseHistory = () => {
   };
 
   const filteredPurchases = purchases.filter(purchase => {
-    const matchesSearch = 
+    const matchesSearch =
       purchase.invoice_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
       purchase.package_name.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
     const matchesMethod = methodFilter === "all" || purchase.payment_method === methodFilter;
 
@@ -191,10 +191,10 @@ const PurchaseHistory = () => {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader />
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Header */}

@@ -881,7 +881,11 @@ const Settings = () => {
                       {settingsCategories.map((category) => (
                         <Card
                           key={category.id}
-                          className="glass border-0 cursor-pointer hover:shadow-lg transition-all duration-200"
+                          className={`glass border-0 cursor-pointer transition-all duration-200 ${
+                            currentCategory === category.id
+                              ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
+                              : 'hover:shadow-lg'
+                          }`}
                           onClick={() => setCurrentCategory(category.id)}
                         >
                           <CardContent className="p-4">
@@ -948,7 +952,9 @@ const Settings = () => {
                           <Card
                             key={category.id}
                             className={`glass border-0 cursor-pointer transition-all duration-200 ${
-                              currentCategory === category.id ? 'ring-2 ring-primary' : 'hover:shadow-lg'
+                              currentCategory === category.id
+                                ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
+                                : 'hover:shadow-lg'
                             }`}
                             onClick={() => setCurrentCategory(category.id)}
                           >

@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 interface Template {
   id: string;
@@ -71,6 +72,7 @@ const Templates = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const location = useLocation();
+  const { toast } = useToast();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -207,6 +209,56 @@ const Templates = () => {
 
     return matchesSearch && matchesType && matchesCategory && matchesLanguage;
   });
+
+  // Template Action Functions
+  const handlePreviewTemplate = (template: Template) => {
+    // Open template in preview mode
+    setSelectedTemplate(template);
+    toast({
+      title: "Template Preview",
+      description: `Previewing "${template.name}"`,
+    });
+  };
+
+  const handleEditTemplate = (template: Template) => {
+    // Navigate to edit template page or open edit dialog
+    toast({
+      title: "Edit Template",
+      description: `Opening editor for "${template.name}"`,
+    });
+    // TODO: Implement edit functionality
+  };
+
+  const handleDuplicateTemplate = (template: Template) => {
+    // Create a copy of the template
+    toast({
+      title: "Template Duplicated",
+      description: `Created a copy of "${template.name}"`,
+    });
+    // TODO: Implement duplicate functionality
+  };
+
+  const handleToggleStar = (template: Template) => {
+    // Toggle star status
+    const action = template.isStarred ? "removed from" : "added to";
+    toast({
+      title: "Template Starred",
+      description: `"${template.name}" ${action} favorites`,
+    });
+    // TODO: Implement star toggle functionality
+  };
+
+  const handleDeleteTemplate = (template: Template) => {
+    // Delete template with confirmation
+    if (window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
+      toast({
+        title: "Template Deleted",
+        description: `"${template.name}" has been deleted`,
+        variant: "destructive",
+      });
+      // TODO: Implement delete functionality
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -382,24 +434,42 @@ const Templates = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="glass">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreviewTemplate(template);
+                                }}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditTemplate(template);
+                                }}>
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit Template
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDuplicateTemplate(template);
+                                }}>
                                   <Copy className="w-4 h-4 mr-2" />
                                   Duplicate
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleStar(template);
+                                }}>
                                   <Star className="w-4 h-4 mr-2" />
                                   {template.isStarred ? "Remove Star" : "Add Star"}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTemplate(template);
+                                  }}
+                                >
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete Template
                                 </DropdownMenuItem>
@@ -520,11 +590,21 @@ const Templates = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button className="flex-1" size="sm" className="text-xs">
+                <Button
+                  className="flex-1"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => handleEditTemplate(selectedTemplate)}
+                >
                   <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                   Edit
                 </Button>
-                <Button variant="outline" size="sm" className="text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => handleDuplicateTemplate(selectedTemplate)}
+                >
                   <Copy className="w-3 h-3 lg:w-4 lg:h-4" />
                 </Button>
               </div>

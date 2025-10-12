@@ -70,7 +70,7 @@ export function ActivityFeed() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <Icon className="w-4 h-4 text-primary" />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -81,14 +81,14 @@ export function ActivityFeed() {
                         {activity.target}
                       </span>
                     </p>
-                    
+
                     {activity.stats && (
                       <p className="text-xs text-text-subtle mt-1">
                         {activity.stats}
                       </p>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-2 ml-3">
                     <span className="text-xs text-text-subtle whitespace-nowrap">
                       {activity.time}

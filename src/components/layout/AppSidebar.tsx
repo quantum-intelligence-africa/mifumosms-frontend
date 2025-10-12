@@ -14,6 +14,7 @@ import {
   Tag,
   History,
   X,
+  LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavItem {
   name: string;
@@ -37,26 +44,7 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
-  // { name: "Conversations", href: "/conversations", icon: MessageSquare, count: 12 },
-  {
-    name: "SMS",
-    href: "#",
-    icon: Send,
-    children: [
-      { name: "Send SMS", href: "/sms/send", icon: Zap },
-      { name: "Purchase SMS", href: "/sms/purchase", icon: CreditCard },
-      { name: "Sender Names", href: "/sms/sender-names", icon: Tag },
-      { name: "Purchase History", href: "/sms/purchase-history", icon: History },
-    ]
-  },
-  { name: "Contacts", href: "/contacts", icon: Users },
-  { name: "Campaigns", href: "/campaigns", icon: Send },
-  { name: "Templates", href: "/templates", icon: FileText },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+// Navigation will be created dynamically using translations
 
 interface AppSidebarProps {
   isOpen?: boolean;
@@ -66,8 +54,29 @@ interface AppSidebarProps {
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const [smsOpen, setSmsOpen] = useState(true);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
+
+  // Navigation items
+  const navigation: NavItem[] = [
+    { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
+    {
+      name: "SMS",
+      href: "#",
+      icon: Send,
+      children: [
+        { name: "Send SMS", href: "/sms/send", icon: Zap },
+        { name: "Purchase SMS", href: "/sms/purchase", icon: CreditCard },
+        { name: "Sender Names", href: "/sms/sender-names", icon: Tag },
+        { name: "Purchase History", href: "/sms/purchase-history", icon: History },
+      ]
+    },
+    { name: "Contacts", href: "/contacts", icon: Users },
+    { name: "Campaigns", href: "/campaigns", icon: Send },
+    { name: "Templates", href: "/templates", icon: FileText },
+    { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
 
   const getInitials = (name: string) => {
     return name
@@ -79,7 +88,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   };
 
   return (
-    <>
+    <TooltipProvider>
       {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div
@@ -229,12 +238,24 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               {user?.email || 'No email'}
             </p>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 lg:h-8 lg:w-8">
-            <Settings className="w-3 h-3 lg:w-4 lg:h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 lg:h-8 lg:w-8"
+                onClick={logout}
+              >
+                <LogOut className="w-3 h-3 lg:w-4 lg:h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Log out</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       </div>
-    </>
+    </TooltipProvider>
   );
 }

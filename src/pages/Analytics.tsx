@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   TrendingUp,
   TrendingDown,
@@ -41,6 +42,8 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 ChartJS.register(
   CategoryScale,
@@ -64,10 +67,23 @@ interface AnalyticsCategory {
 
 const Analytics = () => {
   const isMobile = useIsMobile();
+  const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("30d");
   const [selectedChannel, setSelectedChannel] = useState("all");
+  const [isExporting, setIsExporting] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+
+  // Handle URL parameters
+  useEffect(() => {
+    const campaignId = searchParams.get('campaign');
+    if (campaignId) {
+      setSelectedCampaign(campaignId);
+      // You can add additional logic here to filter data by campaign
+    }
+  }, [searchParams]);
+  const analyticsContentRef = useRef<HTMLDivElement>(null);
 
   const analyticsCategories: AnalyticsCategory[] = [
     {
@@ -286,166 +302,228 @@ const Analytics = () => {
     },
   };
 
+  // PDF Export Function
+  const handleExportToPDF = async () => {
+    if (!analyticsContentRef.current) return;
+
+    setIsExporting(true);
+    try {
+      const element = analyticsContentRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      // Add title
+      pdf.setFontSize(20);
+      pdf.text('Analytics Report', 20, 20);
+      pdf.setFontSize(12);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+      pdf.text(`Date Range: ${dateRange}`, 20, 35);
+      pdf.text(`Channel: ${selectedChannel}`, 20, 40);
+
+      position = 50; // Start image below title
+      heightLeft = imgHeight;
+
+      // Add the image
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add new pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Save the PDF
+      const fileName = `analytics-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const renderCategoryContent = () => {
     const category = analyticsCategories.find(cat => cat.id === currentCategory);
     if (!category) return null;
 
     switch (currentCategory) {
       case "overview":
-        return (
-          <div className="space-y-4">
-            {/* Key Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {metrics.map((metric, index) => (
-                <Card key={index} className="glass border-0">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+  return (
+          <div className="space-y-3">
+              {/* Key Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {metrics.map((metric, index) => (
+                  <Card key={index} className="glass border-0">
+                  <CardContent className="p-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
                         <metric.icon className="w-3 h-3 text-primary" />
+                        </div>
                       </div>
-                    </div>
                     <p className="text-xs font-medium text-text-subtle mb-1 truncate">{metric.title}</p>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-1">
                       <h3 className="text-sm font-bold text-foreground">{metric.value}</h3>
-                    </div>
-                    <p className="text-xs text-text-subtle mt-1 line-clamp-2">{metric.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      </div>
+                    <p className="text-xs text-text-subtle mt-1 line-clamp-1">{metric.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
             {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Message Volume */}
-              <Card className="glass border-0">
-                <CardHeader className="p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      {/* Message Volume */}
+                      <Card className="glass border-0">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <BarChart3 className="w-4 h-4 text-primary" />
-                    Message Volume
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="h-48">
-                    <Line data={messageVolumeData} options={chartOptions} />
-                  </div>
-                </CardContent>
-              </Card>
+                            Message Volume
+                          </CardTitle>
+                        </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="h-40">
+                            <Line data={messageVolumeData} options={chartOptions} />
+                          </div>
+                        </CardContent>
+                      </Card>
 
-              {/* Delivery Rate */}
-              <Card className="glass border-0">
-                <CardHeader className="p-4">
+                      {/* Delivery Rate */}
+                      <Card className="glass border-0">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Target className="w-4 h-4 text-success" />
-                    Delivery Rate Trend
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="h-48">
-                    <Line data={deliveryRateData} options={chartOptions} />
-                  </div>
-                </CardContent>
-              </Card>
+                            Delivery Rate Trend
+                          </CardTitle>
+                        </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="h-40">
+                            <Line data={deliveryRateData} options={chartOptions} />
+                          </div>
+                        </CardContent>
+                      </Card>
 
-              {/* Channel Distribution */}
-              <Card className="glass border-0">
-                <CardHeader className="p-4">
+                      {/* Channel Distribution */}
+                      <Card className="glass border-0">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <PieChart className="w-4 h-4 text-secondary" />
-                    Channel Distribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="h-48">
-                    <Doughnut
-                      data={channelDistributionData}
-                      options={{
-                        ...chartOptions,
-                        plugins: {
-                          ...chartOptions.plugins,
-                          legend: {
-                            position: 'bottom' as const,
-                            labels: {
-                              usePointStyle: true,
-                              color: 'hsl(var(--foreground))',
+                            Channel Distribution
+                          </CardTitle>
+                        </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="h-40">
+                            <Doughnut
+                              data={channelDistributionData}
+                              options={{
+                                ...chartOptions,
+                                plugins: {
+                                  ...chartOptions.plugins,
+                                  legend: {
+                                    position: 'bottom' as const,
+                                    labels: {
+                                      usePointStyle: true,
+                                      color: 'hsl(var(--foreground))',
                               font: {
                                 size: 10
                               }
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Geographic Distribution */}
-              <Card className="glass border-0">
-                <CardHeader className="p-4">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Globe className="w-4 h-4 text-primary" />
-                    Top Countries
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="space-y-3">
-                    {countryData.map((country, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{country.flag}</span>
-                          <div>
-                            <p className="font-medium text-foreground text-sm">{country.country}</p>
-                            <p className="text-xs text-text-subtle">
-                              {country.messages.toLocaleString()} messages
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
-                          <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${country.percentage}%` }}
+                                    },
+                                  },
+                                },
+                              }}
                             />
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Geographic Distribution */}
+                      <Card className="glass border-0">
+                <CardHeader className="p-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Globe className="w-4 h-4 text-primary" />
+                            Top Countries
+                          </CardTitle>
+                        </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="space-y-2">
+                            {countryData.map((country, index) => (
+                              <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{country.flag}</span>
+                                  <div>
+                            <p className="font-medium text-foreground text-sm">{country.country}</p>
+                            <p className="text-xs text-text-subtle">
+                                      {country.messages.toLocaleString()} messages
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                          <p className="font-medium text-foreground text-sm">{country.percentage}%</p>
+                          <div className="w-12 h-2 bg-gradient-surface rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary rounded-full"
+                                      style={{ width: `${country.percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
           </div>
         );
 
       case "campaigns":
         return (
-          <div className="space-y-4">
-            {/* Campaign Performance Chart */}
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+          <div className="space-y-3">
+                      {/* Campaign Performance Chart */}
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Send className="w-4 h-4 text-primary" />
-                  Campaign Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="h-48">
-                  <Bar data={campaignPerformanceData} options={chartOptions} />
-                </div>
-              </CardContent>
-            </Card>
+                            Campaign Performance
+                          </CardTitle>
+                        </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="h-40">
+                            <Bar data={campaignPerformanceData} options={chartOptions} />
+                          </div>
+                        </CardContent>
+                      </Card>
 
-            {/* Top Campaigns Table */}
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+                      {/* Top Campaigns Table */}
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="text-sm">Top Performing Campaigns</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-3">
-                  {topCampaigns.map((campaign, index) => (
-                    <div key={index} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center justify-between mb-2">
+                        </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-2">
+                                {topCampaigns.map((campaign, index) => (
+                    <div key={index} className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                      <div className="flex items-center justify-between mb-1">
                         <h5 className="font-medium text-sm">{campaign.name}</h5>
                         <Badge variant="outline" className="text-xs">{campaign.revenue}</Badge>
                       </div>
@@ -453,77 +531,77 @@ const Analytics = () => {
                         <div>
                           <p className="text-text-subtle">Sent</p>
                           <p className="font-medium">{campaign.sent.toLocaleString()}</p>
-                        </div>
+                                      </div>
                         <div>
                           <p className="text-text-subtle">Delivered</p>
                           <p className="font-medium">{campaign.delivered.toLocaleString()}</p>
                           <p className="text-success">
-                            {Math.round((campaign.delivered / campaign.sent) * 100)}%
+                                        {Math.round((campaign.delivered / campaign.sent) * 100)}%
                           </p>
-                        </div>
+                                      </div>
                         <div>
                           <p className="text-text-subtle">Opened</p>
                           <p className="font-medium">{campaign.opened.toLocaleString()}</p>
                           <p className="text-primary">
                             {Math.round((campaign.opened / campaign.delivered) * 100)}%
                           </p>
-                        </div>
+                                      </div>
                         <div>
                           <p className="text-text-subtle">Clicked</p>
                           <p className="font-medium">{campaign.clicked.toLocaleString()}</p>
                           <p className="text-amber-600">
                             {Math.round((campaign.clicked / campaign.opened) * 100)}%
                           </p>
-                        </div>
-                      </div>
+                                      </div>
+                                      </div>
+                                      </div>
+                                ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         );
 
       case "audience":
         return (
-          <div className="space-y-4">
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+          <div className="space-y-3">
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary" />
                   Audience Insights
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-2xl font-bold text-primary">8,940</p>
+                        </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-xl font-bold text-primary">8,940</p>
                       <p className="text-xs text-text-subtle">Active Contacts</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-2xl font-bold text-success">78.4%</p>
+                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-xl font-bold text-success">78.4%</p>
                       <p className="text-xs text-text-subtle">Engagement Rate</p>
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-2">Engagement Patterns</h4>
+                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-1">Engagement Patterns</h4>
                     <p className="text-xs text-text-subtle">Peak engagement times: 9-11 AM and 6-8 PM</p>
                     <p className="text-xs text-text-subtle mt-1">Most active day: Tuesday</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                        </CardContent>
+                      </Card>
 
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4 text-primary" />
                   Geographic Distribution
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-3">
+                        </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-2">
                   {countryData.map((country, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -547,36 +625,36 @@ const Analytics = () => {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
         );
 
       case "revenue":
         return (
-          <div className="space-y-4">
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+          <div className="space-y-3">
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <RevenueIcon className="w-4 h-4 text-primary" />
                   Revenue Attribution
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-2xl font-bold text-success">Tsh 42,800</p>
+                        </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-xl font-bold text-success">Tsh 42,800</p>
                       <p className="text-xs text-text-subtle">Total Revenue</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                      <p className="text-2xl font-bold text-primary">+18.7%</p>
+                    <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                      <p className="text-xl font-bold text-primary">+18.7%</p>
                       <p className="text-xs text-text-subtle">Growth Rate</p>
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-2">Top Revenue Campaigns</h4>
-                    <div className="space-y-2">
+                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-1">Top Revenue Campaigns</h4>
+                    <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs">Flash Sale</span>
                         <span className="text-xs font-medium">Tsh 15,600</span>
@@ -592,25 +670,25 @@ const Analytics = () => {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                        </CardContent>
+                      </Card>
 
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
+                      <Card className="glass border-0">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <TrendingUp className="w-4 h-4 text-primary" />
                   ROI Analysis
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-4">
-                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                    <p className="text-2xl font-bold text-success">4.2x</p>
+              <CardContent className="p-3 pt-0">
+                <div className="space-y-3">
+                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
+                    <p className="text-xl font-bold text-success">4.2x</p>
                     <p className="text-xs text-text-subtle">Return on Investment</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-2">Cost Breakdown</h4>
-                    <div className="space-y-2">
+                  <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
+                    <h4 className="font-medium text-sm mb-1">Cost Breakdown</h4>
+                    <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs">SMS Costs</span>
                         <span className="text-xs font-medium">Tsh 8,200</span>
@@ -626,9 +704,9 @@ const Analytics = () => {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
         );
 
       default:
@@ -681,9 +759,17 @@ const Analytics = () => {
                       <SelectItem value="email">Email</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" className="glass-subtle border-0 text-sm" size="sm">
+                  <Button
+                    variant="outline"
+                    className="glass-subtle border-0 text-sm"
+                    size="sm"
+                    onClick={handleExportToPDF}
+                    disabled={isExporting}
+                  >
                     <Download className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
-                    <span className="hidden sm:inline">Export</span>
+                    <span className="hidden sm:inline">
+                      {isExporting ? "Exporting..." : "Export PDF"}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -696,7 +782,11 @@ const Analytics = () => {
                       {analyticsCategories.map((category) => (
                         <Card
                           key={category.id}
-                          className="glass border-0 cursor-pointer hover:shadow-lg transition-all duration-200"
+                          className={`glass border-0 cursor-pointer transition-all duration-200 ${
+                            currentCategory === category.id
+                              ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
+                              : 'hover:shadow-lg'
+                          }`}
                           onClick={() => setCurrentCategory(category.id)}
                         >
                           <CardContent className="p-4">
@@ -717,36 +807,48 @@ const Analytics = () => {
                   ) : (
                     <div className="h-full flex flex-col">
                       {/* Category Header */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setCurrentCategory(null)}
-                          className="h-8 w-8"
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                        </Button>
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg ${analyticsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
-                            {(() => {
-                              const category = analyticsCategories.find(cat => cat.id === currentCategory);
-                              const IconComponent = category?.icon;
-                              return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
-                            })()}
-                          </div>
-                          <div>
-                            <h2 className="font-medium text-foreground text-sm">
-                              {analyticsCategories.find(cat => cat.id === currentCategory)?.title}
-                            </h2>
-                            <p className="text-xs text-text-subtle">
-                              {analyticsCategories.find(cat => cat.id === currentCategory)?.description}
-                            </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setCurrentCategory(null)}
+                            className="h-8 w-8"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg ${analyticsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
+                              {(() => {
+                                const category = analyticsCategories.find(cat => cat.id === currentCategory);
+                                const IconComponent = category?.icon;
+                                return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
+                              })()}
+                            </div>
+                            <div>
+                              <h2 className="font-medium text-foreground text-sm">
+                                {analyticsCategories.find(cat => cat.id === currentCategory)?.title}
+                              </h2>
+                              <p className="text-xs text-text-subtle">
+                                {analyticsCategories.find(cat => cat.id === currentCategory)?.description}
+                              </p>
+                            </div>
                           </div>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExportToPDF}
+                          disabled={isExporting}
+                          className="glass-subtle border-0 text-xs"
+                        >
+                          <Download className="w-3 h-3 mr-1" />
+                          {isExporting ? "Exporting..." : "Export"}
+                        </Button>
                       </div>
 
                       {/* Category Content */}
-                      <div className="flex-1 overflow-y-auto pb-6">
+                      <div className="flex-1 overflow-y-auto pb-4" ref={analyticsContentRef}>
                         {renderCategoryContent()}
                       </div>
                     </div>
@@ -763,7 +865,9 @@ const Analytics = () => {
                           <Card
                             key={category.id}
                             className={`glass border-0 cursor-pointer transition-all duration-200 ${
-                              currentCategory === category.id ? 'ring-2 ring-primary' : 'hover:shadow-lg'
+                              currentCategory === category.id
+                                ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
+                                : 'hover:shadow-lg'
                             }`}
                             onClick={() => setCurrentCategory(category.id)}
                           >
@@ -785,7 +889,7 @@ const Analytics = () => {
 
                     {/* Content Area */}
                     <div className="lg:col-span-3">
-                      <div className="h-full overflow-y-auto pb-6">
+                      <div className="h-full overflow-y-auto pb-4" ref={analyticsContentRef}>
                         {renderCategoryContent()}
                       </div>
                     </div>

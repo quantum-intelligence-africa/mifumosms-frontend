@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Plus,
   Check,
@@ -62,8 +62,9 @@ const SenderNames = () => {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [newSenderName, setNewSenderName] = useState("");
   const [useCase, setUseCase] = useState("");
-  const [sampleMessage, setSampleMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Demo data - replace with actual API calls
   const [senderNames, setSenderNames] = useState<SenderName[]>([
@@ -141,6 +142,46 @@ const SenderNames = () => {
     );
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF, JPEG, or PNG file",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setSelectedFile(file);
+      toast({
+        title: "File selected",
+        description: `${file.name} has been selected for upload`,
+      });
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleRequestSenderName = async () => {
     if (!newSenderName.trim()) {
       toast({
@@ -160,14 +201,6 @@ const SenderNames = () => {
       return;
     }
 
-    if (!sampleMessage.trim()) {
-      toast({
-        title: "Sample message required",
-        description: "Please provide a sample message",
-        variant: "destructive"
-      });
-      return;
-    }
 
     setSubmitting(true);
 
@@ -182,7 +215,6 @@ const SenderNames = () => {
         created_by: "Mkuu Kariuki",
         created_at: new Date().toISOString(),
         use_case: useCase,
-        sample_messages: [sampleMessage],
       };
 
       setSenderNames([newSender, ...senderNames]);
@@ -192,7 +224,10 @@ const SenderNames = () => {
       // Reset form
       setNewSenderName("");
       setUseCase("");
-      setSampleMessage("");
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
       toast({
         title: "Request submitted",
@@ -381,30 +416,53 @@ const SenderNames = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Sample Message *</Label>
-                    <Textarea
-                      placeholder="Provide a sample message you will send..."
-                      value={sampleMessage}
-                      onChange={(e) => setSampleMessage(e.target.value)}
-                      className="glass-subtle border-0"
-                      rows={3}
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label>Supporting Documents (Optional)</Label>
                     <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                      <Upload className="w-6 h-6 mx-auto mb-2 text-text-subtle" />
-                      <p className="text-sm text-text-subtle mb-2">
-                        Upload business license or registration
-                      </p>
-                      <input type="file" className="hidden" id="doc-upload" />
-                      <label htmlFor="doc-upload">
-                        <Button variant="outline" size="sm" asChild>
-                          <span>Choose File</span>
-                        </Button>
-                      </label>
+                      {selectedFile ? (
+                        <div className="space-y-2">
+                          <Check className="w-6 h-6 mx-auto text-green-500" />
+                          <p className="text-sm font-medium text-green-600">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-text-subtle">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveFile}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Remove File
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="w-6 h-6 mx-auto mb-2 text-text-subtle" />
+                          <p className="text-sm text-text-subtle mb-2">
+                            Upload business license or registration
+                          </p>
+                          <p className="text-xs text-text-subtle mb-2">
+                            PDF, JPEG, or PNG (max 5MB)
+                          </p>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            id="doc-upload"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleFileSelect}
+                          />
+                          <label htmlFor="doc-upload">
+                            <Button variant="outline" size="sm" asChild>
+                              <span>Choose File</span>
+                            </Button>
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

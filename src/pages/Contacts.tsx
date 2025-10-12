@@ -16,7 +16,6 @@ import {
   User,
   Tag,
   Calendar,
-  ExternalLink,
   Loader2,
   CheckCircle,
   XCircle,
@@ -102,6 +101,48 @@ const Contacts = () => {
     } as Record<string, unknown>
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Contact action handlers
+  const handleSendMessage = (contact: Contact) => {
+    // Navigate to SMS send page with contact pre-selected
+    window.location.href = `/sms/send?contact=${contact.id}`;
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setCreateFormData({
+      name: contact.name || "",
+      phone_e164: contact.phone_e164 || "",
+      email: contact.email || "",
+      tags: contact.tags || [],
+      attributes: contact.attributes || {}
+    });
+    setIsCreateDialogOpen(true);
+  };
+
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete) return;
+
+    try {
+      const success = await deleteContact(contactToDelete.id);
+      if (success) {
+        setContactToDelete(null);
+        setIsDeleteDialogOpen(false);
+        toast({
+          title: "Contact deleted successfully",
+          description: `${contactToDelete.name} has been removed from your contacts.`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete contact:', error);
+      toast({
+        title: "Failed to delete contact",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Predefined tags for selection
   const predefinedTags = [
@@ -210,7 +251,15 @@ const Contacts = () => {
 
     try {
       setIsCreating(true);
-      const success = await createContact(createFormData);
+      let success;
+      if (selectedContact) {
+        // Update existing contact
+        success = await updateContact(selectedContact.id, createFormData);
+      } else {
+        // Create new contact
+        success = await createContact(createFormData);
+      }
+
       if (success) {
         setIsCreateDialogOpen(false);
         setCreateFormData({
@@ -223,14 +272,17 @@ const Contacts = () => {
             department: ""
           } as Record<string, unknown>
         });
+        setSelectedContact(null);
         toast({
-          title: "Contact created",
-          description: "Contact has been successfully added to your database",
+          title: selectedContact ? "Contact updated" : "Contact created",
+          description: selectedContact
+            ? "Contact has been successfully updated"
+            : "Contact has been successfully added to your database",
         });
       }
     } catch (error) {
       toast({
-        title: "Failed to create contact",
+        title: selectedContact ? "Failed to update contact" : "Failed to create contact",
         description: "Please try again",
         variant: "destructive"
       });
@@ -239,16 +291,6 @@ const Contacts = () => {
     }
   };
 
-  const handleDeleteContact = async () => {
-    if (!contactToDelete) return;
-
-    const success = await deleteContact(contactToDelete.id);
-    if (success) {
-      setIsDeleteDialogOpen(false);
-      setContactToDelete(null);
-      setSelectedContact(null);
-    }
-  };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -628,9 +670,9 @@ const Contacts = () => {
                     </DialogTrigger>
                     <DialogContent className="glass">
                       <DialogHeader>
-                        <DialogTitle>Add New Contact</DialogTitle>
+                        <DialogTitle>{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
                         <DialogDescription>
-                          Create a new contact in your database
+                          {selectedContact ? 'Update contact information' : 'Create a new contact in your database'}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -742,10 +784,10 @@ const Contacts = () => {
                             {isCreating ? (
                               <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Creating...
+                                {selectedContact ? 'Updating...' : 'Creating...'}
                               </>
                             ) : (
-                              "Add Contact"
+                              selectedContact ? "Update Contact" : "Add Contact"
                             )}
                           </Button>
                           <Button
@@ -920,17 +962,13 @@ const Contacts = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="glass">
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleSendMessage(contact)}>
                                       <MessageSquare className="w-4 h-4 mr-2" />
                                       Send Message
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleEditContact(contact)}>
                                       <Edit className="w-4 h-4 mr-2" />
                                       Edit Contact
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <ExternalLink className="w-4 h-4 mr-2" />
-                                      View Profile
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
