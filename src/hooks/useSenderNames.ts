@@ -115,11 +115,17 @@ export function useSenderNames() {
 			const response = await apiClient.submitSenderRequest(formData);
 
 			if (response.success && response.data) {
-				// Add the new request to the list
+				// Add the new request to the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
 					return [response.data!, ...currentList];
 				});
+
+				// Refresh data from server to ensure consistency
+				console.log('Refreshing data after successful creation...');
+				await fetchSenderNames();
+				await fetchStats();
+
 				return { success: true, data: response.data };
 			} else {
 				return {
@@ -146,11 +152,17 @@ export function useSenderNames() {
 			const response = await apiClient.updateRequest(requestId, updateData);
 
 			if (response.success && response.data) {
-				// Update the request in the list
+				// Update the request in the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
 					return currentList.map(req => req.id === requestId ? response.data! : req);
 				});
+
+				// Refresh data from server to ensure consistency
+				console.log('Refreshing data after successful update...');
+				await fetchSenderNames();
+				await fetchStats();
+
 				return { success: true, data: response.data };
 			} else {
 				return {
@@ -173,11 +185,17 @@ export function useSenderNames() {
 			const response = await apiClient.deleteRequest(requestId);
 
 			if (response.success) {
-				// Remove the request from the list
+				// Remove the request from the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
 					return currentList.filter(req => req.id !== requestId);
 				});
+
+				// Refresh data from server to ensure consistency
+				console.log('Refreshing data after successful deletion...');
+				await fetchSenderNames();
+				await fetchStats();
+
 				return { success: true };
 			} else {
 				return {
@@ -232,6 +250,12 @@ export function useSenderNames() {
 		return () => clearTimeout(timeout);
 	}, []);
 
+	const refreshData = async () => {
+		console.log('Manual refresh triggered...');
+		await fetchSenderNames();
+		await fetchStats();
+	};
+
 	return {
 		senderNames: safeSenderNames,
 		stats,
@@ -243,5 +267,6 @@ export function useSenderNames() {
 		updateSenderName,
 		deleteSenderName,
 		getSenderName,
+		refreshData
 	};
 }
