@@ -1,5 +1,7 @@
 // API Configuration and Client for Mifumo WMS
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+import { API_CONFIG } from '@/config/api';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -214,6 +216,51 @@ export interface AnalyticsOverview {
   messages_by_provider: Record<string, number>;
 }
 
+// Sender Name Types
+export interface SenderNameRequest {
+  id: string;
+  sender_name: string;
+  use_case: string;
+  supporting_documents: string[];
+  supporting_documents_count: number;
+  status: "pending" | "approved" | "rejected" | "requires_changes" | "verifying";
+  admin_notes: string;
+  reviewed_by: number | null;
+  reviewed_by_name: string;
+  reviewed_at: string | null;
+  provider_request_id?: string;
+  provider_response?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  created_by: number;
+  created_by_name: string;
+  tenant?: string;
+}
+
+export interface CreateSenderNameRequest {
+  sender_name: string;
+  use_case: string;
+  supporting_documents?: File[];
+}
+
+export interface UpdateSenderNameRequest {
+  sender_name?: string;
+  use_case?: string;
+  supporting_documents?: File[];
+  status?: string;
+  admin_notes?: string;
+}
+
+export interface SenderNameStats {
+  total_requests: number;
+  pending_requests: number;
+  approved_requests: number;
+  rejected_requests: number;
+  requires_changes_requests: number;
+  my_requests: number;
+  my_pending_requests: number;
+}
+
 // Billing Types
 export interface BillingPlan {
   id: string;
@@ -261,6 +308,34 @@ class ApiClient {
     }
   }
 
+  getHeaders(includeContentType = true): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${this.token}`
+    };
+
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
+  }
+
+  async handleResponse<T = unknown>(response: Response): Promise<ApiResponse<T>> {
+    const data = await response.json();
+
+    if (response.ok) {
+      return { success: true, data: data.data || data, message: data.message, status: response.status };
+    } else {
+      return {
+        success: false,
+        message: data.message || data.detail || 'An error occurred',
+        error: data.message || data.detail || 'An error occurred',
+        errors: data.errors || null,
+        status: response.status
+      };
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -285,6 +360,65 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
       const data = await response.json();
+
+      // Handle authentication errors with token refresh
+      if (response.status === 401 || response.status === 403) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken && !endpoint.includes('/auth/token/refresh/')) {
+          console.log('Token expired, attempting refresh...');
+          try {
+            const refreshResponse = await this.refreshToken(refreshToken);
+            if (refreshResponse.success && refreshResponse.data?.access) {
+              // Update token and retry request
+              this.setToken(refreshResponse.data.access);
+              config.headers = {
+                ...config.headers,
+                Authorization: `Bearer ${refreshResponse.data.access}`,
+              };
+
+              const retryResponse = await fetch(url, config);
+              const retryData = await retryResponse.json();
+
+              if (!retryResponse.ok) {
+                return {
+                  data: retryData,
+                  error: retryData?.message || retryData?.error || 'An error occurred',
+                  status: retryResponse.status,
+                  success: false,
+                  errors: retryData?.errors || retryData,
+                };
+              }
+
+              // Handle backend response format for retry
+              if (retryData && typeof retryData === 'object' && 'success' in retryData) {
+                return {
+                  data: retryData.data,
+                  status: retryResponse.status,
+                  success: retryData.success,
+                  message: retryData.message,
+                  error: retryData.success ? undefined : (retryData.message || retryData.error),
+                };
+              }
+
+              return {
+                data: retryData,
+                status: retryResponse.status,
+                success: true,
+              };
+            } else {
+              // Refresh failed, clear tokens
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+              this.setToken(null);
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            this.setToken(null);
+          }
+        }
+      }
 
       if (!response.ok) {
         return {
@@ -845,6 +979,340 @@ class ApiClient {
 
   async getBillingOverview(): Promise<ApiResponse> {
     return this.request('/billing/overview/');
+  }
+
+  // =============================================
+  // SENDER NAME ENDPOINTS - COMPREHENSIVE API
+  // =============================================
+
+  // 1. SUBMIT SENDER NAME REQUEST
+  // POST /api/messaging/sender-requests/submit/
+  async submitSenderRequest(formData: FormData): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/submit/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: formData
+      });
+
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. GET USER REQUESTS
+  // GET /api/messaging/sender-requests/
+  async getUserRequests(page = 1, pageSize = 10, status: string | null = null, search: string | null = null): Promise<ApiResponse<{
+    results: SenderNameRequest[];
+    count: number;
+    next?: string;
+    previous?: string;
+  }>> {
+    try {
+      let url = `${API_BASE_URL}/messaging/sender-requests/?page=${page}&page_size=${pageSize}`;
+
+      if (status) url += `&status=${status}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+
+      console.log('=== API CLIENT getUserRequests ===');
+      console.log('URL:', url);
+      console.log('Headers:', this.getHeaders());
+      console.log('Token:', this.token);
+
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      console.log('Raw response status:', response.status);
+      console.log('Raw response ok:', response.ok);
+
+      const result = await this.handleResponse<{
+        results: SenderNameRequest[];
+        count: number;
+        next?: string;
+        previous?: string;
+      }>(response);
+
+      console.log('Processed result:', result);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. GET REQUEST DETAILS
+  // GET /api/messaging/sender-requests/{request_id}/
+  async getRequestDetails(requestId: string): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/${requestId}/`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. GET STATISTICS
+  // GET /api/messaging/sender-requests/stats/
+  async getStatistics(): Promise<ApiResponse<SenderNameStats>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/stats/`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<SenderNameStats>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. UPDATE REQUEST (ADMIN ONLY)
+  // PUT /api/messaging/sender-requests/{request_id}/update/
+  async updateRequest(requestId: string, updateData: {
+    status?: string;
+    admin_notes?: string;
+  }): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/${requestId}/update/`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(updateData)
+      });
+
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 6. DELETE REQUEST
+  // DELETE /api/messaging/sender-requests/{request_id}/delete/
+  async deleteRequest(requestId: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/${requestId}/delete/`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 7. ADMIN DASHBOARD
+  // GET /api/messaging/sender-requests/admin/dashboard/
+  async getAdminDashboard(): Promise<ApiResponse<{
+    stats: SenderNameStats;
+    recent_requests: SenderNameRequest[];
+    pending_requests: SenderNameRequest[];
+    tenant_name: string;
+    admin_user: string;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/admin/dashboard/`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        stats: SenderNameStats;
+        recent_requests: SenderNameRequest[];
+        pending_requests: SenderNameRequest[];
+        tenant_name: string;
+        admin_user: string;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 8. AUTHENTICATION CHECK
+  // GET /api/auth/profile/
+  async checkAuth(): Promise<ApiResponse<User>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+        headers: this.getHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, data: data, status: response.status };
+      } else {
+        return { success: false, status: response.status };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 9. REFRESH TOKEN (using existing method)
+  // POST /api/auth/token/refresh/
+  async refreshTokenFromStorage(): Promise<ApiResponse<{ access: string }>> {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        return { success: false, error: 'No refresh token available', status: 401 };
+      }
+
+      return await this.refreshToken(refreshToken);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // ========================================
+  // ERROR HANDLING FUNCTIONS
+  // ========================================
+  async handleAPIError(result: ApiResponse, context = 'operation'): Promise<boolean> {
+    if (!result.success) {
+      console.error(`${context} failed:`, result.error);
+
+      // Handle specific error types
+      if (result.status === 401) {
+        // Token expired, try to refresh
+        return await this.refreshTokenAndRetry(context);
+      } else if (result.status === 403) {
+        console.error(`Access denied: ${result.error}`);
+      } else if (result.status === 404) {
+        console.error('Resource not found');
+      } else if (result.status === 400) {
+        console.error(`Validation error: ${result.error}`);
+      } else if (result.status === 500) {
+        console.error('Server error. Please try again later.');
+      } else {
+        console.error(result.error || 'An unexpected error occurred');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  async refreshTokenAndRetry(context: string): Promise<boolean> {
+    console.log('Token expired, attempting to refresh...');
+    const refreshResult = await this.refreshTokenFromStorage();
+
+    if (refreshResult.success) {
+      console.log('Token refreshed successfully');
+      return true;
+    } else {
+      console.log('Token refresh failed, redirecting to login');
+      this.redirectToLogin();
+      return false;
+    }
+  }
+
+  redirectToLogin() {
+    window.location.href = '/login/';
+  }
+
+  // ========================================
+  // STATUS HELPER FUNCTIONS
+  // ========================================
+  getStatusEmoji(status: string): string {
+    const statusEmojis: Record<string, string> = {
+      'pending': '🟡',
+      'approved': '🟢',
+      'rejected': '🔴',
+      'requires_changes': '🔵'
+    };
+    return statusEmojis[status] || '⚪';
+  }
+
+  getStatusText(status: string): string {
+    const statusTexts: Record<string, string> = {
+      'pending': 'Pending Review',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'requires_changes': 'Requires Changes'
+    };
+    return statusTexts[status] || status;
+  }
+
+  // ========================================
+  // LEGACY METHODS (for backward compatibility)
+  // ========================================
+  async getSenderNameRequests(): Promise<ApiResponse<{
+    results: SenderNameRequest[];
+    count: number;
+    next?: string;
+    previous?: string;
+  }>> {
+    return this.getUserRequests(1, 10);
+  }
+
+  async createSenderNameRequest(data: CreateSenderNameRequest): Promise<ApiResponse<SenderNameRequest>> {
+    const formData = new FormData();
+    formData.append('sender_name', data.sender_name);
+    formData.append('use_case', data.use_case);
+
+    if (data.supporting_documents) {
+      data.supporting_documents.forEach((file) => {
+        formData.append('supporting_documents', file);
+      });
+    }
+
+    return this.submitSenderRequest(formData);
+  }
+
+  async getSenderNameRequest(requestId: string): Promise<ApiResponse<SenderNameRequest>> {
+    return this.getRequestDetails(requestId);
+  }
+
+  async updateSenderNameRequest(requestId: string, data: UpdateSenderNameRequest): Promise<ApiResponse<SenderNameRequest>> {
+    const updateData: { status?: string; admin_notes?: string } = {};
+    if (data.status) updateData.status = data.status;
+    if (data.admin_notes) updateData.admin_notes = data.admin_notes;
+
+    return this.updateRequest(requestId, updateData);
+  }
+
+  async deleteSenderNameRequest(requestId: string): Promise<ApiResponse> {
+    return this.deleteRequest(requestId);
+  }
+
+  async getSenderNameStats(): Promise<ApiResponse<SenderNameStats>> {
+    return this.getStatistics();
   }
 
   // =============================================

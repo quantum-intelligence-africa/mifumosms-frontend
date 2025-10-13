@@ -1,0 +1,247 @@
+import { useState, useEffect, useRef } from 'react';
+import { SenderNameRequest, CreateSenderNameRequest, UpdateSenderNameRequest, SenderNameStats, apiClient } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+export function useSenderNames() {
+	const [senderNames, setSenderNames] = useState<SenderNameRequest[]>([]);
+	const [stats, setStats] = useState<SenderNameStats | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const requestsCompleted = useRef(false);
+	const { isAuthenticated } = useAuth();
+
+	// Ensure senderNames is always an array
+	const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
+
+	const fetchSenderNames = async () => {
+		if (!isAuthenticated) {
+			console.log('User not authenticated, skipping API call');
+			setLoading(false);
+			return;
+		}
+
+		try {
+			console.log('Fetching sender names...');
+			setLoading(true);
+			setError(null);
+
+			const response = await apiClient.getUserRequests();
+			console.log('=== SENDER NAMES API RESPONSE ===');
+			console.log('Full response object:', response);
+			console.log('Response success:', response.success);
+			console.log('Response data:', response.data);
+			console.log('Response error:', response.error);
+			console.log('Response status:', response.status);
+			console.log('Response data type:', typeof response.data);
+			console.log('Response data keys:', response.data ? Object.keys(response.data) : 'No data');
+
+			if (response.success && response.data) {
+				console.log('Full response data:', response.data);
+				console.log('Response data type:', typeof response.data);
+				console.log('Response data keys:', Object.keys(response.data || {}));
+
+				// Handle different possible response structures
+				let results = [];
+				if (Array.isArray(response.data)) {
+					// If data is directly an array
+					results = response.data;
+					console.log('Data is direct array, results:', results);
+				} else if (response.data.results && Array.isArray(response.data.results)) {
+					// If data has a results property
+					results = response.data.results;
+					console.log('Data has results property, results:', results);
+				} else if (response.data.data && Array.isArray(response.data.data)) {
+					// If data has a nested data property
+					results = response.data.data;
+					console.log('Data has nested data property, results:', results);
+				} else {
+					console.log('No valid data structure found, response.data:', response.data);
+				}
+				console.log('Final results array:', results);
+				console.log('Results length:', results.length);
+				setSenderNames(results);
+				console.log('Sender names set:', results);
+			} else {
+				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
+				if (response.status === 403) {
+					setError('You do not have permission to access sender names. Please contact your administrator.');
+				} else if (response.status === 401) {
+					setError('Session expired. Please log in again.');
+				} else {
+					setError(response.error || 'Failed to fetch sender names');
+				}
+				setSenderNames([]); // Ensure it's always an array
+			}
+		} catch (err) {
+			console.error('Error fetching sender names:', err);
+			setError(err instanceof Error ? err.message : 'An error occurred');
+			setSenderNames([]); // Ensure it's always an array
+		} finally {
+			setLoading(false);
+			requestsCompleted.current = true;
+		}
+	};
+
+	const fetchStats = async () => {
+		if (!isAuthenticated) {
+			console.log('User not authenticated, skipping stats fetch');
+			return;
+		}
+
+		try {
+			const response = await apiClient.getStatistics();
+
+			if (response.success && response.data) {
+				setStats(response.data);
+			}
+		} catch (err) {
+			console.error('Failed to fetch sender name stats:', err);
+		}
+	};
+
+	const createSenderName = async (data: CreateSenderNameRequest) => {
+		try {
+			setError(null);
+			const formData = new FormData();
+			formData.append('sender_name', data.sender_name);
+			formData.append('use_case', data.use_case);
+
+			if (data.supporting_documents) {
+				data.supporting_documents.forEach((file) => {
+					formData.append('supporting_documents', file);
+				});
+			}
+
+			const response = await apiClient.submitSenderRequest(formData);
+
+			if (response.success && response.data) {
+				// Add the new request to the list
+				setSenderNames(prev => {
+					const currentList = Array.isArray(prev) ? prev : [];
+					return [response.data!, ...currentList];
+				});
+				return { success: true, data: response.data };
+			} else {
+				return {
+					success: false,
+					error: response.error || 'Failed to create sender name request',
+					errors: response.errors
+				};
+			}
+		} catch (err) {
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'An error occurred'
+			};
+		}
+	};
+
+	const updateSenderName = async (requestId: string, data: UpdateSenderNameRequest) => {
+		try {
+			setError(null);
+			const updateData: { status?: string; admin_notes?: string } = {};
+			if (data.status) updateData.status = data.status;
+			if (data.admin_notes) updateData.admin_notes = data.admin_notes;
+
+			const response = await apiClient.updateRequest(requestId, updateData);
+
+			if (response.success && response.data) {
+				// Update the request in the list
+				setSenderNames(prev => {
+					const currentList = Array.isArray(prev) ? prev : [];
+					return currentList.map(req => req.id === requestId ? response.data! : req);
+				});
+				return { success: true, data: response.data };
+			} else {
+				return {
+					success: false,
+					error: response.error || 'Failed to update sender name request',
+					errors: response.errors
+				};
+			}
+		} catch (err) {
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'An error occurred'
+			};
+		}
+	};
+
+	const deleteSenderName = async (requestId: string) => {
+		try {
+			setError(null);
+			const response = await apiClient.deleteRequest(requestId);
+
+			if (response.success) {
+				// Remove the request from the list
+				setSenderNames(prev => {
+					const currentList = Array.isArray(prev) ? prev : [];
+					return currentList.filter(req => req.id !== requestId);
+				});
+				return { success: true };
+			} else {
+				return {
+					success: false,
+					error: response.error || 'Failed to delete sender name request'
+				};
+			}
+		} catch (err) {
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'An error occurred'
+			};
+		}
+	};
+
+	const getSenderName = async (requestId: string) => {
+		try {
+			setError(null);
+			const response = await apiClient.getRequestDetails(requestId);
+
+			if (response.success && response.data) {
+				return { success: true, data: response.data };
+			} else {
+				return {
+					success: false,
+					error: response.error || 'Failed to fetch sender name request'
+				};
+			}
+		} catch (err) {
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'An error occurred'
+			};
+		}
+	};
+
+	useEffect(() => {
+		requestsCompleted.current = false;
+		fetchSenderNames();
+		fetchStats();
+
+		// Add a timeout to prevent infinite loading
+		const timeout = setTimeout(() => {
+			if (!requestsCompleted.current) {
+				console.log('Loading timeout reached, setting loading to false');
+				setLoading(false);
+				setError('Request timeout - please check your connection');
+				setSenderNames([]); // Ensure it's always an array
+			}
+		}, 10000); // 10 second timeout
+
+		return () => clearTimeout(timeout);
+	}, []);
+
+	return {
+		senderNames: safeSenderNames,
+		stats,
+		loading,
+		error,
+		fetchSenderNames,
+		fetchStats,
+		createSenderName,
+		updateSenderName,
+		deleteSenderName,
+		getSenderName,
+	};
+}

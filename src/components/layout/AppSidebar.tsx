@@ -101,46 +101,47 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       <div className={`
         flex h-screen flex-col glass border-r border-border-subtle
         ${isMobile
-          ? `fixed left-0 top-0 z-50 w-80 transform transition-transform duration-300 ease-in-out ${
+          ? `fixed left-0 top-0 z-50 w-72 sm:w-80 transform transition-transform duration-300 ease-in-out ${
               isOpen ? 'translate-x-0' : '-translate-x-full'
             }`
           : 'w-64 relative'
         }
       `}>
         {/* Header */}
-        <div className="flex items-center gap-3 p-4 lg:p-6 border-b border-border-subtle">
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 lg:p-6 border-b border-border-subtle">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg gradient-primary flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
-          <div className="flex-1">
-            <h1 className="font-heading text-lg font-semibold text-foreground">Mifumo</h1>
-            <p className="text-xs text-text-subtle">Communication Hub</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-heading text-base sm:text-lg font-semibold text-foreground truncate">Mifumo</h1>
+            <p className="text-xs text-text-subtle truncate">Communication Hub</p>
           </div>
           {isMobile && onClose && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8"
+              className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 h-4 sm:h-4 sm:w-4" />
             </Button>
           )}
         </div>
 
       {/* Quick Actions */}
-      <div className="px-3 lg:px-4 py-3 lg:py-4 border-b border-border-subtle">
+      <div className="px-2 sm:px-3 lg:px-4 py-2 sm:py-3 lg:py-4 border-b border-border-subtle">
         <Link to="/campaigns?new=true" onClick={isMobile ? onClose : undefined}>
-          <Button variant="hero" size="sm" className="w-full text-sm">
-            <Plus className="w-4 h-4" />
-            New Campaign
+          <Button variant="hero" size="sm" className="w-full text-xs sm:text-sm h-8 sm:h-9">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">New Campaign</span>
+            <span className="xs:hidden">New</span>
           </Button>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 lg:px-4 py-2 custom-scrollbar overflow-y-auto">
-        <ul className="space-y-1">
+      <nav className="flex-1 px-2 sm:px-3 lg:px-4 py-2 custom-scrollbar overflow-y-auto">
+        <ul className="space-y-0.5 sm:space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
@@ -153,19 +154,19 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start h-10 lg:h-11 px-2 lg:px-3 text-sm lg:text-base"
+                        className="w-full justify-start h-9 sm:h-10 lg:h-11 px-2 lg:px-3 text-xs sm:text-sm lg:text-base"
                       >
-                        <Icon className="w-4 h-4 lg:w-5 lg:h-5" />
-                        <span className="flex-1 text-left">{item.name}</span>
+                        <Icon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 flex-shrink-0" />
+                        <span className="flex-1 text-left truncate">{item.name}</span>
                         {smsOpen ? (
-                          <ChevronDown className="w-4 h-4 ml-auto" />
+                          <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 ml-auto flex-shrink-0" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 ml-auto" />
+                          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-auto flex-shrink-0" />
                         )}
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-1">
-                      <ul className="space-y-1 ml-2 lg:ml-4 pl-2 lg:pl-4 border-l-2 border-border-subtle">
+                      <ul className="space-y-0.5 sm:space-y-1 ml-1 sm:ml-2 lg:ml-4 pl-1 sm:pl-2 lg:pl-4 border-l-2 border-border-subtle">
                         {item.children!.map((child) => {
                           const ChildIcon = child.icon;
                           const childActive = location.pathname === child.href;
@@ -179,10 +180,10 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                                 <Button
                                   variant={childActive ? "secondary" : "ghost"}
                                   size="sm"
-                                  className="w-full justify-start h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="w-full justify-start h-7 sm:h-8 lg:h-9 text-xs lg:text-sm px-1 sm:px-2"
                                 >
-                                  <ChildIcon className="w-3 h-3 lg:w-4 lg:h-4" />
-                                  <span>{child.name}</span>
+                                  <ChildIcon className="w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0" />
+                                  <span className="truncate">{child.name}</span>
                                 </Button>
                               </Link>
                             </li>
@@ -204,12 +205,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                 >
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
-                    className="w-full justify-start h-10 lg:h-11 px-2 lg:px-3 text-sm lg:text-base"
+                    className="w-full justify-start h-9 sm:h-10 lg:h-11 px-2 lg:px-3 text-xs sm:text-sm lg:text-base"
                   >
-                    <Icon className="w-4 h-4 lg:w-5 lg:h-5" />
-                    <span className="flex-1 text-left">{item.name}</span>
+                    <Icon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 flex-shrink-0" />
+                    <span className="flex-1 text-left truncate">{item.name}</span>
                     {item.count && (
-                      <Badge variant="secondary" className="ml-auto text-xs px-1.5 lg:px-2 py-0.5">
+                      <Badge variant="secondary" className="ml-auto text-xs px-1 sm:px-1.5 lg:px-2 py-0.5 flex-shrink-0">
                         {item.count}
                       </Badge>
                     )}
@@ -222,9 +223,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       </nav>
 
       {/* User Profile */}
-      <div className="p-3 lg:p-4 border-t border-border-subtle">
-        <div className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-xl glass-subtle">
-          <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
+      <div className="p-2 sm:p-3 lg:p-4 border-t border-border-subtle">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 p-1.5 sm:p-2 lg:p-3 rounded-xl glass-subtle">
+          <Avatar className="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10 flex-shrink-0">
             <AvatarImage src="" alt={user?.full_name || user?.first_name} />
             <AvatarFallback className="bg-primary text-primary-foreground text-xs lg:text-sm">
               {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
@@ -243,7 +244,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 lg:h-8 lg:w-8"
+                className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 flex-shrink-0"
                 onClick={logout}
               >
                 <LogOut className="w-3 h-3 lg:w-4 lg:h-4" />

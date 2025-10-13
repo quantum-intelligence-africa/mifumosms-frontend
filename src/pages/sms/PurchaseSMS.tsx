@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -46,6 +47,8 @@ interface PaymentMethod {
 
 const PurchaseSMS = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [customCredits, setCustomCredits] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -220,46 +223,46 @@ const PurchaseSMS = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             {/* Header */}
             <div>
-              <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2">
                 Purchase SMS Credits
               </h1>
-              <p className="text-text-subtle">
+              <p className="text-sm sm:text-base text-text-subtle">
                 Top up your account to send more messages
               </p>
             </div>
 
             {/* Balance Card */}
-            <Card className="p-6 glass">
+            <Card className="p-4 sm:p-6 glass">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Current Balance</p>
-                  <p className="text-3xl font-bold text-foreground">
-                    {currentBalance.toLocaleString()} <span className="text-lg font-normal text-text-subtle">SMS</span>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {currentBalance.toLocaleString()} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
-                  <Wallet className="w-8 h-8 text-primary-foreground" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full gradient-primary flex items-center justify-center">
+                  <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
                 </div>
               </div>
             </Card>
 
             {/* Package Selection */}
             <div>
-              <h2 className="font-heading text-xl font-semibold mb-4">Choose a Package</h2>
-              <div className="grid md:grid-cols-4 gap-4">
+              <h2 className="font-heading text-lg sm:text-xl font-semibold mb-4">Choose a Package</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {packages.map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`p-6 cursor-pointer transition-smooth glass ${
+                    className={`p-4 sm:p-6 cursor-pointer transition-smooth glass ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -272,12 +275,12 @@ const PurchaseSMS = () => {
                     {pkg.popular && (
                       <Badge className="mb-3">Most Popular</Badge>
                     )}
-                    <h3 className="font-heading text-xl font-semibold mb-2">{pkg.name}</h3>
+                    <h3 className="font-heading text-lg sm:text-xl font-semibold mb-2">{pkg.name}</h3>
                     <div className="mb-4">
-                      <p className="text-3xl font-bold text-foreground">
+                      <p className="text-2xl sm:text-3xl font-bold text-foreground">
                         TZS {pkg.unitPrice}/SMS
                       </p>
-                      <p className="text-sm text-text-subtle">
+                      <p className="text-xs sm:text-sm text-text-subtle">
                         {pkg.id === 'lite' ? '1 – 5,000 SMS' :
                          pkg.id === 'standard' ? '5,001 – 50,000 SMS' :
                          pkg.id === 'pro' ? '50,001 – 250,000 SMS' :
@@ -307,9 +310,9 @@ const PurchaseSMS = () => {
             </div>
 
             {/* Custom Amount */}
-            <Card className="p-6 glass">
-              <h3 className="font-heading text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+            <Card className="p-4 sm:p-6 glass">
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Number of SMS Credits</Label>
                   <Input
@@ -331,7 +334,7 @@ const PurchaseSMS = () => {
                   </div>
                 </div>
               </div>
-              <div className="mt-2 text-sm text-text-subtle flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div className="mt-2 text-xs sm:text-sm text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <span>
                   Active tier: {activeTier ? (
                     <>
@@ -345,14 +348,14 @@ const PurchaseSMS = () => {
 
             {/* Payment Method */}
             {(selectedPackage || customCredits) && (
-              <Card className="p-6 glass">
-                <h3 className="font-heading text-lg font-semibold mb-4">Select Payment Method</h3>
+              <Card className="p-4 sm:p-6 glass">
+                <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="grid md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {paymentMethods.map((method) => (
                       <div
                         key={method.id}
-                        className={`flex items-center space-x-3 p-4 rounded-lg glass-subtle cursor-pointer transition-smooth ${
+                        className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg glass-subtle cursor-pointer transition-smooth ${
                           paymentMethod === method.id ? "ring-2 ring-primary" : ""
                         }`}
                         onClick={() => setPaymentMethod(method.id)}
@@ -374,7 +377,7 @@ const PurchaseSMS = () => {
 
                 {/* Payment Number Input */}
                 {paymentMethod && (
-                  <div className="mt-6 space-y-2">
+                  <div className="mt-4 sm:mt-6 space-y-2">
                     <Label htmlFor="paymentNumber">
                       {paymentMethod === 'mpesa' ? 'M-Pesa Number' :
                        paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
@@ -410,7 +413,7 @@ const PurchaseSMS = () => {
             {/* Proceed Button */}
             {(selectedPackage || customCredits) && (
               <div className="flex justify-end">
-                <Button size="lg" onClick={handlePurchase}>
+                <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto">
                   Proceed to Payment
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -419,7 +422,7 @@ const PurchaseSMS = () => {
 
             {/* Invoice Dialog */}
             <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-              <DialogContent className="glass">
+              <DialogContent className="glass max-w-[95vw] sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Confirm Purchase</DialogTitle>
                   <DialogDescription>
@@ -455,8 +458,8 @@ const PurchaseSMS = () => {
 
                   {/* Payment Details Section */}
                   {paymentMethod && (
-                    <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
                         <CreditCard className="w-4 h-4" />
                         Payment Instructions
                       </h4>
@@ -476,8 +479,8 @@ const PurchaseSMS = () => {
                             }
                           </p>
                         </div>
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-3">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-2 sm:p-3">
+                          <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200">
                             <strong>Important:</strong> Please include your account reference in the payment description to ensure proper credit allocation.
                           </p>
                         </div>

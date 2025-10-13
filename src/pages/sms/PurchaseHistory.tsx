@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -57,6 +58,8 @@ interface Purchase {
 }
 
 const PurchaseHistory = () => {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
@@ -190,10 +193,10 @@ const PurchaseHistory = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
@@ -367,18 +370,18 @@ const PurchaseHistory = () => {
             <Sheet open={showDetails} onOpenChange={setShowDetails}>
               <SheetContent className="glass w-full sm:max-w-lg">
                 <SheetHeader>
-                  <SheetTitle>Purchase Details</SheetTitle>
-                  <SheetDescription>
+                  <SheetTitle className="text-sm sm:text-base">Purchase Details</SheetTitle>
+                  <SheetDescription className="text-xs sm:text-sm">
                     Transaction information and timeline
                   </SheetDescription>
                 </SheetHeader>
 
                 {selectedPurchase && (
-                  <div className="mt-6 space-y-6">
+                  <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
                     {/* Invoice Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold">Invoice Information</h3>
-                      <div className="space-y-2 text-sm">
+                      <h3 className="font-semibold text-sm sm:text-base">Invoice Information</h3>
+                      <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Invoice No.</span>
                           <span className="font-mono font-medium">{selectedPurchase.invoice_no}</span>
@@ -396,8 +399,8 @@ const PurchaseHistory = () => {
 
                     {/* Package Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold">Package Details</h3>
-                      <div className="space-y-2 text-sm">
+                      <h3 className="font-semibold text-sm sm:text-base">Package Details</h3>
+                      <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Package</span>
                           <span className="font-medium">{selectedPurchase.package_name}</span>
@@ -415,8 +418,8 @@ const PurchaseHistory = () => {
 
                     {/* Payment Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold">Payment Information</h3>
-                      <div className="space-y-2 text-sm">
+                      <h3 className="font-semibold text-sm sm:text-base">Payment Information</h3>
+                      <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Method</span>
                           <span className="font-medium">{selectedPurchase.payment_method}</span>
@@ -426,8 +429,8 @@ const PurchaseHistory = () => {
                           <span className="font-mono text-xs">{selectedPurchase.gateway_ref}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
-                          <span className="font-semibold">Total Amount</span>
-                          <span className="text-lg font-bold text-primary">
+                          <span className="font-semibold text-sm sm:text-base">Total Amount</span>
+                          <span className="text-base sm:text-lg font-bold text-primary">
                             TZS {selectedPurchase.amount_tzs.toLocaleString()}
                           </span>
                         </div>
@@ -437,13 +440,13 @@ const PurchaseHistory = () => {
                     {/* Actions */}
                     <div className="space-y-2">
                       {selectedPurchase.receipt_url && (
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full text-sm">
                           <Download className="w-4 h-4 mr-2" />
                           Download Receipt
                         </Button>
                       )}
                       {selectedPurchase.status === "pending" && (
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full text-sm">
                           Check Payment Status
                         </Button>
                       )}
