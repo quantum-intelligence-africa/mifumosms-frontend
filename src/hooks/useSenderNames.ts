@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { SenderNameRequest, CreateSenderNameRequest, UpdateSenderNameRequest, SenderNameStats, apiClient } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthContext } from '@/contexts/AuthContext';
 
 export function useSenderNames() {
 	const [senderNames, setSenderNames] = useState<SenderNameRequest[]>([]);
@@ -8,7 +8,9 @@ export function useSenderNames() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const requestsCompleted = useRef(false);
-	const { isAuthenticated } = useAuth();
+	// Safe access to auth context
+	const authContext = useContext(AuthContext);
+	const isAuthenticated = authContext?.isAuthenticated || false;
 
 	// Ensure senderNames is always an array
 	const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];

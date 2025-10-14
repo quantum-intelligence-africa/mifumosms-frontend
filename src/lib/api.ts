@@ -907,7 +907,7 @@ class ApiClient {
     template_id?: string;
     scheduled_at?: string;
   }): Promise<ApiResponse> {
-    return this.request('/messaging/sms/send/', {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.SEND, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -934,18 +934,18 @@ class ApiClient {
     this_month_failed: number;
     cost_this_month: number;
   }>> {
-    return this.request('/messaging/sms/stats/');
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.STATS);
   }
 
   async validatePhoneNumber(phone: string): Promise<ApiResponse<{ valid: boolean; formatted: string }>> {
-    return this.request('/messaging/sms/validate-phone/', {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.VALIDATE_PHONE, {
       method: 'POST',
       body: JSON.stringify({ phone }),
     });
   }
 
   async testSMSConnection(): Promise<ApiResponse<{ connected: boolean; message: string }>> {
-    return this.request('/messaging/sms/test-connection/');
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.TEST_CONNECTION);
   }
 
   // =============================================

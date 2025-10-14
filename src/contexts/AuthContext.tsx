@@ -12,7 +12,7 @@ interface AuthContextType {
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.login(credentials);
-      
+
       if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
         setUser(userData);
@@ -91,9 +91,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: response.error || 'Login failed' };
       }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Login failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed'
       };
     }
   };
@@ -101,11 +101,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.register(userData);
-      
+
       // Debug logging to help troubleshoot
       console.log('Registration request data:', userData);
       console.log('Registration response:', response);
-      
+
       if (response.data && response.data.tokens) {
         const { user: newUser, tokens } = response.data;
         setUser(newUser);
@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: true };
       } else {
         console.error('Registration failed - no tokens in response:', response);
-        
+
         // Extract specific validation errors
         let errorMessage = response.error || 'Registration failed';
         if (response.errors) {
@@ -123,14 +123,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .join('; ');
           errorMessage = `Validation failed: ${errorDetails}`;
         }
-        
+
         return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Registration error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Registration failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Registration failed'
       };
     }
   };
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateProfile = async (userData: Partial<User>): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.updateProfile(userData);
-      
+
       if (response.data) {
         setUser(response.data);
         return { success: true };
@@ -173,9 +173,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: response.error || 'Profile update failed' };
       }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Profile update failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Profile update failed'
       };
     }
   };
