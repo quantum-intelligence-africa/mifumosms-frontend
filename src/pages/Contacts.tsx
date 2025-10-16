@@ -598,7 +598,7 @@ const Contacts = () => {
     <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">

@@ -113,7 +113,7 @@ const Campaigns = () => {
     contacts,
     isLoading: contactsLoading,
   } = useContacts();
-  
+
   const segments: any[] = []; // TODO: Add segments hook when available
 
   // Check if we should open the new campaign dialog
@@ -364,7 +364,7 @@ const Campaigns = () => {
     return (
       <div className="min-h-[100dvh] flex bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
             <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
@@ -396,7 +396,7 @@ const Campaigns = () => {
   return (
     <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
           <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">

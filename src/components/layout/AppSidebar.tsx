@@ -99,12 +99,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
       {/* Sidebar */}
       <div className={`
-        flex h-screen flex-col glass border-r border-border-subtle
+        flex h-screen flex-col glass border-r border-border-subtle fixed-sidebar
         ${isMobile
           ? `fixed left-0 top-0 z-50 w-72 sm:w-80 transform transition-transform duration-300 ease-in-out ${
               isOpen ? 'translate-x-0' : '-translate-x-full'
             }`
-          : 'w-64 relative'
+          : 'w-64 fixed left-0 top-0 z-30 h-screen overflow-hidden'
         }
       `}>
         {/* Header */}
