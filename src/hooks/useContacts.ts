@@ -2,7 +2,6 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import { apiClient, Contact, CreateContactRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from '@/contexts/AuthContext';
-import { fetchContactsDirect } from '@/utils/contactApiUtils';
 
 export const useContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);

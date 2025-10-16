@@ -63,7 +63,10 @@ export const useSMSBilling = () => {
     try {
       const response = await apiClient.getSMSPackages();
       if (response.success && response.data) {
-        setPackages(response.data);
+        // Handle both array and object with results
+        const packagesData = Array.isArray(response.data) ? response.data : 
+                            (response.data as any).results || [];
+        setPackages(packagesData);
       } else {
         toast({
           title: "Failed to load SMS packages",

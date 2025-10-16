@@ -97,7 +97,7 @@ export function useSenderRequestAPI() {
 				return {
 					success: false,
 					error: response.error || 'Failed to create sender name request',
-					errors: response.errors
+					errors: (response as any).errors
 				};
 			}
 		} catch (err) {
@@ -123,7 +123,7 @@ export function useSenderRequestAPI() {
 				return {
 					success: false,
 					error: response.error || 'Failed to update sender name request',
-					errors: response.errors
+					errors: (response as any).errors
 				};
 			}
 		} catch (err) {
