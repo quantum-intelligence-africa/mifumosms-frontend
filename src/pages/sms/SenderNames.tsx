@@ -807,51 +807,51 @@ const SenderNames = () => {
             <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
               <DialogContent className="glass max-w-[95vw] sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Request New Sender Name</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-[clamp(1rem,2.5vw,1.25rem)]">Request New Sender Name</DialogTitle>
+                  <DialogDescription className="text-[clamp(0.75rem,2vw,1rem)]">
                     Submit a request to register a new sender ID for your SMS campaigns
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 my-4">
                   <div className="space-y-2">
-                    <Label className="text-sm">Sender Name *</Label>
+                    <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Sender Name *</Label>
                     <Input
                       placeholder="e.g., MYCOMPANY"
                       value={newSenderName}
                       onChange={(e) => setNewSenderName(e.target.value.toUpperCase())}
                       maxLength={11}
-                      className="glass-subtle border-0 font-mono text-sm"
+                      className="glass-subtle border-0 font-mono text-[clamp(0.75rem,1.5vw,0.875rem)]"
                     />
-                    <p className="text-xs text-text-subtle">
+                    <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                       {newSenderName.length}/11 characters (alphanumeric only)
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">Use Case *</Label>
+                    <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Use Case *</Label>
                     <Textarea
                       placeholder="Describe how you plan to use this sender name..."
                       value={useCase}
                       onChange={(e) => setUseCase(e.target.value)}
-                      className="glass-subtle border-0 text-sm"
+                      className="glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                       rows={3}
                     />
                   </div>
 
 
                   <div className="space-y-2">
-                    <Label className="text-sm">Supporting Documents (Optional)</Label>
+                    <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Supporting Documents (Optional)</Label>
                     <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-4 text-center">
                       {selectedFiles.length > 0 ? (
                         <div className="space-y-2">
                           <Check className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-green-500" />
-                          <p className="text-xs sm:text-sm font-medium text-green-600">
+                          <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] font-medium text-green-600">
                             {selectedFiles.length} file(s) selected
                           </p>
                           <div className="space-y-1">
                             {selectedFiles.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between text-xs">
+                              <div key={index} className="flex items-center justify-between text-[clamp(0.625rem,1.25vw,0.75rem)]">
                                 <span className="truncate flex-1 mr-2">{file.name}</span>
                                 <Button
                                   variant="outline"
@@ -868,7 +868,7 @@ const SenderNames = () => {
                             variant="outline"
                             size="sm"
                             onClick={handleRemoveAllFiles}
-                            className="text-red-600 hover:text-red-700 text-xs w-full"
+                            className="text-red-600 hover:text-red-700 text-[clamp(0.625rem,1.25vw,0.75rem)] w-full"
                           >
                             <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             Remove All Files
@@ -877,10 +877,10 @@ const SenderNames = () => {
                       ) : (
                         <div className="space-y-2">
                           <Upload className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-text-subtle" />
-                          <p className="text-xs sm:text-sm text-text-subtle mb-2">
+                          <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle mb-2">
                             Upload business license or registration
                           </p>
-                          <p className="text-xs text-text-subtle mb-2">
+                          <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle mb-2">
                             PDF, JPEG, or PNG (max 5MB)
                           </p>
                           <input
@@ -892,7 +892,7 @@ const SenderNames = () => {
                             onChange={handleFileSelect}
                           />
                           <label htmlFor="doc-upload">
-                            <Button variant="outline" size="sm" asChild className="text-xs">
+                            <Button variant="outline" size="sm" asChild className="text-[clamp(0.625rem,1.25vw,0.75rem)]">
                               <span>Choose File</span>
                             </Button>
                           </label>
@@ -907,11 +907,11 @@ const SenderNames = () => {
                     variant="outline"
                     onClick={() => setShowRequestDialog(false)}
                     disabled={submitting}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto text-[clamp(0.75rem,1.5vw,0.875rem)]"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleRequestSenderName} disabled={submitting} className="w-full sm:w-auto">
+                  <Button onClick={handleRequestSenderName} disabled={submitting} className="w-full sm:w-auto text-[clamp(0.75rem,1.5vw,0.875rem)]">
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

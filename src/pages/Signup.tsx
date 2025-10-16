@@ -125,15 +125,15 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-[100dvh] bg-gradient-surface flex items-center justify-center px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))]">
+      <div className="w-full max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-white" />
             </div>
-            <span className="font-heading text-2xl font-bold text-foreground">
+            <span className="font-heading text-[clamp(1.25rem,3vw,2rem)] font-bold text-foreground">
               Mifumo WMS
             </span>
           </div>
@@ -141,8 +141,8 @@ const Signup = () => {
 
         <Card className="glass border-0 shadow-xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-[clamp(1.25rem,3vw,1.75rem)] font-bold">Create your account</CardTitle>
+            <CardDescription className="text-[clamp(0.75rem,2vw,1rem)]">
               Start your 14-day free trial today
             </CardDescription>
           </CardHeader>

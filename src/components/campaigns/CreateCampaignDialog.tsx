@@ -166,13 +166,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-[clamp(1rem,2.5vw,1.25rem)]">
             <MessageSquare className="w-5 h-5" />
             Create New Campaign
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[clamp(0.75rem,2vw,1rem)]">
             Create a smart campaign to reach your audience effectively.
           </DialogDescription>
         </DialogHeader>
@@ -183,55 +183,58 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Campaign Name *</Label>
+                  <Label htmlFor="name" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Campaign Name *</Label>
                   <Input
                     id="name"
                     placeholder="Enter campaign name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="text-[clamp(0.75rem,1.5vw,0.875rem)]"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="campaign_type">Campaign Type *</Label>
+                  <Label htmlFor="campaign_type" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Campaign Type *</Label>
                   <Select
                     value={formData.campaign_type}
                     onValueChange={(value) => handleInputChange('campaign_type', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-[clamp(0.75rem,1.5vw,0.875rem)]">
                       <SelectValue placeholder="Select campaign type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
+                      <SelectItem value="sms" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">SMS</SelectItem>
+                      <SelectItem value="whatsapp" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">WhatsApp</SelectItem>
+                      <SelectItem value="email" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Email</SelectItem>
+                      <SelectItem value="mixed" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Mixed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="Enter campaign description (optional)"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={3}
+                  className="text-[clamp(0.75rem,1.5vw,0.875rem)]"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="message_text">Message Text *</Label>
+                <Label htmlFor="message_text" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Message Text *</Label>
                 <Textarea
                   id="message_text"
                   placeholder="Enter your message content"
                   value={formData.message_text}
                   onChange={(e) => handleInputChange('message_text', e.target.value)}
                   rows={4}
+                  className="text-[clamp(0.75rem,1.5vw,0.875rem)]"
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-muted-foreground">
                   {formData.message_text.length} characters
                 </p>
               </div>
@@ -296,8 +299,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Select Target Audience</h3>
-                <Badge variant="outline">
+                <h3 className="text-[clamp(1rem,2.5vw,1.25rem)] font-semibold">Select Target Audience</h3>
+                <Badge variant="outline" className="text-[clamp(0.625rem,1.25vw,0.75rem)]">
                   {formData.target_contact_ids.length} contacts selected
                 </Badge>
               </div>
@@ -305,7 +308,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               {contactsLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Loading contacts...</p>
+                  <p className="text-[clamp(0.75rem,1.5vw,0.875rem)] text-muted-foreground mt-2">Loading contacts...</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -399,17 +402,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           )}
 
           {/* Navigation */}
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t gap-4">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
               <div className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
               {step > 1 && (
                 <Button
                   variant="outline"
                   onClick={() => setStep(step - 1)}
+                  className="flex-1 sm:flex-none text-[clamp(0.75rem,1.5vw,0.875rem)]"
                 >
                   Previous
                 </Button>
@@ -419,6 +423,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={() => setStep(2)}
                   disabled={!canProceedToStep2}
+                  className="flex-1 sm:flex-none text-[clamp(0.75rem,1.5vw,0.875rem)]"
                 >
                   Next
                 </Button>
@@ -426,6 +431,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || isSubmitting}
+                  className="flex-1 sm:flex-none text-[clamp(0.75rem,1.5vw,0.875rem)]"
                 >
                   {isSubmitting ? 'Creating...' : 'Create Campaign'}
                 </Button>

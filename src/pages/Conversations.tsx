@@ -185,7 +185,7 @@ const Conversations = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -195,7 +195,7 @@ const Conversations = () => {
           {/* Conversations List */}
           <div className={`${isMobile ? 'w-full' : 'w-80'} border-r border-border-subtle flex flex-col ${isMobile && selectedConversation ? 'hidden' : ''}`}>
             {/* Search and Filters */}
-            <div className="p-3 lg:p-4 border-b border-border-subtle">
+            <div className="px-[max(12px,env(safe-area-inset-left))] py-[max(8px,env(safe-area-inset-top))] border-b border-border-subtle">
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                 <Input

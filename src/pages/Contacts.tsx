@@ -584,26 +584,26 @@ const Contacts = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+          <div className="h-full px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
+            <div className="mx-auto w-[92vw] max-w-[1200px] h-full flex flex-col">
               {/* Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
-                <div>
-                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-heading text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-foreground">
                     Contacts
                   </h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                  <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle">
                     Manage your customer database and relationships ({totalCount || 0} total)
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3 flex-shrink-0">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -619,7 +619,7 @@ const Contacts = () => {
                       size="sm"
                       onClick={handleMobileContactImport}
                       disabled={isImporting}
-                      className="glass-subtle border-0 text-xs lg:text-sm"
+                      className="glass-subtle border-0 text-[clamp(0.625rem,1.5vw,0.875rem)]"
                     >
                       {isImporting ? (
                         <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
@@ -632,7 +632,7 @@ const Contacts = () => {
 
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-[clamp(0.625rem,1.5vw,0.875rem)]"
                     onClick={() => fetchContacts()}
                     disabled={isLoading}
                     size="sm"
@@ -646,7 +646,7 @@ const Contacts = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-[clamp(0.625rem,1.5vw,0.875rem)]"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
                     size="sm"
@@ -660,7 +660,7 @@ const Contacts = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-[clamp(0.625rem,1.5vw,0.875rem)]"
                     onClick={handleExportAll}
                     size="sm"
                   >
@@ -669,7 +669,7 @@ const Contacts = () => {
                   </Button>
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="text-xs lg:text-sm" disabled={isCreating}>
+                      <Button size="sm" className="text-[clamp(0.625rem,1.5vw,0.875rem)]" disabled={isCreating}>
                         {isCreating ? (
                           <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
                         ) : (
@@ -678,26 +678,26 @@ const Contacts = () => {
                         <span className="hidden sm:inline">Add Contact</span>
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="glass">
+                    <DialogContent className="glass max-w-[95vw] sm:max-w-md">
                       <DialogHeader>
-                        <DialogTitle>{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-[clamp(1rem,2.5vw,1.25rem)]">{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+                        <DialogDescription className="text-[clamp(0.75rem,2vw,1rem)]">
                           {selectedContact ? 'Update contact information' : 'Create a new contact in your database'}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name">Full Name *</Label>
+                          <Label htmlFor="name" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Full Name *</Label>
                           <Input
                             id="name"
                             placeholder="Enter Name"
                             value={createFormData.name}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="phone">Phone Number *</Label>
+                          <Label htmlFor="phone" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Phone Number *</Label>
                           <Input
                             id="phone"
                             type="tel"
@@ -705,14 +705,14 @@ const Contacts = () => {
                             placeholder="+1234567890"
                             value={createFormData.phone_e164}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                           />
-                          <p className="text-xs text-text-subtle">
+                          <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                             Enter phone number in international format (e.g., +1234567890)
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email">Email Address</Label>
+                          <Label htmlFor="email" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Email Address</Label>
                           <Input
                             id="email"
                             type="email"
@@ -720,16 +720,16 @@ const Contacts = () => {
                             placeholder="sway@example.com"
                             value={createFormData.email}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                           />
                         </div>
 
                         {/* Attributes Section */}
                         <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Additional Information</h4>
+                          <h4 className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-medium text-foreground">Additional Information</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label htmlFor="company">Company</Label>
+                              <Label htmlFor="company" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Company</Label>
                               <Input
                                 id="company"
                                 placeholder="Acme Corp"
@@ -739,7 +739,7 @@ const Contacts = () => {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="department">Department</Label>
+                              <Label htmlFor="department" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Department</Label>
                               <Input
                                 id="department"
                                 placeholder="Marketing"
@@ -753,10 +753,10 @@ const Contacts = () => {
 
                         {/* Tags Section */}
                         <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Tags</h4>
+                          <h4 className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-medium text-foreground">Tags</h4>
                           <div className="space-y-2">
-                            <Label>Select Tags</Label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Select Tags</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               {predefinedTags.map((tag) => (
                                 <div key={tag} className="flex items-center space-x-2">
                                   <Checkbox
@@ -766,7 +766,7 @@ const Contacts = () => {
                                   />
                                   <Label
                                     htmlFor={`tag-${tag}`}
-                                    className="text-sm font-normal cursor-pointer"
+                                    className="text-[clamp(0.625rem,1.25vw,0.75rem)] font-normal cursor-pointer"
                                   >
                                     {tag}
                                   </Label>
@@ -776,7 +776,7 @@ const Contacts = () => {
                             {createFormData.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {createFormData.tags.map((tag) => (
-                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                  <Badge key={tag} variant="secondary" className="text-[clamp(0.625rem,1.25vw,0.75rem)]">
                                     {tag}
                                   </Badge>
                                 ))}
@@ -785,11 +785,11 @@ const Contacts = () => {
                           </div>
                         </div>
 
-                        <div className="flex gap-2 pt-4">
+                        <div className="flex flex-col sm:flex-row gap-2 pt-4">
                           <Button
                             onClick={handleCreateContact}
                             disabled={!createFormData.name || !createFormData.phone_e164 || isCreating}
-                            className="flex-1"
+                            className="flex-1 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                           >
                             {isCreating ? (
                               <>
@@ -803,7 +803,7 @@ const Contacts = () => {
                           <Button
                             variant="outline"
                             onClick={() => setIsCreateDialogOpen(false)}
-                            className="flex-1"
+                            className="flex-1 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                           >
                             Cancel
                           </Button>
@@ -822,11 +822,11 @@ const Contacts = () => {
                     placeholder="Search contacts..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 glass-subtle border-0 text-sm"
+                    className="pl-10 glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]"
                   />
                 </div>
                 <Select value={filterTag} onValueChange={setFilterTag}>
-                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
+                  <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-[clamp(0.75rem,1.5vw,0.875rem)]">
                     <SelectValue placeholder="Filter by tag" />
                   </SelectTrigger>
                   <SelectContent className="glass">
@@ -882,7 +882,7 @@ const Contacts = () => {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table>
+                      <Table className="[container-type:inline-size]">
                         <TableHeader>
                           <TableRow className="border-border-subtle">
                             <TableHead className="w-8 lg:w-12">
@@ -892,10 +892,10 @@ const Contacts = () => {
                                 className="h-4 w-4"
                               />
                             </TableHead>
-                            <TableHead className="text-xs lg:text-sm">Contact</TableHead>
-                            <TableHead className="text-xs lg:text-sm hidden sm:table-cell">Tags</TableHead>
-                            <TableHead className="text-xs lg:text-sm hidden md:table-cell">Status</TableHead>
-                            <TableHead className="text-xs lg:text-sm hidden lg:table-cell">Created</TableHead>
+                            <TableHead className="text-[clamp(0.625rem,1.5vw,0.875rem)]">Contact</TableHead>
+                            <TableHead className="text-[clamp(0.625rem,1.5vw,0.875rem)] hidden sm:table-cell">Tags</TableHead>
+                            <TableHead className="text-[clamp(0.625rem,1.5vw,0.875rem)] hidden md:table-cell">Status</TableHead>
+                            <TableHead className="text-[clamp(0.625rem,1.5vw,0.875rem)] hidden lg:table-cell">Created</TableHead>
                             <TableHead className="w-8 lg:w-12"></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -918,13 +918,13 @@ const Contacts = () => {
                               <TableCell>
                                 <div className="flex items-center gap-2 lg:gap-3">
                                   <Avatar className="w-8 h-8 lg:w-10 lg:h-10">
-                                    <AvatarFallback className="bg-primary/10 text-primary text-xs lg:text-sm">
+                                    <AvatarFallback className="bg-primary/10 text-primary text-[clamp(0.625rem,1.5vw,0.875rem)]">
                                       {contact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-foreground text-sm lg:text-base truncate">{contact.name}</p>
-                                    <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-3 text-xs lg:text-sm text-text-subtle">
+                                    <p className="font-medium text-foreground text-[clamp(0.75rem,1.5vw,1rem)] truncate">{contact.name}</p>
+                                    <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-3 text-[clamp(0.625rem,1.5vw,0.875rem)] text-text-subtle">
                                       <span className="flex items-center gap-1 truncate">
                                         <Phone className="w-3 h-3 flex-shrink-0" />
                                         <span className="truncate">{contact.phone_e164}</span>
@@ -942,7 +942,7 @@ const Contacts = () => {
                               <TableCell className="hidden sm:table-cell">
                                 <div className="flex gap-1 flex-wrap">
                                   {contact.tags.slice(0, 2).map((tag) => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">
+                                    <Badge key={tag} variant="secondary" className="text-[clamp(0.625rem,1.25vw,0.75rem)]">
                                       {tag}
                                     </Badge>
                                   ))}
@@ -956,13 +956,13 @@ const Contacts = () => {
                               <TableCell className="hidden md:table-cell">
                                 <div className="flex items-center gap-2">
                                   <StatusIcon className={`w-3 h-3 lg:w-4 lg:h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
-                                  <span className={`text-xs lg:text-sm ${getStatusColor(contact.is_active, contact.is_opted_in)}`}>
+                                  <span className={`text-[clamp(0.625rem,1.5vw,0.875rem)] ${getStatusColor(contact.is_active, contact.is_opted_in)}`}>
                                     {getStatusText(contact.is_active, contact.is_opted_in)}
                                   </span>
                                 </div>
                               </TableCell>
                               <TableCell className="hidden lg:table-cell">
-                                <span className="text-xs lg:text-sm text-text-subtle">{formatDate(contact.created_at)}</span>
+                                <span className="text-[clamp(0.625rem,1.5vw,0.875rem)] text-text-subtle">{formatDate(contact.created_at)}</span>
                               </TableCell>
                               <TableCell onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>

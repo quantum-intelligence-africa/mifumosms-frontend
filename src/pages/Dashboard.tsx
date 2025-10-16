@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import ResponsiveTest from "@/components/ResponsiveTest";
 
 const Dashboard = () => {
   const { dashboardData, metrics, isLoading } = useDashboard();
@@ -36,27 +37,27 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="min-h-[100dvh] flex bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
+          <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
+            <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
               {/* Loading skeletons */}
               <div className="mb-6 lg:mb-8">
-                <Skeleton className="h-6 lg:h-8 w-48 lg:w-64 mb-2" />
-                <Skeleton className="h-3 lg:h-4 w-72 lg:w-96" />
+                <Skeleton className="h-[clamp(1.5rem,4vw,2rem)] w-[clamp(12rem,25vw,16rem)] mb-2" />
+                <Skeleton className="h-[clamp(0.75rem,2vw,1rem)] w-[clamp(18rem,35vw,24rem)]" />
               </div>
 
-              <div className="grid grid-cols-4 gap-2 lg:gap-6">
+              <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24 lg:h-32" />
+                  <Skeleton key={i} className="h-[clamp(6rem,15vw,8rem)]" />
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64 lg:col-span-2" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                <Skeleton className="h-[clamp(12rem,25vw,16rem)]" />
+                <Skeleton className="h-[clamp(12rem,25vw,16rem)] lg:col-span-2" />
               </div>
             </div>
           </main>
@@ -66,24 +67,25 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
+          <ResponsiveTest />
+          <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
             {/* Welcome Section */}
             <div className="mb-6 lg:mb-8">
-              <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-heading text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-foreground mb-2">
                 Welcome to Mifumo WMS! 👋
               </h1>
-              <p className="text-sm lg:text-base text-text-subtle">
+              <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle">
                 Monitor your communication platform performance in real-time.
               </p>
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-4 gap-2 lg:gap-6">
+            <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
               <MetricCard
                 title="Total Messages"
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}

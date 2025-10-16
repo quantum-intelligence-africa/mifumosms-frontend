@@ -261,22 +261,22 @@ const Templates = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+          <div className="h-full px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
+            <div className="mx-auto w-[92vw] max-w-[1200px] h-full flex flex-col">
               {/* Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
-                <div>
-                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-heading text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-foreground">
                     Templates
                   </h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                  <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle">
                     Create and manage reusable message templates
                   </p>
                 </div>
@@ -591,9 +591,8 @@ const Templates = () => {
 
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
-                  className="flex-1"
+                  className="flex-1 text-xs"
                   size="sm"
-                  className="text-xs"
                   onClick={() => handleEditTemplate(selectedTemplate)}
                 >
                   <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
