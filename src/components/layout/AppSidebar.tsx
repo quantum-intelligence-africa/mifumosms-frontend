@@ -134,7 +134,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           <Button variant="hero" size="sm" className="w-full text-xs sm:text-sm h-8 sm:h-9">
             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden xs:inline">New Campaign</span>
-            <span className="xs:hidden">New</span>
+            <span className="xs:hidden">New Campaign</span>
           </Button>
         </Link>
       </div>

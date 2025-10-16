@@ -13,7 +13,7 @@ const quickActions = [
     to: "/sms/send?mode=single",
   },
   {
-    name: "New Campaign",
+    name: "Add New Campaign",
     description: "Bulk messaging campaign",
     icon: Send,
     variant: "secondary" as const,

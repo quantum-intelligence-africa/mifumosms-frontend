@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   CreditCard,
   Wallet,
@@ -6,7 +6,12 @@ import {
   Check,
   ArrowRight,
   Download,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Smartphone
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -25,24 +30,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-
-interface SMSPackage {
-  id: string;
-  name: string;
-  credits: number;
-  price: number;
-  unitPrice: number;
-  popular?: boolean;
-  savings?: string;
-  features?: string[];
-}
+import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress } from "@/lib/api";
 
 interface PaymentMethod {
   id: string;
   name: string;
   icon: string;
   fee?: string;
+}
+
+interface PaymentState {
+  transactionId?: string;
+  orderId?: string;
+  status?: string;
+  progress?: PaymentProgress;
+  isActive: boolean;
 }
 
 const PurchaseSMS = () => {
@@ -53,72 +57,148 @@ const PurchaseSMS = () => {
   const [customCredits, setCustomCredits] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [userPaymentNumber, setUserPaymentNumber] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [packages, setPackages] = useState<SMSPackage[]>([]);
+  const [balance, setBalance] = useState<SMSBalance | null>(null);
+  const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
+  const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
 
-  // Demo balance - replace with actual API call
-  const currentBalance = 1250;
-
-  // Four SMS tiers to match Landing page
-  const packages: SMSPackage[] = [
+  // Default packages matching the pricing table
+  const defaultPackages: SMSPackage[] = useMemo(() => [
     {
       id: "lite",
       name: "Lite",
+      package_type: "lite",
       credits: 5000,
-      price: 5000 * 30,
-      unitPrice: 30,
+      price: "150000.00", // 5000 * 30
+      unit_price: "30.00",
+      is_popular: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       features: [
+        "Never expires",
         "Instant top-up",
         "Basic delivery reports",
-        "Email receipt",
+        "Email receipt"
       ],
+      savings_percentage: 0
     },
     {
       id: "standard",
       name: "Standard",
+      package_type: "standard",
       credits: 50000,
-      price: 50000 * 25,
-      unitPrice: 25,
-      popular: true,
+      price: "1250000.00", // 50000 * 25
+      unit_price: "25.00",
+      is_popular: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       features: [
+        "Never expires",
         "Priority top-up & support",
         "Advanced delivery analytics",
         "Campaign scheduling",
-        "Team access",
+        "Team access"
       ],
+      savings_percentage: 16.7
     },
     {
       id: "pro",
       name: "Pro",
+      package_type: "pro",
       credits: 250000,
-      price: 250000 * 18,
-      unitPrice: 18,
+      price: "4500000.00", // 250000 * 18
+      unit_price: "18.00",
+      is_popular: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       features: [
+        "Never expires",
         "Bulk campaign tools",
         "Advanced analytics",
-        "API access",
+        "API access"
       ],
+      savings_percentage: 28.0
     },
     {
       id: "enterprise",
       name: "Enterprise",
+      package_type: "enterprise",
       credits: 1000000,
-      price: 1000000 * 12,
-      unitPrice: 12,
+      price: "12000000.00", // 1000000 * 12
+      unit_price: "12.00",
+      is_popular: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       features: [
+        "Never expires",
         "Dedicated account manager",
         "Custom invoicing & contracts",
         "Priority routing SLA",
-        "Enterprise API & SSO",
+        "Enterprise API & SSO"
       ],
-    },
-  ];
+      savings_percentage: 60.0
+    }
+  ], []);
+
+  // Fetch packages and balance on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [packagesResponse, balanceResponse] = await Promise.all([
+          apiClient.getSMSPackages(),
+          apiClient.getSMSBalance()
+        ]);
+
+        if (packagesResponse.success && packagesResponse.data && packagesResponse.data.results.length > 0) {
+          setPackages(packagesResponse.data.results);
+        } else {
+          // Use default packages if API doesn't return any
+          setPackages(defaultPackages);
+        }
+
+        if (balanceResponse.success && balanceResponse.data) {
+          setBalance(balanceResponse.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Use default packages on error
+        setPackages(defaultPackages);
+        toast({
+          title: "Using default packages",
+          description: "Could not load packages from server, using default pricing",
+          variant: "default"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast, defaultPackages]);
+
+  // Cleanup payment polling on unmount
+  useEffect(() => {
+    return () => {
+      if (paymentPolling) {
+        clearInterval(paymentPolling);
+      }
+    };
+  }, [paymentPolling]);
 
   const paymentMethods: PaymentMethod[] = [
-    { id: "mpesa", name: "M-Pesa", icon: "📱" },
+    { id: "mpesa", name: "M-Pesa (Vodacom)", icon: "📱" },
     { id: "tigopesa", name: "Tigo Pesa", icon: "📱" },
     { id: "airtel", name: "Airtel Money", icon: "📱" },
-    { id: "card", name: "Credit/Debit Card", icon: "💳", fee: "3.5%" },
     { id: "bank", name: "Bank Transfer", icon: "🏦" },
   ];
 
@@ -148,29 +228,102 @@ const PurchaseSMS = () => {
 
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
-  const tiers: Tier[] = [
+  const tiers: Tier[] = useMemo(() => [
     { id: "lite", name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
     { id: "standard", name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
     { id: "pro", name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
     { id: "enterprise", name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
-  ];
+  ], []);
 
-  const selectedPkg = packages.find(p => p.id === selectedPackage);
-  const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
+  const selectedPkg = defaultPackages.find(p => p.id === selectedPackage);
+  const parsedCredits = useMemo(() => {
+    if (selectedPackage) {
+      return selectedPkg?.credits || 0;
+    }
+    return Math.max(parseInt(customCredits || "0", 10) || 0, 0);
+  }, [selectedPackage, selectedPkg, customCredits]);
   const activeTier = useMemo(() => {
     if (parsedCredits === 0) return null;
     if (parsedCredits <= 5000) return tiers[0];
     if (parsedCredits <= 50000) return tiers[1];
     if (parsedCredits <= 250000) return tiers[2];
     return tiers[3];
-  }, [parsedCredits]);
+  }, [parsedCredits, tiers]);
 
   const customPrice = useMemo(() => {
+    if (selectedPackage) {
+      // Package selected - use package price
+      return selectedPkg ? parseFloat(selectedPkg.price) : 0;
+    }
+    // Custom credits - calculate based on tier
     if (!parsedCredits) return 0;
     if (!activeTier) return 0;
     if (activeTier.id === "enterprise") return parsedCredits * (activeTier.rate || 12);
     return parsedCredits * (activeTier.rate as number);
-  }, [parsedCredits, activeTier]);
+  }, [selectedPackage, selectedPkg, parsedCredits, activeTier]);
+
+  // Payment polling function
+  const pollPaymentStatus = async (transactionId: string) => {
+    try {
+      const response = await apiClient.checkPaymentStatus(transactionId);
+      if (response.success && response.data) {
+        setPaymentState({
+          transactionId: response.data.transaction_id,
+          orderId: response.data.order_id,
+          status: response.data.status,
+          progress: response.data.progress,
+          isActive: true
+        });
+
+        if (response.data.status === 'completed') {
+          // Payment completed successfully
+          if (paymentPolling) {
+            clearInterval(paymentPolling);
+            setPaymentPolling(null);
+          }
+          setPaymentState(prev => ({ ...prev, isActive: false }));
+          setShowInvoice(false);
+          setProcessing(false);
+
+          // Refresh balance
+          const balanceResponse = await apiClient.getSMSBalance();
+          if (balanceResponse.success && balanceResponse.data) {
+            setBalance(balanceResponse.data);
+          }
+
+          toast({
+            title: "Payment successful!",
+            description: "SMS credits have been added to your account",
+          });
+
+          // Reset form
+          setSelectedPackage("");
+          setCustomCredits("");
+          setPaymentMethod("");
+          setUserPaymentNumber("");
+          setUserEmail("");
+          setUserName("");
+        } else if (response.data.status === 'failed' || response.data.status === 'expired') {
+          // Payment failed or expired
+          if (paymentPolling) {
+            clearInterval(paymentPolling);
+            setPaymentPolling(null);
+          }
+          setPaymentState(prev => ({ ...prev, isActive: false }));
+          setShowInvoice(false);
+          setProcessing(false);
+
+          toast({
+            title: "Payment failed",
+            description: "Your payment could not be processed. Please try again.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error polling payment status:', error);
+    }
+  };
 
   const handlePurchase = async () => {
     if (!selectedPackage && !customCredits) {
@@ -194,7 +347,25 @@ const PurchaseSMS = () => {
     if (!userPaymentNumber.trim()) {
       toast({
         title: "Payment details required",
-        description: "Please enter your payment number or account details",
+        description: "Please enter your mobile money number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!userEmail.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!userName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter your full name",
         variant: "destructive"
       });
       return;
@@ -206,19 +377,108 @@ const PurchaseSMS = () => {
   const confirmPurchase = async () => {
     setProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      let selectedPkg;
+      let credits;
+      let totalPrice;
+
+      if (selectedPackage) {
+        // Package selected - use full package details
+        selectedPkg = defaultPackages.find(pkg => pkg.id === selectedPackage);
+        if (!selectedPkg) {
+          toast({
+            title: "Invalid package",
+            description: "Please select a valid package",
+            variant: "destructive"
+          });
+          setProcessing(false);
+          return;
+        }
+        credits = selectedPkg.credits;
+        totalPrice = parseFloat(selectedPkg.price);
+      } else if (customCredits) {
+        // Custom credits entered - calculate based on tier
+        credits = parseInt(customCredits);
+        totalPrice = customPrice;
+      } else {
+        toast({
+          title: "No selection",
+          description: "Please select a package or enter custom credits",
+          variant: "destructive"
+        });
+        setProcessing(false);
+        return;
+      }
+
+      // Initiate payment with ZenoPay
+      const paymentData: PaymentInitiationRequest = {
+        package_id: selectedPackage || 'custom',
+        buyer_email: userEmail,
+        buyer_name: userName,
+        buyer_phone: userPaymentNumber,
+        payment_method: paymentMethod
+      };
+
+      const response = await apiClient.initiatePayment(paymentData);
+
+      if (response.success && response.data) {
+        const { transaction_id, order_id } = response.data;
+
+        setPaymentState({
+          transactionId: transaction_id,
+          orderId: order_id,
+          status: 'pending',
+          progress: response.data.progress,
+          isActive: true
+        });
+
+        // Start polling for payment status
+        const pollingInterval = setInterval(() => {
+          pollPaymentStatus(transaction_id);
+        }, 5000); // Poll every 5 seconds
+
+        setPaymentPolling(pollingInterval);
+
+        toast({
+          title: "Payment initiated",
+          description: "Please check your phone for mobile money prompt",
+        });
+
+        // Auto-timeout after 30 minutes
+        setTimeout(() => {
+          if (paymentPolling) {
+            clearInterval(paymentPolling);
+            setPaymentPolling(null);
+          }
+          if (paymentState.isActive) {
+            setPaymentState(prev => ({ ...prev, isActive: false }));
+            setProcessing(false);
+            setShowInvoice(false);
+            toast({
+              title: "Payment timeout",
+              description: "Payment session expired. Please try again.",
+              variant: "destructive"
+            });
+          }
+        }, 30 * 60 * 1000);
+
+      } else {
+        setProcessing(false);
+        toast({
+          title: "Payment failed",
+          description: response.error || "Failed to initiate payment",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
       setProcessing(false);
-      setShowInvoice(false);
+      console.error('Payment error:', error);
       toast({
-        title: "Purchase successful!",
-        description: `${selectedPkg?.credits || customCredits} SMS credits added to your account`,
+        title: "Payment error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
       });
-      setSelectedPackage("");
-      setCustomCredits("");
-      setPaymentMethod("");
-      setUserPaymentNumber("");
-    }, 2000);
+    }
   };
 
   return (
@@ -246,7 +506,7 @@ const PurchaseSMS = () => {
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Current Balance</p>
                   <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                    {currentBalance.toLocaleString()} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
+                    {balance?.credits?.toLocaleString() || 0} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
                   </p>
                 </div>
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full gradient-primary flex items-center justify-center">
@@ -259,10 +519,10 @@ const PurchaseSMS = () => {
             <div>
               <h2 className="font-heading text-lg sm:text-xl font-semibold mb-4">Choose a Package</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {packages.map((pkg) => (
+                {defaultPackages.map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`p-4 sm:p-6 cursor-pointer transition-smooth glass ${
+                    className={`p-4 sm:p-6 cursor-pointer transition-smooth glass relative ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -272,13 +532,15 @@ const PurchaseSMS = () => {
                       setCustomCredits("");
                     }}
                   >
-                    {pkg.popular && (
-                      <Badge className="mb-3">Most Popular</Badge>
+                    {pkg.is_popular && (
+                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground">
+                        Most Popular
+                      </Badge>
                     )}
                     <h3 className="font-heading text-lg sm:text-xl font-semibold mb-2">{pkg.name}</h3>
                     <div className="mb-4">
                       <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                        TZS {pkg.unitPrice}/SMS
+                        TZS {pkg.unit_price}/SMS
                       </p>
                       <p className="text-xs sm:text-sm text-text-subtle">
                         {pkg.id === 'lite' ? '1 – 5,000 SMS' :
@@ -347,9 +609,8 @@ const PurchaseSMS = () => {
             </Card>
 
             {/* Payment Method */}
-            {(selectedPackage || customCredits) && (
-              <Card className="p-4 sm:p-6 glass">
-                <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Select Payment Method</h3>
+            <Card className="p-4 sm:p-6 glass">
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {paymentMethods.map((method) => (
@@ -362,12 +623,28 @@ const PurchaseSMS = () => {
                       >
                         <RadioGroupItem value={method.id} id={method.id} />
                         <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-3">
-                          <span className="text-2xl">{method.icon}</span>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
+                            method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
+                            method.id === 'airtel' ? 'bg-red-100 text-red-600' :
+                            method.id === 'bank' ? 'bg-gray-100 text-gray-600' :
+                            'bg-primary/10 text-primary'
+                          }`}>
+                            {method.id === 'bank' ? (
+                              <CreditCard className="w-5 h-5" />
+                            ) : (
+                              <Smartphone className="w-5 h-5" />
+                            )}
+                          </div>
                           <div>
                             <p className="font-medium">{method.name}</p>
-                            {method.fee && (
-                              <p className="text-xs text-text-subtle">Fee: {method.fee}</p>
-                            )}
+                            <p className="text-xs text-text-subtle">
+                              {method.id === 'mpesa' ? 'Vodacom Tanzania' :
+                               method.id === 'tigopesa' ? 'Tigo Tanzania' :
+                               method.id === 'airtel' ? 'Airtel Tanzania' :
+                               method.id === 'bank' ? 'Bank Account Transfer' :
+                               'Mobile Money'}
+                            </p>
                           </div>
                         </Label>
                       </div>
@@ -379,11 +656,12 @@ const PurchaseSMS = () => {
                 {paymentMethod && (
                   <div className="mt-4 sm:mt-6 space-y-2">
                     <Label htmlFor="paymentNumber">
-                      {paymentMethod === 'mpesa' ? 'M-Pesa Number' :
+                      {paymentMethod === 'mpesa' ? 'M-Pesa Number (Vodacom)' :
                        paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
                        paymentMethod === 'airtel' ? 'Airtel Money Number' :
+                       paymentMethod === 'bank' ? 'Bank Account Number' :
                        paymentMethod === 'card' ? 'Card Number' :
-                       'Bank Account Number'}
+                       'Account Number'}
                     </Label>
                     <Input
                       id="paymentNumber"
@@ -392,6 +670,7 @@ const PurchaseSMS = () => {
                         paymentMethod === 'mpesa' ? 'e.g., 0762 123 456' :
                         paymentMethod === 'tigopesa' ? 'e.g., 0652 123 456' :
                         paymentMethod === 'airtel' ? 'e.g., 0682 123 456' :
+                        paymentMethod === 'bank' ? 'e.g., 1234567890' :
                         paymentMethod === 'card' ? 'e.g., 1234 5678 9012 3456' :
                         'e.g., 1234567890'
                       }
@@ -402,13 +681,50 @@ const PurchaseSMS = () => {
                     <p className="text-xs text-text-subtle">
                       {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
                         ? 'Enter the phone number associated with your mobile money account'
+                        : paymentMethod === 'bank'
+                        ? 'Enter your bank account number for transfer'
                         : 'Enter your account or card number for payment processing'
                       }
                     </p>
                   </div>
                 )}
+
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="userEmail"
+                    type="email"
+                    placeholder="e.g., john@example.com"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    className="glass-subtle border-0"
+                  />
+                  <p className="text-xs text-text-subtle">
+                    We'll send you a receipt and payment confirmation
+                  </p>
+                </div>
+
+                {/* Name Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="userName" className="text-sm font-medium text-foreground">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="userName"
+                    type="text"
+                    placeholder="e.g., John Doe"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="glass-subtle border-0"
+                  />
+                  <p className="text-xs text-text-subtle">
+                    Your full name as it appears on your mobile money account
+                  </p>
+                </div>
               </Card>
-            )}
 
             {/* Proceed Button */}
             {(selectedPackage || customCredits) && (
@@ -424,48 +740,106 @@ const PurchaseSMS = () => {
             <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
               <DialogContent className="glass max-w-[95vw] sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Confirm Purchase</DialogTitle>
+                  <DialogTitle>
+                    {paymentState.isActive ? "Payment in Progress" : "Confirm Purchase"}
+                  </DialogTitle>
                   <DialogDescription>
-                    Review your order before proceeding
+                    {paymentState.isActive
+                      ? "Please complete the payment on your mobile device"
+                      : "Review your order before proceeding"
+                    }
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 my-4">
-                  <div className="flex justify-between py-2 border-b border-border-subtle">
-                    <span className="text-text-subtle">Package</span>
-                    <span className="font-medium">
-                      {selectedPkg?.name || "Custom"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border-subtle">
-                    <span className="text-text-subtle">SMS Credits</span>
-                    <span className="font-medium">
-                      {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border-subtle">
-                    <span className="text-text-subtle">Payment Method</span>
-                    <span className="font-medium">
-                      {paymentMethods.find(m => m.id === paymentMethod)?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 text-lg font-semibold">
-                    <span>Total Amount</span>
-                    <span className="text-primary">
-                      TZS {(selectedPkg?.price || customPrice).toLocaleString()}
-                    </span>
+                  {/* Payment Progress */}
+                  {paymentState.isActive && paymentState.progress && (
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          {paymentState.status === 'completed' ? (
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                          ) : paymentState.status === 'failed' ? (
+                            <AlertCircle className="w-5 h-5 text-red-600" />
+                          ) : (
+                            <Clock className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {paymentState.progress.current_step}
+                          </p>
+                          <p className="text-sm text-text-subtle">
+                            Step {paymentState.progress.step} of {paymentState.progress.total_steps}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Progress
+                        value={paymentState.progress.percentage || 0}
+                        className="w-full mb-3"
+                      />
+
+                      <div className="space-y-2">
+                        <p className="text-sm text-text-subtle">Next: {paymentState.progress.next_step}</p>
+                        {paymentState.orderId && (
+                          <p className="text-xs text-text-subtle font-mono">
+                            Order ID: {paymentState.orderId}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Order Details */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between py-2 border-b border-border-subtle">
+                      <span className="text-text-subtle">Package</span>
+                      <span className="font-medium">
+                        {selectedPkg?.name || "Custom"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-border-subtle">
+                      <span className="text-text-subtle">SMS Credits</span>
+                      <span className="font-medium">
+                        {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-border-subtle">
+                      <span className="text-text-subtle">Payment Method</span>
+                      <span className="font-medium">
+                        {paymentMethods.find(m => m.id === paymentMethod)?.name || 'Mobile Money'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2 text-lg font-semibold">
+                      <span>Total Amount</span>
+                      <span className="text-primary">
+                        TZS {(selectedPkg?.price || customPrice).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Payment Details Section */}
-                  {paymentMethod && (
+                  {/* Payment Instructions */}
+                  {paymentMethod && !paymentState.isActive && (
                     <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
-                        <CreditCard className="w-4 h-4" />
-                        Payment Instructions
+                        {paymentMethod === 'bank' ? (
+                          <>
+                            <CreditCard className="w-4 h-4" />
+                            Bank Transfer Payment
+                          </>
+                        ) : (
+                          <>
+                            <Smartphone className="w-4 h-4" />
+                            Mobile Money Payment
+                          </>
+                        )}
                       </h4>
                       <div className="space-y-3">
                         <div>
-                          <p className="text-sm text-text-subtle mb-1">Your Payment Details:</p>
+                          <p className="text-sm text-text-subtle mb-1">
+                            {paymentMethod === 'bank' ? 'Your Account Number:' : 'Your Mobile Number:'}
+                          </p>
                           <p className="font-mono text-lg font-semibold text-primary bg-background px-3 py-2 rounded border">
                             {userPaymentNumber}
                           </p>
@@ -473,15 +847,18 @@ const PurchaseSMS = () => {
                         <div>
                           <p className="text-sm text-text-subtle mb-1">Instructions:</p>
                           <p className="text-sm text-foreground">
-                            {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
-                              ? `Send money to our ${paymentMethods.find(m => m.id === paymentMethod)?.name} number and include your account reference`
-                              : `Use this ${paymentMethods.find(m => m.id === paymentMethod)?.name} for payment processing`
+                            {paymentMethod === 'bank'
+                              ? 'Transfer the amount to the provided bank account. Your SMS credits will be added after verification.'
+                              : 'After confirming payment, you\'ll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.'
                             }
                           </p>
                         </div>
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-2 sm:p-3">
-                          <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200">
-                            <strong>Important:</strong> Please include your account reference in the payment description to ensure proper credit allocation.
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 sm:p-3">
+                          <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+                            <strong>Note:</strong> {paymentMethod === 'bank'
+                              ? 'Bank transfers may take 1-2 business days to process.'
+                              : 'Payment will be processed through ZenoPay mobile money integration.'
+                            }
                           </p>
                         </div>
                       </div>
@@ -490,22 +867,30 @@ const PurchaseSMS = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowInvoice(false)} disabled={processing}>
-                    Cancel
-                  </Button>
-                  <Button onClick={confirmPurchase} disabled={processing}>
-                    {processing ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Confirm Payment
-                      </>
-                    )}
-                  </Button>
+                  {!paymentState.isActive ? (
+                    <>
+                      <Button variant="outline" onClick={() => setShowInvoice(false)} disabled={processing}>
+                        Cancel
+                      </Button>
+                      <Button onClick={confirmPurchase} disabled={processing}>
+                        {processing ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Confirm Payment
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" onClick={() => setShowInvoice(false)}>
+                      Close
+                    </Button>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>

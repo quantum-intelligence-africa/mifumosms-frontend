@@ -446,10 +446,21 @@ const SenderNames = () => {
                     Manage your registered sender IDs for SMS campaigns
                   </p>
                 </div>
-                <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Request Sender Name
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Request Sender Name
+                  </Button>
+                  <Button
+                    onClick={refreshData}
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={loading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
               </div>
 
               {/* Animated Stats Section */}

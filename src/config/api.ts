@@ -48,6 +48,16 @@ export const API_CONFIG = {
 			SUBSCRIPTION: '/billing/subscription/',
 			USAGE: '/billing/usage/',
 			OVERVIEW: '/billing/overview/',
+			PAYMENTS: {
+				INITIATE: '/billing/payments/initiate/',
+				STATUS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/status/`,
+				VERIFY: (orderId: string) => `/billing/payments/verify/${orderId}/`,
+				PROGRESS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/progress/`,
+				ACTIVE: '/billing/payments/active/',
+				CANCEL: (transactionId: string) => `/billing/payments/transactions/${transactionId}/cancel/`,
+				CLEANUP: '/billing/payments/cleanup/',
+				WEBHOOK: '/billing/payments/webhook/',
+			},
 			SMS: {
 				BALANCE: '/billing/sms/balance/',
 				PACKAGES: '/billing/sms/packages/',

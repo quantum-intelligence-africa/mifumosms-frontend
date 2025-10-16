@@ -174,7 +174,7 @@ const Contacts = () => {
   // Fetch contacts on component mount
   useEffect(() => {
     fetchContacts();
-  }, []);
+  }, [fetchContacts]);
 
   // Get all unique tags from contacts
   const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
@@ -406,7 +406,17 @@ const Contacts = () => {
   // Mobile contact import functions
   const handleMobileContactImport = async () => {
     // Check if Navigator Contacts API is available
-    if (!navigator.contacts) {
+    const navWithContacts = navigator as Navigator & {
+      contacts?: {
+        select: (fields: string[], options: { multiple: boolean }) => Promise<Array<{
+          name?: string[];
+          phone?: string[];
+          email?: string[];
+        }>>;
+      };
+    };
+
+    if (!navWithContacts.contacts) {
       toast({
         title: "Contact Import Options",
         description: "Direct contact import is not supported on this device. You can use CSV upload or manual entry instead.",
@@ -419,7 +429,7 @@ const Contacts = () => {
       setIsImporting(true);
 
       // Use a more compatible approach for contact selection
-      const contacts = await navigator.contacts.select(['name', 'phone', 'email'], {
+      const contacts = await navWithContacts.contacts.select(['name', 'phone', 'email'], {
         multiple: true
       });
 

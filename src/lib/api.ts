@@ -237,6 +237,249 @@ export interface SenderNameRequest {
   tenant?: string;
 }
 
+// Payment Types
+export interface PaymentProgress {
+  step: number;
+  total_steps: number;
+  current_step: string;
+  next_step: string | null;
+  completed_steps: string[];
+  remaining_steps: string[];
+  percentage?: number;
+  status_color?: string;
+  status_icon?: string;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  tenant: string;
+  user: string;
+  zenopay_order_id: string;
+  zenopay_reference?: string;
+  zenopay_transid?: string;
+  zenopay_channel?: string;
+  zenopay_msisdn?: string;
+  order_id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  payment_method: string;
+  payment_reference?: string;
+  status: string;
+  webhook_url?: string;
+  webhook_received: boolean;
+  webhook_data?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+  failed_at?: string;
+  metadata?: Record<string, unknown>;
+  error_message?: string;
+  progress?: PaymentProgress;
+}
+
+export interface PaymentInitiationRequest {
+  package_id: string;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  payment_method?: string;
+}
+
+export interface PaymentInitiationResponse {
+  transaction_id: string;
+  order_id: string;
+  zenopay_order_id: string;
+  invoice_number: string;
+  amount: number;
+  credits: number;
+  status: string;
+  payment_instructions: string;
+  progress: PaymentProgress;
+}
+
+export interface PaymentStatusResponse {
+  transaction_id: string;
+  order_id: string;
+  status: string;
+  payment_status: string;
+  amount: number;
+  reference?: string;
+  progress: PaymentProgress;
+  updated_at: string;
+}
+
+export interface PaymentVerificationResponse {
+  success: boolean;
+  status: string;
+  amount: number;
+  transaction_reference?: string;
+  message: string;
+  last_checked: string;
+}
+
+export interface PaymentProgressResponse {
+  transaction_id: string;
+  order_id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  status: string;
+  payment_status: string;
+  progress: PaymentProgress;
+  purchase: {
+    package_name: string;
+    credits: number;
+    unit_price: number;
+  };
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface ActivePaymentsResponse {
+  active_payments: Record<string, {
+    transaction_id: string;
+    order_id: string;
+    invoice_number: string;
+    amount: number;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    timeout_in: number;
+  }>;
+  expired_payments: Array<{
+    transaction_id: string;
+    order_id: string;
+    amount: number;
+    reason: string;
+  }>;
+  count: number;
+}
+
+// SMS Billing Types
+export interface SMSPackage {
+  id: string;
+  name: string;
+  package_type: string;
+  credits: number;
+  price: string;
+  unit_price: string;
+  is_popular: boolean;
+  is_active: boolean;
+  features: string[];
+  created_at: string;
+  updated_at: string;
+  savings_percentage?: number;
+}
+
+export interface SMSBalance {
+  id: string;
+  credits: number;
+  total_purchased: number;
+  total_used: number;
+  last_updated: string;
+  created_at: string;
+}
+
+export interface Purchase {
+  id: string;
+  tenant: string;
+  user: string;
+  package: string;
+  payment_transaction?: string;
+  invoice_number: string;
+  amount: string;
+  credits: number;
+  unit_price: string;
+  payment_method: string;
+  payment_method_display: string;
+  payment_reference?: string;
+  status: string;
+  status_display: string;
+  created_at: string;
+  completed_at?: string;
+  updated_at: string;
+  package_name?: string;
+}
+
+export interface PurchaseHistoryQuery {
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface UsageStatistics {
+  current_balance: number;
+  total_usage: {
+    credits: number;
+    cost: number;
+  };
+  monthly_usage: {
+    credits: number;
+    cost: number;
+  };
+  weekly_usage: {
+    credits: number;
+    cost: number;
+  };
+}
+
+// Subscription Types
+export interface BillingPlan {
+  id: string;
+  name: string;
+  plan_type: string;
+  description: string;
+  price: string;
+  currency: string;
+  billing_cycle: string;
+  max_contacts: number;
+  max_campaigns: number;
+  max_sms_per_month: number;
+  features: string[];
+  is_active: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  plan: string;
+  plan_name: string;
+  status: string;
+  status_display: string;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BillingOverview {
+  subscription: {
+    plan_id: string;
+    plan_name: string;
+    status: string;
+    current_period_end: string;
+    is_active: boolean;
+  };
+  usage: {
+    total_credits: number;
+    total_cost: number;
+  };
+}
+
+export interface UsageRecord {
+  id: string;
+  credits_used: number;
+  cost: string;
+  created_at: string;
+}
+
 export interface CreateSenderNameRequest {
   sender_name: string;
   use_case: string;
@@ -261,25 +504,7 @@ export interface SenderNameStats {
   my_pending_requests: number;
 }
 
-// Billing Types
-export interface BillingPlan {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  currency: string;
-  billing_cycle: "monthly" | "yearly";
-  features: string[];
-}
-
-export interface Subscription {
-  id: string;
-  plan: BillingPlan;
-  status: "active" | "cancelled" | "past_due";
-  current_period_start: string;
-  current_period_end: string;
-  cancel_at_period_end: boolean;
-}
+// Legacy Billing Types (deprecated - use new comprehensive types above)
 
 export interface Usage {
   messages_sent: number;
@@ -913,16 +1138,7 @@ class ApiClient {
     });
   }
 
-  async getSMSBalance(): Promise<ApiResponse<{
-    id: string;
-    credits: number;
-    total_purchased: number;
-    total_used: number;
-    last_updated: string;
-    created_at: string;
-  }>> {
-    return this.request('/billing/sms/balance/');
-  }
+  // Legacy getSMSBalance - use new comprehensive version below
 
   async getSMSStats(): Promise<ApiResponse<{
     total_sent: number;
@@ -949,15 +1165,322 @@ class ApiClient {
   }
 
   // =============================================
-  // BILLING ENDPOINTS
+  // PAYMENT MANAGEMENT ENDPOINTS
   // =============================================
 
-  async getBillingPlans(): Promise<ApiResponse<BillingPlan[]>> {
-    return this.request<BillingPlan[]>('/billing/plans/');
+  // 1. Initiate Payment
+  async initiatePayment(data: PaymentInitiationRequest): Promise<ApiResponse<PaymentInitiationResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.INITIATE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+
+      return await this.handleResponse<PaymentInitiationResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
   }
 
+  // 2. Check Payment Status
+  async checkPaymentStatus(transactionId: string): Promise<ApiResponse<PaymentStatusResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.STATUS(transactionId)}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<PaymentStatusResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Verify Payment
+  async verifyPayment(orderId: string): Promise<ApiResponse<PaymentVerificationResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.VERIFY(orderId)}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<PaymentVerificationResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. Get Payment Progress
+  async getPaymentProgress(transactionId: string): Promise<ApiResponse<PaymentProgressResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PROGRESS(transactionId)}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<PaymentProgressResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. Get Active Payments
+  async getActivePayments(): Promise<ApiResponse<ActivePaymentsResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.ACTIVE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<ActivePaymentsResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 6. Cancel Payment
+  async cancelPayment(transactionId: string): Promise<ApiResponse<{ success: boolean; message: string; cancelled_order: string }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CANCEL(transactionId)}`, {
+        method: 'POST',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ success: boolean; message: string; cancelled_order: string }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 7. Cleanup Payments
+  async cleanupPayments(): Promise<ApiResponse<{ success: boolean; message: string; cleaned_count: number }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CLEANUP}`, {
+        method: 'POST',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ success: boolean; message: string; cleaned_count: number }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // =============================================
+  // SMS BILLING ENDPOINTS
+  // =============================================
+
+  // 1. List SMS Packages
+  async getSMSPackages(): Promise<ApiResponse<{ results: SMSPackage[] }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PACKAGES}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: SMSPackage[] }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Get SMS Balance (updated to use new interface)
+  async getSMSBalance(): Promise<ApiResponse<SMSBalance>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.BALANCE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<SMSBalance>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Create Purchase (legacy endpoint)
+  async createPurchase(data: {
+    package_id: string;
+    payment_method: string;
+    payment_reference?: string;
+  }): Promise<ApiResponse<Purchase>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+
+      return await this.handleResponse<Purchase>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. List Purchases
+  async getPurchases(): Promise<ApiResponse<{ results: Purchase[] }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASES}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: Purchase[] }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. Purchase History
+  async getPurchaseHistory(query: PurchaseHistoryQuery = {}): Promise<ApiResponse<{ results: Purchase[] }>> {
+    try {
+      const params = new URLSearchParams();
+      if (query.status) params.append('status', query.status);
+      if (query.start_date) params.append('start_date', query.start_date);
+      if (query.end_date) params.append('end_date', query.end_date);
+      if (query.page) params.append('page', query.page.toString());
+      if (query.page_size) params.append('page_size', query.page_size.toString());
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASE_HISTORY}${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: Purchase[] }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 6. Usage Statistics
+  async getUsageStatistics(): Promise<ApiResponse<UsageStatistics>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.USAGE_STATISTICS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<UsageStatistics>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // =============================================
+  // SUBSCRIPTION MANAGEMENT ENDPOINTS
+  // =============================================
+
+  // 1. List Billing Plans
+  async getBillingPlans(): Promise<ApiResponse<{ results: BillingPlan[] }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PLANS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: BillingPlan[] }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Get Subscription
   async getSubscription(): Promise<ApiResponse<Subscription>> {
-    return this.request<Subscription>('/billing/subscription/');
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SUBSCRIPTION}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<Subscription>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Get Billing Overview
+  async getBillingOverview(): Promise<ApiResponse<BillingOverview>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.OVERVIEW}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<BillingOverview>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. List Usage Records
+  async getUsageRecords(): Promise<ApiResponse<{ results: UsageRecord[] }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.USAGE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: UsageRecord[] }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
   }
 
   async createSubscription(planId: string): Promise<ApiResponse> {
@@ -977,9 +1500,6 @@ class ApiClient {
     return this.request<Usage>('/billing/usage/');
   }
 
-  async getBillingOverview(): Promise<ApiResponse> {
-    return this.request('/billing/overview/');
-  }
 
   // =============================================
   // SENDER NAME ENDPOINTS - COMPREHENSIVE API
@@ -1016,6 +1536,7 @@ class ApiClient {
     previous?: string;
   }>> {
     try {
+      // Use the user-specific endpoint to ensure we only get current user's requests
       let url = `${API_BASE_URL}/messaging/sender-requests/?page=${page}&page_size=${pageSize}`;
 
       if (status) url += `&status=${status}`;
@@ -1025,6 +1546,7 @@ class ApiClient {
       console.log('URL:', url);
       console.log('Headers:', this.getHeaders());
       console.log('Token:', this.token);
+      console.log('Note: This endpoint should return only current user\'s sender requests');
 
       const response = await fetch(url, {
         headers: this.getHeaders()
@@ -1315,23 +1837,6 @@ class ApiClient {
     return this.getStatistics();
   }
 
-  // =============================================
-  // SMS BILLING ENDPOINTS
-  // =============================================
-
-  async getSMSPackages(): Promise<ApiResponse<Array<{
-    id: string;
-    name: string;
-    package_type: string;
-    credits: number;
-    price: number;
-    unit_price: number;
-    is_popular: boolean;
-    features: string[];
-    savings_percentage: number;
-  }>>> {
-    return this.request('/billing/sms/packages/');
-  }
 
   async createSMSPurchase(data: {
     package_id: string;

@@ -162,7 +162,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         {children || (
           <Button className="gap-2">
             <Plus className="w-4 h-4" />
-            New Campaign
+            Add New Campaign
           </Button>
         )}
       </DialogTrigger>

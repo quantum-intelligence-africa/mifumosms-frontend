@@ -59,6 +59,25 @@ export function useSenderNames() {
 				} else {
 					console.log('No valid data structure found, response.data:', response.data);
 				}
+
+				// Additional validation: Ensure we only show current user's requests
+				// Filter out any requests that might belong to other users
+				const currentUserId = authContext?.user?.id;
+				if (currentUserId) {
+					results = results.filter((request: any) => {
+						// Check if the request belongs to the current user
+						const requestUserId = request.created_by?.id || request.created_by;
+						const isCurrentUser = requestUserId === currentUserId;
+						if (!isCurrentUser) {
+							console.log('Filtering out request from other user:', request.sender_name, 'User ID:', requestUserId, 'Current User ID:', currentUserId);
+						}
+						return isCurrentUser;
+					});
+					console.log('Filtered results for current user:', results);
+				} else {
+					console.log('No current user ID available, showing all results');
+				}
+
 				console.log('Final results array:', results);
 				console.log('Results length:', results.length);
 				setSenderNames(results);
@@ -91,10 +110,18 @@ export function useSenderNames() {
 		}
 
 		try {
+			console.log('Fetching sender name statistics for current user...');
 			const response = await apiClient.getStatistics();
 
 			if (response.success && response.data) {
-				setStats(response.data);
+				console.log('Stats response:', response.data);
+				// The stats should already be user-specific from the API
+				// but let's add some validation to ensure data integrity
+				const statsData = response.data;
+				console.log('Setting stats for current user:', statsData);
+				setStats(statsData);
+			} else {
+				console.error('Failed to fetch stats:', response.error);
 			}
 		} catch (err) {
 			console.error('Failed to fetch sender name stats:', err);
