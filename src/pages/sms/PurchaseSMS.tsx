@@ -530,6 +530,7 @@ const PurchaseSMS = () => {
                     onClick={() => {
                       setSelectedPackage(pkg.id);
                       setCustomCredits("");
+                      setPaymentMethod(""); // Reset payment method when package changes
                     }}
                   >
                     {pkg.is_popular && (
@@ -584,6 +585,7 @@ const PurchaseSMS = () => {
                     onChange={(e) => {
                       setCustomCredits(e.target.value);
                       setSelectedPackage("");
+                      setPaymentMethod(""); // Reset payment method when custom amount changes
                     }}
                     className="glass-subtle border-0 h-9 text-sm"
                     min="100"
@@ -608,9 +610,10 @@ const PurchaseSMS = () => {
               </div>
             </Card>
 
-            {/* Payment Method */}
-            <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Select Payment Method</h3>
+            {/* Payment Method - Only show when package or custom amount is selected */}
+            {(selectedPackage || customCredits) && (
+              <Card className="p-4 sm:p-6 glass">
+                <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {paymentMethods.map((method) => (
@@ -725,6 +728,7 @@ const PurchaseSMS = () => {
                   </p>
                 </div>
               </Card>
+            )}
 
             {/* Proceed Button */}
             {(selectedPackage || customCredits) && (
