@@ -385,10 +385,10 @@ const PurchaseSMS = () => {
       if (selectedPackage) {
         // Package selected - use full package details
         selectedPkg = defaultPackages.find(pkg => pkg.id === selectedPackage);
-      if (!selectedPkg) {
-        toast({
-          title: "Invalid package",
-          description: "Please select a valid package",
+        if (!selectedPkg) {
+          toast({
+            title: "Invalid package",
+            description: "Please select a valid package",
             variant: "destructive"
           });
           setProcessing(false);
@@ -530,10 +530,6 @@ const PurchaseSMS = () => {
                     onClick={() => {
                       setSelectedPackage(pkg.id);
                       setCustomCredits("");
-                      setPaymentMethod("");
-                      setUserPaymentNumber("");
-                      setUserEmail("");
-                      setUserName("");
                     }}
                   >
                     {pkg.is_popular && (
@@ -572,7 +568,7 @@ const PurchaseSMS = () => {
                     )}
                   </Card>
                 ))}
-                </div>
+              </div>
             </div>
 
             {/* Custom Amount */}
@@ -588,10 +584,6 @@ const PurchaseSMS = () => {
                     onChange={(e) => {
                       setCustomCredits(e.target.value);
                       setSelectedPackage("");
-                      setPaymentMethod("");
-                      setUserPaymentNumber("");
-                      setUserEmail("");
-                      setUserName("");
                     }}
                     className="glass-subtle border-0 text-[clamp(0.875rem,2vw,1rem)]"
                     min="100"
@@ -616,10 +608,9 @@ const PurchaseSMS = () => {
               </div>
             </Card>
 
-            {/* Payment Method - Only show after package selection */}
-            {(selectedPackage || customCredits) && (
+            {/* Payment Method */}
             <Card className="p-4 sm:p-6 glass">
-                <h3 className="font-heading text-[clamp(0.875rem,2vw,1.125rem)] font-semibold mb-4">Select Payment Method</h3>
+              <h3 className="font-heading text-[clamp(0.875rem,2vw,1.125rem)] font-semibold mb-4">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {paymentMethods.map((method) => (
@@ -632,7 +623,7 @@ const PurchaseSMS = () => {
                       >
                         <RadioGroupItem value={method.id} id={method.id} />
                         <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
                             method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
                             method.id === 'airtel' ? 'bg-red-100 text-red-600' :
@@ -645,9 +636,9 @@ const PurchaseSMS = () => {
                               <Smartphone className="w-5 h-5" />
                             )}
                           </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-[clamp(0.75rem,1.5vw,0.875rem)] truncate">{method.name}</p>
-                              <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-[clamp(0.75rem,1.5vw,0.875rem)] truncate">{method.name}</p>
+                            <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate">
                               {method.id === 'mpesa' ? 'Vodacom Tanzania' :
                                method.id === 'tigopesa' ? 'Tigo Tanzania' :
                                method.id === 'airtel' ? 'Airtel Tanzania' :
@@ -734,10 +725,9 @@ const PurchaseSMS = () => {
                   </p>
                 </div>
               </Card>
-            )}
 
-            {/* Proceed Button - Only show when package and payment method are selected */}
-            {(selectedPackage || customCredits) && paymentMethod && (
+            {/* Proceed Button */}
+            {(selectedPackage || customCredits) && (
               <div className="flex justify-end">
                 <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto text-[clamp(0.875rem,2vw,1rem)] py-3 px-6">
                   Proceed to Payment

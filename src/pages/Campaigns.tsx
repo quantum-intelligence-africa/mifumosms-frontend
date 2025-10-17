@@ -144,65 +144,92 @@ const Campaigns = () => {
   }) : [];
 
   const handleCampaignAction = async (action: string, campaignId: string) => {
+    try {
       // Find the campaign to check permissions
       const campaign = campaigns.find(c => c.id === campaignId);
       if (!campaign) {
-      return;
+        throw new Error('Campaign not found');
       }
 
       // Check permissions before executing actions
     switch (action) {
       case 'start':
           if (!campaign.can_start) {
-            return;
+            throw new Error('You do not have permission to start this campaign');
           }
-          // Execute action and refresh immediately
-          startCampaign(campaignId).then(() => {
-            window.location.reload();
-          });
+          await startCampaign(campaignId);
+          // Refresh data after action
+          setIsRefreshing(true);
+          await fetchCampaigns();
+          setIsRefreshing(false);
         break;
       case 'pause':
           if (!campaign.can_pause) {
-            return;
+            throw new Error('You do not have permission to pause this campaign');
           }
-          // Execute action and refresh immediately
-          pauseCampaign(campaignId).then(() => {
-            window.location.reload();
-          });
+          await pauseCampaign(campaignId);
+          // Refresh data after action
+          setIsRefreshing(true);
+          await fetchCampaigns();
+          setIsRefreshing(false);
         break;
       case 'cancel':
           if (!campaign.can_cancel) {
-            return;
+            throw new Error('You do not have permission to cancel this campaign');
           }
-          // Execute action and refresh immediately
-          cancelCampaign(campaignId).then(() => {
-            window.location.reload();
-          });
+          const cancelResult = await cancelCampaign(campaignId);
+          if (!cancelResult) {
+            // Refresh data first, then show error if still failing
+            setIsRefreshing(true);
+            await fetchCampaigns();
+            setIsRefreshing(false);
+            const updatedCampaign = campaigns.find(c => c.id === campaignId);
+            if (updatedCampaign?.status !== 'cancelled') {
+              throw new Error('Failed to cancel campaign. Please try again.');
+            }
+          }
         break;
       case 'duplicate':
           if (!campaign.can_duplicate) {
-            return;
+            throw new Error('You do not have permission to duplicate this campaign');
           }
-          duplicateCampaign(campaignId);
+          const duplicateResult = await duplicateCampaign(campaignId);
+          if (!duplicateResult) {
+            // Refresh data first, then show error if still failing
+            setIsRefreshing(true);
+            await fetchCampaigns();
+            setIsRefreshing(false);
+            throw new Error('Failed to duplicate campaign. Please try again.');
+          }
         break;
       case 'delete':
           if (!campaign.can_delete) {
-            return;
+            throw new Error('You do not have permission to delete this campaign');
           }
         if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-            deleteCampaign(campaignId);
+            const deleteResult = await deleteCampaign(campaignId);
+            if (!deleteResult) {
+              // Refresh data first, then show error if still failing
+              setIsRefreshing(true);
+              await fetchCampaigns();
+              setIsRefreshing(false);
+              const campaignStillExists = campaigns.find(c => c.id === campaignId);
+              if (campaignStillExists) {
+                throw new Error('Failed to delete campaign. Please try again.');
+              }
+            }
           }
           break;
         case 'view_analytics':
           if (!campaign.can_view_analytics) {
-            return;
+            throw new Error('You do not have permission to view analytics for this campaign');
           }
           // Navigate to analytics page with campaign filter
           window.location.href = `/analytics?campaign=${campaignId}`;
           break;
         case 'edit':
           if (!campaign.can_edit) {
-            return;
+            throw new Error('You do not have permission to edit this campaign');
           }
           // Find the campaign and open edit form
           if (campaign) {
@@ -228,6 +255,14 @@ const Campaigns = () => {
             setIsCampaignDetailsOpen(true);
           }
         break;
+      }
+    } catch (error) {
+      // Show error message only after refresh attempt
+      console.error(`Campaign action ${action} failed:`, error);
+      // The error will be handled by the individual campaign action functions
+      // which already show appropriate toast messages
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -390,6 +425,31 @@ const Campaigns = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-[100dvh] flex bg-background">
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
+            <div className="mx-auto w-[92vw] max-w-[1200px]">
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-[clamp(1rem,2.5vw,1.25rem)] font-semibold text-foreground mb-2">Error Loading Campaigns</h3>
+                  <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle mb-4">{error}</p>
+                  <Button onClick={() => refetch()}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] flex bg-background">
@@ -567,7 +627,7 @@ const Campaigns = () => {
                       <div key={campaign.id} className="border-b border-border-subtle last:border-b-0 hover:bg-muted/50 transition-colors">
                         <div className="px-3 sm:px-2 lg:px-6 py-3 sm:py-2 lg:py-3">
                           {/* Mobile Layout */}
-                          <div className="block sm:hidden space-y-3 pb-2">
+                          <div className="block sm:hidden space-y-3">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0 pr-2">
                                 <h3 className="text-[clamp(0.875rem,2vw,1rem)] font-semibold text-foreground truncate">
@@ -683,27 +743,27 @@ const Campaigns = () => {
                             </div>
 
                             {/* Mobile Statistics Grid */}
-                            <div className="grid grid-cols-2 gap-2 mb-3">
-                              <div className="flex items-center gap-1.5 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle min-w-0">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                                 <Users className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{campaign.total_recipients.toLocaleString()} recipients</span>
+                                <span>{campaign.total_recipients.toLocaleString()} recipients</span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle min-w-0">
+                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                                 <Send className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{campaign.sent_count || 0} sent</span>
+                                <span>{campaign.sent_count || 0} sent</span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle min-w-0">
+                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                                 <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{campaign.delivered_count || 0} delivered</span>
+                                <span>{campaign.delivered_count || 0} delivered</span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle min-w-0">
+                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                                 <TrendingUp className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{campaign.delivery_rate || 0}% delivery rate</span>
+                                <span>{campaign.delivery_rate || 0}% delivery rate</span>
                               </div>
                             </div>
 
                             {/* Campaign Date */}
-                            <div className="flex items-center gap-1.5 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
+                            <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
                               <Calendar className="w-3 h-3 flex-shrink-0" />
                               <span>Created {new Date(campaign.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</span>
                             </div>
@@ -854,12 +914,37 @@ const Campaigns = () => {
                         </div>
                           </div>
 
-                          {/* Progress Bar for Running Campaigns */}
+                          {/* Additional Details Row */}
+                          <div className="mt-2 pt-2 border-t border-border-subtle">
+                            <div className="flex items-center gap-4 text-xs text-text-subtle">
+                              <div className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                <span>{campaign.total_recipients.toLocaleString()} recipients</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Send className="w-3 h-3" />
+                                <span>{campaign.sent_count.toLocaleString()} sent</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                <span>{campaign.delivered_count.toLocaleString()} delivered</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                <span>{campaign.delivery_rate}% delivery rate</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>Created {new Date(campaign.created_at).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+
                             {campaign.status === 'running' && (
-                            <div className="mt-3">
+                              <div className="mt-2">
                                 <Progress value={campaign.progress_percentage} className="h-1" />
                               </div>
               )}
+            </div>
                         </div>
                       </div>
                     ))}

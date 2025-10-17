@@ -162,8 +162,6 @@ const Contacts = () => {
     bulkImportContacts
   } = useContacts();
 
-
-
   const location = useLocation();
 
   useEffect(() => {
@@ -179,26 +177,17 @@ const Contacts = () => {
   }, [fetchContacts]);
 
   // Get all unique tags from contacts
-  const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags || [])));
-
+  const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
 
   const filteredContacts = (contacts || []).filter(contact => {
-    // Ensure contact has required properties
-    if (!contact || !contact.name) {
-      return false;
-    }
-
-    const matchesSearch = searchQuery === "" ||
-                         contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (contact.phone_e164 && contact.phone_e164.includes(searchQuery)) ||
+    const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         contact.phone_e164.includes(searchQuery) ||
                          (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesTag = filterTag === "all" ||
-                      (contact.tags && contact.tags.includes(filterTag));
+    const matchesTag = filterTag === "all" || contact.tags.includes(filterTag);
 
     return matchesSearch && matchesTag;
   });
-
 
   const handleSelectContact = (contactId: string) => {
     setSelectedContacts(prev =>
@@ -565,8 +554,8 @@ const Contacts = () => {
     );
   }
 
-  // Show error state only if we have no contacts at all
-  if (error && (!contacts || contacts.length === 0)) {
+  // Show error state
+  if (error) {
     return (
       <div className="flex h-screen bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -604,27 +593,6 @@ const Contacts = () => {
         <div className="flex-1 overflow-hidden">
           <div className="h-full px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
             <div className="mx-auto w-[92vw] max-w-[1200px] h-full flex flex-col">
-              {/* Error Banner - Show if there's an error but we have contacts */}
-              {error && contacts && contacts.length > 0 && (
-                <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-destructive" />
-                    <p className="text-sm text-destructive">
-                      Warning: {error} - Showing cached contacts
-                    </p>
-                    <Button
-                      onClick={() => fetchContacts()}
-                      variant="outline"
-                      size="sm"
-                      className="ml-auto"
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                      Retry
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
                 <div className="min-w-0 flex-1">
@@ -903,8 +871,6 @@ const Contacts = () => {
                 </div>
               )}
 
-
-
               {/* Contacts Table */}
               <Card className="flex-1 glass border-0 overflow-hidden">
                 <div className="overflow-auto h-full">
@@ -1037,13 +1003,9 @@ const Contacts = () => {
                           <TableRow>
                             <TableCell colSpan={6} className="text-center py-8 text-sm">
                               <div className="text-text-subtle">
-                                {isLoading
-                                  ? "Loading contacts..."
-                                  : searchQuery || filterTag !== "all"
-                                    ? "No contacts match your current search or filter criteria."
-                                    : contacts && contacts.length > 0
-                                      ? "No contacts match your current filters. Try adjusting your search or filter criteria."
-                                      : "No contacts available. Click 'Add Contact' to get started."}
+                                {searchQuery || filterTag !== "all"
+                                  ? "No contacts match your current search or filter criteria."
+                                  : "No contacts available. Click 'Add Contact' to get started."}
                               </div>
                             </TableCell>
                           </TableRow>

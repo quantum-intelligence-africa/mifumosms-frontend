@@ -22,7 +22,13 @@ export const useContacts = () => {
     page?: number;
     page_size?: number;
   }) => {
+    console.log('=== FETCH CONTACTS CALLED ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('authContext:', authContext);
+    console.log('params:', params);
+
     if (!isAuthenticated) {
+      console.log('User not authenticated, skipping contacts fetch');
       setIsLoading(false);
       setContacts([]);
       setTotalCount(0);
@@ -30,6 +36,7 @@ export const useContacts = () => {
     }
 
     try {
+      console.log('Fetching contacts for current user...');
       setIsLoading(true);
       setError(null);
 
@@ -51,6 +58,11 @@ export const useContacts = () => {
         });
       }
 
+      console.log('🌐 Making direct fetch request:');
+      console.log('   URL:', url.toString());
+      console.log('   Method: GET');
+      console.log('   Token:', token.substring(0, 20) + '...');
+
       // Direct fetch with your specified format
       const response = await fetch(url.toString(), {
         method: 'GET',
@@ -60,35 +72,64 @@ export const useContacts = () => {
         }
       });
 
+      console.log('📡 Response Status:', response.status);
+      console.log('📡 Response OK:', response.ok);
+
       const data = await response.json();
+      console.log('📦 Response Data:', data);
 
       // Handle response
       if (response.ok) {
-        // Handle different response structures
-        let results = [];
-        let totalCount = 0;
+        const apiResponse = {
+          success: true,
+          data: data.data || data,
+          status: response.status
+        };
 
-        if (data.results && Array.isArray(data.results)) {
-          // Standard paginated response: {count: X, results: [...]}
-          results = data.results;
-          totalCount = data.count || results.length;
-        } else if (Array.isArray(data)) {
-          // Direct array response: [...]
-          results = data;
-          totalCount = data.length;
-        } else if (data.data && Array.isArray(data.data)) {
-          // Nested data response: {data: [...]}
-          results = data.data;
-          totalCount = data.data.length;
+        console.log('=== CONTACTS API RESPONSE ===');
+        console.log('Full response object:', apiResponse);
+        console.log('Response success:', apiResponse.success);
+        console.log('Response data:', apiResponse.data);
+
+        if (apiResponse.success && apiResponse.data) {
+          let results = apiResponse.data.results || [];
+
+          // Additional validation: Ensure we only show current user's contacts
+          // Filter out any contacts that might belong to other users
+          const currentUserId = authContext?.user?.id;
+          if (currentUserId) {
+            results = results.filter((contact: any) => {
+              // Check if the contact belongs to the current user
+              const contactUserId = contact.created_by?.id || contact.created_by || contact.user?.id || contact.user;
+              const isCurrentUser = contactUserId === currentUserId;
+              if (!isCurrentUser) {
+                console.log('Filtering out contact from other user:', contact.name, 'User ID:', contactUserId, 'Current User ID:', currentUserId);
+              }
+              return isCurrentUser;
+            });
+            console.log('Filtered contacts for current user:', results);
+          } else {
+            console.log('No current user ID available, showing all contacts');
+          }
+
+          setContacts(results);
+          setTotalCount(results.length);
+          console.log('Contacts set:', results);
         } else {
-          console.warn('Unexpected API response structure:', data);
-          results = [];
-          totalCount = 0;
+          console.error('Failed to fetch contacts:', apiResponse.error, 'Status:', apiResponse.status);
+          if (apiResponse.status === 403) {
+            setError('You do not have permission to access contacts. Please contact your administrator.');
+          } else if (apiResponse.status === 401) {
+            setError('Session expired. Please log in again.');
+          } else {
+            setError(apiResponse.error || 'Failed to fetch contacts');
+          }
+          toast({
+            title: "Failed to load contacts",
+            description: apiResponse.error || 'Please try again',
+            variant: "destructive"
+          });
         }
-
-        // Set contacts directly from processed results
-        setContacts(results);
-        setTotalCount(totalCount);
       } else {
         // Handle non-200 response
         console.error('HTTP Error:', response.status, data);
