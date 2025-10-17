@@ -27,20 +27,20 @@ const Index = () => {
         <AppHeader />
 
         {/* Dashboard Content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-4 xl:p-6">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
             {/* Welcome Section */}
-            <div className="mb-8">
-              <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
+            <div className="mb-4 sm:mb-5 lg:mb-6 xl:mb-8">
+              <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                 Welcome back, Mkuu! 👋
               </h1>
-              <p className="text-text-subtle">
+              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 Here's what's happening with your communication platform today.
               </p>
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
               <MetricCard
                 title="Total Messages"
                 value="12,450"

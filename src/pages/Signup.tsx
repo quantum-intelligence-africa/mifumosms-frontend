@@ -125,56 +125,56 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-2 sm:p-4 lg:p-6">
-      <div className="w-full max-w-sm sm:max-w-md max-h-[95vh] overflow-y-auto">
+    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-1 sm:p-2 md:p-3 lg:p-4 xl:p-6">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md max-h-[98vh] sm:max-h-[95vh] overflow-y-auto">
         {/* Header */}
-        <div className="text-center mb-3 sm:mb-4">
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl gradient-primary flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+        <div className="text-center mb-1 sm:mb-2 md:mb-3">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2 md:mb-3">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center">
+              <MessageSquare className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-6 lg:h-6 text-white" />
             </div>
-            <span className="font-heading text-lg sm:text-2xl font-bold text-foreground">
+            <span className="font-heading text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-bold text-foreground">
               Mifumo WMS
             </span>
           </div>
         </div>
 
         <Card className="glass border-0 shadow-xl">
-          <CardHeader className="text-center pb-3 sm:pb-4">
-            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold">Create your account</CardTitle>
+          <CardHeader className="text-center pb-1 sm:pb-2 md:pb-3 px-2 sm:px-4 md:px-6 pt-2 sm:pt-3 md:pt-4">
+            <CardTitle className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold">Create your account</CardTitle>
             {/* <CardDescription className="text-xs sm:text-sm">
               Start your 14-day free trial today
             </CardDescription> */}
           </CardHeader>
-          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="firstName" className="text-xs sm:text-sm">First name</Label>
+          <CardContent className="px-1 sm:px-2 md:px-4 lg:px-6 pb-1 sm:pb-2 md:pb-4 lg:pb-6">
+            <form onSubmit={handleSubmit} className="space-y-1 sm:space-y-2 md:space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2">
+                <div className="space-y-0.5 sm:space-y-1">
+                  <Label htmlFor="firstName" className="text-xs">First name</Label>
                   <Input
                     id="firstName"
                     placeholder="Enter Name"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange("firstName", e.target.value)}
                     required
-                    className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
+                    className="glass-subtle border-0 text-xs h-6 sm:h-7 md:h-8"
                   />
                 </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="lastName" className="text-xs sm:text-sm">Last name</Label>
+                <div className="space-y-0.5 sm:space-y-1">
+                  <Label htmlFor="lastName" className="text-xs">Last name</Label>
                   <Input
                     id="lastName"
                     placeholder="Enter Last Name"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange("lastName", e.target.value)}
                     required
-                    className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
+                    className="glass-subtle border-0 text-xs h-6 sm:h-7 md:h-8"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="email" className="text-xs sm:text-sm">Email address</Label>
+              <div className="space-y-0.5 sm:space-y-1">
+                <Label htmlFor="email" className="text-xs">Email address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -182,26 +182,26 @@ const Signup = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
-                  className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
+                  className="glass-subtle border-0 text-xs h-6 sm:h-7 md:h-8"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="phone" className="text-xs sm:text-sm">Phone number</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2">
+                <div className="space-y-0.5 sm:space-y-1">
+                  <Label htmlFor="phone" className="text-xs">Phone number</Label>
                   <Input
                     id="phone"
                     type="tel"
                     placeholder="+255 700 000 000"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
+                    className="glass-subtle border-0 text-xs h-6 sm:h-7 md:h-8"
                   />
                 </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="country" className="text-xs sm:text-sm">Country</Label>
+                <div className="space-y-0.5 sm:space-y-1">
+                  <Label htmlFor="country" className="text-xs">Country</Label>
                   <Select onValueChange={(value) => handleInputChange("country", value)}>
-                    <SelectTrigger className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9">
+                    <SelectTrigger className="glass-subtle border-0 text-xs h-6 sm:h-7 md:h-8">
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -227,8 +227,8 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="password" className="text-xs sm:text-sm">Password</Label>
+              <div className="space-y-0.5 sm:space-y-1">
+                <Label htmlFor="password" className="text-xs">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -237,54 +237,50 @@ const Signup = () => {
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     required
-                    className="glass-subtle border-0 pr-8 sm:pr-10 text-xs sm:text-sm h-8 sm:h-9"
+                    className="glass-subtle border-0 pr-5 sm:pr-6 md:pr-8 text-xs h-6 sm:h-7 md:h-8"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-2 sm:px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-6 sm:h-7 md:h-8 px-1 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
+                      <EyeOff className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-text-subtle" />
                     ) : (
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
+                      <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-text-subtle" />
                     )}
                   </Button>
                 </div>
 
                 {/* Password Strength Indicator */}
                 {formData.password && (
-                  <div className="space-y-1 sm:space-y-2 mt-1 sm:mt-2">
-                    <div className="grid grid-cols-2 gap-1 sm:gap-2 text-xs">
-                      <div className={`flex items-center gap-1 ${passwordStrength.length ? 'text-success' : 'text-text-subtle'}`}>
-                        <Check className={`w-2 h-2 sm:w-3 sm:h-3 ${passwordStrength.length ? 'opacity-100' : 'opacity-30'}`} />
-                        <span className="hidden sm:inline">8+ characters</span>
-                        <span className="sm:hidden">8+</span>
+                  <div className="space-y-0.5 sm:space-y-1 mt-0.5 sm:mt-1">
+                    <div className="grid grid-cols-2 gap-0.5 sm:gap-1 text-xs">
+                      <div className={`flex items-center gap-0.5 sm:gap-1 ${passwordStrength.length ? 'text-success' : 'text-text-subtle'}`}>
+                        <Check className={`w-1.5 h-1.5 sm:w-2 sm:h-2 ${passwordStrength.length ? 'opacity-100' : 'opacity-30'}`} />
+                        <span>8+</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${passwordStrength.uppercase ? 'text-success' : 'text-text-subtle'}`}>
-                        <Check className={`w-2 h-2 sm:w-3 sm:h-3 ${passwordStrength.uppercase ? 'opacity-100' : 'opacity-30'}`} />
-                        <span className="hidden sm:inline">Uppercase letter</span>
-                        <span className="sm:hidden">A-Z</span>
+                      <div className={`flex items-center gap-0.5 sm:gap-1 ${passwordStrength.uppercase ? 'text-success' : 'text-text-subtle'}`}>
+                        <Check className={`w-1.5 h-1.5 sm:w-2 sm:h-2 ${passwordStrength.uppercase ? 'opacity-100' : 'opacity-30'}`} />
+                        <span>A-Z</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${passwordStrength.lowercase ? 'text-success' : 'text-text-subtle'}`}>
-                        <Check className={`w-2 h-2 sm:w-3 sm:h-3 ${passwordStrength.lowercase ? 'opacity-100' : 'opacity-30'}`} />
-                        <span className="hidden sm:inline">Lowercase letter</span>
-                        <span className="sm:hidden">a-z</span>
+                      <div className={`flex items-center gap-0.5 sm:gap-1 ${passwordStrength.lowercase ? 'text-success' : 'text-text-subtle'}`}>
+                        <Check className={`w-1.5 h-1.5 sm:w-2 sm:h-2 ${passwordStrength.lowercase ? 'opacity-100' : 'opacity-30'}`} />
+                        <span>a-z</span>
                       </div>
-                      <div className={`flex items-center gap-1 ${passwordStrength.number ? 'text-success' : 'text-text-subtle'}`}>
-                        <Check className={`w-2 h-2 sm:w-3 sm:h-3 ${passwordStrength.number ? 'opacity-100' : 'opacity-30'}`} />
-                        <span className="hidden sm:inline">Number</span>
-                        <span className="sm:hidden">0-9</span>
+                      <div className={`flex items-center gap-0.5 sm:gap-1 ${passwordStrength.number ? 'text-success' : 'text-text-subtle'}`}>
+                        <Check className={`w-1.5 h-1.5 sm:w-2 sm:h-2 ${passwordStrength.number ? 'opacity-100' : 'opacity-30'}`} />
+                        <span>0-9</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="confirmPassword" className="text-xs sm:text-sm">Confirm password</Label>
+              <div className="space-y-0.5 sm:space-y-1">
+                <Label htmlFor="confirmPassword" className="text-xs">Confirm password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -293,40 +289,40 @@ const Signup = () => {
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                     required
-                    className="glass-subtle border-0 pr-8 sm:pr-10 text-xs sm:text-sm h-8 sm:h-9"
+                    className="glass-subtle border-0 pr-5 sm:pr-6 md:pr-8 text-xs h-6 sm:h-7 md:h-8"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-2 sm:px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-6 sm:h-7 md:h-8 px-1 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
+                      <EyeOff className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-text-subtle" />
                     ) : (
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
+                      <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-text-subtle" />
                     )}
                   </Button>
                 </div>
                 {formData.confirmPassword && (
-                  <div className={`flex items-center gap-1 text-xs ${passwordsMatch ? 'text-success' : 'text-destructive'}`}>
-                    <Check className={`w-2 h-2 sm:w-3 sm:h-3 ${passwordsMatch ? 'opacity-100' : 'opacity-30'}`} />
+                  <div className={`flex items-center gap-0.5 sm:gap-1 text-xs ${passwordsMatch ? 'text-success' : 'text-destructive'}`}>
+                    <Check className={`w-1.5 h-1.5 sm:w-2 sm:h-2 ${passwordsMatch ? 'opacity-100' : 'opacity-30'}`} />
                     {passwordsMatch ? "Passwords match" : "Passwords don't match"}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2 sm:space-y-3">
-                <div className="flex items-start space-x-2">
+              <div className="space-y-0.5 sm:space-y-1">
+                <div className="flex items-start space-x-1 sm:space-x-2">
                   <Checkbox
                     id="terms"
                     checked={formData.agreeToTerms}
                     onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked as boolean)}
                     required
-                    className="h-3 w-3 sm:h-4 sm:w-4 mt-0.5"
+                    className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5"
                   />
-                  <Label htmlFor="terms" className="text-xs sm:text-sm leading-tight">
+                  <Label htmlFor="terms" className="text-xs leading-tight">
                     I agree to the{" "}
                     <Link to="/terms" className="text-primary hover:underline">
                       Terms of Service
@@ -337,14 +333,14 @@ const Signup = () => {
                     </Link>
                   </Label>
                 </div>
-                <div className="flex items-start space-x-2">
+                <div className="flex items-start space-x-1 sm:space-x-2">
                   <Checkbox
                     id="marketing"
                     checked={formData.marketingEmails}
                     onCheckedChange={(checked) => handleInputChange("marketingEmails", checked as boolean)}
-                    className="h-3 w-3 sm:h-4 sm:w-4 mt-0.5"
+                    className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5"
                   />
-                  <Label htmlFor="marketing" className="text-xs sm:text-sm text-text-subtle leading-tight">
+                  <Label htmlFor="marketing" className="text-xs text-text-subtle leading-tight">
                     I'd like to receive product updates and marketing emails
                   </Label>
                 </div>
@@ -352,18 +348,18 @@ const Signup = () => {
 
               <Button
                 type="submit"
-                className="w-full text-xs sm:text-sm h-8 sm:h-9"
+                className="w-full text-xs h-6 sm:h-7 md:h-8"
                 disabled={isLoading || !formData.agreeToTerms}
               >
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
 
-            <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-              <Link to="/" className="text-xs sm:text-sm text-primary hover:underline">
+            <div className="mt-1 sm:mt-2 md:mt-3 flex flex-col sm:flex-row items-center justify-between gap-0.5 sm:gap-1 md:gap-0">
+              <Link to="/" className="text-xs text-primary hover:underline">
                 Home
               </Link>
-              <p className="text-text-subtle text-xs sm:text-sm text-center sm:text-right">
+              <p className="text-text-subtle text-xs text-center sm:text-right">
                 Already have an account?{" "}
                 <Link to="/login" className="text-primary hover:underline">
                   Sign in

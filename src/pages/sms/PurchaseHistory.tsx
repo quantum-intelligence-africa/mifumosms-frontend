@@ -198,14 +198,14 @@ const PurchaseHistory = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
             {/* Header */}
             <div>
-              <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                 Purchase History
               </h1>
-              <p className="text-text-subtle">
+              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 View all your SMS credit purchases and transactions
               </p>
             </div>

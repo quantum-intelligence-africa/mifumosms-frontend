@@ -460,12 +460,12 @@ const Campaigns = () => {
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-4 xl:p-6">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
               {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Campaigns</h1>
+                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">Campaigns</h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                   Manage and track your marketing campaigns
                   </p>
@@ -488,44 +488,44 @@ const Campaigns = () => {
 
             {/* Summary Cards */}
             {summary && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
                 <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
                         <p className="text-xs font-medium text-text-subtle mb-1">Total Campaigns</p>
-                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
+                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
                       </div>
-                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
-                        <MessageSquare className="w-3 h-3 lg:w-5 lg:h-5 text-primary" />
+                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
+                        <MessageSquare className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-primary" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
                         <p className="text-xs font-medium text-text-subtle mb-1">Active Campaigns</p>
-                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
+                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
                       </div>
-                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
-                        <Play className="w-3 h-3 lg:w-5 lg:h-5 text-green-500" />
+                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
+                        <Play className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-green-500" />
                       </div>
                       </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
                         <p className="text-xs font-medium text-text-subtle mb-1">Total Recipients</p>
-                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
+                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
                       </div>
-                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
-                        <Users className="w-3 h-3 lg:w-5 lg:h-5 text-blue-500" />
+                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
+                        <Users className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-blue-500" />
                       </div>
                     </div>
                   </CardContent>

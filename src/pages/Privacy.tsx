@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-2 sm:p-3 lg:p-4 xl:p-6">
       <div className="w-full max-w-3xl">
         <Card className="glass border-0">
-          <CardHeader>
-            <CardTitle className="text-3xl">Privacy Policy</CardTitle>
+          <CardHeader className="p-3 sm:p-4 lg:p-6">
+            <CardTitle className="text-lg sm:text-xl lg:text-2xl xl:text-3xl">Privacy Policy</CardTitle>
           </CardHeader>
-          <CardContent className="prose prose-sm max-w-none text-foreground">
+          <CardContent className="prose prose-sm max-w-none text-foreground p-3 sm:p-4 lg:p-6">
             <p className="text-text-subtle">Last updated: October 6, 2025</p>
 
             <h3>Overview</h3>

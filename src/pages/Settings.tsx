@@ -861,11 +861,11 @@ const Settings = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-2 sm:p-3 lg:p-6">
+          <div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="mb-3 sm:mb-4 lg:mb-6">
-                <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+              <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
+                <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
                   Settings
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">

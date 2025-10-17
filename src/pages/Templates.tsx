@@ -268,15 +268,15 @@ const Templates = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
+          <div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
                 <div>
-                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
                     Templates
                   </h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                  <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                     Create and manage reusable message templates
                   </p>
                 </div>

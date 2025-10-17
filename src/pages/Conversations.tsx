@@ -195,25 +195,25 @@ const Conversations = () => {
           {/* Conversations List */}
           <div className={`${isMobile ? 'w-full' : 'w-80'} border-r border-border-subtle flex flex-col ${isMobile && selectedConversation ? 'hidden' : ''}`}>
             {/* Search and Filters */}
-            <div className="p-3 lg:p-4 border-b border-border-subtle">
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
+            <div className="p-2 sm:p-3 lg:p-4 border-b border-border-subtle">
+              <div className="relative mb-2 sm:mb-3">
+                <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
                 <Input
                   placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 glass-subtle border-0 text-sm"
+                  className="pl-8 sm:pl-10 glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
                 />
               </div>
-              <div className="flex gap-1 lg:gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="glass-subtle border-0 text-xs">
-                  <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
+              <div className="flex gap-1 sm:gap-2 flex-wrap">
+                <Button variant="outline" size="sm" className="glass-subtle border-0 text-xs h-7 sm:h-8">
+                  <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   <span className="hidden sm:inline">All</span>
                 </Button>
-                <Button variant="ghost" size="sm" className="text-xs">
+                <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8">
                   <span className="hidden sm:inline">Unread</span>
                 </Button>
-                <Button variant="ghost" size="sm" className="text-xs">
+                <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8">
                   <span className="hidden sm:inline">Starred</span>
                 </Button>
               </div>
@@ -224,32 +224,32 @@ const Conversations = () => {
               {conversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`p-3 lg:p-4 border-b border-border-subtle cursor-pointer hover:bg-accent/50 transition-smooth ${
+                  className={`p-2 sm:p-3 lg:p-4 border-b border-border-subtle cursor-pointer hover:bg-accent/50 transition-smooth ${
                     selectedConversation === conversation.id ? "bg-accent" : ""
                   }`}
                   onClick={() => setSelectedConversation(conversation.id)}
                 >
-                  <div className="flex items-start gap-2 lg:gap-3">
+                  <div className="flex items-start gap-1 sm:gap-2 lg:gap-3">
                     <div className="relative">
-                      <Avatar className="w-10 h-10 lg:w-12 lg:h-12">
+                      <Avatar className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12">
                         <AvatarImage src={conversation.contact.avatar} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs lg:text-sm">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                           {conversation.contact.name.split(" ").map(n => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
-                      <div className={`absolute -bottom-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 rounded-full border-2 border-background ${
+                      <div className={`absolute -bottom-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 lg:w-4 lg:h-4 rounded-full border-2 border-background ${
                         conversation.contact.status === "online" ? "bg-success" : "bg-text-subtle"
                       }`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-foreground truncate text-sm lg:text-base">
+                        <h3 className="font-medium text-foreground truncate text-xs sm:text-sm lg:text-base">
                           {conversation.contact.name}
                         </h3>
                         <div className="flex items-center gap-1">
                           {conversation.isStarred && (
-                            <Star className="w-3 h-3 lg:w-4 lg:h-4 fill-amber-400 text-amber-400" />
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
                           )}
                           <span className="text-xs text-text-subtle">
                             {conversation.timestamp}
@@ -257,7 +257,7 @@ const Conversations = () => {
                         </div>
                       </div>
 
-                      <p className="text-xs lg:text-sm text-text-subtle truncate mb-2">
+                      <p className="text-xs sm:text-sm text-text-subtle truncate mb-2">
                         {conversation.lastMessage}
                       </p>
 
@@ -355,20 +355,20 @@ const Conversations = () => {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-3 lg:space-y-4">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 space-y-2 sm:space-y-3 lg:space-y-4">
                   {currentConversation.messages.map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.isIncoming ? "justify-start" : "justify-end"}`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md px-3 lg:px-4 py-2 rounded-2xl ${
+                        className={`max-w-xs sm:max-w-sm lg:max-w-md px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-2xl ${
                           message.isIncoming
                             ? "bg-card glass border border-border-subtle"
                             : "gradient-primary text-primary-foreground"
                         }`}
                       >
-                        <p className="text-xs lg:text-sm">{message.text}</p>
+                        <p className="text-xs sm:text-sm">{message.text}</p>
                         <div className={`flex items-center justify-between mt-1 ${
                           message.isIncoming ? "text-text-subtle" : "text-primary-foreground/70"
                         }`}>
@@ -391,8 +391,8 @@ const Conversations = () => {
                 </div>
 
                 {/* Message Input */}
-                <div className="p-3 lg:p-4 border-t border-border-subtle glass">
-                  <div className="flex items-end gap-2 lg:gap-3">
+                <div className="p-2 sm:p-3 lg:p-4 border-t border-border-subtle glass">
+                  <div className="flex items-end gap-1 sm:gap-2 lg:gap-3">
                     <div className="flex-1">
                       <Textarea
                         placeholder="Type your message..."
@@ -404,24 +404,24 @@ const Conversations = () => {
                             handleSendMessage();
                           }
                         }}
-                        className="min-h-[36px] lg:min-h-[40px] max-h-32 resize-none glass-subtle border-0 text-sm"
+                        className="min-h-[32px] sm:min-h-[36px] lg:min-h-[40px] max-h-32 resize-none glass-subtle border-0 text-xs sm:text-sm"
                         rows={1}
                       />
                     </div>
-                    <div className="flex items-center gap-1 lg:gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9">
-                        <Paperclip className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9">
+                        <Paperclip className="w-3 h-3 sm:w-4 sm:h-4 lg:w-4 lg:h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9">
-                        <Smile className="w-3 h-3 lg:w-4 lg:h-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9">
+                        <Smile className="w-3 h-3 sm:w-4 sm:h-4 lg:w-4 lg:h-4" />
                       </Button>
                       <Button
                         onClick={handleSendMessage}
                         disabled={!newMessage.trim()}
                         size="icon"
-                        className="h-8 w-8 lg:h-9 lg:w-9"
+                        className="h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9"
                       >
-                        <Send className="w-3 h-3 lg:w-4 lg:h-4" />
+                        <Send className="w-3 h-3 sm:w-4 sm:h-4 lg:w-4 lg:h-4" />
                       </Button>
                     </div>
                   </div>
