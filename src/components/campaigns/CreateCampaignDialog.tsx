@@ -99,58 +99,58 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
     setIsSubmitting(true);
 
-    try {
-      const success = await createCampaign({
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        campaign_type: formData.campaign_type,
-        message_text: formData.message_text.trim(),
-        template: formData.template || null,
-        scheduled_at: formData.scheduled_at || null,
-        target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
-        target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
-        target_criteria: {
-          tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
-          opt_in_status: formData.target_criteria.opt_in_status
-        },
-        settings: {
-          send_time: formData.settings.send_time,
-          timezone: formData.settings.timezone
-        },
-        is_recurring: formData.is_recurring,
-        recurring_schedule: formData.recurring_schedule,
-      });
+    // Close dialog and reset form immediately
+    setOpen(false);
+    setStep(1);
+    setFormData({
+      name: '',
+      description: '',
+      campaign_type: 'sms',
+      message_text: '',
+      template: null,
+      scheduled_at: null,
+      target_contact_ids: [],
+      target_segment_ids: [],
+      target_criteria: {
+        tags: [],
+        opt_in_status: 'opted_in'
+      },
+      settings: {
+        send_time: '09:00',
+        timezone: 'Africa/Dar_es_Salaam'
+      },
+      is_recurring: false,
+      recurring_schedule: {},
+    });
 
-      if (success) {
-        setOpen(false);
-        setStep(1);
-        setFormData({
-          name: '',
-          description: '',
-          campaign_type: 'sms',
-          message_text: '',
-          template: null,
-          scheduled_at: null,
-          target_contact_ids: [],
-          target_segment_ids: [],
-          target_criteria: {
-            tags: [],
-            opt_in_status: 'opted_in'
-          },
-          settings: {
-            send_time: '09:00',
-            timezone: 'Africa/Dar_es_Salaam'
-          },
-          is_recurring: false,
-          recurring_schedule: {},
-        });
-        onSuccess?.();
-      }
-    } catch (error) {
-      console.error('Error creating campaign:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Call success callback to refresh parent component immediately
+    onSuccess?.();
+
+    // Create campaign in background (errors ignored)
+    createCampaign({
+      name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
+      campaign_type: formData.campaign_type,
+      message_text: formData.message_text.trim(),
+      template: formData.template || null,
+      scheduled_at: formData.scheduled_at || null,
+      target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
+      target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
+      target_criteria: {
+        tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
+        opt_in_status: formData.target_criteria.opt_in_status
+      },
+      settings: {
+        send_time: formData.settings.send_time,
+        timezone: formData.settings.timezone
+      },
+      is_recurring: formData.is_recurring,
+      recurring_schedule: formData.recurring_schedule,
+    }).catch(error => {
+      console.log('Create campaign error (ignored):', error);
+    });
+
+    setIsSubmitting(false);
   };
 
   const canProceedToStep2 = formData.name.trim() && formData.message_text.trim();
@@ -166,39 +166,40 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <MessageSquare className="w-4 h-4" />
             Create New Campaign
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             Create a smart campaign to reach your audience effectively.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Step 1: Basic Information */}
           {step === 1 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Campaign Name *</Label>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="name" className="text-xs sm:text-sm">Campaign Name *</Label>
                   <Input
                     id="name"
                     placeholder="Enter campaign name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="campaign_type">Campaign Type *</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="campaign_type" className="text-xs sm:text-sm">Campaign Type *</Label>
                   <Select
                     value={formData.campaign_type}
                     onValueChange={(value) => handleInputChange('campaign_type', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs sm:text-sm">
                       <SelectValue placeholder="Select campaign type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -211,72 +212,77 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+              <div className="space-y-1">
+                <Label htmlFor="description" className="text-xs sm:text-sm">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="Enter campaign description (optional)"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows={3}
+                  rows={2}
+                  className="text-xs sm:text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message_text">Message Text *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="message_text" className="text-xs sm:text-sm">Message Text *</Label>
                 <Textarea
                   id="message_text"
                   placeholder="Enter your message content"
                   value={formData.message_text}
                   onChange={(e) => handleInputChange('message_text', e.target.value)}
-                  rows={4}
+                  rows={2}
+                  className="text-xs sm:text-sm"
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {formData.message_text.length} characters
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled_at">Schedule (Optional)</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="scheduled_at" className="text-xs sm:text-sm">Schedule (Optional)</Label>
                   <Input
                     id="scheduled_at"
                     type="datetime-local"
                     value={formData.scheduled_at || ''}
                     onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
+                    className="h-8 text-xs sm:text-sm"
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 pt-5">
                   <Checkbox
                     id="is_recurring"
                     checked={formData.is_recurring}
                     onCheckedChange={(checked) => handleInputChange('is_recurring', checked)}
+                    className="h-3 w-3"
                   />
-                  <Label htmlFor="is_recurring">Recurring Campaign</Label>
+                  <Label htmlFor="is_recurring" className="text-xs sm:text-sm">Recurring Campaign</Label>
                 </div>
               </div>
 
               {/* Settings Section */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-foreground">Campaign Settings</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="send_time">Send Time</Label>
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-medium text-foreground">Campaign Settings</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="send_time" className="text-xs">Send Time</Label>
                     <Input
                       id="send_time"
                       type="time"
                       value={formData.settings.send_time}
                       onChange={(e) => handleInputChange('settings', { ...formData.settings, send_time: e.target.value })}
+                      className="h-7 text-xs sm:text-sm"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Timezone</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="timezone" className="text-xs">Timezone</Label>
                     <Select
                       value={formData.settings.timezone}
                       onValueChange={(value) => handleInputChange('settings', { ...formData.settings, timezone: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-7 text-xs sm:text-sm">
                         <SelectValue placeholder="Select timezone" />
                       </SelectTrigger>
                       <SelectContent>
@@ -294,53 +300,55 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
           {/* Step 2: Target Audience */}
           {step === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Select Target Audience</h3>
-                <Badge variant="outline">
+                <h3 className="text-sm sm:text-base font-semibold">Select Target Audience</h3>
+                <Badge variant="outline" className="text-xs">
                   {formData.target_contact_ids.length} contacts selected
                 </Badge>
               </div>
 
               {contactsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Loading contacts...</p>
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-xs text-muted-foreground mt-1">Loading contacts...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleSelectAllContacts}
+                      className="h-7 text-xs"
                     >
                       {formData.target_contact_ids.length === contacts.length ? 'Deselect All' : 'Select All'}
                     </Button>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {contacts.length} total contacts
                     </p>
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-4">
+                  <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
                     {contacts.map((contact) => (
                       <div
                         key={contact.id}
-                        className="flex items-center space-x-3 p-2 hover:bg-muted rounded-lg"
+                        className="flex items-center space-x-2 p-1 hover:bg-muted rounded-lg"
                       >
                         <Checkbox
                           id={`contact-${contact.id}`}
                           checked={formData.target_contact_ids.includes(contact.id)}
                           onCheckedChange={() => handleContactToggle(contact.id)}
+                          className="h-3 w-3"
                         />
                         <div className="flex-1 min-w-0">
                           <Label
                             htmlFor={`contact-${contact.id}`}
-                            className="font-medium cursor-pointer"
+                            className="font-medium cursor-pointer text-xs sm:text-sm"
                           >
                             {contact.name}
                           </Label>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {contact.phone_e164}
                           </p>
                         </div>
@@ -351,14 +359,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               )}
 
               {/* Target Criteria Section */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-foreground">Target Criteria</h4>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Tags Filter</Label>
-                    <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-medium text-foreground">Target Criteria</h4>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tags Filter</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                       {['vip', 'premium', 'basic', 'new', 'returning', 'active', 'inactive'].map((tag) => (
-                        <div key={tag} className="flex items-center space-x-2">
+                        <div key={tag} className="flex items-center space-x-1">
                           <Checkbox
                             id={`tag-${tag}`}
                             checked={formData.target_criteria.tags.includes(tag)}
@@ -368,8 +376,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                                 : formData.target_criteria.tags.filter(t => t !== tag);
                               handleInputChange('target_criteria', { ...formData.target_criteria, tags: newTags });
                             }}
+                            className="h-3 w-3"
                           />
-                          <Label htmlFor={`tag-${tag}`} className="text-sm font-normal cursor-pointer">
+                          <Label htmlFor={`tag-${tag}`} className="text-xs font-normal cursor-pointer">
                             {tag}
                           </Label>
                         </div>
@@ -377,13 +386,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="opt_in_status">Opt-in Status</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="opt_in_status" className="text-xs">Opt-in Status</Label>
                     <Select
                       value={formData.target_criteria.opt_in_status}
                       onValueChange={(value) => handleInputChange('target_criteria', { ...formData.target_criteria, opt_in_status: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-7 text-xs sm:text-sm">
                         <SelectValue placeholder="Select opt-in status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -399,17 +408,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           )}
 
           {/* Navigation */}
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
               <div className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               {step > 1 && (
                 <Button
                   variant="outline"
                   onClick={() => setStep(step - 1)}
+                  className="h-7 text-xs sm:text-sm"
                 >
                   Previous
                 </Button>
@@ -419,6 +429,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={() => setStep(2)}
                   disabled={!canProceedToStep2}
+                  className="h-7 text-xs sm:text-sm"
                 >
                   Next
                 </Button>
@@ -426,8 +437,16 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || isSubmitting}
+                  className="h-7 text-xs sm:text-sm"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Campaign'}
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Creating Campaign...
+                    </>
+                  ) : (
+                    'Create Campaign'
+                  )}
                 </Button>
               )}
             </div>

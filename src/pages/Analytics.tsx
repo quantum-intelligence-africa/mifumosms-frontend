@@ -722,22 +722,22 @@ const Analytics = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
+          <div className="h-full p-2 sm:p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-3 sm:gap-4">
                 <div>
-                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
                     Analytics
                   </h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                  <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                     Track performance and insights across all channels
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 lg:gap-3">
                   <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger className="w-full sm:w-40 glass-subtle border-0 text-sm">
-                      <Calendar className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
+                    <SelectTrigger className="w-full sm:w-36 lg:w-40 glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8">
+                      <Calendar className="w-3 h-3 mr-1 sm:mr-2" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -748,8 +748,8 @@ const Analytics = () => {
                     </SelectContent>
                   </Select>
                   <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-                    <SelectTrigger className="w-full sm:w-40 glass-subtle border-0 text-sm">
-                      <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
+                    <SelectTrigger className="w-full sm:w-36 lg:w-40 glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8">
+                      <Filter className="w-3 h-3 mr-1 sm:mr-2" />
                       <SelectValue placeholder="All channels" />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -761,14 +761,17 @@ const Analytics = () => {
                   </Select>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-sm"
+                    className="glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8"
                     size="sm"
                     onClick={handleExportToPDF}
                     disabled={isExporting}
                   >
-                    <Download className="w-3 h-3 lg:w-4 lg:h-4 mr-2" />
+                    <Download className="w-3 h-3 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">
                       {isExporting ? "Exporting..." : "Export PDF"}
+                    </span>
+                    <span className="sm:hidden">
+                      {isExporting ? "..." : "PDF"}
                     </span>
                   </Button>
                 </div>

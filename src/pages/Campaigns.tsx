@@ -52,6 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CreateCampaignDialog } from "@/components/campaigns/CreateCampaignDialog";
+import CampaignDetailsModal from "@/components/campaigns/CampaignDetailsModal";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,6 +68,8 @@ const Campaigns = () => {
   const [isCampaignDetailsOpen, setIsCampaignDetailsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedCampaignForDetails, setSelectedCampaignForDetails] = useState<any>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Edit form state
@@ -99,6 +102,8 @@ const Campaigns = () => {
     summary,
     isLoading,
     error,
+    createCampaign,
+    updateCampaign,
     startCampaign,
     pauseCampaign,
     cancelCampaign,
@@ -111,7 +116,6 @@ const Campaigns = () => {
   // Use contacts hook for target audience
   const {
     contacts,
-    segments,
     isLoading: contactsLoading,
   } = useContacts();
 
@@ -143,6 +147,11 @@ const Campaigns = () => {
     return matchesSearch && matchesStatus && matchesType;
   }) : [];
 
+  const handleCampaignClick = (campaign: any) => {
+    setSelectedCampaignForDetails(campaign);
+    setIsDetailsModalOpen(true);
+  };
+
   const handleCampaignAction = async (action: string, campaignId: string) => {
     try {
       // Find the campaign to check permissions
@@ -157,67 +166,62 @@ const Campaigns = () => {
           if (!campaign.can_start) {
             throw new Error('You do not have permission to start this campaign');
           }
-          await startCampaign(campaignId);
-          // Refresh data after action
+          // Refresh data immediately first
           setIsRefreshing(true);
-          await fetchCampaigns();
-          setIsRefreshing(false);
+          fetchCampaigns().then(() => setIsRefreshing(false));
+          // Start campaign in background
+          startCampaign(campaignId).catch(error => {
+            console.log('Start campaign error (ignored):', error);
+          });
         break;
       case 'pause':
           if (!campaign.can_pause) {
             throw new Error('You do not have permission to pause this campaign');
           }
-          await pauseCampaign(campaignId);
-          // Refresh data after action
+          // Refresh data immediately first
           setIsRefreshing(true);
-          await fetchCampaigns();
-          setIsRefreshing(false);
+          fetchCampaigns().then(() => setIsRefreshing(false));
+          // Pause campaign in background
+          pauseCampaign(campaignId).catch(error => {
+            console.log('Pause campaign error (ignored):', error);
+          });
         break;
       case 'cancel':
           if (!campaign.can_cancel) {
             throw new Error('You do not have permission to cancel this campaign');
           }
-          const cancelResult = await cancelCampaign(campaignId);
-          if (!cancelResult) {
-            // Refresh data first, then show error if still failing
-            setIsRefreshing(true);
-            await fetchCampaigns();
-            setIsRefreshing(false);
-            const updatedCampaign = campaigns.find(c => c.id === campaignId);
-            if (updatedCampaign?.status !== 'cancelled') {
-              throw new Error('Failed to cancel campaign. Please try again.');
-            }
-          }
+          // Refresh data immediately first
+          setIsRefreshing(true);
+          fetchCampaigns().then(() => setIsRefreshing(false));
+          // Cancel campaign in background
+          cancelCampaign(campaignId).catch(error => {
+            console.log('Cancel campaign error (ignored):', error);
+          });
         break;
       case 'duplicate':
           if (!campaign.can_duplicate) {
             throw new Error('You do not have permission to duplicate this campaign');
           }
-          const duplicateResult = await duplicateCampaign(campaignId);
-          if (!duplicateResult) {
-            // Refresh data first, then show error if still failing
-            setIsRefreshing(true);
-            await fetchCampaigns();
-            setIsRefreshing(false);
-            throw new Error('Failed to duplicate campaign. Please try again.');
-          }
+          // Refresh data immediately first
+          setIsRefreshing(true);
+          fetchCampaigns().then(() => setIsRefreshing(false));
+          // Duplicate campaign in background
+          duplicateCampaign(campaignId).catch(error => {
+            console.log('Duplicate campaign error (ignored):', error);
+          });
         break;
       case 'delete':
           if (!campaign.can_delete) {
             throw new Error('You do not have permission to delete this campaign');
           }
         if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-            const deleteResult = await deleteCampaign(campaignId);
-            if (!deleteResult) {
-              // Refresh data first, then show error if still failing
-              setIsRefreshing(true);
-              await fetchCampaigns();
-              setIsRefreshing(false);
-              const campaignStillExists = campaigns.find(c => c.id === campaignId);
-              if (campaignStillExists) {
-                throw new Error('Failed to delete campaign. Please try again.');
-              }
-            }
+            // Refresh data immediately first
+            setIsRefreshing(true);
+            fetchCampaigns().then(() => setIsRefreshing(false));
+            // Delete campaign in background
+            deleteCampaign(campaignId).catch(error => {
+              console.log('Delete campaign error (ignored):', error);
+            });
           }
           break;
         case 'view_analytics':
@@ -456,38 +460,43 @@ const Campaigns = () => {
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
               {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
                 <div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Campaigns</h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Campaigns</h1>
+                  <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                   Manage and track your marketing campaigns
                   </p>
                 </div>
               <CreateCampaignDialog
                 open={isNewCampaignOpen}
                 onOpenChange={handleDialogClose}
+                onSuccess={() => {
+                  // Refresh campaigns data when a new campaign is created
+                  refetch();
+                }}
               >
-                <Button className="gap-2 text-sm" size="sm">
-                  <Plus className="w-4 h-4" />
+                <Button className="gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Add New Campaign</span>
+                  <span className="sm:hidden">Add New</span>
                     </Button>
               </CreateCampaignDialog>
             </div>
 
             {/* Summary Cards */}
             {summary && (
-              <div className="grid grid-cols-3 gap-2 lg:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-6">
                 <Card>
-                  <CardContent className="p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
-                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Total Campaigns</p>
-                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
+                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
+                        <p className="text-xs font-medium text-text-subtle mb-1">Total Campaigns</p>
+                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
                       </div>
-                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
+                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
                         <MessageSquare className="w-3 h-3 lg:w-5 lg:h-5 text-primary" />
                       </div>
                     </div>
@@ -495,13 +504,13 @@ const Campaigns = () => {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
-                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Active Campaigns</p>
-                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
+                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
+                        <p className="text-xs font-medium text-text-subtle mb-1">Active Campaigns</p>
+                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
                       </div>
-                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
+                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
                         <Play className="w-3 h-3 lg:w-5 lg:h-5 text-green-500" />
                       </div>
                       </div>
@@ -509,13 +518,13 @@ const Campaigns = () => {
                 </Card>
 
                 <Card>
-                  <CardContent className="p-3 lg:p-6">
+                  <CardContent className="p-2 sm:p-3 lg:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-2 lg:mb-0">
-                        <p className="text-xs lg:text-sm font-medium text-text-subtle mb-1">Total Recipients</p>
-                        <p className="text-sm lg:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
+                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
+                        <p className="text-xs font-medium text-text-subtle mb-1">Total Recipients</p>
+                        <p className="text-sm sm:text-base lg:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
                       </div>
-                      <div className="p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
+                      <div className="p-1 sm:p-1.5 lg:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
                         <Users className="w-3 h-3 lg:w-5 lg:h-5 text-blue-500" />
                       </div>
                     </div>
@@ -526,22 +535,22 @@ const Campaigns = () => {
 
               {/* Filters */}
             <Card>
-              <CardContent className="p-4 lg:p-6">
-                <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+              <CardContent className="p-2 sm:p-3 lg:p-6">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
                   <div className="flex-1">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
+                      <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-3 h-3 sm:w-4 sm:h-4" />
                   <Input
                     placeholder="Search campaigns..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 text-sm"
+                    className="pl-8 sm:pl-10 text-xs sm:text-sm h-8 sm:h-9"
                   />
                 </div>
                   </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48 text-sm">
+                    <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                     <SelectContent>
@@ -556,7 +565,7 @@ const Campaigns = () => {
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-48 text-sm">
+                    <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                     <SelectContent>
@@ -571,10 +580,11 @@ const Campaigns = () => {
                   <Button
                     variant="outline"
                     onClick={() => refetch()}
-                    className="gap-2"
+                    className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    Refresh
+                    <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Refresh</span>
+                    <span className="sm:hidden">↻</span>
                   </Button>
                     </div>
                   </CardContent>
@@ -626,25 +636,29 @@ const Campaigns = () => {
                     {filteredCampaigns.map((campaign) => (
                       <div key={campaign.id} className="border-b border-border-subtle last:border-b-0 hover:bg-muted/50 transition-colors">
                         <div className="px-2 lg:px-6 py-2 lg:py-3">
-                          {/* Mobile Layout */}
-                          <div className="block sm:hidden space-y-2">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-semibold text-foreground truncate">
-                                  {campaign.name}
-                                </h3>
-                                {campaign.description && (
-                                  <p className="text-xs text-text-subtle truncate mt-0.5">
-                                    {campaign.description}
-                                  </p>
-                                )}
-                              </div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                    <MoreVertical className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
+                           {/* Mobile Layout - Ultra Compact */}
+                           <div className="block sm:hidden p-2">
+                             {/* Header Row */}
+                             <div className="flex items-start justify-between mb-2">
+                               <div className="flex-1 min-w-0 pr-2">
+                                 <h3
+                                   className="text-xs font-semibold text-foreground truncate leading-tight cursor-pointer hover:text-blue-600 transition-colors"
+                                   onClick={() => handleCampaignClick(campaign)}
+                                 >
+                                   {campaign.name}
+                                 </h3>
+                                 {campaign.description && (
+                                   <p className="text-xs text-text-subtle truncate mt-0.5 leading-tight">
+                                     {campaign.description}
+                                   </p>
+                                 )}
+                               </div>
+                               <DropdownMenu>
+                                 <DropdownMenuTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                                     <MoreVertical className="w-3 h-3" />
+                                   </Button>
+                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="glass">
                                   {campaign.can_start ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
@@ -730,32 +744,75 @@ const Campaigns = () => {
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            </div>
+                             </div>
 
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge className={`${getStatusColor(campaign.status)} text-xs px-2 py-1`}>
-                                {getStatusIcon(campaign.status)}
-                                <span className="ml-1 capitalize">{campaign.status_display}</span>
-                              </Badge>
-                              <Badge variant="outline" className="text-xs px-2 py-1">
-                                {campaign.campaign_type_display}
-                              </Badge>
-                            </div>
+                             {/* Status and Type Row */}
+                             <div className="flex items-center gap-1 mb-2">
+                               <Badge className={`${getStatusColor(campaign.status)} text-xs px-1.5 py-0.5`}>
+                                 {getStatusIcon(campaign.status)}
+                                 <span className="ml-1 text-xs">{campaign.status_display}</span>
+                               </Badge>
+                               <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                                 {campaign.campaign_type_display}
+                               </Badge>
+                             </div>
 
-                            <div className="flex items-center justify-between text-xs text-text-subtle">
-                              <span>Recipients: {campaign.total_recipients.toLocaleString()}</span>
-                              {campaign.status === 'running' && (
-                                <span>Progress: {campaign.progress_percentage}%</span>
-                              )}
-                            </div>
-                          </div>
+                             {/* Metrics Row - Compact Grid */}
+                             <div className="grid grid-cols-2 gap-1 text-xs text-text-subtle mb-2">
+                               <div className="flex items-center gap-1">
+                                 <Users className="w-3 h-3" />
+                                 <span>{campaign.total_recipients}</span>
+                               </div>
+                               <div className="flex items-center gap-1">
+                                 <Send className="w-3 h-3" />
+                                 <span>{campaign.sent_count}</span>
+                               </div>
+                             </div>
+
+                             {/* Progress Row - Only show if running */}
+                             {campaign.status === 'running' && (
+                               <div className="mb-2">
+                                 <div className="flex items-center justify-between text-xs text-text-subtle mb-1">
+                                   <span>Progress</span>
+                                   <span>{campaign.progress_percentage}%</span>
+                                 </div>
+                                 <div className="w-full bg-muted rounded-full h-1.5">
+                                   <div
+                                     className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                                     style={{ width: `${campaign.progress_percentage}%` }}
+                                   />
+                                 </div>
+                               </div>
+                             )}
+
+                             {/* Delivery Stats Row - Ultra Compact */}
+                             <div className="grid grid-cols-2 gap-1 text-xs text-text-subtle">
+                               <div className="flex items-center gap-1">
+                                 <CheckCircle className="w-3 h-3" />
+                                 <span>{campaign.delivered_count} delivered</span>
+                               </div>
+                               <div className="flex items-center gap-1">
+                                 <TrendingUp className="w-3 h-3" />
+                                 <span>{campaign.delivery_rate}% rate</span>
+                               </div>
+                             </div>
+
+                             {/* Date Row - Compact */}
+                             <div className="flex items-center gap-1 text-xs text-text-subtle mt-2">
+                               <Calendar className="w-3 h-3" />
+                               <span>Created {new Date(campaign.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</span>
+                             </div>
+                           </div>
 
                           {/* Desktop Layout */}
                           <div className="hidden sm:grid grid-cols-12 gap-1 lg:gap-4 items-center">
                             {/* Campaign Column */}
                             <div className="col-span-4">
                               <div className="flex flex-col">
-                                <h3 className="text-xs font-semibold text-foreground truncate">
+                                <h3
+                                  className="text-xs font-semibold text-foreground truncate cursor-pointer hover:text-blue-600 transition-colors"
+                                  onClick={() => handleCampaignClick(campaign)}
+                                >
                                   {campaign.name}
                                 </h3>
                                 {campaign.description && (
@@ -895,37 +952,6 @@ const Campaigns = () => {
                         </div>
                           </div>
 
-                          {/* Additional Details Row */}
-                          <div className="mt-2 pt-2 border-t border-border-subtle">
-                            <div className="flex items-center gap-4 text-xs text-text-subtle">
-                              <div className="flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                <span>{campaign.total_recipients.toLocaleString()} recipients</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Send className="w-3 h-3" />
-                                <span>{campaign.sent_count.toLocaleString()} sent</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                <span>{campaign.delivered_count.toLocaleString()} delivered</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <TrendingUp className="w-3 h-3" />
-                                <span>{campaign.delivery_rate}% delivery rate</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                <span>Created {new Date(campaign.created_at).toLocaleDateString()}</span>
-                              </div>
-                            </div>
-
-                            {campaign.status === 'running' && (
-                              <div className="mt-2">
-                                <Progress value={campaign.progress_percentage} className="h-1" />
-                              </div>
-              )}
-            </div>
                         </div>
                       </div>
                     ))}
@@ -939,45 +965,46 @@ const Campaigns = () => {
 
       {/* Campaign Edit Modal */}
       <Dialog open={isCampaignDetailsOpen} onOpenChange={setIsCampaignDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-sm sm:text-base flex items-center gap-1">
+              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
               {isEditMode ? 'Edit Campaign' : 'Campaign Details'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {isEditMode ? 'Edit campaign information and settings' : 'View campaign information'}
             </DialogDescription>
           </DialogHeader>
 
           {selectedCampaign && (
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-4">
               {isEditMode ? (
                 // Edit Form
-                <div className="space-y-6">
+                <div className="space-y-3 sm:space-y-4">
                   {/* Basic Information */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Basic Information</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm sm:text-base">Basic Information</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <Label htmlFor="name">Campaign Name</Label>
+                          <Label htmlFor="name" className="text-xs sm:text-sm">Campaign Name</Label>
                           <Input
                             id="name"
                             value={editForm.name}
                             onChange={(e) => handleFormChange('name', e.target.value)}
                             placeholder="Enter campaign name"
+                            className="h-8 sm:h-9 text-xs sm:text-sm"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="campaign_type">Campaign Type</Label>
+                          <Label htmlFor="campaign_type" className="text-xs sm:text-sm">Campaign Type</Label>
                           <Select
                             value={editForm.campaign_type}
                             onValueChange={(value) => handleFormChange('campaign_type', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -991,13 +1018,14 @@ const Campaigns = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description" className="text-xs sm:text-sm">Description</Label>
                         <Textarea
                           id="description"
                           value={editForm.description}
                           onChange={(e) => handleFormChange('description', e.target.value)}
                           placeholder="Enter campaign description"
-                          rows={3}
+                          rows={2}
+                          className="text-xs sm:text-sm"
                         />
                       </div>
                     </CardContent>
@@ -1005,18 +1033,19 @@ const Campaigns = () => {
 
                   {/* Message Content */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Message Content</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm sm:text-base">Message Content</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div>
-                        <Label htmlFor="message_text">Message Text</Label>
+                        <Label htmlFor="message_text" className="text-xs sm:text-sm">Message Text</Label>
                         <Textarea
                           id="message_text"
                           value={editForm.message_text}
                           onChange={(e) => handleFormChange('message_text', e.target.value)}
                           placeholder="Enter your message content"
-                          rows={6}
+                          rows={4}
+                          className="text-xs sm:text-sm"
                         />
                       </div>
                     </CardContent>
@@ -1024,17 +1053,18 @@ const Campaigns = () => {
 
                   {/* Scheduling */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Scheduling</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm sm:text-base">Scheduling</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3">
                       <div>
-                        <Label htmlFor="scheduled_at">Scheduled Date & Time</Label>
+                        <Label htmlFor="scheduled_at" className="text-xs sm:text-sm">Scheduled Date & Time</Label>
                         <Input
                           id="scheduled_at"
                           type="datetime-local"
                           value={editForm.scheduled_at}
                           onChange={(e) => handleFormChange('scheduled_at', e.target.value)}
+                          className="h-8 sm:h-9 text-xs sm:text-sm"
                         />
                       </div>
 
@@ -1043,51 +1073,58 @@ const Campaigns = () => {
                           id="is_recurring"
                           checked={editForm.is_recurring}
                           onCheckedChange={(checked) => handleFormChange('is_recurring', checked)}
+                          className="h-3 w-3"
                         />
-                        <Label htmlFor="is_recurring">Recurring Campaign</Label>
+                        <Label htmlFor="is_recurring" className="text-xs sm:text-sm">Recurring Campaign</Label>
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Target Audience */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Target Audience</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm sm:text-base">Target Audience</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3">
                       {/* Audience Mode Selection */}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
                         <Button
                           variant={audienceMode === 'contacts' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAudienceMode('contacts')}
+                          className="text-xs h-7 sm:h-8"
                         >
-                          <Users className="w-4 h-4 mr-2" />
-                          Individual Contacts
+                          <Users className="w-3 h-3 mr-1" />
+                          <span className="hidden sm:inline">Individual Contacts</span>
+                          <span className="sm:hidden">Contacts</span>
                         </Button>
                         <Button
                           variant={audienceMode === 'segments' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAudienceMode('segments')}
+                          className="text-xs h-7 sm:h-8"
                         >
-                          <Target className="w-4 h-4 mr-2" />
-                          Contact Segments
+                          <Target className="w-3 h-3 mr-1" />
+                          <span className="hidden sm:inline">Contact Segments</span>
+                          <span className="sm:hidden">Segments</span>
                         </Button>
                         <Button
                           variant={audienceMode === 'criteria' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAudienceMode('criteria')}
+                          className="text-xs h-7 sm:h-8"
                         >
-                          <Filter className="w-4 h-4 mr-2" />
-                          Custom Criteria
+                          <Filter className="w-3 h-3 mr-1" />
+                          <span className="hidden sm:inline">Custom Criteria</span>
+                          <span className="sm:hidden">Criteria</span>
                         </Button>
                       </div>
 
                       {/* Audience Summary */}
-                      <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="p-2 bg-muted/50 rounded-lg">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Total Audience:</span>
-                          <span className="text-lg font-bold text-primary">
+                          <span className="text-xs sm:text-sm font-medium">Total Audience:</span>
+                          <span className="text-sm sm:text-base font-bold text-primary">
                             {editForm.target_contact_count} contacts
                           </span>
                         </div>
@@ -1130,10 +1167,10 @@ const Campaigns = () => {
                                   />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">
-                                      {contact.first_name} {contact.last_name}
+                                      {contact.name}
                                     </p>
                                     <p className="text-xs text-muted-foreground truncate">
-                                      {contact.phone_number || contact.email}
+                                      {contact.phone_e164 || contact.email}
                                     </p>
                                   </div>
                                 </div>
@@ -1157,32 +1194,9 @@ const Campaigns = () => {
                             </span>
                           </div>
                           <div className="max-h-60 overflow-y-auto border rounded-lg">
-                            {segments && segments.length > 0 ? (
-                              segments.map((segment) => (
-                                <div
-                                  key={segment.id}
-                                  className="flex items-center space-x-3 p-3 hover:bg-muted/50 cursor-pointer"
-                                  onClick={() => handleSegmentToggle(segment)}
-                                >
-                                  <Checkbox
-                                    checked={selectedSegments.some(s => s.id === segment.id)}
-                                    onChange={() => handleSegmentToggle(segment)}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                      {segment.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {segment.contact_count || 0} contacts
-                                    </p>
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="p-4 text-center text-muted-foreground">
-                                No segments available
-                              </div>
-                            )}
+                            <div className="p-4 text-center text-muted-foreground">
+                              Segments feature coming soon
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1240,13 +1254,13 @@ const Campaigns = () => {
                   </Card>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2 pt-4 border-t">
-                    <Button onClick={handleSaveCampaign} className="flex-1">
-                      <CheckCircle className="w-4 h-4 mr-2" />
+                  <div className="flex gap-2 pt-3 border-t">
+                    <Button onClick={handleSaveCampaign} className="flex-1 text-xs sm:text-sm h-8 sm:h-9">
+                      <CheckCircle className="w-3 h-3 mr-1" />
                       Save Changes
                     </Button>
-                    <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
-                      <X className="w-4 h-4 mr-2" />
+                    <Button variant="outline" onClick={handleCancelEdit} className="flex-1 text-xs sm:text-sm h-8 sm:h-9">
+                      <X className="w-3 h-3 mr-1" />
                       Cancel
                     </Button>
                   </div>
@@ -1342,16 +1356,16 @@ const Campaigns = () => {
                     {selectedCampaign.can_edit && (
                       <Button
                         onClick={() => setIsEditMode(true)}
-                        className="flex-1"
+                        className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
                       >
-                        <Edit className="w-4 h-4 mr-2" />
+                        <Edit className="w-3 h-3 mr-1" />
                         Edit Campaign
                       </Button>
                     )}
                     <Button
                       variant="outline"
                       onClick={() => setIsCampaignDetailsOpen(false)}
-                      className={selectedCampaign.can_edit ? "flex-1" : "w-full"}
+                      className={`${selectedCampaign.can_edit ? "flex-1" : "w-full"} text-xs sm:text-sm h-8 sm:h-9`}
                     >
                       Close
                     </Button>
@@ -1362,6 +1376,14 @@ const Campaigns = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Campaign Details Modal */}
+      <CampaignDetailsModal
+        campaign={selectedCampaignForDetails}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        onAction={handleCampaignAction}
+      />
     </div>
   );
 };

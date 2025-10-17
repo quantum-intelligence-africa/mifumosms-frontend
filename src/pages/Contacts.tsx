@@ -591,19 +591,19 @@ const Contacts = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
+          <div className="h-full p-2 sm:p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-3 sm:gap-4">
                 <div>
-                  <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+                  <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
                     Contacts
                   </h1>
-                  <p className="text-sm lg:text-base text-text-subtle">
+                  <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                     Manage your customer database and relationships ({totalCount || 0} total)
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:gap-3">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -619,85 +619,90 @@ const Contacts = () => {
                       size="sm"
                       onClick={handleMobileContactImport}
                       disabled={isImporting}
-                      className="glass-subtle border-0 text-xs lg:text-sm"
+                      className="glass-subtle border-0 text-xs h-7 sm:h-8"
                     >
                       {isImporting ? (
-                        <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                       ) : (
-                        <Smartphone className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                        <Smartphone className="w-3 h-3 mr-1" />
                       )}
                       <span className="hidden sm:inline">Import from Phone</span>
+                      <span className="sm:hidden">Phone</span>
                     </Button>
                   )}
 
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-xs h-7 sm:h-8"
                     onClick={() => fetchContacts()}
                     disabled={isLoading}
                     size="sm"
                   >
                     {isLoading ? (
-                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     ) : (
-                      <RefreshCw className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                      <RefreshCw className="w-3 h-3 mr-1" />
                     )}
                     <span className="hidden sm:inline">Refresh</span>
+                    <span className="sm:hidden">↻</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-xs h-7 sm:h-8"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
                     size="sm"
                   >
                     {isImporting ? (
-                      <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     ) : (
-                      <Upload className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                      <Upload className="w-3 h-3 mr-1" />
                     )}
                     <span className="hidden sm:inline">Import</span>
+                    <span className="sm:hidden">📁</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="glass-subtle border-0 text-xs lg:text-sm"
+                    className="glass-subtle border-0 text-xs h-7 sm:h-8"
                     onClick={handleExportAll}
                     size="sm"
                   >
-                    <Download className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                    <Download className="w-3 h-3 mr-1" />
                     <span className="hidden sm:inline">Export All</span>
+                    <span className="sm:hidden">📥</span>
                   </Button>
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="text-xs lg:text-sm" disabled={isCreating}>
+                      <Button size="sm" className="text-xs h-7 sm:h-8" disabled={isCreating}>
                         {isCreating ? (
-                          <Loader2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 animate-spin" />
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                         ) : (
-                          <Plus className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                          <Plus className="w-3 h-3 mr-1" />
                         )}
                         <span className="hidden sm:inline">Add Contact</span>
+                        <span className="sm:hidden">Add</span>
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="glass">
-                      <DialogHeader>
-                        <DialogTitle>{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
-                        <DialogDescription>
+                    <DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+                      <DialogHeader className="pb-2">
+                        <DialogTitle className="text-base sm:text-lg">{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">
                           {selectedContact ? 'Update contact information' : 'Create a new contact in your database'}
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name">Full Name *</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor="name" className="text-xs sm:text-sm">Full Name *</Label>
                           <Input
                             id="name"
                             placeholder="Enter Name"
                             value={createFormData.name}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-xs sm:text-sm h-8"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Phone Number *</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor="phone" className="text-xs sm:text-sm">Phone Number *</Label>
                           <Input
                             id="phone"
                             type="tel"
@@ -705,14 +710,14 @@ const Contacts = () => {
                             placeholder="+1234567890"
                             value={createFormData.phone_e164}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-xs sm:text-sm h-8"
                           />
                           <p className="text-xs text-text-subtle">
-                            Enter phone number in international format (e.g., +1234567890)
+                            International format (e.g., +1234567890)
                           </p>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="email">Email Address</Label>
+                        <div className="space-y-1">
+                          <Label htmlFor="email" className="text-xs sm:text-sm">Email Address</Label>
                           <Input
                             id="email"
                             type="email"
@@ -720,53 +725,54 @@ const Contacts = () => {
                             placeholder="sway@example.com"
                             value={createFormData.email}
                             onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
-                            className="glass-subtle border-0 text-sm"
+                            className="glass-subtle border-0 text-xs sm:text-sm h-8"
                           />
                         </div>
 
                         {/* Attributes Section */}
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Additional Information</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="company">Company</Label>
+                        <div className="space-y-1">
+                          <h4 className="text-xs sm:text-sm font-medium text-foreground">Additional Info</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            <div className="space-y-1">
+                              <Label htmlFor="company" className="text-xs">Company</Label>
                               <Input
                                 id="company"
                                 placeholder="Acme Corp"
                                 value={(createFormData.attributes.company as string) || ""}
                                 onChange={(e) => handleAttributeChange("company", e.target.value)}
-                                className="glass-subtle border-0"
+                                className="glass-subtle border-0 text-xs sm:text-sm h-7"
                               />
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="department">Department</Label>
+                            <div className="space-y-1">
+                              <Label htmlFor="department" className="text-xs">Department</Label>
                               <Input
                                 id="department"
                                 placeholder="Marketing"
                                 value={(createFormData.attributes.department as string) || ""}
                                 onChange={(e) => handleAttributeChange("department", e.target.value)}
-                                className="glass-subtle border-0"
+                                className="glass-subtle border-0 text-xs sm:text-sm h-7"
                               />
                             </div>
                           </div>
                         </div>
 
                         {/* Tags Section */}
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Tags</h4>
-                          <div className="space-y-2">
-                            <Label>Select Tags</Label>
-                            <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <h4 className="text-xs sm:text-sm font-medium text-foreground">Tags</h4>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Select Tags</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                               {predefinedTags.map((tag) => (
-                                <div key={tag} className="flex items-center space-x-2">
+                                <div key={tag} className="flex items-center space-x-1">
                                   <Checkbox
                                     id={`tag-${tag}`}
                                     checked={createFormData.tags.includes(tag)}
                                     onCheckedChange={() => handleTagToggle(tag)}
+                                    className="h-3 w-3"
                                   />
                                   <Label
                                     htmlFor={`tag-${tag}`}
-                                    className="text-sm font-normal cursor-pointer"
+                                    className="text-xs font-normal cursor-pointer"
                                   >
                                     {tag}
                                   </Label>
@@ -774,9 +780,9 @@ const Contacts = () => {
                               ))}
                             </div>
                             {createFormData.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
+                              <div className="flex flex-wrap gap-1 mt-1">
                                 {createFormData.tags.map((tag) => (
-                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                  <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
                                     {tag}
                                   </Badge>
                                 ))}
@@ -785,15 +791,15 @@ const Contacts = () => {
                           </div>
                         </div>
 
-                        <div className="flex gap-2 pt-4">
+                        <div className="flex gap-1 pt-1">
                           <Button
                             onClick={handleCreateContact}
                             disabled={!createFormData.name || !createFormData.phone_e164 || isCreating}
-                            className="flex-1"
+                            className="flex-1 h-8 text-xs sm:text-sm"
                           >
                             {isCreating ? (
                               <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                                 {selectedContact ? 'Updating...' : 'Creating...'}
                               </>
                             ) : (
@@ -803,7 +809,7 @@ const Contacts = () => {
                           <Button
                             variant="outline"
                             onClick={() => setIsCreateDialogOpen(false)}
-                            className="flex-1"
+                            className="flex-1 h-8 text-xs sm:text-sm"
                           >
                             Cancel
                           </Button>

@@ -861,14 +861,14 @@ const Settings = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">
-          <div className="h-full p-3 lg:p-6">
+          <div className="h-full p-2 sm:p-3 lg:p-6">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header */}
-              <div className="mb-4 lg:mb-6">
-                <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground">
+              <div className="mb-3 sm:mb-4 lg:mb-6">
+                <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
                   Settings
                 </h1>
-                <p className="text-sm lg:text-base text-text-subtle">
+                <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                   Manage your account, team, and application preferences
                 </p>
               </div>
@@ -877,7 +877,7 @@ const Settings = () => {
               {isMobile ? (
                 <div className="flex-1 overflow-hidden">
                   {!currentCategory ? (
-                    <div className="space-y-3 h-full overflow-y-auto pb-6">
+                    <div className="space-y-2 sm:space-y-3 h-full overflow-y-auto pb-4 sm:pb-6">
                       {settingsCategories.map((category) => (
                         <Card
                           key={category.id}
@@ -888,16 +888,16 @@ const Settings = () => {
                           }`}
                           onClick={() => setCurrentCategory(category.id)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-lg ${category.color} flex items-center justify-center`}>
-                                <category.icon className="w-5 h-5 text-white" />
+                          <CardContent className="p-3 sm:p-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${category.color} flex items-center justify-center`}>
+                                <category.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                               </div>
                               <div className="flex-1">
-                                <h3 className="font-medium text-foreground text-sm">{category.title}</h3>
+                                <h3 className="font-medium text-foreground text-xs sm:text-sm">{category.title}</h3>
                                 <p className="text-xs text-text-subtle">{category.description}</p>
                               </div>
-                              <ChevronRight className="w-4 h-4 text-text-subtle" />
+                              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
                             </div>
                           </CardContent>
                         </Card>

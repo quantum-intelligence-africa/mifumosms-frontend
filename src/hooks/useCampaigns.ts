@@ -31,6 +31,9 @@ export const useCampaigns = () => {
     can_start: boolean;
     can_pause: boolean;
     can_cancel: boolean;
+    can_view_analytics: boolean;
+    can_duplicate: boolean;
+    can_delete: boolean;
     is_recurring: boolean;
     recurring_schedule: any;
     settings: any;
@@ -39,7 +42,10 @@ export const useCampaigns = () => {
     created_at: string;
     updated_at: string;
     target_contact_count: number;
+    target_contact_ids: string[];
+    target_segment_ids: string[];
     target_segment_names: string[];
+    target_criteria: any;
   }>>([]);
 
   const [summary, setSummary] = useState<{
@@ -199,10 +205,12 @@ export const useCampaigns = () => {
       const response = await apiClient.createCampaign(data);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign created successfully",
-          description: `Campaign "${response.data.name}" has been created with ${response.data.total_recipients} recipients`,
-        });
+        // Store success message in localStorage to show after page refresh
+        localStorage.setItem('campaign_created_success', JSON.stringify({
+          name: response.data.name,
+          recipients: response.data.total_recipients,
+          timestamp: Date.now()
+        }));
 
         // Refresh campaigns list
         await fetchCampaigns();
@@ -277,30 +285,17 @@ export const useCampaigns = () => {
       const response = await apiClient.deleteCampaign(id);
 
       if (response.success) {
-        toast({
-          title: "Campaign deleted successfully",
-          description: "The campaign has been permanently deleted",
-        });
-
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
 
         return true;
       } else {
-        toast({
-          title: "Failed to delete campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to delete campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // No error toast - just return false
       return false;
     }
   };
@@ -310,30 +305,17 @@ export const useCampaigns = () => {
       const response = await apiClient.startCampaign(id);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign started successfully",
-          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
-        });
-
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
 
         return true;
       } else {
-        toast({
-          title: "Failed to start campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to start campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // No error toast - just return false
       return false;
     }
   };
@@ -343,30 +325,17 @@ export const useCampaigns = () => {
       const response = await apiClient.pauseCampaign(id);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign paused successfully",
-          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
-        });
-
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
 
         return true;
       } else {
-        toast({
-          title: "Failed to pause campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to pause campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // No error toast - just return false
       return false;
     }
   };
@@ -376,30 +345,17 @@ export const useCampaigns = () => {
       const response = await apiClient.cancelCampaign(id);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign cancelled successfully",
-          description: response.data.message || `Campaign is now ${response.data.campaign.status}`,
-        });
-
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
 
         return true;
       } else {
-        toast({
-          title: "Failed to cancel campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to cancel campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // No error toast - just return false
       return false;
     }
   };
@@ -409,30 +365,17 @@ export const useCampaigns = () => {
       const response = await apiClient.duplicateCampaign(id);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign duplicated successfully",
-          description: `Campaign "${response.data.duplicate_name}" has been created`,
-        });
-
         // Refresh campaigns list
         await fetchCampaigns();
         await fetchSummary();
 
         return true;
       } else {
-        toast({
-          title: "Failed to duplicate campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to duplicate campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // No error toast - just return false
       return false;
     }
   };
@@ -453,6 +396,32 @@ export const useCampaigns = () => {
 
   useEffect(() => {
     fetchAllData();
+
+    // Check for campaign creation success message after page load
+    const checkForSuccessMessage = () => {
+      const successData = localStorage.getItem('campaign_created_success');
+      if (successData) {
+        try {
+          const { name, recipients, timestamp } = JSON.parse(successData);
+          // Only show if the message is recent (within last 10 seconds)
+          if (Date.now() - timestamp < 10000) {
+            toast({
+              title: "🎉 Campaign created successfully!",
+              description: `Campaign "${name}" has been created with ${recipients} recipients.`,
+              duration: 5000,
+            });
+          }
+          // Clear the success message from localStorage
+          localStorage.removeItem('campaign_created_success');
+        } catch (error) {
+          console.error('Error parsing success message:', error);
+          localStorage.removeItem('campaign_created_success');
+        }
+      }
+    };
+
+    // Check for success message after a short delay to ensure page is loaded
+    setTimeout(checkForSuccessMessage, 500);
   }, []);
 
   // Calculate summary whenever campaigns change

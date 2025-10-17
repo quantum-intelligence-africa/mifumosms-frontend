@@ -453,56 +453,56 @@ const SendSMS = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-3 lg:p-6">
-          <div className="max-w-6xl mx-auto space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-6">
+          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Header */}
             <div>
-              <h1 className="font-heading text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                 Send SMS
               </h1>
-              <p className="text-sm lg:text-base text-text-subtle">
+              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 Send single SMS, bulk messages, or target specific segments
               </p>
             </div>
 
             {/* Mode Selection */}
             {!selectedMode && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <Card
-                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("single")}
                 >
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl gradient-primary flex items-center justify-center mb-3 lg:mb-4">
-                    <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-primary-foreground" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl gradient-primary flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary-foreground" />
                   </div>
-                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">Quick SMS</h3>
-                  <p className="text-xs lg:text-sm text-text-subtle">
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">Quick SMS</h3>
+                  <p className="text-xs sm:text-sm text-text-subtle">
                     Send instant messages to individual recipients
                   </p>
                 </Card>
 
                 <Card
-                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("bulk")}
                 >
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl gradient-secondary flex items-center justify-center mb-3 lg:mb-4">
-                    <Upload className="w-5 h-5 lg:w-6 lg:h-6 text-secondary-foreground" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl gradient-secondary flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
+                    <Upload className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-secondary-foreground" />
                   </div>
-                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">File SMS</h3>
-                  <p className="text-xs lg:text-sm text-text-subtle">
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">File SMS</h3>
+                  <p className="text-xs sm:text-sm text-text-subtle">
                     Upload CSV file with multiple recipients
                   </p>
                 </Card>
 
                 <Card
-                  className="p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
+                  className="p-3 sm:p-4 lg:p-6 cursor-pointer hover:shadow-lg transition-smooth glass"
                   onClick={() => setSelectedMode("segment")}
                 >
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-success flex items-center justify-center mb-3 lg:mb-4">
-                    <Users className="w-5 h-5 lg:w-6 lg:h-6 text-success-foreground" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-success flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-success-foreground" />
                   </div>
-                  <h3 className="font-heading text-base lg:text-lg font-semibold mb-2">Group SMS</h3>
-                  <p className="text-xs lg:text-sm text-text-subtle">
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">Group SMS</h3>
+                  <p className="text-xs sm:text-sm text-text-subtle">
                     Target contacts from saved segments
                   </p>
                 </Card>
@@ -511,13 +511,13 @@ const SendSMS = () => {
 
             {/* Send Form */}
             {selectedMode && (
-              <Card className="p-6 glass">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    {selectedMode === "single" && <Zap className="w-5 h-5 text-primary" />}
-                    {selectedMode === "bulk" && <Upload className="w-5 h-5 text-secondary" />}
-                    {selectedMode === "segment" && <Users className="w-5 h-5 text-success" />}
-                    <h2 className="font-heading text-xl font-semibold">
+              <Card className="p-3 sm:p-4 lg:p-6 glass">
+                <div className="flex items-center justify-between mb-4 sm:mb-5 lg:mb-6">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {selectedMode === "single" && <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />}
+                    {selectedMode === "bulk" && <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />}
+                    {selectedMode === "segment" && <Users className="w-4 h-4 sm:w-5 sm:h-5 text-success" />}
+                    <h2 className="font-heading text-lg sm:text-xl font-semibold">
                       {selectedMode === "single" && "Quick SMS"}
                       {selectedMode === "bulk" && "Bulk SMS from File"}
                       {selectedMode === "segment" && "Segment SMS"}
@@ -527,15 +527,17 @@ const SendSMS = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedMode(null)}
+                    className="text-xs sm:text-sm h-7 sm:h-8"
                   >
-                    Change method
+                    <span className="hidden sm:inline">Change method</span>
+                    <span className="sm:hidden">Change</span>
                   </Button>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                   {/* Sender Name */}
-                  <div className="space-y-2">
-                    <Label>Sender Name</Label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Sender Name</Label>
                     <Select value={selectedSender} onValueChange={setSelectedSender}>
                       <SelectTrigger className="glass-subtle border-0">
                         <SelectValue placeholder="Select sender name" />

@@ -143,22 +143,26 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="glass border-b border-border-subtle">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg gradient-primary flex items-center justify-center">
+                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
-              <span className="font-heading text-xl font-bold text-foreground">
+              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
                 Mifumo WMS
               </span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
               <Link to="/login">
-                <Button variant="ghost">Login</Button>
+                <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3">
+                  Login
+                </Button>
               </Link>
               <Link to="/signup">
-                <Button variant="default">Get Started</Button>
+                <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3">
+                  Get Started
+                </Button>
               </Link>
             </div>
           </div>
@@ -166,25 +170,25 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section id="about" className="pt-20 pb-16 px-6">
+      <section id="about" className="pt-8 sm:pt-12 lg:pt-16 xl:pt-20 pb-8 sm:pb-12 lg:pb-16 px-3 sm:px-4 lg:px-6">
         <div className="max-w-4xl mx-auto text-center">
 
-          <h1 className="font-heading text-5xl lg:text-6xl font-bold text-foreground mb-6">
+          <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 sm:mb-4 lg:mb-6">
             Connect with Customers
             <span className="gradient-text block">Across Africa</span>
           </h1>
-          <p className="text-xl text-text-subtle mb-8 max-w-2xl mx-auto">
+          <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-text-subtle mb-4 sm:mb-6 lg:mb-8 max-w-2xl mx-auto leading-relaxed">
             Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
             with multi-language support and local payment integration.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 justify-center">
             <Link to="/signup">
-              <Button size="hero" variant="hero">
+              <Button size="hero" variant="hero" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
                 Start Free Trial
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-1 sm:ml-2" />
               </Button>
             </Link>
-            <Button size="hero" variant="outline">
+            <Button size="hero" variant="outline" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
               Watch Demo
             </Button>
           </div>
@@ -195,28 +199,28 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-gradient-surface">
+      <section id="features" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 bg-gradient-surface">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+            <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
               Everything you need to grow
             </h2>
-            <p className="text-xl text-text-subtle max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-text-subtle max-w-2xl mx-auto">
               Powerful features designed for African businesses to scale their customer communication
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {features.map((feature, index) => (
               <Card key={index} className="glass border-0 hover:shadow-lg transition-smooth">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
+                    <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <h3 className="font-heading text-xl font-semibold text-foreground mb-2">
+                  <h3 className="font-heading text-lg sm:text-xl font-semibold text-foreground mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-text-subtle">{feature.description}</p>
+                  <p className="text-sm sm:text-base text-text-subtle">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -227,18 +231,18 @@ const Landing = () => {
       {/* Testimonials removed */}
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 px-6 bg-gradient-surface">
+      <section id="pricing" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 bg-gradient-surface">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+            <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
               Simple, transparent pricing
             </h2>
-            <p className="text-xl text-text-subtle">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-text-subtle">
               Choose the plan that fits your business needs
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {pricing.map((plan, index) => (
               <Card
                 key={index}
@@ -251,32 +255,32 @@ const Landing = () => {
                     Most Popular
                   </Badge>
                 )}
-                <CardContent className="p-8 transition-smooth">
-                  <h3 className="font-heading text-2xl font-bold text-foreground mb-2">
+                <CardContent className="p-4 sm:p-6 lg:p-8 transition-smooth">
+                  <h3 className="font-heading text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-2">
                     {plan.name}
                   </h3>
                   <div className="mb-1">
-                    <span className="text-2xl font-bold text-foreground transition-smooth group-hover:text-primary">{plan.rate}</span>
+                    <span className="text-xl sm:text-2xl font-bold text-foreground transition-smooth group-hover:text-primary">{plan.rate}</span>
                   </div>
-                  <p className="text-text-subtle mb-6 transition-smooth group-hover:text-foreground/80">{plan.credits}</p>
+                  <p className="text-xs sm:text-sm text-text-subtle mb-4 sm:mb-6 transition-smooth group-hover:text-foreground/80">{plan.credits}</p>
 
-                  <ul className="space-y-3 mb-8">
+                  <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-success" />
-                      <span className="text-text-subtle">{plan.rate}</span>
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-success" />
+                      <span className="text-xs sm:text-sm text-text-subtle">{plan.rate}</span>
                     </li>
                     {/* Savings display not used in tiered pricing */}
                     {plan.features?.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-success" />
-                        <span className="text-text-subtle">{feature}</span>
+                        <Check className="w-3 h-3 sm:w-4 sm:h-4 text-success" />
+                        <span className="text-xs sm:text-sm text-text-subtle">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <Link to="/login">
-                    <Button className="w-full transition-smooth group-hover:translate-y-[-1px]" variant={plan.popular ? "default" : "outline"}>
+                    <Button className="w-full text-xs sm:text-sm h-8 sm:h-9 lg:h-10 transition-smooth group-hover:translate-y-[-1px]" variant={plan.popular ? "default" : "outline"}>
                       Get Started
-                  </Button>
+                    </Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -286,30 +290,30 @@ const Landing = () => {
       </section>
 
       {/* Custom Amount Calculator (public view) */}
-      <section className="py-12 px-6">
+      <section className="py-8 sm:py-12 px-3 sm:px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <Card className="p-6 glass">
-            <h3 className="font-heading text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Number of SMS Credits</Label>
+          <Card className="p-4 sm:p-6 glass">
+            <h3 className="font-heading text-base sm:text-lg font-semibold mb-3 sm:mb-4">Or Enter Custom Amount</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Number of SMS Credits</Label>
                 <Input
                   type="number"
                   placeholder="e.g., 5000"
                   value={customCredits}
                   onChange={(e) => setCustomCredits(e.target.value)}
-                  className="glass-subtle border-0"
+                  className="glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
                   min="100"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Total Cost</Label>
-                <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-lg font-semibold">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Total Cost</Label>
+                <div className="h-8 sm:h-9 px-3 rounded-lg glass-subtle flex items-center text-sm sm:text-lg font-semibold">
                   TZS {customPrice.toLocaleString()}
                 </div>
               </div>
             </div>
-            <div className="mt-2 text-sm text-text-subtle flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div className="mt-2 text-xs sm:text-sm text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
               <span>
                 Active tier: {activeTier ? (
                   <>
@@ -324,60 +328,60 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-20 px-6">
+      <section id="contact" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="font-heading text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
             Ready to transform your customer communication?
           </h2>
-          <p className="text-xl text-text-subtle mb-8">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-text-subtle mb-6 sm:mb-8">
             Join thousands of African businesses already using Mifumo WMS
           </p>
           <Link to="/signup">
-            <Button size="hero" variant="hero">
+            <Button size="hero" variant="hero" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
               Get Started for Free
-              <ArrowRight className="w-5 h-5 ml-2" />
+              <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-1 sm:ml-2" />
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="glass border-t border-border-subtle py-6 px-6">
+      <footer className="glass border-t border-border-subtle py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
             {/* Brand */}
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-1 sm:gap-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg gradient-primary flex items-center justify-center">
+                  <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <span className="font-heading text-xl font-bold text-foreground">
+                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
                   Mifumo WMS
                 </span>
               </div>
 
             {/* Nav */}
-            <nav className="flex items-center gap-8 text-sm text-foreground/80">
+            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-foreground/80">
               <a className="hover:underline" href="#about">About</a>
               <a className="hover:underline" href="#features">Features</a>
               <a className="hover:underline" href="#pricing">Pricing</a>
             </nav>
 
             {/* Contact */}
-            <div className="flex items-center gap-3">
-              <span className="text-foreground/80">+255 614 459 923</span>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+              <span className="text-xs sm:text-sm text-foreground/80">+255 614 459 923</span>
               <a
                 href="https://wa.me/255614459923"
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90 text-xs sm:text-sm"
               >
                 WhatsApp
               </a>
             </div>
           </div>
 
-          <div className="border-t border-border-subtle mt-4 pt-4 text-center text-text-subtle">
-            <p>&copy; 2025 Mifumo WMS. All rights reserved.</p>
+          <div className="border-t border-border-subtle mt-3 sm:mt-4 pt-3 sm:pt-4 text-center text-text-subtle">
+            <p className="text-xs sm:text-sm">&copy; 2025 Mifumo WMS. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -805,59 +805,58 @@ const SenderNames = () => {
 
             {/* Request Dialog */}
             <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Request New Sender Name</DialogTitle>
-                  <DialogDescription>
+              <DialogContent className="glass max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base sm:text-lg">Request New Sender Name</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
                     Submit a request to register a new sender ID for your SMS campaigns
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 my-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Sender Name *</Label>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Sender Name *</Label>
                     <Input
                       placeholder="e.g., MYCOMPANY"
                       value={newSenderName}
                       onChange={(e) => setNewSenderName(e.target.value.toUpperCase())}
                       maxLength={11}
-                      className="glass-subtle border-0 font-mono text-sm"
+                      className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
                       {newSenderName.length}/11 characters (alphanumeric only)
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm">Use Case *</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Use Case *</Label>
                     <Textarea
                       placeholder="Describe how you plan to use this sender name..."
                       value={useCase}
                       onChange={(e) => setUseCase(e.target.value)}
-                      className="glass-subtle border-0 text-sm"
-                      rows={3}
+                      className="glass-subtle border-0 text-xs sm:text-sm"
+                      rows={2}
                     />
                   </div>
 
-
-                  <div className="space-y-2">
-                    <Label className="text-sm">Supporting Documents (Optional)</Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-4 text-center">
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Supporting Documents (Optional)</Label>
+                    <div className="border-2 border-dashed border-border rounded-lg p-2 text-center">
                       {selectedFiles.length > 0 ? (
-                        <div className="space-y-2">
-                          <Check className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-green-500" />
-                          <p className="text-xs sm:text-sm font-medium text-green-600">
+                        <div className="space-y-1">
+                          <Check className="w-4 h-4 mx-auto text-green-500" />
+                          <p className="text-xs font-medium text-green-600">
                             {selectedFiles.length} file(s) selected
                           </p>
                           <div className="space-y-1">
                             {selectedFiles.map((file, index) => (
                               <div key={index} className="flex items-center justify-between text-xs">
-                                <span className="truncate flex-1 mr-2">{file.name}</span>
+                                <span className="truncate flex-1 mr-1">{file.name}</span>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleRemoveFile(index)}
-                                  className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
+                                  className="text-red-600 hover:text-red-700 h-4 w-4 p-0"
                                 >
                                   <X className="w-3 h-3" />
                                 </Button>
@@ -868,19 +867,19 @@ const SenderNames = () => {
                             variant="outline"
                             size="sm"
                             onClick={handleRemoveAllFiles}
-                            className="text-red-600 hover:text-red-700 text-xs w-full"
+                            className="text-red-600 hover:text-red-700 text-xs w-full h-7"
                           >
-                            <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            <X className="w-3 h-3 mr-1" />
                             Remove All Files
                           </Button>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <Upload className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-text-subtle" />
-                          <p className="text-xs sm:text-sm text-text-subtle mb-2">
+                        <div className="space-y-1">
+                          <Upload className="w-4 h-4 mx-auto mb-1 text-text-subtle" />
+                          <p className="text-xs text-text-subtle mb-1">
                             Upload business license or registration
                           </p>
-                          <p className="text-xs text-text-subtle mb-2">
+                          <p className="text-xs text-text-subtle mb-1">
                             PDF, JPEG, or PNG (max 5MB)
                           </p>
                           <input
@@ -892,7 +891,7 @@ const SenderNames = () => {
                             onChange={handleFileSelect}
                           />
                           <label htmlFor="doc-upload">
-                            <Button variant="outline" size="sm" asChild className="text-xs">
+                            <Button variant="outline" size="sm" asChild className="text-xs h-7">
                               <span>Choose File</span>
                             </Button>
                           </label>
@@ -902,19 +901,19 @@ const SenderNames = () => {
                   </div>
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2">
+                <DialogFooter className="flex-col sm:flex-row gap-1 pt-1">
                   <Button
                     variant="outline"
                     onClick={() => setShowRequestDialog(false)}
                     disabled={submitting}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto h-8 text-xs sm:text-sm"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleRequestSenderName} disabled={submitting} className="w-full sm:w-auto">
+                  <Button onClick={handleRequestSenderName} disabled={submitting} className="w-full sm:w-auto h-8 text-xs sm:text-sm">
                     {submitting ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                         Submitting...
                       </>
                     ) : (
@@ -927,37 +926,37 @@ const SenderNames = () => {
 
             {/* Edit Dialog */}
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Edit Sender Name Request</DialogTitle>
-                  <DialogDescription>
+              <DialogContent className="glass max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base sm:text-lg">Edit Sender Name Request</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
                     Update your sender name request details
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 my-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Sender Name *</Label>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Sender Name *</Label>
                     <Input
                       placeholder="e.g., MYCOMPANY"
                       value={editSenderName}
                       onChange={(e) => setEditSenderName(e.target.value.toUpperCase())}
                       maxLength={11}
-                      className="glass-subtle border-0 font-mono text-sm"
+                      className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
                       {editSenderName.length}/11 characters (alphanumeric only)
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm">Use Case *</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Use Case *</Label>
                     <Textarea
                       placeholder="Describe how you plan to use this sender name..."
                       value={editUseCase}
                       onChange={(e) => setEditUseCase(e.target.value)}
-                      className="glass-subtle border-0 text-sm"
-                      rows={3}
+                      className="glass-subtle border-0 text-xs sm:text-sm"
+                      rows={2}
                     />
                   </div>
 

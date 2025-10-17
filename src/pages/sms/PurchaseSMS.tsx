@@ -517,12 +517,12 @@ const PurchaseSMS = () => {
 
             {/* Package Selection */}
             <div>
-              <h2 className="font-heading text-lg sm:text-xl font-semibold mb-4">Choose a Package</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <h2 className="font-heading text-lg sm:text-xl font-semibold mb-3">Choose a Package</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {defaultPackages.map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`p-4 sm:p-6 cursor-pointer transition-smooth glass relative ${
+                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -533,36 +533,36 @@ const PurchaseSMS = () => {
                     }}
                   >
                     {pkg.is_popular && (
-                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground">
+                      <Badge className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs">
                         Most Popular
                       </Badge>
                     )}
-                    <h3 className="font-heading text-lg sm:text-xl font-semibold mb-2">{pkg.name}</h3>
-                    <div className="mb-4">
-                      <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    <h3 className="font-heading text-base sm:text-lg font-semibold mb-2">{pkg.name}</h3>
+                    <div className="mb-3">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">
                         TZS {pkg.unit_price}/SMS
                       </p>
-                      <p className="text-xs sm:text-sm text-text-subtle">
+                      <p className="text-xs text-text-subtle">
                         {pkg.id === 'lite' ? '1 – 5,000 SMS' :
                          pkg.id === 'standard' ? '5,001 – 50,000 SMS' :
                          pkg.id === 'pro' ? '50,001 – 250,000 SMS' :
                          'Enterprise (1M+ SMS)'}
                       </p>
                     </div>
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm">
-                        <Check className="w-4 h-4 mr-2 text-success" />
+                    <div className="space-y-1 mb-3">
+                      {/* <div className="flex items-center text-xs">
+                        <Check className="w-3 h-3 mr-1 text-success" />
                         <span>Never expires</span>
-                      </div>
+                      </div> */}
                       {pkg.features?.map((feature, i) => (
-                        <div key={i} className="flex items-center text-sm">
-                          <Check className="w-4 h-4 mr-2 text-success" />
+                        <div key={i} className="flex items-center text-xs">
+                          <Check className="w-3 h-3 mr-1 text-success" />
                           <span>{feature}</span>
                         </div>
                       ))}
                     </div>
                     {selectedPackage === pkg.id && (
-                      <Badge variant="secondary" className="w-full justify-center">
+                      <Badge variant="secondary" className="w-full justify-center text-xs">
                         Selected
                       </Badge>
                     )}
@@ -573,10 +573,10 @@ const PurchaseSMS = () => {
 
             {/* Custom Amount */}
             <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Number of SMS Credits</Label>
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Or Enter Custom Amount</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-sm">Number of SMS Credits</Label>
                   <Input
                     type="number"
                     placeholder="e.g., 5000"
@@ -585,18 +585,18 @@ const PurchaseSMS = () => {
                       setCustomCredits(e.target.value);
                       setSelectedPackage("");
                     }}
-                    className="glass-subtle border-0"
+                    className="glass-subtle border-0 h-9 text-sm"
                     min="100"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Total Cost</Label>
-                  <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-lg font-semibold">
+                <div className="space-y-1">
+                  <Label className="text-sm">Total Cost</Label>
+                  <div className="h-9 px-3 rounded-lg glass-subtle flex items-center text-base font-semibold">
                     TZS {customPrice.toLocaleString()}
                   </div>
                 </div>
               </div>
-              <div className="mt-2 text-xs sm:text-sm text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span>
                   Active tier: {activeTier ? (
                     <>
@@ -610,20 +610,20 @@ const PurchaseSMS = () => {
 
             {/* Payment Method */}
             <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Select Payment Method</h3>
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {paymentMethods.map((method) => (
                       <div
                         key={method.id}
-                        className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg glass-subtle cursor-pointer transition-smooth ${
+                        className={`flex items-center space-x-2 p-2 sm:p-3 rounded-lg glass-subtle cursor-pointer transition-smooth ${
                           paymentMethod === method.id ? "ring-2 ring-primary" : ""
                         }`}
                         onClick={() => setPaymentMethod(method.id)}
                       >
-                        <RadioGroupItem value={method.id} id={method.id} />
-                        <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        <RadioGroupItem value={method.id} id={method.id} className="h-4 w-4" />
+                        <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
                             method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
                             method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
                             method.id === 'airtel' ? 'bg-red-100 text-red-600' :
@@ -631,13 +631,13 @@ const PurchaseSMS = () => {
                             'bg-primary/10 text-primary'
                           }`}>
                             {method.id === 'bank' ? (
-                              <CreditCard className="w-5 h-5" />
+                              <CreditCard className="w-4 h-4" />
                             ) : (
-                              <Smartphone className="w-5 h-5" />
+                              <Smartphone className="w-4 h-4" />
                             )}
                           </div>
                           <div>
-                            <p className="font-medium">{method.name}</p>
+                            <p className="font-medium text-sm">{method.name}</p>
                             <p className="text-xs text-text-subtle">
                               {method.id === 'mpesa' ? 'Vodacom Tanzania' :
                                method.id === 'tigopesa' ? 'Tigo Tanzania' :
@@ -654,8 +654,8 @@ const PurchaseSMS = () => {
 
                 {/* Payment Number Input */}
                 {paymentMethod && (
-                  <div className="mt-4 sm:mt-6 space-y-2">
-                    <Label htmlFor="paymentNumber">
+                  <div className="mt-3 space-y-1">
+                    <Label htmlFor="paymentNumber" className="text-sm">
                       {paymentMethod === 'mpesa' ? 'M-Pesa Number (Vodacom)' :
                        paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
                        paymentMethod === 'airtel' ? 'Airtel Money Number' :
@@ -676,7 +676,7 @@ const PurchaseSMS = () => {
                       }
                       value={userPaymentNumber}
                       onChange={(e) => setUserPaymentNumber(e.target.value)}
-                      className="glass-subtle border-0"
+                      className="glass-subtle border-0 h-9 text-sm"
                     />
                     <p className="text-xs text-text-subtle">
                       {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
@@ -690,7 +690,7 @@ const PurchaseSMS = () => {
                 )}
 
                 {/* Email Field */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
                     Email Address
                   </Label>
@@ -700,7 +700,7 @@ const PurchaseSMS = () => {
                     placeholder="e.g., john@example.com"
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
-                    className="glass-subtle border-0"
+                    className="glass-subtle border-0 h-9 text-sm"
                   />
                   <p className="text-xs text-text-subtle">
                     We'll send you a receipt and payment confirmation
@@ -708,7 +708,7 @@ const PurchaseSMS = () => {
                 </div>
 
                 {/* Name Field */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="userName" className="text-sm font-medium text-foreground">
                     Full Name
                   </Label>
@@ -718,7 +718,7 @@ const PurchaseSMS = () => {
                     placeholder="e.g., John Doe"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    className="glass-subtle border-0"
+                    className="glass-subtle border-0 h-9 text-sm"
                   />
                   <p className="text-xs text-text-subtle">
                     Your full name as it appears on your mobile money account
@@ -738,12 +738,12 @@ const PurchaseSMS = () => {
 
             {/* Invoice Dialog */}
             <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>
+              <DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base sm:text-lg">
                     {paymentState.isActive ? "Payment in Progress" : "Confirm Purchase"}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-xs sm:text-sm">
                     {paymentState.isActive
                       ? "Please complete the payment on your mobile device"
                       : "Review your order before proceeding"
@@ -751,25 +751,25 @@ const PurchaseSMS = () => {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 my-4">
+                <div className="space-y-2">
                   {/* Payment Progress */}
                   {paymentState.isActive && paymentState.progress && (
-                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <div className="p-2 bg-primary/5 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                           {paymentState.status === 'completed' ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <CheckCircle className="w-3 h-3 text-green-600" />
                           ) : paymentState.status === 'failed' ? (
-                            <AlertCircle className="w-5 h-5 text-red-600" />
+                            <AlertCircle className="w-3 h-3 text-red-600" />
                           ) : (
-                            <Clock className="w-5 h-5 text-primary" />
+                            <Clock className="w-3 h-3 text-primary" />
                           )}
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="font-medium text-foreground text-xs sm:text-sm">
                             {paymentState.progress.current_step}
                           </p>
-                          <p className="text-sm text-text-subtle">
+                          <p className="text-xs text-text-subtle">
                             Step {paymentState.progress.step} of {paymentState.progress.total_steps}
                           </p>
                         </div>
@@ -777,11 +777,11 @@ const PurchaseSMS = () => {
 
                       <Progress
                         value={paymentState.progress.percentage || 0}
-                        className="w-full mb-3"
+                        className="w-full mb-1"
                       />
 
-                      <div className="space-y-2">
-                        <p className="text-sm text-text-subtle">Next: {paymentState.progress.next_step}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-text-subtle">Next: {paymentState.progress.next_step}</p>
                         {paymentState.orderId && (
                           <p className="text-xs text-text-subtle font-mono">
                             Order ID: {paymentState.orderId}
@@ -792,26 +792,26 @@ const PurchaseSMS = () => {
                   )}
 
                   {/* Order Details */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between py-2 border-b border-border-subtle">
-                      <span className="text-text-subtle">Package</span>
-                      <span className="font-medium">
+                  <div className="space-y-1">
+                    <div className="flex justify-between py-1 border-b border-border-subtle">
+                      <span className="text-text-subtle text-xs sm:text-sm">Package</span>
+                      <span className="font-medium text-xs sm:text-sm">
                         {selectedPkg?.name || "Custom"}
                       </span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-border-subtle">
-                      <span className="text-text-subtle">SMS Credits</span>
-                      <span className="font-medium">
+                    <div className="flex justify-between py-1 border-b border-border-subtle">
+                      <span className="text-text-subtle text-xs sm:text-sm">SMS Credits</span>
+                      <span className="font-medium text-xs sm:text-sm">
                         {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between py-2 border-b border-border-subtle">
-                      <span className="text-text-subtle">Payment Method</span>
-                      <span className="font-medium">
+                    <div className="flex justify-between py-1 border-b border-border-subtle">
+                      <span className="text-text-subtle text-xs sm:text-sm">Payment Method</span>
+                      <span className="font-medium text-xs sm:text-sm">
                         {paymentMethods.find(m => m.id === paymentMethod)?.name || 'Mobile Money'}
                       </span>
                     </div>
-                    <div className="flex justify-between py-2 text-lg font-semibold">
+                    <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
                       <span>Total Amount</span>
                       <span className="text-primary">
                         TZS {(selectedPkg?.price || customPrice).toLocaleString()}
@@ -821,40 +821,40 @@ const PurchaseSMS = () => {
 
                   {/* Payment Instructions */}
                   {paymentMethod && !paymentState.isActive && (
-                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
-                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
+                    <div className="mt-2 p-2 bg-primary/5 rounded-lg border border-primary/20">
+                      <h4 className="font-semibold text-foreground mb-1 flex items-center gap-2 text-xs sm:text-sm">
                         {paymentMethod === 'bank' ? (
                           <>
-                            <CreditCard className="w-4 h-4" />
+                            <CreditCard className="w-3 h-3" />
                             Bank Transfer Payment
                           </>
                         ) : (
                           <>
-                            <Smartphone className="w-4 h-4" />
+                            <Smartphone className="w-3 h-3" />
                             Mobile Money Payment
                           </>
                         )}
                       </h4>
-                      <div className="space-y-3">
+                      <div className="space-y-1">
                         <div>
-                          <p className="text-sm text-text-subtle mb-1">
+                          <p className="text-xs text-text-subtle mb-1">
                             {paymentMethod === 'bank' ? 'Your Account Number:' : 'Your Mobile Number:'}
                           </p>
-                          <p className="font-mono text-lg font-semibold text-primary bg-background px-3 py-2 rounded border">
+                          <p className="font-mono text-xs sm:text-sm font-semibold text-primary bg-background px-2 py-1 rounded border">
                             {userPaymentNumber}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-text-subtle mb-1">Instructions:</p>
-                          <p className="text-sm text-foreground">
+                          <p className="text-xs text-text-subtle mb-1">Instructions:</p>
+                          <p className="text-xs text-foreground">
                             {paymentMethod === 'bank'
                               ? 'Transfer the amount to the provided bank account. Your SMS credits will be added after verification.'
                               : 'After confirming payment, you\'ll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.'
                             }
                           </p>
                         </div>
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 sm:p-3">
-                          <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-1">
+                          <p className="text-xs text-blue-800 dark:text-blue-200">
                             <strong>Note:</strong> {paymentMethod === 'bank'
                               ? 'Bank transfers may take 1-2 business days to process.'
                               : 'Payment will be processed through ZenoPay mobile money integration.'
@@ -866,28 +866,28 @@ const PurchaseSMS = () => {
                   )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="pt-1">
                   {!paymentState.isActive ? (
                     <>
-                      <Button variant="outline" onClick={() => setShowInvoice(false)} disabled={processing}>
+                      <Button variant="outline" onClick={() => setShowInvoice(false)} disabled={processing} className="h-8 text-xs sm:text-sm">
                         Cancel
                       </Button>
-                      <Button onClick={confirmPurchase} disabled={processing}>
+                      <Button onClick={confirmPurchase} disabled={processing} className="h-8 text-xs sm:text-sm">
                         {processing ? (
                           <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
                             Processing...
                           </>
                         ) : (
                           <>
-                            <CreditCard className="w-4 h-4 mr-2" />
+                            <CreditCard className="w-3 h-3 mr-1" />
                             Confirm Payment
                           </>
                         )}
                       </Button>
                     </>
                   ) : (
-                    <Button variant="outline" onClick={() => setShowInvoice(false)}>
+                    <Button variant="outline" onClick={() => setShowInvoice(false)} className="h-8 text-xs sm:text-sm">
                       Close
                     </Button>
                   )}

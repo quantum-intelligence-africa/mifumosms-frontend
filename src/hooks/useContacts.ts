@@ -94,23 +94,9 @@ export const useContacts = () => {
         if (apiResponse.success && apiResponse.data) {
           let results = apiResponse.data.results || [];
 
-          // Additional validation: Ensure we only show current user's contacts
-          // Filter out any contacts that might belong to other users
-          const currentUserId = authContext?.user?.id;
-          if (currentUserId) {
-            results = results.filter((contact: any) => {
-              // Check if the contact belongs to the current user
-              const contactUserId = contact.created_by?.id || contact.created_by || contact.user?.id || contact.user;
-              const isCurrentUser = contactUserId === currentUserId;
-              if (!isCurrentUser) {
-                console.log('Filtering out contact from other user:', contact.name, 'User ID:', contactUserId, 'Current User ID:', currentUserId);
-              }
-              return isCurrentUser;
-            });
-            console.log('Filtered contacts for current user:', results);
-          } else {
-            console.log('No current user ID available, showing all contacts');
-          }
+          // The API should already return only the current user's contacts
+          // No additional filtering needed as the backend handles user-specific data
+          console.log('Contacts received from API:', results.length, 'contacts');
 
           setContacts(results);
           setTotalCount(results.length);
