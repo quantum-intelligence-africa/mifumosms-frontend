@@ -32,8 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient, SMSPackage, SMSBalance, ZenoPayPaymentInitiationRequest, PaymentProgress } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress } from "@/lib/api";
 
 interface PaymentMethod {
   id: string;
@@ -52,7 +51,6 @@ interface PaymentState {
 
 const PurchaseSMS = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
@@ -61,7 +59,6 @@ const PurchaseSMS = () => {
   const [userPaymentNumber, setUserPaymentNumber] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("");
-  const [mobileMoneyProvider, setMobileMoneyProvider] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -152,24 +149,13 @@ const PurchaseSMS = () => {
     }
   ], []);
 
-  // Auto-populate user data when user is available
-  useEffect(() => {
-    if (user) {
-      setUserEmail(user.email);
-      setUserName(user.full_name || `${user.first_name} ${user.last_name}`.trim());
-      if (user.phone_number) {
-        setUserPaymentNumber(user.phone_number);
-      }
-    }
-  }, [user]);
-
   // Fetch packages and balance on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const [packagesResponse, balanceResponse] = await Promise.all([
-          apiClient.getAvailablePackages(),
+          apiClient.getSMSPackages(),
           apiClient.getSMSBalance()
         ]);
 
@@ -210,12 +196,35 @@ const PurchaseSMS = () => {
   }, [paymentPolling]);
 
   const paymentMethods: PaymentMethod[] = [
-    { id: "mpesa", name: "M-Pesa (Vodacom)", icon: "📱", fee: "Instant" },
-    { id: "tigopesa", name: "Tigo Pesa", icon: "📱", fee: "Instant" },
-    { id: "airtel", name: "Airtel Money", icon: "📱", fee: "Instant" },
-    { id: "halotel", name: "Halotel", icon: "📱", fee: "Instant" },
+    { id: "mpesa", name: "M-Pesa (Vodacom)", icon: "📱" },
+    { id: "tigopesa", name: "Tigo Pesa", icon: "📱" },
+    { id: "airtel", name: "Airtel Money", icon: "📱" },
+    { id: "bank", name: "Bank Transfer", icon: "🏦" },
   ];
 
+  // Payment details for each method
+  const paymentDetails = {
+    mpesa: {
+      number: "0762 123 456",
+      instructions: "Send money to this M-Pesa number and include your account reference"
+    },
+    tigopesa: {
+      number: "0652 123 456",
+      instructions: "Send money to this Tigo Pesa number and include your account reference"
+    },
+    airtel: {
+      number: "0682 123 456",
+      instructions: "Send money to this Airtel Money number and include your account reference"
+    },
+    card: {
+      number: "Account: 1234567890",
+      instructions: "Use this account number for card payments"
+    },
+    bank: {
+      number: "Account: 9876543210",
+      instructions: "Transfer to this bank account number"
+    }
+  };
 
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
@@ -226,7 +235,7 @@ const PurchaseSMS = () => {
     { id: "enterprise", name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
   ], []);
 
-  const selectedPkg = packages.find(p => p.id === selectedPackage);
+  const selectedPkg = defaultPackages.find(p => p.id === selectedPackage);
   const parsedCredits = useMemo(() => {
     if (selectedPackage) {
       return selectedPkg?.credits || 0;
@@ -257,21 +266,16 @@ const PurchaseSMS = () => {
   const pollPaymentStatus = async (transactionId: string) => {
     try {
       const response = await apiClient.checkPaymentStatus(transactionId);
-      console.log('Payment status response:', response);
-      
       if (response.success && response.data) {
-        // Handle different response structures
-        const responseData = response.data.data || response.data;
-        
         setPaymentState({
-          transactionId: (responseData as any).transaction_id || transactionId,
-          orderId: (responseData as any).order_id,
-          status: (responseData as any).status,
-          progress: (responseData as any).progress,
+          transactionId: response.data.transaction_id,
+          orderId: response.data.order_id,
+          status: response.data.status,
+          progress: response.data.progress,
           isActive: true
         });
 
-        if ((responseData as any).status === 'completed') {
+        if (response.data.status === 'completed') {
           // Payment completed successfully
           if (paymentPolling) {
             clearInterval(paymentPolling);
@@ -299,7 +303,7 @@ const PurchaseSMS = () => {
           setUserPaymentNumber("");
           setUserEmail("");
           setUserName("");
-        } else if ((responseData as any).status === 'failed' || (responseData as any).status === 'expired') {
+        } else if (response.data.status === 'failed' || response.data.status === 'expired') {
           // Payment failed or expired
           if (paymentPolling) {
             clearInterval(paymentPolling);
@@ -311,24 +315,8 @@ const PurchaseSMS = () => {
 
           toast({
             title: "Payment failed",
-            description: "Your payment could not be processed. Please try again or contact support if the issue persists.",
-            variant: "destructive",
-            action: (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedPackage("");
-                  setCustomCredits("");
-                  setPaymentMethod("");
-                  setUserPaymentNumber("");
-                  setUserEmail("");
-                  setUserName("");
-                }}
-              >
-                Try Again
-              </Button>
-            )
+            description: "Your payment could not be processed. Please try again.",
+            variant: "destructive"
           });
         }
       }
@@ -347,31 +335,19 @@ const PurchaseSMS = () => {
       return;
     }
 
-    // Map payment method to mobile money provider for ZenoPay
-    const providerMap: { [key: string]: string } = {
-      'mpesa': 'vodacom',
-      'tigopesa': 'tigo',
-      'airtel': 'airtel',
-      'halotel': 'halotel'
-    };
-    
-    setMobileMoneyProvider(providerMap[paymentMethod] || 'vodacom');
-
-    if (!userPaymentNumber.trim()) {
+    if (!paymentMethod) {
       toast({
-        title: "Payment details required",
-        description: "Please enter your mobile money number",
+        title: "Payment method required",
+        description: "Please select a payment method",
         variant: "destructive"
       });
       return;
     }
 
-    // Validate Tanzanian phone number format (07 or 06)
-    const phoneRegex = /^(07\d{8}|06\d{8})$/;
-    if (!phoneRegex.test(userPaymentNumber.replace(/\s/g, ''))) {
+    if (!userPaymentNumber.trim()) {
       toast({
-        title: "Invalid phone number",
-        description: "Please provide a valid Tanzanian mobile number starting with 07 or 06 (e.g., 0744963858)",
+        title: "Payment details required",
+        description: "Please enter your mobile money number",
         variant: "destructive"
       });
       return;
@@ -395,15 +371,6 @@ const PurchaseSMS = () => {
       return;
     }
 
-    if (!paymentMethod) {
-      toast({
-        title: "Payment method required",
-        description: "Please select a payment method",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setShowInvoice(true);
   };
 
@@ -417,11 +384,11 @@ const PurchaseSMS = () => {
 
       if (selectedPackage) {
         // Package selected - use full package details
-        selectedPkg = packages.find(pkg => pkg.id === selectedPackage);
-        if (!selectedPkg) {
-          toast({
-            title: "Invalid package",
-            description: "Please select a valid package",
+        selectedPkg = defaultPackages.find(pkg => pkg.id === selectedPackage);
+      if (!selectedPkg) {
+        toast({
+          title: "Invalid package",
+          description: "Please select a valid package",
             variant: "destructive"
           });
           setProcessing(false);
@@ -444,40 +411,24 @@ const PurchaseSMS = () => {
       }
 
       // Initiate payment with ZenoPay
-      const paymentData: ZenoPayPaymentInitiationRequest = {
+      const paymentData: PaymentInitiationRequest = {
         package_id: selectedPackage || 'custom',
         buyer_email: userEmail,
         buyer_name: userName,
         buyer_phone: userPaymentNumber,
-        mobile_money_provider: mobileMoneyProvider
+        payment_method: paymentMethod
       };
 
       const response = await apiClient.initiatePayment(paymentData);
 
-      console.log('Payment initiation response:', response);
-
       if (response.success && response.data) {
-        // Handle different response structures
-        const responseData = response.data.data || response.data;
-        const transaction_id = (responseData as any).transaction_id;
-        const order_id = (responseData as any).order_id;
-
-        if (!transaction_id || !order_id) {
-          console.error('Missing transaction_id or order_id in response:', responseData);
-          toast({
-            title: "Payment initiation failed",
-            description: "Invalid response from payment service. Please try again.",
-            variant: "destructive"
-          });
-          setProcessing(false);
-          return;
-        }
+        const { transaction_id, order_id } = response.data;
 
         setPaymentState({
           transactionId: transaction_id,
           orderId: order_id,
           status: 'pending',
-          progress: (responseData as any).progress,
+          progress: response.data.progress,
           isActive: true
         });
 
@@ -513,30 +464,9 @@ const PurchaseSMS = () => {
 
       } else {
         setProcessing(false);
-        // Enhanced error handling based on documentation
-        let errorMessage = "Failed to initiate payment";
-        
-        if (response.error?.includes("Invalid package ID format")) {
-          errorMessage = "Please select a valid package from the available options";
-        } else if (response.error?.includes("Package not found")) {
-          errorMessage = "The selected package is no longer available. Please choose another package";
-        } else if (response.error?.includes("Missing required fields")) {
-          errorMessage = "Please fill in all required fields (name, email, phone)";
-        } else if (response.error?.includes("Invalid phone number")) {
-          errorMessage = "Please provide a valid Tanzanian mobile number starting with 07 or 06 (e.g., 0744963858)";
-        } else if (response.error?.includes("Insufficient funds")) {
-          errorMessage = "Insufficient funds in mobile wallet. Please check your balance";
-        } else if (response.error?.includes("Network error")) {
-          errorMessage = "Network connection error. Please check your internet and try again";
-        } else if (response.message) {
-          errorMessage = response.message;
-        } else if (response.error) {
-          errorMessage = response.error;
-        }
-
         toast({
           title: "Payment failed",
-          description: errorMessage,
+          description: response.error || "Failed to initiate payment",
           variant: "destructive"
         });
       }
@@ -588,23 +518,8 @@ const PurchaseSMS = () => {
             {/* Package Selection */}
             <div>
               <h2 className="font-heading text-[clamp(1rem,2.5vw,1.25rem)] font-semibold mb-4">Choose a Package</h2>
-              {loading ? (
-                <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Card key={i} className="p-4 sm:p-6 glass animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded"></div>
-                        <div className="h-4 bg-gray-200 rounded"></div>
-                        <div className="h-4 bg-gray-200 rounded"></div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                  {packages.map((pkg) => (
+              <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                {defaultPackages.map((pkg) => (
                   <Card
                     key={pkg.id}
                     className={`[container-type:inline-size] p-4 sm:p-6 cursor-pointer transition-smooth glass relative ${
@@ -658,7 +573,6 @@ const PurchaseSMS = () => {
                   </Card>
                 ))}
                 </div>
-              )}
             </div>
 
             {/* Custom Amount */}
@@ -679,14 +593,13 @@ const PurchaseSMS = () => {
                       setUserEmail("");
                       setUserName("");
                     }}
-                    className="glass-subtle border-0 text-[clamp(0.875rem,2vw,1rem)] h-12"
+                    className="glass-subtle border-0 text-[clamp(0.875rem,2vw,1rem)]"
                     min="100"
-                    step="100"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Total Cost</Label>
-                  <div className="h-12 px-3 rounded-lg glass-subtle flex items-center text-[clamp(1rem,2vw,1.125rem)] font-semibold">
+                  <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-[clamp(1rem,2vw,1.125rem)] font-semibold">
                     TZS {customPrice.toLocaleString()}
                   </div>
                 </div>
@@ -708,33 +621,37 @@ const PurchaseSMS = () => {
             <Card className="p-4 sm:p-6 glass">
                 <h3 className="font-heading text-[clamp(0.875rem,2vw,1.125rem)] font-semibold mb-4">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {paymentMethods.map((method) => (
                       <div
                         key={method.id}
-                        className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg glass-subtle cursor-pointer transition-smooth min-h-[60px] ${
+                        className={`flex items-center space-x-3 p-3 sm:p-4 rounded-lg glass-subtle cursor-pointer transition-smooth ${
                           paymentMethod === method.id ? "ring-2 ring-primary" : ""
                         }`}
                         onClick={() => setPaymentMethod(method.id)}
                       >
                         <RadioGroupItem value={method.id} id={method.id} />
                         <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
                             method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
                             method.id === 'airtel' ? 'bg-red-100 text-red-600' :
-                            method.id === 'halotel' ? 'bg-purple-100 text-purple-600' :
+                            method.id === 'bank' ? 'bg-gray-100 text-gray-600' :
                             'bg-primary/10 text-primary'
                           }`}>
-                            <Smartphone className="w-5 h-5" />
+                            {method.id === 'bank' ? (
+                              <CreditCard className="w-5 h-5" />
+                            ) : (
+                              <Smartphone className="w-5 h-5" />
+                            )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-[clamp(0.75rem,1.5vw,0.875rem)] truncate">{method.name}</p>
-                            <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-[clamp(0.75rem,1.5vw,0.875rem)] truncate">{method.name}</p>
+                              <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate">
                               {method.id === 'mpesa' ? 'Vodacom Tanzania' :
                                method.id === 'tigopesa' ? 'Tigo Tanzania' :
                                method.id === 'airtel' ? 'Airtel Tanzania' :
-                               method.id === 'halotel' ? 'Halotel' :
+                               method.id === 'bank' ? 'Bank Account Transfer' :
                                'Mobile Money'}
                             </p>
                           </div>
@@ -744,94 +661,94 @@ const PurchaseSMS = () => {
                   </div>
                 </RadioGroup>
 
-                {/* Mobile Number Input */}
+                {/* Payment Number Input */}
                 {paymentMethod && (
                   <div className="mt-4 sm:mt-6 space-y-2">
-                    <Label htmlFor="paymentNumber" className="text-sm font-medium">
+                    <Label htmlFor="paymentNumber">
                       {paymentMethod === 'mpesa' ? 'M-Pesa Number (Vodacom)' :
                        paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
                        paymentMethod === 'airtel' ? 'Airtel Money Number' :
-                       paymentMethod === 'halotel' ? 'Halotel Number' :
-                       'Mobile Number (Tanzania)'}
+                       paymentMethod === 'bank' ? 'Bank Account Number' :
+                       paymentMethod === 'card' ? 'Card Number' :
+                       'Account Number'}
                     </Label>
                     <Input
                       id="paymentNumber"
-                      type="tel"
+                      type="text"
                       placeholder={
                         paymentMethod === 'mpesa' ? 'e.g., 0762 123 456' :
                         paymentMethod === 'tigopesa' ? 'e.g., 0652 123 456' :
                         paymentMethod === 'airtel' ? 'e.g., 0682 123 456' :
-                        paymentMethod === 'halotel' ? 'e.g., 0744 123 456' :
-                        'e.g., 0744963858'
+                        paymentMethod === 'bank' ? 'e.g., 1234567890' :
+                        paymentMethod === 'card' ? 'e.g., 1234 5678 9012 3456' :
+                        'e.g., 1234567890'
                       }
                       value={userPaymentNumber}
                       onChange={(e) => setUserPaymentNumber(e.target.value)}
-                      className="glass-subtle border-0 h-12"
+                      className="glass-subtle border-0"
                     />
                     <p className="text-xs text-text-subtle">
-                      Enter the phone number associated with your {paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'tigopesa' ? 'Tigo Pesa' : paymentMethod === 'airtel' ? 'Airtel Money' : paymentMethod === 'halotel' ? 'Halotel' : 'mobile money'} account
+                      {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
+                        ? 'Enter the phone number associated with your mobile money account'
+                        : paymentMethod === 'bank'
+                        ? 'Enter your bank account number for transfer'
+                        : 'Enter your account or card number for payment processing'
+                      }
                     </p>
                   </div>
                 )}
 
-                {/* User Details Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 sm:mt-6">
-                  {/* Email Field - Auto-populated */}
-                  <div className="space-y-2">
-                    <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
-                      Email Address
-                    </Label>
-                    <Input
-                      id="userEmail"
-                      type="email"
-                      placeholder="e.g., john@example.com"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      className="glass-subtle border-0 h-12"
-                    />
-                    <p className="text-xs text-text-subtle">
-                      Auto-populated from your account
-                    </p>
-                  </div>
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="userEmail"
+                    type="email"
+                    placeholder="e.g., john@example.com"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    className="glass-subtle border-0"
+                  />
+                  <p className="text-xs text-text-subtle">
+                    We'll send you a receipt and payment confirmation
+                  </p>
+                </div>
 
-                  {/* Name Field - Auto-populated */}
-                  <div className="space-y-2">
-                    <Label htmlFor="userName" className="text-sm font-medium text-foreground">
-                      Full Name
-                    </Label>
-                    <Input
-                      id="userName"
-                      type="text"
-                      placeholder="e.g., John Doe"
-                      value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
-                      className="glass-subtle border-0 h-12"
-                    />
-                    <p className="text-xs text-text-subtle">
-                      Should match your mobile money account
-                    </p>
-                  </div>
+                {/* Name Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="userName" className="text-sm font-medium text-foreground">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="userName"
+                    type="text"
+                    placeholder="e.g., John Doe"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="glass-subtle border-0"
+                  />
+                  <p className="text-xs text-text-subtle">
+                    Your full name as it appears on your mobile money account
+                  </p>
                 </div>
               </Card>
             )}
 
             {/* Proceed Button - Only show when package and payment method are selected */}
             {(selectedPackage || customCredits) && paymentMethod && (
-              <div className="flex justify-center sm:justify-end">
-                <Button 
-                  size="lg" 
-                  onClick={handlePurchase} 
-                  className="w-full sm:w-auto text-[clamp(0.875rem,2vw,1rem)] py-4 px-8 min-h-[56px] font-semibold"
-                >
+              <div className="flex justify-end">
+                <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto text-[clamp(0.875rem,2vw,1rem)] py-3 px-6">
                   Proceed to Payment
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
             )}
 
             {/* Invoice Dialog */}
             <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-lg mx-4 sm:mx-0">
+              <DialogContent className="glass max-w-[95vw] sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>
                     {paymentState.isActive ? "Payment in Progress" : "Confirm Purchase"}
@@ -849,20 +766,13 @@ const PurchaseSMS = () => {
                   {paymentState.isActive && paymentState.progress && (
                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          paymentState.progress?.status_color === 'green' ? 'bg-green-100' :
-                          paymentState.progress?.status_color === 'red' ? 'bg-red-100' :
-                          paymentState.progress?.status_color === 'yellow' ? 'bg-yellow-100' :
-                          'bg-blue-100'
-                        }`}>
-                          {paymentState.progress?.status_icon === 'check' || paymentState.status === 'completed' ? (
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          {paymentState.status === 'completed' ? (
                             <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : paymentState.progress?.status_icon === 'x' || paymentState.status === 'failed' ? (
+                          ) : paymentState.status === 'failed' ? (
                             <AlertCircle className="w-5 h-5 text-red-600" />
-                          ) : paymentState.progress?.status_icon === 'sync' || paymentState.status === 'processing' ? (
-                            <RefreshCw className="w-5 h-5 text-yellow-600 animate-spin" />
                           ) : (
-                            <Clock className="w-5 h-5 text-blue-600" />
+                            <Clock className="w-5 h-5 text-primary" />
                           )}
                         </div>
                         <div>
@@ -875,17 +785,10 @@ const PurchaseSMS = () => {
                         </div>
                       </div>
 
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-500 ${
-                            paymentState.progress?.status_color === 'green' ? 'bg-green-500' :
-                            paymentState.progress?.status_color === 'red' ? 'bg-red-500' :
-                            paymentState.progress?.status_color === 'yellow' ? 'bg-yellow-500' :
-                            'bg-blue-500'
-                          }`}
-                          style={{ width: `${paymentState.progress?.percentage || 0}%` }}
-                        />
-                      </div>
+                      <Progress
+                        value={paymentState.progress.percentage || 0}
+                        className="w-full mb-3"
+                      />
 
                       <div className="space-y-2">
                         <p className="text-sm text-text-subtle">Next: {paymentState.progress.next_step}</p>
@@ -913,14 +816,10 @@ const PurchaseSMS = () => {
                       </span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-border-subtle">
-                        <span className="text-text-subtle">Payment Method</span>
-                        <span className="font-medium">
-                          {paymentMethod === 'mpesa' ? 'M-Pesa (Vodacom)' :
-                           paymentMethod === 'tigopesa' ? 'Tigo Pesa' :
-                           paymentMethod === 'airtel' ? 'Airtel Money' :
-                           paymentMethod === 'halotel' ? 'Halotel' :
-                           'Mobile Money'}
-                        </span>
+                      <span className="text-text-subtle">Payment Method</span>
+                      <span className="font-medium">
+                        {paymentMethods.find(m => m.id === paymentMethod)?.name || 'Mobile Money'}
+                      </span>
                     </div>
                     <div className="flex justify-between py-2 text-lg font-semibold">
                       <span>Total Amount</span>
@@ -934,12 +833,7 @@ const PurchaseSMS = () => {
                   {paymentMethod && !paymentState.isActive && (
                     <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm sm:text-base">
-                        {paymentMethod === 'zenopay_mobile_money' ? (
-                          <>
-                            <Smartphone className="w-4 h-4" />
-                            ZenoPay Mobile Money Payment
-                          </>
-                        ) : paymentMethod === 'bank' ? (
+                        {paymentMethod === 'bank' ? (
                           <>
                             <CreditCard className="w-4 h-4" />
                             Bank Transfer Payment
@@ -960,27 +854,21 @@ const PurchaseSMS = () => {
                             {userPaymentNumber}
                           </p>
                         </div>
-                        {paymentMethod === 'zenopay_mobile_money' && mobileMoneyProvider && (
-                          <div>
-                            <p className="text-sm text-text-subtle mb-1">Mobile Money Provider:</p>
-                            <p className="font-semibold text-primary bg-background px-3 py-2 rounded border">
-                              {mobileMoneyProvider === 'vodacom' ? 'Vodacom M-Pesa' :
-                               mobileMoneyProvider === 'halotel' ? 'Halotel' :
-                               mobileMoneyProvider === 'tigo' ? 'Tigo Pesa' :
-                               mobileMoneyProvider === 'airtel' ? 'Airtel Money' :
-                               mobileMoneyProvider}
-                            </p>
-                          </div>
-                        )}
                         <div>
                           <p className="text-sm text-text-subtle mb-1">Instructions:</p>
-                            <p className="text-sm text-foreground">
-                              {`After confirming payment, you'll receive a mobile money prompt on your phone via ${paymentMethod === 'mpesa' ? 'Vodacom M-Pesa' : paymentMethod === 'tigopesa' ? 'Tigo Pesa' : paymentMethod === 'airtel' ? 'Airtel Money' : paymentMethod === 'halotel' ? 'Halotel' : 'your selected mobile money network'}. Complete the payment to add SMS credits to your account instantly.`}
-                            </p>
+                          <p className="text-sm text-foreground">
+                            {paymentMethod === 'bank'
+                              ? 'Transfer the amount to the provided bank account. Your SMS credits will be added after verification.'
+                              : 'After confirming payment, you\'ll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.'
+                            }
+                          </p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-2 sm:p-3">
                           <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Note:</strong> {`All payments are processed securely through ZenoPay with instant processing and real-time progress tracking via ${paymentMethod === 'mpesa' ? 'Vodacom M-Pesa' : paymentMethod === 'tigopesa' ? 'Tigo Pesa' : paymentMethod === 'airtel' ? 'Airtel Money' : paymentMethod === 'halotel' ? 'Halotel' : 'your selected mobile money network'}.`}
+                            <strong>Note:</strong> {paymentMethod === 'bank'
+                              ? 'Bank transfers may take 1-2 business days to process.'
+                              : 'Payment will be processed through ZenoPay mobile money integration.'
+                            }
                           </p>
                         </div>
                       </div>
