@@ -286,7 +286,7 @@ export interface PaymentInitiationRequest {
   buyer_email: string;
   buyer_name: string;
   buyer_phone: string;
-  payment_method?: string;
+  mobile_money_provider?: string;
 }
 
 export interface PaymentInitiationResponse {
@@ -365,6 +365,7 @@ export interface SMSPackage {
   id: string;
   name: string;
   package_type: string;
+  description?: string;
   credits: number;
   price: string;
   unit_price: string;
