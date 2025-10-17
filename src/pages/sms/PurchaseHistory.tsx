@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   FileText,
@@ -9,7 +9,11 @@ import {
   Clock,
   XCircle,
   Search,
-  Eye
+  Eye,
+  Smartphone,
+  Zap,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -41,120 +45,150 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { apiClient, ZenoPayTransactionListResponse } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
-type PurchaseStatus = "completed" | "pending" | "failed" | "refunded";
+type PurchaseStatus = "completed" | "pending" | "failed" | "refunded" | "processing" | "cancelled";
 
-interface Purchase {
+interface ZenoPayTransaction {
   id: string;
-  invoice_no: string;
-  date: string;
-  package_name: string;
-  credits: number;
-  amount_tzs: number;
+  order_id: string;
+  zenopay_order_id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
   payment_method: string;
-  status: PurchaseStatus;
-  receipt_url?: string;
-  gateway_ref?: string;
+  payment_method_display: string;
+  status: string;
+  status_display: string;
+  zenopay_reference?: string;
+  zenopay_transid?: string;
+  zenopay_channel?: string;
+  zenopay_msisdn?: string;
+  webhook_received: boolean;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+  failed_at?: string;
+  error_message?: string;
+  purchase_data: {
+    id: string;
+    package_name: string;
+    credits: number;
+    unit_price: number;
+  };
 }
 
 const PurchaseHistory = () => {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<ZenoPayTransaction | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [transactions, setTransactions] = useState<ZenoPayTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Demo data - replace with actual API calls
-  const purchases: Purchase[] = [
-    {
-      id: "1",
-      invoice_no: "INV-2024-001",
-      date: "2024-03-15T14:30:00Z",
-      package_name: "Business Package",
-      credits: 2000,
-      amount_tzs: 35000,
-      payment_method: "M-Pesa",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "MPESA-ABC123",
-    },
-    {
-      id: "2",
-      invoice_no: "INV-2024-002",
-      date: "2024-03-10T10:20:00Z",
-      package_name: "Starter Package",
-      credits: 500,
-      amount_tzs: 10000,
-      payment_method: "Tigo Pesa",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "TIGO-XYZ789",
-    },
-    {
-      id: "3",
-      invoice_no: "INV-2024-003",
-      date: "2024-03-08T16:45:00Z",
-      package_name: "Custom Top-up",
-      credits: 1000,
-      amount_tzs: 20000,
-      payment_method: "Airtel Money",
-      status: "pending",
-      gateway_ref: "AIRTEL-DEF456",
-    },
-    {
-      id: "4",
-      invoice_no: "INV-2024-004",
-      date: "2024-03-05T09:15:00Z",
-      package_name: "Enterprise Package",
-      credits: 10000,
-      amount_tzs: 150000,
-      payment_method: "Bank Transfer",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "BANK-GHI321",
-    },
-    {
-      id: "5",
-      invoice_no: "INV-2024-005",
-      date: "2024-03-01T11:30:00Z",
-      package_name: "Business Package",
-      credits: 2000,
-      amount_tzs: 35000,
-      payment_method: "Credit Card",
-      status: "failed",
-      gateway_ref: "CARD-JKL654",
-    },
-  ];
+  // Fetch transactions from API
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.getZenoPayTransactions({
+          page,
+          page_size: 20,
+          status: statusFilter !== "all" ? statusFilter : undefined
+        });
 
-  const getStatusIcon = (status: PurchaseStatus) => {
-    switch (status) {
+        if (response.success && response.data) {
+          setTransactions(response.data.results);
+          setTotalCount(response.data.count);
+        } else {
+          // Enhanced error handling based on documentation
+          let errorMessage = "Failed to load purchase history";
+          
+          if (response.error?.includes("Authentication")) {
+            errorMessage = "Please log in again to view your transaction history";
+          } else if (response.error?.includes("Network")) {
+            errorMessage = "Network error. Please check your connection and try again";
+          } else if (response.error?.includes("Permission")) {
+            errorMessage = "You don't have permission to view this data";
+          } else if (response.message) {
+            errorMessage = response.message;
+          } else if (response.error) {
+            errorMessage = response.error;
+          }
+
+          toast({
+            title: "Error loading transactions",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        toast({
+          title: "Error loading transactions",
+          description: "An unexpected error occurred",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [page, statusFilter, toast]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
       case "completed":
-        return <CheckCircle2 className="w-4 h-4 text-success" />;
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
       case "pending":
-        return <Clock className="w-4 h-4 text-warning" />;
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      case "processing":
+        return <RefreshCw className="w-4 h-4 text-yellow-500 animate-spin" />;
       case "failed":
-        return <XCircle className="w-4 h-4 text-destructive" />;
-      case "refunded":
-        return <CheckCircle2 className="w-4 h-4 text-primary" />;
+        return <XCircle className="w-4 h-4 text-red-600" />;
+      case "cancelled":
+        return <AlertCircle className="w-4 h-4 text-orange-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getStatusBadge = (status: PurchaseStatus) => {
-    const variants: Record<PurchaseStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
       completed: "default",
       pending: "secondary",
+      processing: "outline",
       failed: "destructive",
-      refunded: "outline",
+      cancelled: "outline",
     };
 
     return (
-      <Badge variant={variants[status]} className="capitalize">
+      <Badge variant={variants[status.toLowerCase()] || "secondary"} className="capitalize">
         {getStatusIcon(status)}
         <span className="ml-1">{status}</span>
       </Badge>
     );
+  };
+
+  const getPaymentMethodIcon = (method: string) => {
+    if (method.toLowerCase().includes('zenopay') || method.toLowerCase().includes('mobile money')) {
+      return <Smartphone className="w-4 h-4" />;
+    }
+    if (method.toLowerCase().includes('bank') || method.toLowerCase().includes('transfer')) {
+      return <CreditCard className="w-4 h-4" />;
+    }
+    return <Smartphone className="w-4 h-4" />;
   };
 
   const formatDate = (dateString: string) => {
@@ -167,27 +201,28 @@ const PurchaseHistory = () => {
     });
   };
 
-  const filteredPurchases = purchases.filter(purchase => {
+  const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch =
-      purchase.invoice_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      purchase.package_name.toLowerCase().includes(searchQuery.toLowerCase());
+      transaction.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      transaction.purchase_data.package_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      transaction.order_id.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
-    const matchesMethod = methodFilter === "all" || purchase.payment_method === methodFilter;
+    const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
+    const matchesMethod = methodFilter === "all" || transaction.payment_method === methodFilter;
 
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
-  const totalSpent = purchases
-    .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + p.amount_tzs, 0);
+  const totalSpent = transactions
+    .filter(t => t.status === "completed")
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalCredits = purchases
-    .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + p.credits, 0);
+  const totalCredits = transactions
+    .filter(t => t.status === "completed")
+    .reduce((sum, t) => sum + t.purchase_data.credits, 0);
 
-  const viewDetails = (purchase: Purchase) => {
-    setSelectedPurchase(purchase);
+  const viewDetails = (transaction: ZenoPayTransaction) => {
+    setSelectedTransaction(transaction);
     setShowDetails(true);
   };
 
@@ -233,7 +268,7 @@ const PurchaseHistory = () => {
                   <p className="text-sm text-text-subtle">Total Transactions</p>
                   <CheckCircle2 className="w-5 h-5 text-warning" />
                 </div>
-                <p className="text-2xl font-bold">{purchases.length}</p>
+                <p className="text-2xl font-bold">{totalCount}</p>
               </Card>
             </div>
 
@@ -263,8 +298,9 @@ const PurchaseHistory = () => {
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="refunded">Refunded</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -277,6 +313,7 @@ const PurchaseHistory = () => {
                     </SelectTrigger>
                     <SelectContent className="glass">
                       <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="zenopay_mobile_money">ZenoPay Mobile Money</SelectItem>
                       <SelectItem value="M-Pesa">M-Pesa</SelectItem>
                       <SelectItem value="Tigo Pesa">Tigo Pesa</SelectItem>
                       <SelectItem value="Airtel Money">Airtel Money</SelectItem>
@@ -311,35 +348,45 @@ const PurchaseHistory = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPurchases.map((purchase) => (
-                    <TableRow key={purchase.id} className="border-border-subtle">
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <Clock className="w-6 h-6 animate-spin mr-2" />
+                          Loading transactions...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredTransactions.map((transaction) => (
+                    <TableRow key={transaction.id} className="border-border-subtle">
                       <TableCell>
-                        <span className="font-mono font-medium">{purchase.invoice_no}</span>
+                        <span className="font-mono font-medium">{transaction.invoice_number}</span>
                       </TableCell>
                       <TableCell className="text-text-subtle">
-                        {formatDate(purchase.date)}
+                        {formatDate(transaction.created_at)}
                       </TableCell>
-                      <TableCell>{purchase.package_name}</TableCell>
+                      <TableCell>{transaction.purchase_data.package_name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{purchase.credits.toLocaleString()} SMS</Badge>
+                        <Badge variant="outline">{transaction.purchase_data.credits.toLocaleString()} SMS</Badge>
                       </TableCell>
                       <TableCell className="font-semibold">
-                        TZS {purchase.amount_tzs.toLocaleString()}
+                        TZS {transaction.amount.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-text-subtle">
-                        {purchase.payment_method}
+                      <TableCell className="text-text-subtle flex items-center gap-2">
+                        {getPaymentMethodIcon(transaction.payment_method)}
+                        {transaction.payment_method_display}
                       </TableCell>
-                      <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                      <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => viewDetails(purchase)}
+                            onClick={() => viewDetails(transaction)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {purchase.receipt_url && (
+                          {transaction.status === "completed" && (
                             <Button variant="ghost" size="icon">
                               <Download className="w-4 h-4" />
                             </Button>
@@ -351,13 +398,13 @@ const PurchaseHistory = () => {
                 </TableBody>
               </Table>
 
-              {filteredPurchases.length === 0 && (
+              {!loading && filteredTransactions.length === 0 && (
                 <div className="p-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                     <FileText className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-lg font-semibold mb-2">
-                    No purchases found
+                    No transactions found
                   </h3>
                   <p className="text-text-subtle">
                     No transactions match your current filters
@@ -376,23 +423,31 @@ const PurchaseHistory = () => {
                   </SheetDescription>
                 </SheetHeader>
 
-                {selectedPurchase && (
+                {selectedTransaction && (
                   <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                    {/* Invoice Info */}
+                    {/* Transaction Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base">Invoice Information</h3>
+                      <h3 className="font-semibold text-sm sm:text-base">Transaction Information</h3>
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Invoice No.</span>
-                          <span className="font-mono font-medium">{selectedPurchase.invoice_no}</span>
+                          <span className="font-mono font-medium">{selectedTransaction.invoice_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Order ID</span>
+                          <span className="font-mono text-xs">{selectedTransaction.order_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">ZenoPay Order ID</span>
+                          <span className="font-mono text-xs">{selectedTransaction.zenopay_order_id}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Date</span>
-                          <span>{formatDate(selectedPurchase.date)}</span>
+                          <span>{formatDate(selectedTransaction.created_at)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Status</span>
-                          {getStatusBadge(selectedPurchase.status)}
+                          {getStatusBadge(selectedTransaction.status)}
                         </div>
                       </div>
                     </div>
@@ -403,15 +458,15 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Package</span>
-                          <span className="font-medium">{selectedPurchase.package_name}</span>
+                          <span className="font-medium">{selectedTransaction.purchase_data.package_name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">SMS Credits</span>
-                          <span className="font-medium">{selectedPurchase.credits.toLocaleString()}</span>
+                          <span className="font-medium">{selectedTransaction.purchase_data.credits.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Unit Price</span>
-                          <span>TZS {(selectedPurchase.amount_tzs / selectedPurchase.credits).toFixed(2)}/SMS</span>
+                          <span>TZS {selectedTransaction.purchase_data.unit_price.toFixed(2)}/SMS</span>
                         </div>
                       </div>
                     </div>
@@ -422,16 +477,45 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Method</span>
-                          <span className="font-medium">{selectedPurchase.payment_method}</span>
+                          <span className="font-medium flex items-center gap-1">
+                            {getPaymentMethodIcon(selectedTransaction.payment_method)}
+                            {selectedTransaction.payment_method_display}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Gateway Ref</span>
-                          <span className="font-mono text-xs">{selectedPurchase.gateway_ref}</span>
+                          <span className="text-text-subtle">Buyer Name</span>
+                          <span className="font-medium">{selectedTransaction.buyer_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Buyer Email</span>
+                          <span className="font-mono text-xs">{selectedTransaction.buyer_email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Buyer Phone</span>
+                          <span className="font-mono text-xs">{selectedTransaction.buyer_phone}</span>
+                        </div>
+                        {selectedTransaction.zenopay_reference && (
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">ZenoPay Reference</span>
+                            <span className="font-mono text-xs">{selectedTransaction.zenopay_reference}</span>
+                          </div>
+                        )}
+                        {selectedTransaction.zenopay_channel && (
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">Channel</span>
+                            <span className="font-mono text-xs">{selectedTransaction.zenopay_channel}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Webhook Received</span>
+                          <span className={selectedTransaction.webhook_received ? "text-success" : "text-warning"}>
+                            {selectedTransaction.webhook_received ? "Yes" : "No"}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            TZS {selectedPurchase.amount_tzs.toLocaleString()}
+                            TZS {selectedTransaction.amount.toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -439,16 +523,26 @@ const PurchaseHistory = () => {
 
                     {/* Actions */}
                     <div className="space-y-2">
-                      {selectedPurchase.receipt_url && (
+                      {selectedTransaction.status === "completed" && (
                         <Button variant="outline" className="w-full text-sm">
                           <Download className="w-4 h-4 mr-2" />
                           Download Receipt
                         </Button>
                       )}
-                      {selectedPurchase.status === "pending" && (
+                      {(selectedTransaction.status === "pending" || selectedTransaction.status === "processing") && (
                         <Button variant="outline" className="w-full text-sm">
+                          <Zap className="w-4 h-4 mr-2" />
                           Check Payment Status
                         </Button>
+                      )}
+                      {selectedTransaction.error_message && (
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm">
+                          <div className="flex items-center gap-2 mb-1">
+                            <AlertCircle className="w-4 h-4 text-destructive" />
+                            <span className="font-medium text-destructive">Error</span>
+                          </div>
+                          <p className="text-destructive text-xs">{selectedTransaction.error_message}</p>
+                        </div>
                       )}
                     </div>
                   </div>

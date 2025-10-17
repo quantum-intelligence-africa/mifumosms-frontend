@@ -340,6 +340,104 @@ export interface PaymentProgressResponse {
   completed_at?: string;
 }
 
+// ZenoPay-specific types
+export interface ZenoPayPaymentInitiationRequest {
+  package_id: string;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  mobile_money_provider: string; // vodacom, halotel, tigo, airtel
+}
+
+export interface ZenoPayPaymentInitiationResponse {
+  success: boolean;
+  message: string;
+  data: {
+    transaction_id: string;
+    order_id: string;
+    zenopay_order_id: string;
+    invoice_number: string;
+    amount: number;
+    credits: number;
+    status: string;
+    payment_instructions: string;
+    progress: PaymentProgress;
+  };
+}
+
+export interface ZenoPayPaymentStatusResponse {
+  success: boolean;
+  data: {
+    transaction_id: string;
+    order_id: string;
+    status: string;
+    payment_status: string;
+    amount: number;
+    reference?: string;
+    progress: PaymentProgress;
+    updated_at: string;
+  };
+}
+
+export interface ZenoPayPaymentProgressResponse {
+  success: boolean;
+  data: {
+    transaction_id: string;
+    order_id: string;
+    invoice_number: string;
+    amount: number;
+    currency: string;
+    status: string;
+    payment_status: string;
+    progress: PaymentProgress;
+    purchase: {
+      package_name: string;
+      credits: number;
+      unit_price: number;
+    };
+    created_at: string;
+    updated_at: string;
+    completed_at?: string;
+  };
+}
+
+export interface ZenoPayTransactionListResponse {
+  count: number;
+  next?: string;
+  previous?: string;
+  results: Array<{
+    id: string;
+    order_id: string;
+    zenopay_order_id: string;
+    invoice_number: string;
+    amount: number;
+    currency: string;
+    buyer_email: string;
+    buyer_name: string;
+    buyer_phone: string;
+    payment_method: string;
+    payment_method_display: string;
+    status: string;
+    status_display: string;
+    zenopay_reference?: string;
+    zenopay_transid?: string;
+    zenopay_channel?: string;
+    zenopay_msisdn?: string;
+    webhook_received: boolean;
+    created_at: string;
+    updated_at: string;
+    completed_at?: string;
+    failed_at?: string;
+    error_message?: string;
+    purchase_data: {
+      id: string;
+      package_name: string;
+      credits: number;
+      unit_price: number;
+    };
+  }>;
+}
+
 export interface ActivePaymentsResponse {
   active_payments: Record<string, {
     transaction_id: string;
@@ -1168,8 +1266,8 @@ class ApiClient {
   // PAYMENT MANAGEMENT ENDPOINTS
   // =============================================
 
-  // 1. Initiate Payment
-  async initiatePayment(data: PaymentInitiationRequest): Promise<ApiResponse<PaymentInitiationResponse>> {
+  // 1. Initiate Payment (ZenoPay)
+  async initiatePayment(data: ZenoPayPaymentInitiationRequest): Promise<ApiResponse<ZenoPayPaymentInitiationResponse>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.INITIATE}`, {
         method: 'POST',
@@ -1177,7 +1275,7 @@ class ApiClient {
         body: JSON.stringify(data)
       });
 
-      return await this.handleResponse<PaymentInitiationResponse>(response);
+      return await this.handleResponse<ZenoPayPaymentInitiationResponse>(response);
     } catch (error) {
       return {
         success: false,
@@ -1187,14 +1285,14 @@ class ApiClient {
     }
   }
 
-  // 2. Check Payment Status
-  async checkPaymentStatus(transactionId: string): Promise<ApiResponse<PaymentStatusResponse>> {
+  // 2. Check Payment Status (ZenoPay)
+  async checkPaymentStatus(transactionId: string): Promise<ApiResponse<ZenoPayPaymentStatusResponse>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.STATUS(transactionId)}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<PaymentStatusResponse>(response);
+      return await this.handleResponse<ZenoPayPaymentStatusResponse>(response);
     } catch (error) {
       return {
         success: false,
@@ -1221,14 +1319,14 @@ class ApiClient {
     }
   }
 
-  // 4. Get Payment Progress
-  async getPaymentProgress(transactionId: string): Promise<ApiResponse<PaymentProgressResponse>> {
+  // 4. Get Payment Progress (ZenoPay)
+  async getPaymentProgress(transactionId: string): Promise<ApiResponse<ZenoPayPaymentProgressResponse>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PROGRESS(transactionId)}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<PaymentProgressResponse>(response);
+      return await this.handleResponse<ZenoPayPaymentProgressResponse>(response);
     } catch (error) {
       return {
         success: false,
@@ -1282,6 +1380,50 @@ class ApiClient {
       });
 
       return await this.handleResponse<{ success: boolean; message: string; cleaned_count: number }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 8. Get ZenoPay Transaction List
+  async getZenoPayTransactions(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+  }): Promise<ApiResponse<ZenoPayTransactionListResponse>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+      if (params?.status) queryParams.append('status', params.status);
+
+      const url = `${API_BASE_URL}/billing/payments/transactions/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<ZenoPayTransactionListResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 9. Get Available SMS Packages for ZenoPay
+  async getAvailablePackages(): Promise<ApiResponse<{ results: SMSPackage[] }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PACKAGES}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ results: SMSPackage[] }>(response);
     } catch (error) {
       return {
         success: false,
