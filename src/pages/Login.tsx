@@ -72,19 +72,19 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-surface flex items-center justify-center px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))]">
-      <div className="w-full max-w-md mx-auto">
+    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-3 lg:p-6">
+      <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-6 lg:mb-8">
           <Link to="/" className="inline-flex items-center gap-2 text-text-subtle hover:text-foreground mb-4 lg:mb-6">
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-[clamp(0.75rem,1.5vw,1rem)]">Back to homepage</span>
+            <span className="text-sm lg:text-base">Back to homepage</span>
           </Link>
           <div className="flex items-center justify-center gap-2 lg:gap-3 mb-4 lg:mb-6">
             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center">
               <MessageSquare className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </div>
-            <span className="font-heading text-[clamp(1.25rem,3vw,2rem)] font-bold text-foreground">
+            <span className="font-heading text-xl lg:text-2xl font-bold text-foreground">
               Mifumo WMS
             </span>
           </div>
@@ -92,15 +92,15 @@ const Login = () => {
 
         <Card className="glass border-0 shadow-xl">
           <CardHeader className="text-center p-4 lg:p-6">
-            <CardTitle className="text-[clamp(1.25rem,3vw,1.75rem)] font-bold">Welcome back</CardTitle>
-            <CardDescription className="text-[clamp(0.75rem,2vw,1rem)]">
+            <CardTitle className="text-xl lg:text-2xl font-bold">Welcome back</CardTitle>
+            <CardDescription className="text-sm lg:text-base">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 lg:p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[clamp(0.75rem,1.5vw,1rem)]">Email address</Label>
+                <Label htmlFor="email" className="text-sm lg:text-base">Email address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -108,12 +108,12 @@ const Login = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
-                  className="glass-subtle border-0 text-[clamp(0.75rem,1.5vw,1rem)]"
+                  className="glass-subtle border-0 text-sm lg:text-base"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[clamp(0.75rem,1.5vw,1rem)]">Password</Label>
+                <Label htmlFor="password" className="text-sm lg:text-base">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -122,7 +122,7 @@ const Login = () => {
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     required
-                    className="glass-subtle border-0 pr-10 text-[clamp(0.75rem,1.5vw,1rem)]"
+                    className="glass-subtle border-0 pr-10 text-sm lg:text-base"
                   />
                   <Button
                     type="button"
@@ -161,7 +161,7 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full text-[clamp(0.75rem,1.5vw,1rem)]"
+                className="w-full text-sm lg:text-base"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Sign in"}

@@ -482,34 +482,34 @@ const PurchaseSMS = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex bg-background">
+    <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto px-[max(16px,env(safe-area-inset-left))] pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))]">
-          <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             {/* Header */}
             <div>
-              <h1 className="font-heading text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-foreground mb-2">
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2">
                 Purchase SMS Credits
               </h1>
-              <p className="text-[clamp(0.875rem,2vw,1rem)] text-text-subtle">
+              <p className="text-sm sm:text-base text-text-subtle">
                 Top up your account to send more messages
               </p>
             </div>
 
             {/* Balance Card */}
             <Card className="p-4 sm:p-6 glass">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[clamp(0.75rem,2vw,0.875rem)] text-text-subtle mb-1">Current Balance</p>
-                  <p className="text-[clamp(1.5rem,4vw,2rem)] font-bold text-foreground">
-                    {balance?.credits?.toLocaleString() || 0} <span className="text-[clamp(0.875rem,2vw,1.125rem)] font-normal text-text-subtle">SMS</span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-text-subtle mb-1">Current Balance</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {balance?.credits?.toLocaleString() || 0} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
                   </p>
                 </div>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full gradient-primary flex items-center justify-center">
                   <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
                 </div>
               </div>
@@ -517,12 +517,12 @@ const PurchaseSMS = () => {
 
             {/* Package Selection */}
             <div>
-              <h2 className="font-heading text-[clamp(1rem,2.5vw,1.25rem)] font-semibold mb-4">Choose a Package</h2>
-              <div className="grid gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+              <h2 className="font-heading text-lg sm:text-xl font-semibold mb-4">Choose a Package</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {defaultPackages.map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`[container-type:inline-size] p-4 sm:p-6 cursor-pointer transition-smooth glass relative ${
+                    className={`p-4 sm:p-6 cursor-pointer transition-smooth glass relative ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -533,16 +533,16 @@ const PurchaseSMS = () => {
                     }}
                   >
                     {pkg.is_popular && (
-                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[clamp(0.625rem,1.5vw,0.75rem)]">
+                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground">
                         Most Popular
                       </Badge>
                     )}
-                    <h3 className="font-heading text-[clamp(1rem,2vw,1.25rem)] font-semibold mb-2">{pkg.name}</h3>
+                    <h3 className="font-heading text-lg sm:text-xl font-semibold mb-2">{pkg.name}</h3>
                     <div className="mb-4">
-                      <p className="text-[clamp(1.25rem,3vw,1.875rem)] font-bold text-foreground">
+                      <p className="text-2xl sm:text-3xl font-bold text-foreground">
                         TZS {pkg.unit_price}/SMS
                       </p>
-                      <p className="text-[clamp(0.625rem,1.5vw,0.875rem)] text-text-subtle">
+                      <p className="text-xs sm:text-sm text-text-subtle">
                         {pkg.id === 'lite' ? '1 – 5,000 SMS' :
                          pkg.id === 'standard' ? '5,001 – 50,000 SMS' :
                          pkg.id === 'pro' ? '50,001 – 250,000 SMS' :
@@ -550,19 +550,19 @@ const PurchaseSMS = () => {
                       </p>
                     </div>
                     <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-[clamp(0.75rem,1.5vw,0.875rem)]">
-                        <Check className="w-4 h-4 mr-2 text-success flex-shrink-0" />
+                      <div className="flex items-center text-sm">
+                        <Check className="w-4 h-4 mr-2 text-success" />
                         <span>Never expires</span>
                       </div>
                       {pkg.features?.map((feature, i) => (
-                        <div key={i} className="flex items-center text-[clamp(0.75rem,1.5vw,0.875rem)]">
-                          <Check className="w-4 h-4 mr-2 text-success flex-shrink-0" />
-                          <span className="truncate">{feature}</span>
+                        <div key={i} className="flex items-center text-sm">
+                          <Check className="w-4 h-4 mr-2 text-success" />
+                          <span>{feature}</span>
                         </div>
                       ))}
                     </div>
                     {selectedPackage === pkg.id && (
-                      <Badge variant="secondary" className="w-full justify-center text-[clamp(0.75rem,1.5vw,0.875rem)]">
+                      <Badge variant="secondary" className="w-full justify-center">
                         Selected
                       </Badge>
                     )}
@@ -573,10 +573,10 @@ const PurchaseSMS = () => {
 
             {/* Custom Amount */}
             <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-[clamp(0.875rem,2vw,1.125rem)] font-semibold mb-4">Or Enter Custom Amount</h3>
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Or Enter Custom Amount</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Number of SMS Credits</Label>
+                  <Label>Number of SMS Credits</Label>
                   <Input
                     type="number"
                     placeholder="e.g., 5000"
@@ -585,13 +585,13 @@ const PurchaseSMS = () => {
                       setCustomCredits(e.target.value);
                       setSelectedPackage("");
                     }}
-                    className="glass-subtle border-0 text-[clamp(0.875rem,2vw,1rem)]"
+                    className="glass-subtle border-0"
                     min="100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Total Cost</Label>
-                  <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-[clamp(1rem,2vw,1.125rem)] font-semibold">
+                  <Label>Total Cost</Label>
+                  <div className="h-10 px-3 rounded-lg glass-subtle flex items-center text-lg font-semibold">
                     TZS {customPrice.toLocaleString()}
                   </div>
                 </div>
@@ -610,7 +610,7 @@ const PurchaseSMS = () => {
 
             {/* Payment Method */}
             <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-[clamp(0.875rem,2vw,1.125rem)] font-semibold mb-4">Select Payment Method</h3>
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-4">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {paymentMethods.map((method) => (
@@ -623,7 +623,7 @@ const PurchaseSMS = () => {
                       >
                         <RadioGroupItem value={method.id} id={method.id} />
                         <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                             method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
                             method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
                             method.id === 'airtel' ? 'bg-red-100 text-red-600' :
@@ -636,9 +636,9 @@ const PurchaseSMS = () => {
                               <Smartphone className="w-5 h-5" />
                             )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-[clamp(0.75rem,1.5vw,0.875rem)] truncate">{method.name}</p>
-                            <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate">
+                          <div>
+                            <p className="font-medium">{method.name}</p>
+                            <p className="text-xs text-text-subtle">
                               {method.id === 'mpesa' ? 'Vodacom Tanzania' :
                                method.id === 'tigopesa' ? 'Tigo Tanzania' :
                                method.id === 'airtel' ? 'Airtel Tanzania' :
@@ -729,7 +729,7 @@ const PurchaseSMS = () => {
             {/* Proceed Button */}
             {(selectedPackage || customCredits) && (
               <div className="flex justify-end">
-                <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto text-[clamp(0.875rem,2vw,1rem)] py-3 px-6">
+                <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto">
                   Proceed to Payment
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>

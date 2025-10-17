@@ -395,12 +395,12 @@ const Campaigns = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] flex bg-background">
+      <div className="flex h-screen bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
-            <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
               {/* Loading skeletons */}
               <div className="flex items-center justify-between">
                 <Skeleton className="h-8 w-64" />
@@ -427,17 +427,17 @@ const Campaigns = () => {
 
   if (error) {
     return (
-      <div className="min-h-[100dvh] flex bg-background">
+      <div className="flex h-screen bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
-            <div className="mx-auto w-[92vw] max-w-[1200px]">
+          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
+            <div className="max-w-7xl mx-auto">
               <Card>
                 <CardContent className="p-12 text-center">
                   <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-[clamp(1rem,2.5vw,1.25rem)] font-semibold text-foreground mb-2">Error Loading Campaigns</h3>
-                  <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle mb-4">{error}</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Campaigns</h3>
+                  <p className="text-text-subtle mb-4">{error}</p>
                   <Button onClick={() => refetch()}>
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Try Again
@@ -452,17 +452,17 @@ const Campaigns = () => {
   }
 
   return (
-    <div className="min-h-[100dvh] flex bg-background">
+    <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
-          <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                <h1 className="text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-foreground">Campaigns</h1>
-                  <p className="text-[clamp(0.75rem,2vw,1rem)] text-text-subtle">
+                <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Campaigns</h1>
+                  <p className="text-sm lg:text-base text-text-subtle">
                   Manage and track your marketing campaigns
                   </p>
                 </div>
@@ -535,43 +535,43 @@ const Campaigns = () => {
                     placeholder="Search campaigns..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 text-[clamp(0.75rem,1.5vw,0.875rem)]"
+                    className="pl-10 text-sm"
                   />
                 </div>
                   </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48 text-[clamp(0.75rem,1.5vw,0.875rem)]">
+                    <SelectTrigger className="w-full sm:w-48 text-sm">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">All Status</SelectItem>
-                    <SelectItem value="draft" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Draft</SelectItem>
-                    <SelectItem value="scheduled" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Scheduled</SelectItem>
-                    <SelectItem value="running" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Running</SelectItem>
-                    <SelectItem value="paused" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Paused</SelectItem>
-                    <SelectItem value="completed" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Completed</SelectItem>
-                      <SelectItem value="cancelled" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Cancelled</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="running">Running</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-48 text-[clamp(0.75rem,1.5vw,0.875rem)]">
+                    <SelectTrigger className="w-full sm:w-48 text-sm">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">All Types</SelectItem>
-                      <SelectItem value="sms" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">SMS</SelectItem>
-                    <SelectItem value="whatsapp" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">WhatsApp</SelectItem>
-                    <SelectItem value="email" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Email</SelectItem>
-                      <SelectItem value="mixed" className="text-[clamp(0.75rem,1.5vw,0.875rem)]">Mixed</SelectItem>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
                   </SelectContent>
                 </Select>
 
                   <Button
                     variant="outline"
                     onClick={() => refetch()}
-                    className="gap-2 text-[clamp(0.75rem,1.5vw,0.875rem)]"
+                    className="gap-2"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Refresh
@@ -602,8 +602,8 @@ const Campaigns = () => {
               {filteredCampaigns.length === 0 ? (
                   <div className="p-4 lg:p-12 text-center">
                     <MessageSquare className="w-6 h-6 lg:w-12 lg:h-12 text-text-subtle mx-auto mb-3" />
-                    <h3 className="text-[clamp(0.875rem,2vw,1.125rem)] font-semibold text-foreground mb-2">No campaigns found</h3>
-                    <p className="text-[clamp(0.75rem,1.5vw,1rem)] text-text-subtle">
+                    <h3 className="text-sm lg:text-lg font-semibold text-foreground mb-2">No campaigns found</h3>
+                    <p className="text-xs lg:text-base text-text-subtle">
                       {searchQuery || statusFilter !== "all" || typeFilter !== "all"
                         ? "Try adjusting your filters to see more campaigns."
                         : "No campaigns have been created yet."}
@@ -613,7 +613,7 @@ const Campaigns = () => {
                   <div className="space-y-0">
                     {/* Table Header */}
                     <div className="px-2 lg:px-6 py-2 bg-muted/50 border-b border-border-subtle">
-                      <div className="grid grid-cols-12 gap-1 lg:gap-4 text-[clamp(0.625rem,1.25vw,0.75rem)] font-medium text-text-subtle">
+                      <div className="grid grid-cols-12 gap-1 lg:gap-4 text-xs font-medium text-text-subtle">
                         <div className="col-span-6 sm:col-span-4">Campaign</div>
                         <div className="col-span-3 sm:col-span-2 hidden sm:block">Status</div>
                         <div className="col-span-3 sm:col-span-2 hidden md:block">Type</div>
@@ -625,16 +625,16 @@ const Campaigns = () => {
 
                     {filteredCampaigns.map((campaign) => (
                       <div key={campaign.id} className="border-b border-border-subtle last:border-b-0 hover:bg-muted/50 transition-colors">
-                        <div className="px-3 sm:px-2 lg:px-6 py-3 sm:py-2 lg:py-3">
+                        <div className="px-2 lg:px-6 py-2 lg:py-3">
                           {/* Mobile Layout */}
-                          <div className="block sm:hidden space-y-3">
+                          <div className="block sm:hidden space-y-2">
                             <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0 pr-2">
-                                <h3 className="text-[clamp(0.875rem,2vw,1rem)] font-semibold text-foreground truncate">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-semibold text-foreground truncate">
                                   {campaign.name}
                                 </h3>
                                 {campaign.description && (
-                                  <p className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-text-subtle truncate mt-1">
+                                  <p className="text-xs text-text-subtle truncate mt-0.5">
                                     {campaign.description}
                                   </p>
                                 )}
@@ -733,39 +733,20 @@ const Campaigns = () => {
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge className={`${getStatusColor(campaign.status)} text-[clamp(0.625rem,1.25vw,0.75rem)] px-2 py-1`}>
+                              <Badge className={`${getStatusColor(campaign.status)} text-xs px-2 py-1`}>
                                 {getStatusIcon(campaign.status)}
                                 <span className="ml-1 capitalize">{campaign.status_display}</span>
                               </Badge>
-                              <Badge variant="outline" className="text-[clamp(0.625rem,1.25vw,0.75rem)] px-2 py-1">
+                              <Badge variant="outline" className="text-xs px-2 py-1">
                                 {campaign.campaign_type_display}
                               </Badge>
                             </div>
 
-                            {/* Mobile Statistics Grid */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
-                                <Users className="w-3 h-3 flex-shrink-0" />
-                                <span>{campaign.total_recipients.toLocaleString()} recipients</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
-                                <Send className="w-3 h-3 flex-shrink-0" />
-                                <span>{campaign.sent_count || 0} sent</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
-                                <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                                <span>{campaign.delivered_count || 0} delivered</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
-                                <TrendingUp className="w-3 h-3 flex-shrink-0" />
-                                <span>{campaign.delivery_rate || 0}% delivery rate</span>
-                              </div>
-                            </div>
-
-                            {/* Campaign Date */}
-                            <div className="flex items-center gap-2 text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
-                              <Calendar className="w-3 h-3 flex-shrink-0" />
-                              <span>Created {new Date(campaign.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</span>
+                            <div className="flex items-center justify-between text-xs text-text-subtle">
+                              <span>Recipients: {campaign.total_recipients.toLocaleString()}</span>
+                              {campaign.status === 'running' && (
+                                <span>Progress: {campaign.progress_percentage}%</span>
+                              )}
                             </div>
                           </div>
 
@@ -774,11 +755,11 @@ const Campaigns = () => {
                             {/* Campaign Column */}
                             <div className="col-span-4">
                               <div className="flex flex-col">
-                                <h3 className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-semibold text-foreground truncate">
+                                <h3 className="text-xs font-semibold text-foreground truncate">
                                   {campaign.name}
                                 </h3>
                                 {campaign.description && (
-                                  <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle truncate mt-0.5">
+                                  <p className="text-xs text-text-subtle truncate mt-0.5">
                                     {campaign.description}
                                   </p>
                                 )}
@@ -787,7 +768,7 @@ const Campaigns = () => {
 
                             {/* Status Column */}
                             <div className="col-span-2">
-                              <Badge className={`${getStatusColor(campaign.status)} text-[clamp(0.625rem,1.25vw,0.75rem)] px-1.5 py-0.5`}>
+                              <Badge className={`${getStatusColor(campaign.status)} text-xs px-1.5 py-0.5`}>
                                 {getStatusIcon(campaign.status)}
                                 <span className="ml-1 capitalize">{campaign.status_display}</span>
                               </Badge>
@@ -795,14 +776,14 @@ const Campaigns = () => {
 
                             {/* Type Column */}
                             <div className="col-span-2 hidden md:block">
-                              <Badge variant="outline" className="text-[clamp(0.625rem,1.25vw,0.75rem)] px-1.5 py-0.5">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                                 {campaign.campaign_type_display}
                               </Badge>
                             </div>
 
                             {/* Recipients Column */}
                             <div className="col-span-2 hidden lg:block">
-                              <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
+                              <div className="text-xs text-text-subtle">
                                 {campaign.total_recipients.toLocaleString()}
                               </div>
                             </div>
@@ -810,11 +791,11 @@ const Campaigns = () => {
                             {/* Progress Column */}
                             <div className="col-span-1 hidden lg:block">
                               {campaign.status === 'running' ? (
-                                <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">
+                                <div className="text-xs text-text-subtle">
                                   {campaign.progress_percentage}%
                                 </div>
                               ) : (
-                                <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-text-subtle">-</div>
+                                <div className="text-xs text-text-subtle">-</div>
                               )}
                             </div>
 
