@@ -616,18 +616,6 @@
         overflow-y: auto;
     }
 
-    /* Ensure sidebar stays fixed and doesn't scale */
-    .fixed-sidebar {
-        transform: none !important;
-        width: 16rem !important;
-        /* w-64 = 16rem */
-        height: 100vh !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        z-index: 30 !important;
-    }
-
     /* Manual viewport scaling class for specific elements */
     .viewport-scaled {
         transform: scale(0.75);
@@ -655,54 +643,12 @@
         overflow-y: auto;
     }
 
-    /* Ensure sidebar stays fixed and doesn't scale */
-    .fixed-sidebar {
-        transform: none !important;
-        width: 16rem !important;
-        /* w-64 = 16rem */
-        height: 100vh !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        z-index: 30 !important;
-    }
-
     /* Manual viewport scaling class for specific elements */
     .viewport-scaled {
         transform: scale(0.7);
         transform-origin: top left;
         width: 142.86%;
         height: 142.86%;
-    }
-}
-
-/* Specific viewport scaling for 1280x638 and similar wide/short viewports */
-@media (min-width: 1200px) and (max-height: 800px) {
-    #root {
-        transform: scale(0.75);
-        transform-origin: top left;
-        width: 133.33%;
-        height: 133.33%;
-        overflow-x: auto;
-        overflow-y: auto;
-    }
-
-    html,
-    body {
-        overflow-x: auto;
-        overflow-y: auto;
-    }
-
-    /* Ensure sidebar stays fixed and doesn't scale */
-    .fixed-sidebar {
-        transform: none !important;
-        width: 16rem !important;
-        /* w-64 = 16rem */
-        height: 100vh !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        z-index: 30 !important;
     }
 }
 

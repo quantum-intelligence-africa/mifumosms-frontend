@@ -111,10 +111,9 @@ const Campaigns = () => {
   // Use contacts hook for target audience
   const {
     contacts,
+    segments,
     isLoading: contactsLoading,
   } = useContacts();
-
-  const segments: any[] = []; // TODO: Add segments hook when available
 
   // Check if we should open the new campaign dialog
   useEffect(() => {
@@ -181,13 +180,13 @@ const Campaigns = () => {
           });
         break;
       case 'duplicate':
-          if (!(campaign as any).can_duplicate && campaign.status !== 'completed') {
+          if (!campaign.can_duplicate) {
             return;
           }
           duplicateCampaign(campaignId);
         break;
       case 'delete':
-          if (!(campaign as any).can_delete && campaign.status === 'running') {
+          if (!campaign.can_delete) {
             return;
           }
         if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
@@ -195,14 +194,14 @@ const Campaigns = () => {
           }
           break;
         case 'view_analytics':
-          if (!(campaign as any).can_view_analytics && campaign.status !== 'completed') {
+          if (!campaign.can_view_analytics) {
             return;
           }
           // Navigate to analytics page with campaign filter
           window.location.href = `/analytics?campaign=${campaignId}`;
           break;
         case 'edit':
-          if (!campaign.can_edit && campaign.status === 'running') {
+          if (!campaign.can_edit) {
             return;
           }
           // Find the campaign and open edit form
@@ -216,9 +215,9 @@ const Campaigns = () => {
               scheduled_at: campaign.scheduled_at || '',
               is_recurring: campaign.is_recurring || false,
               target_contact_count: campaign.target_contact_count || 0,
-              target_contact_ids: (campaign as any).target_contact_ids || [],
-              target_segment_ids: (campaign as any).target_segment_ids || [],
-              target_criteria: (campaign as any).target_criteria || {
+              target_contact_ids: campaign.target_contact_ids || [],
+              target_segment_ids: campaign.target_segment_ids || [],
+              target_criteria: campaign.target_criteria || {
                 tags: [],
                 groups: [],
                 custom_fields: {}
@@ -245,8 +244,7 @@ const Campaigns = () => {
     try {
       if (!selectedCampaign) return;
 
-      const { updateCampaign: updateCampaignFn } = useCampaigns();
-      const result = await updateCampaignFn(selectedCampaign.id, editForm);
+      const result = await updateCampaign(selectedCampaign.id, editForm);
       if (result) {
         setIsEditMode(false);
         setIsCampaignDetailsOpen(false);
@@ -364,7 +362,7 @@ const Campaigns = () => {
     return (
       <div className="min-h-[100dvh] flex bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
             <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
@@ -396,7 +394,7 @@ const Campaigns = () => {
   return (
     <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto custom-scrollbar px-[max(12px,env(safe-area-inset-left))] pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))]">
           <div className="mx-auto w-[92vw] max-w-[1200px] space-y-4 lg:space-y-6">
@@ -622,7 +620,7 @@ const Campaigns = () => {
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  {(campaign as any).can_view_analytics || campaign.status === 'completed' ? (
+                                  {campaign.can_view_analytics ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('view_analytics', campaign.id)}>
                                       <Eye className="w-3 h-3 mr-2" />
                                       View Analytics
@@ -644,7 +642,7 @@ const Campaigns = () => {
                                       Edit Campaign
                                     </DropdownMenuItem>
                                   )}
-                                  {(campaign as any).can_duplicate || campaign.status === 'completed' ? (
+                                  {campaign.can_duplicate ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
                                       <Copy className="w-3 h-3 mr-2" />
                                       Duplicate
@@ -656,7 +654,7 @@ const Campaigns = () => {
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  {(campaign as any).can_delete || campaign.status !== 'running' ? (
+                                  {campaign.can_delete ? (
                                     <DropdownMenuItem
                                       onClick={() => handleCampaignAction('delete', campaign.id)}
                                       className="text-destructive"
@@ -803,7 +801,7 @@ const Campaigns = () => {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                            {(campaign as any).can_view_analytics || campaign.status === 'completed' ? (
+                            {campaign.can_view_analytics ? (
                               <DropdownMenuItem onClick={() => handleCampaignAction('view_analytics', campaign.id)}>
                                 <Eye className="w-3 h-3 mr-2" />
                                 View Analytics
@@ -825,7 +823,7 @@ const Campaigns = () => {
                               Edit Campaign
                             </DropdownMenuItem>
                             )}
-                            {(campaign as any).can_duplicate || campaign.status === 'completed' ? (
+                            {campaign.can_duplicate ? (
                             <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
                               <Copy className="w-3 h-3 mr-2" />
                               Duplicate
@@ -837,7 +835,7 @@ const Campaigns = () => {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
-                            {(campaign as any).can_delete || campaign.status !== 'running' ? (
+                            {campaign.can_delete ? (
                             <DropdownMenuItem
                               onClick={() => handleCampaignAction('delete', campaign.id)}
                               className="text-red-600"
@@ -1066,10 +1064,10 @@ const Campaigns = () => {
                                   />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">
-                                      {contact.name}
+                                      {contact.first_name} {contact.last_name}
                                     </p>
                                     <p className="text-xs text-muted-foreground truncate">
-                                      {contact.phone_e164 || contact.email}
+                                      {contact.phone_number || contact.email}
                                     </p>
                                   </div>
                                 </div>

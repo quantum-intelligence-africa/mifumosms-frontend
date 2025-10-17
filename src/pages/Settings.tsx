@@ -315,7 +315,7 @@ const Settings = () => {
               <CardContent className="space-y-4 p-4 pt-0">
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="w-16 h-16">
-                    <AvatarImage src={(user as any)?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
+                    <AvatarImage src={user?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
                     <AvatarFallback className="bg-primary/10 text-primary text-lg">
                       {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
                     </AvatarFallback>
@@ -857,7 +857,7 @@ const Settings = () => {
     <div className="min-h-[100dvh] flex bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="flex-1 overflow-hidden">

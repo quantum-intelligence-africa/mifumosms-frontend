@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ResponsiveProvider } from "@/components/ResponsiveProvider";
 import "@/styles/responsive.css";
-import "@/utils/responsiveManager"; // Initialize responsive manager
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
