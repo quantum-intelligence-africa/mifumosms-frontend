@@ -718,12 +718,12 @@ const Analytics = () => {
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-2 sm:p-3 lg:p-4 xl:p-6">
+            <div className="max-w-7xl mx-auto flex flex-col">
               {/* Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
                 <div>
@@ -781,7 +781,7 @@ const Analytics = () => {
               {isMobile ? (
                 <div className="flex-1 overflow-hidden">
                   {!currentCategory ? (
-                    <div className="space-y-3 h-full overflow-y-auto pb-6">
+                    <div className="space-y-3 overflow-y-auto pb-6 h-full">
                       {analyticsCategories.map((category) => (
                         <Card
                           key={category.id}
@@ -808,7 +808,7 @@ const Analytics = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col">
+                    <div className="flex flex-col h-full">
                       {/* Category Header */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -859,8 +859,8 @@ const Analytics = () => {
                 </div>
               ) : (
                 /* Desktop Layout - Keep original tabs */
-                <div className="flex-1 overflow-hidden">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Categories Sidebar */}
                     <div className="lg:col-span-1">
                       <div className="space-y-2">
@@ -892,7 +892,7 @@ const Analytics = () => {
 
                     {/* Content Area */}
                     <div className="lg:col-span-3">
-                      <div className="h-full overflow-y-auto pb-4" ref={analyticsContentRef}>
+                      <div className="overflow-y-auto pb-4" ref={analyticsContentRef}>
                         {renderCategoryContent()}
                       </div>
                     </div>

@@ -24,14 +24,31 @@ const Landing = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [customCredits, setCustomCredits] = useState<string>("");
+  const [currentMessage, setCurrentMessage] = useState(0);
+
+  // SMS Animation messages - Company informational messages
+  const messages = [
+    { text: "MIFUMO WMS: Your account has been successfully created. Welcome to our platform!", sender: "Mifumo WMS", time: "2:30 PM", type: "sms" },
+    { text: "MIFUMO WMS: Your SMS campaign 'Welcome Series' has been delivered to 1,250 contacts successfully.", sender: "Mifumo WMS", time: "2:32 PM", type: "sms" },
+    { text: "MIFUMO WMS: Your WhatsApp message delivery rate is 98.5% this month. Great performance!", sender: "Mifumo WMS", time: "2:35 PM", type: "whatsapp" },
+    { text: "MIFUMO WMS: Your account balance is running low. Please top up to continue sending messages.", sender: "Mifumo WMS", time: "2:37 PM", type: "sms" },
+  ];
+
+  // Cycle through messages
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMessage((prev) => (prev + 1) % messages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [messages.length]);
 
   type Tier = { name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
-  const tiers: Tier[] = [
+  const tiers: Tier[] = useMemo(() => [
     { name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
     { name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
     { name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
     { name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
-  ];
+  ], []);
 
   const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
   const activeTier = useMemo(() => {
@@ -40,7 +57,7 @@ const Landing = () => {
     if (parsedCredits <= 50000) return tiers[1];
     if (parsedCredits <= 250000) return tiers[2];
     return tiers[3];
-  }, [parsedCredits]);
+  }, [parsedCredits, tiers]);
 
   const customPrice = useMemo(() => {
     if (!parsedCredits) return 0;
@@ -58,6 +75,97 @@ const Landing = () => {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
+  // SMS Animation Component
+  const SMSAnimation = () => {
+    const message = messages[currentMessage];
+
+    return (
+      <div className="relative w-full max-w-[280px] mx-auto">
+        {/* iPhone Mockup - Realistic design */}
+        <div className="relative bg-black rounded-[3rem] p-2 shadow-2xl">
+          {/* iPhone Frame */}
+          <div className="bg-black rounded-[2.8rem] p-1">
+            <div className="bg-white rounded-[2.5rem] overflow-hidden relative">
+              {/* Dynamic Island / Notch */}
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-black rounded-full z-10"></div>
+
+              {/* Status Bar */}
+              <div className="bg-white pt-8 pb-2 px-6 flex justify-between items-center text-xs font-semibold text-black">
+                <span>9:41</span>
+                <div className="flex items-center gap-1">
+                  {/* Signal bars */}
+                  <div className="flex items-end gap-0.5">
+                    <div className="w-1 h-2 bg-black rounded-sm"></div>
+                    <div className="w-1 h-3 bg-black rounded-sm"></div>
+                    <div className="w-1 h-4 bg-black rounded-sm"></div>
+                    <div className="w-1 h-4 bg-black rounded-sm"></div>
+                  </div>
+                  {/* WiFi */}
+                  <div className="w-4 h-3 bg-black rounded-sm ml-1"></div>
+                  {/* Battery with percentage */}
+                  <div className="flex items-center gap-1 ml-1">
+                    <span className="text-xs font-medium">100%</span>
+                    <div className="w-6 h-3 border border-black rounded-sm relative">
+                      <div className="w-4 h-2 bg-black rounded-sm m-0.5"></div>
+                      <div className="absolute -right-0.5 top-0.5 w-0.5 h-2 bg-black rounded-r-sm"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages App Interface */}
+              <div className="bg-gray-50 h-[480px]">
+                {/* App Header */}
+                <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-gray-900 font-semibold text-sm">{message.sender}</h3>
+                    <p className="text-gray-500 text-xs">System Messages</p>
+                  </div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                </div>
+
+                {/* Messages Area */}
+                <div className="p-4 space-y-3 h-[400px] overflow-y-auto bg-gray-50">
+                  {/* Previous messages */}
+                  {messages.slice(0, currentMessage).map((msg, index) => (
+                    <div key={index} className="flex justify-start">
+                      <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                        <p className="text-gray-900 text-sm leading-relaxed">{msg.text}</p>
+                        <p className="text-gray-400 text-xs mt-2">{msg.time}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Current message with animation */}
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm animate-pulse">
+                      <p className="text-gray-900 text-sm leading-relaxed">{message.text}</p>
+                      <p className="text-gray-400 text-xs mt-2">{message.time}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Home indicator */}
+          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-white rounded-full"></div>
+        </div>
+
+        {/* Floating notification icons */}
+        <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center animate-bounce shadow-lg">
+          <Send className="w-4 h-4 text-white" />
+        </div>
+        <div className="absolute -bottom-2 -left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-pulse shadow-lg">
+          <MessageSquare className="w-3 h-3 text-white" />
+        </div>
+      </div>
+    );
+  };
   const features = [
     {
       icon: MessageSquare,
@@ -169,32 +277,36 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section id="about" className="pt-8 sm:pt-12 lg:pt-16 xl:pt-20 pb-8 sm:pb-12 lg:pb-16 px-3 sm:px-4 lg:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-
-          <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 sm:mb-4 lg:mb-6">
-            Connect with Customers
-            <span className="gradient-text block">Across Africa</span>
-          </h1>
-          <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-text-subtle mb-4 sm:mb-6 lg:mb-8 max-w-2xl mx-auto leading-relaxed">
-            Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
-            with multi-language support and local payment integration.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 justify-center">
-            <Link to="/signup">
-              <Button size="hero" variant="hero" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
-                Start Free Trial
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-1 sm:ml-2" />
+      {/* Hero Section - Full Viewport */}
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 lg:px-6 relative">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Text Content */}
+          <div className="text-center lg:text-left lg:col-span-1">
+            <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 sm:mb-4 lg:mb-6">
+              Connect with Customers
+              <span className="gradient-text block">Across Africa</span>
+            </h1>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-text-subtle mb-4 sm:mb-6 lg:mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+              Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
+              with multi-language support and local payment integration.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 justify-center lg:justify-start">
+              <Link to="/signup">
+                <Button size="hero" variant="hero" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
+                  Start Free Trial
+                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-1 sm:ml-2" />
+                </Button>
+              </Link>
+              <Button size="hero" variant="outline" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
+                Watch Demo
               </Button>
-            </Link>
-            <Button size="hero" variant="outline" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
-              Watch Demo
-            </Button>
+            </div>
           </div>
-          {/* <p className="text-sm text-text-subtle mt-4">
-            14-day free trial • No credit card required
-          </p> */}
+
+          {/* SMS Animation - Hidden on mobile */}
+          <div className="hidden lg:flex justify-center lg:justify-end">
+            <SMSAnimation />
+          </div>
         </div>
       </section>
 

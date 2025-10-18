@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -73,6 +73,7 @@ import {
 import { useContacts } from "@/hooks/useContacts";
 import { useToast } from "@/hooks/use-toast";
 import { Contact, CreateContactRequest } from "@/lib/api";
+import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -88,6 +89,7 @@ const Contacts = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isCSVImportDialogOpen, setIsCSVImportDialogOpen] = useState(false);
   const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
   const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
   const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
@@ -100,7 +102,6 @@ const Contacts = () => {
       department: ""
     } as Record<string, unknown>
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Contact action handlers
   const handleSendMessage = (contact: Contact) => {
@@ -292,17 +293,41 @@ const Contacts = () => {
   };
 
 
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    setIsImporting(true);
-    await bulkImportContacts(file);
-    setIsImporting(false);
+  const handleCSVImport = async (contacts: CreateContactRequest[]) => {
+    try {
+      setIsCreating(true);
+      let successCount = 0;
+      let errorCount = 0;
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      for (const contact of contacts) {
+        try {
+          const success = await createContact(contact);
+          if (success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('Error creating contact:', error);
+        }
+      }
+
+      toast({
+        title: "CSV import completed",
+        description: `Successfully imported ${successCount} contacts. ${errorCount} failed.`,
+      });
+
+      fetchContacts();
+    } catch (error) {
+      toast({
+        title: "CSV import failed",
+        description: "Failed to import contacts. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -604,13 +629,6 @@ const Contacts = () => {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:gap-3">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileImport}
-                    accept=".csv,.xlsx,.xls"
-                    className="hidden"
-                  />
 
                   {/* Mobile Contact Import Button */}
                   {isMobile && (
@@ -649,17 +667,13 @@ const Contacts = () => {
                   <Button
                     variant="outline"
                     className="glass-subtle border-0 text-xs h-7 sm:h-8"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isImporting}
+                    onClick={() => setIsCSVImportDialogOpen(true)}
+                    disabled={isCreating}
                     size="sm"
                   >
-                    {isImporting ? (
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    ) : (
-                      <Upload className="w-3 h-3 mr-1" />
-                    )}
-                    <span className="hidden sm:inline">Import</span>
-                    <span className="sm:hidden">📁</span>
+                    <FileText className="w-3 h-3 mr-1" />
+                    <span className="hidden sm:inline">CSV Import</span>
+                    <span className="sm:hidden">CSV</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -1256,6 +1270,14 @@ const Contacts = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CSV Import Dialog */}
+      <CSVImportDialog
+        open={isCSVImportDialogOpen}
+        onOpenChange={setIsCSVImportDialogOpen}
+        onImport={handleCSVImport}
+        isImporting={isCreating}
+      />
     </div>
   );
 };

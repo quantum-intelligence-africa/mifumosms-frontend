@@ -857,12 +857,12 @@ const Settings = () => {
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
-            <div className="max-w-7xl mx-auto h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-2 sm:p-3 lg:p-4 xl:p-6">
+            <div className="max-w-7xl mx-auto flex flex-col">
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
@@ -877,7 +877,7 @@ const Settings = () => {
               {isMobile ? (
                 <div className="flex-1 overflow-hidden">
                   {!currentCategory ? (
-                    <div className="space-y-2 sm:space-y-3 h-full overflow-y-auto pb-4 sm:pb-6">
+                    <div className="space-y-2 sm:space-y-3 overflow-y-auto pb-4 sm:pb-6 h-full">
                       {settingsCategories.map((category) => (
                         <Card
                           key={category.id}
@@ -904,7 +904,7 @@ const Settings = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col">
+                    <div className="flex flex-col h-full">
                       {/* Category Header */}
                       <div className="flex items-center gap-3 mb-4">
                         <Button
@@ -943,8 +943,8 @@ const Settings = () => {
                 </div>
               ) : (
                 /* Desktop Layout - Keep original tabs */
-                <div className="flex-1 overflow-hidden">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Categories Sidebar */}
                     <div className="lg:col-span-1">
                       <div className="space-y-2">
@@ -976,7 +976,7 @@ const Settings = () => {
 
                     {/* Content Area */}
                     <div className="lg:col-span-3">
-                      <div className="h-full overflow-y-auto pb-6">
+                      <div className="overflow-y-auto pb-6">
                         {renderCategoryContent()}
                       </div>
                     </div>
