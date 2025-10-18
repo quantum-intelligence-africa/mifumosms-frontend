@@ -278,26 +278,28 @@ const Landing = () => {
       </header>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 lg:px-6 relative">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 lg:px-6 relative py-6 sm:py-8 md:py-12 lg:py-0">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center w-full">
           {/* Text Content */}
-          <div className="text-center lg:text-left lg:col-span-1">
-            <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-3 sm:mb-4 lg:mb-6">
-              Connect with Customers
-              <span className="gradient-text block">Across Africa</span>
-            </h1>
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-text-subtle mb-4 sm:mb-6 lg:mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
-              with multi-language support and local payment integration.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4 justify-center lg:justify-start">
+          <div className="text-center lg:text-left lg:col-span-1 w-full space-y-4 sm:space-y-6 md:space-y-8">
+            <div className="space-y-3 sm:space-y-4 md:space-y-5">
+              <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight">
+                Connect with Customers
+                <span className="gradient-text block">Across Africa</span>
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl text-text-subtle max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
+                with multi-language support and local payment integration.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-4 justify-center lg:justify-start">
               <Link to="/signup">
-                <Button size="hero" variant="hero" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
+                <Button size="hero" variant="hero" className="text-sm sm:text-base lg:text-base h-10 sm:h-11 lg:h-12 px-6 sm:px-8 w-full sm:w-auto">
                   Start Free Trial
-                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-1 sm:ml-2" />
+                  <ArrowRight className="w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 ml-2" />
                 </Button>
               </Link>
-              <Button size="hero" variant="outline" className="text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 px-4 sm:px-6">
+              <Button size="hero" variant="outline" className="text-sm sm:text-base lg:text-base h-10 sm:h-11 lg:h-12 px-6 sm:px-8 w-full sm:w-auto">
                 Watch Demo
               </Button>
             </div>
