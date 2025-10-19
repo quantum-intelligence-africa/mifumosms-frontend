@@ -72,35 +72,35 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-2 sm:p-3 lg:p-4 xl:p-6">
-      <div className="w-full max-w-sm sm:max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-4 sm:mb-5 lg:mb-6 xl:mb-8">
-          <Link to="/" className="inline-flex items-center gap-1 sm:gap-2 text-text-subtle hover:text-foreground mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
-            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="text-xs sm:text-sm lg:text-base">Back to homepage</span>
+        <div className="text-center mb-6">
+          <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back to homepage</span>
           </Link>
-          <div className="flex items-center justify-center gap-1 sm:gap-2 lg:gap-3 mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center">
-              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-white" />
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-6 h-6 text-white" />
             </div>
-            <span className="font-heading text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+            <span className="font-heading text-2xl font-bold text-gray-900">
               Mifumo WMS
             </span>
           </div>
         </div>
 
-        <Card className="glass border-0 shadow-xl">
-          <CardHeader className="text-center p-3 sm:p-4 lg:p-5 xl:p-6">
-            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription className="text-xs sm:text-sm lg:text-base">
+        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl font-bold text-gray-900">Welcome back</CardTitle>
+            <CardDescription className="text-gray-600">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-3 sm:p-4 lg:p-5 xl:p-6 pt-0">
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="email" className="text-xs sm:text-sm lg:text-base">Email address</Label>
+          <CardContent className="px-6 pb-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -108,12 +108,12 @@ const Login = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
-                  className="glass-subtle border-0 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-12"
+                  className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
                 />
               </div>
 
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="password" className="text-xs sm:text-sm lg:text-base">Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -122,39 +122,39 @@ const Login = () => {
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     required
-                    className="glass-subtle border-0 pr-8 sm:pr-10 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-12"
+                    className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-12 transition-all duration-300"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-8 sm:h-9 lg:h-10 xl:h-12 px-2 sm:px-3 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 lg:w-4 lg:h-4 text-text-subtle" />
+                      <EyeOff className="w-5 h-5 text-gray-400" />
                     ) : (
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 lg:w-4 lg:h-4 text-text-subtle" />
+                      <Eye className="w-5 h-5 text-gray-400" />
                     )}
                   </Button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="flex items-center space-x-2">
                   <Checkbox
                     id="remember"
                     checked={formData.rememberMe}
                     onCheckedChange={(checked) => handleInputChange("rememberMe", checked as boolean)}
-                    className="h-3 w-3 sm:h-4 sm:w-4"
+                    className="h-4 w-4"
                   />
-                  <Label htmlFor="remember" className="text-xs sm:text-sm lg:text-base text-text-subtle">
+                  <Label htmlFor="remember" className="text-sm text-gray-600">
                     Remember me
                   </Label>
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-xs sm:text-sm lg:text-base text-primary hover:underline"
+                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
                 >
                   Forgot password?
                 </Link>
@@ -162,34 +162,32 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full h-8 sm:h-9 lg:h-10 xl:h-12 text-xs sm:text-sm lg:text-base"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
 
-            <div className="mt-3 sm:mt-4 lg:mt-5 xl:mt-6 text-center">
-              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
                 Don't have an account?{" "}
-                <Link to="/signup" className="text-primary hover:underline font-medium">
+                <Link to="/signup" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
                   Sign up
                 </Link>
               </p>
             </div>
-
-            {/* Social login section removed */}
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-sm text-text-subtle">
+        <div className="mt-6 text-center text-xs text-gray-500">
           <p>
             By signing in, you agree to our{" "}
-            <Link to="/terms" className="text-primary hover:underline">
+            <Link to="/terms" className="text-blue-600 hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link to="/privacy" className="text-primary hover:underline">
+            <Link to="/privacy" className="text-blue-600 hover:underline">
               Privacy Policy
             </Link>
           </p>
