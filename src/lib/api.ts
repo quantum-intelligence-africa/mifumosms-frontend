@@ -1690,6 +1690,282 @@ class ApiClient {
   }
 
   // =============================================
+  // BILLING HISTORY ENDPOINTS
+  // =============================================
+
+  // 1. Comprehensive Billing History
+  async getBillingHistory(params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse<{
+    summary: {
+      total_purchased: number;
+      total_credits_purchased: number;
+      total_usage_cost: number;
+      total_credits_used: number;
+      current_balance: number;
+      total_purchases: number;
+      total_payments: number;
+      total_usage_records: number;
+    };
+    purchases: Purchase[];
+    payments: Array<{
+      id: string;
+      order_id: string;
+      amount: number;
+      currency: string;
+      payment_method: string;
+      status: string;
+      created_at: string;
+    }>;
+    usage_records: Array<{
+      id: string;
+      credits_used: number;
+      cost: number;
+      created_at: string;
+    }>;
+    custom_purchases: Array<{
+      id: string;
+      credits: number;
+      unit_price: number;
+      total_price: number;
+      active_tier: string;
+      status: string;
+      created_at: string;
+    }>;
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.BASE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Billing History Summary with Charts
+  async getBillingHistorySummary(params?: {
+    period?: '7d' | '30d' | '90d' | '1y';
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse<{
+    summary: {
+      total_purchased: number;
+      total_credits_purchased: number;
+      total_usage_cost: number;
+      total_credits_used: number;
+      current_balance: number;
+      total_purchases: number;
+      total_payments: number;
+      total_usage_records: number;
+      period: string;
+      start_date: string;
+      end_date: string;
+    };
+    charts: {
+      monthly_usage: Array<{
+        month: string;
+        credits: number;
+        cost: number;
+      }>;
+      payment_methods: Array<{
+        method: string;
+        count: number;
+        amount: number;
+      }>;
+    };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.period) queryParams.append('period', params.period);
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.SUMMARY}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Detailed Purchase History (New API)
+  async getDetailedPurchaseHistory(params?: {
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<{
+    purchases: Purchase[];
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.PURCHASES}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. Detailed Payment History
+  async getDetailedPaymentHistory(params?: {
+    status?: string;
+    payment_method?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<{
+    transactions: Array<{
+      id: string;
+      order_id: string;
+      zenopay_order_id: string;
+      invoice_number: string;
+      amount: number;
+      currency: string;
+      buyer_email: string;
+      buyer_name: string;
+      buyer_phone: string;
+      payment_method: string;
+      payment_method_display: string;
+      status: string;
+      status_display: string;
+      zenopay_reference: string;
+      zenopay_transid: string;
+      zenopay_channel: string;
+      zenopay_msisdn: string;
+      webhook_received: boolean;
+      created_at: string;
+      updated_at: string;
+      completed_at: string | null;
+      failed_at: string | null;
+      error_message: string;
+      purchase_data: {
+        id: string;
+        package_name: string;
+        credits: number;
+        unit_price: number;
+      };
+    }>;
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.payment_method) queryParams.append('payment_method', params.payment_method);
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.PAYMENTS}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. Detailed Usage History
+  async getDetailedUsageHistory(params?: {
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<{
+    usage_records: Array<{
+      id: string;
+      credits_used: number;
+      cost: number;
+      created_at: string;
+    }>;
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.USAGE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // =============================================
   // SUBSCRIPTION MANAGEMENT ENDPOINTS
   // =============================================
 

@@ -11,7 +11,9 @@ import {
   Search,
   Eye,
   RefreshCw,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -60,19 +62,25 @@ const PurchaseHistory = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
 
-  // Fetch purchases from API
+  // Fetch purchases from NEW billing history API
   const fetchPurchases = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getPurchases({
-        status: statusFilter !== 'all' ? statusFilter as any : undefined,
-        page: 1,
-        page_size: 100
+      const response = await apiClient.getDetailedPurchaseHistory({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        page: currentPage,
+        page_size: pageSize
       });
 
       if (response.success && response.data) {
-        setPurchases(response.data.results);
+        setPurchases(response.data.purchases);
+        setTotalPages(response.data.pagination.total_pages);
+        setTotalCount(response.data.pagination.count);
       } else {
         toast({
           title: "Failed to load purchases",
@@ -99,10 +107,10 @@ const PurchaseHistory = () => {
     setRefreshing(false);
   };
 
-  // Load purchases on component mount and when filters change
+  // Load purchases on component mount and when filters/page change
   useEffect(() => {
     fetchPurchases();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage]);
 
   const getStatusIcon = (status: PurchaseStatus) => {
     switch (status) {
@@ -335,7 +343,7 @@ const PurchaseHistory = () => {
                 </TableBody>
               </Table>
 
-              {filteredPurchases.length === 0 && (
+              {filteredPurchases.length === 0 && !loading && (
                 <div className="p-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                     <FileText className="w-8 h-8 text-primary" />
@@ -348,7 +356,72 @@ const PurchaseHistory = () => {
                   </p>
                 </div>
               )}
+
+              {loading && (
+                <div className="p-12 text-center">
+                  <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
+                  <p className="text-text-subtle">Loading purchases...</p>
+                </div>
+              )}
             </Card>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Card className="p-4 glass">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-text-subtle">
+                    Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} purchases
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1 || loading}
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            disabled={loading}
+                            className="w-10"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages || loading}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Purchase Details Sheet */}
             <Sheet open={showDetails} onOpenChange={setShowDetails}>

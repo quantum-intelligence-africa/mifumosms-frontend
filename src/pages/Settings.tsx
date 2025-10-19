@@ -76,6 +76,7 @@ const Settings = () => {
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: "",
     lastName: "",
@@ -154,6 +155,14 @@ const Settings = () => {
     }
   }, [user]);
 
+  // Ensure we stay on the settings page and profile category after successful updates
+  useEffect(() => {
+    // This effect ensures we stay on the profile category after updates
+    if (currentCategory === null) {
+      setCurrentCategory('profile');
+    }
+  }, [currentCategory]);
+
   const apiKeys = [
     {
       id: "1",
@@ -226,8 +235,20 @@ const Settings = () => {
   };
 
 
-  const handleProfileUpdate = async () => {
+  const handleProfileUpdate = async (e?: React.FormEvent) => {
+    // Prevent any form submission that might cause navigation
+    if (e) {
+      e.preventDefault();
+    }
+
+    // Prevent multiple simultaneous updates
+    if (isUpdatingProfile) {
+      return;
+    }
+
     setIsLoading(true);
+    setIsUpdatingProfile(true);
+
     try {
       const updateData: any = {
         first_name: profileData.firstName,
@@ -235,14 +256,28 @@ const Settings = () => {
         phone_number: profileData.phone,
       };
 
+      console.log('Updating profile with data:', updateData);
       const result = await updateProfile(updateData);
+      console.log('Profile update result:', result);
 
       if (result.success) {
         toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully."
+          title: "Profile updated successfully",
+          description: "Your profile information has been saved.",
         });
+
+        // Clear any form state if needed
+        // The user data will be automatically updated via the AuthContext
+
+        // Ensure we stay on the current page
+        console.log('Profile update successful, staying on settings page');
+
+        // Force the component to stay on the current category
+        if (currentCategory !== 'profile') {
+          setCurrentCategory('profile');
+        }
       } else {
+        console.error('Profile update failed:', result.error);
         toast({
           title: "Update failed",
           description: result.error || "Failed to update profile. Please try again.",
@@ -250,6 +285,7 @@ const Settings = () => {
         });
       }
     } catch (error) {
+      console.error('Profile update error:', error);
       toast({
         title: "Update failed",
         description: "An unexpected error occurred. Please try again.",
@@ -257,6 +293,7 @@ const Settings = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -313,61 +350,63 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0">
-                <div className="flex flex-col items-center gap-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage src={user?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                      {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div className="flex flex-col items-center gap-4">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage src={user?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                        {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
 
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={profileData.firstName}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-sm">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={profileData.firstName}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
+                        className="glass-subtle border-0 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-sm">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileData.lastName}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                        className="glass-subtle border-0 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={profileData.email}
+                        disabled
+                        className="glass-subtle border-0 bg-muted/50 text-sm"
+                      />
+                      <p className="text-xs text-text-subtle">Email cannot be changed</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={profileData.phone}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="glass-subtle border-0 text-sm"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={profileData.lastName}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profileData.email}
-                      disabled
-                      className="glass-subtle border-0 bg-muted/50 text-sm"
-                    />
-                    <p className="text-xs text-text-subtle">Email cannot be changed</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
-                  </div>
-                </div>
 
-                <Button onClick={handleProfileUpdate} disabled={isLoading} className="w-full text-sm">
-                  <Save className="w-4 h-4 mr-2" />
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </Button>
+                  <Button type="submit" disabled={isLoading || isUpdatingProfile} className="w-full text-sm">
+                    <Save className="w-4 h-4 mr-2" />
+                    {isLoading || isUpdatingProfile ? "Saving..." : "Save Changes"}
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </div>
