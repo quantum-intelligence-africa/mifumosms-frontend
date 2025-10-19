@@ -19,11 +19,12 @@ import {
   Sparkles
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 
 const Landing = () => {
-  const { isAuthenticated, user } = useAuth();
+  // Check if user is authenticated by checking localStorage
+  const isAuthenticated = !!localStorage.getItem('access_token');
+  const user = null; // We don't need user data on the landing page
   const navigate = useNavigate();
   const [customCredits, setCustomCredits] = useState<string>("");
   const [currentMessage, setCurrentMessage] = useState(0);
@@ -698,7 +699,7 @@ const Landing = () => {
                 size="hero"
                 className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
               >
-              Get Started 
+              Get Started
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
             </Link>

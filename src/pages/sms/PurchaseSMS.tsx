@@ -179,8 +179,16 @@ const PurchaseSMS = () => {
           apiClient.getPaymentProviders()
         ]);
 
-        if (packagesResponse.success && packagesResponse.data && packagesResponse.data.results.length > 0) {
-          setPackages(packagesResponse.data.results);
+        if (packagesResponse.success && packagesResponse.data) {
+          if (Array.isArray(packagesResponse.data)) {
+            // Handle legacy response format
+            setPackages(packagesResponse.data);
+          } else if (packagesResponse.data.results && packagesResponse.data.results.length > 0) {
+            // Handle new response format
+            setPackages(packagesResponse.data.results);
+          } else {
+            setPackages(defaultPackages);
+          }
         } else {
           // Use default packages if API doesn't return any
           setPackages(defaultPackages);
@@ -225,7 +233,7 @@ const PurchaseSMS = () => {
       return mobileMoneyProviders.map(provider => ({
         id: provider.code,
         name: provider.name,
-        icon: provider.code === 'vodacom' ? '📱' : 
+        icon: provider.code === 'vodacom' ? '📱' :
               provider.code === 'tigo' ? '📱' :
               provider.code === 'airtel' ? '📱' :
               provider.code === 'halotel' ? '📱' : '🏦'
@@ -307,11 +315,11 @@ const PurchaseSMS = () => {
   // Calculate custom SMS pricing using API
   const calculateCustomSMSPrice = async (credits: number) => {
     if (credits < 100) return;
-    
+
     try {
       setIsCalculatingCustom(true);
       const response = await apiClient.calculateCustomSMSPrice({ credits });
-      
+
       if (response.success && response.data) {
         setCustomSMSState({
           credits: response.data.credits,
@@ -319,7 +327,7 @@ const PurchaseSMS = () => {
           totalPrice: response.data.total_price,
           activeTier: response.data.active_tier,
           savingsPercentage: response.data.savings_percentage,
-          pricingTiers: response.data.pricing_tiers
+          pricingTiers: response.data.pricing_tiers || []
         });
       }
     } catch (error) {
@@ -680,7 +688,7 @@ const PurchaseSMS = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Custom SMS Pricing Details */}
               {customSMSState && (
                 <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
@@ -704,7 +712,7 @@ const PurchaseSMS = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span>
                   {customSMSState ? (
@@ -931,17 +939,8 @@ const PurchaseSMS = () => {
                   {paymentMethod && !paymentState.isActive && (
                     <div className="mt-2 p-2 bg-primary/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-1 flex items-center gap-2 text-xs sm:text-sm">
-                        {paymentMethod === 'bank' ? (
-                          <>
-                            <CreditCard className="w-3 h-3" />
-                            Halo Pesa Payment
-                          </>
-                        ) : (
-                          <>
-                            <Smartphone className="w-3 h-3" />
-                            Mobile Money Payment
-                          </>
-                        )}
+                        <Smartphone className="w-3 h-3" />
+                        Mobile Money Payment
                       </h4>
                       <div className="space-y-1">
                         <div>

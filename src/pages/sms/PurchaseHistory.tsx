@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   FileText,
@@ -9,7 +9,9 @@ import {
   Clock,
   XCircle,
   Search,
-  Eye
+  Eye,
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -41,92 +43,66 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
+import { apiClient, Purchase } from "@/lib/api";
 
-type PurchaseStatus = "completed" | "pending" | "failed" | "refunded";
-
-interface Purchase {
-  id: string;
-  invoice_no: string;
-  date: string;
-  package_name: string;
-  credits: number;
-  amount_tzs: number;
-  payment_method: string;
-  status: PurchaseStatus;
-  receipt_url?: string;
-  gateway_ref?: string;
-}
+type PurchaseStatus = "completed" | "pending" | "failed" | "cancelled";
 
 const PurchaseHistory = () => {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Demo data - replace with actual API calls
-  const purchases: Purchase[] = [
-    {
-      id: "1",
-      invoice_no: "INV-2024-001",
-      date: "2024-03-15T14:30:00Z",
-      package_name: "Business Package",
-      credits: 2000,
-      amount_tzs: 35000,
-      payment_method: "M-Pesa",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "MPESA-ABC123",
-    },
-    {
-      id: "2",
-      invoice_no: "INV-2024-002",
-      date: "2024-03-10T10:20:00Z",
-      package_name: "Starter Package",
-      credits: 500,
-      amount_tzs: 10000,
-      payment_method: "Tigo Pesa",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "TIGO-XYZ789",
-    },
-    {
-      id: "3",
-      invoice_no: "INV-2024-003",
-      date: "2024-03-08T16:45:00Z",
-      package_name: "Custom Top-up",
-      credits: 1000,
-      amount_tzs: 20000,
-      payment_method: "Airtel Money",
-      status: "pending",
-      gateway_ref: "AIRTEL-DEF456",
-    },
-    {
-      id: "4",
-      invoice_no: "INV-2024-004",
-      date: "2024-03-05T09:15:00Z",
-      package_name: "Enterprise Package",
-      credits: 10000,
-      amount_tzs: 150000,
-      payment_method: "Halo Pesa",
-      status: "completed",
-      receipt_url: "#",
-      gateway_ref: "BANK-GHI321",
-    },
-    {
-      id: "5",
-      invoice_no: "INV-2024-005",
-      date: "2024-03-01T11:30:00Z",
-      package_name: "Business Package",
-      credits: 2000,
-      amount_tzs: 35000,
-      payment_method: "Credit Card",
-      status: "failed",
-      gateway_ref: "CARD-JKL654",
-    },
-  ];
+  // Fetch purchases from API
+  const fetchPurchases = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getPurchases({
+        status: statusFilter !== 'all' ? statusFilter as any : undefined,
+        page: 1,
+        page_size: 100
+      });
+
+      if (response.success && response.data) {
+        setPurchases(response.data.results);
+      } else {
+        toast({
+          title: "Failed to load purchases",
+          description: response.error || "Could not load purchase history",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching purchases:', error);
+      toast({
+        title: "Error loading purchases",
+        description: "Failed to load purchase history. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh purchases
+  const refreshPurchases = async () => {
+    setRefreshing(true);
+    await fetchPurchases();
+    setRefreshing(false);
+  };
+
+  // Load purchases on component mount and when filters change
+  useEffect(() => {
+    fetchPurchases();
+  }, [statusFilter]);
 
   const getStatusIcon = (status: PurchaseStatus) => {
     switch (status) {
@@ -136,8 +112,8 @@ const PurchaseHistory = () => {
         return <Clock className="w-4 h-4 text-warning" />;
       case "failed":
         return <XCircle className="w-4 h-4 text-destructive" />;
-      case "refunded":
-        return <CheckCircle2 className="w-4 h-4 text-primary" />;
+      case "cancelled":
+        return <XCircle className="w-4 h-4 text-text-subtle" />;
     }
   };
 
@@ -146,7 +122,7 @@ const PurchaseHistory = () => {
       completed: "default",
       pending: "secondary",
       failed: "destructive",
-      refunded: "outline",
+      cancelled: "outline",
     };
 
     return (
@@ -169,18 +145,18 @@ const PurchaseHistory = () => {
 
   const filteredPurchases = purchases.filter(purchase => {
     const matchesSearch =
-      purchase.invoice_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      purchase.package_name.toLowerCase().includes(searchQuery.toLowerCase());
+      purchase.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      purchase.package_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
-    const matchesMethod = methodFilter === "all" || purchase.payment_method === methodFilter;
+    const matchesMethod = methodFilter === "all" || purchase.payment_method_display === methodFilter;
 
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
   const totalSpent = purchases
     .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + p.amount_tzs, 0);
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   const totalCredits = purchases
     .filter(p => p.status === "completed")
@@ -286,8 +262,16 @@ const PurchaseHistory = () => {
                   </Select>
                 </div>
 
-                <div className="flex items-end">
-                  <Button variant="outline" className="w-full">
+                <div className="flex items-end gap-2">
+                  <Button variant="outline" onClick={refreshPurchases} disabled={refreshing} className="flex-1">
+                    {refreshing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh
+                  </Button>
+                  <Button variant="outline" className="flex-1">
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                   </Button>
@@ -314,20 +298,20 @@ const PurchaseHistory = () => {
                   {filteredPurchases.map((purchase) => (
                     <TableRow key={purchase.id} className="border-border-subtle">
                       <TableCell>
-                        <span className="font-mono font-medium">{purchase.invoice_no}</span>
+                        <span className="font-mono font-medium">{purchase.invoice_number}</span>
                       </TableCell>
                       <TableCell className="text-text-subtle">
-                        {formatDate(purchase.date)}
+                        {formatDate(purchase.created_at)}
                       </TableCell>
                       <TableCell>{purchase.package_name}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{purchase.credits.toLocaleString()} SMS</Badge>
                       </TableCell>
                       <TableCell className="font-semibold">
-                        TZS {purchase.amount_tzs.toLocaleString()}
+                        TZS {parseFloat(purchase.amount).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-text-subtle">
-                        {purchase.payment_method}
+                        {purchase.payment_method_display}
                       </TableCell>
                       <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                       <TableCell className="text-right">
@@ -339,11 +323,11 @@ const PurchaseHistory = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {purchase.receipt_url && (
-                            <Button variant="ghost" size="icon">
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          )}
+                      {purchase.status === "completed" && (
+                        <Button variant="ghost" size="icon" title="Download Receipt">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -384,11 +368,11 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Invoice No.</span>
-                          <span className="font-mono font-medium">{selectedPurchase.invoice_no}</span>
+                          <span className="font-mono font-medium">{selectedPurchase.invoice_number}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Date</span>
-                          <span>{formatDate(selectedPurchase.date)}</span>
+                          <span>{formatDate(selectedPurchase.created_at)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Status</span>
@@ -411,7 +395,7 @@ const PurchaseHistory = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Unit Price</span>
-                          <span>TZS {(selectedPurchase.amount_tzs / selectedPurchase.credits).toFixed(2)}/SMS</span>
+                          <span>TZS {selectedPurchase.unit_price}/SMS</span>
                         </div>
                       </div>
                     </div>
@@ -422,16 +406,16 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Method</span>
-                          <span className="font-medium">{selectedPurchase.payment_method}</span>
+                          <span className="font-medium">{selectedPurchase.payment_method_display}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Gateway Ref</span>
-                          <span className="font-mono text-xs">{selectedPurchase.gateway_ref}</span>
+                          <span className="text-text-subtle">Payment Reference</span>
+                          <span className="font-mono text-xs">{selectedPurchase.payment_reference || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            TZS {selectedPurchase.amount_tzs.toLocaleString()}
+                            TZS {parseFloat(selectedPurchase.amount).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -439,7 +423,7 @@ const PurchaseHistory = () => {
 
                     {/* Actions */}
                     <div className="space-y-2">
-                      {selectedPurchase.receipt_url && (
+                      {selectedPurchase.status === "completed" && (
                         <Button variant="outline" className="w-full text-sm">
                           <Download className="w-4 h-4 mr-2" />
                           Download Receipt

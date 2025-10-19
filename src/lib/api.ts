@@ -504,6 +504,33 @@ export interface SenderNameStats {
   my_pending_requests: number;
 }
 
+export interface MobileMoneyProvider {
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  is_active: boolean;
+  min_amount: number;
+  max_amount: number;
+}
+
+export interface CustomSMSCalculation {
+  credits: number;
+  unit_price: number;
+  total_price: number;
+  active_tier: string;
+  tier_min_credits: number;
+  tier_max_credits: number;
+  savings_percentage: number;
+  pricing_tiers: Array<{
+    name: string;
+    min_credits: number;
+    max_credits: number;
+    unit_price: number;
+    description: string;
+  }>;
+}
+
 // Legacy Billing Types (deprecated - use new comprehensive types above)
 
 export interface Usage {
@@ -1307,13 +1334,13 @@ class ApiClient {
   // =============================================
 
   // 1. Get Mobile Money Providers
-  async getPaymentProviders(): Promise<ApiResponse<{ providers: Array<{ id: string; name: string; code: string }> }>> {
+  async getPaymentProviders(): Promise<ApiResponse<{ providers: MobileMoneyProvider[] }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PROVIDERS}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<{ providers: Array<{ id: string; name: string; code: string }> }>(response);
+      return await this.handleResponse<{ providers: MobileMoneyProvider[] }>(response);
     } catch (error) {
       return {
         success: false,
@@ -1326,9 +1353,12 @@ class ApiClient {
   // 2. Initiate Payment for Package
   async initiatePayment(data: {
     package_id: string;
+    buyer_email: string;
+    buyer_name: string;
+    buyer_phone: string;
     mobile_money_provider: string;
-    phone_number: string;
   }): Promise<ApiResponse<{
+    transaction_id: string;
     order_id: string;
     payment_instructions: string;
     amount: number;
@@ -1342,6 +1372,7 @@ class ApiClient {
       });
 
       return await this.handleResponse<{
+        transaction_id: string;
         order_id: string;
         payment_instructions: string;
         amount: number;
@@ -1357,25 +1388,15 @@ class ApiClient {
   }
 
   // 3. Calculate Custom SMS Price
-  async calculateCustomSMSPrice(credits: number): Promise<ApiResponse<{
-    credits: number;
-    unit_price: number;
-    total_price: number;
-    savings_percentage: number;
-  }>> {
+  async calculateCustomSMSPrice(data: { credits: number }): Promise<ApiResponse<CustomSMSCalculation>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CUSTOM_CALCULATE}`, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ credits })
+        body: JSON.stringify(data)
       });
 
-      return await this.handleResponse<{
-        credits: number;
-        unit_price: number;
-        total_price: number;
-        savings_percentage: number;
-      }>(response);
+      return await this.handleResponse<CustomSMSCalculation>(response);
     } catch (error) {
       return {
         success: false,
@@ -1388,9 +1409,12 @@ class ApiClient {
   // 4. Initiate Custom SMS Payment
   async initiateCustomSMSPayment(data: {
     credits: number;
+    buyer_email: string;
+    buyer_name: string;
+    buyer_phone: string;
     mobile_money_provider: string;
-    phone_number: string;
   }): Promise<ApiResponse<{
+    transaction_id: string;
     order_id: string;
     payment_instructions: string;
     amount: number;
@@ -1404,6 +1428,7 @@ class ApiClient {
       });
 
       return await this.handleResponse<{
+        transaction_id: string;
         order_id: string;
         payment_instructions: string;
         amount: number;
@@ -1527,13 +1552,13 @@ class ApiClient {
   // =============================================
 
   // 1. List SMS Packages
-  async getSMSPackages(): Promise<ApiResponse<SMSPackage[]>> {
+  async getSMSPackages(): Promise<ApiResponse<{ results: SMSPackage[]; count: number }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PACKAGES}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<SMSPackage[]>(response);
+      return await this.handleResponse<{ results: SMSPackage[]; count: number }>(response);
     } catch (error) {
       return {
         success: false,
