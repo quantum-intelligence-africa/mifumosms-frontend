@@ -11,7 +11,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Smartphone
+  Smartphone,
+  Calculator
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -32,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress } from "@/lib/api";
+import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
 
 interface PaymentMethod {
   id: string;
@@ -47,6 +48,21 @@ interface PaymentState {
   status?: string;
   progress?: PaymentProgress;
   isActive: boolean;
+}
+
+interface CustomSMSState {
+  credits: number;
+  unitPrice: number;
+  totalPrice: number;
+  activeTier: string;
+  savingsPercentage: number;
+  pricingTiers: Array<{
+    name: string;
+    min_credits: number;
+    max_credits: number;
+    unit_price: number;
+    description: string;
+  }>;
 }
 
 const PurchaseSMS = () => {
@@ -66,6 +82,9 @@ const PurchaseSMS = () => {
   const [balance, setBalance] = useState<SMSBalance | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
   const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
+  const [mobileMoneyProviders, setMobileMoneyProviders] = useState<MobileMoneyProvider[]>([]);
+  const [customSMSState, setCustomSMSState] = useState<CustomSMSState | null>(null);
+  const [isCalculatingCustom, setIsCalculatingCustom] = useState(false);
 
   // Default packages matching the pricing table
   const defaultPackages: SMSPackage[] = useMemo(() => [
@@ -149,14 +168,15 @@ const PurchaseSMS = () => {
     }
   ], []);
 
-  // Fetch packages and balance on component mount
+  // Fetch packages, balance, and mobile money providers on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [packagesResponse, balanceResponse] = await Promise.all([
+        const [packagesResponse, balanceResponse, providersResponse] = await Promise.all([
           apiClient.getSMSPackages(),
-          apiClient.getSMSBalance()
+          apiClient.getSMSBalance(),
+          apiClient.getPaymentProviders()
         ]);
 
         if (packagesResponse.success && packagesResponse.data && packagesResponse.data.results.length > 0) {
@@ -168,6 +188,10 @@ const PurchaseSMS = () => {
 
         if (balanceResponse.success && balanceResponse.data) {
           setBalance(balanceResponse.data);
+        }
+
+        if (providersResponse.success && providersResponse.data) {
+          setMobileMoneyProviders(providersResponse.data.providers);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -195,12 +219,26 @@ const PurchaseSMS = () => {
     };
   }, [paymentPolling]);
 
-  const paymentMethods: PaymentMethod[] = [
-    { id: "mpesa", name: "M-Pesa (Vodacom)", icon: "📱" },
-    { id: "tigopesa", name: "Tigo Pesa", icon: "📱" },
-    { id: "airtel", name: "Airtel Money", icon: "📱" },
-    { id: "bank", name: "Bank Transfer", icon: "🏦" },
-  ];
+  // Dynamic payment methods from API
+  const paymentMethods: PaymentMethod[] = useMemo(() => {
+    if (mobileMoneyProviders.length > 0) {
+      return mobileMoneyProviders.map(provider => ({
+        id: provider.code,
+        name: provider.name,
+        icon: provider.code === 'vodacom' ? '📱' : 
+              provider.code === 'tigo' ? '📱' :
+              provider.code === 'airtel' ? '📱' :
+              provider.code === 'halotel' ? '📱' : '🏦'
+      }));
+    }
+    // Fallback to default methods
+    return [
+      { id: "vodacom", name: "Vodacom M-Pesa", icon: "📱" },
+      { id: "tigo", name: "Tigo Pesa", icon: "📱" },
+      { id: "airtel", name: "Airtel Money", icon: "📱" },
+      { id: "halotel", name: "Halotel Money", icon: "📱" },
+    ];
+  }, [mobileMoneyProviders]);
 
   // Payment details for each method
   const paymentDetails = {
@@ -255,12 +293,55 @@ const PurchaseSMS = () => {
       // Package selected - use package price
       return selectedPkg ? parseFloat(selectedPkg.price) : 0;
     }
-    // Custom credits - calculate based on tier
+    // Custom credits - use API calculation if available
+    if (customSMSState) {
+      return customSMSState.totalPrice;
+    }
+    // Fallback to local calculation
     if (!parsedCredits) return 0;
     if (!activeTier) return 0;
     if (activeTier.id === "enterprise") return parsedCredits * (activeTier.rate || 12);
     return parsedCredits * (activeTier.rate as number);
-  }, [selectedPackage, selectedPkg, parsedCredits, activeTier]);
+  }, [selectedPackage, selectedPkg, parsedCredits, activeTier, customSMSState]);
+
+  // Calculate custom SMS pricing using API
+  const calculateCustomSMSPrice = async (credits: number) => {
+    if (credits < 100) return;
+    
+    try {
+      setIsCalculatingCustom(true);
+      const response = await apiClient.calculateCustomSMSPrice({ credits });
+      
+      if (response.success && response.data) {
+        setCustomSMSState({
+          credits: response.data.credits,
+          unitPrice: response.data.unit_price,
+          totalPrice: response.data.total_price,
+          activeTier: response.data.active_tier,
+          savingsPercentage: response.data.savings_percentage,
+          pricingTiers: response.data.pricing_tiers
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating custom SMS price:', error);
+    } finally {
+      setIsCalculatingCustom(false);
+    }
+  };
+
+  // Calculate custom pricing when credits change
+  useEffect(() => {
+    if (customCredits && !selectedPackage) {
+      const credits = parseInt(customCredits);
+      if (credits >= 100) {
+        calculateCustomSMSPrice(credits);
+      } else {
+        setCustomSMSState(null);
+      }
+    } else {
+      setCustomSMSState(null);
+    }
+  }, [customCredits, selectedPackage]);
 
   // Payment polling function
   const pollPaymentStatus = async (transactionId: string) => {
@@ -378,28 +459,30 @@ const PurchaseSMS = () => {
     setProcessing(true);
 
     try {
-      let selectedPkg;
-      let credits;
-      let totalPrice;
+      let response;
 
       if (selectedPackage) {
-        // Package selected - use full package details
-        selectedPkg = defaultPackages.find(pkg => pkg.id === selectedPackage);
-        if (!selectedPkg) {
-          toast({
-            title: "Invalid package",
-            description: "Please select a valid package",
-            variant: "destructive"
-          });
-          setProcessing(false);
-          return;
-        }
-        credits = selectedPkg.credits;
-        totalPrice = parseFloat(selectedPkg.price);
+        // Package purchase
+        const paymentData = {
+          package_id: selectedPackage,
+          buyer_email: userEmail,
+          buyer_name: userName,
+          buyer_phone: userPaymentNumber,
+          mobile_money_provider: paymentMethod
+        };
+
+        response = await apiClient.initiatePayment(paymentData);
       } else if (customCredits) {
-        // Custom credits entered - calculate based on tier
-        credits = parseInt(customCredits);
-        totalPrice = customPrice;
+        // Custom SMS purchase
+        const customData = {
+          credits: parseInt(customCredits),
+          buyer_email: userEmail,
+          buyer_name: userName,
+          buyer_phone: userPaymentNumber,
+          mobile_money_provider: paymentMethod
+        };
+
+        response = await apiClient.initiateCustomSMSPayment(customData);
       } else {
         toast({
           title: "No selection",
@@ -409,17 +492,6 @@ const PurchaseSMS = () => {
         setProcessing(false);
         return;
       }
-
-      // Initiate payment with ZenoPay
-      const paymentData: PaymentInitiationRequest = {
-        package_id: selectedPackage || 'custom',
-        buyer_email: userEmail,
-        buyer_name: userName,
-        buyer_phone: userPaymentNumber,
-        payment_method: paymentMethod
-      };
-
-      const response = await apiClient.initiatePayment(paymentData);
 
       if (response.success && response.data) {
         const { transaction_id, order_id } = response.data;
@@ -574,7 +646,10 @@ const PurchaseSMS = () => {
 
             {/* Custom Amount */}
             <Card className="p-4 sm:p-6 glass">
-              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Or Enter Custom Amount</h3>
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
+                <Calculator className="w-4 h-4" />
+                Or Enter Custom Amount
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">Number of SMS Credits</Label>
@@ -594,17 +669,53 @@ const PurchaseSMS = () => {
                 <div className="space-y-1">
                   <Label className="text-sm">Total Cost</Label>
                   <div className="h-9 px-3 rounded-lg glass-subtle flex items-center text-base font-semibold">
-                    TZS {customPrice.toLocaleString()}
+                    {isCalculatingCustom ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Calculating...
+                      </div>
+                    ) : (
+                      `TZS ${customPrice.toLocaleString()}`
+                    )}
                   </div>
                 </div>
               </div>
+              
+              {/* Custom SMS Pricing Details */}
+              {customSMSState && (
+                <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Active Tier:</span>
+                      <Badge variant="secondary">{customSMSState.activeTier}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-text-subtle">Unit Price:</span>
+                      <span className="text-sm font-medium">TZS {customSMSState.unitPrice}/SMS</span>
+                    </div>
+                    {customSMSState.savingsPercentage > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-text-subtle">Savings:</span>
+                        <span className="text-sm font-medium text-success">
+                          {customSMSState.savingsPercentage}% off
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span>
-                  Active tier: {activeTier ? (
-                    <>
-                      <b>{activeTier.name}</b> — {activeTier.rangeLabel} — {activeTier.id === 'enterprise' ? (activeTier.note || 'Custom') : `TZS ${activeTier.rate}/SMS`}
-                    </>
-                  ) : '—'}
+                  {customSMSState ? (
+                    <>Dynamic pricing based on volume</>
+                  ) : (
+                    <>Active tier: {activeTier ? (
+                      <>
+                        <b>{activeTier.name}</b> — {activeTier.rangeLabel} — {activeTier.id === 'enterprise' ? (activeTier.note || 'Custom') : `TZS ${activeTier.rate}/SMS`}
+                      </>
+                    ) : '—'}</>
+                  )}
                 </span>
                 <span>Minimum 100 credits</span>
               </div>
@@ -645,7 +756,7 @@ const PurchaseSMS = () => {
                               {method.id === 'mpesa' ? 'Vodacom Tanzania' :
                                method.id === 'tigopesa' ? 'Tigo Tanzania' :
                                method.id === 'airtel' ? 'Airtel Tanzania' :
-                               method.id === 'bank' ? 'Bank Account Transfer' :
+                               method.id === 'bank' ? 'Halo Pesa Transfer' :
                                'Mobile Money'}
                             </p>
                           </div>
@@ -659,35 +770,28 @@ const PurchaseSMS = () => {
                 {paymentMethod && (
                   <div className="mt-3 space-y-1">
                     <Label htmlFor="paymentNumber" className="text-sm">
-                      {paymentMethod === 'mpesa' ? 'M-Pesa Number (Vodacom)' :
-                       paymentMethod === 'tigopesa' ? 'Tigo Pesa Number' :
+                      {paymentMethod === 'vodacom' ? 'M-Pesa Number (Vodacom)' :
+                       paymentMethod === 'tigo' ? 'Tigo Pesa Number' :
                        paymentMethod === 'airtel' ? 'Airtel Money Number' :
-                       paymentMethod === 'bank' ? 'Bank Account Number' :
-                       paymentMethod === 'card' ? 'Card Number' :
-                       'Account Number'}
+                       paymentMethod === 'halotel' ? 'Halotel Money Number' :
+                       'Mobile Money Number'}
                     </Label>
                     <Input
                       id="paymentNumber"
                       type="text"
                       placeholder={
-                        paymentMethod === 'mpesa' ? 'e.g., 0762 123 456' :
-                        paymentMethod === 'tigopesa' ? 'e.g., 0652 123 456' :
+                        paymentMethod === 'vodacom' ? 'e.g., 0762 123 456' :
+                        paymentMethod === 'tigo' ? 'e.g., 0652 123 456' :
                         paymentMethod === 'airtel' ? 'e.g., 0682 123 456' :
-                        paymentMethod === 'bank' ? 'e.g., 1234567890' :
-                        paymentMethod === 'card' ? 'e.g., 1234 5678 9012 3456' :
-                        'e.g., 1234567890'
+                        paymentMethod === 'halotel' ? 'e.g., 0682 123 456' :
+                        'e.g., 0762 123 456'
                       }
                       value={userPaymentNumber}
                       onChange={(e) => setUserPaymentNumber(e.target.value)}
                       className="glass-subtle border-0 h-9 text-sm"
                     />
                     <p className="text-xs text-text-subtle">
-                      {paymentMethod === 'mpesa' || paymentMethod === 'tigopesa' || paymentMethod === 'airtel'
-                        ? 'Enter the phone number associated with your mobile money account'
-                        : paymentMethod === 'bank'
-                        ? 'Enter your bank account number for transfer'
-                        : 'Enter your account or card number for payment processing'
-                      }
+                      Enter the phone number associated with your mobile money account
                     </p>
                   </div>
                 )}
@@ -830,7 +934,7 @@ const PurchaseSMS = () => {
                         {paymentMethod === 'bank' ? (
                           <>
                             <CreditCard className="w-3 h-3" />
-                            Bank Transfer Payment
+                            Halo Pesa Payment
                           </>
                         ) : (
                           <>
@@ -841,9 +945,7 @@ const PurchaseSMS = () => {
                       </h4>
                       <div className="space-y-1">
                         <div>
-                          <p className="text-xs text-text-subtle mb-1">
-                            {paymentMethod === 'bank' ? 'Your Account Number:' : 'Your Mobile Number:'}
-                          </p>
+                          <p className="text-xs text-text-subtle mb-1">Your Mobile Number:</p>
                           <p className="font-mono text-xs sm:text-sm font-semibold text-primary bg-background px-2 py-1 rounded border">
                             {userPaymentNumber}
                           </p>
@@ -851,18 +953,12 @@ const PurchaseSMS = () => {
                         <div>
                           <p className="text-xs text-text-subtle mb-1">Instructions:</p>
                           <p className="text-xs text-foreground">
-                            {paymentMethod === 'bank'
-                              ? 'Transfer the amount to the provided bank account. Your SMS credits will be added after verification.'
-                              : 'After confirming payment, you\'ll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.'
-                            }
+                            After confirming payment, you'll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.
                           </p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-1">
                           <p className="text-xs text-blue-800 dark:text-blue-200">
-                            <strong>Note:</strong> {paymentMethod === 'bank'
-                              ? 'Bank transfers may take 1-2 business days to process.'
-                              : 'Payment will be processed through ZenoPay mobile money integration.'
-                            }
+                            <strong>Note:</strong> Payment will be processed through ZenoPay mobile money integration.
                           </p>
                         </div>
                       </div>

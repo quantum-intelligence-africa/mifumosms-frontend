@@ -2,7 +2,6 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import { apiClient, Contact, CreateContactRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from '@/contexts/AuthContext';
-import { fetchContactsDirect } from '@/utils/contactApiUtils';
 
 export const useContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -40,89 +39,41 @@ export const useContacts = () => {
       setIsLoading(true);
       setError(null);
 
-      // Get JWT token
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      // Use the API client instead of direct fetch
+      console.log('🌐 Using API client to fetch contacts');
+      console.log('   Params:', params);
 
-      // Build URL with parameters
-      const baseUrl = 'http://127.0.0.1:8000/api/messaging/contacts/';
-      const url = new URL(baseUrl);
-
-      if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            url.searchParams.append(key, value.toString());
-          }
-        });
-      }
-
-      console.log('🌐 Making direct fetch request:');
-      console.log('   URL:', url.toString());
-      console.log('   Method: GET');
-      console.log('   Token:', token.substring(0, 20) + '...');
-
-      // Direct fetch with your specified format
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('📡 Response Status:', response.status);
-      console.log('📡 Response OK:', response.ok);
-
-      const data = await response.json();
-      console.log('📦 Response Data:', data);
+      const response = await apiClient.getContacts(params);
+      console.log('📦 API Response:', response);
 
       // Handle response
-      if (response.ok) {
-        const apiResponse = {
-          success: true,
-          data: data.data || data,
-          status: response.status
-        };
-
+      if (response.success && response.data) {
         console.log('=== CONTACTS API RESPONSE ===');
-        console.log('Full response object:', apiResponse);
-        console.log('Response success:', apiResponse.success);
-        console.log('Response data:', apiResponse.data);
+        console.log('Full response object:', response);
+        console.log('Response success:', response.success);
+        console.log('Response data:', response.data);
 
-        if (apiResponse.success && apiResponse.data) {
-          let results = apiResponse.data.results || [];
+        let results = response.data.results || [];
 
-          // The API should already return only the current user's contacts
-          // No additional filtering needed as the backend handles user-specific data
-          console.log('Contacts received from API:', results.length, 'contacts');
+        // The API should already return only the current user's contacts
+        // No additional filtering needed as the backend handles user-specific data
+        console.log('Contacts received from API:', results.length, 'contacts');
 
-          setContacts(results);
-          setTotalCount(results.length);
-          console.log('Contacts set:', results);
-        } else {
-          console.error('Failed to fetch contacts:', apiResponse.error, 'Status:', apiResponse.status);
-          if (apiResponse.status === 403) {
-            setError('You do not have permission to access contacts. Please contact your administrator.');
-          } else if (apiResponse.status === 401) {
-            setError('Session expired. Please log in again.');
-          } else {
-            setError(apiResponse.error || 'Failed to fetch contacts');
-          }
-          toast({
-            title: "Failed to load contacts",
-            description: apiResponse.error || 'Please try again',
-            variant: "destructive"
-          });
-        }
+        setContacts(results);
+        setTotalCount(response.data.count || results.length);
+        console.log('Contacts set:', results);
       } else {
-        // Handle non-200 response
-        console.error('HTTP Error:', response.status, data);
-        setError(`HTTP ${response.status}: ${data.message || data.detail || 'Request failed'}`);
+        console.error('Failed to fetch contacts:', response.error, 'Status:', response.status);
+        if (response.status === 403) {
+          setError('You do not have permission to access contacts. Please contact your administrator.');
+        } else if (response.status === 401) {
+          setError('Session expired. Please log in again.');
+        } else {
+          setError(response.error || 'Failed to fetch contacts');
+        }
         toast({
-          title: "Request failed",
-          description: `HTTP ${response.status}: ${data.message || data.detail || 'Request failed'}`,
+          title: "Failed to load contacts",
+          description: response.error || 'Please try again',
           variant: "destructive"
         });
       }
@@ -143,31 +94,11 @@ export const useContacts = () => {
 
   const createContact = async (contactData: CreateContactRequest): Promise<boolean> => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      const response = await apiClient.createContact(contactData);
 
-      const response = await fetch('http://127.0.0.1:8000/api/messaging/contacts/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(contactData)
-      });
-
-      const data = await response.json();
-      const apiResponse = {
-        success: response.ok,
-        data: data.data || data,
-        error: response.ok ? undefined : (data.message || data.detail || 'Request failed'),
-        status: response.status
-      };
-
-      if (apiResponse.success && apiResponse.data) {
+      if (response.success && response.data) {
         // Add the new contact to the list immediately for better UX
-        setContacts(prev => [...prev, apiResponse.data!]);
+        setContacts(prev => [...prev, response.data!]);
         setTotalCount(prev => prev + 1);
 
         // Refresh data from server to ensure consistency
@@ -176,15 +107,15 @@ export const useContacts = () => {
 
         toast({
           title: "Contact created",
-          description: `${apiResponse.data.name} has been added to your contacts`,
+          description: `${response.data.name} has been added to your contacts`,
         });
         return true;
       } else {
         // Build a helpful error message from backend validation errors if present
-        let detailedError = apiResponse.error || "Please check your input and try again";
-        if (data.errors && typeof data.errors === 'object') {
+        let detailedError = response.error || "Please check your input and try again";
+        if (response.errors && typeof response.errors === 'object') {
           const parts: string[] = [];
-          for (const [field, messages] of Object.entries(data.errors)) {
+          for (const [field, messages] of Object.entries(response.errors)) {
             const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
             parts.push(`${field}: ${joined}`);
           }
@@ -211,31 +142,11 @@ export const useContacts = () => {
 
   const updateContact = async (contactId: string, contactData: Partial<CreateContactRequest>): Promise<boolean> => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      const response = await apiClient.updateContact(contactId, contactData);
 
-      const response = await fetch(`http://127.0.0.1:8000/api/messaging/contacts/${contactId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(contactData)
-      });
-
-      const data = await response.json();
-      const apiResponse = {
-        success: response.ok,
-        data: data.data || data,
-        error: response.ok ? undefined : (data.message || data.detail || 'Request failed'),
-        status: response.status
-      };
-
-      if (apiResponse.success && apiResponse.data) {
+      if (response.success && response.data) {
         // Update the contact in the list immediately for better UX
-        setContacts(prev => prev.map(c => c.id === contactId ? apiResponse.data! : c));
+        setContacts(prev => prev.map(c => c.id === contactId ? response.data! : c));
 
         // Refresh data from server to ensure consistency
         console.log('Refreshing contacts after successful update...');
@@ -249,7 +160,7 @@ export const useContacts = () => {
       } else {
         toast({
           title: "Failed to update contact",
-          description: apiResponse.error || 'Please try again',
+          description: response.error || 'Please try again',
           variant: "destructive"
         });
         return false;
@@ -266,27 +177,9 @@ export const useContacts = () => {
 
   const deleteContact = async (contactId: string): Promise<boolean> => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      const response = await apiClient.deleteContact(contactId);
 
-      const response = await fetch(`http://127.0.0.1:8000/api/messaging/contacts/${contactId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      const apiResponse = {
-        success: response.ok,
-        error: response.ok ? undefined : (data.message || data.detail || 'Request failed'),
-        status: response.status
-      };
-
-      if (apiResponse.success) {
+      if (response.success) {
         // Remove the contact from the list immediately for better UX
         setContacts(prev => prev.filter(c => c.id !== contactId));
         setTotalCount(prev => prev - 1);
@@ -303,7 +196,7 @@ export const useContacts = () => {
       } else {
         toast({
           title: "Failed to delete contact",
-          description: apiResponse.error || 'Please try again',
+          description: response.error || 'Please try again',
           variant: "destructive"
         });
         return false;

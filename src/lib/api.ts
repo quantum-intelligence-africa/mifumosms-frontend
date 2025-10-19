@@ -764,11 +764,13 @@ class ApiClient {
   }
 
   // =============================================
-  // TENANT MANAGEMENT ENDPOINTS
+  // TENANT MANAGEMENT ENDPOINTS - Updated to match backend API
   // =============================================
 
-  async getTenants(): Promise<ApiResponse<Tenant[]>> {
-    return this.request<Tenant[]>('/tenants/');
+  async getTenants(): Promise<ApiResponse<{
+    results: Tenant[];
+  }>> {
+    return this.request<{ results: Tenant[] }>('/tenants/');
   }
 
   async createTenant(tenantData: CreateTenantRequest): Promise<ApiResponse<Tenant>> {
@@ -789,10 +791,146 @@ class ApiClient {
     });
   }
 
-  async switchTenant(tenantId: string): Promise<ApiResponse> {
-    return this.request('/tenants/switch/', {
+  async switchTenant(tenantId: string): Promise<ApiResponse<{
+    message: string;
+    tenant: {
+      id: string;
+      name: string;
+    };
+  }>> {
+    return this.request<{
+      message: string;
+      tenant: {
+        id: string;
+        name: string;
+      };
+    }>('/tenants/switch/', {
       method: 'POST',
       body: JSON.stringify({ tenant_id: tenantId }),
+    });
+  }
+
+  // Get team members
+  async getTenantMembers(tenantId: string): Promise<ApiResponse<{
+    results: Array<{
+      id: string;
+      user: {
+        id: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+      };
+      role: string;
+      joined_at: string;
+    }>;
+  }>> {
+    return this.request<{
+      results: Array<{
+        id: string;
+        user: {
+          id: string;
+          email: string;
+          first_name: string;
+          last_name: string;
+        };
+        role: string;
+        joined_at: string;
+      }>;
+    }>(`/tenants/${tenantId}/members/`);
+  }
+
+  // Invite team member
+  async inviteTenantMember(tenantId: string, data: {
+    email: string;
+    role: 'agent' | 'admin' | 'owner';
+  }): Promise<ApiResponse<{
+    message: string;
+    invitation: {
+      id: string;
+      email: string;
+      role: string;
+      status: string;
+    };
+  }>> {
+    return this.request<{
+      message: string;
+      invitation: {
+        id: string;
+        email: string;
+        role: string;
+        status: string;
+      };
+    }>(`/tenants/${tenantId}/members/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Update member role
+  async updateTenantMemberRole(tenantId: string, memberId: string, role: string): Promise<ApiResponse<{
+    message: string;
+    member: {
+      id: string;
+      role: string;
+    };
+  }>> {
+    return this.request<{
+      message: string;
+      member: {
+        id: string;
+        role: string;
+      };
+    }>(`/tenants/${tenantId}/members/${memberId}/`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  // Get custom domains
+  async getTenantDomains(tenantId: string): Promise<ApiResponse<{
+    results: Array<{
+      id: string;
+      domain: string;
+      is_primary: boolean;
+      status: string;
+      created_at: string;
+    }>;
+  }>> {
+    return this.request<{
+      results: Array<{
+        id: string;
+        domain: string;
+        is_primary: boolean;
+        status: string;
+        created_at: string;
+      }>;
+    }>(`/tenants/${tenantId}/domains/`);
+  }
+
+  // Add custom domain
+  async addTenantDomain(tenantId: string, data: {
+    domain: string;
+    is_primary?: boolean;
+  }): Promise<ApiResponse<{
+    message: string;
+    domain: {
+      id: string;
+      domain: string;
+      is_primary: boolean;
+      status: string;
+    };
+  }>> {
+    return this.request<{
+      message: string;
+      domain: {
+        id: string;
+        domain: string;
+        is_primary: boolean;
+        status: string;
+      };
+    }>(`/tenants/${tenantId}/domains/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
@@ -1165,11 +1303,37 @@ class ApiClient {
   }
 
   // =============================================
-  // PAYMENT MANAGEMENT ENDPOINTS
+  // PAYMENT MANAGEMENT ENDPOINTS - Updated to match backend API
   // =============================================
 
-  // 1. Initiate Payment
-  async initiatePayment(data: PaymentInitiationRequest): Promise<ApiResponse<PaymentInitiationResponse>> {
+  // 1. Get Mobile Money Providers
+  async getPaymentProviders(): Promise<ApiResponse<{ providers: Array<{ id: string; name: string; code: string }> }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PROVIDERS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ providers: Array<{ id: string; name: string; code: string }> }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Initiate Payment for Package
+  async initiatePayment(data: {
+    package_id: string;
+    mobile_money_provider: string;
+    phone_number: string;
+  }): Promise<ApiResponse<{
+    order_id: string;
+    payment_instructions: string;
+    amount: number;
+    credits: number;
+  }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.INITIATE}`, {
         method: 'POST',
@@ -1177,7 +1341,74 @@ class ApiClient {
         body: JSON.stringify(data)
       });
 
-      return await this.handleResponse<PaymentInitiationResponse>(response);
+      return await this.handleResponse<{
+        order_id: string;
+        payment_instructions: string;
+        amount: number;
+        credits: number;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Calculate Custom SMS Price
+  async calculateCustomSMSPrice(credits: number): Promise<ApiResponse<{
+    credits: number;
+    unit_price: number;
+    total_price: number;
+    savings_percentage: number;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CUSTOM_CALCULATE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ credits })
+      });
+
+      return await this.handleResponse<{
+        credits: number;
+        unit_price: number;
+        total_price: number;
+        savings_percentage: number;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. Initiate Custom SMS Payment
+  async initiateCustomSMSPayment(data: {
+    credits: number;
+    mobile_money_provider: string;
+    phone_number: string;
+  }): Promise<ApiResponse<{
+    order_id: string;
+    payment_instructions: string;
+    amount: number;
+    credits: number;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CUSTOM_INITIATE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+
+      return await this.handleResponse<{
+        order_id: string;
+        payment_instructions: string;
+        amount: number;
+        credits: number;
+      }>(response);
     } catch (error) {
       return {
         success: false,
@@ -1292,17 +1523,17 @@ class ApiClient {
   }
 
   // =============================================
-  // SMS BILLING ENDPOINTS
+  // SMS BILLING ENDPOINTS - Updated to match backend API
   // =============================================
 
   // 1. List SMS Packages
-  async getSMSPackages(): Promise<ApiResponse<{ results: SMSPackage[] }>> {
+  async getSMSPackages(): Promise<ApiResponse<SMSPackage[]>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PACKAGES}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<{ results: SMSPackage[] }>(response);
+      return await this.handleResponse<SMSPackage[]>(response);
     } catch (error) {
       return {
         success: false,
@@ -1395,13 +1626,35 @@ class ApiClient {
   }
 
   // 6. Usage Statistics
-  async getUsageStatistics(): Promise<ApiResponse<UsageStatistics>> {
+  async getUsageStatistics(): Promise<ApiResponse<{
+    current_balance: number;
+    total_usage: {
+      credits: number;
+      cost: number;
+    };
+    daily_usage: Array<{
+      date: string;
+      credits: number;
+      cost: number;
+    }>;
+  }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.USAGE_STATISTICS}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<UsageStatistics>(response);
+      return await this.handleResponse<{
+        current_balance: number;
+        total_usage: {
+          credits: number;
+          cost: number;
+        };
+        daily_usage: Array<{
+          date: string;
+          credits: number;
+          cost: number;
+        }>;
+      }>(response);
     } catch (error) {
       return {
         success: false,
@@ -1450,13 +1703,55 @@ class ApiClient {
   }
 
   // 3. Get Billing Overview
-  async getBillingOverview(): Promise<ApiResponse<BillingOverview>> {
+  async getBillingOverview(): Promise<ApiResponse<{
+    sms_balance: {
+      credits: number;
+      total_purchased: number;
+      total_used: number;
+    };
+    recent_purchases: Array<{
+      id: string;
+      package_name: string;
+      credits: number;
+      amount: number;
+      status: string;
+      created_at: string;
+    }>;
+    active_payments: Array<{
+      transaction_id: string;
+      order_id: string;
+      amount: number;
+      status: string;
+      created_at: string;
+    }>;
+  }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.OVERVIEW}`, {
         headers: this.getHeaders()
       });
 
-      return await this.handleResponse<BillingOverview>(response);
+      return await this.handleResponse<{
+        sms_balance: {
+          credits: number;
+          total_purchased: number;
+          total_used: number;
+        };
+        recent_purchases: Array<{
+          id: string;
+          package_name: string;
+          credits: number;
+          amount: number;
+          status: string;
+          created_at: string;
+        }>;
+        active_payments: Array<{
+          transaction_id: string;
+          order_id: string;
+          amount: number;
+          status: string;
+          created_at: string;
+        }>;
+      }>(response);
     } catch (error) {
       return {
         success: false,
@@ -1502,7 +1797,143 @@ class ApiClient {
 
 
   // =============================================
-  // SENDER NAME ENDPOINTS - COMPREHENSIVE API
+  // SENDER ID MANAGEMENT ENDPOINTS - Updated to match backend API
+  // =============================================
+
+  // 1. Request Default Sender ID (Instant)
+  async requestDefaultSenderID(): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.DEFAULT}`, {
+        method: 'POST',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{ message: string }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Request Custom Sender ID
+  async requestCustomSenderID(data: {
+    request_type: 'custom';
+    requested_sender_id: string;
+    sample_content: string;
+    business_justification: string;
+  }): Promise<ApiResponse<{
+    id: string;
+    requested_sender_id: string;
+    status: string;
+    created_at: string;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+
+      return await this.handleResponse<{
+        id: string;
+        requested_sender_id: string;
+        status: string;
+        created_at: string;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Get Sender ID Requests
+  async getSenderIDRequests(): Promise<ApiResponse<{
+    results: Array<{
+      id: string;
+      requested_sender_id: string;
+      status: string;
+      created_at: string;
+    }>;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        results: Array<{
+          id: string;
+          requested_sender_id: string;
+          status: string;
+          created_at: string;
+        }>;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4. Get Available Sender IDs
+  async getAvailableSenderIDs(): Promise<ApiResponse<{
+    available_sender_ids: Array<{
+      id: string;
+      requested_sender_id: string;
+    }>;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.AVAILABLE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        available_sender_ids: Array<{
+          id: string;
+          requested_sender_id: string;
+        }>;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. Attach Sender ID to SMS Package
+  async attachSenderIDToPackage(data: {
+    sender_id_request: string;
+    sms_package: string;
+  }): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.USAGE}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+
+      return await this.handleResponse<{ message: string }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // =============================================
+  // SENDER NAME ENDPOINTS - COMPREHENSIVE API (Legacy)
   // =============================================
 
   // 1. SUBMIT SENDER NAME REQUEST

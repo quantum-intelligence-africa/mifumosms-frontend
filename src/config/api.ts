@@ -1,6 +1,6 @@
-// API Configuration
+// API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
-	BASE_URL: 'http://127.0.0.1:8000/api',
+	BASE_URL: 'http://104.131.116.55/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
@@ -17,6 +17,8 @@ export const API_CONFIG = {
 		TENANTS: {
 			BASE: '/tenants/',
 			SWITCH: '/tenants/switch/',
+			MEMBERS: (id: string) => `/tenants/${id}/members/`,
+			DOMAINS: (id: string) => `/tenants/${id}/domains/`,
 		},
 		MESSAGING: {
 			CONTACTS: '/messaging/contacts/',
@@ -33,14 +35,11 @@ export const API_CONFIG = {
 				VALIDATE_PHONE: '/messaging/sms/validate-phone/',
 				TEST_CONNECTION: '/messaging/sms/test-connection/',
 			},
-			SENDER_REQUESTS: {
-				BASE: '/messaging/sender-requests/',
-				STATS: '/messaging/sender-requests/stats/',
-				SUBMIT: '/messaging/sender-requests/submit/',
-				LIST: '/messaging/sender-requests/',
-				DETAIL: (id: string) => `/messaging/sender-requests/${id}/`,
-				UPDATE: (id: string) => `/messaging/sender-requests/${id}/update/`,
-				DELETE: (id: string) => `/messaging/sender-requests/${id}/delete/`,
+			SENDER_ID_REQUESTS: {
+				BASE: '/messaging/sender-id-requests/',
+				DEFAULT: '/messaging/sender-id-requests/default/',
+				AVAILABLE: '/messaging/sender-id-requests/available/',
+				USAGE: '/messaging/sender-id-usage/',
 			},
 		},
 		BILLING: {
@@ -49,19 +48,15 @@ export const API_CONFIG = {
 			USAGE: '/billing/usage/',
 			OVERVIEW: '/billing/overview/',
 			PAYMENTS: {
+				PROVIDERS: '/billing/payments/providers/',
 				INITIATE: '/billing/payments/initiate/',
-				STATUS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/status/`,
 				VERIFY: (orderId: string) => `/billing/payments/verify/${orderId}/`,
-				PROGRESS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/progress/`,
-				ACTIVE: '/billing/payments/active/',
-				CANCEL: (transactionId: string) => `/billing/payments/transactions/${transactionId}/cancel/`,
-				CLEANUP: '/billing/payments/cleanup/',
-				WEBHOOK: '/billing/payments/webhook/',
+				CUSTOM_CALCULATE: '/billing/payments/custom-sms/calculate/',
+				CUSTOM_INITIATE: '/billing/payments/custom-sms/initiate/',
 			},
 			SMS: {
 				BALANCE: '/billing/sms/balance/',
 				PACKAGES: '/billing/sms/packages/',
-				PURCHASE: '/billing/sms/purchase/',
 				PURCHASES: '/billing/sms/purchases/',
 				PURCHASE_HISTORY: '/billing/sms/purchases/history/',
 				USAGE_STATISTICS: '/billing/sms/usage/statistics/',
@@ -76,4 +71,4 @@ export const buildApiUrl = (endpoint: string): string => {
 };
 
 // Helper function to get sender request endpoints
-export const getSenderRequestEndpoints = () => API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS;
+export const getSenderRequestEndpoints = () => API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS;

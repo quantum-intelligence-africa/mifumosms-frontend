@@ -175,7 +175,7 @@ All colors MUST be HSL for consistency and theming.
     --shadow-md: 0 4px 16px hsl(var(--glass-shadow));
     --shadow-lg: 0 8px 32px hsl(var(--glass-shadow));
     --shadow-glass: 0 8px 32px hsl(230 80% 5% / 0.4);
-    
+
     /* Sidebar Colors */
     --sidebar-background: 230 25% 8%;
     --sidebar-foreground: 220 15% 90%;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import SenderRequestAPI from '@/services/SenderRequestAPI';
+import { apiClient } from '@/lib/api';
 import { SenderNameRequest, SenderNameStats, CreateSenderNameRequest, UpdateSenderNameRequest } from '@/lib/api';
 
 export function useSenderRequestAPI() {
@@ -17,7 +17,7 @@ export function useSenderRequestAPI() {
 			setLoading(true);
 			setError(null);
 
-			const response = await SenderRequestAPI.getRequests();
+			const response = await apiClient.getSenderIDRequests();
 			console.log('Sender names response:', response);
 
 			if (response.success && response.data) {
@@ -25,20 +25,6 @@ export function useSenderRequestAPI() {
 				console.log('Sender names set:', response.data.results);
 			} else {
 				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
-
-				// If it's an auth error, try to refresh token
-				if (response.status === 401 || response.status === 403) {
-					console.log('Attempting token refresh...');
-					const refreshResponse = await SenderRequestAPI.refreshTokenAndRetry(() =>
-						SenderRequestAPI.getRequests()
-					);
-
-					if (refreshResponse.success && refreshResponse.data) {
-						setSenderNames(refreshResponse.data.results || []);
-						console.log('Sender names set after refresh:', refreshResponse.data.results);
-						return;
-					}
-				}
 
 				if (response.status === 403) {
 					setError('Authentication failed. Please log in again.');
@@ -60,22 +46,10 @@ export function useSenderRequestAPI() {
 
 	const fetchStats = async () => {
 		try {
-			const response = await SenderRequestAPI.getStats();
+			const response = await apiClient.getStatistics();
 
 			if (response.success && response.data) {
 				setStats(response.data);
-			} else {
-				// If it's an auth error, try to refresh token
-				if (response.status === 401 || response.status === 403) {
-					const refreshResponse = await SenderRequestAPI.refreshTokenAndRetry(() =>
-						SenderRequestAPI.getStats()
-					);
-
-					if (refreshResponse.success && refreshResponse.data) {
-						setStats(refreshResponse.data);
-						return;
-					}
-				}
 			}
 		} catch (err) {
 			console.error('Failed to fetch sender name stats:', err);
@@ -85,7 +59,7 @@ export function useSenderRequestAPI() {
 	const createSenderName = async (data: CreateSenderNameRequest) => {
 		try {
 			setError(null);
-			const response = await SenderRequestAPI.submitRequest(data);
+			const response = await apiClient.createSenderNameRequest(data);
 
 			if (response.success && response.data) {
 				// Add the new request to the list
@@ -111,7 +85,7 @@ export function useSenderRequestAPI() {
 	const updateSenderName = async (requestId: string, data: UpdateSenderNameRequest) => {
 		try {
 			setError(null);
-			const response = await SenderRequestAPI.updateRequest(requestId, data);
+			const response = await apiClient.updateSenderNameRequest(requestId, data);
 
 			if (response.success && response.data) {
 				// Update the request in the list
@@ -137,7 +111,7 @@ export function useSenderRequestAPI() {
 	const deleteSenderName = async (requestId: string) => {
 		try {
 			setError(null);
-			const response = await SenderRequestAPI.deleteRequest(requestId);
+			const response = await apiClient.deleteSenderNameRequest(requestId);
 
 			if (response.success) {
 				// Remove the request from the list
@@ -162,7 +136,7 @@ export function useSenderRequestAPI() {
 	const getSenderName = async (requestId: string) => {
 		try {
 			setError(null);
-			const response = await SenderRequestAPI.getRequestDetails(requestId);
+			const response = await apiClient.getSenderNameRequest(requestId);
 
 			if (response.success && response.data) {
 				return { success: true, data: response.data };

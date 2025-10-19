@@ -110,7 +110,7 @@ const PurchaseHistory = () => {
       package_name: "Enterprise Package",
       credits: 10000,
       amount_tzs: 150000,
-      payment_method: "Bank Transfer",
+      payment_method: "Halo Pesa",
       status: "completed",
       receipt_url: "#",
       gateway_ref: "BANK-GHI321",
@@ -281,7 +281,7 @@ const PurchaseHistory = () => {
                       <SelectItem value="Tigo Pesa">Tigo Pesa</SelectItem>
                       <SelectItem value="Airtel Money">Airtel Money</SelectItem>
                       <SelectItem value="Credit Card">Credit Card</SelectItem>
-                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Halo Pesa">Halo Pesa</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
