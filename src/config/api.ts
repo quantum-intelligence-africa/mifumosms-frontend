@@ -1,6 +1,6 @@
 // API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
-	BASE_URL: 'http://104.131.116.55/api',
+	BASE_URL: 'https://104.131.116.55/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
