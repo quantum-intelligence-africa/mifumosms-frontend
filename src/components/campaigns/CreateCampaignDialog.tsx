@@ -99,58 +99,62 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
     setIsSubmitting(true);
 
-    // Close dialog and reset form immediately
-    setOpen(false);
-    setStep(1);
-    setFormData({
-      name: '',
-      description: '',
-      campaign_type: 'sms',
-      message_text: '',
-      template: null,
-      scheduled_at: null,
-      target_contact_ids: [],
-      target_segment_ids: [],
-      target_criteria: {
-        tags: [],
-        opt_in_status: 'opted_in'
-      },
-      settings: {
-        send_time: '09:00',
-        timezone: 'Africa/Dar_es_Salaam'
-      },
-      is_recurring: false,
-      recurring_schedule: {},
-    });
+    try {
+      // Create campaign first and wait for completion
+      const success = await createCampaign({
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        campaign_type: formData.campaign_type,
+        message_text: formData.message_text.trim(),
+        template: formData.template || null,
+        scheduled_at: formData.scheduled_at || null,
+        target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
+        target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
+        target_criteria: {
+          tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
+          opt_in_status: formData.target_criteria.opt_in_status
+        },
+        settings: {
+          send_time: formData.settings.send_time,
+          timezone: formData.settings.timezone
+        },
+        is_recurring: formData.is_recurring,
+        recurring_schedule: formData.recurring_schedule,
+      });
 
-    // Call success callback to refresh parent component immediately
-    onSuccess?.();
+      if (success) {
+        // Close dialog and reset form after successful creation
+        setOpen(false);
+        setStep(1);
+        setFormData({
+          name: '',
+          description: '',
+          campaign_type: 'sms',
+          message_text: '',
+          template: null,
+          scheduled_at: null,
+          target_contact_ids: [],
+          target_segment_ids: [],
+          target_criteria: {
+            tags: [],
+            opt_in_status: 'opted_in'
+          },
+          settings: {
+            send_time: '09:00',
+            timezone: 'Africa/Dar_es_Salaam'
+          },
+          is_recurring: false,
+          recurring_schedule: {},
+        });
 
-    // Create campaign in background (errors ignored)
-    createCampaign({
-      name: formData.name.trim(),
-      description: formData.description.trim() || undefined,
-      campaign_type: formData.campaign_type,
-      message_text: formData.message_text.trim(),
-      template: formData.template || null,
-      scheduled_at: formData.scheduled_at || null,
-      target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
-      target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
-      target_criteria: {
-        tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
-        opt_in_status: formData.target_criteria.opt_in_status
-      },
-      settings: {
-        send_time: formData.settings.send_time,
-        timezone: formData.settings.timezone
-      },
-      is_recurring: formData.is_recurring,
-      recurring_schedule: formData.recurring_schedule,
-    }).catch(error => {
-      console.log('Create campaign error (ignored):', error);
-    });
-
-    setIsSubmitting(false);
+        // Call success callback to refresh parent component after campaign is created
+        onSuccess?.();
+      }
+    } catch (error) {
+      console.error('Campaign creation error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceedToStep2 = formData.name.trim() && formData.message_text.trim();

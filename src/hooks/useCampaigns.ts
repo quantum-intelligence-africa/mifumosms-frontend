@@ -252,30 +252,21 @@ export const useCampaigns = () => {
       const response = await apiClient.updateCampaign(id, data);
 
       if (response.success && response.data) {
-        toast({
-          title: "Campaign updated successfully",
-          description: `Campaign "${response.data.name}" has been updated`,
-        });
-
-        // Refresh campaigns list
+        // Refresh campaigns list first
         await fetchCampaigns();
         await fetchSummary();
 
+        // Store success message in localStorage to show after refresh
+        localStorage.setItem('campaign_updated_success', JSON.stringify({
+          name: response.data.name,
+          timestamp: Date.now()
+        }));
+
         return true;
       } else {
-        toast({
-          title: "Failed to update campaign",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to update campaign",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
       return false;
     }
   };
@@ -305,17 +296,21 @@ export const useCampaigns = () => {
       const response = await apiClient.startCampaign(id);
 
       if (response.success && response.data) {
-        // Refresh campaigns list
+        // Refresh campaigns list first
         await fetchCampaigns();
         await fetchSummary();
 
+        // Store success message in localStorage to show after refresh
+        localStorage.setItem('campaign_started_success', JSON.stringify({
+          name: response.data.name,
+          timestamp: Date.now()
+        }));
+
         return true;
       } else {
-        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      // No error toast - just return false
       return false;
     }
   };
@@ -325,17 +320,21 @@ export const useCampaigns = () => {
       const response = await apiClient.pauseCampaign(id);
 
       if (response.success && response.data) {
-        // Refresh campaigns list
+        // Refresh campaigns list first
         await fetchCampaigns();
         await fetchSummary();
 
+        // Store success message in localStorage to show after refresh
+        localStorage.setItem('campaign_paused_success', JSON.stringify({
+          name: response.data.name,
+          timestamp: Date.now()
+        }));
+
         return true;
       } else {
-        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      // No error toast - just return false
       return false;
     }
   };
@@ -345,17 +344,21 @@ export const useCampaigns = () => {
       const response = await apiClient.cancelCampaign(id);
 
       if (response.success && response.data) {
-        // Refresh campaigns list
+        // Refresh campaigns list first
         await fetchCampaigns();
         await fetchSummary();
 
+        // Store success message in localStorage to show after refresh
+        localStorage.setItem('campaign_cancelled_success', JSON.stringify({
+          name: response.data.name,
+          timestamp: Date.now()
+        }));
+
         return true;
       } else {
-        // No error toast - just return false
         return false;
       }
     } catch (error) {
-      // No error toast - just return false
       return false;
     }
   };
@@ -397,13 +400,13 @@ export const useCampaigns = () => {
   useEffect(() => {
     fetchAllData();
 
-    // Check for campaign creation success message after page load
+    // Check for campaign action success messages after page load
     const checkForSuccessMessage = () => {
-      const successData = localStorage.getItem('campaign_created_success');
-      if (successData) {
+      // Check for campaign creation success
+      const createdSuccessData = localStorage.getItem('campaign_created_success');
+      if (createdSuccessData) {
         try {
-          const { name, recipients, timestamp } = JSON.parse(successData);
-          // Only show if the message is recent (within last 10 seconds)
+          const { name, recipients, timestamp } = JSON.parse(createdSuccessData);
           if (Date.now() - timestamp < 10000) {
             toast({
               title: "🎉 Campaign created successfully!",
@@ -411,11 +414,86 @@ export const useCampaigns = () => {
               duration: 5000,
             });
           }
-          // Clear the success message from localStorage
           localStorage.removeItem('campaign_created_success');
         } catch (error) {
-          console.error('Error parsing success message:', error);
+          console.error('Error parsing creation success message:', error);
           localStorage.removeItem('campaign_created_success');
+        }
+      }
+
+      // Check for campaign update success
+      const updatedSuccessData = localStorage.getItem('campaign_updated_success');
+      if (updatedSuccessData) {
+        try {
+          const { name, timestamp } = JSON.parse(updatedSuccessData);
+          if (Date.now() - timestamp < 10000) {
+            toast({
+              title: "✅ Campaign updated successfully!",
+              description: `Campaign "${name}" has been updated.`,
+              duration: 5000,
+            });
+          }
+          localStorage.removeItem('campaign_updated_success');
+        } catch (error) {
+          console.error('Error parsing update success message:', error);
+          localStorage.removeItem('campaign_updated_success');
+        }
+      }
+
+      // Check for campaign start success
+      const startedSuccessData = localStorage.getItem('campaign_started_success');
+      if (startedSuccessData) {
+        try {
+          const { name, timestamp } = JSON.parse(startedSuccessData);
+          if (Date.now() - timestamp < 10000) {
+            toast({
+              title: "🚀 Campaign started successfully!",
+              description: `Campaign "${name}" is now running.`,
+              duration: 5000,
+            });
+          }
+          localStorage.removeItem('campaign_started_success');
+        } catch (error) {
+          console.error('Error parsing start success message:', error);
+          localStorage.removeItem('campaign_started_success');
+        }
+      }
+
+      // Check for campaign pause success
+      const pausedSuccessData = localStorage.getItem('campaign_paused_success');
+      if (pausedSuccessData) {
+        try {
+          const { name, timestamp } = JSON.parse(pausedSuccessData);
+          if (Date.now() - timestamp < 10000) {
+            toast({
+              title: "⏸️ Campaign paused successfully!",
+              description: `Campaign "${name}" has been paused.`,
+              duration: 5000,
+            });
+          }
+          localStorage.removeItem('campaign_paused_success');
+        } catch (error) {
+          console.error('Error parsing pause success message:', error);
+          localStorage.removeItem('campaign_paused_success');
+        }
+      }
+
+      // Check for campaign cancel success
+      const cancelledSuccessData = localStorage.getItem('campaign_cancelled_success');
+      if (cancelledSuccessData) {
+        try {
+          const { name, timestamp } = JSON.parse(cancelledSuccessData);
+          if (Date.now() - timestamp < 10000) {
+            toast({
+              title: "❌ Campaign cancelled successfully!",
+              description: `Campaign "${name}" has been cancelled.`,
+              duration: 5000,
+            });
+          }
+          localStorage.removeItem('campaign_cancelled_success');
+        } catch (error) {
+          console.error('Error parsing cancel success message:', error);
+          localStorage.removeItem('campaign_cancelled_success');
         }
       }
     };

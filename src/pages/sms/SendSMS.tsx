@@ -118,7 +118,27 @@ const SendSMS = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const modeParam = params.get("mode");
-    if (modeParam === "single" || modeParam === "bulk" || modeParam === "segment") {
+    const contactParam = params.get("contact");
+    const contactsParam = params.get("contacts");
+
+    // Handle single contact
+    if (contactParam) {
+      setSelectedMode("single");
+      setRecipients([contactParam]);
+    }
+    // Handle multiple contacts
+    else if (contactsParam) {
+      const contactIds = contactsParam.split(',').filter(id => id.trim());
+      if (contactIds.length === 1) {
+        setSelectedMode("single");
+        setRecipients(contactIds);
+      } else {
+        setSelectedMode("bulk");
+        setRecipients(contactIds);
+      }
+    }
+    // Handle mode parameter
+    else if (modeParam === "single" || modeParam === "bulk" || modeParam === "segment") {
       setSelectedMode(modeParam);
     }
   }, [location.search]);

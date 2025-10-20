@@ -23,7 +23,8 @@ import {
   Smartphone,
   Users,
   FileText,
-  QrCode
+  QrCode,
+  X
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -74,6 +75,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useToast } from "@/hooks/use-toast";
 import { Contact, CreateContactRequest } from "@/lib/api";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
+import { convertToE164, formatPhoneForDisplay, isValidE164, getPhonePlaceholder } from "@/utils/phoneUtils";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -105,8 +107,8 @@ const Contacts = () => {
 
   // Contact action handlers
   const handleSendMessage = (contact: Contact) => {
-    // Navigate to SMS send page with contact pre-selected
-    window.location.href = `/sms/send?contact=${contact.id}`;
+    // Navigate to SMS send page with contact phone number pre-filled
+    window.location.href = `/sms/send?contact=${encodeURIComponent(contact.phone_e164)}`;
   };
 
   const handleEditContact = (contact: Contact) => {
@@ -119,6 +121,27 @@ const Contacts = () => {
       attributes: contact.attributes || {}
     });
     setIsCreateDialogOpen(true);
+  };
+
+  const handleBulkSendMessage = () => {
+    if (selectedContacts.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select contacts to send a message to",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get phone numbers for selected contacts
+    const selectedContactsData = contacts.filter(contact =>
+      selectedContacts.includes(contact.id)
+    );
+    const phoneNumbers = selectedContactsData.map(contact => contact.phone_e164);
+
+    // Navigate to SMS send page with selected contact phone numbers
+    const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
+    window.location.href = `/sms/send?contacts=${phoneNumbersParam}`;
   };
 
 
@@ -228,37 +251,33 @@ const Contacts = () => {
   const handleCreateContact = async () => {
     if (!createFormData.name || !createFormData.phone_e164) return;
 
-    // Basic phone number validation
-    const phoneNumber = createFormData.phone_e164.trim();
-    if (!phoneNumber.startsWith('+')) {
+    // Convert and validate phone number
+    const phoneNumber = convertToE164(createFormData.phone_e164.trim());
+
+    if (!isValidE164(phoneNumber)) {
       toast({
         title: "Invalid phone number",
-        description: "Phone number must start with + (e.g., +1234567890)",
+        description: "Please enter a valid phone number (e.g., 06XX XXX XXX or +255 XXX XXX XXX)",
         variant: "destructive"
       });
       return;
     }
 
-    // Check if phone number has at least 10 digits after +
-    const digitsOnly = phoneNumber.slice(1).replace(/\D/g, '');
-    if (digitsOnly.length < 10) {
-      toast({
-        title: "Invalid phone number",
-        description: "Phone number must have at least 10 digits",
-        variant: "destructive"
-      });
-      return;
-    }
+    // Update the form data with the converted phone number
+    const formDataWithConvertedPhone = {
+      ...createFormData,
+      phone_e164: phoneNumber
+    };
 
     try {
       setIsCreating(true);
       let success;
       if (selectedContact) {
         // Update existing contact
-        success = await updateContact(selectedContact.id, createFormData);
+        success = await updateContact(selectedContact.id, formDataWithConvertedPhone);
       } else {
         // Create new contact
-        success = await createContact(createFormData);
+        success = await createContact(formDataWithConvertedPhone);
       }
 
       if (success) {
@@ -302,7 +321,11 @@ const Contacts = () => {
 
       for (const contact of contacts) {
         try {
-          const success = await createContact(contact);
+          const contactWithConvertedPhone = {
+            ...contact,
+            phone_e164: convertToE164(contact.phone_e164)
+          };
+          const success = await createContact(contactWithConvertedPhone);
           if (success) {
             successCount++;
           } else {
@@ -460,7 +483,7 @@ const Contacts = () => {
 
       const formattedContacts: CreateContactRequest[] = contacts.map(contact => ({
         name: contact.name?.[0] || '',
-        phone_e164: contact.phone?.[0] || '',
+        phone_e164: convertToE164(contact.phone?.[0] || ''),
         email: contact.email?.[0] || '',
         tags: [],
         attributes: {}
@@ -529,7 +552,11 @@ const Contacts = () => {
 
       for (const contact of importedContacts) {
         try {
-          await createContact(contact);
+          const contactWithConvertedPhone = {
+            ...contact,
+            phone_e164: convertToE164(contact.phone_e164)
+          };
+          await createContact(contactWithConvertedPhone);
           successCount++;
         } catch (error) {
           errorCount++;
@@ -721,14 +748,22 @@ const Contacts = () => {
                             id="phone"
                             type="tel"
                             inputMode="tel"
-                            placeholder="+1234567890"
+                            placeholder={getPhonePlaceholder(createFormData.phone_e164)}
                             value={createFormData.phone_e164}
-                            onChange={(e) => setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }))}
+                            onChange={(e) => {
+                              const converted = convertToE164(e.target.value);
+                              setCreateFormData(prev => ({ ...prev, phone_e164: converted }));
+                            }}
                             className="glass-subtle border-0 text-xs sm:text-sm h-8"
                           />
                           <p className="text-xs text-text-subtle">
-                            International format (e.g., +1234567890)
+                            Enter Tanzanian number (06XX or 07XX) or international format (+255...)
                           </p>
+                          {createFormData.phone_e164 && createFormData.phone_e164.startsWith('+255') && (
+                            <p className="text-xs text-green-600">
+                              ✓ Will be saved as: {createFormData.phone_e164}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-1">
                           <Label htmlFor="email" className="text-xs sm:text-sm">Email Address</Label>
@@ -870,7 +905,7 @@ const Contacts = () => {
                         <Tag className="w-4 h-4 mr-1" />
                         Add Tag
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleBulkSendMessage}>
                         <MessageSquare className="w-4 h-4 mr-1" />
                         Send Message
                       </Button>
@@ -1048,7 +1083,7 @@ const Contacts = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-heading text-lg font-semibold">Contact Details</h3>
               <Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
-                <MoreVertical className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
 
@@ -1133,11 +1168,20 @@ const Contacts = () => {
             </div>
 
             <div className="flex gap-2 mt-6">
-              <Button size="sm" className="flex-1">
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => handleSendMessage(selectedContact)}
+              >
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Message
               </Button>
-              <Button variant="outline" size="sm" className="flex-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => handleEditContact(selectedContact)}
+              >
                 <Edit className="w-4 h-4 mr-1" />
                 Edit
               </Button>
