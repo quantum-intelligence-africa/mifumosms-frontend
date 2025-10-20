@@ -34,13 +34,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { useSenderNames } from "@/hooks/useSenderNames";
 
-interface SenderName {
-  id: string;
-  name: string;
-  status: "approved" | "pending";
-  is_default: boolean;
-}
+// Note: We no longer hardcode sender IDs. We fetch the current user's
+// sender name requests via useSenderNames() and use only approved ones.
 
 interface Segment {
   id: string;
@@ -80,12 +77,13 @@ const SendSMS = () => {
     return null;
   };
 
-  // Demo data - replace with actual API calls
-  const senderNames: SenderName[] = useMemo(() => [
-    { id: "1", name: "MIFUMO", status: "approved", is_default: false },
-    { id: "2", name: "Taarifa-SMS", status: "approved", is_default: true },
-    { id: "3", name: "ALERT", status: "pending", is_default: false },
-  ], []);
+  // Load sender names for current user from API (no hardcoding)
+  const { senderNames, loading: senderNamesLoading, error: senderNamesError } = useSenderNames();
+
+  // Reduce to approved sender IDs only
+  const approvedSenderRequests = useMemo(() => {
+    return (senderNames || []).filter((req) => req.status === "approved");
+  }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
     { id: "1", name: "VIP Customers", contact_count: 150 },
@@ -120,13 +118,21 @@ const SendSMS = () => {
     }
   }, [location.search]);
 
-  // Ensure default sender is Taarifa-SMS if not selected
+  // Ensure default sender selection when data loads
   useEffect(() => {
-    if (!selectedSender) {
-      const defaultSender = senderNames.find(s => s.name === "Taarifa-SMS");
-      if (defaultSender) setSelectedSender(defaultSender.id);
-    }
-  }, [selectedSender, senderNames]);
+    if (selectedSender) return;
+    if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
+
+    // Prefer Taarifa-SMS if available and approved, otherwise first approved
+    const defaultPreferred = approvedSenderRequests.find(r => r.sender_name === "Taarifa-SMS");
+    const firstApproved = defaultPreferred || approvedSenderRequests[0];
+    if (firstApproved?.id) setSelectedSender(firstApproved.id);
+  }, [selectedSender, approvedSenderRequests]);
+
+  const getSelectedSenderName = () => {
+    const found = approvedSenderRequests.find(r => r.id === selectedSender);
+    return found?.sender_name || "";
+  };
 
   const addRecipient = () => {
     if (!newRecipient) return;
@@ -214,8 +220,17 @@ const SendSMS = () => {
         return;
       }
 
-      // Force sender name to Taarifa-SMS as required by backend
-      const senderName = "Taarifa-SMS";
+      // Use the selected approved sender name
+      const senderName = getSelectedSenderName();
+      if (!senderName) {
+        setSending(false);
+        toast({
+          title: "Sender name required",
+          description: "Please select an approved sender name",
+          variant: "destructive"
+        });
+        return;
+      }
 
       // Ensure all recipients are normalized for the API
       const apiRecipients = targetRecipients
@@ -540,16 +555,32 @@ const SendSMS = () => {
                     <Label className="text-xs sm:text-sm">Sender Name</Label>
                     <Select value={selectedSender} onValueChange={setSelectedSender}>
                       <SelectTrigger className="glass-subtle border-0">
-                        <SelectValue placeholder="Select sender name" />
+                        <SelectValue placeholder={senderNamesLoading ? "Loading..." : (approvedSenderRequests.length === 0 ? "No approved sender names" : "Select sender name")} />
                       </SelectTrigger>
                       <SelectContent className="glass">
-                        {senderNames.filter(s => s.status === "approved").map((sender) => (
-                          <SelectItem key={sender.id} value={sender.id}>
-                            {sender.name} {sender.is_default && "(Default)"}
+                        {approvedSenderRequests.map((req) => (
+                          <SelectItem key={req.id} value={req.id}>
+                            {req.sender_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {senderNamesError && (
+                      <Alert className="mt-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <AlertDescription>
+                          Failed to load sender names. Please try again.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {!senderNamesLoading && approvedSenderRequests.length === 0 && (
+                      <Alert className="mt-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <AlertDescription>
+                          You have no approved sender IDs yet. Request one in Sender Names.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
 
                   {/* Recipients - Single Mode */}

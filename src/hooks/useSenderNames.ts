@@ -63,17 +63,41 @@ export function useSenderNames() {
 				// Additional validation: Ensure we only show current user's requests
 				// Filter out any requests that might belong to other users
 				const currentUserId = authContext?.user?.id;
+				
+				// TEMPORARY: If the API already returns only current user's requests, 
+				// you can uncomment the lines below to test without filtering
+				// console.log('Skipping user filtering - using all results from API');
+				// console.log('Total results from API:', results.length);
+				// setSenderNames(results);
+				// return;
+				
 				if (currentUserId) {
 					results = results.filter((request: any) => {
 						// Check if the request belongs to the current user
-						const requestUserId = request.created_by?.id || request.created_by;
+						// Use the correct field extraction: user_id || user
+						const requestUserId = request.user_id || request.user;
+						
+						// Debug logging to see exactly what's happening
+						console.log('=== DEBUGGING USER ID FILTERING ===');
+						console.log('Request object:', request);
+						console.log('Request.user:', request.user);
+						console.log('Request.user_id:', request.user_id);
+						console.log('Current user ID:', currentUserId);
+						console.log('Extracted requestUserId:', requestUserId);
+						console.log('Comparison result:', requestUserId === currentUserId);
+						console.log('=====================================');
+						
 						const isCurrentUser = requestUserId === currentUserId;
+						
 						if (!isCurrentUser) {
-							console.log('Filtering out request from other user:', request.sender_name, 'User ID:', requestUserId, 'Current User ID:', currentUserId);
+							console.log(`Filtering out request from other user: ${request.requested_sender_id || request.sender_name}, User ID: ${requestUserId}, Current User ID: ${currentUserId}`);
+						} else {
+							console.log(`✅ Keeping request from current user: ${request.requested_sender_id || request.sender_name}`);
 						}
+						
 						return isCurrentUser;
 					});
-					console.log('Filtered results for current user:', results);
+					console.log('Filtered results for current user:', results.length, 'requests');
 				} else {
 					console.log('No current user ID available, showing all results');
 				}
@@ -131,17 +155,12 @@ export function useSenderNames() {
 	const createSenderName = async (data: CreateSenderNameRequest) => {
 		try {
 			setError(null);
-			const formData = new FormData();
-			formData.append('sender_name', data.sender_name);
-			formData.append('use_case', data.use_case);
-
-			if (data.supporting_documents) {
-				data.supporting_documents.forEach((file) => {
-					formData.append('supporting_documents', file);
-				});
-			}
-
-			const response = await apiClient.submitSenderRequest(formData);
+			
+			// Use JSON API for better error handling and required fields
+			const response = await apiClient.submitSenderRequestJSON({
+				requested_sender_id: data.sender_name,
+				sample_content: data.use_case
+			});
 
 			if (response.success && response.data) {
 				// Add the new request to the list immediately for better UX

@@ -1,6 +1,6 @@
 // API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
-	BASE_URL: 'http://104.131.116.55/api',
+	BASE_URL: 'http://127.0.0.1:8000/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
@@ -38,6 +38,10 @@ export const API_CONFIG = {
 			SENDER_ID_REQUESTS: {
 				BASE: '/messaging/sender-id-requests/',
 				DEFAULT: '/messaging/sender-id-requests/default/',
+				DEFAULT_OVERVIEW: '/messaging/sender-id-requests/default/overview/',
+				REQUEST_DEFAULT: '/messaging/sender-id-requests/request-default/',
+				CANCEL_DEFAULT: '/messaging/sender-id-requests/cancel-default/',
+				STATUS: '/messaging/sender-id-requests/status/',
 				AVAILABLE: '/messaging/sender-id-requests/available/',
 				USAGE: '/messaging/sender-id-usage/',
 			},
@@ -73,6 +77,7 @@ export const API_CONFIG = {
 				PURCHASES: '/billing/history/purchases/',
 				PAYMENTS: '/billing/history/payments/',
 				USAGE: '/billing/history/usage/',
+				COMPREHENSIVE: '/billing/history/comprehensive/',
 			},
 		},
 	},

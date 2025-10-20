@@ -1693,7 +1693,75 @@ class ApiClient {
   // BILLING HISTORY ENDPOINTS
   // =============================================
 
-  // 1. Comprehensive Billing History
+  // 1. Comprehensive Billing History (RECOMMENDED)
+  async getComprehensiveBillingHistory(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    transaction_type?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse<{
+    transactions: Array<{
+      id: string;
+      type: string;
+      type_display: string;
+      invoice_number: string;
+      amount: number;
+      currency: string;
+      status: string;
+      status_display: string;
+      payment_method: string;
+      payment_method_display: string;
+      credits: number;
+      package_name: string;
+      unit_price: number;
+      created_at: string;
+      completed_at: string | null;
+      description: string;
+      icon: string;
+      color: string;
+    }>;
+    summary: {
+      total_transactions: number;
+      total_amount: number;
+      total_credits: number;
+      currency: string;
+    };
+    pagination: {
+      count: number;
+      next: string | null;
+      previous: string | null;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.transaction_type) queryParams.append('transaction_type', params.transaction_type);
+      if (params?.start_date) queryParams.append('start_date', params.start_date);
+      if (params?.end_date) queryParams.append('end_date', params.end_date);
+
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.COMPREHENSIVE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Legacy Comprehensive Billing History
   async getBillingHistory(params?: {
     start_date?: string;
     end_date?: string;
@@ -2101,25 +2169,7 @@ class ApiClient {
   // SENDER ID MANAGEMENT ENDPOINTS - Updated to match backend API
   // =============================================
 
-  // 1. Request Default Sender ID (Instant)
-  async requestDefaultSenderID(): Promise<ApiResponse<{ message: string }>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.DEFAULT}`, {
-        method: 'POST',
-        headers: this.getHeaders()
-      });
-
-      return await this.handleResponse<{ message: string }>(response);
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
-        status: 0
-      };
-    }
-  }
-
-  // 2. Request Custom Sender ID
+  // 1. Request Custom Sender ID
   async requestCustomSenderID(data: {
     request_type: 'custom';
     requested_sender_id: string;
@@ -2153,63 +2203,7 @@ class ApiClient {
     }
   }
 
-  // 3. Get Sender ID Requests
-  async getSenderIDRequests(): Promise<ApiResponse<{
-    results: Array<{
-      id: string;
-      requested_sender_id: string;
-      status: string;
-      created_at: string;
-    }>;
-  }>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}`, {
-        headers: this.getHeaders()
-      });
-
-      return await this.handleResponse<{
-        results: Array<{
-          id: string;
-          requested_sender_id: string;
-          status: string;
-          created_at: string;
-        }>;
-      }>(response);
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
-        status: 0
-      };
-    }
-  }
-
-  // 4. Get Available Sender IDs
-  async getAvailableSenderIDs(): Promise<ApiResponse<{
-    available_sender_ids: Array<{
-      id: string;
-      requested_sender_id: string;
-    }>;
-  }>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.AVAILABLE}`, {
-        headers: this.getHeaders()
-      });
-
-      return await this.handleResponse<{
-        available_sender_ids: Array<{
-          id: string;
-          requested_sender_id: string;
-        }>;
-      }>(response);
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
-        status: 0
-      };
-    }
-  }
+  // 2. Get Sender ID Requests
 
   // 5. Attach Sender ID to SMS Package
   async attachSenderIDToPackage(data: {
@@ -2234,6 +2228,133 @@ class ApiClient {
   }
 
   // =============================================
+  // DEFAULT SENDER ID ENDPOINTS
+  // =============================================
+
+  // 1. Get Default Sender Overview
+  async getDefaultSenderOverview(): Promise<ApiResponse<{
+    default_sender: string;
+    current_sender_id: string | null;
+    active_request: {
+      id: string;
+      requested_sender_id: string;
+      request_type: string;
+      status: string;
+      sample_content: string;
+      created_at: string;
+    } | null;
+    can_request: boolean;
+    reason: string | null;
+    balance: {
+      credits: number;
+      needs_purchase: boolean;
+    };
+    actions: {
+      request_default_url: string;
+      status_url: string;
+      available_url: string;
+      purchase_url: string;
+    };
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.DEFAULT_OVERVIEW}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2. Request Default Sender ID
+  async requestDefaultSenderID(): Promise<ApiResponse<{
+    message: string;
+    sender_id_request: {
+      id: string;
+      requested_sender_id: string;
+      request_type: string;
+      status: string;
+      sample_content: string;
+      created_at: string;
+    };
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.REQUEST_DEFAULT}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({})
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 2b. Cancel/Detach Default Sender ID
+  async cancelDefaultSenderID(): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.CANCEL_DEFAULT}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({})
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 3. Get Sender ID Request Status
+  async getSenderIDRequestStatus(): Promise<ApiResponse<{
+    sms_balance: {
+      credits: number;
+      total_purchased: number;
+      can_request_sender_id: boolean;
+    };
+    sender_id_requests: Array<{
+      id: string;
+      requested_sender_id: string;
+      request_type: string;
+      status: string;
+      sample_content: string;
+      created_at: string;
+    }>;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.STATUS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+
+  // =============================================
   // SENDER NAME ENDPOINTS - COMPREHENSIVE API (Legacy)
   // =============================================
 
@@ -2247,6 +2368,32 @@ class ApiClient {
           'Authorization': `Bearer ${this.token}`
         },
         body: formData
+      });
+
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 1. SUBMIT SENDER NAME REQUEST (JSON version)
+  // POST /api/messaging/sender-requests/submit/
+  async submitSenderRequestJSON(data: {
+    requested_sender_id: string;
+    sample_content: string;
+  }): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/submit/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: JSON.stringify(data)
       });
 
       return await this.handleResponse<SenderNameRequest>(response);

@@ -10,12 +10,16 @@ import {
   MoreVertical,
   Upload,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  CreditCard,
+  ShoppingCart
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSenderNames } from "@/hooks/useSenderNames";
+import { useDefaultSender } from "@/hooks/useDefaultSender";
 import { SenderNameRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +68,77 @@ const SenderNames = () => {
     getSenderName,
     refreshData
   } = useSenderNames();
+
+  // Add default sender functionality
+  const {
+    overview,
+    availableSenders,
+    isLoading: defaultSenderLoading,
+    error: defaultSenderError,
+    isRequesting,
+    requestDefaultSender,
+    cancelDefaultSender,
+    refreshData: refreshDefaultSender,
+    canRequestDefaultSender,
+    needsPurchaseCredits,
+    getCurrentCredits,
+    getDefaultSenderName,
+    getCurrentSenderID,
+    getCannotRequestReason,
+    getAllAvailableSenders,
+    getStatusBadgeVariant,
+    formatDate,
+    getStatusIcon
+  } = useDefaultSender();
+
+  // Fallback functions in case the hook fails
+  const safeFormatDate = formatDate || ((dateString: string) => 
+    new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    })
+  );
+
+  const safeGetStatusIcon = getStatusIcon || ((status: SenderStatus) => {
+    switch (status) {
+      case "approved": return <Check className="w-4 h-4 text-success" />;
+      case "pending": return <Clock className="w-4 h-4 text-warning" />;
+      case "verifying": return <Clock className="w-4 h-4 text-primary" />;
+      case "rejected": return <X className="w-4 h-4 text-destructive" />;
+      case "suspended": return <Ban className="w-4 h-4 text-destructive" />;
+      case "requires_changes": return <AlertTriangle className="w-4 h-4 text-warning" />;
+      default: return <Clock className="w-4 h-4 text-warning" />;
+    }
+  });
+
+  // Add back the getStatusBadge function that was accidentally removed
+  const getStatusBadge = (status: SenderStatus) => {
+    const variants: Record<SenderStatus, "default" | "secondary" | "outline" | "destructive"> = {
+      approved: "default",
+      pending: "secondary",
+      verifying: "secondary",
+      rejected: "destructive",
+      suspended: "destructive",
+      requires_changes: "outline",
+    };
+
+    const statusLabels: Record<SenderStatus, string> = {
+      approved: "Approved",
+      pending: "Pending",
+      verifying: "Verifying",
+      rejected: "Rejected",
+      suspended: "Suspended",
+      requires_changes: "Requires Changes",
+    };
+
+    return (
+      <Badge variant={variants[status]} className="capitalize">
+        {safeGetStatusIcon(status)}
+        <span className="ml-1">{statusLabels[status]}</span>
+      </Badge>
+    );
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [newSenderName, setNewSenderName] = useState("");
@@ -134,50 +209,6 @@ const SenderNames = () => {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const getStatusIcon = (status: SenderStatus) => {
-    switch (status) {
-      case "approved":
-        return <Check className="w-4 h-4 text-success" />;
-      case "pending":
-        return <Clock className="w-4 h-4 text-warning" />;
-      case "verifying":
-        return <Clock className="w-4 h-4 text-primary" />;
-      case "rejected":
-        return <X className="w-4 h-4 text-destructive" />;
-      case "suspended":
-        return <Ban className="w-4 h-4 text-destructive" />;
-      case "requires_changes":
-        return <AlertTriangle className="w-4 h-4 text-warning" />;
-    }
-  };
-
-  const getStatusBadge = (status: SenderStatus) => {
-    const variants: Record<SenderStatus, "default" | "secondary" | "outline" | "destructive"> = {
-      approved: "default",
-      pending: "secondary",
-      verifying: "secondary",
-      rejected: "destructive",
-      suspended: "destructive",
-      requires_changes: "outline",
-    };
-
-    const statusLabels: Record<SenderStatus, string> = {
-      approved: "Approved",
-      pending: "Pending",
-      verifying: "Verifying",
-      rejected: "Rejected",
-      suspended: "Suspended",
-      requires_changes: "Requires Changes",
-    };
-
-    return (
-      <Badge variant={variants[status]} className="capitalize">
-        {getStatusIcon(status)}
-        <span className="ml-1">{statusLabels[status]}</span>
-      </Badge>
-    );
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -255,6 +286,7 @@ const SenderNames = () => {
       });
       return;
     }
+
 
     setSubmitting(true);
 
@@ -335,12 +367,17 @@ const SenderNames = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    });
+  const handleRequestDefaultSender = async () => {
+    try {
+      const result = await requestDefaultSender();
+      
+      if (result.success) {
+        // Refresh both sender names and default sender data
+        await Promise.all([refreshData(), refreshDefaultSender()]);
+      }
+    } catch (error) {
+      console.error('Error requesting default sender:', error);
+    }
   };
 
   // Final safety check - ensure senderNames is always an array
@@ -384,12 +421,14 @@ const SenderNames = () => {
                     Request Sender Name
                   </Button>
                   <Button
-                    onClick={refreshData}
+                    onClick={async () => {
+                      await Promise.all([refreshData(), refreshDefaultSender()]);
+                    }}
                     variant="outline"
                     className="w-full sm:w-auto"
-                    disabled={loading}
+                    disabled={loading || defaultSenderLoading}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
@@ -452,12 +491,14 @@ const SenderNames = () => {
                     Request Sender Name
                   </Button>
                   <Button
-                    onClick={refreshData}
+                    onClick={async () => {
+                      await Promise.all([refreshData(), refreshDefaultSender()]);
+                    }}
                     variant="outline"
                     className="w-full sm:w-auto"
-                    disabled={loading}
+                    disabled={loading || defaultSenderLoading}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
@@ -701,6 +742,84 @@ const SenderNames = () => {
               </Card>
             </div>
 
+            {/* Default Sender Card */}
+            {overview && (
+              <Card className="p-4 glass border-l-4 border-blue-500">
+                <div className="flex gap-3">
+                  <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                      <div>
+                        <h3 className="font-semibold text-blue-600 mb-1">Default Sender ID</h3>
+                        <p className="text-sm text-text-subtle">
+                          Use the default sender ID "{getDefaultSenderName?.() || 'Taarifa-SMS'}" for instant SMS sending
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {(canRequestDefaultSender && canRequestDefaultSender()) ? (
+                          <Button
+                            onClick={handleRequestDefaultSender}
+                            disabled={isRequesting}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            {isRequesting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Requesting...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-4 h-4 mr-2" />
+                                Request Default Sender
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="text-right">
+                            <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'}>
+                              {safeGetStatusIcon(overview.active_request?.status || 'approved')}
+                              <span className="ml-1">{overview.active_request?.status || 'Available'}</span>
+                            </Badge>
+                            {getCannotRequestReason?.() && (
+                              <p className="text-xs text-text-subtle mt-1">{getCannotRequestReason()}</p>
+                            )}
+                            {(overview.active_request?.status === 'pending' || overview.active_request?.status === 'approved') && (
+                              <div className="mt-2">
+                                <Button
+                                  onClick={async () => { await cancelDefaultSender?.(); await refreshDefaultSender(); }}
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isRequesting}
+                                >
+                                  Cancel Default Sender
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Balance and Purchase Info */}
+                    <div className="flex flex-col sm:flex-row gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-text-subtle" />
+                        <span className="text-text-subtle">Credits:</span>
+                        <span className="font-medium">{getCurrentCredits?.() || 0}</span>
+                      </div>
+                      {needsPurchaseCredits?.() && (
+                        <div className="flex items-center gap-2">
+                          <ShoppingCart className="w-4 h-4 text-orange-500" />
+                          <span className="text-orange-600 font-medium">Purchase credits to send SMS</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Info Card */}
             <Card className="p-3 sm:p-4 glass border-l-4 border-primary">
               <div className="flex gap-2 sm:gap-3">
@@ -744,7 +863,7 @@ const SenderNames = () => {
                           {sender.use_case || "—"}
                         </div>
                         <div className="md:hidden text-xs text-text-subtle">
-                          {formatDate(sender.created_at)}
+                          {safeFormatDate(sender.created_at)}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(sender.status)}</TableCell>
@@ -754,7 +873,7 @@ const SenderNames = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-text-subtle text-sm">
-                        {formatDate(sender.created_at)}
+                        {safeFormatDate(sender.created_at)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -1105,7 +1224,7 @@ const SenderNames = () => {
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs text-text-subtle">Reviewed At</Label>
-                              <p className="text-sm">{formatDate(selectedSender.reviewed_at!)}</p>
+                              <p className="text-sm">{safeFormatDate(selectedSender.reviewed_at!)}</p>
                             </div>
                           </div>
                         )}
@@ -1122,11 +1241,11 @@ const SenderNames = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-text-subtle">
                       <div>
                         <Label className="text-xs">Created</Label>
-                        <p>{formatDate(selectedSender.created_at)}</p>
+                        <p>{safeFormatDate(selectedSender.created_at)}</p>
                       </div>
                       <div>
                         <Label className="text-xs">Last Updated</Label>
-                        <p>{formatDate(selectedSender.updated_at)}</p>
+                        <p>{safeFormatDate(selectedSender.updated_at)}</p>
                       </div>
                     </div>
                   </div>

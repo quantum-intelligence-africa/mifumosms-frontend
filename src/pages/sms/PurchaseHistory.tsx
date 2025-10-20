@@ -13,7 +13,11 @@ import {
   RefreshCw,
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Package,
+  DollarSign,
+  Activity
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -46,9 +50,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient, Purchase } from "@/lib/api";
-
-type PurchaseStatus = "completed" | "pending" | "failed" | "cancelled";
+import { useBillingHistory, BillingTransaction } from "@/hooks/useBillingHistory";
 
 const PurchaseHistory = () => {
   const isMobile = useIsMobile();
@@ -56,122 +58,78 @@ const PurchaseHistory = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [methodFilter, setMethodFilter] = useState("all");
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [selectedTransaction, setSelectedTransaction] = useState<BillingTransaction | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const pageSize = 20;
 
-  // Fetch purchases from NEW billing history API
-  const fetchPurchases = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.getDetailedPurchaseHistory({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        page: currentPage,
-        page_size: pageSize
-      });
+  // Use the new comprehensive billing history hook
+  const {
+    transactions,
+    summary,
+    pagination,
+    isLoading,
+    error,
+    refreshing,
+    fetchBillingHistory,
+    refreshBillingHistory,
+    getTransactionTypeIcon,
+    getTransactionTypeColor,
+    getStatusBadgeVariant,
+    formatCurrency,
+    formatDate,
+    getFilteredTransactions,
+    getTotalSpent,
+    getTotalCredits,
+    getTransactionStats,
+  } = useBillingHistory();
 
-      if (response.success && response.data) {
-        setPurchases(response.data.purchases);
-        setTotalPages(response.data.pagination.total_pages);
-        setTotalCount(response.data.pagination.count);
-      } else {
-        toast({
-          title: "Failed to load purchases",
-          description: response.error || "Could not load purchase history",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching purchases:', error);
-      toast({
-        title: "Error loading purchases",
-        description: "Failed to load purchase history. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Refresh purchases
-  const refreshPurchases = async () => {
-    setRefreshing(true);
-    await fetchPurchases();
-    setRefreshing(false);
-  };
-
-  // Load purchases on component mount and when filters/page change
+  // Load data when filters change
   useEffect(() => {
-    fetchPurchases();
-  }, [statusFilter, currentPage]);
+    const filters = {
+      page: currentPage,
+      page_size: pageSize,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      transaction_type: typeFilter !== 'all' ? typeFilter : undefined,
+    };
+    fetchBillingHistory(filters);
+  }, [statusFilter, typeFilter, currentPage]);
 
-  const getStatusIcon = (status: PurchaseStatus) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="w-4 h-4 text-success" />;
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
       case "pending":
-        return <Clock className="w-4 h-4 text-warning" />;
+        return <Clock className="w-4 h-4 text-yellow-600" />;
       case "failed":
-        return <XCircle className="w-4 h-4 text-destructive" />;
+        return <XCircle className="w-4 h-4 text-red-600" />;
       case "cancelled":
-        return <XCircle className="w-4 h-4 text-text-subtle" />;
+        return <XCircle className="w-4 h-4 text-gray-600" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-600" />;
     }
   };
 
-  const getStatusBadge = (status: PurchaseStatus) => {
-    const variants: Record<PurchaseStatus, "default" | "secondary" | "outline" | "destructive"> = {
-      completed: "default",
-      pending: "secondary",
-      failed: "destructive",
-      cancelled: "outline",
-    };
-
+  const getStatusBadge = (status: string) => {
     return (
-      <Badge variant={variants[status]} className="capitalize">
+      <Badge variant={getStatusBadgeVariant(status)} className="capitalize">
         {getStatusIcon(status)}
         <span className="ml-1">{status}</span>
       </Badge>
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  };
-
-  const filteredPurchases = purchases.filter(purchase => {
-    const matchesSearch =
-      purchase.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      purchase.package_name?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
-    const matchesMethod = methodFilter === "all" || purchase.payment_method_display === methodFilter;
-
-    return matchesSearch && matchesStatus && matchesMethod;
+  const filteredTransactions = getFilteredTransactions(searchQuery).filter(transaction => {
+    const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
+    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
+    return matchesStatus && matchesType;
   });
 
-  const totalSpent = purchases
-    .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const transactionStats = getTransactionStats();
 
-  const totalCredits = purchases
-    .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + p.credits, 0);
-
-  const viewDetails = (purchase: Purchase) => {
-    setSelectedPurchase(purchase);
+  const viewDetails = (transaction: BillingTransaction) => {
+    setSelectedTransaction(transaction);
     setShowDetails(true);
   };
 
@@ -195,29 +153,53 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <Card className="p-6 glass">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-text-subtle">Total Spent</p>
-                  <CreditCard className="w-5 h-5 text-primary" />
+                  <DollarSign className="w-5 h-5 text-primary" />
                 </div>
-                <p className="text-2xl font-bold">TZS {totalSpent.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatCurrency(getTotalSpent())}</p>
+                <p className="text-xs text-text-subtle mt-1">
+                  {summary?.currency || 'TZS'} across all transactions
+                </p>
               </Card>
 
               <Card className="p-6 glass">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-text-subtle">Total Credits Purchased</p>
-                  <FileText className="w-5 h-5 text-success" />
+                  <p className="text-sm text-text-subtle">Total Credits</p>
+                  <Package className="w-5 h-5 text-success" />
                 </div>
-                <p className="text-2xl font-bold">{totalCredits.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{getTotalCredits().toLocaleString()}</p>
+                <p className="text-xs text-text-subtle mt-1">
+                  SMS credits purchased
+                </p>
               </Card>
 
               <Card className="p-6 glass">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-text-subtle">Total Transactions</p>
-                  <CheckCircle2 className="w-5 h-5 text-warning" />
+                  <TrendingUp className="w-5 h-5 text-warning" />
                 </div>
-                <p className="text-2xl font-bold">{purchases.length}</p>
+                <p className="text-2xl font-bold">{transactionStats.total}</p>
+                <p className="text-xs text-text-subtle mt-1">
+                  {transactionStats.completed} completed, {transactionStats.pending} pending
+                </p>
+              </Card>
+
+              <Card className="p-6 glass">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-text-subtle">Success Rate</p>
+                  <CheckCircle2 className="w-5 h-5 text-success" />
+                </div>
+                <p className="text-2xl font-bold">
+                  {transactionStats.total > 0 
+                    ? Math.round((transactionStats.completed / transactionStats.total) * 100)
+                    : 0}%
+                </p>
+                <p className="text-xs text-text-subtle mt-1">
+                  Transaction success rate
+                </p>
               </Card>
             </div>
 
@@ -254,24 +236,32 @@ const PurchaseHistory = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Payment Method</Label>
-                  <Select value={methodFilter} onValueChange={setMethodFilter}>
+                  <Label>Transaction Type</Label>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
                     <SelectTrigger className="glass-subtle border-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
-                      <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="M-Pesa">M-Pesa</SelectItem>
-                      <SelectItem value="Tigo Pesa">Tigo Pesa</SelectItem>
-                      <SelectItem value="Airtel Money">Airtel Money</SelectItem>
-                      <SelectItem value="Credit Card">Credit Card</SelectItem>
-                      <SelectItem value="Halo Pesa">Halo Pesa</SelectItem>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="purchase">📦 Purchases</SelectItem>
+                      <SelectItem value="payment">💳 Payments</SelectItem>
+                      <SelectItem value="custom">⚙️ Custom SMS</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-end gap-2">
-                  <Button variant="outline" onClick={refreshPurchases} disabled={refreshing} className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => refreshBillingHistory({
+                      page: currentPage,
+                      page_size: pageSize,
+                      status: statusFilter !== 'all' ? statusFilter : undefined,
+                      transaction_type: typeFilter !== 'all' ? typeFilter : undefined,
+                    })} 
+                    disabled={refreshing} 
+                    className="flex-1"
+                  >
                     {refreshing ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
@@ -287,14 +277,15 @@ const PurchaseHistory = () => {
               </div>
             </Card>
 
-            {/* Purchases Table */}
+            {/* Transactions Table */}
             <Card className="glass">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border-subtle">
+                    <TableHead>Type</TableHead>
                     <TableHead>Invoice No.</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Package</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Credits</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Method</TableHead>
@@ -303,39 +294,53 @@ const PurchaseHistory = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPurchases.map((purchase) => (
-                    <TableRow key={purchase.id} className="border-border-subtle">
+                  {filteredTransactions.map((transaction) => (
+                    <TableRow key={transaction.id} className="border-border-subtle">
                       <TableCell>
-                        <span className="font-mono font-medium">{purchase.invoice_number}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{transaction.icon}</span>
+                          <span className="text-sm font-medium">{transaction.type_display}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-text-subtle">
-                        {formatDate(purchase.created_at)}
-                      </TableCell>
-                      <TableCell>{purchase.package_name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{purchase.credits.toLocaleString()} SMS</Badge>
+                        <span className="font-mono font-medium text-sm">{transaction.invoice_number}</span>
+                      </TableCell>
+                      <TableCell className="text-text-subtle text-sm">
+                        {formatDate(transaction.created_at)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="max-w-xs truncate" title={transaction.description}>
+                          {transaction.description}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {transaction.credits > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            {transaction.credits.toLocaleString()} SMS
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="font-semibold">
-                        TZS {parseFloat(purchase.amount).toLocaleString()}
+                        {formatCurrency(transaction.amount, transaction.currency)}
                       </TableCell>
-                      <TableCell className="text-text-subtle">
-                        {purchase.payment_method_display}
+                      <TableCell className="text-text-subtle text-sm">
+                        {transaction.payment_method_display}
                       </TableCell>
-                      <TableCell>{getStatusBadge(purchase.status)}</TableCell>
+                      <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => viewDetails(purchase)}
+                            onClick={() => viewDetails(transaction)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                      {purchase.status === "completed" && (
-                        <Button variant="ghost" size="icon" title="Download Receipt">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      )}
+                          {transaction.status === "completed" && (
+                            <Button variant="ghost" size="icon" title="Download Receipt">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -343,13 +348,13 @@ const PurchaseHistory = () => {
                 </TableBody>
               </Table>
 
-              {filteredPurchases.length === 0 && !loading && (
+              {filteredTransactions.length === 0 && !isLoading && (
                 <div className="p-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                     <FileText className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-lg font-semibold mb-2">
-                    No purchases found
+                    No transactions found
                   </h3>
                   <p className="text-text-subtle">
                     No transactions match your current filters
@@ -357,51 +362,51 @@ const PurchaseHistory = () => {
                 </div>
               )}
 
-              {loading && (
+              {isLoading && (
                 <div className="p-12 text-center">
                   <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
-                  <p className="text-text-subtle">Loading purchases...</p>
+                  <p className="text-text-subtle">Loading transactions...</p>
                 </div>
               )}
             </Card>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {pagination && pagination.total_pages > 1 && (
               <Card className="p-4 glass">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-text-subtle">
-                    Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} purchases
+                    Showing {(pagination.page - 1) * pagination.page_size + 1} to {Math.min(pagination.page * pagination.page_size, pagination.count)} of {pagination.count} transactions
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || loading}
+                      disabled={pagination.page === 1 || isLoading}
                     >
                       <ChevronLeft className="w-4 h-4 mr-1" />
                       Previous
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
                         let pageNum;
-                        if (totalPages <= 5) {
+                        if (pagination.total_pages <= 5) {
                           pageNum = i + 1;
-                        } else if (currentPage <= 3) {
+                        } else if (pagination.page <= 3) {
                           pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
+                        } else if (pagination.page >= pagination.total_pages - 2) {
+                          pageNum = pagination.total_pages - 4 + i;
                         } else {
-                          pageNum = currentPage - 2 + i;
+                          pageNum = pagination.page - 2 + i;
                         }
 
                         return (
                           <Button
                             key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
+                            variant={pagination.page === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => setCurrentPage(pageNum)}
-                            disabled={loading}
+                            disabled={isLoading}
                             className="w-10"
                           >
                             {pageNum}
@@ -412,8 +417,8 @@ const PurchaseHistory = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages || loading}
+                      onClick={() => setCurrentPage(prev => Math.min(pagination.total_pages, prev + 1))}
+                      disabled={pagination.page === pagination.total_pages || isLoading}
                     >
                       Next
                       <ChevronRight className="w-4 h-4 ml-1" />
@@ -423,55 +428,75 @@ const PurchaseHistory = () => {
               </Card>
             )}
 
-            {/* Purchase Details Sheet */}
+            {/* Transaction Details Sheet */}
             <Sheet open={showDetails} onOpenChange={setShowDetails}>
               <SheetContent className="glass w-full sm:max-w-lg">
                 <SheetHeader>
-                  <SheetTitle className="text-sm sm:text-base">Purchase Details</SheetTitle>
+                  <SheetTitle className="text-sm sm:text-base">Transaction Details</SheetTitle>
                   <SheetDescription className="text-xs sm:text-sm">
-                    Transaction information and timeline
+                    Complete transaction information and timeline
                   </SheetDescription>
                 </SheetHeader>
 
-                {selectedPurchase && (
+                {selectedTransaction && (
                   <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+                    {/* Transaction Type */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm sm:text-base">Transaction Type</h3>
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <span className="text-2xl">{selectedTransaction.icon}</span>
+                        <div>
+                          <p className="font-medium">{selectedTransaction.type_display}</p>
+                          <p className="text-sm text-text-subtle">{selectedTransaction.description}</p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Invoice Info */}
                     <div className="space-y-3">
                       <h3 className="font-semibold text-sm sm:text-base">Invoice Information</h3>
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Invoice No.</span>
-                          <span className="font-mono font-medium">{selectedPurchase.invoice_number}</span>
+                          <span className="font-mono font-medium">{selectedTransaction.invoice_number}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Date</span>
-                          <span>{formatDate(selectedPurchase.created_at)}</span>
+                          <span>{formatDate(selectedTransaction.created_at)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Status</span>
-                          {getStatusBadge(selectedPurchase.status)}
+                          {getStatusBadge(selectedTransaction.status)}
                         </div>
+                        {selectedTransaction.completed_at && (
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">Completed</span>
+                            <span>{formatDate(selectedTransaction.completed_at)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Package Info */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base">Package Details</h3>
-                      <div className="space-y-2 text-xs sm:text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-text-subtle">Package</span>
-                          <span className="font-medium">{selectedPurchase.package_name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-subtle">SMS Credits</span>
-                          <span className="font-medium">{selectedPurchase.credits.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-subtle">Unit Price</span>
-                          <span>TZS {selectedPurchase.unit_price}/SMS</span>
+                    {/* Package/Credits Info */}
+                    {selectedTransaction.credits > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-sm sm:text-base">Credits Information</h3>
+                        <div className="space-y-2 text-xs sm:text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">Package</span>
+                            <span className="font-medium">{selectedTransaction.package_name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">SMS Credits</span>
+                            <span className="font-medium">{selectedTransaction.credits.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">Unit Price</span>
+                            <span>{formatCurrency(selectedTransaction.unit_price, selectedTransaction.currency)}/SMS</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Payment Info */}
                     <div className="space-y-3">
@@ -479,16 +504,12 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Method</span>
-                          <span className="font-medium">{selectedPurchase.payment_method_display}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-text-subtle">Payment Reference</span>
-                          <span className="font-mono text-xs">{selectedPurchase.payment_reference || 'N/A'}</span>
+                          <span className="font-medium">{selectedTransaction.payment_method_display}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            TZS {parseFloat(selectedPurchase.amount).toLocaleString()}
+                            {formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
                           </span>
                         </div>
                       </div>
@@ -496,13 +517,13 @@ const PurchaseHistory = () => {
 
                     {/* Actions */}
                     <div className="space-y-2">
-                      {selectedPurchase.status === "completed" && (
+                      {selectedTransaction.status === "completed" && (
                         <Button variant="outline" className="w-full text-sm">
                           <Download className="w-4 h-4 mr-2" />
                           Download Receipt
                         </Button>
                       )}
-                      {selectedPurchase.status === "pending" && (
+                      {selectedTransaction.status === "pending" && (
                         <Button variant="outline" className="w-full text-sm">
                           Check Payment Status
                         </Button>
