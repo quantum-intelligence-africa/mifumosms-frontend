@@ -157,11 +157,11 @@ const Settings = () => {
 
   // Ensure we stay on the settings page and profile category after successful updates
   useEffect(() => {
-    // This effect ensures we stay on the profile category after updates
-    if (currentCategory === null) {
+    // Only auto-select profile category on desktop, let mobile users choose
+    if (currentCategory === null && !isMobile) {
       setCurrentCategory('profile');
     }
-  }, [currentCategory]);
+  }, [currentCategory, isMobile]);
 
   const apiKeys = [
     {
@@ -917,6 +917,16 @@ const Settings = () => {
                 <div className="flex-1 overflow-hidden">
                   {!currentCategory ? (
                     <div className="space-y-2 sm:space-y-3 overflow-y-auto pb-4 sm:pb-6 h-full">
+                      {/* Mobile Category Selection Header */}
+                      <div className="mb-4">
+                        <h2 className="font-heading text-lg font-semibold text-foreground mb-2">
+                          Choose Settings Category
+                        </h2>
+                        <p className="text-sm text-text-subtle">
+                          Select a category to manage your settings
+                        </p>
+                      </div>
+
                       {settingsCategories.map((category) => (
                         <Card
                           key={category.id}
@@ -945,32 +955,51 @@ const Settings = () => {
                   ) : (
                     <div className="flex flex-col h-full">
                       {/* Category Header */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setCurrentCategory(null)}
-                          className="h-8 w-8"
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                        </Button>
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg ${settingsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
-                            {(() => {
-                              const category = settingsCategories.find(cat => cat.id === currentCategory);
-                              const IconComponent = category?.icon;
-                              return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
-                            })()}
-                          </div>
-                          <div>
-                            <h2 className="font-medium text-foreground text-sm">
-                              {settingsCategories.find(cat => cat.id === currentCategory)?.title}
-                            </h2>
-                            <p className="text-xs text-text-subtle">
-                              {settingsCategories.find(cat => cat.id === currentCategory)?.description}
-                            </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setCurrentCategory(null)}
+                            className="h-8 w-8"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg ${settingsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
+                              {(() => {
+                                const category = settingsCategories.find(cat => cat.id === currentCategory);
+                                const IconComponent = category?.icon;
+                                return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
+                              })()}
+                            </div>
+                            <div>
+                              <h2 className="font-medium text-foreground text-sm">
+                                {settingsCategories.find(cat => cat.id === currentCategory)?.title}
+                              </h2>
+                              <p className="text-xs text-text-subtle">
+                                {settingsCategories.find(cat => cat.id === currentCategory)?.description}
+                              </p>
+                            </div>
                           </div>
                         </div>
+
+                        {/* Quick Category Switcher */}
+                        <Select value={currentCategory || ""} onValueChange={setCurrentCategory}>
+                          <SelectTrigger className="w-32 h-8 text-xs glass-subtle border-0">
+                            <SelectValue placeholder="Switch" />
+                          </SelectTrigger>
+                          <SelectContent className="glass">
+                            {settingsCategories.map((category) => (
+                              <SelectItem key={category.id} value={category.id} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <category.icon className="w-3 h-3" />
+                                  {category.title}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Category Content */}

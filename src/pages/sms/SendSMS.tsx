@@ -11,7 +11,8 @@ import {
   ChevronRight,
   X,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -35,6 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { useSenderNames } from "@/hooks/useSenderNames";
+import { useContactSegments } from "@/hooks/useContactSegments";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -80,16 +82,19 @@ const SendSMS = () => {
   // Load sender names for current user from API (no hardcoding)
   const { senderNames, loading: senderNamesLoading, error: senderNamesError } = useSenderNames();
 
+  // Load real-time contact segment counts
+  const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
+
   // Reduce to approved sender IDs only
   const approvedSenderRequests = useMemo(() => {
     return (senderNames || []).filter((req) => req.status === "approved");
   }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
-    { id: "1", name: "VIP Customers", contact_count: 150 },
-    { id: "2", name: "All Contacts", contact_count: 1240 },
-    { id: "3", name: "Active Users", contact_count: 450 },
-  ], []);
+    { id: "1", name: "VIP Customers", contact_count: segmentCounts.vipContacts },
+    { id: "2", name: "All Contacts", contact_count: segmentCounts.allContacts },
+    { id: "3", name: "Active Users", contact_count: segmentCounts.activeContacts },
+  ], [segmentCounts]);
 
   const messageLength = message.length;
   const segmentCount = Math.ceil(messageLength / 160);
@@ -687,7 +692,18 @@ const SendSMS = () => {
                   {/* Recipients - Segment Mode */}
                   {selectedMode === "segment" && (
                     <div className="space-y-2">
-                      <Label>Select Segment</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Select Segment</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={refreshSegmentCounts}
+                          disabled={segmentCountsLoading}
+                          className="h-8 px-2"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${segmentCountsLoading ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </div>
                       <Select value={selectedSegment} onValueChange={setSelectedSegment}>
                         <SelectTrigger className="glass-subtle border-0">
                           <SelectValue placeholder="Choose a contact segment" />
@@ -700,6 +716,9 @@ const SendSMS = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {segmentCountsLoading && (
+                        <p className="text-sm text-muted-foreground">Loading contact counts...</p>
+                      )}
                     </div>
                   )}
 
