@@ -280,12 +280,17 @@ const Signup = () => {
             </form>
 
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-600">
-                Already have an account?{" "}
-                <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  Sign in
+              <div className="flex items-center justify-center gap-4">
+                <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-xs">
+                  Home
                 </Link>
-              </p>
+                <p className="text-xs text-gray-600">
+                  Already have an account?{" "}
+                  <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
