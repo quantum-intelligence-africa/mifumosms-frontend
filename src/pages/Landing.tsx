@@ -16,7 +16,10 @@ import {
   Zap,
   BarChart3,
   Play,
-  Sparkles
+  Sparkles,
+  Wifi,
+  Network,
+  Activity
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -31,22 +34,12 @@ const Landing = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
-  // Background slides with company colors
+  // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
     {
       gradient: "from-blue-600 via-blue-700 to-blue-800",
       overlay: "from-blue-900/20 via-blue-800/30 to-blue-900/40",
       accent: "blue"
-    },
-    {
-      gradient: "from-yellow-400 via-yellow-500 to-yellow-600",
-      overlay: "from-yellow-900/20 via-yellow-800/30 to-yellow-900/40",
-      accent: "yellow"
-    },
-    {
-      gradient: "from-white via-gray-100 to-gray-200",
-      overlay: "from-gray-900/20 via-gray-800/30 to-gray-900/40",
-      accent: "white"
     }
   ];
 
@@ -66,13 +59,13 @@ const Landing = () => {
     return () => clearInterval(interval);
   }, [messages.length]);
 
-  // Cycle through background slides
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % backgroundSlides.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [backgroundSlides.length]);
+  // No need to cycle through background slides since we only have blue
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setCurrentSlide((prev) => (prev + 1) % backgroundSlides.length);
+  //   }, 5000);
+  //   return () => clearInterval(interval);
+  // }, [backgroundSlides.length]);
 
   type Tier = { name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = useMemo(() => [
@@ -108,25 +101,71 @@ const Landing = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Sliding Background Component
+  // Sliding Background Component - Static blue background with flowing animations
   const SlidingBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden">
-        {backgroundSlides.map((slide, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 bg-gradient-to-br ${slide.gradient} transition-all duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-            }`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${slide.overlay}`} />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-blue-800/30 to-blue-900/40" />
+
             {/* Animated geometric shapes */}
             <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full animate-pulse" />
             <div className="absolute top-40 right-20 w-24 h-24 bg-white/5 rounded-lg rotate-45 animate-bounce" />
             <div className="absolute bottom-32 left-1/4 w-16 h-16 bg-white/10 rounded-full animate-ping" />
             <div className="absolute bottom-20 right-1/3 w-20 h-20 bg-white/5 rounded-lg rotate-12 animate-pulse" />
+
+          {/* Flowing SMS/Chat Icons */}
+          <div className="absolute top-20 left-10 w-12 h-12 text-white float-animation">
+            <MessageSquare className="w-full h-full" />
           </div>
-        ))}
+          <div className="absolute top-40 right-20 w-10 h-10 text-white drift-animation">
+            <Send className="w-full h-full" />
+          </div>
+          <div className="absolute bottom-32 left-1/4 w-14 h-14 text-white animate-ping glow-animation" style={{animationDuration: '4s'}}>
+            <MessageSquare className="w-full h-full" />
+          </div>
+          <div className="absolute bottom-20 right-1/3 w-11 h-11 text-white float-animation" style={{animationDelay: '1s'}}>
+            <Send className="w-full h-full" />
+          </div>
+
+          {/* Additional flowing SMS icons with staggered animations */}
+          <div className="absolute top-1/3 left-1/3 w-8 h-8 text-white drift-animation" style={{animationDelay: '2s'}}>
+            <MessageSquare className="w-full h-full" />
+          </div>
+          <div className="absolute top-2/3 right-1/4 w-9 h-9 text-white float-animation" style={{animationDelay: '0.5s'}}>
+            <Send className="w-full h-full" />
+          </div>
+          <div className="absolute bottom-1/3 left-1/2 w-7 h-7 text-white animate-pulse glow-animation" style={{animationDelay: '0.5s', animationDuration: '3.5s'}}>
+            <MessageSquare className="w-full h-full" />
+          </div>
+
+          {/* More SMS icons for better coverage */}
+          <div className="absolute top-1/6 right-1/6 w-6 h-6 text-white drift-animation" style={{animationDelay: '1.8s'}}>
+            <Send className="w-full h-full" />
+          </div>
+          <div className="absolute bottom-1/6 left-1/6 w-8 h-8 text-white float-animation" style={{animationDelay: '0.3s'}}>
+            <MessageSquare className="w-full h-full" />
+          </div>
+          <div className="absolute top-5/6 right-1/2 w-7 h-7 text-white drift-animation" style={{animationDelay: '2.3s'}}>
+            <Send className="w-full h-full" />
+          </div>
+
+
+          {/* Connection Lines/Dots */}
+          <div className="absolute top-1/3 right-1/3 w-4 h-4 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '1.5s'}} />
+          <div className="absolute bottom-1/3 left-1/3 w-5 h-5 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '2.5s'}} />
+          <div className="absolute top-2/3 left-2/3 w-3 h-3 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '0.8s'}} />
+
+          {/* Floating SMS bubbles */}
+          <div className="absolute top-1/4 right-1/3 w-5 h-5 bg-white rounded-full animate-bounce glow-animation" style={{animationDelay: '1.5s'}} />
+          <div className="absolute bottom-1/4 left-1/5 w-4 h-4 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '2.5s'}} />
+          <div className="absolute top-3/4 left-2/3 w-6 h-6 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '0.8s'}} />
+
+          {/* Additional floating elements */}
+          <div className="absolute top-1/2 left-1/4 w-3 h-3 bg-white rounded-full animate-bounce glow-animation" style={{animationDelay: '3.2s'}} />
+          <div className="absolute bottom-1/2 right-1/4 w-4 h-4 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '1.8s'}} />
+          <div className="absolute top-1/6 left-1/2 w-2 h-2 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '2.2s'}} />
+        </div>
       </div>
     );
   };
@@ -211,11 +250,11 @@ const Landing = () => {
           <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-white rounded-full"></div>
         </div>
 
-        {/* Floating notification icons */}
-        <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center animate-bounce shadow-lg">
+        {/* Floating notification icons - Static */}
+        <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg">
           <Send className="w-4 h-4 text-white" />
         </div>
-        <div className="absolute -bottom-2 -left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-pulse shadow-lg">
+        <div className="absolute -bottom-2 -left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
           <MessageSquare className="w-3 h-3 text-white" />
         </div>
       </div>
@@ -304,6 +343,63 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Custom CSS for flowing animations */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(0px) rotate(0deg) scale(1);
+              filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
+            }
+            50% {
+              transform: translateY(-30px) rotate(10deg) scale(1.1);
+              filter: drop-shadow(0 0 15px rgba(255,255,255,1));
+            }
+          }
+          @keyframes drift {
+            0% {
+              transform: translateX(0px) translateY(0px) rotate(0deg) scale(1);
+              filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+            }
+            25% {
+              transform: translateX(20px) translateY(-15px) rotate(5deg) scale(1.05);
+              filter: drop-shadow(0 0 12px rgba(255,255,255,0.8));
+            }
+            50% {
+              transform: translateX(-10px) translateY(-30px) rotate(-5deg) scale(1.1);
+              filter: drop-shadow(0 0 18px rgba(255,255,255,1));
+            }
+            75% {
+              transform: translateX(-20px) translateY(-10px) rotate(3deg) scale(1.05);
+              filter: drop-shadow(0 0 12px rgba(255,255,255,0.8));
+            }
+            100% {
+              transform: translateX(0px) translateY(0px) rotate(0deg) scale(1);
+              filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+            }
+          }
+          @keyframes glow {
+            0%, 100% {
+              filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
+              opacity: 0.8;
+            }
+            50% {
+              filter: drop-shadow(0 0 30px rgba(255,255,255,1));
+              opacity: 1;
+            }
+          }
+          .float-animation {
+            animation: float 4s ease-in-out infinite;
+          }
+          .drift-animation {
+            animation: drift 6s ease-in-out infinite;
+          }
+          .glow-animation {
+            animation: glow 2s ease-in-out infinite;
+          }
+        `
+      }} />
+
       {/* Sliding Background */}
       <SlidingBackground />
 
@@ -402,7 +498,7 @@ const Landing = () => {
 
           {/* SMS Animation - Enhanced for mobile */}
           <div className="flex justify-center lg:justify-end mt-8 lg:mt-0">
-            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right animate-float">
+            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right">
             <SMSAnimation />
             </div>
           </div>

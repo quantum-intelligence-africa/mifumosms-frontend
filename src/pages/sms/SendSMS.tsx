@@ -693,7 +693,7 @@ const SendSMS = () => {
                   {selectedMode === "segment" && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Select Segment</Label>
+                      <Label>Select Segment</Label>
                         <Button
                           variant="ghost"
                           size="sm"
