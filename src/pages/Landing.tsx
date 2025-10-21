@@ -577,8 +577,8 @@ const Landing = () => {
             {pricing.map((plan, index) => (
               <div key={index} className="relative group">
                 {plan.popular && (
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-10">
-                    <Badge className="px-6 py-2.5 text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
+                  <div className="absolute -top-6 sm:-top-7 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10">
+                    <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 text-xs sm:text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
                     Most Popular
                   </Badge>
                   </div>
