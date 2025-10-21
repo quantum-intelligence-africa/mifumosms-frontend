@@ -446,14 +446,13 @@ const Landing = () => {
 
             <div className="space-y-4 sm:space-y-6 md:space-y-8">
               <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight animate-fade-in-up">
-                Connect with Customers
+                Sell more
                 <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
-                  Across Africa
+                  Spend less
                 </span>
               </h1>
               <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-                Reach millions of customers via WhatsApp and SMS. Built specifically for African businesses
-                with multi-language support and local payment integration.
+              Automate customers outreach on WhatsApp and SMS, that drives replies, repeat purchases, and track every conversation back to revenue.
               </p>
             </div>
 
@@ -475,7 +474,7 @@ const Landing = () => {
                 className="text-sm sm:text-base lg:text-lg h-10 sm:h-12 lg:h-14 px-6 sm:px-8 w-full sm:w-auto border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105 group"
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                Watch Demo
+                Watch 60-sec Demo
               </Button>
             </div>
 
