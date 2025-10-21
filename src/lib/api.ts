@@ -982,6 +982,7 @@ class ApiClient {
     search?: string;
     is_active?: boolean;
     is_opted_in?: boolean;
+    tags?: string[];
     page?: number;
     page_size?: number;
   }): Promise<ApiResponse<{ results: Contact[]; count: number; next?: string; previous?: string }>> {
@@ -989,6 +990,9 @@ class ApiClient {
     if (params?.search) queryParams.append('search', params.search);
     if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
     if (params?.is_opted_in !== undefined) queryParams.append('is_opted_in', params.is_opted_in.toString());
+    if (params?.tags && params.tags.length > 0) {
+      params.tags.forEach(tag => queryParams.append('tags', tag));
+    }
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 

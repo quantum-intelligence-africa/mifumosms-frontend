@@ -43,26 +43,32 @@ export const useContactSegments = () => {
 			setIsLoading(true);
 			setError(null);
 
-			// Fetch all contacts count
+			// Fetch all contacts to calculate segment counts
 			const allContactsResponse = await apiClient.getContacts();
-			const allContactsCount = allContactsResponse.success && allContactsResponse.data
-				? allContactsResponse.data.count || 0
-				: 0;
 
-			// Fetch VIP contacts count (contacts with 'vip' tag)
-			// Note: The API may not support tags param yet
-			const vipContactsResponse = await apiClient.getContacts({});
-			const vipContactsCount = vipContactsResponse.success && vipContactsResponse.data
-				? vipContactsResponse.data.count || 0
-				: 0;
+			if (!allContactsResponse.success || !allContactsResponse.data) {
+				throw new Error('Failed to fetch contacts');
+			}
 
-			// Fetch active contacts count (is_active: true)
-			const activeContactsResponse = await apiClient.getContacts({
-				is_active: true
-			});
-			const activeContactsCount = activeContactsResponse.success && activeContactsResponse.data
-				? activeContactsResponse.data.count || 0
-				: 0;
+			const allContacts = allContactsResponse.data.results || [];
+			const allContactsCount = allContactsResponse.data.count || allContacts.length;
+
+			// Calculate VIP contacts count by filtering on frontend
+			// (Backend may not support tags filtering yet)
+			const vipContactsCount = allContacts.filter(contact =>
+				contact.tags && contact.tags.includes('vip')
+			).length;
+
+			// If no VIP contacts found, log a warning for debugging
+			if (vipContactsCount === 0) {
+				console.warn('No VIP contacts found. Make sure some contacts have "vip" tag assigned.');
+				console.log('Available tags in contacts:', [...new Set(allContacts.flatMap(c => c.tags || []))]);
+			}
+
+			// Calculate active contacts count by filtering on frontend
+			const activeContactsCount = allContacts.filter(contact =>
+				contact.is_active === true
+			).length;
 
 			const newCounts = {
 				allContacts: allContactsCount,
@@ -70,7 +76,25 @@ export const useContactSegments = () => {
 				activeContacts: activeContactsCount,
 			};
 
-			console.log('Contact segment counts fetched:', newCounts);
+			console.log('Contact segment counts calculated:', newCounts);
+
+			// Debug: Log all contacts and their tags
+			console.log('All contacts:', allContacts.length);
+			console.log('Sample contacts with tags:', allContacts.slice(0, 3).map(c => ({
+				name: c.name,
+				tags: c.tags,
+				hasVipTag: c.tags && c.tags.includes('vip')
+			})));
+
+			const vipContacts = allContacts.filter(contact =>
+				contact.tags && contact.tags.includes('vip')
+			);
+			console.log('VIP contacts found:', vipContacts.length);
+			console.log('VIP contacts details:', vipContacts.map(c => ({
+				name: c.name,
+				tags: c.tags
+			})));
+
 			setSegmentCounts(newCounts);
 
 		} catch (error) {

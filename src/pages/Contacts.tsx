@@ -1020,6 +1020,21 @@ const Contacts = () => {
                                         </span>
                                       )}
                                     </div>
+                                    {/* Tags for mobile view */}
+                                    {contact.tags.length > 0 && (
+                                      <div className="flex gap-1 flex-wrap mt-1 sm:hidden">
+                                        {contact.tags.slice(0, 3).map((tag) => (
+                                          <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
+                                            {tag}
+                                          </Badge>
+                                        ))}
+                                        {contact.tags.length > 3 && (
+                                          <Badge variant="outline" className="text-xs px-1 py-0">
+                                            +{contact.tags.length - 3}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </TableCell>

@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
+import { useContacts } from "@/hooks/useContacts";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -61,6 +62,8 @@ const SendSMS = () => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
+  const [segmentContacts, setSegmentContacts] = useState<any[]>([]);
+  const [isLoadingSegmentContacts, setIsLoadingSegmentContacts] = useState(false);
 
   // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
   const normalizeToApi = (input: string): string | null => {
@@ -84,6 +87,7 @@ const SendSMS = () => {
 
   // Load real-time contact segment counts
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
+  const { fetchContacts } = useContacts();
 
   // Reduce to approved sender IDs only
   const approvedSenderRequests = useMemo(() => {
@@ -96,6 +100,56 @@ const SendSMS = () => {
     { id: "3", name: "Active Users", contact_count: segmentCounts.activeContacts },
   ], [segmentCounts]);
 
+  // Function to fetch contacts by segment
+  const fetchContactsBySegment = async (segmentId: string) => {
+    setIsLoadingSegmentContacts(true);
+    try {
+      // Fetch all contacts first, then filter on frontend
+      // (Backend may not support advanced filtering yet)
+      const response = await apiClient.getContacts();
+
+      if (!response.success || !response.data) {
+        throw new Error('Failed to fetch contacts');
+      }
+
+      const allContacts = response.data.results || [];
+      let filteredContacts = [];
+
+      switch (segmentId) {
+        case "1": // VIP Customers
+          filteredContacts = allContacts.filter(contact =>
+            contact.tags && contact.tags.includes('vip')
+          );
+          console.log('VIP contacts filtered:', filteredContacts);
+          break;
+        case "2": // All Contacts
+          filteredContacts = allContacts;
+          break;
+        case "3": // Active Users
+          filteredContacts = allContacts.filter(contact =>
+            contact.is_active === true
+          );
+          break;
+        default:
+          filteredContacts = allContacts;
+      }
+
+      setSegmentContacts(filteredContacts);
+      console.log(`Segment ${segmentId} contacts loaded:`, filteredContacts.length);
+
+    } catch (error) {
+      console.error('Error fetching segment contacts:', error);
+      setSegmentContacts([]);
+      toast({
+        title: "Error loading contacts",
+        description: "Failed to fetch contacts for the selected segment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSegmentContacts(false);
+    }
+  };
+
   const messageLength = message.length;
   const segmentCount = Math.ceil(messageLength / 160);
   const costPerSMS = 25; // TZS
@@ -105,13 +159,20 @@ const SendSMS = () => {
     if (selectedMode === "single") return recipients.length;
     if (selectedMode === "bulk") return recipients.length;
     if (selectedMode === "segment" && selectedSegment) {
-      const selectedSegmentData = segments.find(s => s.id === selectedSegment);
-      return selectedSegmentData?.contact_count || 0;
+      // Use actual loaded contacts count instead of segment count
+      return segmentContacts.length;
     }
     return 0;
   };
 
   const estimatedCost = getRecipientCount() * segmentCount * costPerSMS;
+
+  // Fetch contacts when segment is selected
+  useEffect(() => {
+    if (selectedMode === "segment" && selectedSegment) {
+      fetchContactsBySegment(selectedSegment);
+    }
+  }, [selectedMode, selectedSegment]);
 
   const location = useLocation();
 
@@ -227,11 +288,23 @@ const SendSMS = () => {
       if (selectedMode === "single" || selectedMode === "bulk") {
         targetRecipients = recipients;
       } else if (selectedMode === "segment") {
-        // For demo purposes, generate mock phone numbers based on segment count
-        const selectedSegmentData = segments.find(s => s.id === selectedSegment);
-        if (selectedSegmentData) {
-          // Generate mock 12-digit TZ numbers without plus, starting with 255
-          targetRecipients = Array.from({ length: selectedSegmentData.contact_count }, (_, i) => `255700000${String(i).padStart(3, '0')}`);
+        // Use actual contacts from the selected segment
+        if (segmentContacts.length > 0) {
+          targetRecipients = segmentContacts.map(contact => {
+            // Convert E.164 format to API format (remove + and ensure 12 digits)
+            let phone = contact.phone_e164;
+            if (phone.startsWith('+')) {
+              phone = phone.substring(1);
+            }
+            if (phone.startsWith('255') && phone.length === 12) {
+              return phone;
+            }
+            // If it's in local format, convert it
+            if (phone.startsWith('0') && phone.length === 10) {
+              return `255${phone.substring(1)}`;
+            }
+            return phone;
+          });
         }
       }
 
@@ -738,6 +811,36 @@ const SendSMS = () => {
                       </Select>
                       {segmentCountsLoading && (
                         <p className="text-sm text-muted-foreground">Loading contact counts...</p>
+                      )}
+                      {selectedSegment && (
+                        <div className="space-y-2">
+                          {isLoadingSegmentContacts ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Loading contacts...
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              {segmentContacts.length} contacts loaded
+                            </div>
+                          )}
+                          {segmentContacts.length > 0 && (
+                            <div className="max-h-32 overflow-y-auto border rounded-lg p-3 bg-muted/30">
+                              <div className="flex flex-wrap gap-1">
+                                {segmentContacts.slice(0, 20).map((contact) => (
+                                  <Badge key={contact.id} variant="secondary" className="text-xs">
+                                    {contact.name} - {contact.phone_e164}
+                                  </Badge>
+                                ))}
+                                {segmentContacts.length > 20 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{segmentContacts.length - 20} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
