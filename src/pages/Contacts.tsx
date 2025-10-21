@@ -92,8 +92,10 @@ const Contacts = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isCSVImportDialogOpen, setIsCSVImportDialogOpen] = useState(false);
+  const [isMobileImportHelpOpen, setIsMobileImportHelpOpen] = useState(false);
   const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
   const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
+  const [isContactsAPISupported, setIsContactsAPISupported] = useState<boolean | null>(null);
   const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
     name: "",
     phone_e164: "",
@@ -199,6 +201,22 @@ const Contacts = () => {
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+
+  // Check for Contacts API support
+  useEffect(() => {
+    if (isMobile) {
+      const navWithContacts = navigator as Navigator & {
+        contacts?: {
+          select: (fields: string[], options: { multiple: boolean }) => Promise<Array<{
+            name?: string[];
+            phone?: string[];
+            email?: string[];
+          }>>;
+        };
+      };
+      setIsContactsAPISupported(!!navWithContacts.contacts);
+    }
+  }, [isMobile]);
 
   // Get all unique tags from contacts
   const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
@@ -453,6 +471,23 @@ const Contacts = () => {
 
   // Mobile contact import functions
   const handleMobileContactImport = async () => {
+    // Check if we're on a mobile device
+    if (!isMobile) {
+      toast({
+        title: "Mobile Only Feature",
+        description: "Contact import from device is only available on mobile devices. Please use CSV upload or manual entry on desktop.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Show help dialog first
+    setIsMobileImportHelpOpen(true);
+  };
+
+  const handleMobileContactImportConfirm = async () => {
+    setIsMobileImportHelpOpen(false);
+
     // Check if Navigator Contacts API is available
     const navWithContacts = navigator as Navigator & {
       contacts?: {
@@ -465,42 +500,93 @@ const Contacts = () => {
     };
 
     if (!navWithContacts.contacts) {
+      // Show alternative options
       toast({
         title: "Contact Import Options",
-        description: "Direct contact import is not supported on this device. You can use CSV upload or manual entry instead.",
+        description: "Direct contact access is not supported on this device. You can use CSV upload or manual entry instead.",
         variant: "destructive"
       });
+
+      // Show a dialog with alternative options
+      setTimeout(() => {
+        setIsCSVImportDialogOpen(true);
+      }, 2000);
       return;
     }
 
     try {
       setIsImporting(true);
 
-      // Use a more compatible approach for contact selection
+      // Request permission and import contacts
       const contacts = await navWithContacts.contacts.select(['name', 'phone', 'email'], {
         multiple: true
       });
 
-      const formattedContacts: CreateContactRequest[] = contacts.map(contact => ({
-        name: contact.name?.[0] || '',
-        phone_e164: convertToE164(contact.phone?.[0] || ''),
-        email: contact.email?.[0] || '',
-        tags: [],
-        attributes: {}
-      }));
+      if (!contacts || contacts.length === 0) {
+        toast({
+          title: "No contacts selected",
+          description: "No contacts were selected for import. Please try again and select contacts to import.",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      setImportedContacts(formattedContacts);
+      // Filter and format contacts - only include those with name and phone
+      const validContacts = contacts
+        .filter(contact => {
+          const hasName = contact.name && contact.name.length > 0 && contact.name[0].trim();
+          const hasPhone = contact.phone && contact.phone.length > 0 && contact.phone[0].trim();
+          return hasName && hasPhone;
+        })
+        .map(contact => {
+          const name = contact.name?.[0]?.trim() || '';
+          const phone = contact.phone?.[0]?.trim() || '';
+          const email = contact.email?.[0]?.trim() || '';
+
+          return {
+            name,
+            phone_e164: convertToE164(phone),
+            email,
+            tags: [],
+            attributes: {}
+          } as CreateContactRequest;
+        });
+
+      if (validContacts.length === 0) {
+        toast({
+          title: "No valid contacts found",
+          description: "Selected contacts must have both name and phone number. Please select contacts with complete information.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setImportedContacts(validContacts);
       setIsImportDialogOpen(true);
 
       toast({
-        title: "Contacts imported",
-        description: `Successfully imported ${formattedContacts.length} contacts from your device.`,
+        title: "Contacts imported successfully",
+        description: `Successfully imported ${validContacts.length} contacts from your device. Review and confirm to add them to your contact list.`,
       });
     } catch (error) {
       console.error('Contact import error:', error);
+
+      // Provide more specific error messages
+      let errorMessage = "Failed to import contacts from your device.";
+
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError' || error.message.includes('permission')) {
+          errorMessage = "Permission denied. Please allow access to your contacts and try again.";
+        } else if (error.name === 'AbortError') {
+          errorMessage = "Contact selection was cancelled.";
+        } else if (error.message.includes('not supported')) {
+          errorMessage = "Contact access is not supported on this device. Please use CSV upload or manual entry instead.";
+        }
+      }
+
       toast({
         title: "Import failed",
-        description: "Failed to import contacts from your device. Please try CSV upload or manual entry instead.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -512,7 +598,7 @@ const Contacts = () => {
     if (!navigator.share) {
       toast({
         title: "Not supported",
-        description: "Web Share API is not supported on this device.",
+        description: "Web Share API is not supported on this device. Please use CSV upload or manual entry instead.",
         variant: "destructive"
       });
       return;
@@ -520,19 +606,30 @@ const Contacts = () => {
 
     try {
       await navigator.share({
-        title: 'Import Contacts',
-        text: 'Please share your contacts to import them into Mifumo Connect',
+        title: 'Import Contacts to Mifumo Connect',
+        text: 'Please share your contacts to import them into Mifumo Connect. You can export your contacts from your phone\'s contact app and share them here.',
         url: window.location.href
       });
     } catch (error) {
       if (error.name !== 'AbortError') {
         toast({
           title: "Share failed",
-          description: "Failed to share contacts. Please try again.",
+          description: "Failed to share contacts. Please try again or use CSV upload instead.",
           variant: "destructive"
         });
       }
     }
+  };
+
+  const handleAlternativeImport = () => {
+    // Show options for alternative import methods
+    toast({
+      title: "Alternative Import Methods",
+      description: "Choose CSV upload or manual entry to add your contacts.",
+    });
+    setTimeout(() => {
+      setIsCSVImportDialogOpen(true);
+    }, 1000);
   };
 
   const handleQRCodeImport = () => {
@@ -660,18 +757,24 @@ const Contacts = () => {
                   {/* Mobile Contact Import Button */}
                   {isMobile && (
                     <Button
-                      variant="outline"
+                      variant={isContactsAPISupported === false ? "outline" : "default"}
                       size="sm"
                       onClick={handleMobileContactImport}
                       disabled={isImporting}
-                      className="glass-subtle border-0 text-xs h-7 sm:h-8"
+                      className={`text-xs h-7 sm:h-8 shadow-sm ${
+                        isContactsAPISupported === false
+                          ? "glass-subtle border-0"
+                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      }`}
                     >
                       {isImporting ? (
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                       ) : (
                         <Smartphone className="w-3 h-3 mr-1" />
                       )}
-                      <span className="hidden sm:inline">Import from Phone</span>
+                      <span className="hidden sm:inline">
+                        {isContactsAPISupported === false ? "Import Contacts" : "Import from Phone"}
+                      </span>
                       <span className="sm:hidden">Phone</span>
                     </Button>
                   )}
@@ -1322,6 +1425,126 @@ const Contacts = () => {
         onImport={handleCSVImport}
         isImporting={isCreating}
       />
+
+      {/* Mobile Import Help Dialog */}
+      <Dialog open={isMobileImportHelpOpen} onOpenChange={setIsMobileImportHelpOpen}>
+        <DialogContent className="glass max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-primary" />
+              Import Contacts from Phone
+            </DialogTitle>
+            <DialogDescription>
+              Access your phone's contact list to quickly import contacts
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {isContactsAPISupported === false ? (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-amber-600 dark:text-amber-400">⚠️ Direct Contact Access Not Available</h4>
+                <div className="space-y-2 text-sm text-text-subtle">
+                  <p>Your browser doesn't support direct contact access. Don't worry! You can still import your contacts using these methods:</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">1</div>
+                      <p>Export contacts from your phone's contact app as CSV</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">2</div>
+                      <p>Use the CSV upload feature below</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">3</div>
+                      <p>Or add contacts manually one by one</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">How it works:</h4>
+                <div className="space-y-2 text-sm text-text-subtle">
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
+                    <p>Tap "Continue" to access your phone's contact list</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
+                    <p>Select the contacts you want to import (name and phone required)</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
+                    <p>Review and confirm to add them to your contact list</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 bg-muted/30 rounded-lg">
+              <p className="text-xs text-text-subtle">
+                <strong>Note:</strong> Only contacts with both name and phone number will be imported.
+                Your contacts remain private and are only stored in your Mifumo Connect account.
+              </p>
+            </div>
+
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>Alternative:</strong> If direct access doesn't work, you can export your contacts
+                from your phone's contact app and use CSV upload instead.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsMobileImportHelpOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              {isContactsAPISupported === false ? (
+                <Button
+                  onClick={handleAlternativeImport}
+                  className="flex-1"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Use CSV Upload
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleMobileContactImportConfirm}
+                  disabled={isImporting}
+                  className="flex-1"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Accessing...
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone className="w-4 h-4 mr-2" />
+                      Continue
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleAlternativeImport}
+              className="w-full"
+              size="sm"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Use CSV Upload Instead
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
