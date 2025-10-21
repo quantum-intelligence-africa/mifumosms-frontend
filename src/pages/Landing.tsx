@@ -560,10 +560,7 @@ const Landing = () => {
       <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium mb-4">
-              <Star className="w-3 h-3" />
-              <span>Transparent Pricing</span>
-            </div>
+
             <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
               Simple, transparent
               <span className="block bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">
@@ -654,10 +651,7 @@ const Landing = () => {
       <section className="py-12 sm:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-4">
-              <Zap className="w-4 h-4" />
-              <span>Custom Calculator</span>
-            </div>
+
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
               Calculate Your
               <span className="block bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
@@ -775,10 +769,6 @@ const Landing = () => {
         </div>
 
         <div className="max-w-3xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-medium mb-4">
-            <Sparkles className="w-3 h-3 text-yellow-300" />
-            <span>Ready to get started?</span>
-          </div>
 
           <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
             Ready to transform your
