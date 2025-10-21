@@ -73,7 +73,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useContacts } from "@/hooks/useContacts";
 import { useToast } from "@/hooks/use-toast";
-import { Contact, CreateContactRequest } from "@/lib/api";
+import { Contact, CreateContactRequest, ImportContactsRequest } from "@/lib/api";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { convertToE164, formatPhoneForDisplay, isValidE164, getPhonePlaceholder } from "@/utils/phoneUtils";
 import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
@@ -185,7 +185,8 @@ const Contacts = () => {
     createContact,
     updateContact,
     deleteContact,
-    bulkImportContacts
+    bulkImportContacts,
+    importContacts
   } = useContacts();
 
   const location = useLocation();
@@ -580,34 +581,22 @@ const Contacts = () => {
 
     try {
       setIsCreating(true);
-      let successCount = 0;
-      let errorCount = 0;
 
-      for (const contact of importedContacts) {
-        try {
-          const contactWithConvertedPhone = {
-            ...contact,
-            phone_e164: convertToE164(contact.phone_e164)
-          };
-          await createContact(contactWithConvertedPhone);
-          successCount++;
-        } catch (error) {
-          errorCount++;
-        }
+      // Use the new import API endpoint
+      const success = await importContacts({ contacts: importedContacts });
+
+      if (success) {
+        setImportedContacts([]);
+        setIsImportDialogOpen(false);
+        // fetchContacts() is already called in the hook
+      } else {
+        throw new Error('Import failed');
       }
-
-      toast({
-        title: "Bulk import completed",
-        description: `Successfully imported ${successCount} contacts. ${errorCount} failed.`,
-      });
-
-      setImportedContacts([]);
-      setIsImportDialogOpen(false);
-      fetchContacts();
     } catch (error) {
+      console.error('Bulk import error:', error);
       toast({
         title: "Bulk import failed",
-        description: "Failed to import contacts. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to import contacts. Please try again.",
         variant: "destructive"
       });
     } finally {

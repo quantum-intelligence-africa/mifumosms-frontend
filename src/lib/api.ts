@@ -101,6 +101,19 @@ export interface CreateContactRequest {
   attributes?: Record<string, unknown>;
 }
 
+export interface ImportContactsRequest {
+  contacts: CreateContactRequest[];
+}
+
+export interface ImportContactsResponse {
+  imported_count: number;
+  failed_count: number;
+  errors?: Array<{
+    contact: CreateContactRequest;
+    error: string;
+  }>;
+}
+
 // Segment Types
 export interface Segment {
   id: string;
@@ -1015,6 +1028,13 @@ class ApiClient {
       method: 'POST',
       headers: {}, // Don't set Content-Type for FormData
       body: formData,
+    });
+  }
+
+  async importContacts(contactsData: ImportContactsRequest): Promise<ApiResponse<ImportContactsResponse>> {
+    return this.request<ImportContactsResponse>('/messaging/contacts/import/', {
+      method: 'POST',
+      body: JSON.stringify(contactsData),
     });
   }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
-import { apiClient, Contact, CreateContactRequest } from '@/lib/api';
+import { apiClient, Contact, CreateContactRequest, ImportContactsRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from '@/contexts/AuthContext';
 
@@ -240,6 +240,38 @@ export const useContacts = () => {
     }
   };
 
+  const importContacts = async (contactsData: ImportContactsRequest): Promise<boolean> => {
+    try {
+      const response = await apiClient.importContacts(contactsData);
+
+      if (response.success && response.data) {
+        const { imported_count, failed_count } = response.data;
+
+        await fetchContacts(); // Refresh the contacts list
+
+        toast({
+          title: "Contacts imported",
+          description: `Successfully imported ${imported_count} contacts. ${failed_count} failed.`,
+        });
+        return true;
+      } else {
+        toast({
+          title: "Import failed",
+          description: response.error || 'Please try again',
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: "Network error occurred",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
@@ -259,6 +291,7 @@ export const useContacts = () => {
     updateContact,
     deleteContact,
     bulkImportContacts,
+    importContacts,
     refetch: fetchContacts,
     refreshData,
   };
