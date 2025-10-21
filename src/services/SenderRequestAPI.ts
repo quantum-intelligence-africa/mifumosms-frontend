@@ -80,7 +80,8 @@ class SenderRequestAPI {
 	// Get sender request statistics
 	async getStats(): Promise<ApiResponse<SenderNameStats>> {
 		try {
-			const response = await fetch(`${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.STATS}`, {
+			const statsUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}stats/`;
+			const response = await fetch(statsUrl, {
 				method: 'GET',
 				headers: this.getHeaders()
 			});
@@ -115,9 +116,10 @@ class SenderRequestAPI {
 			if (params.page) queryString.append('page', params.page.toString());
 			if (params.page_size) queryString.append('page_size', params.page_size.toString());
 
+			const listUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}`;
 			const url = queryString.toString()
-				? `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.LIST}?${queryString.toString()}`
-				: `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.LIST}`;
+				? `${listUrl}?${queryString.toString()}`
+				: listUrl;
 
 			console.log('Making request to:', url);
 			console.log('Headers:', this.getHeaders());
@@ -160,7 +162,8 @@ class SenderRequestAPI {
 				});
 			}
 
-			const response = await fetch(`${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.SUBMIT}`, {
+			const submitUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}`;
+			const response = await fetch(submitUrl, {
 				method: 'POST',
 				headers: this.getHeaders(false), // Don't include Content-Type for FormData
 				body: formData
@@ -180,7 +183,8 @@ class SenderRequestAPI {
 	// Get request details
 	async getRequestDetails(requestId: string): Promise<ApiResponse<SenderNameRequest>> {
 		try {
-			const response = await fetch(`${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.DETAIL(requestId)}`, {
+			const detailUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}${requestId}/`;
+			const response = await fetch(detailUrl, {
 				method: 'GET',
 				headers: this.getHeaders()
 			});
@@ -211,7 +215,8 @@ class SenderRequestAPI {
 				});
 			}
 
-			const response = await fetch(`${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.UPDATE(requestId)}`, {
+			const updateUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}${requestId}/`;
+			const response = await fetch(updateUrl, {
 				method: 'PUT',
 				headers: this.getHeaders(false), // Don't include Content-Type for FormData
 				body: formData
@@ -231,7 +236,8 @@ class SenderRequestAPI {
 	// Delete request
 	async deleteRequest(requestId: string): Promise<ApiResponse> {
 		try {
-			const response = await fetch(`${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_REQUESTS.DELETE(requestId)}`, {
+			const deleteUrl = `${this.baseURL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.BASE}${requestId}/`;
+			const response = await fetch(deleteUrl, {
 				method: 'DELETE',
 				headers: this.getHeaders()
 			});

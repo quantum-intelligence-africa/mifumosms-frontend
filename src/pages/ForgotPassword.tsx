@@ -21,10 +21,7 @@ const ForgotPassword = () => {
 
     try {
       // Call the password reset API endpoint
-      const response = await apiClient.request('/auth/password/reset/', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      });
+      const response = await apiClient.requestPasswordReset(email);
 
       if (response.success) {
         setIsEmailSent(true);

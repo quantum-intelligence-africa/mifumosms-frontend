@@ -591,9 +591,8 @@ const Templates = () => {
 
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
-                  className="flex-1"
+                  className="flex-1 text-xs"
                   size="sm"
-                  className="text-xs"
                   onClick={() => handleEditTemplate(selectedTemplate)}
                 >
                   <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />

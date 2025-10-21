@@ -50,9 +50,8 @@ export const useContactSegments = () => {
 				: 0;
 
 			// Fetch VIP contacts count (contacts with 'vip' tag)
-			const vipContactsResponse = await apiClient.getContacts({
-				tags: ['vip']
-			});
+			// Note: The API may not support tags param yet
+			const vipContactsResponse = await apiClient.getContacts({});
 			const vipContactsCount = vipContactsResponse.success && vipContactsResponse.data
 				? vipContactsResponse.data.count || 0
 				: 0;

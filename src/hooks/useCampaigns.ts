@@ -90,7 +90,18 @@ export const useCampaigns = () => {
       const response = await apiClient.getCampaigns(params);
 
       if (response.success && response.data) {
-        setCampaigns(response.data.results);
+        const results = response.data.results || [];
+        // Map API response to match expected campaign type
+        const mappedCampaigns = results.map((campaign: any) => ({
+          ...campaign,
+          can_view_analytics: campaign.can_view_analytics ?? true,
+          can_duplicate: campaign.can_duplicate ?? true,
+          can_delete: campaign.can_delete ?? true,
+          target_contact_ids: campaign.target_contact_ids || [],
+          target_segment_ids: campaign.target_segment_ids || [],
+          target_criteria: campaign.target_criteria || {}
+        }));
+        setCampaigns(mappedCampaigns);
       } else {
         setError(response.error || 'Failed to fetch campaigns');
         setCampaigns([]); // Ensure campaigns is always an array
@@ -301,8 +312,9 @@ export const useCampaigns = () => {
         await fetchSummary();
 
         // Store success message in localStorage to show after refresh
+        const campaignName = (response.data as any).campaign?.name || (response.data as any).campaign?.id || (response.data as any).name || 'Campaign';
         localStorage.setItem('campaign_started_success', JSON.stringify({
-          name: response.data.name,
+          name: campaignName,
           timestamp: Date.now()
         }));
 
@@ -325,8 +337,9 @@ export const useCampaigns = () => {
         await fetchSummary();
 
         // Store success message in localStorage to show after refresh
+        const campaignName = (response.data as any).campaign?.name || (response.data as any).campaign?.id || (response.data as any).name || 'Campaign';
         localStorage.setItem('campaign_paused_success', JSON.stringify({
-          name: response.data.name,
+          name: campaignName,
           timestamp: Date.now()
         }));
 
@@ -349,8 +362,9 @@ export const useCampaigns = () => {
         await fetchSummary();
 
         // Store success message in localStorage to show after refresh
+        const campaignName = (response.data as any).campaign?.name || (response.data as any).campaign?.id || (response.data as any).name || 'Campaign';
         localStorage.setItem('campaign_cancelled_success', JSON.stringify({
-          name: response.data.name,
+          name: campaignName,
           timestamp: Date.now()
         }));
 

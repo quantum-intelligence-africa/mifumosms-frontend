@@ -782,7 +782,7 @@ const SenderNames = () => {
                         ) : (
                           <div className="text-right">
                             <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'}>
-                              {safeGetStatusIcon(overview.active_request?.status || 'approved')}
+                              {safeGetStatusIcon((overview.active_request?.status || 'approved') as SenderStatus)}
                               <span className="ml-1">{overview.active_request?.status || 'Available'}</span>
                             </Badge>
                             {getCannotRequestReason?.() && (

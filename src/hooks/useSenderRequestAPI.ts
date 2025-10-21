@@ -17,7 +17,7 @@ export function useSenderRequestAPI() {
 			setLoading(true);
 			setError(null);
 
-			const response = await apiClient.getSenderIDRequests();
+			const response = await apiClient.getUserRequests();
 			console.log('Sender names response:', response);
 
 			if (response.success && response.data) {
