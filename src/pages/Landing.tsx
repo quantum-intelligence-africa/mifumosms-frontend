@@ -506,50 +506,51 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 sm:py-20 lg:py-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <section id="features" className="py-16 sm:py-20 lg:py-24 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" />
-              <span>Powerful Features</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Column - Heading and Description */}
+            <div className="text-left">
+              <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+                Everything you need to
+                <span className="block text-blue-500">
+                  grow your business
+                </span>
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed">
+                Powerful features designed for African businesses to scale their customer communication
+              </p>
             </div>
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Everything you need to
-              <span className="block bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent">
-                grow your business
-              </span>
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Powerful features designed for African businesses to scale their customer communication
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {features.map((feature, index) => (
-              <Card
-                key={index}
-                className="group relative overflow-hidden bg-white/80 backdrop-blur-sm border-0 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 cursor-pointer"
-                style={{
-                  animationDelay: `${index * 100}ms`
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <CardContent className="relative p-6 sm:p-8 lg:p-10">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                    <feature.icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-                  </div>
-                  <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors duration-300">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">
-                    {feature.description}
-                  </p>
+            {/* Right Column - Feature Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+              {features.map((feature, index) => (
+                <Card
+                  key={index}
+                  className="group relative bg-white border-0 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 rounded-xl overflow-hidden animate-in slide-in-from-right-4 fade-in-50"
+                  style={{
+                    animationDelay: `${index * 150}ms`,
+                    animationFillMode: 'both'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <CardContent className="relative p-3 sm:p-4">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
+                      <feature.icon className="w-5 h-5 text-white group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+                    <h3 className="font-heading text-sm sm:text-base font-bold text-blue-500 mb-2 group-hover:text-blue-600 transition-colors duration-300">
+                      {feature.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">
+                      {feature.description}
+                    </p>
 
-                  {/* Hover effect indicator */}
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-yellow-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                </CardContent>
-              </Card>
-            ))}
+                    {/* Hover effect indicator */}
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -557,44 +558,44 @@ const Landing = () => {
       {/* Testimonials removed */}
 
       {/* Pricing */}
-      <section id="pricing" className="py-16 sm:py-20 lg:py-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 text-yellow-700 text-sm font-medium mb-6">
-              <Star className="w-4 h-4" />
+          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium mb-4">
+              <Star className="w-3 h-3" />
               <span>Transparent Pricing</span>
             </div>
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
               Simple, transparent
               <span className="block bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">
                 pricing
               </span>
             </h2>
-            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
               Choose the plan that fits your business needs
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {pricing.map((plan, index) => (
-              <Card
-                key={index}
-                className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm border-0 transition-all duration-500 hover:-translate-y-3 hover:scale-105 cursor-pointer ${
-                  plan.popular
-                    ? 'shadow-2xl ring-2 ring-yellow-500/20 scale-105'
-                    : 'shadow-lg hover:shadow-2xl'
-                }`}
-                style={{
-                  animationDelay: `${index * 150}ms`
-                }}
-              >
+              <div key={index} className="relative group">
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                    <Badge className="px-6 py-2 text-sm font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 text-black shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-10">
+                    <Badge className="px-6 py-2.5 text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
                     Most Popular
                   </Badge>
                   </div>
                 )}
+                <Card
+                  className={`relative overflow-hidden bg-white/90 backdrop-blur-sm border-0 transition-all duration-500 hover:-translate-y-2 hover:scale-105 cursor-pointer ${
+                    plan.popular
+                      ? 'shadow-xl ring-2 ring-yellow-500/20 scale-105 hover:ring-yellow-500/30 hover:shadow-2xl'
+                      : 'shadow-md hover:shadow-xl'
+                  }`}
+                  style={{
+                    animationDelay: `${index * 150}ms`
+                  }}
+                >
 
                 <div className={`absolute inset-0 bg-gradient-to-br ${
                   plan.popular
@@ -602,48 +603,49 @@ const Landing = () => {
                     : 'from-blue-500/5 via-transparent to-yellow-500/5'
                 } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-                <CardContent className="relative p-6 sm:p-8 lg:p-10">
-                  <div className="text-center mb-8">
-                    <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors duration-300">
+                <CardContent className="relative p-4 sm:p-6 lg:p-8">
+                  <div className="text-center mb-6">
+                    <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
                     {plan.name}
                   </h3>
                     <div className="mb-2">
-                      <span className="text-2xl sm:text-3xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                      <span className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
                         {plan.rate}
                       </span>
                     </div>
-                    <p className="text-sm sm:text-base text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+                    <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
                       {plan.credits}
                     </p>
                   </div>
 
-                  <ul className="space-y-4 mb-8">
+                  <ul className="space-y-3 mb-6">
                     {plan.features?.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Check className="w-3 h-3 text-green-600" />
+                      <li key={i} className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check className="w-2.5 h-2.5 text-green-600" />
                         </div>
-                        <span className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+                        <span className="text-xs text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
                           {feature}
                         </span>
                       </li>
                     ))}
                   </ul>
 
-                  <Link to="/login">
+                  <Link to="/signup">
                     <Button
-                      className={`w-full text-sm sm:text-base h-10 sm:h-12 font-bold transition-all duration-300 group-hover:scale-105 ${
+                      className={`w-full text-xs sm:text-sm h-8 sm:h-10 font-bold transition-all duration-300 group-hover:scale-105 ${
                         plan.popular
                           ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black shadow-lg hover:shadow-yellow-500/25'
                           : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
                       }`}
                     >
                       Get Started
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                      <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </Link>
                 </CardContent>
-              </Card>
+                </Card>
+              </div>
             ))}
           </div>
         </div>
