@@ -877,8 +877,8 @@ const SendSMS = () => {
                     />
                     <div className="flex items-center justify-between text-xs">
                       <p className="text-text-subtle">
-                        {segmentCount > 1 && "Long messages are split into multiple segments"}
-                      </p>
+                      {segmentCount > 1 && "Long messages are split into multiple segments"}
+                    </p>
                       {segmentInfo.isOverLimit && (
                         <p className="text-red-500 font-medium">
                           Message exceeds 200 segment limit

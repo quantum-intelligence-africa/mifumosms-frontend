@@ -1190,13 +1190,13 @@ const SenderNames = () => {
                         <div className="space-y-1">
                           <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sender Name</Label>
                           <div className="p-2 sm:p-3 bg-muted/30 rounded-lg font-mono text-xs sm:text-sm break-all">
-                            {selectedSender.sender_name}
-                          </div>
+                          {selectedSender.sender_name}
                         </div>
+                      </div>
                         <div className="space-y-1">
                           <Label className="text-xs sm:text-sm font-medium text-text-subtle">Status</Label>
                           <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
-                            {getStatusBadge(selectedSender.status)}
+                          {getStatusBadge(selectedSender.status)}
                           </div>
                         </div>
                       </div>
@@ -1263,12 +1263,12 @@ const SenderNames = () => {
                     <div className="space-y-1">
                       <h4 className="font-medium text-sm sm:text-base text-foreground">Timestamps</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-text-subtle">
-                        <div>
-                          <Label className="text-xs">Created</Label>
+                      <div>
+                        <Label className="text-xs">Created</Label>
                           <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.created_at)}</p>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Last Updated</Label>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Last Updated</Label>
                           <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.updated_at)}</p>
                         </div>
                       </div>

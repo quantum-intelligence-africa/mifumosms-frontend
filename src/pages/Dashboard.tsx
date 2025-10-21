@@ -87,32 +87,24 @@ const Dashboard = () => {
               <MetricCard
                 title="Total Messages"
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}
-                change={metrics?.total_messages?.change || "+0%"}
-                changeType={metrics?.total_messages?.change_type || "neutral"}
                 icon={MessageSquare}
                 description={metrics?.total_messages?.description || "Last 30 days"}
               />
               <MetricCard
                 title="Active Contacts"
                 value={metrics?.active_contacts?.value?.toLocaleString() || "0"}
-                change={metrics?.active_contacts?.change || "+0%"}
-                changeType={metrics?.active_contacts?.change_type || "neutral"}
                 icon={Users}
                 description={metrics?.active_contacts?.description || "Engaged this month"}
               />
               <MetricCard
                 title="Campaign Success"
                 value={metrics?.campaign_success?.value || "0%"}
-                change={metrics?.campaign_success?.change || "+0%"}
-                changeType={metrics?.campaign_success?.change_type || "neutral"}
                 icon={Target}
                 description={metrics?.campaign_success?.description || "Delivery rate"}
               />
               <MetricCard
                 title="Sender ID"
                 value={metrics?.sender_id?.value?.toLocaleString() || "0"}
-                change={metrics?.sender_id?.change || "+0"}
-                changeType={metrics?.sender_id?.change_type || "neutral"}
                 icon={Hash}
                 description={metrics?.sender_id?.description || "Registered"}
               />

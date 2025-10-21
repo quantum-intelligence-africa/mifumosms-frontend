@@ -168,7 +168,7 @@ const Campaigns = () => {
           }
           // Refresh data immediately first
           setIsRefreshing(true);
-          fetchCampaigns().then(() => setIsRefreshing(false));
+          refetch().then(() => setIsRefreshing(false));
           // Start campaign in background
           startCampaign(campaignId).catch(error => {
             console.log('Start campaign error (ignored):', error);
@@ -180,7 +180,7 @@ const Campaigns = () => {
           }
           // Refresh data immediately first
           setIsRefreshing(true);
-          fetchCampaigns().then(() => setIsRefreshing(false));
+          refetch().then(() => setIsRefreshing(false));
           // Pause campaign in background
           pauseCampaign(campaignId).catch(error => {
             console.log('Pause campaign error (ignored):', error);
@@ -192,7 +192,7 @@ const Campaigns = () => {
           }
           // Refresh data immediately first
           setIsRefreshing(true);
-          fetchCampaigns().then(() => setIsRefreshing(false));
+          refetch().then(() => setIsRefreshing(false));
           // Cancel campaign in background
           cancelCampaign(campaignId).catch(error => {
             console.log('Cancel campaign error (ignored):', error);
