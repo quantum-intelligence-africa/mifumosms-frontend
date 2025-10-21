@@ -178,7 +178,7 @@ const Landing = () => {
     const message = messages[currentMessage];
 
     return (
-      <div className="relative w-full max-w-[280px] mx-auto">
+      <div className="relative w-full max-w-[280px] mx-auto sm:max-w-[300px] lg:max-w-[320px]">
         {/* Slim Smartphone Mockup - Clean design */}
         <div className="relative bg-black rounded-[2.5rem] p-1.5 shadow-xl">
           {/* Slim Frame */}
@@ -212,7 +212,7 @@ const Landing = () => {
               </div>
 
               {/* Messages App Interface */}
-              <div className="bg-gray-50 h-[480px]">
+              <div className="bg-gray-50 h-[400px] sm:h-[450px] lg:h-[480px]">
                 {/* App Header */}
                 <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
@@ -226,7 +226,7 @@ const Landing = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div className="p-4 space-y-3 h-[400px] overflow-y-auto bg-gray-50">
+                <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 h-[320px] sm:h-[360px] lg:h-[400px] overflow-y-auto bg-gray-50">
                   {/* Previous messages */}
                   {messages.slice(0, currentMessage).map((msg, index) => (
                     <div key={index} className="flex justify-start">
@@ -272,7 +272,7 @@ const Landing = () => {
     {
       icon: Send,
       title: "SMS Campaigns",
-      description: "Reach customers instantly with bulk SMS campaigns. Perfect for time-sensitive promotions and notifications."
+      description: "Reach customers instantly with bulk SMS campaigns for time-sensitive promotions and notifications."
     },
     {
       icon: Users,
@@ -282,7 +282,7 @@ const Landing = () => {
     {
       icon: BarChart3,
       title: "Analytics & Reports",
-      description: "Track performance with detailed analytics. Monitor delivery rates, engagement, and ROI across all channels."
+      description: "Track performance with detailed analytics and monitor delivery rates, engagement, and ROI across all channels."
     },
     {
       icon: Zap,
@@ -292,7 +292,7 @@ const Landing = () => {
     {
       icon: Globe,
       title: "Multi-language",
-      description: "Communicate in English, Kiswahili, French, and Arabic. Perfect for businesses across Africa."
+      description: "Communicate in English, Kiswahili, French, and Arabic for businesses across Africa."
     }
   ];
 
@@ -445,111 +445,159 @@ const Landing = () => {
               </div> */}
             </div>
 
-            <div className="space-y-4 sm:space-y-6 md:space-y-8">
-              <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight animate-fade-in-up">
+            <div className="space-y-3 sm:space-y-4 md:space-y-5">
+              <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight animate-fade-in-up">
                 Sell more
                 <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
                   Spend less
                 </span>
               </h1>
-              <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-2xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+              <p className="text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
               Automate customers outreach on WhatsApp and SMS, that drives replies, repeat purchases, and track every conversation back to revenue.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 lg:gap-6 justify-center lg:justify-start">
+            <div className="flex flex-row gap-2 sm:gap-4 lg:gap-6 justify-center lg:justify-start">
               <Link to="/signup">
                 <Button
-                  size="hero"
-                  className="text-sm sm:text-base lg:text-lg h-10 sm:h-12 lg:h-14 px-6 sm:px-8 w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-2xl hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
+                  className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
                   onMouseEnter={() => setIsHovering(true)}
                   onMouseLeave={() => setIsHovering(false)}
                 >
                   Start Free Trial
-                  <ArrowRight className={`w-4 h-4 sm:w-5 sm:h-5 ml-2 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
+                  <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
                 </Button>
               </Link>
               <Button
-                size="hero"
                 variant="outline"
-                className="text-sm sm:text-base lg:text-lg h-10 sm:h-12 lg:h-14 px-6 sm:px-8 w-full sm:w-auto border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105 group"
+                className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105 group"
               >
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                Watch 60-sec Demo
+                <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 group-hover:scale-110 transition-transform duration-300" />
+                Watch Demo
               </Button>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 pt-4 sm:pt-6">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 pt-3 sm:pt-4">
               <div className="text-center lg:text-left">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">1000+</div>
-                <div className="text-xs sm:text-sm text-white/70">Active Businesses</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">1000+</div>
+                <div className="text-xs text-white/70">Active Businesses</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">50M+</div>
-                <div className="text-xs sm:text-sm text-white/70">Messages Sent</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">50M+</div>
+                <div className="text-xs text-white/70">Messages Sent</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">98%</div>
-                <div className="text-xs sm:text-sm text-white/70">Delivery Rate</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">98%</div>
+                <div className="text-xs text-white/70">Delivery Rate</div>
               </div>
             </div>
           </div>
 
-          {/* SMS Animation - Enhanced for mobile */}
-          <div className="flex justify-center lg:justify-end mt-8 lg:mt-0">
-            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right">
-            <SMSAnimation />
+          {/* SMS Animation - Responsive sizing with layered effect */}
+          <div className="flex justify-center lg:justify-end mt-6 lg:mt-0">
+            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right scale-75 sm:scale-90 lg:scale-100 relative z-10">
+              <SMSAnimation />
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 sm:py-20 lg:py-24 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+      <section id="features" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
             {/* Left Column - Heading and Description */}
             <div className="text-left">
-              <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+              <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
                 Everything you need to
                 <span className="block text-blue-500">
                   grow your business
                 </span>
               </h2>
-              <p className="text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed">
                 Powerful features designed for African businesses to scale their customer communication
               </p>
             </div>
 
             {/* Right Column - Feature Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
-              {features.map((feature, index) => (
-                <Card
-                  key={index}
-                  className="group relative bg-white border-0 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 rounded-xl overflow-hidden animate-in slide-in-from-right-4 fade-in-50"
-                  style={{
-                    animationDelay: `${index * 150}ms`,
-                    animationFillMode: 'both'
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <CardContent className="relative p-3 sm:p-4">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                      <feature.icon className="w-5 h-5 text-white group-hover:scale-110 transition-transform duration-300" />
+            <div className="w-full">
+              {/* Mobile: Side-by-side alternating layout */}
+              <div className="sm:hidden space-y-2">
+                {features.map((feature, index) => (
+                  <div key={index} className={`flex items-start gap-2 ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
+                    {/* Mini Icon Container */}
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center shadow-sm ${
+                      index === 0 ? 'bg-white border-gray-300' :
+                      index === 1 ? 'bg-blue-50 border-blue-300' :
+                      index === 2 ? 'bg-red-50 border-red-300' :
+                      'bg-green-50 border-green-300'
+                    }`}>
+                      <feature.icon className={`w-3 h-3 ${
+                        index === 0 ? 'text-gray-700' :
+                        index === 1 ? 'text-blue-600' :
+                        index === 2 ? 'text-red-600' :
+                        'text-green-600'
+                      }`} />
                     </div>
-                    <h3 className="font-heading text-sm sm:text-base font-bold text-blue-500 mb-2 group-hover:text-blue-600 transition-colors duration-300">
-                      {feature.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">
-                      {feature.description}
-                    </p>
+                    
+                    {/* Content Card */}
+                    <div className={`flex-1 p-2 rounded-lg border shadow-sm ${
+                      index === 0 ? 'bg-white border-gray-300' :
+                      index === 1 ? 'bg-blue-50 border-blue-300' :
+                      index === 2 ? 'bg-red-50 border-red-300' :
+                      'bg-green-50 border-green-300'
+                    }`}>
+                      <h3 className={`font-bold text-sm mb-1 ${
+                        index === 0 ? 'text-gray-800' :
+                        index === 1 ? 'text-blue-700' :
+                        index === 2 ? 'text-red-700' :
+                        'text-green-700'
+                      }`}>
+                        {feature.title}
+                      </h3>
+                      <p className="text-xs text-gray-600 leading-tight">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                    {/* Hover effect indicator */}
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                  </CardContent>
-                </Card>
-              ))}
+              {/* Desktop: Compact 3 columns, 2 rows layout */}
+              <div className="hidden sm:grid sm:grid-cols-3 gap-2 lg:gap-3">
+                {features.map((feature, index) => (
+                  <Card
+                    key={index}
+                    className="group relative bg-white border-0 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 rounded-xl overflow-hidden animate-in slide-in-from-right-7 fade-in-50"
+                    style={{
+                      animationDelay: `${index * 150}ms`,
+                      animationFillMode: 'both'
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <CardContent className="relative p-2.5 flex flex-col h-full">
+                      {/* Icon */}
+                      <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center mb-1.5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
+                        <feature.icon className="w-3 h-3 text-white group-hover:scale-110 transition-transform duration-300" />
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 className="font-heading text-[11px] font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-1.5 leading-tight">
+                        {feature.title}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p className="text-[9px] text-gray-600 leading-tight group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
+                        {feature.description}
+                      </p>
+
+                      {/* Hover effect indicator */}
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
         </div>
