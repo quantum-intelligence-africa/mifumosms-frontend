@@ -1158,108 +1158,129 @@ const SenderNames = () => {
 
             {/* Details Dialog */}
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Sender Name Request Details</DialogTitle>
-                  <DialogDescription>
+              <DialogContent className="glass max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                <DialogHeader className="pb-2">
+                  <DialogTitle className="text-base sm:text-lg">Sender Name Request Details</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
                     View detailed information about this sender name request
                   </DialogDescription>
                 </DialogHeader>
 
                 {selectedSender && (
-                  <div className="space-y-6 my-4">
-                    {/* Basic Information */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Sender Name</Label>
-                        <div className="p-3 bg-muted/50 rounded-lg font-mono text-sm">
-                          {selectedSender.sender_name}
-                        </div>
+                  <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6">
+                    {/* Header Section */}
+                    <div className="text-center mb-4 sm:mb-6">
+                      <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full mb-3">
+                        <span className="text-lg sm:text-xl font-bold text-primary">
+                          {selectedSender.sender_name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Status</Label>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          {getStatusBadge(selectedSender.status)}
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base mb-2">
+                        {selectedSender.sender_name}
+                      </h3>
+                      <div className="flex items-center justify-center">
+                        {getStatusBadge(selectedSender.status)}
+                      </div>
+                    </div>
+
+                    {/* Basic Information */}
+                    <div className="space-y-3 sm:space-y-4">
+                      <h4 className="font-medium text-sm sm:text-base text-foreground">Basic Information</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sender Name</Label>
+                          <div className="p-2 sm:p-3 bg-muted/30 rounded-lg font-mono text-xs sm:text-sm break-all">
+                            {selectedSender.sender_name}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Status</Label>
+                          <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
+                            {getStatusBadge(selectedSender.status)}
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Use Case */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Use Case</Label>
-                      <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium text-text-subtle">Use Case</Label>
+                      <div className="p-2 sm:p-3 bg-muted/30 rounded-lg text-xs sm:text-sm">
                         {selectedSender.use_case}
                       </div>
                     </div>
 
                     {/* Supporting Documents */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Supporting Documents</Label>
-                      <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium text-text-subtle">Supporting Documents</Label>
+                      <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
                         {selectedSender.supporting_documents_count > 0 ? (
                           <div className="space-y-2">
-                            <p className="text-sm text-text-subtle">
+                            <p className="text-xs sm:text-sm text-text-subtle">
                               {selectedSender.supporting_documents_count} file(s) uploaded
                             </p>
                             <div className="space-y-1">
                               {selectedSender.supporting_documents.map((doc, index) => (
                                 <div key={index} className="flex items-center gap-2 text-xs">
-                                  <Upload className="w-3 h-3" />
+                                  <Upload className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">{doc.split('/').pop()}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-text-subtle">No supporting documents</p>
+                          <p className="text-xs sm:text-sm text-text-subtle">No supporting documents</p>
                         )}
                       </div>
                     </div>
 
                     {/* Admin Information */}
                     {(selectedSender.reviewed_by || selectedSender.admin_notes) && (
-                      <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                        <h4 className="font-medium text-primary">Review Information</h4>
+                      <div className="space-y-3 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <h4 className="font-medium text-primary text-sm sm:text-base">Review Information</h4>
                         {selectedSender.reviewed_by && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-1">
                               <Label className="text-xs text-text-subtle">Reviewed By</Label>
-                              <p className="text-sm">{selectedSender.reviewed_by_name}</p>
+                              <p className="text-xs sm:text-sm">{selectedSender.reviewed_by_name}</p>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs text-text-subtle">Reviewed At</Label>
-                              <p className="text-sm">{safeFormatDate(selectedSender.reviewed_at!)}</p>
+                              <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.reviewed_at!)}</p>
                             </div>
                           </div>
                         )}
                         {selectedSender.admin_notes && (
                           <div className="space-y-1">
                             <Label className="text-xs text-text-subtle">Admin Notes</Label>
-                            <p className="text-sm">{selectedSender.admin_notes}</p>
+                            <p className="text-xs sm:text-sm">{selectedSender.admin_notes}</p>
                           </div>
                         )}
                       </div>
                     )}
 
                     {/* Timestamps */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-text-subtle">
-                      <div>
-                        <Label className="text-xs">Created</Label>
-                        <p>{safeFormatDate(selectedSender.created_at)}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Last Updated</Label>
-                        <p>{safeFormatDate(selectedSender.updated_at)}</p>
+                    <div className="space-y-1">
+                      <h4 className="font-medium text-sm sm:text-base text-foreground">Timestamps</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-text-subtle">
+                        <div>
+                          <Label className="text-xs">Created</Label>
+                          <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.created_at)}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Last Updated</Label>
+                          <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.updated_at)}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <DialogFooter>
+                <DialogFooter className="pt-2 border-t border-border-subtle">
                   <Button
                     variant="outline"
                     onClick={() => setShowDetailsDialog(false)}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
                   >
                     Close
                   </Button>
