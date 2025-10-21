@@ -45,10 +45,13 @@ const Landing = () => {
 
   // SMS Animation messages - Company informational messages
   const messages = [
-    { text: "MIFUMO WMS: Your account has been successfully created. Welcome to our platform!", sender: "Mifumo WMS", time: "2:30 PM", type: "sms" },
-    { text: "MIFUMO WMS: Your SMS campaign 'Welcome Series' has been delivered to 1,250 contacts successfully.", sender: "Mifumo WMS", time: "2:32 PM", type: "sms" },
-    { text: "MIFUMO WMS: Your WhatsApp message delivery rate is 98.5% this month. Great performance!", sender: "Mifumo WMS", time: "2:35 PM", type: "whatsapp" },
-    { text: "MIFUMO WMS: Your account balance is running low. Please top up to continue sending messages.", sender: "Mifumo WMS", time: "2:37 PM", type: "sms" },
+    { text: "MIFUMO SMS: Usikose! Kumbusha wateja wako kuhusu punguzo la mwisho wa mwezi.", sender: "Mifumo SMS", time: "1:00 PM", type: "sms" },
+    { text: "MIFUMO SMS: Vikumbusho vya oda vimefufua wateja 24 waliokuwa kimya.", sender: "Mifumo SMS", time: "2:30 PM", type: "whatsapp" },
+    { text: "MIFUMO SMS: Ujumbe wako wa ‘Asante Mteja’ umetumwa kwa wateja 1,200.", sender: "Mifumo SMS", time: "3:10 PM", type: "sms" },
+    { text: "MIFUMO SMS: Je, salio limeisha? Ongeza sasa ili kampeni zako ziendelee.", sender: "Mifumo SMS", time: "3:40 PM", type: "sms" },
+    { text: "MIFUMO SMS: Ofa mpya ya ‘SMS Weekend’ ipo hewani. Tuma zaidi kwa gharama nafuu!", sender: "Mifumo SMS", time: "4:15 PM", type: "sms" },
+    { text: "MIFUMO SMS: Ripoti mpya iko tayari – angalia wateja wanaojibu zaidi.", sender: "Mifumo SMS", time: "5:00 PM", type: "sms" },
+    { text: "MIFUMO SMS: Ujumbe wako wa WhatsApp umegusa wateja 2,000 leo. Hongera kwa hatua!", sender: "Mifumo SMS", time: "6:10 PM", type: "whatsapp" }
   ];
 
   // Cycle through messages
