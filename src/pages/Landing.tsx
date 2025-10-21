@@ -179,16 +179,16 @@ const Landing = () => {
 
     return (
       <div className="relative w-full max-w-[280px] mx-auto">
-        {/* iPhone Mockup - Realistic design */}
-        <div className="relative bg-black rounded-[3rem] p-2 shadow-2xl">
-          {/* iPhone Frame */}
-          <div className="bg-black rounded-[2.8rem] p-1">
-            <div className="bg-white rounded-[2.5rem] overflow-hidden relative">
-              {/* Dynamic Island / Notch */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-6 bg-black rounded-full z-10"></div>
+        {/* Slim Smartphone Mockup - Clean design */}
+        <div className="relative bg-black rounded-[2.5rem] p-1.5 shadow-xl">
+          {/* Slim Frame */}
+          <div className="bg-black rounded-[2.3rem] p-0.5">
+            <div className="bg-white rounded-[2.1rem] overflow-hidden relative">
+              {/* Simple Dynamic Island */}
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-24 h-5 bg-black rounded-full z-10"></div>
 
-              {/* Status Bar */}
-              <div className="bg-white pt-8 pb-2 px-6 flex justify-between items-center text-xs font-semibold text-black">
+              {/* Clean Status Bar */}
+              <div className="bg-white pt-7 pb-2 px-5 flex justify-between items-center text-xs font-semibold text-black">
                 <span>9:41</span>
                 <div className="flex items-center gap-1">
                   {/* Signal bars */}
@@ -200,7 +200,7 @@ const Landing = () => {
                   </div>
                   {/* WiFi */}
                   <div className="w-4 h-3 bg-black rounded-sm ml-1"></div>
-                  {/* Battery with percentage */}
+                  {/* Battery */}
                   <div className="flex items-center gap-1 ml-1">
                     <span className="text-xs font-medium">100%</span>
                     <div className="w-6 h-3 border border-black rounded-sm relative">
@@ -230,18 +230,18 @@ const Landing = () => {
                   {/* Previous messages */}
                   {messages.slice(0, currentMessage).map((msg, index) => (
                     <div key={index} className="flex justify-start">
-                      <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
-                        <p className="text-gray-900 text-sm leading-relaxed">{msg.text}</p>
-                        <p className="text-gray-400 text-xs mt-2">{msg.time}</p>
+                      <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-3 py-2 shadow-sm">
+                        <p className="text-gray-900 text-xs leading-relaxed">{msg.text}</p>
+                        <p className="text-gray-400 text-[10px] mt-1">{msg.time}</p>
                       </div>
                     </div>
                   ))}
 
                   {/* Current message with animation */}
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm animate-pulse">
-                      <p className="text-gray-900 text-sm leading-relaxed">{message.text}</p>
-                      <p className="text-gray-400 text-xs mt-2">{message.time}</p>
+                    <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-3 py-2 shadow-sm animate-pulse">
+                      <p className="text-gray-900 text-xs leading-relaxed">{message.text}</p>
+                      <p className="text-gray-400 text-[10px] mt-1">{message.time}</p>
                     </div>
                   </div>
                 </div>
@@ -249,16 +249,16 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* Home indicator */}
-          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-white rounded-full"></div>
+          {/* Simple Home indicator */}
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-white rounded-full"></div>
         </div>
 
-        {/* Floating notification icons - Static */}
-        <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg">
-          <Send className="w-4 h-4 text-white" />
+        {/* Simple floating notification icons */}
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
+          <Send className="w-3 h-3 text-white" />
         </div>
-        <div className="absolute -bottom-2 -left-3 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-          <MessageSquare className="w-3 h-3 text-white" />
+        <div className="absolute -bottom-1 -left-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+          <MessageSquare className="w-2.5 h-2.5 text-white" />
         </div>
       </div>
     );
