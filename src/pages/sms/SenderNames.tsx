@@ -92,7 +92,7 @@ const SenderNames = () => {
   } = useDefaultSender();
 
   // Fallback functions in case the hook fails
-  const safeFormatDate = formatDate || ((dateString: string) => 
+  const safeFormatDate = formatDate || ((dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -370,7 +370,7 @@ const SenderNames = () => {
   const handleRequestDefaultSender = async () => {
     try {
       const result = await requestDefaultSender();
-      
+
       if (result.success) {
         // Refresh both sender names and default sender data
         await Promise.all([refreshData(), refreshDefaultSender()]);
@@ -390,6 +390,10 @@ const SenderNames = () => {
     senderNames: senderNames?.length,
     senderNamesData: senderNames,
     stats,
+    statsTotal: stats?.total_requests,
+    statsPending: stats?.pending_requests,
+    statsApproved: stats?.approved_requests,
+    statsRejected: stats?.rejected_requests,
     isArray: Array.isArray(senderNames),
     safeSenderNamesLength: safeSenderNames.length,
     safeSenderNames: safeSenderNames
@@ -518,7 +522,7 @@ const SenderNames = () => {
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <span className="animate-in fade-in-50 duration-500">
-                            {stats?.total_requests || 0}
+                          {stats?.total_requests || safeSenderNames.length || 0}
                           </span>
                         )}
                       </p>
@@ -538,7 +542,7 @@ const SenderNames = () => {
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <span className="animate-in fade-in-50 duration-500 delay-200">
-                            {stats?.pending_requests || 0}
+                            {stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0}
                           </span>
                         )}
                       </p>
@@ -558,7 +562,7 @@ const SenderNames = () => {
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <span className="animate-in fade-in-50 duration-500 delay-300">
-                            {stats?.approved_requests || 0}
+                            {stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0}
                           </span>
                         )}
                       </p>
@@ -578,7 +582,7 @@ const SenderNames = () => {
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <span className="animate-in fade-in-50 duration-500 delay-400">
-                            {stats?.rejected_requests || 0}
+                            {stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0}
                           </span>
                         )}
                       </p>
@@ -673,7 +677,7 @@ const SenderNames = () => {
                         <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <span className="animate-in fade-in-50 duration-500">
-                          {stats?.total_requests || 0}
+                          {stats?.total_requests || safeSenderNames.length || 0}
                         </span>
                       )}
                     </p>
@@ -693,7 +697,7 @@ const SenderNames = () => {
                         <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <span className="animate-in fade-in-50 duration-500 delay-200">
-                          {stats?.pending_requests || 0}
+                            {stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0}
                         </span>
                       )}
                     </p>
@@ -713,7 +717,7 @@ const SenderNames = () => {
                         <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <span className="animate-in fade-in-50 duration-500 delay-300">
-                          {stats?.approved_requests || 0}
+                            {stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0}
                         </span>
                       )}
                     </p>
@@ -733,7 +737,7 @@ const SenderNames = () => {
                         <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <span className="animate-in fade-in-50 duration-500 delay-400">
-                          {stats?.rejected_requests || 0}
+                            {stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0}
                         </span>
                       )}
                     </p>
@@ -800,7 +804,7 @@ const SenderNames = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Balance and Purchase Info */}
                     <div className="flex flex-col sm:flex-row gap-4 text-sm">
                       <div className="flex items-center gap-2">

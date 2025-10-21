@@ -2,6 +2,21 @@ import { useState, useEffect, useRef, useContext } from 'react';
 import { SenderNameRequest, CreateSenderNameRequest, UpdateSenderNameRequest, SenderNameStats, apiClient } from '@/lib/api';
 import { AuthContext } from '@/contexts/AuthContext';
 
+// Helper function to calculate stats from sender names list
+const calculateStatsFromSenderNames = (senderNames: SenderNameRequest[]): SenderNameStats => {
+	const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
+
+	return {
+		total_requests: safeSenderNames.length,
+		pending_requests: safeSenderNames.filter(s => s.status === 'pending').length,
+		approved_requests: safeSenderNames.filter(s => s.status === 'approved').length,
+		rejected_requests: safeSenderNames.filter(s => s.status === 'rejected').length,
+		requires_changes_requests: safeSenderNames.filter(s => s.status === 'requires_changes').length,
+		my_requests: safeSenderNames.length,
+		my_pending_requests: safeSenderNames.filter(s => s.status === 'pending').length,
+	};
+};
+
 export function useSenderNames() {
 	const [senderNames, setSenderNames] = useState<SenderNameRequest[]>([]);
 	const [stats, setStats] = useState<SenderNameStats | null>(null);
@@ -63,20 +78,20 @@ export function useSenderNames() {
 				// Additional validation: Ensure we only show current user's requests
 				// Filter out any requests that might belong to other users
 				const currentUserId = authContext?.user?.id;
-				
-				// TEMPORARY: If the API already returns only current user's requests, 
+
+				// TEMPORARY: If the API already returns only current user's requests,
 				// you can uncomment the lines below to test without filtering
 				// console.log('Skipping user filtering - using all results from API');
 				// console.log('Total results from API:', results.length);
 				// setSenderNames(results);
 				// return;
-				
+
 				if (currentUserId) {
 					results = results.filter((request: any) => {
 						// Check if the request belongs to the current user
 						// Use the correct field extraction: user_id || user
 						const requestUserId = request.user_id || request.user;
-						
+
 						// Debug logging to see exactly what's happening
 						console.log('=== DEBUGGING USER ID FILTERING ===');
 						console.log('Request object:', request);
@@ -86,15 +101,15 @@ export function useSenderNames() {
 						console.log('Extracted requestUserId:', requestUserId);
 						console.log('Comparison result:', requestUserId === currentUserId);
 						console.log('=====================================');
-						
+
 						const isCurrentUser = requestUserId === currentUserId;
-						
+
 						if (!isCurrentUser) {
 							console.log(`Filtering out request from other user: ${request.requested_sender_id || request.sender_name}, User ID: ${requestUserId}, Current User ID: ${currentUserId}`);
 						} else {
 							console.log(`✅ Keeping request from current user: ${request.requested_sender_id || request.sender_name}`);
 						}
-						
+
 						return isCurrentUser;
 					});
 					console.log('Filtered results for current user:', results.length, 'requests');
@@ -106,6 +121,11 @@ export function useSenderNames() {
 				console.log('Results length:', results.length);
 				setSenderNames(results);
 				console.log('Sender names set:', results);
+
+				// Calculate stats from the fetched sender names as a fallback
+				const calculatedStats = calculateStatsFromSenderNames(results);
+				console.log('Calculated stats from sender names:', calculatedStats);
+				setStats(calculatedStats);
 			} else {
 				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
 				if (response.status === 403) {
@@ -137,8 +157,15 @@ export function useSenderNames() {
 			console.log('Fetching sender name statistics for current user...');
 			const response = await apiClient.getStatistics();
 
+			console.log('=== STATS API RESPONSE ===');
+			console.log('Full response object:', response);
+			console.log('Response success:', response.success);
+			console.log('Response data:', response.data);
+			console.log('Response error:', response.error);
+			console.log('Response status:', response.status);
+
 			if (response.success && response.data) {
-				console.log('Stats response:', response.data);
+				console.log('Stats response data:', response.data);
 				// The stats should already be user-specific from the API
 				// but let's add some validation to ensure data integrity
 				const statsData = response.data;
@@ -146,16 +173,26 @@ export function useSenderNames() {
 				setStats(statsData);
 			} else {
 				console.error('Failed to fetch stats:', response.error);
+				// If stats API fails, calculate stats from the sender names list
+				console.log('Stats API failed, calculating stats from sender names list...');
+				const calculatedStats = calculateStatsFromSenderNames(senderNames);
+				console.log('Calculated stats:', calculatedStats);
+				setStats(calculatedStats);
 			}
 		} catch (err) {
 			console.error('Failed to fetch sender name stats:', err);
+			// If stats API fails, calculate stats from the sender names list
+			console.log('Stats API error, calculating stats from sender names list...');
+			const calculatedStats = calculateStatsFromSenderNames(senderNames);
+			console.log('Calculated stats:', calculatedStats);
+			setStats(calculatedStats);
 		}
 	};
 
 	const createSenderName = async (data: CreateSenderNameRequest) => {
 		try {
 			setError(null);
-			
+
 			// Use JSON API for better error handling and required fields
 			const response = await apiClient.submitSenderRequestJSON({
 				requested_sender_id: data.sender_name,
@@ -282,8 +319,14 @@ export function useSenderNames() {
 
 	useEffect(() => {
 		requestsCompleted.current = false;
-		fetchSenderNames();
-		fetchStats();
+
+		// Fetch both sender names and stats
+		const fetchData = async () => {
+			await fetchSenderNames();
+			await fetchStats();
+		};
+
+		fetchData();
 
 		// Add a timeout to prevent infinite loading
 		const timeout = setTimeout(() => {
@@ -297,6 +340,16 @@ export function useSenderNames() {
 
 		return () => clearTimeout(timeout);
 	}, []);
+
+	// Recalculate stats whenever senderNames changes
+	useEffect(() => {
+		if (senderNames.length > 0) {
+			console.log('Recalculating stats from sender names:', senderNames.length);
+			const calculatedStats = calculateStatsFromSenderNames(senderNames);
+			console.log('Updated calculated stats:', calculatedStats);
+			setStats(calculatedStats);
+		}
+	}, [senderNames]);
 
 	const refreshData = async () => {
 		console.log('Manual refresh triggered...');

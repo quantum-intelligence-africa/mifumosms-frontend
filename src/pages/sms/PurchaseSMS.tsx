@@ -812,7 +812,7 @@ const PurchaseSMS = () => {
                   <Input
                     id="userEmail"
                     type="email"
-                    placeholder="e.g., john@example.com"
+                    placeholder="e.g., sway@example.com"
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
                     className="glass-subtle border-0 h-9 text-sm"
@@ -830,7 +830,7 @@ const PurchaseSMS = () => {
                   <Input
                     id="userName"
                     type="text"
-                    placeholder="e.g., John Doe"
+                    placeholder="Enter Full Name"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="glass-subtle border-0 h-9 text-sm"
