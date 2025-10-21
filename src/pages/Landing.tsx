@@ -315,7 +315,6 @@ const Landing = () => {
         "Priority top-up & support",
         "Advanced delivery analytics",
         "Campaign scheduling",
-        "Team access",
       ],
       popular: true,
     },
@@ -336,7 +335,6 @@ const Landing = () => {
       features: [
         "Dedicated account manager",
         "Custom invoicing & contracts",
-        "Priority routing SLA",
         "Enterprise API & SSO",
       ],
     }

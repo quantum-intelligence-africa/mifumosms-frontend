@@ -28,11 +28,9 @@ const smsPackages: SMSPackage[] = [
     price: 'TZS 25/SMS',
     smsRange: '5,001 – 50,000 SMS',
     features: [
-      'Never expires',
       'Priority top-up & support',
       'Advanced delivery analytics',
-      'Campaign scheduling',
-      'Team access'
+      'Campaign scheduling'
     ],
     isPopular: true
   },
@@ -42,7 +40,6 @@ const smsPackages: SMSPackage[] = [
     price: 'TZS 18/SMS',
     smsRange: '50,001 – 250,000 SMS',
     features: [
-      'Never expires',
       'Bulk campaign tools',
       'Advanced analytics',
       'API access'
@@ -54,10 +51,8 @@ const smsPackages: SMSPackage[] = [
     price: 'TZS 12/SMS',
     smsRange: 'Enterprise (1M+ SMS)',
     features: [
-      'Never expires',
       'Dedicated account manager',
       'Custom invoicing & contracts',
-      'Priority routing SLA',
       'Enterprise API & SSO'
     ],
     isSelected: true

@@ -119,11 +119,9 @@ const PurchaseSMS = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       features: [
-        "Never expires",
         "Priority top-up & support",
         "Advanced delivery analytics",
-        "Campaign scheduling",
-        "Team access"
+        "Campaign scheduling"
       ],
       savings_percentage: 16.7
     },
@@ -139,7 +137,6 @@ const PurchaseSMS = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       features: [
-        "Never expires",
         "Bulk campaign tools",
         "Advanced analytics",
         "API access"
@@ -158,10 +155,8 @@ const PurchaseSMS = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       features: [
-        "Never expires",
         "Dedicated account manager",
         "Custom invoicing & contracts",
-        "Priority routing SLA",
         "Enterprise API & SSO"
       ],
       savings_percentage: 60.0
