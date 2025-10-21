@@ -148,15 +148,22 @@ export class APIService {
 		mobile_money_provider: string;
 		phone_number: string;
 	}) {
+		const paymentData = {
+			package_id: data.package_id,
+			buyer_email: 'user@example.com',
+			buyer_name: 'User',
+			buyer_phone: data.phone_number,
+			mobile_money_provider: data.mobile_money_provider
+		};
 		return this.withRetry(
-			() => apiClient.initiatePayment(data),
+			() => apiClient.initiatePayment(paymentData),
 			'Initiate payment'
 		);
 	}
 
 	async calculateCustomSMSPrice(credits: number) {
 		return this.withRetry(
-			() => apiClient.calculateCustomSMSPrice(credits),
+			() => apiClient.calculateCustomSMSPrice({ credits }),
 			'Calculate custom SMS price'
 		);
 	}
@@ -166,8 +173,15 @@ export class APIService {
 		mobile_money_provider: string;
 		phone_number: string;
 	}) {
+		const paymentData = {
+			credits: data.credits,
+			buyer_email: 'user@example.com',
+			buyer_name: 'User',
+			buyer_phone: data.phone_number,
+			mobile_money_provider: data.mobile_money_provider
+		};
 		return this.withRetry(
-			() => apiClient.initiateCustomSMSPayment(data),
+			() => apiClient.initiateCustomSMSPayment(paymentData),
 			'Initiate custom SMS payment'
 		);
 	}
@@ -201,14 +215,14 @@ export class APIService {
 
 	async getSenderIDRequests() {
 		return this.withRetry(
-			() => apiClient.getSenderIDRequests(),
+			() => apiClient.getUserRequests(),
 			'Get sender ID requests'
 		);
 	}
 
 	async getAvailableSenderIDs() {
 		return this.withRetry(
-			() => apiClient.getAvailableSenderIDs(),
+			() => apiClient.getAvailableSenderIDList(),
 			'Get available sender IDs'
 		);
 	}

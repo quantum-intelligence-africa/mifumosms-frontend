@@ -64,7 +64,8 @@ export const useSMSBilling = () => {
       const response = await apiClient.getSMSPackages();
       if (response.success && response.data) {
         // Convert API response to expected format
-        const formattedPackages = response.data.map((pkg: any) => ({
+        const packagesArray = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        const formattedPackages = packagesArray.map((pkg: any) => ({
           id: pkg.id,
           name: pkg.name,
           package_type: pkg.package_type || 'standard',
@@ -157,8 +158,14 @@ export const useSMSBilling = () => {
         const formattedStats = {
           current_balance: response.data.current_balance,
           total_usage: response.data.total_usage,
-          monthly_usage: response.data.monthly_usage || response.data.total_usage,
-          weekly_usage: response.data.weekly_usage || response.data.total_usage
+          monthly_usage: {
+            credits: (response.data as any).monthly_usage?.credits || response.data.total_usage.credits,
+            cost: (response.data as any).monthly_usage?.cost || response.data.total_usage.cost
+          },
+          weekly_usage: {
+            credits: (response.data as any).weekly_usage?.credits || response.data.total_usage.credits,
+            cost: (response.data as any).weekly_usage?.cost || response.data.total_usage.cost
+          }
         };
         setUsageStats(formattedStats);
       } else {
@@ -207,7 +214,14 @@ export const useSMSBilling = () => {
     phone_number: string;
   }) => {
     try {
-      const response = await apiClient.initiatePayment(data);
+      const paymentData = {
+        package_id: data.package_id,
+        buyer_email: 'user@example.com', // Default values - should be collected from user
+        buyer_name: 'User',
+        buyer_phone: data.phone_number,
+        mobile_money_provider: data.mobile_money_provider
+      };
+      const response = await apiClient.initiatePayment(paymentData);
       if (response.success && response.data) {
         return response.data;
       } else {
@@ -230,7 +244,7 @@ export const useSMSBilling = () => {
 
   const calculateCustomSMSPrice = async (credits: number) => {
     try {
-      const response = await apiClient.calculateCustomSMSPrice(credits);
+      const response = await apiClient.calculateCustomSMSPrice({ credits });
       if (response.success && response.data) {
         return response.data;
       } else {
@@ -257,7 +271,14 @@ export const useSMSBilling = () => {
     phone_number: string;
   }) => {
     try {
-      const response = await apiClient.initiateCustomSMSPayment(data);
+      const paymentData = {
+        credits: data.credits,
+        buyer_email: 'user@example.com',
+        buyer_name: 'User',
+        buyer_phone: data.phone_number,
+        mobile_money_provider: data.mobile_money_provider
+      };
+      const response = await apiClient.initiateCustomSMSPayment(paymentData);
       if (response.success && response.data) {
         return response.data;
       } else {

@@ -63,13 +63,13 @@ export function useSenderNames() {
 					// If data is directly an array
 					results = response.data;
 					console.log('Data is direct array, results:', results);
-				} else if (response.data.results && Array.isArray(response.data.results)) {
+				} else if ((response.data as any).results && Array.isArray((response.data as any).results)) {
 					// If data has a results property
-					results = response.data.results;
+					results = (response.data as any).results;
 					console.log('Data has results property, results:', results);
-				} else if (response.data.data && Array.isArray(response.data.data)) {
+				} else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
 					// If data has a nested data property
-					results = response.data.data;
+					results = (response.data as any).data;
 					console.log('Data has nested data property, results:', results);
 				} else {
 					console.log('No valid data structure found, response.data:', response.data);

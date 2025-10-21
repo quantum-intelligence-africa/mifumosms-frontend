@@ -120,7 +120,7 @@ export const useDefaultSender = () => {
   // Fetch available sender IDs
   const fetchAvailableSenders = async () => {
     try {
-      const response = await apiClient.getAvailableSenderIDs();
+      const response = await apiClient.getAvailableSenderIDList();
       
       if (response.success && response.data) {
         setAvailableSenders(response.data.available_sender_ids || []);

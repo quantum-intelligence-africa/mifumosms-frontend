@@ -2300,6 +2300,29 @@ class ApiClient {
     }
   }
 
+  // 2a. Get Available Sender IDs
+  async getAvailableSenderIDList(): Promise<ApiResponse<{
+    available_sender_ids: Array<{
+      id: string;
+      requested_sender_id: string;
+      sample_content: string;
+    }>;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.AVAILABLE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
   // 2b. Cancel/Detach Default Sender ID
   async cancelDefaultSenderID(): Promise<ApiResponse<{
     success: boolean;
