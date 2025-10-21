@@ -16,10 +16,11 @@ export const useTenants = () => {
       const response = await apiClient.getTenants();
       
       if (response.success && response.data) {
-        setTenants(response.data);
+        const tenantsArray = (response.data as any).results || response.data;
+        setTenants(tenantsArray);
         // Set the first active tenant as current if none is set
-        if (!currentTenant && response.data.length > 0) {
-          const activeTenant = response.data.find(t => t.is_active) || response.data[0];
+        if (!currentTenant && tenantsArray.length > 0) {
+          const activeTenant = tenantsArray.find((t: any) => t.is_active) || tenantsArray[0];
           setCurrentTenant(activeTenant);
         }
       } else {
