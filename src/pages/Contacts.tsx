@@ -485,6 +485,119 @@ const Contacts = () => {
     setIsMobileImportHelpOpen(true);
   };
 
+  const handleOpenContactApp = () => {
+    // Close the dialog first
+    setIsMobileImportHelpOpen(false);
+
+    // Show instruction immediately
+    toast({
+      title: "Opening Contact App",
+      description: "We're trying to open your contact app. If it doesn't open, please open it manually and share a contact.",
+    });
+
+    // Try different methods to open the contact app
+    const userAgent = navigator.userAgent.toLowerCase();
+    let contactAppOpened = false;
+
+    if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+      // For iOS devices - try multiple methods
+      const iosMethods = [
+        () => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'contacts://';
+          document.body.appendChild(iframe);
+          setTimeout(() => document.body.removeChild(iframe), 1000);
+        },
+        () => { window.location.href = 'contacts://'; },
+        () => { window.open('contacts://', '_self'); }
+      ];
+
+      iosMethods.forEach((method, index) => {
+        try {
+          method();
+          contactAppOpened = true;
+        } catch (error) {
+          if (index === iosMethods.length - 1 && !contactAppOpened) {
+            toast({
+              title: "Cannot Open Contacts",
+              description: "Please manually open your Contacts app and share a contact, or add contacts manually.",
+              variant: "destructive"
+            });
+          }
+        }
+      });
+    } else if (userAgent.includes('android')) {
+      // For Android devices - try multiple methods
+      const androidMethods = [
+        () => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'intent://contacts/#Intent;scheme=content;package=com.android.contacts;end';
+          document.body.appendChild(iframe);
+          setTimeout(() => document.body.removeChild(iframe), 1000);
+        },
+        () => { window.location.href = 'intent://contacts/#Intent;scheme=content;package=com.android.contacts;end'; },
+        () => { window.location.href = 'content://contacts/people/'; },
+        () => { window.open('content://contacts/people/', '_self'); }
+      ];
+
+      androidMethods.forEach((method, index) => {
+        try {
+          method();
+          contactAppOpened = true;
+        } catch (error) {
+          if (index === androidMethods.length - 1 && !contactAppOpened) {
+            toast({
+              title: "Cannot Open Contacts",
+              description: "Please manually open your Contacts app and share a contact, or add contacts manually.",
+              variant: "destructive"
+            });
+          }
+        }
+      });
+    } else {
+      // For other devices or desktop
+      toast({
+        title: "Contact App Access",
+        description: "Please open your device's contact app manually and share contacts, or use the manual entry option.",
+      });
+    }
+
+    // Show follow-up instruction
+    setTimeout(() => {
+      if (contactAppOpened) {
+        toast({
+          title: "Contact App Instructions",
+          description: "In your contact app, select a contact and use the share button to send it to this app, or copy the details and add manually.",
+        });
+      }
+    }, 2000);
+  };
+
+  const handleShareContactRequest = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Share Contact with Mifumo Connect',
+          text: 'Please share a contact to import it into Mifumo Connect',
+          url: window.location.href
+        });
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Share failed:', error);
+        }
+      }
+    } else {
+      // Fallback for browsers without Web Share API
+      toast({
+        title: "Share Not Supported",
+        description: "Your browser doesn't support sharing. Please use manual entry or CSV upload instead.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleMobileContactImportConfirm = async () => {
     setIsMobileImportHelpOpen(false);
 
@@ -1440,46 +1553,78 @@ const Contacts = () => {
           </DialogHeader>
 
           <div className="space-y-4">
-            {isContactsAPISupported === false ? (
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm">Choose how to import contacts:</h4>
               <div className="space-y-3">
-                <h4 className="font-medium text-sm text-amber-600 dark:text-amber-400">⚠️ Direct Contact Access Not Available</h4>
-                <div className="space-y-2 text-sm text-text-subtle">
-                  <p>Your browser doesn't support direct contact access. Don't worry! You can still import your contacts using these methods:</p>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">1</div>
-                      <p>Export contacts from your phone's contact app as CSV</p>
+                {/* Option 1: Open Contact App */}
+                <div className="p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-sm mb-1">Open Your Contact App</h5>
+                      <p className="text-xs text-text-subtle mb-2">
+                        We'll open your phone's contact app where you can select and share contacts
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={handleOpenContactApp}
+                        className="w-full"
+                      >
+                        <Smartphone className="w-4 h-4 mr-2" />
+                        Open Contact App
+                      </Button>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">2</div>
-                      <p>Use the CSV upload feature below</p>
+                  </div>
+                </div>
+
+                {/* Option 2: Share Contact */}
+                <div className="p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-sm mb-1">Share Contact</h5>
+                      <p className="text-xs text-text-subtle mb-2">
+                        Use your phone's share feature to send contacts to this app
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleShareContactRequest}
+                        className="w-full"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Share Contact
+                      </Button>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 mt-0.5">3</div>
-                      <p>Or add contacts manually one by one</p>
+                  </div>
+                </div>
+
+                {/* Option 3: Manual Entry */}
+                <div className="p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-sm mb-1">Add Manually</h5>
+                      <p className="text-xs text-text-subtle mb-2">
+                        Add contacts one by one using the form
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsMobileImportHelpOpen(false);
+                          setIsCreateDialogOpen(true);
+                        }}
+                        className="w-full"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Contact
+                      </Button>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">How it works:</h4>
-                <div className="space-y-2 text-sm text-text-subtle">
-                  <div className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
-                    <p>Tap "Continue" to access your phone's contact list</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
-                    <p>Select the contacts you want to import (name and phone required)</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
-                    <p>Review and confirm to add them to your contact list</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
 
             <div className="p-3 bg-muted/30 rounded-lg">
               <p className="text-xs text-text-subtle">
@@ -1496,51 +1641,21 @@ const Contacts = () => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 pt-2">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsMobileImportHelpOpen(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              {isContactsAPISupported === false ? (
-                <Button
-                  onClick={handleAlternativeImport}
-                  className="flex-1"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Use CSV Upload
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleMobileContactImportConfirm}
-                  disabled={isImporting}
-                  className="flex-1"
-                >
-                  {isImporting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Accessing...
-                    </>
-                  ) : (
-                    <>
-                      <Smartphone className="w-4 h-4 mr-2" />
-                      Continue
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsMobileImportHelpOpen(false)}
+              className="flex-1"
+            >
+              Close
+            </Button>
             <Button
               variant="outline"
               onClick={handleAlternativeImport}
-              className="w-full"
-              size="sm"
+              className="flex-1"
             >
               <FileText className="w-4 h-4 mr-2" />
-              Use CSV Upload Instead
+              CSV Upload
             </Button>
           </div>
         </DialogContent>
