@@ -32,6 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
 
@@ -70,6 +71,7 @@ const PurchaseSMS = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [customCredits, setCustomCredits] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [userPaymentNumber, setUserPaymentNumber] = useState("");
@@ -77,7 +79,10 @@ const PurchaseSMS = () => {
   const [userName, setUserName] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [packagesLoading, setPackagesLoading] = useState(true);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [providersLoading, setProvidersLoading] = useState(true);
   const [packages, setPackages] = useState<SMSPackage[]>([]);
   const [balance, setBalance] = useState<SMSBalance | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
@@ -163,16 +168,13 @@ const PurchaseSMS = () => {
     }
   ], []);
 
-  // Fetch packages, balance, and mobile money providers on component mount
+  // Fetch packages, balance, and mobile money providers on component mount (non-blocking)
   useEffect(() => {
-    const fetchData = async () => {
+    // Fetch packages
+    const fetchPackages = async () => {
       try {
-        setLoading(true);
-        const [packagesResponse, balanceResponse, providersResponse] = await Promise.all([
-          apiClient.getSMSPackages(),
-          apiClient.getSMSBalance(),
-          apiClient.getPaymentProviders()
-        ]);
+        setPackagesLoading(true);
+        const packagesResponse = await apiClient.getSMSPackages();
 
         if (packagesResponse.success && packagesResponse.data) {
           if (Array.isArray(packagesResponse.data)) {
@@ -182,36 +184,57 @@ const PurchaseSMS = () => {
             // Handle new response format
             setPackages(packagesResponse.data.results);
           } else {
+            console.warn('No packages returned from API, using default packages');
             setPackages(defaultPackages);
           }
         } else {
           // Use default packages if API doesn't return any
+          console.warn('API packages request failed, using default packages');
           setPackages(defaultPackages);
         }
+      } catch (error) {
+        console.error('Error fetching packages:', error);
+        setPackages(defaultPackages);
+      } finally {
+        setPackagesLoading(false);
+      }
+    };
 
+    // Fetch balance
+    const fetchBalance = async () => {
+      try {
+        setBalanceLoading(true);
+        const balanceResponse = await apiClient.getSMSBalance();
         if (balanceResponse.success && balanceResponse.data) {
           setBalance(balanceResponse.data);
         }
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
 
+    // Fetch providers
+    const fetchProviders = async () => {
+      try {
+        setProvidersLoading(true);
+        const providersResponse = await apiClient.getPaymentProviders();
         if (providersResponse.success && providersResponse.data) {
           setMobileMoneyProviders(providersResponse.data.providers);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
-        // Use default packages on error
-        setPackages(defaultPackages);
-        toast({
-          title: "Using default packages",
-          description: "Could not load packages from server, using default pricing",
-          variant: "default"
-        });
+        console.error('Error fetching providers:', error);
       } finally {
-        setLoading(false);
+        setProvidersLoading(false);
       }
     };
 
-    fetchData();
-  }, [toast, defaultPackages]);
+    // Start all requests in parallel (non-blocking)
+    fetchPackages();
+    fetchBalance();
+    fetchProviders();
+  }, [defaultPackages]);
 
   // Cleanup payment polling on unmount
   useEffect(() => {
@@ -276,7 +299,7 @@ const PurchaseSMS = () => {
     { id: "enterprise", name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
   ], []);
 
-  const selectedPkg = defaultPackages.find(p => p.id === selectedPackage);
+  const selectedPkg = packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage);
   const parsedCredits = useMemo(() => {
     if (selectedPackage) {
       return selectedPkg?.credits || 0;
@@ -382,6 +405,7 @@ const PurchaseSMS = () => {
 
           // Reset form
           setSelectedPackage("");
+          setSelectedPackageId("");
           setCustomCredits("");
           setPaymentMethod("");
           setUserPaymentNumber("");
@@ -466,14 +490,19 @@ const PurchaseSMS = () => {
 
       if (selectedPackage) {
         // Package purchase
+        const packageId = selectedPackageId || selectedPackage;
+        console.log('Selected package ID:', packageId);
+        console.log('Available packages:', packages.map(p => ({ id: p.id, name: p.name, package_type: p.package_type })));
+
         const paymentData = {
-          package_id: selectedPackage,
+          package_id: packageId, // Use the actual package ID
           buyer_email: userEmail,
           buyer_name: userName,
           buyer_phone: userPaymentNumber,
           mobile_money_provider: paymentMethod
         };
 
+        console.log('Payment data being sent:', paymentData);
         response = await apiClient.initiatePayment(paymentData);
       } else if (customCredits) {
         // Custom SMS purchase
@@ -539,11 +568,22 @@ const PurchaseSMS = () => {
 
       } else {
         setProcessing(false);
+        console.error('Payment initiation failed:', response);
+
+        // Check for specific package ID format error
+        if (response.error && response.error.includes('Invalid package ID format')) {
+          toast({
+            title: "Invalid Package Selection",
+            description: "The selected package is not valid. Please refresh the page and try again.",
+            variant: "destructive"
+          });
+        } else {
         toast({
           title: "Payment failed",
           description: response.error || "Failed to initiate payment",
           variant: "destructive"
         });
+        }
       }
     } catch (error) {
       setProcessing(false);
@@ -580,9 +620,15 @@ const PurchaseSMS = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-text-subtle mb-1">Current Balance</p>
+                  {balanceLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-8 w-32" />
+                    </div>
+                  ) : (
                   <p className="text-2xl sm:text-3xl font-bold text-foreground">
                     {balance?.credits?.toLocaleString() || 0} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
                   </p>
+                  )}
                 </div>
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full gradient-primary flex items-center justify-center">
                   <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
@@ -594,7 +640,22 @@ const PurchaseSMS = () => {
             <div>
               <h2 className="font-heading text-lg sm:text-xl font-semibold mb-3">Choose a Package</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {defaultPackages.map((pkg) => (
+                {packagesLoading ? (
+                  // Skeleton loaders for packages
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index} className="p-3 sm:p-4 glass">
+                      <Skeleton className="h-6 w-20 mb-2" />
+                      <Skeleton className="h-8 w-24 mb-3" />
+                      <div className="space-y-2 mb-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                      <Skeleton className="h-6 w-full" />
+                    </Card>
+                  ))
+                ) : (
+                  (packages.length > 0 ? packages : defaultPackages).map((pkg) => (
                   <Card
                     key={pkg.id}
                     className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative ${
@@ -604,6 +665,7 @@ const PurchaseSMS = () => {
                     }`}
                     onClick={() => {
                       setSelectedPackage(pkg.id);
+                      setSelectedPackageId(pkg.id); // Use the actual package ID from API
                       setCustomCredits("");
                       setPaymentMethod(""); // Reset payment method when package changes
                     }}
@@ -643,7 +705,8 @@ const PurchaseSMS = () => {
                       </Badge>
                     )}
                   </Card>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -663,6 +726,7 @@ const PurchaseSMS = () => {
                     onChange={(e) => {
                       setCustomCredits(e.target.value);
                       setSelectedPackage("");
+                      setSelectedPackageId("");
                       setPaymentMethod(""); // Reset payment method when custom amount changes
                     }}
                     className="glass-subtle border-0 h-9 text-sm"
@@ -730,7 +794,19 @@ const PurchaseSMS = () => {
                 <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Select Payment Method</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {paymentMethods.map((method) => (
+                    {providersLoading ? (
+                      // Skeleton loaders for payment methods
+                      Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 sm:p-3 rounded-lg glass-subtle">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <div className="flex-1">
+                            <Skeleton className="h-4 w-24 mb-1" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      paymentMethods.map((method) => (
                       <div
                         key={method.id}
                         className={`flex items-center space-x-2 p-2 sm:p-3 rounded-lg glass-subtle cursor-pointer transition-smooth ${
@@ -765,7 +841,8 @@ const PurchaseSMS = () => {
                           </div>
                         </Label>
                       </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </RadioGroup>
 

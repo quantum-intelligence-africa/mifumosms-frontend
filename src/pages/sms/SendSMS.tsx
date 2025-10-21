@@ -38,6 +38,7 @@ import { apiClient } from "@/lib/api";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
+import { calculateSMSegments, validateMessageLength, getSegmentInfo, formatSegmentCount, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -150,8 +151,9 @@ const SendSMS = () => {
     }
   };
 
-  const messageLength = message.length;
-  const segmentCount = Math.ceil(messageLength / 160);
+  // SMS segment calculation using proper formula
+  const segmentInfo = getSegmentInfo(message);
+  const segmentCount = segmentInfo.segments;
   const costPerSMS = 25; // TZS
 
   // Calculate cost based on current mode
@@ -165,7 +167,7 @@ const SendSMS = () => {
     return 0;
   };
 
-  const estimatedCost = getRecipientCount() * segmentCount * costPerSMS;
+  const estimatedCost = calculateSMSCost(segmentCount, getRecipientCount(), costPerSMS);
 
   // Fetch contacts when segment is selected
   useEffect(() => {
@@ -255,6 +257,17 @@ const SendSMS = () => {
       toast({
         title: "Message required",
         description: "Please enter your message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate message length and segments
+    const validation = validateMessageLength(message);
+    if (!validation.isValid) {
+      toast({
+        title: "Message too long",
+        description: validation.error,
         variant: "destructive"
       });
       return;
@@ -850,19 +863,28 @@ const SendSMS = () => {
                     <div className="flex items-center justify-between">
                       <Label>Message</Label>
                       <div className="text-sm text-text-subtle">
-                        {messageLength}/160 ({segmentCount} {segmentCount === 1 ? "segment" : "segments"})
+                        {getCharacterCountDisplay(message)}
                       </div>
                     </div>
                     <Textarea
                       placeholder="Type your message here..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      className="min-h-[120px] glass-subtle border-0"
-                      maxLength={918} // 6 segments max
+                      className={`min-h-[120px] glass-subtle border-0 ${
+                        segmentInfo.isOverLimit ? 'border-red-500 focus:border-red-500' : ''
+                      }`}
+                      maxLength={32000} // 200 segments * 160 characters = 32,000 max
                     />
-                    <p className="text-xs text-text-subtle">
+                    <div className="flex items-center justify-between text-xs">
+                      <p className="text-text-subtle">
                       {segmentCount > 1 && "Long messages are split into multiple segments"}
                     </p>
+                      {segmentInfo.isOverLimit && (
+                        <p className="text-red-500 font-medium">
+                          Message exceeds 200 segment limit
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Schedule */}
@@ -886,14 +908,19 @@ const SendSMS = () => {
 
                   {/* Cost Preview */}
                   {getRecipientCount() > 0 && message && (
-                    <Alert className="glass-subtle border-0">
+                    <Alert className={`glass-subtle border-0 ${segmentInfo.isOverLimit ? 'border-red-200 bg-red-50' : ''}`}>
                       <DollarSign className="w-4 h-4" />
                       <AlertDescription>
                         <div className="font-medium">Cost Estimate</div>
                         <div className="text-sm mt-1">
-                          {getRecipientCount()} recipients × {segmentCount} segment(s) × TZS {costPerSMS} =
+                          {getRecipientCount()} recipients × {formatSegmentCount(segmentCount)} × TZS {costPerSMS} =
                           <span className="font-semibold ml-1">TZS {estimatedCost.toLocaleString()}</span>
                         </div>
+                        {segmentInfo.isOverLimit && (
+                          <div className="text-red-600 text-xs mt-1 font-medium">
+                            ⚠️ Message exceeds segment limit and cannot be sent
+                          </div>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -913,11 +940,16 @@ const SendSMS = () => {
                   <div className="flex gap-3 pt-4">
                     <Button
                       onClick={handleSendSMS}
-                      disabled={sending}
+                      disabled={sending || segmentInfo.isOverLimit || !message.trim()}
                       className="flex-1"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      {scheduleType === "now" ? "Send SMS" : "Schedule SMS"}
+                      {segmentInfo.isOverLimit
+                        ? "Message Too Long"
+                        : scheduleType === "now"
+                          ? "Send SMS"
+                          : "Schedule SMS"
+                      }
                     </Button>
                     <Button
                       variant="outline"

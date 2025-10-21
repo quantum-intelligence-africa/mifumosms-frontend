@@ -44,32 +44,24 @@ const Index = () => {
               <MetricCard
                 title="Total Messages"
                 value="12,450"
-                change="+12.5%"
-                changeType="positive"
                 icon={MessageSquare}
                 description="Last 30 days"
               />
               <MetricCard
                 title="Active Contacts"
                 value="3,240"
-                change="+8.2%"
-                changeType="positive"
                 icon={Users}
                 description="Engaged this month"
               />
               <MetricCard
                 title="Campaign Success"
                 value="94.2%"
-                change="+2.1%"
-                changeType="positive"
                 icon={Target}
                 description="Delivery rate"
               />
               <MetricCard
                 title="Revenue"
                 value="Tsh 4,280"
-                change="+18.7%"
-                changeType="positive"
                 icon={DollarSign}
                 description="This month"
               />

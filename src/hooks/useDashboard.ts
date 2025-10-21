@@ -73,9 +73,10 @@ export const useDashboard = () => {
       setIsLoading(true);
       setError(null);
 
-      const [overviewResponse, metricsResponse] = await Promise.all([
+      const [overviewResponse, metricsResponse, senderStatsResponse] = await Promise.all([
         apiClient.getDashboardOverview(),
-        apiClient.getDashboardMetrics()
+        apiClient.getDashboardMetrics(),
+        apiClient.getStatistics()
       ]);
 
       if (overviewResponse.success && overviewResponse.data) {
@@ -90,7 +91,16 @@ export const useDashboard = () => {
       }
 
       if (metricsResponse.success && metricsResponse.data) {
-        setMetrics(metricsResponse.data);
+        // Update the sender_id metric with approved sender names count
+        const updatedMetrics = { ...metricsResponse.data };
+        if (senderStatsResponse.success && senderStatsResponse.data) {
+          updatedMetrics.sender_id = {
+            ...updatedMetrics.sender_id,
+            value: senderStatsResponse.data.approved_requests,
+            description: "Approved sender names"
+          };
+        }
+        setMetrics(updatedMetrics);
       } else {
         setError(metricsResponse.error || 'Failed to fetch metrics');
         toast({
