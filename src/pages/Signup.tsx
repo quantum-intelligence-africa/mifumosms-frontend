@@ -114,25 +114,32 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-3 sm:p-4 lg:p-6 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0">
+        <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400/20 rounded-full animate-pulse" />
+        <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
+        <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
+      </div>
+      
+      <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl relative z-10">
         {/* Header */}
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-5 h-5 text-white" />
+        <div className="text-center mb-3 sm:mb-4">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
-            <span className="font-heading text-xl font-bold text-gray-900">
+            <span className="font-heading text-xl sm:text-2xl font-bold text-white">
               Mifumo WMS
             </span>
           </div>
         </div>
 
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-3">
-            <CardTitle className="text-xl font-bold text-gray-900">Create your account</CardTitle>
+          <CardHeader className="text-center pb-2 sm:pb-3 px-4 sm:px-6">
+            <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">Create your account</CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

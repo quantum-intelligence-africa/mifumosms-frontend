@@ -509,7 +509,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
             {/* Left Column - Heading and Description */}
             <div className="text-left">
-              <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
                 Everything you need to
                 <span className="block text-blue-500">
                   grow your business
@@ -576,19 +576,19 @@ const Landing = () => {
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <CardContent className="relative p-2.5 flex flex-col h-full">
+                    <CardContent className="relative p-3 flex flex-col h-full">
                       {/* Icon */}
-                      <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center mb-1.5 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
-                        <feature.icon className="w-3 h-3 text-white group-hover:scale-110 transition-transform duration-300" />
+                      <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
+                        <feature.icon className="w-3.5 h-3.5 text-white group-hover:scale-110 transition-transform duration-300" />
                       </div>
                       
                       {/* Title */}
-                      <h3 className="font-heading text-[11px] font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-1.5 leading-tight">
+                      <h3 className="font-heading text-xs font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-2 leading-tight">
                         {feature.title}
                       </h3>
                       
                       {/* Description */}
-                      <p className="text-[9px] text-gray-600 leading-tight group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
+                      <p className="text-[10px] text-gray-600 leading-tight group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
                         {feature.description}
                       </p>
 
@@ -611,9 +611,9 @@ const Landing = () => {
           <div className="text-center mb-8 sm:mb-12 lg:mb-16">
 
             <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Simple, transparent
+              {/* Simple, transparent */}
               <span className="block bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">
-                pricing
+                Pricing packages
               </span>
             </h2>
             <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -702,9 +702,9 @@ const Landing = () => {
           <div className="text-center mb-8">
 
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-              Calculate Your
+              {/* Calculate Your */}
               <span className="block bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
-                Custom Pricing
+                Pricing Calculator
               </span>
             </h3>
             <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
