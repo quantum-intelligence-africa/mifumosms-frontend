@@ -87,7 +87,7 @@ export async function handlePickFromPhone(): Promise<{
 		// @ts-ignore - Contact Picker API is not in TypeScript definitions yet
 		const picked: RawContact[] = await navigator.contacts.select(
 			["name", "tel", "email"], // fields we want back
-			{ multiple: true }
+			{ multiple: true } // Allow multiple contact selection
 		);
 
 		if (!picked || picked.length === 0) {
@@ -148,7 +148,7 @@ export async function handlePickFromPhone(): Promise<{
 // Get user-friendly support message
 export const getContactPickerSupportMessage = (): string => {
 	if (isContactPickerSupported()) {
-		return "Tap to select contacts from your phone";
+		return "Tap to select multiple contacts from your phone";
 	}
 
 	const userAgent = navigator.userAgent.toLowerCase();

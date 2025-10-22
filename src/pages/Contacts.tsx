@@ -530,12 +530,19 @@ const Contacts = () => {
           });
         }
 
-        setImportedContacts(contactsToImport);
-        setIsImportDialogOpen(true);
+        // If dialog is already open, append to existing contacts; otherwise replace
+        if (isImportDialogOpen) {
+          setImportedContacts(prev => [...prev, ...contactsToImport]);
+        } else {
+          setImportedContacts(contactsToImport);
+          setIsImportDialogOpen(true);
+        }
 
         toast({
-          title: "Contacts ready for import",
-          description: `Found ${contactsToImport.length} valid contacts from your device. Review and confirm to add them to your contact list.`,
+          title: isImportDialogOpen ? "More contacts added" : "Multiple contacts ready for import",
+          description: isImportDialogOpen
+            ? `Added ${contactsToImport.length} more contacts. Review and import when ready.`
+            : `Found ${contactsToImport.length} valid contacts from your device. Review, add more, or remove contacts before importing.`,
         });
       }
     } catch (error) {
@@ -907,7 +914,7 @@ const Contacts = () => {
                         <Smartphone className="w-3 h-3 mr-1" />
                       )}
                       <span className="hidden sm:inline">
-                        {isContactPickerSupported() ? "Import from Phone" : "Import Contacts"}
+                        Import Multiple Contacts
                       </span>
                       <span className="sm:hidden">Phone</span>
                     </Button>
@@ -1485,9 +1492,9 @@ const Contacts = () => {
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
         <DialogContent className="glass max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Import Contacts from Mobile Device</DialogTitle>
+            <DialogTitle>Import Multiple Contacts from Mobile Device</DialogTitle>
             <DialogDescription>
-              Review and import {importedContacts.length} contacts from your device
+              Review and import {importedContacts.length} contacts from your device. You can select multiple contacts at once.
             </DialogDescription>
           </DialogHeader>
 
@@ -1512,49 +1519,106 @@ const Contacts = () => {
               </Tabs>
             </div>
 
+            {/* Bulk Actions for Imported Contacts */}
+            {importedContacts.length > 0 && (
+              <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border-subtle">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">
+                      {importedContacts.length} contact{importedContacts.length !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setImportedContacts([])}
+                      className="text-xs h-7"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Clear All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleMobileContactImport}
+                      disabled={isImporting}
+                      className="text-xs h-7"
+                    >
+                      <Smartphone className="w-3 h-3 mr-1" />
+                      Add More Contacts
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Imported Contacts List */}
             <div className="flex-1 overflow-y-auto border rounded-lg p-4 space-y-3">
-              {importedContacts.map((contact, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="w-4 h-4 text-text-subtle" />
-                      <span className="font-medium text-sm">{contact.name || 'No name'}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-text-subtle">
-                      {contact.phone_e164 && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          <span>{contact.phone_e164}</span>
-                        </div>
-                      )}
-                      {contact.email && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          <span>{contact.email}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const updatedContacts = importedContacts.filter((_, i) => i !== index);
-                      setImportedContacts(updatedContacts);
-                    }}
-                    className="h-8 w-8 p-0"
-                  >
-                    <XCircle className="w-4 h-4 text-destructive" />
-                  </Button>
+              {importedContacts.length === 0 ? (
+                <div className="text-center py-8 text-text-subtle">
+                  <Smartphone className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No contacts selected yet</p>
+                  <p className="text-xs">Tap "Add More Contacts" to select contacts from your phone</p>
                 </div>
-              ))}
+              ) : (
+                importedContacts.map((contact, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-4 h-4 text-text-subtle" />
+                        <span className="font-medium text-sm">{contact.name || 'No name'}</span>
+                        {!contact.name && (
+                          <Badge variant="outline" className="text-xs text-destructive">
+                            Missing name
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-text-subtle">
+                        {contact.phone_e164 && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            <span>{contact.phone_e164}</span>
+                          </div>
+                        )}
+                        {contact.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            <span>{contact.email}</span>
+                          </div>
+                        )}
+                        {!contact.phone_e164 && (
+                          <Badge variant="outline" className="text-xs text-destructive">
+                            Missing phone
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const updatedContacts = importedContacts.filter((_, i) => i !== index);
+                        setImportedContacts(updatedContacts);
+                      }}
+                      className="h-8 w-8 p-0 hover:bg-destructive/10"
+                      title="Remove contact"
+                    >
+                      <XCircle className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="text-sm text-text-subtle">
-                {importedContacts.length} contacts ready to import
+                {importedContacts.length === 0
+                  ? "No contacts selected"
+                  : `${importedContacts.length} contact${importedContacts.length !== 1 ? 's' : ''} ready to import`
+                }
               </div>
               <div className="flex gap-2">
                 <Button
@@ -1577,7 +1641,7 @@ const Contacts = () => {
                   ) : (
                     <CheckCircle className="w-4 h-4" />
                   )}
-                  Import {importedContacts.length} Contacts
+                  Import {importedContacts.length} Contact{importedContacts.length !== 1 ? 's' : ''}
                 </Button>
               </div>
             </div>
@@ -1599,44 +1663,48 @@ const Contacts = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="w-5 h-5 text-primary" />
-              Import Contacts from Phone
+              Import Multiple Contacts from Phone
             </DialogTitle>
             <DialogDescription>
-              Access your phone's contact list to quickly import contacts
+              Access your phone's contact list to quickly import multiple contacts at once
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-3">
-              <h4 className="font-medium text-sm">Import Contacts from Phone</h4>
+              <h4 className="font-medium text-sm">Import Multiple Contacts from Phone</h4>
               <div className="space-y-2 text-sm text-text-subtle">
-                <p>This will open your phone's contact picker where you can select contacts to import.</p>
+                <p>This will open your phone's contact picker where you can select multiple contacts to import.</p>
                 <div className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
-                  <p>Tap "Import from Phone" to open the contact picker</p>
+                  <p>Tap "Import Multiple Contacts" to open the contact picker</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
-                  <p>Select the contacts you want to import (name and phone required)</p>
+                  <p>Select multiple contacts you want to import (name and phone required)</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
-                  <p>Review and confirm to add them to your contact list</p>
+                  <p>Review, add more, or remove contacts before importing</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">4</div>
+                  <p>Confirm to add all selected contacts to your contact list</p>
                 </div>
               </div>
             </div>
 
             <div className="p-3 bg-muted/30 rounded-lg">
               <p className="text-xs text-text-subtle">
-                <strong>Note:</strong> Only contacts with both name and phone number will be imported.
+                <strong>Note:</strong> You can select multiple contacts at once. Only contacts with both name and phone number will be imported.
                 Your contacts remain private and are only stored in your Mifumo Connect account.
               </p>
             </div>
 
             <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                <strong>Alternative:</strong> If direct access doesn't work, you can export your contacts
-                from your phone's contact app and use CSV upload instead.
+                <strong>Tip:</strong> You can add more contacts after the initial selection by tapping "Add More Contacts" in the review dialog.
+                If direct access doesn't work, you can export your contacts from your phone's contact app and use CSV upload instead.
               </p>
             </div>
           </div>
@@ -1657,7 +1725,7 @@ const Contacts = () => {
               className="flex-1"
             >
               <Smartphone className="w-4 h-4 mr-2" />
-              Import from Phone
+              Import Multiple Contacts
             </Button>
           </div>
         </DialogContent>
