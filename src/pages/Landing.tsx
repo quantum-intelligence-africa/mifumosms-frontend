@@ -267,27 +267,27 @@ const Landing = () => {
     {
       icon: MessageSquare,
       title: "WhatsApp Business",
-      description: "Connect with customers on their preferred messaging platform with our official WhatsApp Business API integration."
+      description: "Send messages and manage conversations through WhatsApp Business API."
     },
     {
       icon: Send,
       title: "SMS Campaigns",
-      description: "Reach customers instantly with bulk SMS campaigns for time-sensitive promotions and notifications."
+      description: "Create, schedule, and track bulk SMS campaigns with real-time delivery reports."
     },
     {
       icon: Users,
       title: "Contact Management",
-      description: "Organize, segment, and manage your customer database with advanced filtering and tagging capabilities."
+      description: "Import, segment, and organize contacts with advanced filtering and CSV support."
     },
     {
       icon: BarChart3,
       title: "Analytics & Reports",
-      description: "Track performance with detailed analytics and monitor delivery rates, engagement, and ROI across all channels."
+      description: "Monitor delivery rates, engagement metrics, and campaign performance with detailed charts."
     },
     {
       icon: Zap,
-      title: "Automation",
-      description: "Set up automated workflows and responses to engage customers at the right moment without manual effort."
+      title: "Templates & Automation",
+      description: "Create message templates and set up automated workflows for customer engagement."
     },
     {
       icon: Globe,
@@ -522,33 +522,26 @@ const Landing = () => {
 
             {/* Right Column - Feature Cards Grid */}
             <div className="w-full">
-              {/* Mobile: Side-by-side alternating layout */}
-              <div className="sm:hidden space-y-2">
+              {/* Mobile: Reference-style layout with alternating descriptions */}
+              <div className="sm:hidden space-y-8">
                 {features.map((feature, index) => (
-                  <div key={index} className={`flex items-start gap-2 ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
-                    {/* Mini Icon Container */}
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center shadow-sm ${
+                  <div key={index} className={`flex items-start gap-6 ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
+                    {/* Feature Block */}
+                    <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 flex flex-col items-center justify-center shadow-sm ${
                       index === 0 ? 'bg-white border-gray-300' :
                       index === 1 ? 'bg-blue-50 border-blue-300' :
                       index === 2 ? 'bg-red-50 border-red-300' :
                       'bg-green-50 border-green-300'
                     }`}>
-                      <feature.icon className={`w-3 h-3 ${
+                      {/* Icon at top-center */}
+                      <feature.icon className={`w-8 h-8 mb-2 ${
                         index === 0 ? 'text-gray-700' :
                         index === 1 ? 'text-blue-600' :
                         index === 2 ? 'text-red-600' :
                         'text-green-600'
                       }`} />
-                    </div>
-                    
-                    {/* Content Card */}
-                    <div className={`flex-1 p-2 rounded-lg border shadow-sm ${
-                      index === 0 ? 'bg-white border-gray-300' :
-                      index === 1 ? 'bg-blue-50 border-blue-300' :
-                      index === 2 ? 'bg-red-50 border-red-300' :
-                      'bg-green-50 border-green-300'
-                    }`}>
-                      <h3 className={`font-bold text-sm mb-1 ${
+                      {/* Title centered below icon */}
+                      <h3 className={`font-bold text-sm text-center leading-tight ${
                         index === 0 ? 'text-gray-800' :
                         index === 1 ? 'text-blue-700' :
                         index === 2 ? 'text-red-700' :
@@ -556,7 +549,11 @@ const Landing = () => {
                       }`}>
                         {feature.title}
                       </h3>
-                      <p className="text-xs text-gray-600 leading-tight">
+                    </div>
+
+                    {/* Description text - alternates sides */}
+                    <div className="flex-1 pt-3">
+                      <p className="text-sm text-gray-600 leading-relaxed">
                         {feature.description}
                       </p>
                     </div>
@@ -581,12 +578,12 @@ const Landing = () => {
                       <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
                         <feature.icon className="w-3.5 h-3.5 text-white group-hover:scale-110 transition-transform duration-300" />
                       </div>
-                      
+
                       {/* Title */}
                       <h3 className="font-heading text-xs font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-2 leading-tight">
                         {feature.title}
                       </h3>
-                      
+
                       {/* Description */}
                       <p className="text-[10px] text-gray-600 leading-tight group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
                         {feature.description}
