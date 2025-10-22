@@ -187,7 +187,11 @@ const Contacts = () => {
     updateContact,
     deleteContact,
     bulkImportContacts,
-    importContacts
+    bulkImportContactsLegacy,
+    importContacts,
+    bulkDeleteContacts,
+    bulkAddTags,
+    bulkRemoveTags
   } = useContacts();
 
   const location = useLocation();
@@ -318,45 +322,36 @@ const Contacts = () => {
 
 
 
-  const handleCSVImport = async (contacts: CreateContactRequest[]) => {
+  const handleCSVImport = async (data: {
+    import_type: 'csv' | 'excel' | 'phone_contacts';
+    csv_data?: string;
+    file?: File;
+    contacts?: CreateContactRequest[];
+    skip_duplicates?: boolean;
+    update_existing?: boolean;
+  }) => {
     try {
       setIsCreating(true);
-      let successCount = 0;
-      let errorCount = 0;
 
-      // Process all contacts with loading state active
-      for (const contact of contacts) {
-        try {
-          const contactWithConvertedPhone = {
-            ...contact,
-            phone_e164: convertToE164(contact.phone_e164)
-          };
-          const success = await createContact(contactWithConvertedPhone);
-          if (success) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          errorCount++;
-          console.error('Error creating contact:', error);
-        }
-      }
+      // Use the new bulk import endpoint
+      const result = await bulkImportContacts(data);
 
-      // Wait for all contacts to be processed before showing success message
-      await fetchContacts(); // Ensure contacts are refreshed
-
-      // Show final success message only after everything is complete
-      toast({
-        title: "CSV import completed",
-        description: `Successfully imported ${successCount} contacts. ${errorCount} failed.`,
-      });
+      return result;
     } catch (error) {
+      console.error('CSV import error:', error);
       toast({
-        title: "CSV import failed",
+        title: "Import failed",
         description: "Failed to import contacts. Please try again.",
         variant: "destructive"
       });
+      return {
+        success: false,
+        imported: 0,
+        updated: 0,
+        skipped: 0,
+        total_processed: 0,
+        errors: []
+      };
     } finally {
       setIsCreating(false);
     }
@@ -645,40 +640,18 @@ const Contacts = () => {
 
     try {
       setIsCreating(true);
-      let successCount = 0;
-      let errorCount = 0;
 
-      // Process all contacts individually (same as CSV import)
-      for (const contact of validContacts) {
-        try {
-          const contactWithConvertedPhone = {
-            ...contact,
-            phone_e164: convertToE164(contact.phone_e164)
-          };
-          const success = await createContact(contactWithConvertedPhone);
-          if (success) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          errorCount++;
-          console.error('Error creating contact:', error);
-        }
-      }
+      // Use the new bulk import endpoint for phone contacts
+      const result = await bulkImportContacts({
+        import_type: 'phone_contacts',
+        contacts: validContacts,
+        skip_duplicates: true,
+        update_existing: false
+      });
 
-      // Wait for all contacts to be processed before showing success message
-      await fetchContacts(); // Ensure contacts are refreshed
-
-      if (successCount > 0) {
+      if (result.success) {
         setImportedContacts([]);
         setIsImportDialogOpen(false);
-        toast({
-          title: "Import successful",
-          description: `Successfully imported ${successCount} contacts. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
-        });
-      } else {
-        throw new Error('Failed to import any contacts. Please check your internet connection and try again.');
       }
     } catch (error) {
       console.error('Bulk import error:', error);
@@ -754,37 +727,13 @@ const Contacts = () => {
     try {
       setIsBulkActionLoading(true);
 
-      // Get selected contact objects
-      const selectedContactObjects = contacts.filter(contact =>
-        selectedContacts.includes(contact.id)
-      );
+      // Use the new bulk add tags endpoint
+      const result = await bulkAddTags(selectedContacts, selectedTags);
 
-      let successCount = 0;
-      let failCount = 0;
-
-      // Add selected tags to each selected contact
-      for (const contact of selectedContactObjects) {
-        const existingTags = contact.tags || [];
-        const newTags = [...existingTags, ...selectedTags.filter(tag => !existingTags.includes(tag))];
-        const success = await updateContact(contact.id, { tags: newTags });
-
-        if (success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        toast({
-          title: "Tags added successfully",
-          description: `Added ${selectedTags.length} tag(s) to ${successCount} contact(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`,
-        });
+      if (result.success) {
         setSelectedContacts([]);
         setSelectedTags([]);
         setIsAddTagDialogOpen(false);
-      } else {
-        throw new Error('Failed to add tags to any contacts');
       }
     } catch (error) {
       console.error('Bulk add tag error:', error);
@@ -802,38 +751,20 @@ const Contacts = () => {
     try {
       setIsBulkActionLoading(true);
 
-      let successCount = 0;
-      let failCount = 0;
+      // Use the new bulk delete endpoint
+      const result = await bulkDeleteContacts(selectedContacts);
 
-      // Delete each selected contact
-      for (const contactId of selectedContacts) {
-        try {
-          const success = await deleteContact(contactId);
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (error) {
-          failCount++;
-          console.error('Error deleting contact:', error);
-        }
+      if (result.success) {
+        setSelectedContacts([]);
+        setIsBulkDeleteDialogOpen(false);
       }
-
-      // Always show success message and refresh page
-      toast({
-        title: "Contacts deleted successfully",
-        description: `Deleted ${successCount} contact(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`,
-      });
-
-      setSelectedContacts([]);
-      setIsBulkDeleteDialogOpen(false);
-
-      // Refresh the contacts list
-      await fetchContacts();
     } catch (error) {
       console.error('Bulk delete error:', error);
-      // Don't show error message since delete is working
+      toast({
+        title: "Bulk delete failed",
+        description: "An error occurred while deleting contacts. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsBulkActionLoading(false);
     }

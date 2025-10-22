@@ -205,9 +205,97 @@ export const useContacts = () => {
     }
   };
 
-  const bulkImportContacts = async (file: File): Promise<boolean> => {
+  // Enhanced bulk import with unified endpoint
+  const bulkImportContacts = async (data: {
+    import_type: 'csv' | 'excel' | 'phone_contacts';
+    csv_data?: string;
+    file?: File;
+    contacts?: CreateContactRequest[];
+    skip_duplicates?: boolean;
+    update_existing?: boolean;
+  }): Promise<{
+    success: boolean;
+    imported: number;
+    updated: number;
+    skipped: number;
+    total_processed: number;
+    errors: Array<{
+      row?: number;
+      contact?: CreateContactRequest;
+      error: string;
+    }>;
+  }> => {
     try {
-      const response = await apiClient.bulkImportContacts(file);
+      const response = await apiClient.bulkImportContacts(data);
+
+      if (response.success && response.data) {
+        const { imported, updated, skipped, total_processed, errors } = response.data;
+
+        await fetchContacts(); // Refresh the contacts list
+
+        // Show success message with detailed results
+        const successMessage = `Successfully imported ${imported} contacts${updated > 0 ? `, updated ${updated}` : ''}${skipped > 0 ? `, skipped ${skipped}` : ''}.`;
+
+        toast({
+          title: "Import completed",
+          description: successMessage,
+        });
+
+        // Show errors if any
+        if (errors && errors.length > 0) {
+          console.warn('Import errors:', errors);
+          toast({
+            title: "Some contacts had errors",
+            description: `${errors.length} contact(s) had validation errors. Check console for details.`,
+            variant: "destructive"
+          });
+        }
+
+        return {
+          success: true,
+          imported,
+          updated,
+          skipped,
+          total_processed,
+          errors: errors || []
+        };
+      } else {
+        toast({
+          title: "Import failed",
+          description: response.error || 'Please check your data and try again',
+          variant: "destructive"
+        });
+        return {
+          success: false,
+          imported: 0,
+          updated: 0,
+          skipped: 0,
+          total_processed: 0,
+          errors: []
+        };
+      }
+    } catch (error) {
+      console.error('Bulk import error:', error);
+      toast({
+        title: "Import failed",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return {
+        success: false,
+        imported: 0,
+        updated: 0,
+        skipped: 0,
+        total_processed: 0,
+        errors: []
+      };
+    }
+  };
+
+  // Legacy methods for backward compatibility
+  const bulkImportContactsLegacy = async (file: File): Promise<boolean> => {
+    try {
+      const response = await apiClient.bulkImportContactsLegacy(file);
 
       if (response.success) {
         await fetchContacts(); // Refresh the contacts list
@@ -266,6 +354,220 @@ export const useContacts = () => {
     }
   };
 
+  // =============================================
+  // BULK OPERATIONS
+  // =============================================
+
+  const bulkDeleteContacts = async (contactIds: string[]): Promise<{
+    success: boolean;
+    deleted_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }> => {
+    try {
+      const response = await apiClient.bulkDeleteContacts(contactIds);
+
+      if (response.success && response.data) {
+        const { deleted_count, failed_count, errors } = response.data;
+
+        await fetchContacts(); // Refresh the contacts list
+
+        // Show success message with detailed results
+        const successMessage = `Successfully deleted ${deleted_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
+
+        toast({
+          title: "Bulk delete completed",
+          description: successMessage,
+        });
+
+        // Show errors if any
+        if (errors && errors.length > 0) {
+          console.warn('Bulk delete errors:', errors);
+          toast({
+            title: "Some contacts had errors",
+            description: `${errors.length} contact(s) could not be deleted. Check console for details.`,
+            variant: "destructive"
+          });
+        }
+
+        return {
+          success: true,
+          deleted_count,
+          failed_count,
+          errors: errors || []
+        };
+      } else {
+        toast({
+          title: "Bulk delete failed",
+          description: response.error || 'Please try again',
+          variant: "destructive"
+        });
+        return {
+          success: false,
+          deleted_count: 0,
+          failed_count: contactIds.length,
+          errors: []
+        };
+      }
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast({
+        title: "Bulk delete failed",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return {
+        success: false,
+        deleted_count: 0,
+        failed_count: contactIds.length,
+        errors: []
+      };
+    }
+  };
+
+  const bulkAddTags = async (contactIds: string[], tags: string[]): Promise<{
+    success: boolean;
+    updated_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }> => {
+    try {
+      const response = await apiClient.bulkAddTags(contactIds, tags);
+
+      if (response.success && response.data) {
+        const { updated_count, failed_count, errors } = response.data;
+
+        await fetchContacts(); // Refresh the contacts list
+
+        // Show success message with detailed results
+        const successMessage = `Successfully added ${tags.length} tag(s) to ${updated_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
+
+        toast({
+          title: "Bulk tag update completed",
+          description: successMessage,
+        });
+
+        // Show errors if any
+        if (errors && errors.length > 0) {
+          console.warn('Bulk tag update errors:', errors);
+          toast({
+            title: "Some contacts had errors",
+            description: `${errors.length} contact(s) could not be updated. Check console for details.`,
+            variant: "destructive"
+          });
+        }
+
+        return {
+          success: true,
+          updated_count,
+          failed_count,
+          errors: errors || []
+        };
+      } else {
+        toast({
+          title: "Bulk tag update failed",
+          description: response.error || 'Please try again',
+          variant: "destructive"
+        });
+        return {
+          success: false,
+          updated_count: 0,
+          failed_count: contactIds.length,
+          errors: []
+        };
+      }
+    } catch (error) {
+      console.error('Bulk tag update error:', error);
+      toast({
+        title: "Bulk tag update failed",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return {
+        success: false,
+        updated_count: 0,
+        failed_count: contactIds.length,
+        errors: []
+      };
+    }
+  };
+
+  const bulkRemoveTags = async (contactIds: string[], tags: string[]): Promise<{
+    success: boolean;
+    updated_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }> => {
+    try {
+      const response = await apiClient.bulkRemoveTags(contactIds, tags);
+
+      if (response.success && response.data) {
+        const { updated_count, failed_count, errors } = response.data;
+
+        await fetchContacts(); // Refresh the contacts list
+
+        // Show success message with detailed results
+        const successMessage = `Successfully removed ${tags.length} tag(s) from ${updated_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
+
+        toast({
+          title: "Bulk tag removal completed",
+          description: successMessage,
+        });
+
+        // Show errors if any
+        if (errors && errors.length > 0) {
+          console.warn('Bulk tag removal errors:', errors);
+          toast({
+            title: "Some contacts had errors",
+            description: `${errors.length} contact(s) could not be updated. Check console for details.`,
+            variant: "destructive"
+          });
+        }
+
+        return {
+          success: true,
+          updated_count,
+          failed_count,
+          errors: errors || []
+        };
+      } else {
+        toast({
+          title: "Bulk tag removal failed",
+          description: response.error || 'Please try again',
+          variant: "destructive"
+        });
+        return {
+          success: false,
+          updated_count: 0,
+          failed_count: contactIds.length,
+          errors: []
+        };
+      }
+    } catch (error) {
+      console.error('Bulk tag removal error:', error);
+      toast({
+        title: "Bulk tag removal failed",
+        description: "Network error occurred. Please try again.",
+        variant: "destructive"
+      });
+      return {
+        success: false,
+        updated_count: 0,
+        failed_count: contactIds.length,
+        errors: []
+      };
+    }
+  };
+
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
@@ -285,7 +587,11 @@ export const useContacts = () => {
     updateContact,
     deleteContact,
     bulkImportContacts,
+    bulkImportContactsLegacy,
     importContacts,
+    bulkDeleteContacts,
+    bulkAddTags,
+    bulkRemoveTags,
     refetch: fetchContacts,
     refreshData,
   };

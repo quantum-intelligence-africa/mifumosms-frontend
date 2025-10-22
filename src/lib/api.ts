@@ -1024,7 +1024,55 @@ class ApiClient {
     });
   }
 
-  async bulkImportContacts(file: File): Promise<ApiResponse> {
+  // Enhanced Bulk Import - Unified Endpoint
+  async bulkImportContacts(data: {
+    import_type: 'csv' | 'excel' | 'phone_contacts';
+    csv_data?: string;
+    file?: File;
+    contacts?: CreateContactRequest[];
+    skip_duplicates?: boolean;
+    update_existing?: boolean;
+  }): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    imported: number;
+    updated: number;
+    skipped: number;
+    total_processed: number;
+    errors: Array<{
+      row?: number;
+      contact?: CreateContactRequest;
+      error: string;
+    }>;
+  }>> {
+    if (data.import_type === 'excel' && data.file) {
+      // Excel file upload
+      const formData = new FormData();
+      formData.append('import_type', data.import_type);
+      formData.append('file', data.file);
+      if (data.skip_duplicates !== undefined) {
+        formData.append('skip_duplicates', data.skip_duplicates.toString());
+      }
+      if (data.update_existing !== undefined) {
+        formData.append('update_existing', data.update_existing.toString());
+      }
+
+      return this.request('/messaging/contacts/bulk-import/', {
+        method: 'POST',
+        headers: {}, // Don't set Content-Type for FormData
+        body: formData,
+      });
+    } else {
+      // JSON data (CSV or phone contacts)
+      return this.request('/messaging/contacts/bulk-import/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    }
+  }
+
+  // Legacy methods for backward compatibility
+  async bulkImportContactsLegacy(file: File): Promise<ApiResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -1051,6 +1099,77 @@ class ApiClient {
   async optOutContact(contactId: string): Promise<ApiResponse> {
     return this.request(`/messaging/contacts/${contactId}/opt-out/`, {
       method: 'POST',
+    });
+  }
+
+  // =============================================
+  // BULK OPERATIONS ENDPOINTS
+  // =============================================
+
+  async bulkDeleteContacts(contactIds: string[]): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    deleted_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }>> {
+    return this.request('/messaging/contacts/bulk-delete/', {
+      method: 'POST',
+      body: JSON.stringify({ contact_ids: contactIds }),
+    });
+  }
+
+  async bulkUpdateContacts(updates: Array<{
+    contact_id: string;
+    data: Partial<CreateContactRequest>;
+  }>): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }>> {
+    return this.request('/messaging/contacts/bulk-update/', {
+      method: 'POST',
+      body: JSON.stringify({ updates }),
+    });
+  }
+
+  async bulkAddTags(contactIds: string[], tags: string[]): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }>> {
+    return this.request('/messaging/contacts/bulk-add-tags/', {
+      method: 'POST',
+      body: JSON.stringify({ contact_ids: contactIds, tags }),
+    });
+  }
+
+  async bulkRemoveTags(contactIds: string[], tags: string[]): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+    failed_count: number;
+    errors: Array<{
+      contact_id: string;
+      error: string;
+    }>;
+  }>> {
+    return this.request('/messaging/contacts/bulk-remove-tags/', {
+      method: 'POST',
+      body: JSON.stringify({ contact_ids: contactIds, tags }),
     });
   }
 
