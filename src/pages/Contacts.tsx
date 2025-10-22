@@ -645,20 +645,40 @@ const Contacts = () => {
 
     try {
       setIsCreating(true);
+      let successCount = 0;
+      let errorCount = 0;
 
-      // Use the new import API endpoint
-      const success = await importContacts({ contacts: validContacts });
+      // Process all contacts individually (same as CSV import)
+      for (const contact of validContacts) {
+        try {
+          const contactWithConvertedPhone = {
+            ...contact,
+            phone_e164: convertToE164(contact.phone_e164)
+          };
+          const success = await createContact(contactWithConvertedPhone);
+          if (success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('Error creating contact:', error);
+        }
+      }
 
-      if (success) {
+      // Wait for all contacts to be processed before showing success message
+      await fetchContacts(); // Ensure contacts are refreshed
+
+      if (successCount > 0) {
         setImportedContacts([]);
         setIsImportDialogOpen(false);
         toast({
           title: "Import successful",
-          description: `Successfully imported ${validContacts.length} contacts.`,
+          description: `Successfully imported ${successCount} contacts. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
         });
-        // fetchContacts() is already called in the hook
       } else {
-        throw new Error('Import failed - please check your internet connection and try again');
+        throw new Error('Failed to import any contacts. Please check your internet connection and try again.');
       }
     } catch (error) {
       console.error('Bulk import error:', error);
