@@ -426,6 +426,7 @@ const Templates = () => {
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                       <p className="text-sm text-text-subtle">Loading templates...</p>
+                      <p className="text-xs text-text-subtle mt-2">This may take a moment...</p>
                     </div>
                   </div>
                 ) : (
@@ -583,20 +584,29 @@ const Templates = () => {
                               ? "Try adjusting your search terms or filters to find what you're looking for."
                               : "Create your first message template to get started with automated communications."}
                           </p>
-                          {(searchQuery || channelFilter !== "all" || categoryFilter !== "all" || languageFilter !== "all") && (
+                          <div className="flex gap-2 justify-center">
+                            {(searchQuery || channelFilter !== "all" || categoryFilter !== "all" || languageFilter !== "all") && (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setChannelFilter("all");
+                                  setCategoryFilter("all");
+                                  setLanguageFilter("all");
+                                }}
+                                className="px-6"
+                              >
+                                Clear Filters
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
-                              onClick={() => {
-                                setSearchQuery("");
-                                setChannelFilter("all");
-                                setCategoryFilter("all");
-                                setLanguageFilter("all");
-                              }}
+                              onClick={() => fetchTemplates()}
                               className="px-6"
                             >
-                              Clear Filters
+                              Retry Loading
                             </Button>
-                          )}
+                          </div>
                         </div>
                       </div>
                     )}

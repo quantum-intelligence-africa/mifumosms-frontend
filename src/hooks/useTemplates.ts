@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiService } from '@/services/APIService';
+import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import type {
 	Template,
@@ -23,12 +23,17 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const fetchTemplates = async (newFilters?: TemplateFilterParams) => {
 		// Prevent multiple simultaneous calls
-		if (isLoading) return;
+		if (isLoading) {
+			console.log('Templates fetch already in progress, skipping...');
+			return;
+		}
 
 		setIsLoading(true);
+		console.log('Starting templates fetch...');
 
 		// Set a timeout to prevent infinite loading
 		const timeoutId = setTimeout(() => {
+			console.log('Templates fetch timeout reached');
 			setTemplates([]);
 			setFilterOptions(null);
 			setTotalCount(0);
@@ -39,50 +44,76 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 				description: "Unable to load templates. Please check your connection and try again.",
 				variant: "destructive"
 			});
-		}, 8000); // 8 second timeout
+		}, 15000); // 15 second timeout
 
 		try {
 			const currentFilters = newFilters || filters;
-			const response = await apiService.getTemplates(currentFilters);
+			console.log('Fetching templates with filters:', currentFilters);
+			console.log('API endpoint:', '/messaging/templates/');
+
+			const response = await apiClient.getTemplates(currentFilters);
 
 			// Clear timeout since we got a response
 			clearTimeout(timeoutId);
+			console.log('Templates API response:', response);
 
 			if (response.success && response.data) {
-				setTemplates(response.data.templates || []);
-				setFilterOptions(response.data.filter_options);
-				setTotalCount(response.data.total_count || 0);
+				const templates = response.data.templates || [];
+				const filterOptions = response.data.filter_options;
+				const totalCount = response.data.total_count || 0;
+
+				console.log('Templates loaded successfully:', templates.length, 'templates');
+				console.log('Filter options:', filterOptions);
+				console.log('Total count:', totalCount);
+
+				setTemplates(templates);
+				setFilterOptions(filterOptions);
+				setTotalCount(totalCount);
 			} else {
 				// Even on error, set empty arrays so UI can show empty state
+				console.error('Templates API error:', response.error);
+				console.error('Response status:', response.status);
+				console.error('Full response:', response);
+
 				setTemplates([]);
 				setFilterOptions(null);
 				setTotalCount(0);
-				// Only show error toast if we haven't loaded before
-				if (!hasLoaded) {
-					toast({
-						title: "Error",
-						description: response.error || "Failed to fetch templates",
-						variant: "destructive"
-					});
-				}
+
+				// Show specific error message
+				const errorMessage = response.error ||
+					response.message ||
+					`API Error (${response.status})` ||
+					"Failed to fetch templates";
+
+				toast({
+					title: "Error Loading Templates",
+					description: errorMessage,
+					variant: "destructive"
+				});
 			}
 		} catch (error) {
 			// Clear timeout since we got an error
 			clearTimeout(timeoutId);
 
 			// Even on error, set empty arrays so UI can show empty state
+			console.error('Templates fetch error:', error);
+			console.error('Error type:', typeof error);
+			console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+
 			setTemplates([]);
 			setFilterOptions(null);
 			setTotalCount(0);
-			// Only show error toast if we haven't loaded before
-			if (!hasLoaded) {
-				toast({
-					title: "Error",
-					description: "Failed to fetch templates",
-					variant: "destructive"
-				});
-			}
+
+			// Show specific error message
+			const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
+
+			toast({
+				title: "Network Error",
+				description: `Failed to fetch templates: ${errorMessage}`,
+				variant: "destructive"
+			});
 		} finally {
+			console.log('Templates fetch completed, setting loading to false');
 			setIsLoading(false);
 			setHasLoaded(true);
 		}
@@ -91,7 +122,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 	const createTemplate = async (data: CreateTemplateRequest) => {
 		setIsCreating(true);
 		try {
-			const response = await apiService.createTemplate(data);
+			const response = await apiClient.createTemplate(data);
 
 			if (response.success && response.data) {
 				toast({
@@ -124,7 +155,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 	const updateTemplate = async (templateId: string, data: TemplateUpdateRequest) => {
 		setIsUpdating(true);
 		try {
-			const response = await apiService.updateTemplate(templateId, data);
+			const response = await apiClient.updateTemplate(templateId, data);
 
 			if (response.success && response.data) {
 				toast({
@@ -157,7 +188,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 	const deleteTemplate = async (templateId: string) => {
 		setIsDeleting(true);
 		try {
-			const response = await apiService.deleteTemplate(templateId);
+			const response = await apiClient.deleteTemplate(templateId);
 
 			if (response.success) {
 				toast({
@@ -190,7 +221,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const toggleFavorite = async (templateId: string) => {
 		try {
-			const response = await apiService.toggleTemplateFavorite(templateId);
+			const response = await apiClient.toggleTemplateFavorite(templateId);
 
 			if (response.success && response.data) {
 				// Update local state
@@ -220,7 +251,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const incrementUsage = async (templateId: string) => {
 		try {
-			const response = await apiService.incrementTemplateUsage(templateId);
+			const response = await apiClient.incrementTemplateUsage(templateId);
 
 			if (response.success && response.data) {
 				// Update local state
@@ -240,7 +271,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const approveTemplate = async (templateId: string) => {
 		try {
-			const response = await apiService.approveTemplate(templateId);
+			const response = await apiClient.approveTemplate(templateId);
 
 			if (response.success && response.data) {
 				toast({
@@ -274,7 +305,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const rejectTemplate = async (templateId: string) => {
 		try {
-			const response = await apiService.rejectTemplate(templateId);
+			const response = await apiClient.rejectTemplate(templateId);
 
 			if (response.success && response.data) {
 				toast({
@@ -308,7 +339,7 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 
 	const copyTemplate = async (templateId: string, newName?: string) => {
 		try {
-			const response = await apiService.copyTemplate(templateId, newName);
+			const response = await apiClient.copyTemplate(templateId, newName);
 
 			if (response.success && response.data) {
 				toast({
@@ -382,7 +413,7 @@ export const useTemplate = (templateId: string) => {
 
 		setIsLoading(true);
 		try {
-			const response = await apiService.getTemplate(templateId);
+			const response = await apiClient.getTemplate(templateId);
 
 			if (response.success && response.data) {
 				setTemplate(response.data);
@@ -408,7 +439,7 @@ export const useTemplate = (templateId: string) => {
 		if (!templateId) return;
 
 		try {
-			const response = await apiService.getTemplateVariables(templateId);
+			const response = await apiClient.getTemplateVariables(templateId);
 
 			if (response.success && response.data) {
 				setVariables(response.data.variables);
@@ -440,7 +471,7 @@ export const useTemplateStatistics = () => {
 	const fetchStatistics = async () => {
 		setIsLoading(true);
 		try {
-			const response = await apiService.getTemplateStatistics();
+			const response = await apiClient.getTemplateStatistics();
 
 			if (response.success && response.data) {
 				setStatistics(response.data);
