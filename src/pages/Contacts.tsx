@@ -498,28 +498,58 @@ const Contacts = () => {
       }
 
       if (result.contacts && result.contacts.length > 0) {
-        // Convert to CreateContactRequest format
-        const contactsToImport: CreateContactRequest[] = result.contacts.map(contact => ({
-          name: contact.name,
-          phone_e164: contact.phone_e164,
-          email: contact.email,
-          tags: contact.tags,
-          attributes: contact.attributes
-        }));
+        // Convert to CreateContactRequest format and validate
+        const contactsToImport: CreateContactRequest[] = result.contacts
+          .map(contact => ({
+            name: contact.name,
+            phone_e164: contact.phone_e164,
+            email: contact.email,
+            tags: contact.tags,
+            attributes: contact.attributes
+          }))
+          .filter(contact => contact.name && contact.name.trim() && contact.phone_e164 && contact.phone_e164.trim());
+
+        if (contactsToImport.length === 0) {
+          toast({
+            title: "No valid contacts found",
+            description: "Selected contacts don't have both name and phone number. Please select different contacts.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (contactsToImport.length < result.contacts.length) {
+          toast({
+            title: "Some contacts skipped",
+            description: `${result.contacts.length - contactsToImport.length} contacts were skipped because they're missing required information.`,
+            variant: "destructive"
+          });
+        }
 
         setImportedContacts(contactsToImport);
         setIsImportDialogOpen(true);
 
         toast({
-          title: "Contacts imported successfully",
-          description: `Successfully imported ${result.imported} contacts from your device. Review and confirm to add them to your contact list.`,
+          title: "Contacts ready for import",
+          description: `Found ${contactsToImport.length} valid contacts from your device. Review and confirm to add them to your contact list.`,
         });
       }
     } catch (error) {
       console.error('Contact import error:', error);
 
-      // Show user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : "Failed to import contacts from your device.";
+      let errorMessage = "Failed to import contacts from your device.";
+
+      if (error instanceof Error) {
+        if (error.message.includes('not supported')) {
+          errorMessage = "Contact picker is not supported on this device. Please use CSV upload instead.";
+        } else if (error.message.includes('permission')) {
+          errorMessage = "Permission denied. Please allow access to contacts and try again.";
+        } else if (error.message.includes('network')) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
 
       toast({
         title: "Import failed",
@@ -579,24 +609,66 @@ const Contacts = () => {
   const handleBulkCreateContacts = async () => {
     if (importedContacts.length === 0) return;
 
+    // Validate contacts before import
+    const validContacts = importedContacts.filter(contact =>
+      contact.name && contact.name.trim() &&
+      contact.phone_e164 && contact.phone_e164.trim()
+    );
+
+    if (validContacts.length === 0) {
+      toast({
+        title: "No valid contacts",
+        description: "All contacts must have both name and phone number to be imported.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (validContacts.length < importedContacts.length) {
+      toast({
+        title: "Some contacts skipped",
+        description: `${importedContacts.length - validContacts.length} contacts were skipped because they're missing required information.`,
+        variant: "destructive"
+      });
+    }
+
     try {
       setIsCreating(true);
 
       // Use the new import API endpoint
-      const success = await importContacts({ contacts: importedContacts });
+      const success = await importContacts({ contacts: validContacts });
 
       if (success) {
         setImportedContacts([]);
         setIsImportDialogOpen(false);
+        toast({
+          title: "Import successful",
+          description: `Successfully imported ${validContacts.length} contacts.`,
+        });
         // fetchContacts() is already called in the hook
       } else {
-        throw new Error('Import failed');
+        throw new Error('Import failed - please check your internet connection and try again');
       }
     } catch (error) {
       console.error('Bulk import error:', error);
+
+      let errorMessage = "Failed to import contacts. Please try again.";
+
+      if (error instanceof Error) {
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.message.includes('validation')) {
+          errorMessage = "Some contacts have invalid data. Please review and try again.";
+        } else if (error.message.includes('duplicate')) {
+          errorMessage = "Some contacts already exist. Duplicates will be skipped.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
-        title: "Bulk import failed",
-        description: error instanceof Error ? error.message : "Failed to import contacts. Please try again.",
+        title: "Import failed",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

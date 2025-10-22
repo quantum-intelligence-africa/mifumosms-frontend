@@ -292,7 +292,7 @@ const SenderNames = () => {
 
     try {
       const result = await createSenderName({
-        sender_name: newSenderName.toUpperCase(),
+        sender_name: newSenderName,
         use_case: useCase,
         supporting_documents: selectedFiles
       });
@@ -831,7 +831,7 @@ const SenderNames = () => {
                 <div className="text-xs sm:text-sm">
                   <p className="font-medium mb-1">Sender Name Requirements</p>
                   <ul className="text-text-subtle space-y-1 list-disc list-inside">
-                    <li>Maximum 11 characters (alphanumeric)</li>
+                    <li>Maximum 17 characters (letters, numbers, spaces, _, -)</li>
                     <li>Must be relevant to your business or brand</li>
                     <li>Approval typically takes 1-3 business days</li>
                     <li>Provide valid use case and sample messages</li>
@@ -940,14 +940,14 @@ const SenderNames = () => {
                   <div className="space-y-1">
                     <Label className="text-xs sm:text-sm">Sender Name *</Label>
                     <Input
-                      placeholder="e.g., MYCOMPANY"
+                      placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
                       value={newSenderName}
-                      onChange={(e) => setNewSenderName(e.target.value.toUpperCase())}
-                      maxLength={11}
+                      onChange={(e) => setNewSenderName(e.target.value)}
+                      maxLength={17}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {newSenderName.length}/11 characters (alphanumeric only)
+                      {newSenderName.length}/17 characters (letters, numbers, spaces, _, -)
                     </p>
                   </div>
 
@@ -1061,14 +1061,14 @@ const SenderNames = () => {
                   <div className="space-y-1">
                     <Label className="text-xs sm:text-sm">Sender Name *</Label>
                     <Input
-                      placeholder="e.g., MYCOMPANY"
+                      placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
                       value={editSenderName}
-                      onChange={(e) => setEditSenderName(e.target.value.toUpperCase())}
-                      maxLength={11}
+                      onChange={(e) => setEditSenderName(e.target.value)}
+                      maxLength={17}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {editSenderName.length}/11 characters (alphanumeric only)
+                      {editSenderName.length}/17 characters (letters, numbers, spaces, _, -)
                     </p>
                   </div>
 

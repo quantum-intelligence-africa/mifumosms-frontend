@@ -90,6 +90,7 @@ const PurchaseSMS = () => {
   const [mobileMoneyProviders, setMobileMoneyProviders] = useState<MobileMoneyProvider[]>([]);
   const [customSMSState, setCustomSMSState] = useState<CustomSMSState | null>(null);
   const [isCalculatingCustom, setIsCalculatingCustom] = useState(false);
+  const [customCreditsError, setCustomCreditsError] = useState<string>("");
 
   // Default packages matching the pricing table
   const defaultPackages: SMSPackage[] = useMemo(() => [
@@ -360,11 +361,17 @@ const PurchaseSMS = () => {
     if (customCredits && !selectedPackage) {
       const credits = parseInt(customCredits);
       if (credits >= 100) {
+        setCustomCreditsError("");
         calculateCustomSMSPrice(credits);
+      } else if (credits > 0) {
+        setCustomCreditsError("Minimum 100 credits required");
+        setCustomSMSState(null);
       } else {
+        setCustomCreditsError("");
         setCustomSMSState(null);
       }
     } else {
+      setCustomCreditsError("");
       setCustomSMSState(null);
     }
   }, [customCredits, selectedPackage]);
@@ -438,6 +445,16 @@ const PurchaseSMS = () => {
       toast({
         title: "Select package",
         description: "Please select a package or enter custom credits",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate custom credits if custom amount is selected
+    if (customCredits && customCreditsError) {
+      toast({
+        title: "Invalid amount",
+        description: customCreditsError,
         variant: "destructive"
       });
       return;
@@ -729,9 +746,17 @@ const PurchaseSMS = () => {
                       setSelectedPackageId("");
                       setPaymentMethod(""); // Reset payment method when custom amount changes
                     }}
-                    className="glass-subtle border-0 h-9 text-sm"
+                    className={`glass-subtle border-0 h-9 text-sm ${
+                      customCreditsError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                    }`}
                     min="100"
                   />
+                  {customCreditsError && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {customCreditsError}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Total Cost</Label>
@@ -917,7 +942,12 @@ const PurchaseSMS = () => {
             {/* Proceed Button */}
             {(selectedPackage || customCredits) && (
               <div className="flex justify-end">
-                <Button size="lg" onClick={handlePurchase} className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  onClick={handlePurchase}
+                  className="w-full sm:w-auto"
+                  disabled={customCreditsError !== ""}
+                >
                   Proceed to Payment
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
