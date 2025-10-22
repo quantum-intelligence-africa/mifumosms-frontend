@@ -136,21 +136,73 @@ export interface Template {
   id: string;
   name: string;
   category: string;
+  category_display: string;
   language: string;
-  content: string;
+  language_display: string;
+  channel: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  channel_display: string;
+  body_text: string;
+  formatted_body_text?: string;
+  description?: string;
   variables: string[];
-  is_active: boolean;
-  approval_status: "pending" | "approved" | "rejected";
+  variables_count: number;
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  status_display: string;
+  approved: boolean;
+  approval_status: 'draft' | 'pending' | 'approved' | 'rejected';
+  is_favorite: boolean;
+  usage_count: number;
+  last_used_at?: string;
+  last_used_display: string;
   created_at: string;
   updated_at: string;
+  statistics?: {
+    total_uses: number;
+    last_used: string;
+    created: string;
+    variables_count: number;
+  };
 }
 
 export interface CreateTemplateRequest {
   name: string;
   category: string;
   language: string;
-  content: string;
-  variables: string[];
+  channel: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  body_text: string;
+  description?: string;
+}
+
+export interface TemplateUpdateRequest {
+  name?: string;
+  category?: string;
+  language?: string;
+  channel?: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  body_text?: string;
+  description?: string;
+}
+
+export interface TemplateListResponse {
+  templates: Template[];
+  filter_options: {
+    categories: Array<{ value: string; label: string }>;
+    languages: Array<{ value: string; label: string }>;
+    channels: Array<{ value: string; label: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  };
+  total_count: number;
+}
+
+export interface TemplateFilterParams {
+  category?: string;
+  language?: string;
+  channel?: string;
+  status?: string;
+  search?: string;
+  favorites_only?: boolean;
+  approved_only?: boolean;
+  page?: number;
+  page_size?: number;
 }
 
 // Conversation Types
@@ -1215,8 +1267,24 @@ class ApiClient {
   // TEMPLATES ENDPOINTS
   // =============================================
 
-  async getTemplates(): Promise<ApiResponse<Template[]>> {
-    return this.request<Template[]>('/messaging/templates/');
+  // =============================================
+  // TEMPLATE ENDPOINTS
+  // =============================================
+
+  async getTemplates(params?: TemplateFilterParams): Promise<ApiResponse<TemplateListResponse>> {
+    const queryParams = new URLSearchParams();
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.language) queryParams.append('language', params.language);
+    if (params?.channel) queryParams.append('channel', params.channel);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.favorites_only) queryParams.append('favorites_only', 'true');
+    if (params?.approved_only) queryParams.append('approved_only', 'true');
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+    const endpoint = `/messaging/templates/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.request<TemplateListResponse>(endpoint);
   }
 
   async createTemplate(templateData: CreateTemplateRequest): Promise<ApiResponse<Template>> {
@@ -1230,9 +1298,16 @@ class ApiClient {
     return this.request<Template>(`/messaging/templates/${templateId}/`);
   }
 
-  async updateTemplate(templateId: string, templateData: Partial<CreateTemplateRequest>): Promise<ApiResponse<Template>> {
+  async updateTemplate(templateId: string, templateData: TemplateUpdateRequest): Promise<ApiResponse<Template>> {
     return this.request<Template>(`/messaging/templates/${templateId}/`, {
       method: 'PUT',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async patchTemplate(templateId: string, templateData: TemplateUpdateRequest): Promise<ApiResponse<Template>> {
+    return this.request<Template>(`/messaging/templates/${templateId}/`, {
+      method: 'PATCH',
       body: JSON.stringify(templateData),
     });
   }
@@ -1241,6 +1316,56 @@ class ApiClient {
     return this.request(`/messaging/templates/${templateId}/`, {
       method: 'DELETE',
     });
+  }
+
+  // Template Actions
+  async toggleTemplateFavorite(templateId: string): Promise<ApiResponse<{ is_favorite: boolean }>> {
+    return this.request<{ is_favorite: boolean }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.TOGGLE_FAVORITE(templateId), {
+      method: 'POST',
+    });
+  }
+
+  async incrementTemplateUsage(templateId: string): Promise<ApiResponse<{ usage_count: number }>> {
+    return this.request<{ usage_count: number }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.INCREMENT_USAGE(templateId), {
+      method: 'POST',
+    });
+  }
+
+  async approveTemplate(templateId: string): Promise<ApiResponse<{ status: string }>> {
+    return this.request<{ status: string }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.APPROVE(templateId), {
+      method: 'POST',
+    });
+  }
+
+  async rejectTemplate(templateId: string): Promise<ApiResponse<{ status: string }>> {
+    return this.request<{ status: string }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.REJECT(templateId), {
+      method: 'POST',
+    });
+  }
+
+  async getTemplateVariables(templateId: string): Promise<ApiResponse<{ variables: string[] }>> {
+    return this.request<{ variables: string[] }>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.VARIABLES(templateId));
+  }
+
+  async copyTemplate(templateId: string, newName?: string): Promise<ApiResponse<Template>> {
+    return this.request<Template>(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_ACTIONS.COPY(templateId), {
+      method: 'POST',
+      body: JSON.stringify({ name: newName }),
+    });
+  }
+
+  async getTemplateStatistics(): Promise<ApiResponse<{
+    total_templates: number;
+    approved_templates: number;
+    pending_templates: number;
+    draft_templates: number;
+    rejected_templates: number;
+    favorite_templates: number;
+    templates_by_category: Record<string, number>;
+    templates_by_language: Record<string, number>;
+    templates_by_channel: Record<string, number>;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.TEMPLATE_STATISTICS);
   }
 
   // =============================================

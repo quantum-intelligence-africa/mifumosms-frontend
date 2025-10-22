@@ -336,6 +336,103 @@ export class APIService {
 			'Get billing overview'
 		);
 	}
+
+	// =============================================
+	// TEMPLATE METHODS
+	// =============================================
+
+	// Template CRUD Operations
+	async getTemplates(params?: any) {
+		return this.withRetry(
+			() => apiClient.getTemplates(params),
+			'Get templates'
+		);
+	}
+
+	async createTemplate(data: any) {
+		return this.withRetry(
+			() => apiClient.createTemplate(data),
+			'Create template'
+		);
+	}
+
+	async getTemplate(templateId: string) {
+		return this.withRetry(
+			() => apiClient.getTemplate(templateId),
+			'Get template'
+		);
+	}
+
+	async updateTemplate(templateId: string, data: any) {
+		return this.withRetry(
+			() => apiClient.updateTemplate(templateId, data),
+			'Update template'
+		);
+	}
+
+	async patchTemplate(templateId: string, data: any) {
+		return this.withRetry(
+			() => apiClient.patchTemplate(templateId, data),
+			'Patch template'
+		);
+	}
+
+	async deleteTemplate(templateId: string) {
+		return this.withRetry(
+			() => apiClient.deleteTemplate(templateId),
+			'Delete template'
+		);
+	}
+
+	// Template Actions
+	async toggleTemplateFavorite(templateId: string) {
+		return this.withRetry(
+			() => apiClient.toggleTemplateFavorite(templateId),
+			'Toggle template favorite'
+		);
+	}
+
+	async incrementTemplateUsage(templateId: string) {
+		return this.withRetry(
+			() => apiClient.incrementTemplateUsage(templateId),
+			'Increment template usage'
+		);
+	}
+
+	async approveTemplate(templateId: string) {
+		return this.withRetry(
+			() => apiClient.approveTemplate(templateId),
+			'Approve template'
+		);
+	}
+
+	async rejectTemplate(templateId: string) {
+		return this.withRetry(
+			() => apiClient.rejectTemplate(templateId),
+			'Reject template'
+		);
+	}
+
+	async getTemplateVariables(templateId: string) {
+		return this.withRetry(
+			() => apiClient.getTemplateVariables(templateId),
+			'Get template variables'
+		);
+	}
+
+	async copyTemplate(templateId: string, newName?: string) {
+		return this.withRetry(
+			() => apiClient.copyTemplate(templateId, newName),
+			'Copy template'
+		);
+	}
+
+	async getTemplateStatistics() {
+		return this.withRetry(
+			() => apiClient.getTemplateStatistics(),
+			'Get template statistics'
+		);
+	}
 }
 
 // Export singleton instance
