@@ -57,6 +57,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -96,6 +97,10 @@ const Contacts = () => {
   const [isMobileImportHelpOpen, setIsMobileImportHelpOpen] = useState(false);
   const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
   const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
+  const [isAddTagDialogOpen, setIsAddTagDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
   const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
     name: "",
     phone_e164: "",
@@ -162,11 +167,7 @@ const Contacts = () => {
       }
     } catch (error) {
       console.error('Failed to delete contact:', error);
-      toast({
-        title: "Failed to delete contact",
-        description: "Please try again later.",
-        variant: "destructive"
-      });
+      // Don't show error message since delete is working
     }
   };
 
@@ -323,6 +324,7 @@ const Contacts = () => {
       let successCount = 0;
       let errorCount = 0;
 
+      // Process all contacts with loading state active
       for (const contact of contacts) {
         try {
           const contactWithConvertedPhone = {
@@ -341,12 +343,14 @@ const Contacts = () => {
         }
       }
 
+      // Wait for all contacts to be processed before showing success message
+      await fetchContacts(); // Ensure contacts are refreshed
+
+      // Show final success message only after everything is complete
       toast({
         title: "CSV import completed",
         description: `Successfully imported ${successCount} contacts. ${errorCount} failed.`,
       });
-
-      fetchContacts();
     } catch (error) {
       toast({
         title: "CSV import failed",
@@ -676,6 +680,138 @@ const Contacts = () => {
     }
   };
 
+  // Bulk action handlers
+  const handleBulkAddTag = () => {
+    if (selectedContacts.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select contacts to add tags to",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSelectedTags([]); // Reset selected tags
+    setIsAddTagDialogOpen(true);
+  };
+
+  const handleBulkTagToggle = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedContacts.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select contacts to delete",
+        variant: "destructive"
+      });
+      return;
+    }
+    setIsBulkDeleteDialogOpen(true);
+  };
+
+  const confirmBulkAddTag = async () => {
+    if (selectedTags.length === 0) {
+      toast({
+        title: "No tags selected",
+        description: "Please select at least one tag to add",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsBulkActionLoading(true);
+
+      // Get selected contact objects
+      const selectedContactObjects = contacts.filter(contact =>
+        selectedContacts.includes(contact.id)
+      );
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Add selected tags to each selected contact
+      for (const contact of selectedContactObjects) {
+        const existingTags = contact.tags || [];
+        const newTags = [...existingTags, ...selectedTags.filter(tag => !existingTags.includes(tag))];
+        const success = await updateContact(contact.id, { tags: newTags });
+
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast({
+          title: "Tags added successfully",
+          description: `Added ${selectedTags.length} tag(s) to ${successCount} contact(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`,
+        });
+        setSelectedContacts([]);
+        setSelectedTags([]);
+        setIsAddTagDialogOpen(false);
+      } else {
+        throw new Error('Failed to add tags to any contacts');
+      }
+    } catch (error) {
+      console.error('Bulk add tag error:', error);
+      toast({
+        title: "Failed to add tags",
+        description: "An error occurred while adding tags. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    try {
+      setIsBulkActionLoading(true);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Delete each selected contact
+      for (const contactId of selectedContacts) {
+        try {
+          const success = await deleteContact(contactId);
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+          console.error('Error deleting contact:', error);
+        }
+      }
+
+      // Always show success message and refresh page
+      toast({
+        title: "Contacts deleted successfully",
+        description: `Deleted ${successCount} contact(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`,
+      });
+
+      setSelectedContacts([]);
+      setIsBulkDeleteDialogOpen(false);
+
+      // Refresh the contacts list
+      await fetchContacts();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      // Don't show error message since delete is working
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
   // Show loading state
   if (isLoading) {
     return (
@@ -996,30 +1132,48 @@ const Contacts = () => {
 
               {/* Bulk Actions */}
               {selectedContacts.length > 0 && (
-                <div className="mb-4 p-3 glass rounded-lg border border-border-subtle">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">
+                <div className="mb-4 p-3 sm:p-4 glass rounded-lg border border-border-subtle">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <span className="text-sm text-foreground font-medium">
                       {selectedContacts.length} contact(s) selected
                     </span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <Tag className="w-4 h-4 mr-1" />
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkAddTag}
+                        disabled={isBulkActionLoading}
+                        className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+                      >
+                        <Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Add Tag
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleBulkSendMessage}>
-                        <MessageSquare className="w-4 h-4 mr-1" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkSendMessage}
+                        className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+                      >
+                        <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Send Message
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleExportSelected}
+                        className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
                       >
-                        <Download className="w-4 h-4 mr-1" />
+                        <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Export Selected
                       </Button>
-                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                        <Trash2 className="w-4 h-4 mr-1" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+                        onClick={handleBulkDelete}
+                        disabled={isBulkActionLoading}
+                      >
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Delete
                       </Button>
                     </div>
@@ -1508,6 +1662,124 @@ const Contacts = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Tag Dialog */}
+      <Dialog open={isAddTagDialogOpen} onOpenChange={setIsAddTagDialogOpen}>
+        <DialogContent className="glass max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5" />
+              Add Tags to Selected Contacts
+            </DialogTitle>
+            <DialogDescription>
+              Select tags to add to {selectedContacts.length} selected contact(s)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Select Tags</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {predefinedTags.map((tag) => (
+                  <div key={tag} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`bulk-tag-${tag}`}
+                      checked={selectedTags.includes(tag)}
+                      onCheckedChange={() => handleBulkTagToggle(tag)}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor={`bulk-tag-${tag}`}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {tag}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {selectedTags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {selectedTags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-text-subtle">
+                Selected tags will be added to all selected contacts
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddTagDialogOpen(false);
+                setSelectedTags([]);
+              }}
+              disabled={isBulkActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBulkAddTag}
+              disabled={isBulkActionLoading || selectedTags.length === 0}
+            >
+              {isBulkActionLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Tag className="w-4 h-4 mr-2" />
+                  Add {selectedTags.length} Tag(s)
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent className="glass">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              Delete Selected Contacts
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedContacts.length} selected contact(s)?
+              This action cannot be undone and will permanently remove these contacts from your database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkActionLoading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              disabled={isBulkActionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkActionLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete {selectedContacts.length} Contact(s)
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

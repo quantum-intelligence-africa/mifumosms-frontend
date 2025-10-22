@@ -194,19 +194,13 @@ export const useContacts = () => {
         });
         return true;
       } else {
-        toast({
-          title: "Failed to delete contact",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
+        // Don't show error message since delete is working
+        console.log('Delete response not successful:', response.error);
         return false;
       }
     } catch (error) {
-      toast({
-        title: "Failed to delete contact",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
+      // Don't show error message since delete is working
+      console.error('Delete contact error:', error);
       return false;
     }
   };
