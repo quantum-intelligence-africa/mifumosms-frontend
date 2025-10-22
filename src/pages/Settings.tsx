@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api";
 
 interface SettingsCategory {
   id: string;
@@ -87,6 +88,18 @@ const Settings = () => {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+  });
+  const [preferences, setPreferences] = useState({
+    language: "en",
+    timezone: "Africa/Dar_es_Salaam",
+    date_format: "DD/MM/YYYY",
+    time_format: "24h",
+  });
+  const [notificationSettings, setNotificationSettings] = useState({
+    email_notifications: true,
+    sms_notifications: false,
+    push_notifications: true,
+    marketing_emails: false,
   });
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
@@ -154,6 +167,40 @@ const Settings = () => {
       });
     }
   }, [user]);
+
+  // Load preferences and notification settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const [prefsResponse, notifResponse] = await Promise.all([
+          apiClient.getPreferences(),
+          apiClient.getNotificationSettings()
+        ]);
+
+        if (prefsResponse.success && prefsResponse.data) {
+          setPreferences({
+            language: prefsResponse.data.language,
+            timezone: prefsResponse.data.timezone,
+            date_format: prefsResponse.data.date_format,
+            time_format: prefsResponse.data.time_format,
+          });
+        }
+
+        if (notifResponse.success && notifResponse.data) {
+          setNotificationSettings({
+            email_notifications: notifResponse.data.email_notifications,
+            sms_notifications: notifResponse.data.sms_notifications,
+            push_notifications: notifResponse.data.push_notifications,
+            marketing_emails: notifResponse.data.marketing_emails,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   // Ensure we stay on the settings page and profile category after successful updates
   useEffect(() => {
@@ -307,16 +354,96 @@ const Settings = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
+    if (passwordData.newPassword.length < 8) {
       toast({
-        title: "Password change",
-        description: "Password change functionality will be implemented soon.",
+        title: "Password too short",
+        description: "Password must be at least 8 characters long.",
         variant: "destructive"
       });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.changePassword({
+        old_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      });
+
+      if (response.success) {
+        toast({
+          title: "Password updated successfully",
+          description: "Your password has been changed successfully.",
+        });
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } else {
+        toast({
+          title: "Password change failed",
+          description: response.error || "Failed to change password. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       toast({
         title: "Password change failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePreferencesUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.updatePreferences(preferences);
+      if (response.success) {
+        toast({
+          title: "Preferences updated successfully",
+          description: "Your preferences have been saved.",
+        });
+      } else {
+        toast({
+          title: "Update failed",
+          description: response.error || "Failed to update preferences. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNotificationSettingsUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.updateNotificationSettings(notificationSettings);
+      if (response.success) {
+        toast({
+          title: "Notification settings updated successfully",
+          description: "Your notification preferences have been saved.",
+        });
+      } else {
+        toast({
+          title: "Update failed",
+          description: response.error || "Failed to update notification settings. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
@@ -426,7 +553,10 @@ const Settings = () => {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="language" className="text-sm">Language</Label>
-                    <Select defaultValue="en">
+                    <Select
+                      value={preferences.language}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
+                    >
                       <SelectTrigger className="glass-subtle border-0 text-sm">
                         <SelectValue />
                       </SelectTrigger>
@@ -439,19 +569,62 @@ const Settings = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="dateFormat" className="text-sm">Date Format</Label>
-                    <Select defaultValue="dd-mm-yyyy">
+                    <Label htmlFor="timezone" className="text-sm">Timezone</Label>
+                    <Select
+                      value={preferences.timezone}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
+                    >
                       <SelectTrigger className="glass-subtle border-0 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="glass">
-                        <SelectItem value="dd-mm-yyyy">DD/MM/YYYY</SelectItem>
-                        <SelectItem value="mm-dd-yyyy">MM/DD/YYYY</SelectItem>
-                        <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
+                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
+                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dateFormat" className="text-sm">Date Format</Label>
+                    <Select
+                      value={preferences.date_format}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, date_format: value }))}
+                    >
+                      <SelectTrigger className="glass-subtle border-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                        <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                        <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timeFormat" className="text-sm">Time Format</Label>
+                    <Select
+                      value={preferences.time_format}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, time_format: value }))}
+                    >
+                      <SelectTrigger className="glass-subtle border-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="24h">24 Hour (14:30)</SelectItem>
+                        <SelectItem value="12h">12 Hour (2:30 PM)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+                <Button
+                  onClick={handlePreferencesUpdate}
+                  disabled={isLoading}
+                  className="w-full text-sm"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isLoading ? "Saving..." : "Save Preferences"}
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -474,38 +647,51 @@ const Settings = () => {
                       <h4 className="font-medium text-foreground text-sm">Email Notifications</h4>
                       <p className="text-xs text-text-subtle">Receive email updates about your account</p>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch
+                      checked={notificationSettings.email_notifications}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, email_notifications: checked }))}
+                    />
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Campaign Alerts</h4>
-                      <p className="text-xs text-text-subtle">Get notified when campaigns complete</p>
+                      <h4 className="font-medium text-foreground text-sm">SMS Notifications</h4>
+                      <p className="text-xs text-text-subtle">Receive SMS alerts for important updates</p>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch
+                      checked={notificationSettings.sms_notifications}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, sms_notifications: checked }))}
+                    />
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Delivery Failures</h4>
-                      <p className="text-xs text-text-subtle">Alert me when messages fail to deliver</p>
+                      <h4 className="font-medium text-foreground text-sm">Push Notifications</h4>
+                      <p className="text-xs text-text-subtle">Get browser push notifications</p>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch
+                      checked={notificationSettings.push_notifications}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, push_notifications: checked }))}
+                    />
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Weekly Reports</h4>
-                      <p className="text-xs text-text-subtle">Receive weekly performance summaries</p>
+                      <h4 className="font-medium text-foreground text-sm">Marketing Emails</h4>
+                      <p className="text-xs text-text-subtle">Receive promotional and marketing content</p>
                     </div>
-                    <Switch />
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <h4 className="font-medium text-foreground text-sm">Product Updates</h4>
-                      <p className="text-xs text-text-subtle">Stay informed about new features</p>
-                    </div>
-                    <Switch defaultChecked />
+                    <Switch
+                      checked={notificationSettings.marketing_emails}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, marketing_emails: checked }))}
+                    />
                   </div>
                 </div>
+                <Button
+                  onClick={handleNotificationSettingsUpdate}
+                  disabled={isLoading}
+                  className="w-full text-sm"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isLoading ? "Saving..." : "Save Notification Settings"}
+                </Button>
               </CardContent>
             </Card>
           </div>

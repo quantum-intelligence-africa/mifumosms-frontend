@@ -798,13 +798,71 @@ class ApiClient {
   }
 
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>('/auth/profile/');
+    return this.request<User>('/api/accounts/settings/profile/');
   }
 
   async updateProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
-    return this.request<User>('/auth/profile/', {
+    return this.request<User>('/api/accounts/settings/profile/', {
       method: 'PUT',
       body: JSON.stringify(userData),
+    });
+  }
+
+  // User Preferences Management
+  async getPreferences(): Promise<ApiResponse<{
+    language: string;
+    timezone: string;
+    date_format: string;
+    time_format: string;
+    theme: string;
+  }>> {
+    return this.request('/api/accounts/settings/preferences/');
+  }
+
+  async updatePreferences(preferences: {
+    language?: string;
+    timezone?: string;
+    date_format?: string;
+    time_format?: string;
+  }): Promise<ApiResponse<{
+    language: string;
+    timezone: string;
+    date_format: string;
+    time_format: string;
+    theme: string;
+  }>> {
+    return this.request('/api/accounts/settings/preferences/', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  }
+
+  // Notification Settings Management
+  async getNotificationSettings(): Promise<ApiResponse<{
+    email_notifications: boolean;
+    sms_notifications: boolean;
+    push_notifications: boolean;
+    marketing_emails: boolean;
+    notification_frequency: string;
+  }>> {
+    return this.request('/api/accounts/settings/notifications/');
+  }
+
+  async updateNotificationSettings(settings: {
+    email_notifications?: boolean;
+    sms_notifications?: boolean;
+    push_notifications?: boolean;
+    marketing_emails?: boolean;
+  }): Promise<ApiResponse<{
+    email_notifications: boolean;
+    sms_notifications: boolean;
+    push_notifications: boolean;
+    marketing_emails: boolean;
+    notification_frequency: string;
+  }>> {
+    return this.request('/api/accounts/settings/notifications/', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
     });
   }
 
@@ -816,9 +874,19 @@ class ApiClient {
   }
 
   async requestPasswordReset(email: string): Promise<ApiResponse> {
-    return this.request('/auth/password/reset/', {
+    return this.request('/api/accounts/forgot-password/', {
       method: 'POST',
       body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse> {
+    return this.request('/api/accounts/password/reset/confirm/', {
+      method: 'POST',
+      body: JSON.stringify({
+        token: token,
+        new_password: newPassword
+      }),
     });
   }
 
