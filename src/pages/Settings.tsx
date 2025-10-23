@@ -23,7 +23,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar
+  Calendar,
+  RefreshCw
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -62,6 +63,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
+import { useSecurity } from "@/hooks/useSecurity";
+import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
 
 interface SettingsCategory {
   id: string;
@@ -89,6 +92,19 @@ const Settings = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [twoFactorData, setTwoFactorData] = useState({
+    totpCode: "",
+    password: "",
+    backupCode: "",
+  });
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [show2FADisable, setShow2FADisable] = useState(false);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [showSessions, setShowSessions] = useState(false);
+  const [showSecurityEvents, setShowSecurityEvents] = useState(false);
+  const [fallbackQRCode, setFallbackQRCode] = useState<QRCodeData | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [preferences, setPreferences] = useState({
     language: "en",
     timezone: "Africa/Dar_es_Salaam",
@@ -103,6 +119,19 @@ const Settings = () => {
   });
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
+  const {
+    securitySummary,
+    twoFactorStatus,
+    activeSessions,
+    securityEvents,
+    isLoading: securityLoading,
+    changePassword: changePasswordSecurity,
+    enable2FA,
+    disable2FA,
+    terminateSession,
+    terminateAllOtherSessions,
+    fetch2FAStatus,
+  } = useSecurity();
 
   const settingsCategories: SettingsCategory[] = [
     {
@@ -452,6 +481,103 @@ const Settings = () => {
     }
   };
 
+  // 2FA handlers
+  const handleEnable2FA = async () => {
+    if (!twoFactorData.totpCode) {
+      toast({
+        title: "TOTP Code Required",
+        description: "Please enter the 6-digit code from your authenticator app.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await enable2FA(twoFactorData.totpCode);
+      if (result.success && result.backupCodes) {
+        setBackupCodes(result.backupCodes);
+        setShowBackupCodes(true);
+        setTwoFactorData({ ...twoFactorData, totpCode: "" });
+      }
+    } catch (error) {
+      console.error('2FA enable error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!twoFactorData.password || !twoFactorData.totpCode) {
+      toast({
+        title: "Credentials Required",
+        description: "Please enter your password and TOTP code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await disable2FA(twoFactorData.password, twoFactorData.totpCode);
+      if (result.success) {
+        setShow2FADisable(false);
+        setTwoFactorData({ ...twoFactorData, password: "", totpCode: "" });
+      }
+    } catch (error) {
+      console.error('2FA disable error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Generate fallback QR code
+  const generateFallbackQRCode = async () => {
+    if (fallbackQRCode) return fallbackQRCode;
+    
+    setIsGeneratingQR(true);
+    try {
+      const secretKey = generateRandomSecretKey();
+      const accountName = user?.email || 'user@example.com';
+      const qrData = await generate2FAQRCode(accountName, secretKey);
+      setFallbackQRCode(qrData);
+      return qrData;
+    } catch (error) {
+      console.error('Error generating fallback QR code:', error);
+      toast({
+        title: "QR Code Error",
+        description: "Failed to generate QR code. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsGeneratingQR(false);
+    }
+  };
+
+  // Session handlers
+  const handleTerminateSession = async (sessionId: string) => {
+    setIsLoading(true);
+    try {
+      await terminateSession(sessionId);
+    } catch (error) {
+      console.error('Session termination error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTerminateAllOtherSessions = async () => {
+    setIsLoading(true);
+    try {
+      await terminateAllOtherSessions();
+    } catch (error) {
+      console.error('Session termination error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -700,72 +826,551 @@ const Settings = () => {
       case "security":
         return (
           <div className="space-y-4">
+            {/* Security Summary */}
+            {securitySummary && (
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Shield className="w-4 h-4" />
+                    Security Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{securitySummary.security_score}</div>
+                      <div className="text-xs text-text-subtle">Security Score</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{securitySummary.active_sessions}</div>
+                      <div className="text-xs text-text-subtle">Active Sessions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{securitySummary.recent_events_count}</div>
+                      <div className="text-xs text-text-subtle">Recent Events</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {twoFactorStatus?.is_enabled ? "✓" : "✗"}
+                      </div>
+                      <div className="text-xs text-text-subtle">2FA Status</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Change Password */}
             <Card className="glass border-0">
               <CardHeader className="p-4">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Shield className="w-4 h-4" />
-                  Security Settings
+                  <Key className="w-4 h-4" />
+                  Change Password
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0">
                 <div className="space-y-3">
-                  <div>
-                    <h4 className="font-medium text-foreground mb-2 text-sm">Change Password</h4>
-                    <div className="space-y-2">
-                      <Input
-                        type="password"
-                        placeholder="Current password"
-                        value={passwordData.currentPassword}
-                        onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                        className="glass-subtle border-0 text-sm"
-                      />
-                      <Input
-                        type="password"
-                        placeholder="New password"
-                        value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                        className="glass-subtle border-0 text-sm"
-                      />
-                      <Input
-                        type="password"
-                        placeholder="Confirm password"
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        className="glass-subtle border-0 text-sm"
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 text-xs"
-                      onClick={handlePasswordChange}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Updating..." : "Update Password"}
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      placeholder="Enter current password"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      className="glass-subtle border-0 text-sm"
+                    />
                   </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-foreground text-sm">Two-Factor Authentication</h4>
-                      <p className="text-xs text-text-subtle">Add an extra layer of security</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="text-xs">
-                      Enable 2FA
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword" className="text-sm">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Enter new password"
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                      className="glass-subtle border-0 text-sm"
+                    />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-foreground text-sm">Login Sessions</h4>
-                      <p className="text-xs text-text-subtle">Manage your active sessions</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="text-xs">
-                      View Sessions
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      className="glass-subtle border-0 text-sm"
+                    />
                   </div>
+                  <Button
+                    onClick={handlePasswordChange}
+                    disabled={isLoading}
+                    className="w-full text-sm"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isLoading ? "Updating..." : "Update Password"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Two-Factor Authentication */}
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Shield className="w-4 h-4" />
+                  Two-Factor Authentication
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-4 pt-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-foreground text-sm">2FA Status</h4>
+                    <p className="text-xs text-text-subtle">
+                      {twoFactorStatus?.is_enabled ? "Enabled" : "Disabled"}
+                    </p>
+                  </div>
+                  <Badge variant={twoFactorStatus?.is_enabled ? "default" : "secondary"} className="text-xs">
+                    {twoFactorStatus?.is_enabled ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+
+                {!twoFactorStatus?.is_enabled ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                      <h5 className="font-medium text-blue-900 text-sm mb-2">Setup Two-Factor Authentication</h5>
+                      <p className="text-xs text-blue-800 mb-3">
+                        Add an extra layer of security to your account using any authenticator app.
+                      </p>
+                    </div>
+
+                    {/* Step 1: Download App */}
+                    <div className="space-y-3">
+                      <h6 className="font-medium text-foreground text-sm">Step 1: Download an Authenticator App</h6>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">G</span>
+                            </div>
+                            <span className="font-medium text-sm">Google Authenticator</span>
+                          </div>
+                          <p className="text-xs text-text-subtle mb-2">Most popular choice</p>
+                          <div className="flex gap-1">
+                            <a 
+                              href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Android
+                            </a>
+                            <span className="text-xs text-text-subtle">•</span>
+                            <a 
+                              href="https://apps.apple.com/app/google-authenticator/id388497605" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              iOS
+                            </a>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">A</span>
+                            </div>
+                            <span className="font-medium text-sm">Authy</span>
+                          </div>
+                          <p className="text-xs text-text-subtle mb-2">Cloud backup</p>
+                          <div className="flex gap-1">
+                            <a 
+                              href="https://play.google.com/store/apps/details?id=com.authy.authy" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              Android
+                            </a>
+                            <span className="text-xs text-text-subtle">•</span>
+                            <a 
+                              href="https://apps.apple.com/app/authy/id494168017" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              iOS
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 bg-purple-500 rounded flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">M</span>
+                          </div>
+                          <span className="font-medium text-sm">Microsoft Authenticator</span>
+                        </div>
+                        <p className="text-xs text-text-subtle mb-2">Microsoft ecosystem</p>
+                        <div className="flex gap-1">
+                          <a 
+                            href="https://play.google.com/store/apps/details?id=com.azure.authenticator" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            Android
+                          </a>
+                          <span className="text-xs text-text-subtle">•</span>
+                          <a 
+                            href="https://apps.apple.com/app/microsoft-authenticator/id983156458" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            iOS
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Scan QR Code */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h6 className="font-medium text-foreground text-sm">Step 2: Scan QR Code</h6>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            // Refresh 2FA status to get new QR code
+                            await fetch2FAStatus();
+                            // If still no QR code after refresh, generate fallback
+                            if (!twoFactorStatus?.qr_code_data && !fallbackQRCode) {
+                              await generateFallbackQRCode();
+                            }
+                          }}
+                          className="text-xs"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Refresh QR
+                        </Button>
+                      </div>
+                      <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                        <p className="text-xs text-yellow-800 mb-2">
+                          <strong>Note:</strong> The QR code is generated automatically from the server. If you don't see it, click "Refresh QR" above or "Generate QR Code" below.
+                        </p>
+                      </div>
+                      
+                      {twoFactorStatus?.qr_code_data || fallbackQRCode ? (
+                        <div className="text-center">
+                          <div className="inline-block p-4 bg-white rounded-lg border border-gray-200">
+                            <img 
+                              src={(twoFactorStatus?.qr_code_data || fallbackQRCode)?.qr_code} 
+                              alt="2FA QR Code" 
+                              className="w-48 h-48 mx-auto"
+                            />
+                          </div>
+                          <p className="text-xs text-text-subtle mt-3 mb-2">
+                            Open your authenticator app and scan this QR code
+                          </p>
+                          <div className="space-y-2">
+                            <p className="text-xs text-text-subtle">Or enter this key manually:</p>
+                            <div className="flex items-center gap-2 justify-center">
+                              <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono">
+                                {(twoFactorStatus?.qr_code_data || fallbackQRCode)?.manual_entry_key}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const key = (twoFactorStatus?.qr_code_data || fallbackQRCode)?.manual_entry_key;
+                                  if (key) {
+                                    navigator.clipboard.writeText(key);
+                                    toast({
+                                      title: "Copied",
+                                      description: "Secret key copied to clipboard",
+                                    });
+                                  }
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-8 bg-gray-50 rounded-lg">
+                          {isGeneratingQR ? (
+                            <>
+                              <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+                              <p className="text-sm text-text-subtle">Generating QR code...</p>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-8 h-8 mx-auto mb-3 text-gray-400">
+                                <Shield className="w-8 h-8" />
+                              </div>
+                              <p className="text-sm text-text-subtle mb-3">QR code not available from server</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={generateFallbackQRCode}
+                                disabled={isGeneratingQR}
+                                className="text-xs"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Generate QR Code
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step 3: Enter Code */}
+                    <div className="space-y-3">
+                      <h6 className="font-medium text-foreground text-sm">Step 3: Enter Verification Code</h6>
+                      <div className="space-y-2">
+                        <Label htmlFor="totpCode" className="text-sm">6-Digit Code from Your App</Label>
+                        <Input
+                          id="totpCode"
+                          placeholder="Enter 6-digit code from your authenticator app"
+                          value={twoFactorData.totpCode}
+                          onChange={(e) => setTwoFactorData(prev => ({ ...prev, totpCode: e.target.value }))}
+                          className="glass-subtle border-0 text-sm text-center text-lg tracking-widest"
+                          maxLength={6}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                        <p className="text-xs text-text-subtle">
+                          The code refreshes every 30 seconds. If it expires, wait for the next one.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      onClick={handleEnable2FA}
+                      disabled={isLoading || !twoFactorData.totpCode || twoFactorData.totpCode.length !== 6}
+                      className="w-full text-sm"
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      {isLoading ? "Enabling..." : "Enable 2FA"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                      <h5 className="font-medium text-green-900 text-sm mb-1">2FA is Enabled</h5>
+                      <p className="text-xs text-green-800">
+                        Your account is protected with two-factor authentication.
+                      </p>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => setShow2FADisable(true)}
+                      className="w-full text-sm"
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Disable 2FA
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Active Sessions */}
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Active Sessions
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSessions(!showSessions)}
+                    className="text-xs"
+                  >
+                    {showSessions ? "Hide" : "View"} Sessions
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              {showSessions && (
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    {activeSessions.length === 0 ? (
+                      <p className="text-sm text-text-subtle text-center py-4">No active sessions</p>
+                    ) : (
+                      <>
+                        {activeSessions.map((session) => (
+                          <div key={session.id} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span className="font-medium text-sm">{session.device_name}</span>
+                                {session.is_current && (
+                                  <Badge variant="default" className="text-xs">Current</Badge>
+                                )}
+                              </div>
+                              {!session.is_current && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleTerminateSession(session.id)}
+                                  className="text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Terminate
+                                </Button>
+                              )}
+                            </div>
+                            <div className="text-xs text-text-subtle space-y-1">
+                              <div>IP: {session.ip_address}</div>
+                              <div>Location: {session.location}</div>
+                              <div>Last Activity: {session.time_ago}</div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {activeSessions.filter(s => !s.is_current).length > 0 && (
+                          <Button
+                            variant="outline"
+                            onClick={handleTerminateAllOtherSessions}
+                            className="w-full text-sm"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Terminate All Other Sessions
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Security Events */}
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Security Events
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSecurityEvents(!showSecurityEvents)}
+                    className="text-xs"
+                  >
+                    {showSecurityEvents ? "Hide" : "View"} Events
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              {showSecurityEvents && (
+                <CardContent className="p-4 pt-0">
+                  <div className="space-y-3">
+                    {securityEvents.length === 0 ? (
+                      <p className="text-sm text-text-subtle text-center py-4">No security events</p>
+                    ) : (
+                      securityEvents.map((event) => (
+                        <div key={event.id} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{event.event_type_display}</span>
+                            <span className="text-xs text-text-subtle">{event.time_ago}</span>
+                          </div>
+                          <p className="text-xs text-text-subtle mb-1">{event.description}</p>
+                          <div className="text-xs text-text-subtle">
+                            IP: {event.ip_address}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* 2FA Disable Dialog */}
+            <Dialog open={show2FADisable} onOpenChange={setShow2FADisable}>
+              <DialogContent className="glass">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">Disable Two-Factor Authentication</DialogTitle>
+                  <DialogDescription className="text-xs">
+                    This will remove the extra security layer from your account.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="disablePassword" className="text-sm">Password</Label>
+                    <Input
+                      id="disablePassword"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={twoFactorData.password}
+                      onChange={(e) => setTwoFactorData(prev => ({ ...prev, password: e.target.value }))}
+                      className="glass-subtle border-0 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="disableTotpCode" className="text-sm">6-Digit Code</Label>
+                    <Input
+                      id="disableTotpCode"
+                      placeholder="Enter 6-digit code from your app"
+                      value={twoFactorData.totpCode}
+                      onChange={(e) => setTwoFactorData(prev => ({ ...prev, totpCode: e.target.value }))}
+                      className="glass-subtle border-0 text-sm"
+                      maxLength={6}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleDisable2FA}
+                    disabled={isLoading || !twoFactorData.password || !twoFactorData.totpCode}
+                    className="w-full text-sm"
+                  >
+                    {isLoading ? "Disabling..." : "Disable 2FA"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Backup Codes Dialog */}
+            <Dialog open={showBackupCodes} onOpenChange={setShowBackupCodes}>
+              <DialogContent className="glass">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">Backup Codes</DialogTitle>
+                  <DialogDescription className="text-xs">
+                    Save these backup codes in a secure location. They can be used to access your account if you lose your authenticator device.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <p className="text-xs text-yellow-800 font-medium">
+                      ⚠️ These codes will not be shown again. Save them now!
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {backupCodes.map((code, index) => (
+                      <div key={index} className="p-2 bg-gray-100 rounded text-center font-mono text-sm">
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={() => setShowBackupCodes(false)}
+                    className="w-full text-sm"
+                  >
+                    I've Saved These Codes
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         );
 

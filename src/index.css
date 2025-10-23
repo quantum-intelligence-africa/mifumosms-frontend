@@ -264,4 +264,14 @@ All colors MUST be HSL for consistency and theming.
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--foreground));
   }
+
+  /* Ensure notification dropdown appears above all content */
+  .notification-dropdown {
+    z-index: 9999 !important;
+    position: relative;
+  }
+
+  .notification-dropdown .dropdown-content {
+    z-index: 10000 !important;
+  }
 }

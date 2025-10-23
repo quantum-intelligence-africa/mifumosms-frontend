@@ -1,6 +1,8 @@
 // API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
-	BASE_URL: 'https://mifumosms.servehttp.com/api',
+	// BASE_URL: 'https://mifumosms.servehttp.com/api',
+	BASE_URL: 'http://127.0.0.1:8000/api',
+
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
@@ -13,6 +15,22 @@ export const API_CONFIG = {
 			VERIFY_EMAIL: '/auth/verify-email/',
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
+			SMS: {
+				SEND_CODE: '/auth/sms/send-code/',
+				VERIFY_CODE: '/auth/sms/verify-code/',
+				FORGOT_PASSWORD: '/auth/sms/forgot-password/',
+				RESET_PASSWORD: '/auth/sms/reset-password/',
+				CONFIRM_ACCOUNT: '/auth/sms/confirm-account/',
+				SEND_VERIFICATION_LINK: '/auth/sms/send-verification-link/',
+				VERIFY_ACCOUNT_LINK: '/auth/sms/verify-account-link/',
+				RESEND_VERIFICATION_LINK: '/auth/sms/resend-verification-link/',
+			},
+			SETTINGS: {
+				PROFILE: '/auth/settings/profile/',
+				PREFERENCES: '/auth/settings/preferences/',
+				NOTIFICATIONS: '/auth/settings/notifications/',
+				SECURITY: '/auth/settings/security/',
+			},
 		},
 		TENANTS: {
 			BASE: '/tenants/',
@@ -21,7 +39,12 @@ export const API_CONFIG = {
 			DOMAINS: (id: string) => `/tenants/${id}/domains/`,
 		},
 		MESSAGING: {
-			CONTACTS: '/messaging/contacts/',
+			CONTACTS: {
+				BASE: '/messaging/contacts/',
+				BULK_IMPORT: '/messaging/contacts/bulk-import/',
+				MOBILE_IMPORT: '/messaging/contacts/import/',
+				DETAIL: (id: string) => `/messaging/contacts/${id}/`,
+			},
 			SEGMENTS: '/messaging/segments/',
 			TEMPLATES: '/messaging/templates/',
 			TEMPLATE_ACTIONS: {
@@ -35,9 +58,25 @@ export const API_CONFIG = {
 			TEMPLATE_STATISTICS: '/messaging/templates/statistics/',
 			CONVERSATIONS: '/messaging/conversations/',
 			MESSAGES: '/messaging/messages/',
-			CAMPAIGNS: '/messaging/campaigns/',
+			CAMPAIGNS: {
+				BASE: '/messaging/campaigns/',
+				SUMMARY: '/messaging/campaigns/summary/',
+			},
 			ANALYTICS: '/messaging/analytics/overview/',
-			DASHBOARD: '/messaging/dashboard/',
+			DASHBOARD: {
+				OVERVIEW: '/messaging/dashboard/overview/',
+				METRICS: '/messaging/dashboard/metrics/',
+				COMPREHENSIVE: '/messaging/dashboard/comprehensive/',
+			},
+			ACTIVITY: {
+				RECENT: '/messaging/activity/recent/',
+			},
+			PERFORMANCE: {
+				OVERVIEW: '/messaging/performance/overview/',
+			},
+			SENDER_IDS: {
+				BASE: '/messaging/sender-ids/',
+			},
 			SMS: {
 				SEND: '/messaging/sms/send/',
 				STATS: '/messaging/sms/stats/',
@@ -88,6 +127,22 @@ export const API_CONFIG = {
 				USAGE: '/billing/history/usage/',
 				COMPREHENSIVE: '/billing/history/comprehensive/',
 			},
+		},
+		NOTIFICATIONS: {
+			BASE: '/notifications/',
+			RECENT: '/notifications/recent/',
+			REAL: '/notifications/real/',
+			UNREAD_COUNT: '/notifications/unread-count/',
+			MARK_READ: (id: string) => `/notifications/${id}/mark-read/`,
+			MARK_ALL_READ: '/notifications/mark-all-read/',
+			STATS: '/notifications/stats/',
+			SETTINGS: '/notifications/settings/',
+			SMS_CREDIT_TEST: '/notifications/sms-credit/test/',
+			SYSTEM_CREATE: '/notifications/system/create/',
+			SYSTEM_HEALTH_CHECK: '/notifications/system/health-check/',
+			SYSTEM_REPORT_PROBLEM: '/notifications/system/report-problem/',
+			SYSTEM_CLEANUP: '/notifications/system/cleanup/',
+			TEMPLATES: '/notifications/templates/',
 		},
 	},
 } as const;

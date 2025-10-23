@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare, Check } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSMSVerification } from "@/hooks/useSMSVerification";
+import { SMSVerificationCode } from "@/components/auth/SMSVerificationCode";
+import { normalizePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<'form' | 'verification'>('form');
+  const [verificationError, setVerificationError] = useState<string>('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | undefined>();
+  const [lockedUntil, setLockedUntil] = useState<string | undefined>();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -24,17 +31,18 @@ const Signup = () => {
     confirmPassword: "",
   });
   const { toast } = useToast();
-  const { register, isAuthenticated } = useAuth();
+  const { register, isAuthenticated, canBypassVerification, confirmAccount, user } = useAuth();
+  const { sendVerificationCode, verifyCode, isSendingCode, isVerifying } = useSMSVerification();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated and can bypass verification
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && canBypassVerification) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, canBypassVerification, navigate, location]);
 
   const countries = [
     { value: "ke", label: "Kenya" },
@@ -62,11 +70,30 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-
     if (!passwordsMatch) {
       toast({
         title: "Passwords don't match",
         description: "Please ensure both passwords are identical.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.phone) {
+      toast({
+        title: "Phone number required",
+        description: "Please provide a phone number for SMS verification.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate and normalize phone number
+    const phoneInfo = normalizePhoneNumber(formData.phone);
+    if (!phoneInfo.isValid) {
+      toast({
+        title: "Invalid Phone Number",
+        description: phoneInfo.error || "Please enter a valid phone number",
         variant: "destructive"
       });
       return;
@@ -81,16 +108,27 @@ const Signup = () => {
         password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        phone_number: formData.phone || undefined,
+        phone_number: phoneInfo.normalized,
+        timezone: "UTC"
       });
 
       if (result.success) {
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to Mifumo WMS! You can now access your dashboard."
-        });
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
+        // Check if SMS verification was sent
+        if (result.sms_verification?.sent) {
+          setStep('verification');
+          toast({
+            title: "Account created successfully!",
+            description: `Please verify your phone number ${phoneInfo.formatted} to complete registration.`
+          });
+        } else {
+          // If no SMS verification, proceed to dashboard
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Mifumo WMS! You can now access your dashboard."
+          });
+          const from = location.state?.from?.pathname || "/dashboard";
+          navigate(from, { replace: true });
+        }
       } else {
         toast({
           title: "Registration failed",
@@ -111,6 +149,63 @@ const Signup = () => {
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleVerifyCode = async (code: string) => {
+    setVerificationError('');
+    try {
+      // First verify the SMS code
+      const smsResult = await verifyCode({
+        phone_number: formData.phone,
+        verification_code: code
+      });
+
+      if (smsResult.success) {
+        // Then confirm the account
+        const confirmResult = await confirmAccount(code);
+        
+        if (confirmResult.success) {
+          toast({
+            title: "Account verified successfully!",
+            description: "Your account is now fully activated."
+          });
+          const from = location.state?.from?.pathname || "/dashboard";
+          navigate(from, { replace: true });
+        } else {
+          setVerificationError(confirmResult.error || 'Account confirmation failed');
+        }
+      } else {
+        setVerificationError(smsResult.error || 'Invalid verification code');
+        setAttemptsRemaining(smsResult.attempts_remaining);
+      }
+    } catch (error) {
+      setVerificationError('Failed to verify code. Please try again.');
+    }
+  };
+
+  const handleResendCode = async () => {
+    setVerificationError('');
+    try {
+      const result = await sendVerificationCode({
+        phone_number: formData.phone,
+        message_type: 'verification'
+      });
+
+      if (!result.success) {
+        setVerificationError(result.error || 'Failed to resend code');
+        setAttemptsRemaining(result.attempts_remaining);
+        setLockedUntil(result.locked_until);
+      }
+    } catch (error) {
+      setVerificationError('Failed to resend code. Please try again.');
+    }
+  };
+
+  const handleBackToForm = () => {
+    setStep('form');
+    setVerificationError('');
+    setAttemptsRemaining(undefined);
+    setLockedUntil(undefined);
   };
 
   return (
@@ -137,10 +232,24 @@ const Signup = () => {
 
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
           <CardHeader className="text-center pb-2 sm:pb-3 px-4 sm:px-6">
-            <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">Create your account</CardTitle>
+            <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">
+              {step === 'form' ? 'Create your account' : 'Verify your phone number'}
+            </CardTitle>
+            {step === 'verification' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToForm}
+                className="absolute left-4 top-4 text-gray-600 hover:text-gray-800"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
-            <form onSubmit={handleSubmit} className="space-y-3">
+            {step === 'form' ? (
+              <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="firstName" className="text-xs font-semibold text-gray-700">First name</Label>
@@ -185,11 +294,14 @@ const Signup = () => {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="+255 700 000 000"
+                    placeholder="+255 700 000 001"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
                   />
+                  <p className="text-xs text-blue-600 font-medium">
+                    📱 +255700000001, 0700000001, 255700000001
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="country" className="text-xs font-semibold text-gray-700">Country</Label>
@@ -285,6 +397,19 @@ const Signup = () => {
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
+            ) : (
+              <SMSVerificationCode
+                phoneNumber={formData.phone}
+                onVerify={handleVerifyCode}
+                onResend={handleResendCode}
+                isLoading={isVerifying}
+                isResending={isSendingCode}
+                error={verificationError}
+                attemptsRemaining={attemptsRemaining}
+                lockedUntil={lockedUntil}
+                messageType="verification"
+              />
+            )}
 
             <div className="mt-4 text-center">
               <div className="flex items-center justify-center gap-4">

@@ -20,17 +20,17 @@ const Login = () => {
     rememberMe: false
   });
   const { toast } = useToast();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, canBypassVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated and can bypass verification
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && canBypassVerification) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, canBypassVerification, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +47,26 @@ const Login = () => {
           title: "Login successful",
           description: "Welcome back to Mifumo WMS!"
         });
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
+        
+        // Check if user can bypass verification
+        const canBypass = result.user ? (
+          result.user.is_superuser || 
+          result.user.is_staff || 
+          result.user.phone_verified || 
+          result.user.is_verified
+        ) : false;
+
+        if (canBypass) {
+          const from = location.state?.from?.pathname || "/dashboard";
+          navigate(from, { replace: true });
+        } else {
+          // User cannot bypass verification, show message
+          toast({
+            title: "Account Verification Required",
+            description: "Please verify your phone number to access the dashboard.",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Login failed",

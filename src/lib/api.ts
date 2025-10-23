@@ -21,6 +21,9 @@ export interface User {
   full_name?: string;
   phone_number?: string;
   is_verified: boolean;
+  is_superuser?: boolean;
+  is_staff?: boolean;
+  phone_verified?: boolean;
   created_at?: string;
 }
 
@@ -139,10 +142,11 @@ export interface Template {
   category_display: string;
   language: string;
   language_display: string;
-  channel: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  channel: 'sms' | 'whatsapp' | 'email' | 'all';
   channel_display: string;
   body_text: string;
   formatted_body_text?: string;
+  preview_text: string;
   description?: string;
   variables: string[];
   variables_count: number;
@@ -151,24 +155,21 @@ export interface Template {
   approved: boolean;
   approval_status: 'draft' | 'pending' | 'approved' | 'rejected';
   is_favorite: boolean;
+  wa_template_name?: string;
+  wa_template_id?: string;
   usage_count: number;
   last_used_at?: string;
   last_used_display: string;
+  created_by?: string;
   created_at: string;
   updated_at: string;
-  statistics?: {
-    total_uses: number;
-    last_used: string;
-    created: string;
-    variables_count: number;
-  };
 }
 
 export interface CreateTemplateRequest {
   name: string;
   category: string;
   language: string;
-  channel: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  channel: 'sms' | 'whatsapp' | 'email' | 'all';
   body_text: string;
   description?: string;
 }
@@ -177,20 +178,25 @@ export interface TemplateUpdateRequest {
   name?: string;
   category?: string;
   language?: string;
-  channel?: 'sms' | 'whatsapp' | 'email' | 'all_channels';
+  channel?: 'sms' | 'whatsapp' | 'email' | 'all';
   body_text?: string;
   description?: string;
 }
 
 export interface TemplateListResponse {
-  templates: Template[];
-  filter_options: {
-    categories: Array<{ value: string; label: string }>;
-    languages: Array<{ value: string; label: string }>;
-    channels: Array<{ value: string; label: string }>;
-    statuses: Array<{ value: string; label: string }>;
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: {
+    templates: Template[];
+    filter_options: {
+      categories: Array<{ value: string; label: string }>;
+      languages: Array<{ value: string; label: string }>;
+      channels: Array<{ value: string; label: string }>;
+      statuses: Array<{ value: string; label: string }>;
+    };
+    total_count: number;
   };
-  total_count: number;
 }
 
 export interface TemplateFilterParams {
@@ -638,18 +644,54 @@ class ApiClient {
   }
 
   async handleResponse<T = unknown>(response: Response): Promise<ApiResponse<T>> {
-    const data = await response.json();
+    // Handle empty responses (common for DELETE operations)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+    }
 
-    if (response.ok) {
-      return { success: true, data: data.data || data, message: data.message, status: response.status };
-    } else {
-      return {
-        success: false,
-        message: data.message || data.detail || 'An error occurred',
-        error: data.message || data.detail || 'An error occurred',
-        errors: data.errors || null,
-        status: response.status
-      };
+    // Check if response has content to parse
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      if (response.ok) {
+        return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+      } else {
+        return {
+          success: false,
+          message: 'An error occurred',
+          error: 'An error occurred',
+          errors: null,
+          status: response.status
+        };
+      }
+    }
+
+    try {
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true, data: data.data || data, message: data.message, status: response.status };
+      } else {
+        return {
+          success: false,
+          message: data.message || data.detail || 'An error occurred',
+          error: data.message || data.detail || 'An error occurred',
+          errors: data.errors || null,
+          status: response.status
+        };
+      }
+    } catch (jsonError) {
+      // If JSON parsing fails but response is OK, consider it successful
+      if (response.ok) {
+        return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+      } else {
+        return {
+          success: false,
+          message: 'Failed to parse response',
+          error: 'Failed to parse response',
+          errors: null,
+          status: response.status
+        };
+      }
     }
   }
 
@@ -676,7 +718,23 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
+
+      // Log error responses for debugging
+      if (!response.ok) {
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: url,
+          config: config
+        });
+      }
+
       const data = await response.json();
+
+      // Log error response data for debugging
+      if (!response.ok) {
+        console.error('API Error Data:', data);
+      }
 
       // Handle authentication errors with token refresh
       if (response.status === 401 || response.status === 403) {
@@ -798,11 +856,11 @@ class ApiClient {
   }
 
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>('/api/accounts/settings/profile/');
+    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PROFILE);
   }
 
   async updateProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
-    return this.request<User>('/api/accounts/settings/profile/', {
+    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PROFILE, {
       method: 'PUT',
       body: JSON.stringify(userData),
     });
@@ -816,7 +874,7 @@ class ApiClient {
     time_format: string;
     theme: string;
   }>> {
-    return this.request('/api/accounts/settings/preferences/');
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PREFERENCES);
   }
 
   async updatePreferences(preferences: {
@@ -831,7 +889,7 @@ class ApiClient {
     time_format: string;
     theme: string;
   }>> {
-    return this.request('/api/accounts/settings/preferences/', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PREFERENCES, {
       method: 'PUT',
       body: JSON.stringify(preferences),
     });
@@ -845,7 +903,7 @@ class ApiClient {
     marketing_emails: boolean;
     notification_frequency: string;
   }>> {
-    return this.request('/api/accounts/settings/notifications/');
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.NOTIFICATIONS);
   }
 
   async updateNotificationSettings(settings: {
@@ -860,7 +918,7 @@ class ApiClient {
     marketing_emails: boolean;
     notification_frequency: string;
   }>> {
-    return this.request('/api/accounts/settings/notifications/', {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.NOTIFICATIONS, {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
@@ -1155,9 +1213,9 @@ class ApiClient {
   }): Promise<ApiResponse<{
     success: boolean;
     message: string;
-    imported: number;
-    updated: number;
-    skipped: number;
+    imported_count: number;
+    updated_count: number;
+    skipped_count: number;
     total_processed: number;
     errors: Array<{
       row?: number;
@@ -1182,13 +1240,66 @@ class ApiClient {
         headers: {}, // Don't set Content-Type for FormData
         body: formData,
       });
-    } else {
-      // JSON data (CSV or phone contacts)
+    } else if (data.import_type === 'phone_contacts' && data.contacts) {
+      // Phone contacts - convert to CSV format
+      const csvData = this.convertContactsToCSV(data.contacts);
+      const requestData = {
+        import_type: 'csv',
+        csv_data: csvData,
+        skip_duplicates: data.skip_duplicates ?? true,
+        update_existing: data.update_existing ?? false
+      };
+
       return this.request('/messaging/contacts/bulk-import/', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
+      });
+    } else {
+      // JSON data (CSV)
+      console.log('Bulk import request data:', data);
+
+      // If we have contacts but no csv_data, convert contacts to CSV
+      const requestData = { ...data };
+      if (data.contacts && data.contacts.length > 0 && !data.csv_data) {
+        requestData.csv_data = this.convertContactsToCSV(data.contacts);
+        // Remove contacts from request as we're sending CSV data
+        delete requestData.contacts;
+      }
+
+      console.log('Final request data:', requestData);
+
+      return this.request('/messaging/contacts/bulk-import/', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
       });
     }
+  }
+
+  // Helper method to convert contacts to CSV format
+  private convertContactsToCSV(contacts: CreateContactRequest[]): string {
+    // Use standard column names that the backend expects
+    const headers = ['name', 'phone', 'email'];
+    const rows = contacts.map(contact => {
+      // Ensure phone number has + prefix for E.164 format
+      let phone = contact.phone_e164 || '';
+      if (phone && !phone.startsWith('+')) {
+        phone = '+' + phone;
+      }
+
+      return [
+        contact.name || '',
+        phone,
+        contact.email || ''
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    console.log('Converted CSV data:', csvContent);
+    return csvContent;
   }
 
   // Legacy methods for backward compatibility
@@ -1226,15 +1337,24 @@ class ApiClient {
   // BULK OPERATIONS ENDPOINTS
   // =============================================
 
+  async bulkEditContacts(contactIds: string[], updates: Partial<CreateContactRequest>): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+    total_requested: number;
+    errors: string[];
+  }>> {
+    return this.request('/messaging/contacts/bulk-edit/', {
+      method: 'POST',
+      body: JSON.stringify({ contact_ids: contactIds, updates }),
+    });
+  }
+
   async bulkDeleteContacts(contactIds: string[]): Promise<ApiResponse<{
     success: boolean;
     message: string;
     deleted_count: number;
-    failed_count: number;
-    errors: Array<{
-      contact_id: string;
-      error: string;
-    }>;
+    total_requested: number;
   }>> {
     return this.request('/messaging/contacts/bulk-delete/', {
       method: 'POST',
@@ -1590,7 +1710,7 @@ class ApiClient {
     };
     last_updated: string;
   }>> {
-    return this.request('/messaging/dashboard/overview/');
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.OVERVIEW);
   }
 
   async getDashboardMetrics(): Promise<ApiResponse<{
@@ -1619,7 +1739,7 @@ class ApiClient {
       description: string;
     };
   }>> {
-    return this.request('/messaging/dashboard/metrics/');
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.METRICS);
   }
 
   // =============================================

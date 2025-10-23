@@ -9,7 +9,8 @@ import {
   Zap,
   Building2,
   Plus,
-  Hash
+  Hash,
+  Activity
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -17,6 +18,8 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
+import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
+import { SenderIds } from "@/components/dashboard/SenderIds";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -30,9 +33,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
-  const { dashboardData, metrics, isLoading } = useDashboard();
+  const { metrics, overview, recentCampaigns, recentActivity, performanceOverview, senderIds, isLoading } = useDashboard();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Debug logging for sender IDs
+  console.log('Dashboard - Sender IDs:', senderIds);
+  console.log('Dashboard - Sender IDs Count:', senderIds?.length);
 
   if (isLoading) {
     return (
@@ -70,7 +77,7 @@ const Dashboard = () => {
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6 relative z-0">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Welcome Section */}
             <div className="mb-4 sm:mb-6 lg:mb-8">
@@ -82,7 +89,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {/* Metrics Grid */}
+            {/* Metrics Grid - 4 Main Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
               <MetricCard
                 title="Total Messages"
@@ -98,15 +105,15 @@ const Dashboard = () => {
               />
               <MetricCard
                 title="Campaign Success"
-                value={metrics?.campaign_success?.value || "0%"}
+                value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || "%"}`}
                 icon={Target}
                 description={metrics?.campaign_success?.description || "Delivery rate"}
               />
               <MetricCard
                 title="Sender ID"
-                value={metrics?.sender_id?.value?.toLocaleString() || "0"}
+                value={senderIds?.length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
                 icon={Hash}
-                description={metrics?.sender_id?.description || "Registered"}
+                description="Approved sender names"
               />
             </div>
 
@@ -119,31 +126,19 @@ const Dashboard = () => {
 
               {/* Recent Campaigns */}
               <div className="lg:col-span-2 order-1 lg:order-2">
-                <RecentCampaigns campaigns={dashboardData?.recent_campaigns || []} />
+                <RecentCampaigns campaigns={recentCampaigns || []} />
               </div>
             </div>
 
-            {/* Activity Feed */}
+            {/* Activity Feed and Performance Overview */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
               <ActivityFeed />
+              <PerformanceOverview performance={performanceOverview} />
+            </div>
 
-              {/* Performance Chart Placeholder */}
-              <div className="p-3 sm:p-4 lg:p-6 glass border-0 rounded-xl">
-                <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                  <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
-                    Performance Overview
-                  </h3>
-                </div>
-                <div className="h-48 sm:h-56 lg:h-64 bg-gradient-surface rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                    </div>
-                    <p className="text-xs sm:text-sm text-text-subtle">Analytics charts coming soon</p>
-                  </div>
-                </div>
-              </div>
+            {/* Sender IDs */}
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
+              <SenderIds senderIds={senderIds} />
             </div>
           </div>
         </main>
