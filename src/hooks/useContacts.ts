@@ -1,87 +1,109 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
-import { apiClient, Contact, CreateContactRequest, ImportContactsRequest } from '@/lib/api';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { AuthContext } from '@/contexts/AuthContext';
+import { API_CONFIG } from '@/config/api';
+import { fetchMobileContacts, MobileContact } from '@/utils/mobileContactPicker';
+
+// Types based on the API response structure
+interface Contact {
+  id: string;
+  name: string;
+  phone_e164: string;
+  email: string;
+  attributes: Record<string, any>;
+  tags: string[];
+  opt_in_at: string | null;
+  opt_out_at: string | null;
+  opt_out_reason: string;
+  is_active: boolean;
+  last_contacted_at: string | null;
+  is_opted_in: boolean | null;
+  created_by: string;
+  created_by_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ContactListResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Contact[];
+}
+
+interface BulkImportResponse {
+  success: boolean;
+  imported: number;
+  updated: number;
+  skipped: number;
+  total_processed: number;
+  errors: string[];
+  message: string;
+}
+
+interface BulkImportRequest {
+  import_type: 'csv' | 'excel' | 'phone_contacts';
+  csv_data?: string;
+  contacts?: Array<{
+    full_name: string;
+    phone: string;
+    email?: string;
+  }>;
+  skip_duplicates: boolean;
+  update_existing: boolean;
+}
 
 export const useContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [previousUrl, setPreviousUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Safe access to auth context
-  const authContext = useContext(AuthContext);
-  const isAuthenticated = authContext?.isAuthenticated || false;
-
-  const fetchContacts = useCallback(async (params?: {
-    search?: string;
-    is_active?: boolean;
-    tags?: string[];
-    page?: number;
-    page_size?: number;
-  }) => {
-    console.log('=== FETCH CONTACTS CALLED ===');
-    console.log('isAuthenticated:', isAuthenticated);
-    console.log('authContext:', authContext);
-    console.log('params:', params);
-
-    if (!isAuthenticated) {
-      console.log('User not authenticated, skipping contacts fetch');
-      setIsLoading(false);
-      setContacts([]);
-      setTotalCount(0);
-      return;
-    }
-
+  const fetchContacts = async (page: number = 1, pageSize: number = 20) => {
     try {
-      console.log('Fetching contacts for current user...');
       setIsLoading(true);
       setError(null);
 
-      // Use the API client instead of direct fetch
-      console.log('🌐 Using API client to fetch contacts');
-      console.log('   Params:', params);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
 
-      const response = await apiClient.getContacts(params);
-      console.log('📦 API Response:', response);
-
-      // Handle response
-      if (response.success && response.data) {
-        console.log('=== CONTACTS API RESPONSE ===');
-        console.log('Full response object:', response);
-        console.log('Response success:', response.success);
-        console.log('Response data:', response.data);
-
-        let results = response.data.results || [];
-
-        // The API should already return only the current user's contacts
-        // No additional filtering needed as the backend handles user-specific data
-        console.log('Contacts received from API:', results.length, 'contacts');
-
-        setContacts(results);
-        setTotalCount(response.data.count || results.length);
-        console.log('Contacts set:', results);
-      } else {
-        console.error('Failed to fetch contacts:', response.error, 'Status:', response.status);
-        if (response.status === 403) {
-          setError('You do not have permission to access contacts. Please contact your administrator.');
-        } else if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-        } else {
-          setError(response.error || 'Failed to fetch contacts');
+      const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CONTACTS.BASE}?page=${page}&page_size=${pageSize}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
+      });
+
+      if (response.ok) {
+        const data: ContactListResponse = await response.json();
+        setContacts(data.results);
+        setTotalCount(data.count);
+        setCurrentPage(page);
+        setHasNextPage(!!data.next);
+        setHasPreviousPage(!!data.previous);
+        setNextUrl(data.next);
+        setPreviousUrl(data.previous);
+      } else {
+        console.error('Contacts fetch failed:', response.status);
+        setError('Failed to fetch contacts');
         toast({
-          title: "Failed to load contacts",
-          description: response.error || 'Please try again',
+          title: "Error",
+          description: "Failed to load contacts",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      console.error('Contacts fetch error:', error);
       setError('Network error while fetching contacts');
-      setContacts([]); // Set empty array on error
-      setTotalCount(0);
       toast({
         title: "Network error",
         description: "Failed to connect to server",
@@ -90,509 +112,218 @@ export const useContacts = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, authContext?.user?.id, toast]);
+  };
 
-  const createContact = async (contactData: CreateContactRequest): Promise<boolean> => {
+  const createContact = async (contactData: {
+    name: string;
+    phone_e164: string;
+    email?: string;
+    tags?: string[];
+  }) => {
     try {
-      const response = await apiClient.createContact(contactData);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
 
-      if (response.success && response.data) {
-        // Add the new contact to the list immediately for better UX
-        setContacts(prev => [...prev, response.data!]);
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CONTACTS.BASE}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(contactData)
+      });
+
+      if (response.ok) {
+        const newContact: Contact = await response.json();
+        setContacts(prev => [newContact, ...prev]);
         setTotalCount(prev => prev + 1);
-
-        // Refresh data from server to ensure consistency
-        console.log('Refreshing contacts after successful creation...');
-        await fetchContacts();
-
         toast({
-          title: "Contact created",
-          description: `${response.data.name} has been added to your contacts`,
+          title: "Success",
+          description: "Contact created successfully",
         });
-        return true;
+        return newContact;
       } else {
-        // Build a helpful error message from backend validation errors if present
-        let detailedError = response.error || "Please check your input and try again";
-        if (response.errors && typeof response.errors === 'object') {
-          const parts: string[] = [];
-          for (const [field, messages] of Object.entries(response.errors)) {
-            const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
-            parts.push(`${field}: ${joined}`);
-          }
-          if (parts.length > 0) {
-            detailedError = parts.join(' | ');
-          }
-        }
-        toast({
-          title: "Failed to create contact",
-          description: detailedError,
-          variant: "destructive"
-        });
-        return false;
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create contact');
       }
     } catch (error) {
+      console.error('Create contact error:', error);
       toast({
-        title: "Failed to create contact",
-        description: "Network error occurred",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create contact",
         variant: "destructive"
       });
-      return false;
+      throw error;
     }
   };
 
-  const updateContact = async (contactId: string, contactData: Partial<CreateContactRequest>): Promise<boolean> => {
+  const bulkImportContacts = async (importData: BulkImportRequest) => {
     try {
-      const response = await apiClient.updateContact(contactId, contactData);
-
-      if (response.success && response.data) {
-        // Update the contact in the list immediately for better UX
-        setContacts(prev => prev.map(c => c.id === contactId ? response.data! : c));
-
-        // Refresh data from server to ensure consistency
-        console.log('Refreshing contacts after successful update...');
-        await fetchContacts();
-
-        toast({
-          title: "Contact updated",
-          description: "Contact information has been saved",
-        });
-        return true;
-      } else {
-        toast({
-          title: "Failed to update contact",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
-        return false;
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
-    } catch (error) {
-      toast({
-        title: "Failed to update contact",
-        description: "Network error occurred",
-        variant: "destructive"
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CONTACTS.BULK_IMPORT}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(importData)
       });
-      return false;
-    }
-  };
 
-  const deleteContact = async (contactId: string): Promise<boolean> => {
-    try {
-      const response = await apiClient.deleteContact(contactId);
+      const result: BulkImportResponse = await response.json();
 
-      if (response.success) {
-        // Remove the contact from the list immediately for better UX
-        setContacts(prev => prev.filter(c => c.id !== contactId));
-        setTotalCount(prev => prev - 1);
-
-        // Refresh data from server to ensure consistency
-        console.log('Refreshing contacts after successful deletion...');
+      if (result.success) {
+        toast({
+          title: "Import Successful",
+          description: result.message,
+        });
+        // Refresh contacts list
         await fetchContacts();
-
-        toast({
-          title: "Contact deleted",
-          description: "Contact has been removed from your database",
-        });
-        return true;
+        return result;
       } else {
-        // Don't show error message since delete is working
-        console.log('Delete response not successful:', response.error);
-        return false;
-      }
-    } catch (error) {
-      // Don't show error message since delete is working
-      console.error('Delete contact error:', error);
-      return false;
-    }
-  };
-
-  // Enhanced bulk import with unified endpoint
-  const bulkImportContacts = async (data: {
-    import_type: 'csv' | 'excel' | 'phone_contacts';
-    csv_data?: string;
-    file?: File;
-    contacts?: CreateContactRequest[];
-    skip_duplicates?: boolean;
-    update_existing?: boolean;
-  }): Promise<{
-    success: boolean;
-    imported: number;
-    updated: number;
-    skipped: number;
-    total_processed: number;
-    errors: Array<{
-      row?: number;
-      contact?: CreateContactRequest;
-      error: string;
-    }>;
-  }> => {
-    try {
-      const response = await apiClient.bulkImportContacts(data);
-
-      if (response.success && response.data) {
-        const { imported, updated, skipped, total_processed, errors } = response.data;
-
-        await fetchContacts(); // Refresh the contacts list
-
-        // Show success message with detailed results
-        const successMessage = `Successfully imported ${imported} contacts${updated > 0 ? `, updated ${updated}` : ''}${skipped > 0 ? `, skipped ${skipped}` : ''}.`;
-
-        toast({
-          title: "Import completed",
-          description: successMessage,
-        });
-
-        // Show errors if any
-        if (errors && errors.length > 0) {
-          console.warn('Import errors:', errors);
-          toast({
-            title: "Some contacts had errors",
-            description: `${errors.length} contact(s) had validation errors. Check console for details.`,
-            variant: "destructive"
-          });
-        }
-
-        return {
-          success: true,
-          imported,
-          updated,
-          skipped,
-          total_processed,
-          errors: errors || []
-        };
-      } else {
-        toast({
-          title: "Import failed",
-          description: response.error || 'Please check your data and try again',
-          variant: "destructive"
-        });
-        return {
-          success: false,
-          imported: 0,
-          updated: 0,
-          skipped: 0,
-          total_processed: 0,
-          errors: []
-        };
+        throw new Error(result.message || 'Import failed');
       }
     } catch (error) {
       console.error('Bulk import error:', error);
       toast({
-        title: "Import failed",
-        description: "Network error occurred. Please try again.",
+        title: "Import Error",
+        description: error instanceof Error ? error.message : "Failed to import contacts",
         variant: "destructive"
       });
-      return {
-        success: false,
-        imported: 0,
-        updated: 0,
-        skipped: 0,
-        total_processed: 0,
-        errors: []
-      };
+      throw error;
     }
   };
 
-  // Legacy methods for backward compatibility
-  const bulkImportContactsLegacy = async (file: File): Promise<boolean> => {
+  const importMobileContacts = async () => {
     try {
-      const response = await apiClient.bulkImportContactsLegacy(file);
+      // Fetch contacts from mobile device
+      const mobileResult = await fetchMobileContacts();
+      
+      if (!mobileResult.success) {
+        throw new Error(mobileResult.error || 'Failed to fetch mobile contacts');
+      }
 
-      if (response.success) {
-        await fetchContacts(); // Refresh the contacts list
+      if (mobileResult.contacts.length === 0) {
+        throw new Error('No contacts found on device');
+      }
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Import contacts to backend
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CONTACTS.MOBILE_IMPORT}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contacts: mobileResult.contacts
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
         toast({
-          title: "Contacts imported",
-          description: "Your contacts have been successfully imported",
+          title: "Mobile Import Successful",
+          description: `Successfully imported ${result.imported} contacts from your device`,
         });
-        return true;
+        // Refresh contacts list
+        await fetchContacts();
+        return result;
       } else {
-        toast({
-          title: "Import failed",
-          description: response.error || 'Please check your file format and try again',
-          variant: "destructive"
-        });
-        return false;
+        throw new Error(result.message || 'Mobile import failed');
       }
     } catch (error) {
+      console.error('Mobile import error:', error);
       toast({
-        title: "Import failed",
-        description: "Network error occurred",
+        title: "Mobile Import Error",
+        description: error instanceof Error ? error.message : "Failed to import contacts from device",
         variant: "destructive"
       });
-      return false;
+      throw error;
     }
   };
 
-  const importContacts = async (contactsData: ImportContactsRequest): Promise<boolean> => {
+  const deleteContact = async (contactId: string) => {
     try {
-      const response = await apiClient.importContacts(contactsData);
-
-      if (response.success && response.data) {
-        const { imported_count, failed_count } = response.data;
-
-        await fetchContacts(); // Refresh the contacts list
-
-        toast({
-          title: "Contacts imported",
-          description: `Successfully imported ${imported_count} contacts. ${failed_count} failed.`,
-        });
-        return true;
-      } else {
-        toast({
-          title: "Import failed",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
-        return false;
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
-    } catch (error) {
-      toast({
-        title: "Import failed",
-        description: "Network error occurred",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
 
-  // =============================================
-  // BULK OPERATIONS
-  // =============================================
-
-  const bulkDeleteContacts = async (contactIds: string[]): Promise<{
-    success: boolean;
-    deleted_count: number;
-    failed_count: number;
-    errors: Array<{
-      contact_id: string;
-      error: string;
-    }>;
-  }> => {
-    try {
-      const response = await apiClient.bulkDeleteContacts(contactIds);
-
-      if (response.success && response.data) {
-        const { deleted_count, failed_count, errors } = response.data;
-
-        await fetchContacts(); // Refresh the contacts list
-
-        // Show success message with detailed results
-        const successMessage = `Successfully deleted ${deleted_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
-
-        toast({
-          title: "Bulk delete completed",
-          description: successMessage,
-        });
-
-        // Show errors if any
-        if (errors && errors.length > 0) {
-          console.warn('Bulk delete errors:', errors);
-          toast({
-            title: "Some contacts had errors",
-            description: `${errors.length} contact(s) could not be deleted. Check console for details.`,
-            variant: "destructive"
-          });
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CONTACTS.DETAIL(contactId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
+      });
 
-        return {
-          success: true,
-          deleted_count,
-          failed_count,
-          errors: errors || []
-        };
-      } else {
+      if (response.ok) {
+        setContacts(prev => prev.filter(contact => contact.id !== contactId));
+        setTotalCount(prev => prev - 1);
         toast({
-          title: "Bulk delete failed",
-          description: response.error || 'Please try again',
-          variant: "destructive"
+          title: "Success",
+          description: "Contact deleted successfully",
         });
-        return {
-          success: false,
-          deleted_count: 0,
-          failed_count: contactIds.length,
-          errors: []
-        };
+      } else {
+        throw new Error('Failed to delete contact');
       }
     } catch (error) {
-      console.error('Bulk delete error:', error);
+      console.error('Delete contact error:', error);
       toast({
-        title: "Bulk delete failed",
-        description: "Network error occurred. Please try again.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete contact",
         variant: "destructive"
       });
-      return {
-        success: false,
-        deleted_count: 0,
-        failed_count: contactIds.length,
-        errors: []
-      };
+      throw error;
     }
   };
 
-  const bulkAddTags = async (contactIds: string[], tags: string[]): Promise<{
-    success: boolean;
-    updated_count: number;
-    failed_count: number;
-    errors: Array<{
-      contact_id: string;
-      error: string;
-    }>;
-  }> => {
-    try {
-      const response = await apiClient.bulkAddTags(contactIds, tags);
-
-      if (response.success && response.data) {
-        const { updated_count, failed_count, errors } = response.data;
-
-        await fetchContacts(); // Refresh the contacts list
-
-        // Show success message with detailed results
-        const successMessage = `Successfully added ${tags.length} tag(s) to ${updated_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
-
-        toast({
-          title: "Bulk tag update completed",
-          description: successMessage,
-        });
-
-        // Show errors if any
-        if (errors && errors.length > 0) {
-          console.warn('Bulk tag update errors:', errors);
-          toast({
-            title: "Some contacts had errors",
-            description: `${errors.length} contact(s) could not be updated. Check console for details.`,
-            variant: "destructive"
-          });
-        }
-
-        return {
-          success: true,
-          updated_count,
-          failed_count,
-          errors: errors || []
-        };
-      } else {
-        toast({
-          title: "Bulk tag update failed",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
-        return {
-          success: false,
-          updated_count: 0,
-          failed_count: contactIds.length,
-          errors: []
-        };
-      }
-    } catch (error) {
-      console.error('Bulk tag update error:', error);
-      toast({
-        title: "Bulk tag update failed",
-        description: "Network error occurred. Please try again.",
-        variant: "destructive"
-      });
-      return {
-        success: false,
-        updated_count: 0,
-        failed_count: contactIds.length,
-        errors: []
-      };
+  const goToNextPage = () => {
+    if (hasNextPage) {
+      fetchContacts(currentPage + 1);
     }
   };
 
-  const bulkRemoveTags = async (contactIds: string[], tags: string[]): Promise<{
-    success: boolean;
-    updated_count: number;
-    failed_count: number;
-    errors: Array<{
-      contact_id: string;
-      error: string;
-    }>;
-  }> => {
-    try {
-      const response = await apiClient.bulkRemoveTags(contactIds, tags);
-
-      if (response.success && response.data) {
-        const { updated_count, failed_count, errors } = response.data;
-
-        await fetchContacts(); // Refresh the contacts list
-
-        // Show success message with detailed results
-        const successMessage = `Successfully removed ${tags.length} tag(s) from ${updated_count} contact(s)${failed_count > 0 ? `. ${failed_count} failed.` : ''}`;
-
-        toast({
-          title: "Bulk tag removal completed",
-          description: successMessage,
-        });
-
-        // Show errors if any
-        if (errors && errors.length > 0) {
-          console.warn('Bulk tag removal errors:', errors);
-          toast({
-            title: "Some contacts had errors",
-            description: `${errors.length} contact(s) could not be updated. Check console for details.`,
-            variant: "destructive"
-          });
-        }
-
-        return {
-          success: true,
-          updated_count,
-          failed_count,
-          errors: errors || []
-        };
-      } else {
-        toast({
-          title: "Bulk tag removal failed",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
-        return {
-          success: false,
-          updated_count: 0,
-          failed_count: contactIds.length,
-          errors: []
-        };
-      }
-    } catch (error) {
-      console.error('Bulk tag removal error:', error);
-      toast({
-        title: "Bulk tag removal failed",
-        description: "Network error occurred. Please try again.",
-        variant: "destructive"
-      });
-      return {
-        success: false,
-        updated_count: 0,
-        failed_count: contactIds.length,
-        errors: []
-      };
+  const goToPreviousPage = () => {
+    if (hasPreviousPage) {
+      fetchContacts(currentPage - 1);
     }
+  };
+
+  const goToPage = (page: number) => {
+    fetchContacts(page);
   };
 
   useEffect(() => {
     fetchContacts();
-  }, [fetchContacts]);
-
-  const refreshData = async () => {
-    console.log('Manual refresh triggered for contacts...');
-    await fetchContacts();
-  };
+  }, []);
 
   return {
     contacts,
+    totalCount,
     isLoading,
     error,
-    totalCount,
+    currentPage,
+    hasNextPage,
+    hasPreviousPage,
     fetchContacts,
+    goToNextPage,
+    goToPreviousPage,
+    goToPage,
     createContact,
-    updateContact,
-    deleteContact,
     bulkImportContacts,
-    bulkImportContactsLegacy,
-    importContacts,
-    bulkDeleteContacts,
-    bulkAddTags,
-    bulkRemoveTags,
-    refetch: fetchContacts,
-    refreshData,
+    importMobileContacts,
+    deleteContact,
   };
 };

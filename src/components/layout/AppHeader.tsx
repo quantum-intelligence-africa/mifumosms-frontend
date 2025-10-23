@@ -1,6 +1,5 @@
-import { Bell, Menu, User, Settings, LogOut } from "lucide-react";
+import { Menu, User, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -13,7 +12,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState } from "react";
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
@@ -24,20 +23,10 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // State management
-  const [notifications] = useState([
-    { id: 1, title: "Campaign Sent", message: "Your campaign has been sent successfully", time: "2 minutes ago", unread: true },
-    { id: 2, title: "Low Balance", message: "Your account balance is running low", time: "1 hour ago", unread: true },
-    { id: 3, title: "Contact Import", message: "50 contacts have been imported successfully", time: "3 hours ago", unread: false },
-  ]);
-
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
-
-
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   const getInitials = (name: string) => {
     return name
@@ -49,7 +38,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   };
 
   return (
-    <header className="h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-3 lg:px-6">
+    <header className="h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-3 lg:px-6 relative z-50">
       {/* Mobile menu button */}
       {isMobile && (
         <Button
@@ -69,57 +58,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       <div className="flex items-center gap-1 lg:gap-3">
 
         {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9 relative">
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-4 w-4 lg:h-5 lg:w-5 text-xs p-0 flex items-center justify-center"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Notifications</span>
-              {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {unreadCount} new
-                </Badge>
-              )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length > 0 ? (
-              notifications.map((notification) => (
-                <DropdownMenuItem
-                  key={notification.id}
-                  className={`flex flex-col items-start p-3 ${notification.unread ? 'bg-primary/5' : ''}`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-medium text-sm">{notification.title}</span>
-                    <span className="text-xs text-text-subtle">{notification.time}</span>
-                  </div>
-                  <span className="text-xs text-text-subtle mt-1">{notification.message}</span>
-                  {notification.unread && (
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2" />
-                  )}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled className="text-center py-6">
-                <span className="text-text-subtle">No notifications</span>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-center">
-              <span className="text-sm">View all</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationDropdown />
 
         {/* User Profile */}
         <DropdownMenu>

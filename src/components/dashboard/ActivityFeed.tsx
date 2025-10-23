@@ -1,53 +1,54 @@
-import { MessageSquare, Send, Users, CheckCircle } from "lucide-react";
+import { MessageSquare, Send, Users, CheckCircle, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useDashboard } from "@/hooks/useDashboard";
 
-const activities = [
-  {
-    id: 1,
-    type: "message",
-    user: "John Kamau",
-    action: "replied to conversation",
-    target: "Kenya Coffee Exports",
-    time: "2 min ago",
-    icon: MessageSquare,
-    status: "unread",
-  },
-  {
-    id: 2,
-    type: "campaign",
-    user: "System",
-    action: "completed campaign",
-    target: "Mother's Day Promotion",
-    time: "15 min ago",
-    icon: Send,
-    status: "success",
-    stats: "98% delivered",
-  },
-  {
-    id: 3,
-    type: "contact",
-    user: "Sarah Mwangi",
-    action: "added 25 new contacts",
-    target: "Nairobi SME List",
-    time: "1 hour ago",
-    icon: Users,
-    status: "completed",
-  },
-  {
-    id: 4,
-    type: "template",
-    user: "David Ochieng",
-    action: "approved template",
-    target: "Welcome Message - Swahili",
-    time: "2 hours ago",
-    icon: CheckCircle,
-    status: "approved",
-  },
-];
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  time_ago: string;
+  is_live: boolean;
+  metadata: {
+    [key: string]: any;
+  };
+}
+
+const getActivityIcon = (type: string) => {
+  switch (type) {
+    case 'message_sent':
+    case 'reply':
+    case 'message':
+      return MessageSquare;
+    case 'campaign_completed':
+    case 'campaign_completion':
+    case 'campaign':
+      return Send;
+    case 'contact_added':
+    case 'contacts_added':
+    case 'contact':
+      return Users;
+    case 'template_approval':
+    case 'template':
+      return CheckCircle;
+    default:
+      return Activity;
+  }
+};
+
+const getActivityStatus = (type: string, isLive?: boolean) => {
+  if (isLive) return 'unread';
+  if (type === 'campaign_completed') return 'success';
+  if (type === 'template_approval') return 'approved';
+  return 'completed';
+};
 
 export function ActivityFeed() {
+  const { recentActivity } = useDashboard();
+  const activities = recentActivity || [];
   return (
     <Card className="p-6 glass border-0">
       <div className="flex items-center justify-between mb-6">
@@ -60,48 +61,51 @@ export function ActivityFeed() {
       </div>
 
       <div className="space-y-4">
-        {activities.map((activity) => {
-          const Icon = activity.icon;
-          return (
-            <div
-              key={activity.id}
-              className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-smooth"
-            >
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
+        {activities.length > 0 ? (
+          activities.map((activity) => {
+            const Icon = getActivityIcon(activity.type);
+            const status = getActivityStatus(activity.type, activity.is_live);
+            
+            return (
+              <div
+                key={activity.id}
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-smooth"
+              >
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Icon className="w-4 h-4 text-primary" />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground">
-                      <span className="font-medium">{activity.user}</span>{" "}
-                      {activity.action}{" "}
-                      <span className="font-medium text-primary">
-                        {activity.target}
-                      </span>
-                    </p>
-
-                    {activity.stats && (
-                      <p className="text-xs text-text-subtle mt-1">
-                        {activity.stats}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground font-medium">
+                        {activity.title}
                       </p>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-2 ml-3">
-                    <span className="text-xs text-text-subtle whitespace-nowrap">
-                      {activity.time}
-                    </span>
-                    {activity.status === "unread" && (
-                      <div className="w-2 h-2 rounded-full bg-secondary" />
-                    )}
+                      <p className="text-xs text-text-subtle mt-1">
+                        {activity.description}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-3">
+                      <span className="text-xs text-text-subtle whitespace-nowrap">
+                        {activity.time_ago}
+                      </span>
+                      {activity.is_live && (
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="text-center py-8">
+            <Activity className="w-8 h-8 text-text-subtle mx-auto mb-2" />
+            <p className="text-sm text-text-subtle">No recent activity</p>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 pt-4 border-t border-border-subtle">

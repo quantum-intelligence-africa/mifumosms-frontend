@@ -46,7 +46,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useTemplates, useTemplate } from "@/hooks/useTemplates";
 import type { Template, TemplateFilterParams, CreateTemplateRequest } from "@/lib/api";
 
 const Templates = () => {
@@ -69,27 +68,190 @@ const Templates = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Use templates hook
-  const {
-    templates = [],
-    filterOptions,
-    totalCount = 0,
-    isLoading,
-    isCreating,
-    isUpdating,
-    isDeleting,
-    createTemplate,
-    updateTemplate,
-    deleteTemplate,
-    toggleFavorite,
-    approveTemplate,
-    rejectTemplate,
-    copyTemplate,
-    updateFilters
-  } = useTemplates();
+  // Static template data - no backend connection
+  const [templates, setTemplates] = useState<Template[]>([
+    {
+      id: "1",
+      name: "Welcome Message",
+      category: "onboarding",
+      category_display: "Onboarding",
+      language: "en",
+      language_display: "English",
+      channel: "sms",
+      channel_display: "SMS",
+      body_text: "Welcome to our service! We're excited to have you on board.",
+      preview_text: "Welcome to our service! We're excited to have you on board.",
+      description: "A warm welcome message for new users",
+      variables: ["name"],
+      variables_count: 1,
+      status: "approved",
+      status_display: "Approved",
+      approved: true,
+      approval_status: "approved",
+      is_favorite: false,
+      usage_count: 15,
+      last_used_at: "2024-01-15T10:30:00Z",
+      last_used_display: "2 days ago",
+      created_by: "admin",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-15T10:30:00Z"
+    },
+    {
+      id: "2",
+      name: "Order Confirmation",
+      category: "transactional",
+      category_display: "Transactional",
+      language: "en",
+      language_display: "English",
+      channel: "sms",
+      channel_display: "SMS",
+      body_text: "Your order #{{order_number}} has been confirmed. Expected delivery: {{delivery_date}}",
+      preview_text: "Your order #12345 has been confirmed. Expected delivery: Jan 20, 2024",
+      description: "Confirmation message for completed orders",
+      variables: ["order_number", "delivery_date"],
+      variables_count: 2,
+      status: "approved",
+      status_display: "Approved",
+      approved: true,
+      approval_status: "approved",
+      is_favorite: true,
+      usage_count: 42,
+      last_used_at: "2024-01-16T14:20:00Z",
+      last_used_display: "1 day ago",
+      created_by: "admin",
+      created_at: "2024-01-02T00:00:00Z",
+      updated_at: "2024-01-16T14:20:00Z"
+    },
+    {
+      id: "3",
+      name: "Payment Reminder",
+      category: "reminders",
+      category_display: "Reminders",
+      language: "en",
+      language_display: "English",
+      channel: "whatsapp",
+      channel_display: "WhatsApp",
+      body_text: "Hi {{name}}, this is a friendly reminder that your payment of ${{amount}} is due on {{due_date}}.",
+      preview_text: "Hi John, this is a friendly reminder that your payment of $99.99 is due on Jan 25, 2024.",
+      description: "Payment reminder for overdue invoices",
+      variables: ["name", "amount", "due_date"],
+      variables_count: 3,
+      status: "pending",
+      status_display: "Pending",
+      approved: false,
+      approval_status: "pending",
+      is_favorite: false,
+      usage_count: 8,
+      last_used_at: "2024-01-10T09:15:00Z",
+      last_used_display: "1 week ago",
+      created_by: "admin",
+      created_at: "2024-01-05T00:00:00Z",
+      updated_at: "2024-01-10T09:15:00Z"
+    },
+    {
+      id: "4",
+      name: "Promotional Offer",
+      category: "promotions",
+      category_display: "Promotions",
+      language: "en",
+      language_display: "English",
+      channel: "email",
+      channel_display: "Email",
+      body_text: "🎉 Special offer! Get {{discount}}% off on your next purchase. Use code: {{promo_code}}",
+      preview_text: "🎉 Special offer! Get 20% off on your next purchase. Use code: SAVE20",
+      description: "Promotional message with discount code",
+      variables: ["discount", "promo_code"],
+      variables_count: 2,
+      status: "approved",
+      status_display: "Approved",
+      approved: true,
+      approval_status: "approved",
+      is_favorite: true,
+      usage_count: 23,
+      last_used_at: "2024-01-14T16:45:00Z",
+      last_used_display: "3 days ago",
+      created_by: "admin",
+      created_at: "2024-01-03T00:00:00Z",
+      updated_at: "2024-01-14T16:45:00Z"
+    },
+    {
+      id: "5",
+      name: "Appointment Reminder",
+      category: "reminders",
+      category_display: "Reminders",
+      language: "en",
+      language_display: "English",
+      channel: "sms",
+      channel_display: "SMS",
+      body_text: "Reminder: You have an appointment on {{appointment_date}} at {{appointment_time}} with {{doctor_name}}.",
+      preview_text: "Reminder: You have an appointment on Jan 22, 2024 at 2:00 PM with Dr. Smith.",
+      description: "Medical appointment reminder",
+      variables: ["appointment_date", "appointment_time", "doctor_name"],
+      variables_count: 3,
+      status: "draft",
+      status_display: "Draft",
+      approved: false,
+      approval_status: "draft",
+      is_favorite: false,
+      usage_count: 0,
+      last_used_at: null,
+      last_used_display: "Never used",
+      created_by: "admin",
+      created_at: "2024-01-12T00:00:00Z",
+      updated_at: "2024-01-12T00:00:00Z"
+    },
+    {
+      id: "6",
+      name: "Password Reset",
+      category: "alerts",
+      category_display: "Alerts",
+      language: "en",
+      language_display: "English",
+      channel: "email",
+      channel_display: "Email",
+      body_text: "Your password has been reset. If you didn't request this, please contact support immediately. Reset code: {{reset_code}}",
+      preview_text: "Your password has been reset. If you didn't request this, please contact support immediately. Reset code: ABC123",
+      description: "Password reset notification",
+      variables: ["reset_code"],
+      variables_count: 1,
+      status: "approved",
+      status_display: "Approved",
+      approved: true,
+      approval_status: "approved",
+      is_favorite: false,
+      usage_count: 7,
+      last_used_at: "2024-01-13T11:30:00Z",
+      last_used_display: "4 days ago",
+      created_by: "admin",
+      created_at: "2024-01-04T00:00:00Z",
+      updated_at: "2024-01-13T11:30:00Z"
+    }
+  ]);
 
-  // Use template hook for selected template
-  const { template: selectedTemplateDetails, variables } = useTemplate(selectedTemplate?.id || "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [filterOptions] = useState({
+    categories: [
+      { value: "onboarding", label: "Onboarding" },
+      { value: "promotions", label: "Promotions" },
+      { value: "reminders", label: "Reminders" },
+      { value: "loyalty", label: "Loyalty" },
+      { value: "win_back", label: "Win-Back" },
+      { value: "post_purchase", label: "Post-Purchase" },
+      { value: "transactional", label: "Transactional" },
+      { value: "marketing", label: "Marketing" },
+      { value: "alerts", label: "Alerts" }
+    ],
+    languages: [
+      { value: "en", label: "English" },
+      { value: "sw", label: "Kiswahili" },
+      { value: "fr", label: "Français" },
+      { value: "ar", label: "العربية" }
+    ]
+  });
+  const totalCount = templates.length;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -98,20 +260,23 @@ const Templates = () => {
     }
   }, [location.search]);
 
-  // Update filters when search/filter values change (with debounce for search)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const filters: TemplateFilterParams = {};
-      if (searchQuery) filters.search = searchQuery;
-      if (channelFilter !== "all") filters.channel = channelFilter;
-      if (categoryFilter !== "all") filters.category = categoryFilter;
-      if (languageFilter !== "all") filters.language = languageFilter;
-
-      updateFilters(filters);
-    }, searchQuery ? 500 : 0); // Debounce search by 500ms
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, channelFilter, categoryFilter, languageFilter, updateFilters]);
+  // Filter templates based on search and filter values
+  const filteredTemplates = templates.filter(template => {
+    const matchesSearch = !searchQuery || 
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.body_text.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesChannel = channelFilter === "all" || 
+      template.channel === channelFilter;
+    
+    const matchesCategory = categoryFilter === "all" || 
+      template.category === categoryFilter;
+    
+    const matchesLanguage = languageFilter === "all" || 
+      template.language === languageFilter;
+    
+    return matchesSearch && matchesChannel && matchesCategory && matchesLanguage;
+  });
 
   const getStatusIcon = (status: Template["status"]) => {
     switch (status) {
@@ -138,7 +303,7 @@ const Templates = () => {
       case "whatsapp": return <MessageSquare className="w-4 h-4" />;
       case "sms": return <Send className="w-4 h-4" />;
       case "email": return <MessageSquare className="w-4 h-4" />;
-      case "all_channels": return <FileText className="w-4 h-4" />;
+      case "all": return <FileText className="w-4 h-4" />;
       default: return null;
     }
   };
@@ -157,56 +322,72 @@ const Templates = () => {
   };
 
   const handleDuplicateTemplate = async (template: Template) => {
-    const result = await copyTemplate(template.id, `${template.name} (Copy)`);
-    if (result.success) {
-      toast({
-        title: "Template Duplicated",
-        description: `Created a copy of "${template.name}"`,
-      });
-    }
+    const duplicatedTemplate: Template = {
+      ...template,
+      id: Date.now().toString(),
+      name: `${template.name} (Copy)`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      usage_count: 0,
+      last_used_at: null,
+      last_used_display: "Never used"
+    };
+    
+    setTemplates(prev => [duplicatedTemplate, ...prev]);
+    toast({
+      title: "Template Duplicated",
+      description: `Created a copy of "${template.name}"`,
+    });
   };
 
   const handleToggleStar = async (template: Template) => {
-    const result = await toggleFavorite(template.id);
-    if (result.success) {
-      const action = result.is_favorite ? "added to" : "removed from";
-      toast({
-        title: "Template Starred",
-        description: `"${template.name}" ${action} favorites`,
-      });
-    }
+    setTemplates(prev => prev.map(t => 
+      t.id === template.id 
+        ? { ...t, is_favorite: !t.is_favorite }
+        : t
+    ));
+    
+    const action = template.is_favorite ? "removed from" : "added to";
+    toast({
+      title: "Template Starred",
+      description: `"${template.name}" ${action} favorites`,
+    });
   };
 
   const handleApproveTemplate = async (template: Template) => {
-    const result = await approveTemplate(template.id);
-    if (result.success) {
-      toast({
-        title: "Template Approved",
-        description: `"${template.name}" has been approved`,
-      });
-    }
+    setTemplates(prev => prev.map(t => 
+      t.id === template.id 
+        ? { ...t, status: "approved", status_display: "Approved", approved: true, approval_status: "approved" }
+        : t
+    ));
+    
+    toast({
+      title: "Template Approved",
+      description: `"${template.name}" has been approved`,
+    });
   };
 
   const handleRejectTemplate = async (template: Template) => {
-    const result = await rejectTemplate(template.id);
-    if (result.success) {
-      toast({
-        title: "Template Rejected",
-        description: `"${template.name}" has been rejected`,
-      });
-    }
+    setTemplates(prev => prev.map(t => 
+      t.id === template.id 
+        ? { ...t, status: "rejected", status_display: "Rejected", approved: false, approval_status: "rejected" }
+        : t
+    ));
+    
+    toast({
+      title: "Template Rejected",
+      description: `"${template.name}" has been rejected`,
+    });
   };
 
   const handleDeleteTemplate = async (template: Template) => {
     if (window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
-      const result = await deleteTemplate(template.id);
-      if (result.success) {
-        toast({
-          title: "Template Deleted",
-          description: `"${template.name}" has been deleted`,
-          variant: "destructive",
-        });
-      }
+      setTemplates(prev => prev.filter(t => t.id !== template.id));
+      toast({
+        title: "Template Deleted",
+        description: `"${template.name}" has been deleted`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -220,8 +401,38 @@ const Templates = () => {
       return;
     }
 
-    const result = await createTemplate(createFormData);
-    if (result.success) {
+    setIsCreating(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      const newTemplate: Template = {
+        id: Date.now().toString(),
+        name: createFormData.name,
+        category: createFormData.category,
+        category_display: createFormData.category.charAt(0).toUpperCase() + createFormData.category.slice(1),
+        language: createFormData.language,
+        language_display: createFormData.language === "en" ? "English" : createFormData.language,
+        channel: createFormData.channel as any,
+        channel_display: createFormData.channel.toUpperCase(),
+        body_text: createFormData.body_text,
+        preview_text: createFormData.body_text,
+        description: createFormData.description || "",
+        variables: createFormData.body_text.match(/{{(.*?)}}/g)?.map(v => v.replace(/{{|}}/g, '')) || [],
+        variables_count: (createFormData.body_text.match(/{{(.*?)}}/g) || []).length,
+        status: "draft",
+        status_display: "Draft",
+        approved: false,
+        approval_status: "draft",
+        is_favorite: false,
+        usage_count: 0,
+        last_used_at: null,
+        last_used_display: "Never used",
+        created_by: "user",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      setTemplates(prev => [newTemplate, ...prev]);
       setIsCreateDialogOpen(false);
       setCreateFormData({
         name: "",
@@ -231,7 +442,13 @@ const Templates = () => {
         body_text: "",
         description: ""
       });
-    }
+      setIsCreating(false);
+      
+      toast({
+        title: "Template Created",
+        description: `"${createFormData.name}" has been created successfully`,
+      });
+    }, 1000);
   };
 
   return (
@@ -289,7 +506,7 @@ const Templates = () => {
                             <SelectItem value="sms">SMS</SelectItem>
                             <SelectItem value="whatsapp">WhatsApp</SelectItem>
                             <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="all_channels">All Channels</SelectItem>
+                            <SelectItem value="all">All Channels</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -388,7 +605,6 @@ const Templates = () => {
                     <SelectItem value="sms">SMS</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="all_channels">All Channels</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -431,7 +647,7 @@ const Templates = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 h-full overflow-y-auto">
-                    {templates && templates.length > 0 ? templates.map((template) => (
+                    {filteredTemplates && filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
                       <Card
                         key={template.id}
                         className="glass border-0 hover:shadow-lg transition-smooth cursor-pointer"
@@ -601,10 +817,10 @@ const Templates = () => {
                             )}
                             <Button
                               variant="outline"
-                              onClick={() => fetchTemplates()}
+                              onClick={() => window.location.reload()}
                               className="px-6"
                             >
-                              Retry Loading
+                              Refresh Page
                             </Button>
                           </div>
                         </div>
