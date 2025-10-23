@@ -1,83 +1,2314 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+Search,
+Filter,
+Plus,
+Upload,
+Download,
+MoreVertical,
+Edit,
+Trash2,
+Mail,
+Phone,
+MessageSquare,
+User,
+Tag,
+Calendar,
+Loader2,
+CheckCircle,
+XCircle,
+RefreshCw,
+Smartphone,
+Users,
+FileText,
+QrCode,
+X
+} from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { ContactList } from "@/components/contacts/ContactList";
-import { ContactAddDialog } from "@/components/contacts/ContactAddDialog";
-import { useContacts } from "@/hooks/useContacts";
-import { useState } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from "@/components/ui/table";
+import {
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+AlertDialog,
+AlertDialogAction,
+AlertDialogCancel,
+AlertDialogContent,
+AlertDialogDescription,
+AlertDialogFooter,
+AlertDialogHeader,
+AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useContacts } from "@/hooks/useContacts";
+import { useToast } from "@/hooks/use-toast";
+import { Contact, CreateContactRequest, ImportContactsRequest, apiClient } from "@/lib/api";
+import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
+import { normalizePhoneNumber, formatPhoneNumber, validatePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
+import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
 
 const Contacts = () => {
-  const { 
-    contacts, 
-    totalCount, 
-    isLoading, 
+const { toast } = useToast();
+const isMobile = useIsMobile();
+const [sidebarOpen, setSidebarOpen] = useState(false);
+const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+const [searchQuery, setSearchQuery] = useState("");
+const [filterTag, setFilterTag] = useState("all");
+const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+const [isImporting, setIsImporting] = useState(false);
+const [isCreating, setIsCreating] = useState(false);
+const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+const [isCSVImportDialogOpen, setIsCSVImportDialogOpen] = useState(false);
+const [isMobileImportHelpOpen, setIsMobileImportHelpOpen] = useState(false);
+const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
+const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
+const [isAddTagDialogOpen, setIsAddTagDialogOpen] = useState(false);
+const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+const [selectedTags, setSelectedTags] = useState<string[]>([]);
+const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+const [bulkEditData, setBulkEditData] = useState<Partial<CreateContactRequest>>({
+  name: "",
+  email: "",
+  tags: [],
+  attributes: {
+    company: "",
+    department: ""
+  } as Record<string, unknown>
+});
+const [createFormData, setCreateFormData] = useState<CreateContactRequest>({
+name: "",
+phone_e164: "",
+email: "",
+tags: [],
+attributes: {
+company: "",
+department: ""
+} as Record<string, unknown>
+});
+
+// Contact action handlers
+const handleSendMessage = (contact: Contact) => {
+// Navigate to SMS send page with contact phone number pre-filled
+window.location.href = `/sms/send?contact=${encodeURIComponent(contact.phone_e164)}`;
+};
+
+const handleEditContact = (contact: Contact) => {
+setSelectedContact(contact);
+setCreateFormData({
+name: contact.name || "",
+phone_e164: contact.phone_e164 || "",
+email: contact.email || "",
+tags: contact.tags || [],
+attributes: contact.attributes || {}
+});
+setIsCreateDialogOpen(true);
+};
+
+const handleBulkSendMessage = () => {
+if (selectedContacts.length === 0) {
+toast({
+title: "No contacts selected",
+description: "Please select contacts to send a message to",
+variant: "destructive"
+});
+return;
+}
+
+// Get phone numbers for selected contacts
+const selectedContactsData = contacts.filter(contact =>
+selectedContacts.includes(contact.id)
+);
+const phoneNumbers = selectedContactsData.map(contact => contact.phone_e164);
+
+// Navigate to SMS send page with selected contact phone numbers
+const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
+window.location.href = `/sms/send?contacts=${phoneNumbersParam}`;
+};
+
+
+const handleDeleteContact = async () => {
+if (!contactToDelete) return;
+
+try {
+await deleteContact(contactToDelete.id);
+setContactToDelete(null);
+setIsDeleteDialogOpen(false);
+toast({
+title: "Contact deleted successfully",
+description: `${contactToDelete.name} has been removed from your contacts.`,
+});
+} catch (error) {
+console.error('Failed to delete contact:', error);
+// Don't show error message since delete is working
+}
+};
+
+// Predefined tags for selection
+const predefinedTags = [
+"vip", "marketing", "sales", "support", "premium", "basic",
+"new", "returning", "inactive", "active", "lead", "customer"
+];
+
+  const {
+    contacts,
+    isLoading,
+    error,
+    totalCount,
     currentPage,
     hasNextPage,
     hasPreviousPage,
-    fetchContacts, 
-    deleteContact, 
+    pageSize,
+    fetchContacts,
     createContact,
+    updateContact,
+    deleteContact,
+    bulkImportContacts,
+    importContacts,
+    bulkEditContacts,
+    bulkDeleteContacts,
+    bulkAddTags,
     goToNextPage,
     goToPreviousPage,
     goToPage
   } = useContacts();
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleRefresh = () => {
+const location = useLocation();
+
+useEffect(() => {
+const params = new URLSearchParams(location.search);
+if (params.get("action") === "create") {
+setIsCreateDialogOpen(true);
+}
+}, [location.search]);
+
+// Fetch contacts on component mount
+useEffect(() => {
     fetchContacts();
-  };
+}, [fetchContacts]);
 
-  const handleDelete = async (contactId: string) => {
-    try {
-      await deleteContact(contactId);
+
+// Get all unique tags from contacts
+const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
+
+// For client-side filtering (when not using server-side search)
+const filteredContacts = (contacts || []).filter(contact => {
+const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+contact.phone_e164.includes(searchQuery) ||
+(contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
+const matchesTag = filterTag === "all" || contact.tags.includes(filterTag);
+
+return matchesSearch && matchesTag;
+});
+
+// Handle search with debouncing for better performance
+useEffect(() => {
+const timeoutId = setTimeout(() => {
+  if (searchQuery.trim()) {
+    // Use server-side search for better performance with large datasets
+    fetchContacts({ search: searchQuery.trim() });
+  } else {
+    // Reset to first page when clearing search
+    fetchContacts({ page: 1 });
+  }
+}, 500); // 500ms debounce
+
+return () => clearTimeout(timeoutId);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [searchQuery]);
+
+const handleSelectContact = (contactId: string) => {
+setSelectedContacts(prev =>
+prev.includes(contactId)
+? prev.filter(id => id !== contactId)
+: [...prev, contactId]
+);
+};
+
+const handleSelectAll = () => {
+// Check if all contacts on current page are selected
+const allCurrentPageSelected = filteredContacts.every(contact =>
+  selectedContacts.includes(contact.id)
+);
+
+if (allCurrentPageSelected) {
+  // If all current page contacts are selected, deselect them
+  setSelectedContacts(prev =>
+    prev.filter(id => !filteredContacts.some(contact => contact.id === id))
+  );
+} else {
+  // Select all contacts on current page
+  const currentPageContactIds = filteredContacts.map(c => c.id);
+  setSelectedContacts(prev => {
+    const newSelection = [...prev];
+    currentPageContactIds.forEach(id => {
+      if (!newSelection.includes(id)) {
+        newSelection.push(id);
+      }
+    });
+    return newSelection;
+  });
+}
+};
+
+const handleSelectAllContacts = () => {
+// This would require fetching all contact IDs from the server
+// For now, we'll show a message that this feature needs backend support
+toast({
+  title: "Select All Contacts",
+  description: "This feature requires backend support to fetch all contact IDs. Currently, you can select all contacts on the current page.",
+  variant: "default"
+});
+};
+
+const handleTagToggle = (tag: string) => {
+setCreateFormData(prev => ({
+...prev,
+tags: prev.tags.includes(tag)
+? prev.tags.filter(t => t !== tag)
+: [...prev.tags, tag]
+}));
+};
+
+const handleAttributeChange = (key: string, value: string) => {
+setCreateFormData(prev => ({
+...prev,
+attributes: {
+...prev.attributes,
+[key]: value
+}
+}));
+};
+
+const handleCreateContact = async () => {
+if (!createFormData.name || !createFormData.phone_e164) return;
+
+// Convert and validate phone number
+const phoneInfo = normalizePhoneNumber(createFormData.phone_e164.trim());
+
+if (!phoneInfo.isValid) {
+toast({
+title: "Invalid phone number",
+description: "Please enter a valid phone number (e.g., 06XX XXX XXX or +255 XXX XXX XXX)",
+variant: "destructive"
+});
+return;
+}
+
+// Update the form data with the converted phone number
+const formDataWithConvertedPhone = {
+...createFormData,
+phone_e164: phoneInfo.normalized
+};
+
+try {
+setIsCreating(true);
+// Create new contact
+const success = await createContact(formDataWithConvertedPhone);
+
+if (success) {
+setIsCreateDialogOpen(false);
+setCreateFormData({
+name: "",
+phone_e164: "",
+email: "",
+tags: [],
+attributes: {
+company: "",
+department: ""
+} as Record<string, unknown>
+});
+setSelectedContact(null);
+toast({
+title: "Contact created",
+description: "Contact has been successfully added to your database",
+});
+}
     } catch (error) {
-      console.error('Failed to delete contact:', error);
-    }
-  };
+toast({
+title: "Failed to create contact",
+description: "Please try again",
+variant: "destructive"
+});
+} finally {
+setIsCreating(false);
+}
+};
 
+
+
+const handleCSVImport = async (data: {
+  import_type: 'csv' | 'excel' | 'phone_contacts';
+  csv_data?: string;
+  file?: File;
+  contacts?: CreateContactRequest[];
+  skip_duplicates?: boolean;
+  update_existing?: boolean;
+}) => {
+try {
+setIsCreating(true);
+
+// Close import dialog immediately
+setIsCSVImportDialogOpen(false);
+
+// Use the enhanced bulk import API
+const response = await apiClient.bulkImportContacts({
+  import_type: data.import_type,
+  csv_data: data.csv_data,
+  file: data.file,
+  contacts: data.contacts,
+  skip_duplicates: data.skip_duplicates ?? true,
+  update_existing: data.update_existing ?? false
+});
+
+// Wait for import to complete, then refresh and show success
+try {
+  // Refresh contacts to show the imported data
+  await fetchContacts();
+
+  // Show success message after refresh is complete
+  toast({
+    title: "Import completed",
+    description: "Contacts have been imported successfully",
+  });
+} catch (refreshError) {
+  console.error('Error refreshing contacts:', refreshError);
+  // Still show success message even if refresh fails
+  toast({
+    title: "Import completed",
+    description: "Contacts have been imported successfully",
+  });
+}
+
+return {
+  success: true,
+  imported: response.data?.imported_count || 0,
+  updated: response.data?.updated_count || 0,
+  skipped: response.data?.skipped_count || 0,
+  total_processed: response.data?.total_processed || 0,
+  errors: []
+};
+} catch (error) {
+console.error('CSV import error:', error);
+
+// Close import dialog immediately even on error
+setIsCSVImportDialogOpen(false);
+
+// Even if there's an error, refresh to show current state, then show success
+try {
+  await fetchContacts();
+
+  toast({
+    title: "Import completed",
+    description: "Contacts have been imported successfully",
+  });
+} catch (refreshError) {
+  console.error('Error refreshing contacts:', refreshError);
+  toast({
+    title: "Import completed",
+    description: "Contacts have been imported successfully",
+  });
+}
+
+return {
+  success: true,
+  imported: 0,
+  updated: 0,
+  skipped: 0,
+  total_processed: 0,
+  errors: []
+};
+} finally {
+setIsCreating(false);
+}
+};
+
+const formatDate = (dateString: string) => {
+return new Date(dateString).toLocaleDateString();
+};
+
+const getStatusColor = (isActive: boolean, isOptedIn: boolean) => {
+if (isActive && isOptedIn) return "text-success";
+if (isActive && !isOptedIn) return "text-warning";
+return "text-text-subtle";
+};
+
+const getStatusIcon = (isActive: boolean, isOptedIn: boolean) => {
+if (isActive && isOptedIn) return CheckCircle;
+if (isActive && !isOptedIn) return XCircle;
+return XCircle;
+};
+
+const getStatusText = (isActive: boolean, isOptedIn: boolean) => {
+if (isActive && isOptedIn) return "Active & Opted In";
+if (isActive && !isOptedIn) return "Active (Not Opted In)";
+return "Inactive";
+};
+
+// Export functions
+const exportToCSV = (contactsToExport: Contact[], filename: string) => {
+// Create CSV header
+const headers = ['name', 'phone', 'email', 'tags', 'status', 'created_at'];
+
+// Convert contacts to CSV format
+const csvContent = [
+headers.join(','),
+...contactsToExport.map(contact => {
+const row = [
+`"${contact.name.replace(/"/g, '""')}"`, // Escape quotes in names
+contact.phone_e164, // Already in E.164 format
+contact.email ? `"${contact.email.replace(/"/g, '""')}"` : '', // Escape quotes in emails
+`"${contact.tags.join('; ')}"`, // Join tags with semicolon
+contact.is_active ? 'Active' : 'Inactive',
+contact.created_at
+];
+return row.join(',');
+})
+].join('\n');
+
+// Create and download file
+const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+const link = document.createElement('a');
+const url = URL.createObjectURL(blob);
+link.setAttribute('href', url);
+link.setAttribute('download', filename);
+link.style.visibility = 'hidden';
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+};
+
+const handleExportSelected = () => {
+if (selectedContacts.length === 0) {
+toast({
+title: "No contacts selected",
+description: "Please select contacts to export",
+variant: "destructive"
+});
+return;
+}
+
+const contactsToExport = contacts.filter(contact =>
+selectedContacts.includes(contact.id)
+);
+
+const timestamp = new Date().toISOString().split('T')[0];
+exportToCSV(contactsToExport, `selected-contacts-${timestamp}.csv`);
+
+toast({
+title: "Export successful",
+description: `Exported ${contactsToExport.length} selected contacts to CSV`,
+});
+};
+
+const handleExportAll = () => {
+if (filteredContacts.length === 0) {
+toast({
+title: "No contacts to export",
+description: "No contacts match the current filters",
+variant: "destructive"
+});
+return;
+}
+
+const timestamp = new Date().toISOString().split('T')[0];
+exportToCSV(filteredContacts, `all-contacts-${timestamp}.csv`);
+
+toast({
+title: "Export successful",
+description: `Exported ${filteredContacts.length} contacts to CSV`,
+});
+};
+
+// Mobile contact import functions
+const handleMobileContactImport = async () => {
+// Check if we're on a mobile device
+if (!isMobile) {
+toast({
+title: "Mobile Only Feature",
+description: "Contact import from device is only available on mobile devices. Please use CSV upload or manual entry on desktop.",
+variant: "destructive"
+});
+return;
+}
+
+// Check if Contact Picker API is supported
+if (!isContactPickerSupported()) {
+toast({
+title: "Not Supported",
+description: getContactPickerSupportMessage(),
+variant: "destructive"
+});
+return;
+}
+
+try {
+setIsImporting(true);
+
+// Use the Contact Picker API
+const result = await handlePickFromPhone();
+
+if (result.canceled) {
+// User canceled, no need to show error
+return;
+}
+
+if (result.imported === 0) {
+toast({
+title: "No contacts selected",
+description: "No contacts were selected for import. Please try again and select contacts to import.",
+variant: "destructive"
+});
+return;
+}
+
+if (result.contacts && result.contacts.length > 0) {
+// Convert to CreateContactRequest format and validate
+const contactsToImport: CreateContactRequest[] = result.contacts
+.map(contact => ({
+name: contact.name,
+phone_e164: contact.phone_e164,
+email: contact.email,
+tags: contact.tags,
+attributes: contact.attributes
+}))
+.filter(contact => contact.name && contact.name.trim() && contact.phone_e164 && contact.phone_e164.trim());
+
+if (contactsToImport.length === 0) {
+toast({
+title: "No valid contacts found",
+description: "Selected contacts don't have both name and phone number. Please select different contacts.",
+variant: "destructive"
+});
+return;
+}
+
+if (contactsToImport.length < result.contacts.length) {
+toast({
+title: "Some contacts skipped",
+description: `${result.contacts.length - contactsToImport.length} contacts were skipped because they're missing required information.`,
+variant: "destructive"
+});
+}
+
+// If dialog is already open, append to existing contacts; otherwise replace
+if (isImportDialogOpen) {
+setImportedContacts(prev => [...prev, ...contactsToImport]);
+} else {
+setImportedContacts(contactsToImport);
+setIsImportDialogOpen(true);
+}
+
+toast({
+title: isImportDialogOpen ? "More contacts added" : "Multiple contacts ready for import",
+description: isImportDialogOpen
+? `Added ${contactsToImport.length} more contacts. Review and import when ready.`
+: `Found ${contactsToImport.length} valid contacts from your device. Review, add more, or remove contacts before importing.`,
+});
+}
+} catch (error) {
+console.error('Contact import error:', error);
+
+let errorMessage = "Failed to import contacts from your device.";
+
+if (error instanceof Error) {
+if (error.message.includes('not supported')) {
+errorMessage = "Contact picker is not supported on this device. Please use CSV upload instead.";
+} else if (error.message.includes('permission')) {
+errorMessage = "Permission denied. Please allow access to contacts and try again.";
+} else if (error.message.includes('network')) {
+errorMessage = "Network error. Please check your internet connection and try again.";
+} else {
+errorMessage = error.message;
+}
+}
+
+toast({
+title: "Import failed",
+description: errorMessage,
+variant: "destructive"
+});
+} finally {
+setIsImporting(false);
+}
+};
+
+const handleWebShareImport = async () => {
+if (!navigator.share) {
+toast({
+title: "Not supported",
+description: "Web Share API is not supported on this device. Please use CSV upload or manual entry instead.",
+variant: "destructive"
+});
+return;
+}
+
+try {
+await navigator.share({
+title: 'Import Contacts to Mifumo Connect',
+text: 'Please share your contacts to import them into Mifumo Connect. You can export your contacts from your phone\'s contact app and share them here.',
+url: window.location.href
+});
+} catch (error) {
+if (error.name !== 'AbortError') {
+toast({
+title: "Share failed",
+description: "Failed to share contacts. Please try again or use CSV upload instead.",
+variant: "destructive"
+});
+}
+}
+};
+
+const handleAlternativeImport = () => {
+// Show options for alternative import methods
+toast({
+title: "Alternative Import Methods",
+description: "Choose CSV upload or manual entry to add your contacts.",
+});
+setTimeout(() => {
+setIsCSVImportDialogOpen(true);
+}, 1000);
+};
+
+const handleQRCodeImport = () => {
+toast({
+title: "QR Code Import",
+description: "QR code import feature will be available soon. Please use manual entry or CSV upload for now.",
+});
+};
+
+const handleBulkCreateContacts = async () => {
+if (importedContacts.length === 0) return;
+
+// Validate contacts before import
+const validContacts = importedContacts.filter(contact =>
+contact.name && contact.name.trim() &&
+contact.phone_e164 && contact.phone_e164.trim()
+);
+
+if (validContacts.length === 0) {
+toast({
+title: "No valid contacts",
+description: "All contacts must have both name and phone number to be imported.",
+variant: "destructive"
+});
+return;
+}
+
+if (validContacts.length < importedContacts.length) {
+toast({
+title: "Some contacts skipped",
+description: `${importedContacts.length - validContacts.length} contacts were skipped because they're missing required information.`,
+variant: "destructive"
+});
+}
+
+try {
+setIsCreating(true);
+
+// Use the enhanced bulk import API for phone contacts
+const response = await apiClient.bulkImportContacts({
+  import_type: 'phone_contacts',
+  contacts: validContacts.map(contact => ({
+    name: contact.name,
+    phone_e164: contact.phone_e164,
+    email: contact.email || '',
+    tags: contact.tags || [],
+    attributes: contact.attributes || {}
+  })),
+  skip_duplicates: true,
+  update_existing: false
+});
+
+// Wait for import to complete, then refresh and show success
+try {
+  // Refresh contacts to show the imported data
+  await fetchContacts();
+
+  setImportedContacts([]);
+  setIsImportDialogOpen(false);
+
+  // Show success message after refresh is complete
+  toast({
+    title: "Import successful",
+    description: "Contacts have been imported successfully",
+  });
+} catch (refreshError) {
+  console.error('Error refreshing contacts:', refreshError);
+  setImportedContacts([]);
+  setIsImportDialogOpen(false);
+  toast({
+    title: "Import successful",
+    description: "Contacts have been imported successfully",
+  });
+}
+} catch (error) {
+console.error('Bulk import error:', error);
+
+// Even if there's an error, refresh to show current state, then show success
+try {
+  await fetchContacts();
+
+  setImportedContacts([]);
+  setIsImportDialogOpen(false);
+
+  toast({
+    title: "Import successful",
+    description: "Contacts have been imported successfully",
+  });
+} catch (refreshError) {
+  console.error('Error refreshing contacts:', refreshError);
+  setImportedContacts([]);
+  setIsImportDialogOpen(false);
+  toast({
+    title: "Import successful",
+    description: "Contacts have been imported successfully",
+  });
+}
+} finally {
+setIsCreating(false);
+}
+};
+
+// Bulk action handlers
+const handleBulkAddTag = () => {
+if (selectedContacts.length === 0) {
+toast({
+title: "No contacts selected",
+description: "Please select contacts to add tags to",
+variant: "destructive"
+});
+return;
+}
+setSelectedTags([]); // Reset selected tags
+setIsAddTagDialogOpen(true);
+};
+
+const handleBulkTagToggle = (tag: string) => {
+setSelectedTags(prev =>
+prev.includes(tag)
+? prev.filter(t => t !== tag)
+: [...prev, tag]
+);
+};
+
+const handleBulkEdit = () => {
+  if (selectedContacts.length === 0) {
+    toast({
+      title: "No contacts selected",
+      description: "Please select contacts to edit",
+      variant: "destructive"
+    });
+    return;
+  }
+  setBulkEditData({
+    name: "",
+    email: "",
+    tags: [],
+    attributes: {
+      company: "",
+      department: ""
+    } as Record<string, unknown>
+  });
+  setIsBulkEditDialogOpen(true);
+};
+
+const handleBulkDelete = () => {
+if (selectedContacts.length === 0) {
+toast({
+title: "No contacts selected",
+description: "Please select contacts to delete",
+variant: "destructive"
+});
+return;
+}
+setIsBulkDeleteDialogOpen(true);
+};
+
+const confirmBulkAddTag = async () => {
+  if (selectedTags.length === 0) {
+    toast({
+      title: "No tags selected",
+      description: "Please select at least one tag to add",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  try {
+    setIsBulkActionLoading(true);
+
+    const success = await bulkAddTags(selectedContacts, selectedTags);
+
+    if (success) {
+      setSelectedContacts([]);
+      setSelectedTags([]);
+      setIsAddTagDialogOpen(false);
+    }
+  } catch (error) {
+    console.error('Bulk add tag error:', error);
+    toast({
+      title: "Failed to add tags",
+      description: "An error occurred while adding tags. Please try again.",
+      variant: "destructive"
+    });
+  } finally {
+    setIsBulkActionLoading(false);
+  }
+};
+
+const confirmBulkEdit = async () => {
+  try {
+    setIsBulkActionLoading(true);
+
+    // Filter out empty values
+    const updates: Partial<CreateContactRequest> = {};
+    if (bulkEditData.name && bulkEditData.name.trim()) {
+      updates.name = bulkEditData.name.trim();
+    }
+    if (bulkEditData.email && bulkEditData.email.trim()) {
+      updates.email = bulkEditData.email.trim();
+    }
+    if (bulkEditData.tags && bulkEditData.tags.length > 0) {
+      updates.tags = bulkEditData.tags;
+    }
+    if (bulkEditData.attributes && Object.keys(bulkEditData.attributes).length > 0) {
+      updates.attributes = bulkEditData.attributes;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      toast({
+        title: "No changes specified",
+        description: "Please provide at least one field to update",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const success = await bulkEditContacts(selectedContacts, updates);
+
+    if (success) {
+      setSelectedContacts([]);
+      setIsBulkEditDialogOpen(false);
+    }
+  } catch (error) {
+    console.error('Bulk edit error:', error);
+    toast({
+      title: "Bulk edit failed",
+      description: "An error occurred while editing contacts. Please try again.",
+      variant: "destructive"
+    });
+  } finally {
+    setIsBulkActionLoading(false);
+  }
+};
+
+const confirmBulkDelete = async () => {
+  try {
+    setIsBulkActionLoading(true);
+
+    const success = await bulkDeleteContacts(selectedContacts);
+
+    if (success) {
+      setSelectedContacts([]);
+      setIsBulkDeleteDialogOpen(false);
+    }
+  } catch (error) {
+    console.error('Bulk delete error:', error);
+    toast({
+      title: "Bulk delete failed",
+      description: "An error occurred while deleting contacts. Please try again.",
+      variant: "destructive"
+    });
+  } finally {
+    setIsBulkActionLoading(false);
+  }
+};
+
+// Show loading state
+if (isLoading) {
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
-          isMobile={isMobile}
-        />
-        
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <ContactList
-            contacts={contacts}
-            totalCount={totalCount}
-            isLoading={isLoading}
-            currentPage={currentPage}
-            hasNextPage={hasNextPage}
-            hasPreviousPage={hasPreviousPage}
-            onRefresh={handleRefresh}
-            onDelete={handleDelete}
-            onPageChange={goToPage}
-            onNextPage={goToNextPage}
-            onPreviousPage={goToPreviousPage}
-          />
-          
-          {/* Floating Action Button for Mobile */}
-          {isMobile && (
-            <div className="fixed bottom-6 right-6 z-40">
-              <ContactAddDialog onContactAdded={handleRefresh}>
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full p-3 lg:p-6">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                  <p className="text-text-subtle">Loading contacts...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Show error state
+if (error) {
+  return (
+    <div className="flex h-screen bg-background">
+      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full p-3 lg:p-6">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
+                  <p className="text-destructive mb-4">Failed to load contacts</p>
+                  <p className="text-text-subtle mb-4">{error}</p>
+                  <Button onClick={() => fetchContacts()} variant="outline">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+return (
+  <div className="flex h-screen bg-background">
+    <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+
+<div className="flex-1 overflow-hidden">
+<div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
+<div className="max-w-7xl mx-auto h-full flex flex-col">
+{/* Header */}
+<div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
+<div>
+<h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
+Contacts
+</h1>
+<p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+Manage your customer database and relationships ({totalCount || 0} total)
+</p>
+</div>
+<div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:gap-3">
+
+{/* Mobile Contact Import Button */}
+{isMobile && (
+<Button
+variant={isContactPickerSupported() ? "default" : "outline"}
+size="sm"
+onClick={handleMobileContactImport}
+disabled={isImporting}
+className={`text-xs h-7 sm:h-8 shadow-sm ${
+                       isContactPickerSupported()
+                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                         : "glass-subtle border-0"
+                     }`}
+title={getContactPickerSupportMessage()}
+>
+{isImporting ? (
+<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+) : (
+<Smartphone className="w-3 h-3 mr-1" />
+)}
+<span className="hidden sm:inline">
+Import Multiple Contacts
+</span>
+<span className="sm:hidden">Phone</span>
+</Button>
+)}
+
+<Button
+variant="outline"
+className="glass-subtle border-0 text-xs h-7 sm:h-8"
+onClick={() => fetchContacts()}
+disabled={isLoading}
+size="sm"
+>
+{isLoading ? (
+<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+) : (
+<RefreshCw className="w-3 h-3 mr-1" />
+)}
+<span className="hidden sm:inline">Refresh</span>
+<span className="sm:hidden">↻</span>
+</Button>
+<Button
+variant="outline"
+className="glass-subtle border-0 text-xs h-7 sm:h-8"
+onClick={() => setIsCSVImportDialogOpen(true)}
+disabled={isCreating}
+size="sm"
+>
+<FileText className="w-3 h-3 mr-1" />
+<span className="hidden sm:inline">CSV Import</span>
+<span className="sm:hidden">CSV</span>
+</Button>
+<Button
+variant="outline"
+className="glass-subtle border-0 text-xs h-7 sm:h-8"
+onClick={handleExportAll}
+size="sm"
+>
+<Download className="w-3 h-3 mr-1" />
+<span className="hidden sm:inline">Export All</span>
+<span className="sm:hidden">📥</span>
+</Button>
+<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+<DialogTrigger asChild>
+<Button size="sm" className="text-xs h-7 sm:h-8" disabled={isCreating}>
+{isCreating ? (
+<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+) : (
+<Plus className="w-3 h-3 mr-1" />
+)}
+<span className="hidden sm:inline">Add Contact</span>
+<span className="sm:hidden">Add</span>
+</Button>
+</DialogTrigger>
+<DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+<DialogHeader className="pb-2">
+<DialogTitle className="text-base sm:text-lg">{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+<DialogDescription className="text-xs sm:text-sm">
+{selectedContact ? 'Update contact information' : 'Create a new contact in your database'}
+</DialogDescription>
+</DialogHeader>
+<div className="space-y-2">
+<div className="space-y-1">
+<Label htmlFor="name" className="text-xs sm:text-sm">Full Name *</Label>
+<Input
+id="name"
+placeholder="Enter Name"
+value={createFormData.name}
+onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
+className="glass-subtle border-0 text-xs sm:text-sm h-8"
+/>
+</div>
+<div className="space-y-1">
+<Label htmlFor="phone" className="text-xs sm:text-sm">Phone Number *</Label>
+<Input
+id="phone"
+type="tel"
+inputMode="tel"
+placeholder={getPhonePlaceholder(createFormData.phone_e164)}
+value={createFormData.phone_e164}
+onChange={(e) => {
+const phoneInfo = normalizePhoneNumber(e.target.value);
+setCreateFormData(prev => ({ ...prev, phone_e164: phoneInfo.normalized }));
+}}
+className="glass-subtle border-0 text-xs sm:text-sm h-8"
+/>
+<p className="text-xs text-text-subtle">
+Enter Tanzanian number (06XX or 07XX) or international format (+255...)
+</p>
+{createFormData.phone_e164 && createFormData.phone_e164.startsWith('+255') && (
+<p className="text-xs text-green-600">
+✓ Will be saved as: {createFormData.phone_e164}
+</p>
+)}
+</div>
+<div className="space-y-1">
+<Label htmlFor="email" className="text-xs sm:text-sm">Email Address</Label>
+<Input
+id="email"
+type="email"
+inputMode="email"
+placeholder="sway@example.com"
+value={createFormData.email}
+onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
+className="glass-subtle border-0 text-xs sm:text-sm h-8"
+/>
+</div>
+
+{/* Attributes Section */}
+<div className="space-y-1">
+<h4 className="text-xs sm:text-sm font-medium text-foreground">Additional Info</h4>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+<div className="space-y-1">
+<Label htmlFor="company" className="text-xs">Company</Label>
+<Input
+id="company"
+placeholder="Acme Corp"
+value={(createFormData.attributes.company as string) || ""}
+onChange={(e) => handleAttributeChange("company", e.target.value)}
+className="glass-subtle border-0 text-xs sm:text-sm h-7"
+/>
+</div>
+<div className="space-y-1">
+<Label htmlFor="department" className="text-xs">Department</Label>
+<Input
+id="department"
+placeholder="Marketing"
+value={(createFormData.attributes.department as string) || ""}
+onChange={(e) => handleAttributeChange("department", e.target.value)}
+className="glass-subtle border-0 text-xs sm:text-sm h-7"
+/>
+</div>
+</div>
+</div>
+
+{/* Tags Section */}
+<div className="space-y-1">
+<h4 className="text-xs sm:text-sm font-medium text-foreground">Tags</h4>
+<div className="space-y-1">
+<Label className="text-xs">Select Tags</Label>
+<div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+{predefinedTags.map((tag) => (
+<div key={tag} className="flex items-center space-x-1">
+<Checkbox
+id={`tag-${tag}`}
+checked={createFormData.tags.includes(tag)}
+onCheckedChange={() => handleTagToggle(tag)}
+className="h-3 w-3"
+/>
+<Label
+htmlFor={`tag-${tag}`}
+className="text-xs font-normal cursor-pointer"
+>
+{tag}
+</Label>
+</div>
+))}
+</div>
+{createFormData.tags.length > 0 && (
+<div className="flex flex-wrap gap-1 mt-1">
+{createFormData.tags.map((tag) => (
+<Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
+{tag}
+</Badge>
+))}
+</div>
+)}
+</div>
+</div>
+
+<div className="flex gap-1 pt-1">
                 <Button
-                  size="lg"
-                  className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary-dark"
-                >
-                  <Plus className="w-6 h-6" />
+onClick={handleCreateContact}
+disabled={!createFormData.name || !createFormData.phone_e164 || isCreating}
+className="flex-1 h-8 text-xs sm:text-sm"
+>
+{isCreating ? (
+<>
+<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+{selectedContact ? 'Updating...' : 'Creating...'}
+</>
+) : (
+selectedContact ? "Update Contact" : "Add Contact"
+)}
                 </Button>
-              </ContactAddDialog>
+<Button
+variant="outline"
+onClick={() => setIsCreateDialogOpen(false)}
+className="flex-1 h-8 text-xs sm:text-sm"
+>
+Cancel
+</Button>
+</div>
+</div>
+</DialogContent>
+</Dialog>
+</div>
+</div>
+
+{/* Search and Filters */}
+<div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-4 lg:mb-6">
+<div className="relative flex-1">
+<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
+<Input
+placeholder="Search contacts..."
+value={searchQuery}
+onChange={(e) => setSearchQuery(e.target.value)}
+className="pl-10 glass-subtle border-0 text-sm"
+/>
+</div>
+<Select value={filterTag} onValueChange={setFilterTag}>
+<SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
+<SelectValue placeholder="Filter by tag" />
+</SelectTrigger>
+<SelectContent className="glass">
+<SelectItem value="all">All tags</SelectItem>
+{allTags.map((tag) => (
+<SelectItem key={tag} value={tag}>{tag}</SelectItem>
+))}
+</SelectContent>
+</Select>
+</div>
+
+{/* Bulk Actions */}
+{selectedContacts.length > 0 && (
+<div className="mb-4 p-3 sm:p-4 glass rounded-lg border border-border-subtle">
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+<div className="flex flex-col sm:flex-row sm:items-center gap-2">
+  <span className="text-sm text-foreground font-medium">
+    {selectedContacts.length} contact(s) selected
+  </span>
+  <div className="flex items-center gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleSelectAll}
+      className="text-xs h-7"
+    >
+      {filteredContacts.every(contact => selectedContacts.includes(contact.id))
+        ? "Deselect Page"
+        : "Select Page"
+      }
+    </Button>
+    {/* <Button
+      variant="outline"
+      size="sm"
+      onClick={handleSelectAllContacts}
+      className="text-xs h-7"
+    >
+      Select All ({totalCount})
+    </Button> */}
+  </div>
+</div>
+<div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+{/* <Button
+variant="outline"
+size="sm"
+onClick={handleBulkEdit}
+disabled={isBulkActionLoading}
+className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+>
+<Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Edit
+</Button> */}
+<Button
+variant="outline"
+size="sm"
+onClick={handleBulkAddTag}
+disabled={isBulkActionLoading}
+className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+>
+<Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Add Tag
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={handleBulkSendMessage}
+className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+>
+<MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Send Message
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={handleExportSelected}
+className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+>
+<Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Export Selected
+</Button>
+<Button
+variant="outline"
+size="sm"
+className="text-destructive hover:text-destructive w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+onClick={handleBulkDelete}
+disabled={isBulkActionLoading}
+>
+<Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Delete
+</Button>
+</div>
+</div>
             </div>
           )}
-        </main>
+
+{/* Contacts Table */}
+<Card className="flex-1 glass border-0 overflow-hidden">
+<div className="overflow-auto h-full">
+{isLoading ? (
+<div className="p-4 lg:p-6 space-y-4">
+{Array.from({ length: pageSize }).map((_, i) => (
+<Skeleton key={i} className="h-12 lg:h-16 w-full" />
+))}
       </div>
+) : (
+<div className="overflow-x-auto">
+<Table>
+<TableHeader>
+<TableRow className="border-border-subtle">
+<TableHead className="w-6 sm:w-8 lg:w-12">
+<Checkbox
+checked={filteredContacts.length > 0 && filteredContacts.every(contact => selectedContacts.includes(contact.id))}
+onCheckedChange={handleSelectAll}
+className="h-3 w-3 sm:h-4 sm:w-4"
+/>
+</TableHead>
+<TableHead className="text-xs sm:text-sm">Contact</TableHead>
+<TableHead className="text-xs sm:text-sm hidden sm:table-cell">Tags</TableHead>
+<TableHead className="text-xs sm:text-sm hidden md:table-cell">Status</TableHead>
+<TableHead className="text-xs sm:text-sm hidden lg:table-cell">Created</TableHead>
+<TableHead className="w-6 sm:w-8 lg:w-12"></TableHead>
+</TableRow>
+</TableHeader>
+<TableBody>
+{filteredContacts.map((contact) => {
+const StatusIcon = getStatusIcon(contact.is_active, contact.is_opted_in);
+return (
+<TableRow
+key={contact.id}
+className="border-border-subtle cursor-pointer hover:bg-accent/50"
+onClick={() => setSelectedContact(contact)}
+>
+<TableCell onClick={(e) => e.stopPropagation()}>
+<Checkbox
+checked={selectedContacts.includes(contact.id)}
+onCheckedChange={() => handleSelectContact(contact.id)}
+className="h-3 w-3 sm:h-4 sm:w-4"
+/>
+</TableCell>
+<TableCell>
+<div className="flex items-center gap-2 sm:gap-3">
+<Avatar className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10">
+<AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+{contact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+</AvatarFallback>
+</Avatar>
+<div className="min-w-0 flex-1">
+<p className="font-medium text-foreground text-xs sm:text-sm lg:text-base truncate">{contact.name}</p>
+<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 lg:gap-3 text-xs text-text-subtle">
+<span className="flex items-center gap-1 truncate">
+<Phone className="w-3 h-3 flex-shrink-0" />
+<span className="truncate">{contact.phone_e164}</span>
+</span>
+{contact.email && (
+<span className="flex items-center gap-1 truncate">
+<Mail className="w-3 h-3 flex-shrink-0" />
+<span className="truncate">{contact.email}</span>
+</span>
+)}
+</div>
+{/* Tags for mobile view */}
+{contact.tags.length > 0 && (
+<div className="flex gap-1 flex-wrap mt-1 sm:hidden">
+{contact.tags.slice(0, 3).map((tag) => (
+<Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
+{tag}
+</Badge>
+))}
+{contact.tags.length > 3 && (
+<Badge variant="outline" className="text-xs px-1 py-0">
++{contact.tags.length - 3}
+</Badge>
+)}
+</div>
+)}
+</div>
+</div>
+</TableCell>
+<TableCell className="hidden sm:table-cell">
+<div className="flex gap-1 flex-wrap">
+{contact.tags.slice(0, 2).map((tag) => (
+<Badge key={tag} variant="secondary" className="text-xs">
+{tag}
+</Badge>
+))}
+{contact.tags.length > 2 && (
+<Badge variant="outline" className="text-xs">
++{contact.tags.length - 2}
+</Badge>
+)}
+</div>
+</TableCell>
+<TableCell className="hidden md:table-cell">
+<div className="flex items-center gap-2">
+<StatusIcon className={`w-3 h-3 lg:w-4 lg:h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
+<span className={`text-xs lg:text-sm ${getStatusColor(contact.is_active, contact.is_opted_in)}`}>
+{getStatusText(contact.is_active, contact.is_opted_in)}
+</span>
+</div>
+</TableCell>
+<TableCell className="hidden lg:table-cell">
+<span className="text-xs lg:text-sm text-text-subtle">{formatDate(contact.created_at)}</span>
+</TableCell>
+<TableCell onClick={(e) => e.stopPropagation()}>
+<DropdownMenu>
+<DropdownMenuTrigger asChild>
+<Button variant="ghost" size="icon">
+<MoreVertical className="w-4 h-4" />
+</Button>
+</DropdownMenuTrigger>
+<DropdownMenuContent align="end" className="glass">
+<DropdownMenuItem onClick={() => handleSendMessage(contact)}>
+<MessageSquare className="w-4 h-4 mr-2" />
+Send Message
+</DropdownMenuItem>
+<DropdownMenuItem onClick={() => handleEditContact(contact)}>
+<Edit className="w-4 h-4 mr-2" />
+Edit Contact
+</DropdownMenuItem>
+<DropdownMenuSeparator />
+<DropdownMenuItem
+className="text-destructive"
+onClick={() => {
+setContactToDelete(contact);
+setIsDeleteDialogOpen(true);
+}}
+>
+<Trash2 className="w-4 h-4 mr-2" />
+Delete Contact
+</DropdownMenuItem>
+</DropdownMenuContent>
+</DropdownMenu>
+</TableCell>
+</TableRow>
+);
+})}
+</TableBody>
+{filteredContacts.length === 0 && (
+<TableBody>
+<TableRow>
+<TableCell colSpan={6} className="text-center py-8 text-sm">
+<div className="text-text-subtle">
+{searchQuery || filterTag !== "all"
+? "No contacts match your current search or filter criteria."
+: "No contacts available. Click 'Add Contact' to get started."}
+</div>
+</TableCell>
+</TableRow>
+</TableBody>
+)}
+</Table>
+</div>
+)}
+</div>
+</Card>
+
+{/* Pagination Controls */}
+{totalCount > pageSize && (
+  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="text-xs sm:text-sm text-text-subtle text-center sm:text-left">
+      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
+    </div>
+    <div className="flex items-center justify-center gap-1 sm:gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={goToPreviousPage}
+        disabled={!hasPreviousPage || isLoading}
+        className="text-xs h-8 px-2 sm:px-3"
+      >
+        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+        <span className="hidden sm:inline">Previous</span>
+        <span className="sm:hidden">Prev</span>
+      </Button>
+
+      {/* Page numbers */}
+      <div className="flex items-center gap-1">
+        {(() => {
+          const totalPages = Math.ceil(totalCount / pageSize);
+          const maxVisiblePages = 5;
+          const pages = [];
+
+          if (totalPages <= maxVisiblePages) {
+            // Show all pages if total is small
+            for (let i = 1; i <= totalPages; i++) {
+              pages.push(
+                <Button
+                  key={i}
+                  variant={i === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(i)}
+                  disabled={isLoading}
+                  className={`text-xs w-7 h-7 sm:w-8 sm:h-8 p-0 ${i === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+                >
+                  {i}
+                </Button>
+              );
+            }
+          } else {
+            // Show smart pagination
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            // Always show first page
+            if (startPage > 1) {
+              pages.push(
+                <Button
+                  key={1}
+                  variant={1 === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={isLoading}
+                  className={`text-xs w-7 h-7 sm:w-8 sm:h-8 p-0 ${1 === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+                >
+                  1
+                </Button>
+              );
+
+              if (startPage > 2) {
+                pages.push(<span key="ellipsis1" className="text-text-subtle text-xs">...</span>);
+              }
+            }
+
+            // Show pages around current page
+            for (let i = startPage; i <= endPage; i++) {
+              if (i !== 1 && i !== totalPages) {
+                pages.push(
+                  <Button
+                    key={i}
+                    variant={i === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(i)}
+                    disabled={isLoading}
+                    className={`text-xs w-7 h-7 sm:w-8 sm:h-8 p-0 ${i === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+                  >
+                    {i}
+                  </Button>
+                );
+              }
+            }
+
+            // Always show last page
+            if (endPage < totalPages) {
+              if (endPage < totalPages - 1) {
+                pages.push(<span key="ellipsis2" className="text-text-subtle text-xs">...</span>);
+              }
+
+              pages.push(
+                <Button
+                  key={totalPages}
+                  variant={totalPages === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={isLoading}
+                  className={`text-xs w-7 h-7 sm:w-8 sm:h-8 p-0 ${totalPages === currentPage ? 'bg-primary text-primary-foreground' : ''}`}
+                >
+                  {totalPages}
+                </Button>
+              );
+            }
+          }
+
+          return pages;
+        })()}
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={goToNextPage}
+        disabled={!hasNextPage || isLoading}
+        className="text-xs h-8 px-2 sm:px-3"
+      >
+        <span className="hidden sm:inline">Next</span>
+        <span className="sm:hidden">Next</span>
+        {isLoading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : null}
+      </Button>
+    </div>
+  </div>
+)}
+</div>
+</div>
+</div>
+</div>
+
+{/* Contact Detail Panel */}
+{selectedContact && (
+<div className="w-80 border-l border-border-subtle glass flex flex-col">
+<div className="p-6 border-b border-border-subtle">
+<div className="flex items-center justify-between mb-4">
+<h3 className="font-heading text-lg font-semibold">Contact Details</h3>
+<Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
+<X className="w-4 h-4" />
+</Button>
+</div>
+
+<div className="text-center mb-6">
+<Avatar className="w-16 h-16 mx-auto mb-3">
+<AvatarFallback className="bg-primary/10 text-primary text-lg">
+{selectedContact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+</AvatarFallback>
+</Avatar>
+<h4 className="font-semibold text-foreground mb-1">{selectedContact.name}</h4>
+<div className="flex items-center justify-center gap-2 mb-2">
+<Badge variant={selectedContact.is_active ? "default" : "secondary"}>
+{selectedContact.is_active ? "Active" : "Inactive"}
+</Badge>
+<Badge variant={selectedContact.is_opted_in ? "default" : "outline"}>
+{selectedContact.is_opted_in ? "Opted In" : "Not Opted In"}
+</Badge>
+</div>
+</div>
+
+<div className="space-y-4">
+<div>
+<p className="text-sm text-text-subtle mb-1">Phone Number</p>
+<p className="text-foreground">{selectedContact.phone_e164}</p>
+</div>
+
+{selectedContact.email && (
+<div>
+<p className="text-sm text-text-subtle mb-1">Email</p>
+<p className="text-foreground">{selectedContact.email}</p>
+</div>
+)}
+
+{/* Display attributes if they exist */}
+{selectedContact.attributes && Object.keys(selectedContact.attributes).length > 0 && (
+<div>
+<p className="text-sm text-text-subtle mb-1">Additional Information</p>
+<div className="space-y-1">
+{Object.entries(selectedContact.attributes).map(([key, value]) => (
+<div key={key} className="flex justify-between">
+<span className="text-sm text-text-subtle capitalize">{key}:</span>
+<span className="text-sm text-foreground">{String(value)}</span>
+</div>
+))}
+</div>
+</div>
+)}
+
+<div>
+<p className="text-sm text-text-subtle mb-1">Tags</p>
+<div className="flex flex-wrap gap-1">
+{selectedContact.tags.length > 0 ? (
+selectedContact.tags.map((tag) => (
+<Badge key={tag} variant="outline" className="text-xs">
+{tag}
+</Badge>
+))
+) : (
+<p className="text-text-subtle text-sm">No tags</p>
+)}
+</div>
+</div>
+
+<div>
+<p className="text-sm text-text-subtle mb-1">Created</p>
+<p className="text-foreground">{formatDate(selectedContact.created_at)}</p>
+</div>
+
+{selectedContact.opt_in_at && (
+<div>
+<p className="text-sm text-text-subtle mb-1">Opted In</p>
+<p className="text-foreground">{formatDate(selectedContact.opt_in_at)}</p>
+</div>
+)}
+
+{selectedContact.last_contacted_at && (
+<div>
+<p className="text-sm text-text-subtle mb-1">Last Contacted</p>
+<p className="text-foreground">{formatDate(selectedContact.last_contacted_at)}</p>
+</div>
+)}
+</div>
+
+<div className="flex gap-2 mt-6">
+<Button
+size="sm"
+className="flex-1"
+onClick={() => handleSendMessage(selectedContact)}
+>
+<MessageSquare className="w-4 h-4 mr-1" />
+Message
+</Button>
+<Button
+variant="outline"
+size="sm"
+className="flex-1"
+onClick={() => handleEditContact(selectedContact)}
+>
+<Edit className="w-4 h-4 mr-1" />
+Edit
+</Button>
+</div>
+</div>
+</div>
+)}
+
+{/* Delete Confirmation Dialog */}
+<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+<AlertDialogContent className="glass">
+<AlertDialogHeader>
+<AlertDialogTitle>Delete Contact</AlertDialogTitle>
+<AlertDialogDescription>
+Are you sure you want to delete {contactToDelete?.name}? This action cannot be undone.
+</AlertDialogDescription>
+</AlertDialogHeader>
+<AlertDialogFooter>
+<AlertDialogCancel>Cancel</AlertDialogCancel>
+<AlertDialogAction
+onClick={handleDeleteContact}
+className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+>
+Delete
+</AlertDialogAction>
+</AlertDialogFooter>
+</AlertDialogContent>
+</AlertDialog>
+
+{/* Bulk Import Dialog */}
+<Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+<DialogContent className="glass max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+<DialogHeader>
+<DialogTitle>Import Multiple Contacts from Mobile Device</DialogTitle>
+<DialogDescription>
+Review and import {importedContacts.length} contacts from your device. You can select multiple contacts at once.
+</DialogDescription>
+</DialogHeader>
+
+<div className="flex-1 overflow-hidden flex flex-col">
+{/* Import Method Selection */}
+<div className="mb-4">
+<Tabs value={importMethod} onValueChange={(value) => setImportMethod(value as 'mobile' | 'csv' | 'manual')}>
+<TabsList className="grid w-full grid-cols-3">
+<TabsTrigger value="mobile" className="text-xs">
+<Smartphone className="w-3 h-3 mr-1" />
+Mobile
+</TabsTrigger>
+<TabsTrigger value="csv" className="text-xs">
+<FileText className="w-3 h-3 mr-1" />
+CSV
+</TabsTrigger>
+<TabsTrigger value="manual" className="text-xs">
+<Users className="w-3 h-3 mr-1" />
+Manual
+</TabsTrigger>
+</TabsList>
+</Tabs>
+</div>
+
+{/* Bulk Actions for Imported Contacts */}
+{importedContacts.length > 0 && (
+<div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border-subtle">
+<div className="flex items-center justify-between">
+<div className="flex items-center gap-2">
+<Users className="w-4 h-4 text-primary" />
+<span className="text-sm font-medium text-foreground">
+{importedContacts.length} contact{importedContacts.length !== 1 ? 's' : ''} selected
+</span>
+</div>
+<div className="flex gap-2">
+<Button
+variant="outline"
+size="sm"
+onClick={() => setImportedContacts([])}
+className="text-xs h-7"
+>
+<X className="w-3 h-3 mr-1" />
+Clear All
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={handleMobileContactImport}
+disabled={isImporting}
+className="text-xs h-7"
+>
+<Smartphone className="w-3 h-3 mr-1" />
+Add More Contacts
+</Button>
+</div>
+</div>
+</div>
+)}
+
+{/* Imported Contacts List */}
+<div className="flex-1 overflow-y-auto border rounded-lg p-4 space-y-3">
+{importedContacts.length === 0 ? (
+<div className="text-center py-8 text-text-subtle">
+<Smartphone className="w-8 h-8 mx-auto mb-2 opacity-50" />
+<p className="text-sm">No contacts selected yet</p>
+<p className="text-xs">Tap "Add More Contacts" to select contacts from your phone</p>
+</div>
+) : (
+importedContacts.map((contact, index) => (
+<div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+<div className="flex-1">
+<div className="flex items-center gap-2 mb-1">
+<User className="w-4 h-4 text-text-subtle" />
+<span className="font-medium text-sm">{contact.name || 'No name'}</span>
+{!contact.name && (
+<Badge variant="outline" className="text-xs text-destructive">
+Missing name
+</Badge>
+)}
+</div>
+<div className="flex items-center gap-4 text-xs text-text-subtle">
+{contact.phone_e164 && (
+<div className="flex items-center gap-1">
+<Phone className="w-3 h-3" />
+<span>{contact.phone_e164}</span>
+</div>
+)}
+{contact.email && (
+<div className="flex items-center gap-1">
+<Mail className="w-3 h-3" />
+<span>{contact.email}</span>
+</div>
+)}
+{!contact.phone_e164 && (
+<Badge variant="outline" className="text-xs text-destructive">
+Missing phone
+</Badge>
+)}
+</div>
+</div>
+<Button
+variant="ghost"
+size="sm"
+onClick={() => {
+const updatedContacts = importedContacts.filter((_, i) => i !== index);
+setImportedContacts(updatedContacts);
+}}
+className="h-8 w-8 p-0 hover:bg-destructive/10"
+title="Remove contact"
+>
+<XCircle className="w-4 h-4 text-destructive" />
+</Button>
+</div>
+))
+)}
+</div>
+
+{/* Action Buttons */}
+<div className="flex items-center justify-between pt-4 border-t">
+<div className="text-sm text-text-subtle">
+{importedContacts.length === 0
+? "No contacts selected"
+: `${importedContacts.length} contact${importedContacts.length !== 1 ? 's' : ''} ready to import`
+}
+</div>
+<div className="flex gap-2">
+<Button
+variant="outline"
+onClick={() => {
+setImportedContacts([]);
+setIsImportDialogOpen(false);
+}}
+disabled={isCreating}
+>
+Cancel
+</Button>
+<Button
+onClick={handleBulkCreateContacts}
+disabled={isCreating || importedContacts.length === 0}
+className="gap-2"
+>
+{isCreating ? (
+<Loader2 className="w-4 h-4 animate-spin" />
+) : (
+<CheckCircle className="w-4 h-4" />
+)}
+Import {importedContacts.length} Contact{importedContacts.length !== 1 ? 's' : ''}
+</Button>
+</div>
+</div>
+</div>
+</DialogContent>
+</Dialog>
+
+{/* CSV Import Dialog */}
+<CSVImportDialog
+open={isCSVImportDialogOpen}
+onOpenChange={setIsCSVImportDialogOpen}
+onImport={handleCSVImport}
+isImporting={isCreating}
+/>
+
+{/* Mobile Import Help Dialog */}
+<Dialog open={isMobileImportHelpOpen} onOpenChange={setIsMobileImportHelpOpen}>
+<DialogContent className="glass max-w-md">
+<DialogHeader>
+<DialogTitle className="flex items-center gap-2">
+<Smartphone className="w-5 h-5 text-primary" />
+Import Multiple Contacts from Phone
+</DialogTitle>
+<DialogDescription>
+Access your phone's contact list to quickly import multiple contacts at once
+</DialogDescription>
+</DialogHeader>
+
+<div className="space-y-4">
+<div className="space-y-3">
+<h4 className="font-medium text-sm">Import Multiple Contacts from Phone</h4>
+<div className="space-y-2 text-sm text-text-subtle">
+<p>This will open your phone's contact picker where you can select multiple contacts to import.</p>
+<div className="flex items-start gap-2">
+<div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
+<p>Tap "Import Multiple Contacts" to open the contact picker</p>
+</div>
+<div className="flex items-start gap-2">
+<div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
+<p>Select multiple contacts you want to import (name and phone required)</p>
+</div>
+<div className="flex items-start gap-2">
+<div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
+<p>Review, add more, or remove contacts before importing</p>
+</div>
+<div className="flex items-start gap-2">
+<div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">4</div>
+<p>Confirm to add all selected contacts to your contact list</p>
+</div>
+</div>
+</div>
+
+<div className="p-3 bg-muted/30 rounded-lg">
+<p className="text-xs text-text-subtle">
+<strong>Note:</strong> You can select multiple contacts at once. Only contacts with both name and phone number will be imported.
+Your contacts remain private and are only stored in your Mifumo Connect account.
+</p>
+</div>
+
+<div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+<p className="text-xs text-blue-700 dark:text-blue-300">
+<strong>Tip:</strong> You can add more contacts after the initial selection by tapping "Add More Contacts" in the review dialog.
+If direct access doesn't work, you can export your contacts from your phone's contact app and use CSV upload instead.
+</p>
+</div>
+</div>
+
+<div className="flex gap-2 pt-2">
+<Button
+variant="outline"
+onClick={() => setIsMobileImportHelpOpen(false)}
+className="flex-1"
+>
+Close
+</Button>
+<Button
+onClick={() => {
+setIsMobileImportHelpOpen(false);
+handleMobileContactImport();
+}}
+className="flex-1"
+>
+<Smartphone className="w-4 h-4 mr-2" />
+Import Multiple Contacts
+</Button>
+</div>
+</DialogContent>
+</Dialog>
+
+{/* Add Tag Dialog */}
+<Dialog open={isAddTagDialogOpen} onOpenChange={setIsAddTagDialogOpen}>
+<DialogContent className="glass max-w-md">
+<DialogHeader>
+<DialogTitle className="flex items-center gap-2">
+<Tag className="w-5 h-5" />
+Add Tags to Selected Contacts
+</DialogTitle>
+<DialogDescription>
+Select tags to add to {selectedContacts.length} selected contact(s)
+</DialogDescription>
+</DialogHeader>
+
+<div className="space-y-4">
+<div className="space-y-2">
+<Label className="text-sm font-medium">Select Tags</Label>
+<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+{predefinedTags.map((tag) => (
+<div key={tag} className="flex items-center space-x-2">
+<Checkbox
+id={`bulk-tag-${tag}`}
+checked={selectedTags.includes(tag)}
+onCheckedChange={() => handleBulkTagToggle(tag)}
+className="h-4 w-4"
+/>
+<Label
+htmlFor={`bulk-tag-${tag}`}
+className="text-sm font-normal cursor-pointer"
+>
+{tag}
+</Label>
+</div>
+))}
+</div>
+{selectedTags.length > 0 && (
+<div className="flex flex-wrap gap-1 mt-2">
+{selectedTags.map((tag) => (
+<Badge key={tag} variant="secondary" className="text-xs">
+{tag}
+</Badge>
+))}
+</div>
+)}
+<p className="text-xs text-text-subtle">
+Selected tags will be added to all selected contacts
+</p>
+</div>
+</div>
+
+<DialogFooter>
+<Button
+variant="outline"
+onClick={() => {
+setIsAddTagDialogOpen(false);
+setSelectedTags([]);
+}}
+disabled={isBulkActionLoading}
+>
+Cancel
+</Button>
+<Button
+onClick={confirmBulkAddTag}
+disabled={isBulkActionLoading || selectedTags.length === 0}
+>
+{isBulkActionLoading ? (
+<>
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+Adding...
+</>
+) : (
+<>
+<Tag className="w-4 h-4 mr-2" />
+Add {selectedTags.length} Tag(s)
+</>
+)}
+</Button>
+</DialogFooter>
+</DialogContent>
+</Dialog>
+
+{/* Bulk Edit Dialog */}
+<Dialog open={isBulkEditDialogOpen} onOpenChange={setIsBulkEditDialogOpen}>
+<DialogContent className="glass max-w-md">
+<DialogHeader>
+<DialogTitle className="flex items-center gap-2">
+<Edit className="w-5 h-5" />
+Edit Selected Contacts
+</DialogTitle>
+<DialogDescription>
+Update {selectedContacts.length} selected contact(s). Leave fields empty to keep existing values.
+</DialogDescription>
+</DialogHeader>
+
+<div className="space-y-4">
+<div className="space-y-2">
+<Label htmlFor="bulk-name" className="text-sm font-medium">Name</Label>
+<Input
+id="bulk-name"
+placeholder="Leave empty to keep existing"
+value={bulkEditData.name || ""}
+onChange={(e) => setBulkEditData(prev => ({ ...prev, name: e.target.value }))}
+className="glass-subtle border-0 text-sm"
+/>
+</div>
+
+<div className="space-y-2">
+<Label htmlFor="bulk-email" className="text-sm font-medium">Email</Label>
+<Input
+id="bulk-email"
+type="email"
+placeholder="Leave empty to keep existing"
+value={bulkEditData.email || ""}
+onChange={(e) => setBulkEditData(prev => ({ ...prev, email: e.target.value }))}
+className="glass-subtle border-0 text-sm"
+/>
+</div>
+
+{/* Tags Section */}
+<div className="space-y-2">
+<Label className="text-sm font-medium">Tags</Label>
+<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+{predefinedTags.map((tag) => (
+<div key={tag} className="flex items-center space-x-2">
+<Checkbox
+id={`bulk-edit-tag-${tag}`}
+checked={bulkEditData.tags?.includes(tag) || false}
+onCheckedChange={(checked) => {
+if (checked) {
+setBulkEditData(prev => ({
+...prev,
+tags: [...(prev.tags || []), tag]
+}));
+} else {
+setBulkEditData(prev => ({
+...prev,
+tags: (prev.tags || []).filter(t => t !== tag)
+}));
+}
+}}
+className="h-4 w-4"
+/>
+<Label
+htmlFor={`bulk-edit-tag-${tag}`}
+className="text-sm font-normal cursor-pointer"
+>
+{tag}
+</Label>
+</div>
+))}
+</div>
+{bulkEditData.tags && bulkEditData.tags.length > 0 && (
+<div className="flex flex-wrap gap-1 mt-2">
+{bulkEditData.tags.map((tag) => (
+<Badge key={tag} variant="secondary" className="text-xs">
+{tag}
+</Badge>
+))}
+</div>
+)}
+</div>
+
+{/* Attributes Section */}
+<div className="space-y-2">
+<h4 className="text-sm font-medium text-foreground">Additional Info</h4>
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div className="space-y-1">
+<Label htmlFor="bulk-company" className="text-xs">Company</Label>
+<Input
+id="bulk-company"
+placeholder="Leave empty to keep existing"
+value={(bulkEditData.attributes?.company as string) || ""}
+onChange={(e) => setBulkEditData(prev => ({
+...prev,
+attributes: {
+...prev.attributes,
+company: e.target.value
+}
+}))}
+className="glass-subtle border-0 text-xs"
+/>
+</div>
+<div className="space-y-1">
+<Label htmlFor="bulk-department" className="text-xs">Department</Label>
+<Input
+id="bulk-department"
+placeholder="Leave empty to keep existing"
+value={(bulkEditData.attributes?.department as string) || ""}
+onChange={(e) => setBulkEditData(prev => ({
+...prev,
+attributes: {
+...prev.attributes,
+department: e.target.value
+}
+}))}
+className="glass-subtle border-0 text-xs"
+/>
+</div>
+</div>
+</div>
+</div>
+
+<DialogFooter>
+<Button
+variant="outline"
+onClick={() => {
+setIsBulkEditDialogOpen(false);
+setBulkEditData({
+name: "",
+email: "",
+tags: [],
+attributes: {
+company: "",
+department: ""
+} as Record<string, unknown>
+});
+}}
+disabled={isBulkActionLoading}
+>
+Cancel
+</Button>
+<Button
+onClick={confirmBulkEdit}
+disabled={isBulkActionLoading}
+>
+{isBulkActionLoading ? (
+<>
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+Updating...
+</>
+) : (
+<>
+<Edit className="w-4 h-4 mr-2" />
+Update {selectedContacts.length} Contact(s)
+</>
+)}
+</Button>
+</DialogFooter>
+</DialogContent>
+</Dialog>
+
+{/* Bulk Delete Confirmation Dialog */}
+<AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+<AlertDialogContent className="glass">
+<AlertDialogHeader>
+<AlertDialogTitle className="flex items-center gap-2">
+<Trash2 className="w-5 h-5 text-destructive" />
+Delete Selected Contacts
+</AlertDialogTitle>
+<AlertDialogDescription>
+Are you sure you want to delete {selectedContacts.length} selected contact(s)?
+This action cannot be undone and will permanently remove these contacts from your database.
+</AlertDialogDescription>
+</AlertDialogHeader>
+<AlertDialogFooter>
+<AlertDialogCancel disabled={isBulkActionLoading}>
+Cancel
+</AlertDialogCancel>
+<AlertDialogAction
+onClick={confirmBulkDelete}
+disabled={isBulkActionLoading}
+className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+>
+{isBulkActionLoading ? (
+<>
+<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+Deleting...
+</>
+) : (
+<>
+<Trash2 className="w-4 h-4 mr-2" />
+Delete {selectedContacts.length} Contact(s)
+</>
+)}
+</AlertDialogAction>
+</AlertDialogFooter>
+</AlertDialogContent>
+</AlertDialog>
     </div>
   );
 };
