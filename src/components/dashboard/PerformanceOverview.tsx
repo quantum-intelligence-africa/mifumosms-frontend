@@ -3,13 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, TrendingUp, Clock, BarChart, LineChart, PieChart } from "lucide-react";
 import { useState } from "react";
-import { 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { useNavigate } from "react-router-dom";
+import {
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart as RechartsLineChart,
   Line,
@@ -45,9 +46,14 @@ type ChartType = 'bar' | 'line' | 'pie';
 
 export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   const [chartType, setChartType] = useState<ChartType>('bar');
+  const navigate = useNavigate();
+
+  const handleViewDetailedAnalytics = () => {
+    navigate('/analytics');
+  };
 
   // Transform real data from API to chart format
-  const currentChartData = performance?.charts?.message_volume ? 
+  const currentChartData = performance?.charts?.message_volume ?
     performance.charts.message_volume.labels.map((label, index) => ({
       name: label,
       messages: performance.charts.message_volume.data[index] || 0,
@@ -60,7 +66,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     { name: 'Delivery Rate', value: performance.metrics.delivery_rate, color: '#ffc658' },
     { name: 'Campaign Success', value: performance.metrics.campaign_success_rate, color: '#ff7300' },
   ] : [];
-  
+
   // Check if we have data to display
   const hasChartData = currentChartData.length > 0;
   const hasPieData = currentPieData.length > 0;
@@ -83,12 +89,12 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     // Show loading state if no data is available
     if (!hasData) {
       return (
-        <div className="h-80 w-full flex items-center justify-center">
+        <div className="h-64 w-full flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-              <BarChart3 className="w-8 h-8 text-primary animate-pulse" />
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="w-6 h-6 text-primary animate-pulse" />
             </div>
-            <p className="text-sm text-text-subtle mb-2">Loading chart data...</p>
+            <p className="text-xs text-text-subtle mb-1">Loading chart data...</p>
             <p className="text-xs text-text-subtle">Fetching real-time data from database</p>
           </div>
         </div>
@@ -98,12 +104,12 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     // Check if we have data for the selected chart type
     if (chartType === 'pie' && !hasPieData) {
       return (
-        <div className="h-80 w-full flex items-center justify-center">
+        <div className="h-64 w-full flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-              <PieChart className="w-8 h-8 text-primary" />
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+              <PieChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm text-text-subtle mb-2">No pie chart data available</p>
+            <p className="text-xs text-text-subtle mb-1">No pie chart data available</p>
             <p className="text-xs text-text-subtle">Try switching to bar or line chart</p>
           </div>
         </div>
@@ -112,12 +118,12 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
 
     if ((chartType === 'bar' || chartType === 'line') && !hasChartData) {
       return (
-        <div className="h-80 w-full flex items-center justify-center">
+        <div className="h-64 w-full flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-              <BarChart className="w-8 h-8 text-primary" />
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+              <BarChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm text-text-subtle mb-2">No chart data available</p>
+            <p className="text-xs text-text-subtle mb-1">No chart data available</p>
             <p className="text-xs text-text-subtle">Data will appear as it becomes available</p>
           </div>
         </div>
@@ -126,7 +132,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
 
     const commonProps = {
       width: '100%',
-      height: 300,
+      height: 240,
       data: chartType === 'pie' ? currentPieData : currentChartData,
     };
 
@@ -138,20 +144,20 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                   fontSize: '12px'
-                }} 
+                }}
               />
               <Bar dataKey="messages" fill="#8884d8" radius={[4, 4, 0, 0]} />
               <Bar dataKey="delivery_rate" fill="#82ca9d" radius={[4, 4, 0, 0]} />
             </RechartsBarChart>
           </ResponsiveContainer>
         );
-      
+
       case 'line':
         return (
           <ResponsiveContainer {...commonProps}>
@@ -159,20 +165,20 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                   fontSize: '12px'
-                }} 
+                }}
               />
               <Line type="monotone" dataKey="messages" stroke="#8884d8" strokeWidth={2} dot={{ r: 4 }} />
               <Line type="monotone" dataKey="delivery_rate" stroke="#82ca9d" strokeWidth={2} dot={{ r: 4 }} />
             </RechartsLineChart>
           </ResponsiveContainer>
         );
-      
+
       case 'pie':
         return (
           <ResponsiveContainer {...commonProps}>
@@ -191,27 +197,27 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                   fontSize: '12px'
-                }} 
+                }}
               />
             </RechartsPieChart>
           </ResponsiveContainer>
         );
-      
+
       default:
         return null;
     }
   };
 
   return (
-    <Card className="p-6 glass border-0">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="font-heading text-lg font-semibold text-foreground">
+    <Card className="p-4 glass border-0">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-base font-semibold text-foreground">
           Performance Overview
         </h3>
         <div className="flex items-center gap-2">
@@ -219,24 +225,24 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             {hasData ? "Real Data" : "Loading..."}
           </Badge>
           <Select value={chartType} onValueChange={(value: ChartType) => setChartType(value)}>
-            <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectTrigger className="w-28 h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="bar">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <BarChart className="w-3 h-3" />
                   <span>Bar</span>
                 </div>
               </SelectItem>
               <SelectItem value="line">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <LineChart className="w-3 h-3" />
                   <span>Line</span>
                 </div>
               </SelectItem>
               <SelectItem value="pie">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <PieChart className="w-3 h-3" />
                   <span>Pie</span>
                 </div>
@@ -246,13 +252,13 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="h-80 w-full">
+      <div className="space-y-3">
+        <div className="h-64 w-full">
           {renderChart()}
         </div>
-        
+
         {performance && (
-          <div className="text-center py-2">
+          <div className="text-center py-1">
             <p className="text-xs text-text-subtle">
               {hasData ? `Total Messages: ${performance.metrics.total_messages} | Delivery Rate: ${performance.metrics.delivery_rate}%` : "Loading performance data..."}
             </p>
@@ -260,8 +266,11 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border-subtle">
-        <button className="w-full text-sm text-primary hover:text-primary-dark transition-smooth">
+      <div className="mt-3 pt-3 border-t border-border-subtle">
+        <button
+          onClick={handleViewDetailedAnalytics}
+          className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"
+        >
           View detailed analytics
         </button>
       </div>

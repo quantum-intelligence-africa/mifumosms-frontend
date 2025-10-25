@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Hash, CheckCircle, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface SenderId {
   id: string;
@@ -17,6 +18,12 @@ interface SenderIdsProps {
 }
 
 export function SenderIds({ senderIds }: SenderIdsProps) {
+  const navigate = useNavigate();
+
+  const handleManageSenderIds = () => {
+    navigate('/sms/sender-names');
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -48,9 +55,9 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   };
 
   return (
-    <Card className="p-6 glass border-0">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="font-heading text-lg font-semibold text-foreground">
+    <Card className="p-4 glass border-0">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-base font-semibold text-foreground">
           Active Sender IDs
         </h3>
         <Badge variant="outline" className="text-xs">
@@ -59,40 +66,40 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
       </div>
 
       {senderIds && senderIds.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs font-medium text-text-subtle">Sender ID</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle">Status</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle">Sample Content</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle">Created</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">Sender ID</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">Status</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">Sample Content</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">Created</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {senderIds.map((senderId) => (
+              {senderIds.slice(0, 3).map((senderId) => (
                 <TableRow key={senderId.id} className="hover:bg-accent/50 transition-smooth">
-                  <TableCell className="font-medium text-foreground">
-                    <div className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-primary" />
-                      {senderId.sender_id}
+                  <TableCell className="font-medium text-foreground py-2">
+                    <div className="flex items-center gap-1.5">
+                      <Hash className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs">{senderId.sender_id}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline" 
+                  <TableCell className="py-2">
+                    <Badge
+                      variant="outline"
                       className={`text-xs ${getStatusColor(senderId.status)}`}
                     >
                       <div className="flex items-center gap-1">
                         {getStatusIcon(senderId.status)}
-                        <span className="capitalize">{senderId.status}</span>
+                        <span className="capitalize text-xs">{senderId.status}</span>
                       </div>
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-text-subtle max-w-xs truncate">
+                  <TableCell className="text-xs text-text-subtle max-w-xs truncate py-2">
                     {senderId.sample_content}
                   </TableCell>
-                  <TableCell className="text-sm text-text-subtle">
+                  <TableCell className="text-xs text-text-subtle py-2">
                     {formatDate(senderId.created_at)}
                   </TableCell>
                 </TableRow>
@@ -101,17 +108,20 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           </Table>
         </div>
       ) : (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-            <Hash className="w-8 h-8 text-primary" />
+        <div className="text-center py-6">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+            <Hash className="w-6 h-6 text-primary" />
           </div>
-          <p className="text-sm text-text-subtle mb-2">No sender IDs found</p>
+          <p className="text-xs text-text-subtle mb-1">No sender IDs found</p>
           <p className="text-xs text-text-subtle">Sender IDs will appear here once they are approved</p>
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-border-subtle">
-        <button className="w-full text-sm text-primary hover:text-primary-dark transition-smooth">
+      <div className="mt-3 pt-3 border-t border-border-subtle">
+        <button
+          onClick={handleManageSenderIds}
+          className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"
+        >
           Manage sender IDs
         </button>
       </div>

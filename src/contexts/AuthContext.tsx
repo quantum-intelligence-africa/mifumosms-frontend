@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { apiClient, User, AuthTokens, LoginRequest, RegisterRequest } from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
+import { useSMSVerification } from '@/hooks/useSMSVerification';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +12,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
+  verifyAccount: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +33,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { sendAccountVerification, verifyAccount: verifyAccountSMS } = useSMSVerification();
 
   const isAuthenticated = !!user;
 
@@ -85,10 +89,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
 
-
         setUser(userData);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
+
+        // Check if user needs verification and send SMS
+        if (userData && userData.phone_number && !userData.phone_verified && !userData.is_verified) {
+          try {
+            await sendAccountVerification({ phone_number: userData.phone_number });
+            console.log('Verification SMS sent to:', userData.phone_number);
+          } catch (error) {
+            console.error('Failed to send verification SMS:', error);
+            // Don't fail login if SMS sending fails
+          }
+        }
+
         return { success: true, user: userData };
       } else {
         return { success: false, error: response.error || 'Login failed' };
@@ -114,6 +129,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(newUser);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
+
+        // Send verification SMS for new users
+        if (newUser && newUser.phone_number) {
+          try {
+            await sendAccountVerification({ phone_number: newUser.phone_number });
+            console.log('Verification SMS sent to new user:', newUser.phone_number);
+          } catch (error) {
+            console.error('Failed to send verification SMS to new user:', error);
+            // Don't fail registration if SMS sending fails
+          }
+        }
+
         return { success: true };
       } else {
         console.error('Registration failed - no tokens in response:', response);
@@ -183,6 +210,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const sendAccountVerificationSMS = async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await sendAccountVerification({ phone_number: phoneNumber });
+      return { success: result.success, error: result.error };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send verification SMS'
+      };
+    }
+  };
+
+  const verifyAccountCode = async (phoneNumber: string, code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await verifyAccountSMS({ phone_number: phoneNumber, code });
+      if (result.success && user) {
+        // Update user verification status
+        setUser({ ...user, phone_verified: true, is_verified: true });
+      }
+      return { success: result.success, error: result.error };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to verify account'
+      };
+    }
+  };
+
 
   const value: AuthContextType = {
     user,
@@ -193,6 +248,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     refreshToken,
     updateProfile,
+    sendAccountVerification: sendAccountVerificationSMS,
+    verifyAccount: verifyAccountCode,
   };
 
   return (
