@@ -506,9 +506,9 @@ const Landing = () => {
       {/* Features Section */}
       <section id="features" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-center">
             {/* Left Column - Heading and Description */}
-            <div className="text-left">
+            <div className="text-left flex flex-col justify-center">
               <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
                 Everything you need to
                 <span className="block text-blue-500">
@@ -562,7 +562,7 @@ const Landing = () => {
               </div>
 
               {/* Desktop: Compact 3 columns, 2 rows layout */}
-              <div className="hidden sm:grid sm:grid-cols-3 gap-2 lg:gap-3">
+              <div className="hidden sm:grid sm:grid-cols-3 gap-4 lg:gap-6">
                 {features.map((feature, index) => (
                   <Card
                     key={index}
@@ -573,19 +573,19 @@ const Landing = () => {
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <CardContent className="relative p-3 flex flex-col h-full">
+                    <CardContent className="relative p-6 flex flex-col h-full min-h-[180px]">
                       {/* Icon */}
-                      <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
-                        <feature.icon className="w-3.5 h-3.5 text-white group-hover:scale-110 transition-transform duration-300" />
+                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
+                        <feature.icon className="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" />
                       </div>
 
                       {/* Title */}
-                      <h3 className="font-heading text-xs font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-2 leading-tight">
+                      <h3 className="font-heading text-sm font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-3 leading-tight">
                         {feature.title}
                       </h3>
 
                       {/* Description */}
-                      <p className="text-[10px] text-gray-600 leading-tight group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
+                      <p className="text-xs text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
                         {feature.description}
                       </p>
 

@@ -78,6 +78,7 @@ import { Contact, CreateContactRequest, ImportContactsRequest, apiClient } from 
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { normalizePhoneNumber, formatPhoneNumber, validatePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
 import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 const Contacts = () => {
 const { toast } = useToast();
@@ -87,6 +88,16 @@ const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
 const [searchQuery, setSearchQuery] = useState("");
 const [filterTag, setFilterTag] = useState("all");
 const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+// Click outside hook for contact details panel
+const contactDetailsRef = useClickOutside<HTMLDivElement>(
+  () => {
+    if (selectedContact) {
+      setSelectedContact(null);
+    }
+  },
+  !!selectedContact
+);
 const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
@@ -1656,7 +1667,21 @@ Delete Contact
 
 {/* Contact Detail Panel */}
 {selectedContact && (
-<div className="w-80 border-l border-border-subtle glass flex flex-col">
+<>
+  {/* Mobile Overlay */}
+  {isMobile && (
+    <div
+      className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+      onClick={() => setSelectedContact(null)}
+    />
+  )}
+
+  <div
+    ref={contactDetailsRef}
+    className={`w-80 border-l border-border-subtle glass flex flex-col ${
+      isMobile ? 'fixed right-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''
+    }`}
+  >
 <div className="p-6 border-b border-border-subtle">
 <div className="flex items-center justify-between mb-4">
 <h3 className="font-heading text-lg font-semibold">Contact Details</h3>
@@ -1766,6 +1791,7 @@ Edit
 </div>
 </div>
 </div>
+</>
 )}
 
 {/* Delete Confirmation Dialog */}
