@@ -5,13 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { VerificationGuard } from "@/components/VerificationGuard";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import VerifyAccount from "./pages/VerifyAccount";
 import Dashboard from "./pages/Dashboard";
 import Conversations from "./pages/Conversations";
 import Contacts from "./pages/Contacts";
@@ -44,98 +42,71 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/verify-account" element={<VerifyAccount />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Dashboard />
-                </VerificationGuard>
+                <Dashboard />
               </ProtectedRoute>
             } />
             <Route path="/conversations" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Conversations />
-                </VerificationGuard>
+                <Conversations />
               </ProtectedRoute>
             } />
             <Route path="/contacts" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Contacts />
-                </VerificationGuard>
+                <Contacts />
               </ProtectedRoute>
             } />
             <Route path="/campaigns" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Campaigns />
-                </VerificationGuard>
+                <Campaigns />
               </ProtectedRoute>
             } />
             <Route path="/templates" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Templates />
-                </VerificationGuard>
+                <Templates />
               </ProtectedRoute>
             } />
             <Route path="/analytics" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Analytics />
-                </VerificationGuard>
+                <Analytics />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Settings />
-                </VerificationGuard>
+                <Settings />
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <Notifications />
-                </VerificationGuard>
+                <Notifications />
               </ProtectedRoute>
             } />
             <Route path="/notification-settings" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <NotificationSettings />
-                </VerificationGuard>
+                <NotificationSettings />
               </ProtectedRoute>
             } />
             <Route path="/sms/send" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <SendSMS />
-                </VerificationGuard>
+                <SendSMS />
               </ProtectedRoute>
             } />
             <Route path="/sms/purchase" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <PurchaseSMS />
-                </VerificationGuard>
+                <PurchaseSMS />
               </ProtectedRoute>
             } />
             <Route path="/sms/sender-names" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <SenderNames />
-                </VerificationGuard>
+                <SenderNames />
               </ProtectedRoute>
             } />
             <Route path="/sms/purchase-history" element={
               <ProtectedRoute>
-                <VerificationGuard>
-                  <PurchaseHistory />
-                </VerificationGuard>
+                <PurchaseHistory />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

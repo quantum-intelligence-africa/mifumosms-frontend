@@ -1,238 +1,216 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Phone, ArrowLeft, RefreshCw } from 'lucide-react';
 
 interface SMSVerificationCodeProps {
   phoneNumber: string;
-  onVerify: (code: string) => Promise<void>;
-  onResend: () => Promise<void>;
+  onVerify: (code: string) => void;
+  onResend: () => void;
+  onBack?: () => void;
   isLoading?: boolean;
   isResending?: boolean;
   error?: string;
   attemptsRemaining?: number;
   lockedUntil?: string;
-  messageType?: 'verification' | 'password_reset' | 'account_confirmation';
+  messageType?: 'password_reset' | 'verification';
 }
 
-export const SMSVerificationCode = ({
+export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
   phoneNumber,
   onVerify,
   onResend,
+  onBack,
   isLoading = false,
   isResending = false,
-  error,
+  error = '',
   attemptsRemaining,
   lockedUntil,
   messageType = 'verification'
-}: SMSVerificationCodeProps) => {
-  const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(0);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+}) => {
+  const [code, setCode] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
 
-  // Countdown timer for resend button
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+  // Format phone number for display
+  const formatPhoneNumber = (phone: string) => {
+    // Simple formatting - you can enhance this based on your needs
+    if (phone.startsWith('+')) {
+      return phone;
     }
-  }, [countdown]);
-
-  // Start countdown when component mounts
-  useEffect(() => {
-    setCountdown(60); // 60 seconds countdown
-  }, []);
-
-  const handleInputChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
-
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-verify when all digits are entered
-    if (newCode.every(digit => digit !== '') && newCode.join('').length === 6) {
-      handleVerify(newCode.join(''));
-    }
+    return `+${phone}`;
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
+  // Handle code submission
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    const newCode = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
-    setCode(newCode);
-    
-    if (pastedData.length === 6) {
-      handleVerify(pastedData);
-    } else {
-      // Focus the next empty input
-      const nextEmptyIndex = pastedData.length;
-      if (nextEmptyIndex < 6) {
-        inputRefs.current[nextEmptyIndex]?.focus();
+    if (code.length >= 4 && !isLoading) {
+      onVerify(code);
+    }
+  };
+
+  // Handle code input
+  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6); // Only digits, max 6
+    setCode(value);
+  };
+
+  // Handle resend
+  const handleResend = () => {
+    if (!isResending && !isLocked) {
+      onResend();
+    }
+  };
+
+  // Check if locked
+  useEffect(() => {
+    if (lockedUntil) {
+      const lockTime = new Date(lockedUntil).getTime();
+      const now = new Date().getTime();
+      const remaining = Math.max(0, Math.ceil((lockTime - now) / 1000));
+
+      if (remaining > 0) {
+        setIsLocked(true);
+        setTimeRemaining(remaining);
+
+        const timer = setInterval(() => {
+          setTimeRemaining(prev => {
+            if (prev <= 1) {
+              setIsLocked(false);
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        return () => clearInterval(timer);
       }
     }
+  }, [lockedUntil]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleVerify = async (verificationCode: string) => {
-    if (verificationCode.length !== 6) return;
-    
-    try {
-      await onVerify(verificationCode);
-      // Don't set isVerified here - let the parent component handle step transition
-    } catch (error) {
-      // Error handling is done in the parent component
-      console.error('Verification error:', error);
-    }
-  };
-
-  const handleResend = async () => {
-    if (countdown > 0) return;
-    
-    try {
-      await onResend();
-      setCountdown(60); // Reset countdown
-      setCode(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    } catch (error) {
-      // Error handling is done in the parent component
-    }
-  };
-
-  const getMessageTypeText = () => {
+  const getMessageText = () => {
     switch (messageType) {
       case 'password_reset':
-        return 'password reset';
-      case 'account_confirmation':
-        return 'account confirmation';
+        return 'Enter the verification code sent to your phone to reset your password';
       default:
-        return 'verification';
+        return 'Enter the verification code sent to your phone';
     }
   };
-
-  const formatPhoneNumber = (phone: string) => {
-    // Format phone number for display (e.g., +255 700 000 001)
-    return phone.replace(/(\+\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
-  };
-
-  const isLocked = lockedUntil && new Date(lockedUntil) > new Date();
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">
-          Enter Verification Code
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Phone className="w-8 h-8 text-blue-600" />
+        </div>
+        <CardTitle className="text-xl font-bold text-gray-900">
+          Verify Phone Number
         </CardTitle>
-        <p className="text-sm text-muted-foreground mt-2">
-          We sent a {getMessageTypeText()} code to {formatPhoneNumber(phoneNumber)}
-        </p>
+        <CardDescription className="text-gray-600">
+          {getMessageText()}
+        </CardDescription>
+        <div className="text-sm text-gray-500 mt-2">
+          Code sent to {formatPhoneNumber(phoneNumber)}
+        </div>
       </CardHeader>
-      
-      <CardContent className="space-y-6">
-        <>
-            {/* Code Input */}
-            <div className="flex justify-center space-x-2">
-              {code.map((digit, index) => (
-                <Input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleInputChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={handlePaste}
-                  className="w-12 h-12 text-center text-xl font-bold border-2 focus:border-primary"
-                  disabled={isLoading || isLocked}
-                />
-              ))}
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {error}
-                  {attemptsRemaining !== undefined && attemptsRemaining > 0 && (
-                    <span className="block mt-1">
-                      {attemptsRemaining} attempts remaining
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
+      <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="verification-code" className="text-sm font-semibold text-gray-700">
+              Verification Code
+            </Label>
+            <Input
+              id="verification-code"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Enter 6-digit code"
+              value={code}
+              onChange={handleCodeChange}
+              className="h-12 text-center text-lg font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              maxLength={6}
+              disabled={isLoading || isLocked}
+            />
+          </div>
+
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          {attemptsRemaining !== undefined && attemptsRemaining > 0 && (
+            <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-md">
+              {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining
+            </div>
+          )}
+
+          {isLocked && timeRemaining > 0 && (
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              Too many attempts. Try again in {formatTime(timeRemaining)}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+            disabled={code.length < 4 || isLoading || isLocked}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Verifying...
+              </div>
+            ) : (
+              'Verify Code'
             )}
+          </Button>
+        </form>
 
-            {/* Lockout Message */}
-            {isLocked && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Phone verification is temporarily locked. Please try again later.
-                  {lockedUntil && (
-                    <span className="block mt-1">
-                      Locked until: {new Date(lockedUntil).toLocaleString()}
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
+        <div className="text-center space-y-2">
+          <div className="text-sm text-gray-600">
+            Didn't receive the code?
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleResend}
+            disabled={isResending || isLocked}
+            className="w-full"
+          >
+            {isResending ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Sending...
+              </div>
+            ) : (
+              'Resend Code'
             )}
+          </Button>
+        </div>
 
-            {/* Resend Button */}
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">
-                Didn't receive the code?
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleResend}
-                disabled={isResending || countdown > 0 || isLocked}
-                className="w-full"
-              >
-                {isResending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : countdown > 0 ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Resend in {countdown}s
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Resend Code
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Security Notice */}
-            <div className="text-xs text-muted-foreground text-center bg-muted p-3 rounded-lg">
-              <p className="font-medium mb-1">Security Notice:</p>
-              <ul className="space-y-1 text-left">
-                <li>• Verification codes expire after 10 minutes</li>
-                <li>• Maximum 5 attempts before temporary lockout</li>
-                <li>• Do not share this code with anyone</li>
-                <li>• Codes are sent from Taarifa-SMS</li>
-              </ul>
-            </div>
-        </>
+        {onBack && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+            disabled={isLoading}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Phone Number
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

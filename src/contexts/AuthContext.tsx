@@ -5,15 +5,12 @@ import { API_CONFIG } from '@/config/api';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isVerified: boolean;
-  canBypassVerification: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; sms_verification?: any }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
-  confirmAccount: (verificationCode: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,27 +32,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAuthenticated = !!user;
-  const isVerified = user?.is_verified || false;
-  const canBypassVerification = user ? (
-    user.is_superuser || 
-    user.is_staff || 
-    user.phone_verified || 
-    user.is_verified ||
-    process.env.NODE_ENV === 'development' // Bypass verification in development mode
-  ) : false;
-
-  // Debug logging for verification bypass
-  useEffect(() => {
-    if (user) {
-      console.log('🔍 User verification status:', {
-        is_superuser: user.is_superuser,
-        is_staff: user.is_staff,
-        phone_verified: user.phone_verified,
-        is_verified: user.is_verified,
-        canBypassVerification
-      });
-    }
-  }, [user, canBypassVerification]);
 
   // Initialize auth state on app load
   useEffect(() => {
@@ -108,16 +84,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
-        
-        // Debug logging for login response
-        console.log('🔐 Login response from backend:', {
-          user: userData,
-          is_superuser: userData.is_superuser,
-          is_staff: userData.is_staff,
-          phone_verified: userData.phone_verified,
-          is_verified: userData.is_verified
-        });
-        
+
+
         setUser(userData);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
@@ -133,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; sms_verification?: any }> => {
+  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.register(userData);
 
@@ -142,11 +110,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response);
 
       if (response.data && response.data.tokens) {
-        const { user: newUser, tokens, sms_verification } = response.data;
+        const { user: newUser, tokens } = response.data;
         setUser(newUser);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
-        return { success: true, sms_verification };
+        return { success: true };
       } else {
         console.error('Registration failed - no tokens in response:', response);
 
@@ -215,50 +183,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const confirmAccount = async (verificationCode: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.CONFIRM_ACCOUNT}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          verification_code: verificationCode
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        // Update user verification status
-        if (user) {
-          setUser({ ...user, is_verified: true });
-        }
-        return { success: true };
-      } else {
-        return { success: false, error: result.error || 'Account confirmation failed' };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Account confirmation failed'
-      };
-    }
-  };
 
   const value: AuthContextType = {
     user,
     isAuthenticated,
-    isVerified,
-    canBypassVerification,
     isLoading,
     login,
     register,
     logout,
     refreshToken,
     updateProfile,
-    confirmAccount,
   };
 
   return (
