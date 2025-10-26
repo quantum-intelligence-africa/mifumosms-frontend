@@ -12,6 +12,7 @@ export const API_CONFIG = {
 			LOGOUT: '/auth/logout/',
 			PASSWORD_CHANGE: '/auth/password/change/',
 			PASSWORD_RESET: '/auth/password/reset/',
+			
 			VERIFY_EMAIL: '/auth/verify-email/',
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
