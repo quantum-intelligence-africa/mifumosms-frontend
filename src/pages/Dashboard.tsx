@@ -135,7 +135,7 @@ const Dashboard = () => {
             {/* Welcome Section */}
             <div className="mb-4 sm:mb-6 lg:mb-8">
               <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                Welcome to Mifumo WMS! 👋
+                Welcome to Mifumo SMS! 👋
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 Monitor your communication platform performance in real-time.
@@ -158,7 +158,7 @@ const Dashboard = () => {
               />
               <MetricCard
                 title="Campaign Success"
-                value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || "%"}`}
+                value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || ""}`}
                 icon={Target}
                 description={metrics?.campaign_success?.description || "Delivery rate"}
               />

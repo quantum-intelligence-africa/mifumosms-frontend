@@ -1,4 +1,4 @@
-// API Configuration and Client for Mifumo WMS
+// API Configuration and Client for Mifumo SMS
 import { API_CONFIG } from '@/config/api';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;

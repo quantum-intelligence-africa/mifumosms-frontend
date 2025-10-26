@@ -413,7 +413,7 @@ const Landing = () => {
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
               <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
-                Mifumo WMS
+                Mifumo SMS
               </span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
@@ -823,7 +823,7 @@ const Landing = () => {
             </span>
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-white/90 mb-6 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of African businesses already using Mifumo WMS
+            Join thousands of African businesses already using Mifumo SMS
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
@@ -857,7 +857,7 @@ const Landing = () => {
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
-                  Mifumo WMS
+                  Mifumo SMS
                 </span>
               </div>
 
@@ -883,7 +883,7 @@ const Landing = () => {
           </div>
 
           <div className="border-t border-border-subtle mt-3 sm:mt-4 pt-3 sm:pt-4 text-center text-text-subtle">
-            <p className="text-xs sm:text-sm">&copy; 2025 Mifumo WMS. All rights reserved.</p>
+            <p className="text-xs sm:text-sm">&copy; 2025 Mifumo SMS. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -692,8 +692,8 @@ return;
 
 try {
 await navigator.share({
-title: 'Import Contacts to Mifumo Connect',
-text: 'Please share your contacts to import them into Mifumo Connect. You can export your contacts from your phone\'s contact app and share them here.',
+title: 'Import Contacts to Mifumo SMS',
+text: 'Please share your contacts to import them into Mifumo SMS. You can export your contacts from your phone\'s contact app and share them here.',
 url: window.location.href
 });
 } catch (error) {
@@ -2024,7 +2024,7 @@ Access your phone's contact list to quickly import multiple contacts at once
 <div className="p-3 bg-muted/30 rounded-lg">
 <p className="text-xs text-text-subtle">
 <strong>Note:</strong> You can select multiple contacts at once. Only contacts with both name and phone number will be imported.
-Your contacts remain private and are only stored in your Mifumo Connect account.
+Your contacts remain private and are only stored in your Mifumo SMS account.
 </p>
 </div>
 

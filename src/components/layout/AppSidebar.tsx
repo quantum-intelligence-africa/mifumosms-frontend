@@ -113,7 +113,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="font-heading text-base sm:text-lg font-semibold text-foreground truncate">Mifumo</h1>
+            <h1 className="font-heading text-base sm:text-lg font-semibold text-foreground truncate">Mifumo SMS</h1>
             <p className="text-xs text-text-subtle truncate">Communication Hub</p>
           </div>
           {isMobile && onClose && (

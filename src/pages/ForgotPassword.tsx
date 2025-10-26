@@ -317,7 +317,7 @@ const ForgotPassword = () => {
               <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
             <span className="font-heading text-xl sm:text-2xl font-bold text-white">
-              Mifumo WMS
+              Mifumo SMS
             </span>
           </div>
         </div>

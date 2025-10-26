@@ -108,7 +108,7 @@ const Signup = () => {
       if (result.success) {
         toast({
           title: "Account created successfully!",
-          description: "Welcome to Mifumo WMS! You can now access your dashboard."
+          description: "Welcome to Mifumo SMS! You can now access your dashboard."
         });
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
@@ -152,7 +152,7 @@ const Signup = () => {
               <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
             <span className="font-heading text-xl sm:text-2xl font-bold text-white">
-              Mifumo WMS
+              Mifumo SMS
             </span>
           </div>
         </div>
