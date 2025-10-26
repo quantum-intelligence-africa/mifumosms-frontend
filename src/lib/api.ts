@@ -924,6 +924,130 @@ class ApiClient {
     });
   }
 
+  // API Settings Management
+  async getAPISettings(): Promise<ApiResponse<{
+    api_account: {
+      id: string;
+      account_id: string;
+      name: string;
+      status: string;
+      is_active: boolean;
+      created_at: string;
+    };
+    api_keys: Array<{
+      id: string;
+      key_name: string;
+      api_key: string;
+      secret_key: string;
+      status: string;
+      permissions: Record<string, string[]>;
+      total_uses: number;
+      last_used: string | null;
+      expires_at: string | null;
+      created_at: string;
+    }>;
+    webhooks: Array<{
+      id: string;
+      url: string;
+      events: string[];
+      is_active: boolean;
+      total_calls: number;
+      successful_calls: number;
+      failed_calls: number;
+      last_triggered: string | null;
+      last_error: string;
+      created_at: string;
+    }>;
+    last_updated: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.API);
+  }
+
+  async createAPIKey(data: {
+    key_name: string;
+    permissions: Record<string, string[]>;
+    expires_at?: string | null;
+  }): Promise<ApiResponse<{
+    id: string;
+    key_name: string;
+    api_key: string;
+    secret_key: string;
+    status: string;
+    permissions: Record<string, string[]>;
+    total_uses: number;
+    last_used: string | null;
+    expires_at: string | null;
+    created_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async revokeAPIKey(keyId: string): Promise<ApiResponse<{
+    id: string;
+    status: string;
+    is_active: boolean;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REVOKE(keyId), {
+      method: 'POST',
+    });
+  }
+
+  async regenerateAPIKey(keyId: string): Promise<ApiResponse<{
+    id: string;
+    key_name: string;
+    api_key: string;
+    secret_key: string;
+    status: string;
+    permissions: Record<string, string[]>;
+    last_used: string | null;
+    expires_at: string | null;
+    updated_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REGENERATE(keyId), {
+      method: 'POST',
+    });
+  }
+
+  async createWebhook(data: {
+    url: string;
+    events: string[];
+    is_active?: boolean;
+  }): Promise<ApiResponse<{
+    id: string;
+    url: string;
+    events: string[];
+    is_active: boolean;
+    total_calls: number;
+    successful_calls: number;
+    failed_calls: number;
+    last_triggered: string | null;
+    last_error: string;
+    created_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async toggleWebhook(webhookId: string): Promise<ApiResponse<{
+    id: string;
+    is_active: boolean;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.TOGGLE(webhookId), {
+      method: 'POST',
+    });
+  }
+
+  async deleteWebhook(webhookId: string): Promise<ApiResponse<null>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.DELETE(webhookId), {
+      method: 'DELETE',
+    });
+  }
+
   async changePassword(data: { old_password: string; new_password: string }): Promise<ApiResponse> {
     return this.request('/auth/password/change/', {
       method: 'POST',
@@ -1783,6 +1907,59 @@ class ApiClient {
 
   async testSMSConnection(): Promise<ApiResponse<{ connected: boolean; message: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.TEST_CONNECTION);
+  }
+
+  async getDeliveryReports(params?: {
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<ApiResponse<{
+    reports: Array<{
+      message_id: string;
+      status: string;
+      created_at: string;
+      recipient_count: number;
+      content_preview: string;
+      sender_id: string;
+    }>;
+    pagination: {
+      page: number;
+      per_page: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
+
+    const endpoint = `${API_CONFIG.ENDPOINTS.MESSAGING.SMS.DELIVERY_REPORTS}?${queryParams.toString()}`;
+    return this.request(endpoint);
+  }
+
+  async getSMSBalanceIntegration(): Promise<ApiResponse<{
+    account_id: string;
+    balance: number;
+    currency: string;
+    last_updated: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.BALANCE);
+  }
+
+  async getSMSStatus(messageId: string): Promise<ApiResponse<{
+    message_id: string;
+    status: string;
+    created_at: string;
+    recipient_count: number;
+    content_preview: string;
+    sender_id: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.STATUS(messageId));
   }
 
   // =============================================

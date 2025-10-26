@@ -65,6 +65,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import { useSecurity } from "@/hooks/useSecurity";
 import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
+import { SettingsAPI } from "./SettingsAPI";
 
 interface SettingsCategory {
   id: string;
@@ -78,7 +79,7 @@ const Settings = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -111,6 +112,22 @@ const Settings = () => {
     date_format: "DD/MM/YYYY",
     time_format: "24h",
   });
+
+  // API Settings State
+  const [apiSettings, setApiSettings] = useState<{
+    api_account?: any;
+    api_keys?: any[];
+    webhooks?: any[];
+  } | null>(null);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [showWebhookDialog, setShowWebhookDialog] = useState(false);
+  const [newApiKeyForm, setNewApiKeyForm] = useState({ key_name: "", permissions: {} as Record<string, string[]> });
+  const [newWebhookForm, setNewWebhookForm] = useState({ url: "", events: [] as string[] });
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<{
+    api_key: string;
+    secret_key: string;
+  } | null>(null);
+  const [showCreatedKeyDialog, setShowCreatedKeyDialog] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     email_notifications: true,
     sms_notifications: false,
@@ -239,41 +256,213 @@ const Settings = () => {
     }
   }, [currentCategory, isMobile]);
 
-  const apiKeys = [
-    {
-      id: "1",
-      name: "Production API Key",
-      key: "mw_live_pk_1234567890abcdef",
-      created: "2024-03-01",
-      lastUsed: "2 hours ago",
-      permissions: ["read", "write"]
-    },
-    {
-      id: "2",
-      name: "Development API Key",
-      key: "mw_test_pk_0987654321fedcba",
-      created: "2024-03-15",
-      lastUsed: "1 day ago",
-      permissions: ["read"]
+  // Load API Settings
+  const loadAPISettings = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.getAPISettings();
+      if (response.success && response.data) {
+        setApiSettings(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load API settings:', error);
+      toast({
+        title: "Failed to load API settings",
+        description: "Could not fetch API keys and webhooks.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
-  const webhooks = [
-    {
-      id: "1",
-      url: "https://myapp.com/webhooks/mifumo",
-      events: ["message.sent", "message.delivered", "message.read"],
-      status: "active",
-      lastTriggered: "5 minutes ago"
-    },
-    {
-      id: "2",
-      url: "https://analytics.example.com/webhook",
-      events: ["campaign.completed"],
-      status: "inactive",
-      lastTriggered: "2 days ago"
+  // Load API settings when API category is selected
+  useEffect(() => {
+    if (currentCategory === 'api' && !apiSettings) {
+      loadAPISettings();
     }
-  ];
+  }, [currentCategory]);
+
+  // API Key Handlers
+  const handleCreateAPIKey = async () => {
+    if (!newApiKeyForm.key_name) {
+      toast({
+        title: "Key name required",
+        description: "Please enter a name for your API key.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.createAPIKey(newApiKeyForm);
+      if (response.success && response.data) {
+        setNewlyCreatedKey({
+          api_key: response.data.api_key,
+          secret_key: response.data.secret_key
+        });
+        setShowCreatedKeyDialog(true);
+        setShowApiKeyDialog(false);
+        setNewApiKeyForm({ key_name: "", permissions: {} });
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to create API key:', error);
+      toast({
+        title: "Failed to create API key",
+        description: "An error occurred while creating the API key.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRevokeAPIKey = async (keyId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.revokeAPIKey(keyId);
+      if (response.success) {
+        toast({
+          title: "API key revoked",
+          description: "The API key has been revoked successfully.",
+        variant: "default"
+        });
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to revoke API key:', error);
+      toast({
+        title: "Failed to revoke API key",
+        description: "An error occurred while revoking the API key.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerateAPIKey = async (keyId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.regenerateAPIKey(keyId);
+      if (response.success && response.data) {
+        setNewlyCreatedKey({
+          api_key: response.data.api_key,
+          secret_key: response.data.secret_key
+        });
+        setShowCreatedKeyDialog(true);
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to regenerate API key:', error);
+      toast({
+        title: "Failed to regenerate API key",
+        description: "An error occurred while regenerating the API key.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Webhook Handlers
+  const handleCreateWebhook = async () => {
+    if (!newWebhookForm.url || newWebhookForm.events.length === 0) {
+      toast({
+        title: "Webhook details required",
+        description: "Please provide a URL and at least one event.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.createWebhook({
+        url: newWebhookForm.url,
+        events: newWebhookForm.events,
+        is_active: true
+      });
+      if (response.success) {
+        toast({
+          title: "Webhook created",
+          description: "The webhook has been created successfully.",
+        });
+        setShowWebhookDialog(false);
+        setNewWebhookForm({ url: "", events: [] });
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to create webhook:', error);
+      toast({
+        title: "Failed to create webhook",
+        description: "An error occurred while creating the webhook.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleWebhook = async (webhookId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.toggleWebhook(webhookId);
+      if (response.success) {
+        toast({
+          title: "Webhook status updated",
+          description: "The webhook status has been toggled successfully.",
+        });
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to toggle webhook:', error);
+      toast({
+        title: "Failed to toggle webhook",
+        description: "An error occurred while toggling the webhook.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteWebhook = async (webhookId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.deleteWebhook(webhookId);
+      if (response.success) {
+        toast({
+          title: "Webhook deleted",
+          description: "The webhook has been deleted successfully.",
+        });
+        await loadAPISettings();
+      }
+    } catch (error) {
+      console.error('Failed to delete webhook:', error);
+      toast({
+        title: "Failed to delete webhook",
+        description: "An error occurred while deleting the webhook.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Never";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  };
 
   const teamMembers = [
     {
@@ -534,7 +723,7 @@ const Settings = () => {
   // Generate fallback QR code
   const generateFallbackQRCode = async () => {
     if (fallbackQRCode) return fallbackQRCode;
-    
+
     setIsGeneratingQR(true);
     try {
       const secretKey = generateRandomSecretKey();
@@ -958,18 +1147,18 @@ const Settings = () => {
                           </div>
                           <p className="text-xs text-text-subtle mb-2">Most popular choice</p>
                           <div className="flex gap-1">
-                            <a 
-                              href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" 
-                              target="_blank" 
+                            <a
+                              href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:text-blue-700"
                             >
                               Android
                             </a>
                             <span className="text-xs text-text-subtle">•</span>
-                            <a 
-                              href="https://apps.apple.com/app/google-authenticator/id388497605" 
-                              target="_blank" 
+                            <a
+                              href="https://apps.apple.com/app/google-authenticator/id388497605"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:text-blue-700"
                             >
@@ -977,7 +1166,7 @@ const Settings = () => {
                             </a>
                           </div>
                         </div>
-                        
+
                         <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
@@ -987,18 +1176,18 @@ const Settings = () => {
                           </div>
                           <p className="text-xs text-text-subtle mb-2">Cloud backup</p>
                           <div className="flex gap-1">
-                            <a 
-                              href="https://play.google.com/store/apps/details?id=com.authy.authy" 
-                              target="_blank" 
+                            <a
+                              href="https://play.google.com/store/apps/details?id=com.authy.authy"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:text-blue-700"
                             >
                               Android
                             </a>
                             <span className="text-xs text-text-subtle">•</span>
-                            <a 
-                              href="https://apps.apple.com/app/authy/id494168017" 
-                              target="_blank" 
+                            <a
+                              href="https://apps.apple.com/app/authy/id494168017"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 hover:text-blue-700"
                             >
@@ -1007,7 +1196,7 @@ const Settings = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-6 h-6 bg-purple-500 rounded flex items-center justify-center">
@@ -1017,18 +1206,18 @@ const Settings = () => {
                         </div>
                         <p className="text-xs text-text-subtle mb-2">Microsoft ecosystem</p>
                         <div className="flex gap-1">
-                          <a 
-                            href="https://play.google.com/store/apps/details?id=com.azure.authenticator" 
-                            target="_blank" 
+                          <a
+                            href="https://play.google.com/store/apps/details?id=com.azure.authenticator"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-blue-600 hover:text-blue-700"
                           >
                             Android
                           </a>
                           <span className="text-xs text-text-subtle">•</span>
-                          <a 
-                            href="https://apps.apple.com/app/microsoft-authenticator/id983156458" 
-                            target="_blank" 
+                          <a
+                            href="https://apps.apple.com/app/microsoft-authenticator/id983156458"
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-blue-600 hover:text-blue-700"
                           >
@@ -1064,13 +1253,13 @@ const Settings = () => {
                           <strong>Note:</strong> The QR code is generated automatically from the server. If you don't see it, click "Refresh QR" above or "Generate QR Code" below.
                         </p>
                       </div>
-                      
+
                       {twoFactorStatus?.qr_code_data || fallbackQRCode ? (
                         <div className="text-center">
                           <div className="inline-block p-4 bg-white rounded-lg border border-gray-200">
-                            <img 
-                              src={(twoFactorStatus?.qr_code_data || fallbackQRCode)?.qr_code} 
-                              alt="2FA QR Code" 
+                            <img
+                              src={(twoFactorStatus?.qr_code_data || fallbackQRCode)?.qr_code}
+                              alt="2FA QR Code"
                               className="w-48 h-48 mx-auto"
                             />
                           </div>
@@ -1152,7 +1341,7 @@ const Settings = () => {
                         </p>
                       </div>
                     </div>
-                    
+
                     <Button
                       onClick={handleEnable2FA}
                       disabled={isLoading || !twoFactorData.totpCode || twoFactorData.totpCode.length !== 6}
@@ -1170,7 +1359,7 @@ const Settings = () => {
                         Your account is protected with two-factor authentication.
                       </p>
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       onClick={() => setShow2FADisable(true)}
@@ -1237,7 +1426,7 @@ const Settings = () => {
                             </div>
                           </div>
                         ))}
-                        
+
                         {activeSessions.filter(s => !s.is_current).length > 0 && (
                           <Button
                             variant="outline"
@@ -1376,170 +1565,28 @@ const Settings = () => {
 
       case "api":
         return (
-          <div className="space-y-4">
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
-                <CardTitle className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4" />
-                    API Keys
-                  </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="text-xs">
-                        <Plus className="w-3 h-3 mr-1" />
-                        New Key
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="glass">
-                      <DialogHeader>
-                        <DialogTitle className="text-sm">Create API Key</DialogTitle>
-                        <DialogDescription className="text-xs">
-                          Generate a new API key for your applications
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="keyName" className="text-xs">Key Name</Label>
-                          <Input
-                            id="keyName"
-                            placeholder="e.g., Production API Key"
-                            className="glass-subtle border-0 text-sm"
-                          />
-                        </div>
-                        <Button className="w-full text-xs">Create API Key</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-3">
-                  {apiKeys.map((key) => (
-                    <div key={key.id} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-medium text-sm">{key.name}</h5>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreVertical className="w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="glass">
-                            <DropdownMenuItem className="text-xs">
-                              <Edit className="w-3 h-3 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive text-xs">
-                              <Trash2 className="w-3 h-3 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <code className="text-xs bg-gradient-surface px-2 py-1 rounded flex-1">
-                          {showApiKey ? key.key : key.key.replace(/./g, '•').slice(0, 20) + '...'}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowApiKey(!showApiKey)}
-                          className="h-6 w-6"
-                        >
-                          {showApiKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => copyToClipboard(key.key)}
-                          className="h-6 w-6"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-text-subtle">
-                        <span>Last used: {key.lastUsed}</span>
-                        <div className="flex gap-1">
-                          {key.permissions.map((permission) => (
-                            <Badge key={permission} variant="secondary" className="text-xs px-1 py-0">
-                              {permission}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
-                <CardTitle className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Webhook className="w-4 h-4" />
-                    Webhooks
-                  </div>
-                  <Button size="sm" className="text-xs">
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Webhook
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="space-y-3">
-                  {webhooks.map((webhook) => (
-                    <div key={webhook.id} className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center justify-between mb-2">
-                        <code className="text-xs bg-gradient-surface px-2 py-1 rounded flex-1">
-                          {webhook.url}
-                        </code>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreVertical className="w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="glass">
-                            <DropdownMenuItem className="text-xs">
-                              <Edit className="w-3 h-3 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive text-xs">
-                              <Trash2 className="w-3 h-3 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex gap-1">
-                          {webhook.events.slice(0, 2).map((event) => (
-                            <Badge key={event} variant="outline" className="text-xs px-1 py-0">
-                              {event}
-                            </Badge>
-                          ))}
-                          {webhook.events.length > 2 && (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              +{webhook.events.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                        <Badge
-                          variant={webhook.status === "active" ? "default" : "secondary"}
-                          className="text-xs px-1 py-0"
-                        >
-                          {webhook.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-text-subtle mt-1">Last triggered: {webhook.lastTriggered}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <SettingsAPI
+            apiSettings={apiSettings}
+            isLoading={isLoading}
+            showApiKeyDialog={showApiKeyDialog}
+            setShowApiKeyDialog={setShowApiKeyDialog}
+            showWebhookDialog={showWebhookDialog}
+            setShowWebhookDialog={setShowWebhookDialog}
+            newApiKeyForm={newApiKeyForm}
+            setNewApiKeyForm={setNewApiKeyForm}
+            newWebhookForm={newWebhookForm}
+            setNewWebhookForm={setNewWebhookForm}
+            showApiKey={showApiKey}
+            setShowApiKey={setShowApiKey}
+            copyToClipboard={copyToClipboard}
+            handleCreateAPIKey={handleCreateAPIKey}
+            handleRevokeAPIKey={handleRevokeAPIKey}
+            handleRegenerateAPIKey={handleRegenerateAPIKey}
+            handleCreateWebhook={handleCreateWebhook}
+            handleToggleWebhook={handleToggleWebhook}
+            handleDeleteWebhook={handleDeleteWebhook}
+            formatDate={formatDate}
+          />
         );
 
       case "team":
@@ -1846,6 +1893,65 @@ const Settings = () => {
           </div>
         </div>
       </div>
+
+      {/* API Key Display Dialog */}
+      <Dialog open={showCreatedKeyDialog} onOpenChange={setShowCreatedKeyDialog}>
+        <DialogContent className="glass">
+          <DialogHeader>
+            <DialogTitle className="text-sm">API Key Created Successfully!</DialogTitle>
+            <DialogDescription className="text-xs">
+              Copy these credentials now. You won't be able to see them again.
+            </DialogDescription>
+          </DialogHeader>
+          {newlyCreatedKey && (
+            <div className="space-y-3">
+              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                <p className="text-xs text-yellow-800 font-medium">
+                  ⚠️ Important: Save these credentials securely!
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">API Key</Label>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono flex-1 break-all">
+                    {newlyCreatedKey.api_key}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyToClipboard(newlyCreatedKey.api_key)}
+                    className="h-8 w-8"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Secret Key</Label>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono flex-1 break-all">
+                    {newlyCreatedKey.secret_key}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyToClipboard(newlyCreatedKey.secret_key)}
+                    className="h-8 w-8"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              <Button
+                onClick={() => setShowCreatedKeyDialog(false)}
+                className="w-full text-sm"
+              >
+                I've Saved These Credentials
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

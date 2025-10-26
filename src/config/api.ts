@@ -12,7 +12,7 @@ export const API_CONFIG = {
 			LOGOUT: '/auth/logout/',
 			PASSWORD_CHANGE: '/auth/password/change/',
 			PASSWORD_RESET: '/auth/password/reset/',
-			
+
 			VERIFY_EMAIL: '/auth/verify-email/',
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
@@ -31,6 +31,17 @@ export const API_CONFIG = {
 				PREFERENCES: '/auth/settings/preferences/',
 				NOTIFICATIONS: '/auth/settings/notifications/',
 				SECURITY: '/auth/settings/security/',
+				API: '/auth/settings/',
+				KEYS: {
+					CREATE: '/auth/keys/create/',
+					REVOKE: (keyId: string) => `/auth/keys/${keyId}/revoke/`,
+					REGENERATE: (keyId: string) => `/auth/keys/${keyId}/regenerate/`,
+				},
+				WEBHOOKS: {
+					CREATE: '/auth/webhooks/create/',
+					TOGGLE: (webhookId: string) => `/auth/webhooks/${webhookId}/toggle/`,
+					DELETE: (webhookId: string) => `/auth/webhooks/${webhookId}/delete/`,
+				},
 			},
 		},
 		TENANTS: {
@@ -83,6 +94,9 @@ export const API_CONFIG = {
 				STATS: '/messaging/sms/stats/',
 				VALIDATE_PHONE: '/messaging/sms/validate-phone/',
 				TEST_CONNECTION: '/messaging/sms/test-connection/',
+				DELIVERY_REPORTS: '/sms/delivery-reports/',
+				BALANCE: '/sms/balance/',
+				STATUS: (messageId: string) => `/sms/status/${messageId}/`,
 			},
 			SENDER_ID_REQUESTS: {
 				BASE: '/messaging/sender-id-requests/',
