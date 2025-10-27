@@ -13,7 +13,7 @@ interface AuthContextType {
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
-  verifyAccount: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -222,9 +222,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyAccountCode = async (phoneNumber: string, code: string): Promise<{ success: boolean; error?: string }> => {
+  const verifyAccountCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const result = await verifyAccountSMS({ phone_number: phoneNumber, code });
+      const result = await verifyAccountSMS({ verification_code: code });
       if (result.success && user) {
         // Update user verification status
         setUser({ ...user, phone_verified: true, is_verified: true });

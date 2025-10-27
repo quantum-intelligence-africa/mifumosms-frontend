@@ -22,9 +22,6 @@ export const API_CONFIG = {
 				FORGOT_PASSWORD: '/auth/sms/forgot-password/',
 				RESET_PASSWORD: '/auth/sms/reset-password/',
 				CONFIRM_ACCOUNT: '/auth/sms/confirm-account/',
-				SEND_VERIFICATION_LINK: '/auth/sms/send-verification-link/',
-				VERIFY_ACCOUNT_LINK: '/auth/sms/verify-account-link/',
-				RESEND_VERIFICATION_LINK: '/auth/sms/resend-verification-link/',
 			},
 			SETTINGS: {
 				PROFILE: '/auth/settings/profile/',

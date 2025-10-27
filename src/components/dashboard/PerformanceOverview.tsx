@@ -11,6 +11,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   LineChart as RechartsLineChart,
   Line,
@@ -60,12 +61,13 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
       delivery_rate: performance.charts.delivery_rates?.data[index] || 0,
     })) : [];
 
+  // Create pie chart data, but only show meaningful values (don't show zero slices)
   const currentPieData = performance?.metrics ? [
-    { name: 'Messages', value: performance.metrics.total_messages, color: '#8884d8' },
-    { name: 'Active Conversations', value: performance.metrics.active_conversations, color: '#82ca9d' },
-    { name: 'Delivery Rate', value: performance.metrics.delivery_rate, color: '#ffc658' },
-    { name: 'Campaign Success', value: performance.metrics.campaign_success_rate, color: '#ff7300' },
-  ] : [];
+    { name: 'Messages', value: performance.metrics.total_messages || 0, color: '#8884d8' },
+    { name: 'Active Conversations', value: performance.metrics.active_conversations || 0, color: '#82ca9d' },
+    { name: 'Delivery Rate', value: performance.metrics.delivery_rate || 0, color: '#ffc658' },
+    { name: 'Campaign Success', value: performance.metrics.campaign_success_rate || 0, color: '#ff7300' },
+  ].filter(item => item.value > 0) : [];
 
   // Check if we have data to display
   const hasChartData = currentChartData.length > 0;
@@ -188,8 +190,9 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={90}
+                innerRadius={50}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -202,8 +205,18 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  fontSize: '12px'
+                  fontSize: '12px',
+                  padding: '8px'
                 }}
+                formatter={(value: any, name: string) => [`${value}`, name]}
+              />
+              <Legend
+                wrapperStyle={{ paddingTop: '10px' }}
+                formatter={(value: string, entry: any) => (
+                  <span style={{ fontSize: '12px', color: 'hsl(var(--foreground))' }}>
+                    {entry.payload?.name}: {entry.payload?.value || 0}
+                  </span>
+                )}
               />
             </RechartsPieChart>
           </ResponsiveContainer>

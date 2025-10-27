@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { apiClient } from '@/lib/api';
-import { API_CONFIG } from '@/config/api';
+
+const API_BASE_URL = 'https://mifumosms.servehttp.com/api';
 
 interface SMSVerificationResponse {
 	success: boolean;
@@ -30,12 +30,13 @@ export const useSMSVerification = () => {
 	const requestPasswordReset = async (data: { phone_number: string }): Promise<SMSVerificationResponse> => {
 		setIsSendingCode(true);
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.FORGOT_PASSWORD}`, {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/forgot-password/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({ phone_number: formattedNumber }),
 			});
 
 			const result = await response.json();
@@ -65,15 +66,19 @@ export const useSMSVerification = () => {
 		}
 	};
 
-	const sendVerificationCode = async (data: { phone_number: string }): Promise<SMSVerificationResponse> => {
+	const sendVerificationCode = async (data: { phone_number: string; message_type?: string }): Promise<SMSVerificationResponse> => {
 		setIsSendingCode(true);
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE}`, {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					message_type: data.message_type || 'verification'
+				}),
 			});
 
 			const result = await response.json();
@@ -103,15 +108,19 @@ export const useSMSVerification = () => {
 		}
 	};
 
-	const verifyCode = async (data: { phone_number: string; code: string }): Promise<SMSVerificationResponse> => {
+	const verifyCode = async (data: { phone_number: string; verification_code: string }): Promise<SMSVerificationResponse> => {
 		setIsVerifying(true);
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE}`, {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/verify-code/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					verification_code: data.verification_code
+				}),
 			});
 
 			const result = await response.json();
@@ -143,14 +152,21 @@ export const useSMSVerification = () => {
 		phone_number: string;
 		verification_code: string;
 		new_password: string;
+		new_password_confirm: string;
 	}): Promise<PasswordResetResponse> => {
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.RESET_PASSWORD}`, {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/reset-password/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					verification_code: data.verification_code,
+					new_password: data.new_password,
+					new_password_confirm: data.new_password_confirm
+				}),
 			});
 
 			const result = await response.json();
@@ -176,12 +192,16 @@ export const useSMSVerification = () => {
 	const sendAccountVerification = async (data: { phone_number: string }): Promise<AccountVerificationResponse> => {
 		setIsSendingCode(true);
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_VERIFICATION_LINK}`, {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					message_type: 'account_confirmation'
+				}),
 			});
 
 			const result = await response.json();
@@ -211,15 +231,26 @@ export const useSMSVerification = () => {
 		}
 	};
 
-	const verifyAccount = async (data: { phone_number: string; code: string }): Promise<AccountVerificationResponse> => {
+	const verifyAccount = async (data: { verification_code: string }): Promise<AccountVerificationResponse> => {
 		setIsVerifying(true);
 		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_ACCOUNT_LINK}`, {
+			const token = localStorage.getItem('access_token');
+			if (!token) {
+				return {
+					success: false,
+					error: 'Authentication required. Please log in.',
+				};
+			}
+
+			const response = await fetch(`${API_BASE_URL}/auth/sms/confirm-account/`, {
 				method: 'POST',
 				headers: {
+					'Authorization': `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(data),
+				body: JSON.stringify({
+					verification_code: data.verification_code
+				}),
 			});
 
 			const result = await response.json();
@@ -227,7 +258,6 @@ export const useSMSVerification = () => {
 			if (response.ok) {
 				return {
 					success: true,
-					phone_number: result.phone_number,
 				};
 			} else {
 				return {
@@ -248,41 +278,8 @@ export const useSMSVerification = () => {
 	};
 
 	const resendAccountVerification = async (data: { phone_number: string }): Promise<AccountVerificationResponse> => {
-		setIsSendingCode(true);
-		try {
-			const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.RESEND_VERIFICATION_LINK}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(data),
-			});
-
-			const result = await response.json();
-
-			if (response.ok) {
-				return {
-					success: true,
-					phone_number: result.phone_number,
-					attempts_remaining: result.attempts_remaining,
-					locked_until: result.locked_until,
-				};
-			} else {
-				return {
-					success: false,
-					error: result.error || result.detail || 'Failed to resend verification SMS',
-					attempts_remaining: result.attempts_remaining,
-					locked_until: result.locked_until,
-				};
-			}
-		} catch (error) {
-			return {
-				success: false,
-				error: 'Network error. Please try again.',
-			};
-		} finally {
-			setIsSendingCode(false);
-		}
+		// Reuse sendAccountVerification for resending
+		return sendAccountVerification(data);
 	};
 
 	return {
