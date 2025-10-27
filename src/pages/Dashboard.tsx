@@ -40,17 +40,8 @@ const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
 
-  // Debug logging for sender IDs
-  console.log('Dashboard - Sender IDs:', senderIds);
-  console.log('Dashboard - Sender IDs Count:', senderIds?.length);
-
   // Check if user needs verification - TEMPORARILY DISABLED
   // const needsVerification = user && user.phone_number && (!user.phone_verified || !user.is_verified);
-
-  // Debug logging
-  console.log('Dashboard - User:', user);
-  // console.log('Dashboard - Needs verification:', needsVerification);
-  // console.log('Dashboard - Show verification:', showVerification);
 
   // Show verification if needed and not already shown - TEMPORARILY DISABLED
   // React.useEffect(() => {
@@ -120,8 +111,6 @@ const Dashboard = () => {
   //     </div>
   //   );
   // }
-
-  console.log('Rendering main dashboard content');
 
   // Add error boundary
   try {

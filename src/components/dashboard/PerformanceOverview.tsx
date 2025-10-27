@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, TrendingUp, Clock, BarChart, LineChart, PieChart } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -48,6 +49,7 @@ type ChartType = 'bar' | 'line' | 'pie';
 export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   const [chartType, setChartType] = useState<ChartType>('bar');
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const handleViewDetailedAnalytics = () => {
     navigate('/analytics');
@@ -134,7 +136,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
 
     const commonProps = {
       width: '100%',
-      height: 240,
+      height: isMobile ? 200 : 240,
       data: chartType === 'pie' ? currentPieData : currentChartData,
     };
 
@@ -142,16 +144,31 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
       case 'bar':
         return (
           <ResponsiveContainer {...commonProps}>
-            <RechartsBarChart data={currentChartData}>
+            <RechartsBarChart
+              data={currentChartData}
+              margin={isMobile ? { top: 5, right: 5, left: -20, bottom: 5 } : { top: 10, right: 10, left: 0, bottom: 10 }}
+            >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
+              <XAxis
+                dataKey="name"
+                className="text-xs"
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 60 : 30}
+              />
+              <YAxis
+                className="text-xs"
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                width={isMobile ? 50 : 60}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  fontSize: '12px'
+                  fontSize: isMobile ? '11px' : '12px',
+                  padding: isMobile ? '4px 8px' : '6px 12px'
                 }}
               />
               <Bar dataKey="messages" fill="#8884d8" radius={[4, 4, 0, 0]} />
@@ -163,20 +180,47 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
       case 'line':
         return (
           <ResponsiveContainer {...commonProps}>
-            <RechartsLineChart data={currentChartData}>
+            <RechartsLineChart
+              data={currentChartData}
+              margin={isMobile ? { top: 5, right: 5, left: -20, bottom: 5 } : { top: 10, right: 10, left: 0, bottom: 10 }}
+            >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
+              <XAxis
+                dataKey="name"
+                className="text-xs"
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 60 : 30}
+              />
+              <YAxis
+                className="text-xs"
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                width={isMobile ? 50 : 60}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  fontSize: '12px'
+                  fontSize: isMobile ? '11px' : '12px',
+                  padding: isMobile ? '4px 8px' : '6px 12px'
                 }}
               />
-              <Line type="monotone" dataKey="messages" stroke="#8884d8" strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="delivery_rate" stroke="#82ca9d" strokeWidth={2} dot={{ r: 4 }} />
+              <Line
+                type="monotone"
+                dataKey="messages"
+                stroke="#8884d8"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 3 : 4 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="delivery_rate"
+                stroke="#82ca9d"
+                strokeWidth={isMobile ? 1.5 : 2}
+                dot={{ r: isMobile ? 3 : 4 }}
+              />
             </RechartsLineChart>
           </ResponsiveContainer>
         );
@@ -190,9 +234,23 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={90}
-                innerRadius={50}
+                label={(props) => {
+                  const { name, percent } = props;
+                  // For mobile, show much shorter labels to prevent cutting off
+                  if (isMobile) {
+                    // For long names, abbreviate or show just key letters
+                    let displayName = name;
+                    if (name === 'Messages') displayName = 'Msgs';
+                    else if (name === 'Active Conversations') displayName = 'Active';
+                    else if (name === 'Delivery Rate') displayName = 'Deliv';
+                    else if (name === 'Campaign Success') displayName = 'Camp';
+                    else if (name.length > 6) displayName = name.substring(0, 5);
+                    return `${displayName} ${(percent * 100).toFixed(0)}%`;
+                  }
+                  return `${name}: ${(percent * 100).toFixed(0)}%`;
+                }}
+                outerRadius={isMobile ? 60 : 90}
+                innerRadius={isMobile ? 35 : 50}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -205,18 +263,29 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  fontSize: '12px',
-                  padding: '8px'
+                  fontSize: isMobile ? '11px' : '12px',
+                  padding: isMobile ? '4px 8px' : '8px'
                 }}
                 formatter={(value: any, name: string) => [`${value}`, name]}
               />
               <Legend
-                wrapperStyle={{ paddingTop: '10px' }}
-                formatter={(value: string, entry: any) => (
-                  <span style={{ fontSize: '12px', color: 'hsl(var(--foreground))' }}>
-                    {entry.payload?.name}: {entry.payload?.value || 0}
-                  </span>
-                )}
+                wrapperStyle={{
+                  paddingTop: '10px',
+                  fontSize: isMobile ? '11px' : '12px'
+                }}
+                formatter={(value: string, entry: any) => {
+                  if (isMobile) {
+                    // Show abbreviated names in legend for mobile
+                    let displayName = value;
+                    if (value === 'Messages') displayName = 'Msgs';
+                    else if (value === 'Active Conversations') displayName = 'Active Conv';
+                    else if (value === 'Delivery Rate') displayName = 'Deliv Rate';
+                    else if (value === 'Campaign Success') displayName = 'Camp Success';
+                    else if (value.length > 12) displayName = value.substring(0, 12) + '...';
+                    return displayName;
+                  }
+                  return value;
+                }}
               />
             </RechartsPieChart>
           </ResponsiveContainer>
@@ -228,9 +297,9 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   };
 
   return (
-    <Card className="p-4 glass border-0">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading text-base font-semibold text-foreground">
+    <Card className="p-3 sm:p-4 glass border-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+        <h3 className="font-heading text-sm sm:text-base font-semibold text-foreground">
           Performance Overview
         </h3>
         <div className="flex items-center gap-2">
@@ -238,7 +307,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             {hasData ? "Real Data" : "Loading..."}
           </Badge>
           <Select value={chartType} onValueChange={(value: ChartType) => setChartType(value)}>
-            <SelectTrigger className="w-28 h-7 text-xs">
+            <SelectTrigger className="w-24 sm:w-28 h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -265,8 +334,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="h-64 w-full">
+      <div className="space-y-2 sm:space-y-3">
+        <div className="h-48 sm:h-64 w-full">
           {renderChart()}
         </div>
 
@@ -279,10 +348,10 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         )}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-border-subtle">
+      <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border-subtle">
         <button
           onClick={handleViewDetailedAnalytics}
-          className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"
+          className="w-full text-xs text-primary hover:text-primary-dark transition-smooth text-center"
         >
           View detailed analytics
         </button>
