@@ -46,8 +46,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const response = await apiClient.getProfile();
           if (response.data) {
             setUser(response.data);
-          } else {
-            // Token might be invalid, try to refresh
+          } else if (response.status === 401 || response.status === 403) {
+            // Token is invalid, try to refresh
             const refreshToken = localStorage.getItem('refresh_token');
             if (refreshToken) {
               const refreshResponse = await apiClient.refreshToken(refreshToken);
@@ -56,6 +56,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const profileResponse = await apiClient.getProfile();
                 if (profileResponse.data) {
                   setUser(profileResponse.data);
+                } else {
+                  // Still can't get profile after refresh, clear tokens
+                  localStorage.removeItem('access_token');
+                  localStorage.removeItem('refresh_token');
+                  apiClient.setToken(null);
                 }
               } else {
                 // Refresh failed, clear tokens
@@ -68,12 +73,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               localStorage.removeItem('access_token');
               apiClient.setToken(null);
             }
+          } else {
+            // Unexpected response but not auth error, keep tokens
+            console.warn('Auth initialization returned unexpected status:', response.status);
           }
         } catch (error) {
           console.error('Auth initialization error:', error);
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          apiClient.setToken(null);
+          
+          // Never clear tokens on network errors - user might just have poor connection
+          const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
+          
+          if (isNetworkError) {
+            // Network error - keep tokens and let user try again or stay logged in
+            console.warn('Network error during auth init, keeping tokens');
+            // Don't clear tokens, user stays logged in
+          } else {
+            // Other error - could be server issue, don't log user out
+            console.warn('Auth initialization failed, but keeping tokens for now');
+            // Only clear if we're absolutely sure it's auth-related
+            // Keep tokens to prevent unnecessary logouts
+          }
         }
       }
       setIsLoading(false);

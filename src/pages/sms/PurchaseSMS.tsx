@@ -98,9 +98,11 @@ const PurchaseSMS = () => {
       id: "lite",
       name: "Lite",
       package_type: "lite",
-      credits: 5000,
+      credits: 5000, // Example amount within range: 1 to 49,999
       price: "150000.00", // 5000 * 30
       unit_price: "30.00",
+      subtitle: "1 to 49,999 SMS",
+      description: "Perfect for small businesses and startups",
       is_popular: false,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -117,7 +119,9 @@ const PurchaseSMS = () => {
       id: "standard",
       name: "Standard",
       package_type: "standard",
-      credits: 50000,
+      credits: 50000, // Minimum of range: 50,000 to 149,999
+      subtitle: "50,000 to 149,999 SMS",
+      description: "Ideal for growing businesses",
       price: "1250000.00", // 50000 * 25
       unit_price: "25.00",
       is_popular: true,
@@ -135,7 +139,9 @@ const PurchaseSMS = () => {
       id: "pro",
       name: "Pro",
       package_type: "pro",
-      credits: 250000,
+      credits: 250000, // Minimum of range: 250,000+
+      subtitle: "250,000 SMS and above",
+      description: "For established businesses with high volume",
       price: "4500000.00", // 250000 * 18
       unit_price: "18.00",
       is_popular: false,
@@ -154,6 +160,8 @@ const PurchaseSMS = () => {
       name: "Enterprise",
       package_type: "enterprise",
       credits: 1000000,
+      subtitle: "Enterprise (1M+ SMS)",
+      description: "Custom pricing for large enterprises",
       price: "12000000.00", // 1000000 * 12
       unit_price: "12.00",
       is_popular: false,
@@ -294,10 +302,9 @@ const PurchaseSMS = () => {
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = useMemo(() => [
-    { id: "lite", name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
-    { id: "standard", name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
-    { id: "pro", name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
-    { id: "enterprise", name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
+    { id: "lite", name: "Lite", min: 1, max: 49999, rate: 30, rangeLabel: "1 to 49,999 SMS" },
+    { id: "standard", name: "Standard", min: 50000, max: 149999, rate: 25, rangeLabel: "50,000 to 149,999 SMS" },
+    { id: "pro", name: "Pro", min: 250000, rate: 18, rangeLabel: "250,000 SMS and above" },
   ], []);
 
   const selectedPkg = packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage);
@@ -309,10 +316,9 @@ const PurchaseSMS = () => {
   }, [selectedPackage, selectedPkg, customCredits]);
   const activeTier = useMemo(() => {
     if (parsedCredits === 0) return null;
-    if (parsedCredits <= 5000) return tiers[0];
-    if (parsedCredits <= 50000) return tiers[1];
-    if (parsedCredits <= 250000) return tiers[2];
-    return tiers[3];
+    if (parsedCredits < 50000) return tiers[0]; // Lite: 1-49,999
+    if (parsedCredits < 250000) return tiers[1]; // Standard: 50,000-149,999
+    return tiers[2]; // Pro: 250,000+
   }, [parsedCredits, tiers]);
 
   const customPrice = useMemo(() => {
@@ -327,7 +333,6 @@ const PurchaseSMS = () => {
     // Fallback to local calculation
     if (!parsedCredits) return 0;
     if (!activeTier) return 0;
-    if (activeTier.id === "enterprise") return parsedCredits * (activeTier.rate || 12);
     return parsedCredits * (activeTier.rate as number);
   }, [selectedPackage, selectedPkg, parsedCredits, activeTier, customSMSState]);
 
@@ -698,10 +703,10 @@ const PurchaseSMS = () => {
                         TZS {pkg.unit_price}/SMS
                       </p>
                       <p className="text-xs text-text-subtle">
-                        {pkg.id === 'lite' ? '1 – 5,000 SMS' :
-                         pkg.id === 'standard' ? '5,001 – 50,000 SMS' :
-                         pkg.id === 'pro' ? '50,001 – 250,000 SMS' :
-                         'Enterprise (1M+ SMS)'}
+                        {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
+                         pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
+                         pkg.id === 'pro' ? '250,000 SMS and above' :
+                         'Custom')}
                       </p>
                     </div>
                     <div className="space-y-1 mb-3">

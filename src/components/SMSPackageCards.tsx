@@ -19,14 +19,14 @@ const smsPackages: SMSPackage[] = [
     id: 'lite',
     name: 'Lite',
     price: 'TZS 30/SMS',
-    smsRange: '1 – 5,000 SMS',
+    smsRange: '1 to 49,999 SMS',
     features: ['Never expires']
   },
   {
     id: 'standard',
     name: 'Standard',
     price: 'TZS 25/SMS',
-    smsRange: '5,001 – 50,000 SMS',
+    smsRange: '50,000 to 149,999 SMS',
     features: [
       'Priority top-up & support',
       'Advanced delivery analytics',
@@ -38,7 +38,7 @@ const smsPackages: SMSPackage[] = [
     id: 'pro',
     name: 'Pro',
     price: 'TZS 18/SMS',
-    smsRange: '50,001 – 250,000 SMS',
+    smsRange: '250,000 SMS and above',
     features: [
       'Bulk campaign tools',
       'Advanced analytics',
@@ -49,7 +49,7 @@ const smsPackages: SMSPackage[] = [
     id: 'enterprise',
     name: 'Enterprise',
     price: 'TZS 12/SMS',
-    smsRange: 'Enterprise (1M+ SMS)',
+    smsRange: '1 Million+ SMS',
     features: [
       'Dedicated account manager',
       'Custom invoicing & contracts',

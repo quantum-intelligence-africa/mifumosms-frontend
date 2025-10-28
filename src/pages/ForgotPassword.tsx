@@ -44,24 +44,39 @@ const ForgotPassword = () => {
         return;
       }
 
-      // Convert to backend format for the request
-      const backendFormat = toBackendPhoneFormat(phoneInfo.normalized);
+      // Use E.164 format (e.g., +255700000001) for SMS endpoints
+      const backendFormat = phoneInfo.normalized;
+      console.log('Requesting password reset for phone:', backendFormat);
+      
       const result = await requestPasswordReset({ phone_number: backendFormat });
 
       if (result.success) {
         // Store the phone number format returned by the backend for verification
+        // This ensures we use the EXACT phone number that received the SMS
         setBackendPhoneNumber(result.phone_number || backendFormat);
+        console.log('Backend returned phone:', result.phone_number || backendFormat);
         setStep('verification');
         toast({
           title: "Reset code sent",
           description: `Reset code sent to ${phoneInfo.formatted}`,
         });
       } else {
-        setVerificationError(result.error || 'Failed to send reset code');
-        setAttemptsRemaining(result.attempts_remaining);
-        setLockedUntil(result.locked_until);
+        // Check for insufficient balance error
+        if (result.error_code === 102) {
+          toast({
+            title: "Service Temporarily Unavailable",
+            description: "SMS service is currently unavailable due to insufficient balance. Please contact the administrator for assistance at admin@mifumosms.com or call +255 XXX XXX XXX",
+            variant: "destructive",
+            duration: 10000,
+          });
+        } else {
+          setVerificationError(result.error || 'Failed to send reset code');
+          setAttemptsRemaining(result.attempts_remaining);
+          setLockedUntil(result.locked_until);
+        }
       }
     } catch (error) {
+      console.error('Password reset request error:', error);
       setVerificationError('Failed to send reset code. Please try again.');
     } finally {
       setIsLoading(false);
@@ -70,22 +85,48 @@ const ForgotPassword = () => {
 
   const handleVerifyCode = async (code: string) => {
     setVerificationError('');
-    setVerificationCode(code); // Store the code for password reset
+    setIsLoading(true);
 
-    // Skip separate verification - go directly to password reset step
-    // The verification will happen during password reset
-    setStep('reset');
-    toast({
-      title: "Code entered successfully!",
-      description: "You can now reset your password."
-    });
+    try {
+      // Use the phone number format returned by the backend (the one that received the SMS)
+      const phoneToUse = backendPhoneNumber || phoneNumber;
+
+      // First verify the code to ensure it's valid
+      const verifyResult = await verifyCode({
+        phone_number: phoneToUse,
+        verification_code: code
+      });
+
+      if (verifyResult.success) {
+        // Store the verified code for password reset
+        setVerificationCode(code);
+        setStep('reset');
+        toast({
+          title: "Code verified successfully!",
+          description: "You can now reset your password."
+        });
+      } else {
+        setVerificationError(verifyResult.error || 'Invalid verification code');
+        setAttemptsRemaining(verifyResult.attempts_remaining);
+        setLockedUntil(verifyResult.locked_until);
+      }
+    } catch (error) {
+      setVerificationError('Verification failed. Please try again.');
+      toast({
+        title: "Verification failed",
+        description: "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResendCode = async () => {
     setVerificationError('');
     try {
       // Use the phone number format returned by the backend
-      const phoneToUse = backendPhoneNumber || toBackendPhoneFormat(phoneNumber);
+      const phoneToUse = backendPhoneNumber || phoneNumber;
 
       const result = await sendVerificationCode({
         phone_number: phoneToUse,
@@ -114,11 +155,23 @@ const ForgotPassword = () => {
       return;
     }
 
+    if (newPassword.length < 8) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Use the phone number format returned by the backend
-      const phoneToUse = backendPhoneNumber || toBackendPhoneFormat(phoneNumber);
+      // Use the phone number format returned by the backend (must be the same one used for verification)
+      const phoneToUse = backendPhoneNumber || phoneNumber;
+
+      console.log('Resetting password for phone:', phoneToUse);
+      console.log('Using verification code:', verificationCode);
 
       const result = await resetPassword({
         phone_number: phoneToUse,
@@ -136,11 +189,12 @@ const ForgotPassword = () => {
       } else {
         toast({
           title: "Password reset failed",
-          description: result.error || "Failed to reset password",
+          description: result.error || "Failed to reset password. The verification code may have expired.",
           variant: "destructive"
         });
       }
     } catch (error) {
+      console.error('Password reset error:', error);
       toast({
         title: "Password reset failed",
         description: "An unexpected error occurred. Please try again.",
@@ -165,7 +219,7 @@ const ForgotPassword = () => {
   const renderStep = () => {
     switch (step) {
       case 'phone':
-    return (
+        return (
           <form onSubmit={handlePhoneSubmit} className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label htmlFor="phone" className="text-xs sm:text-sm font-semibold text-gray-700">Phone number</Label>
@@ -201,7 +255,7 @@ const ForgotPassword = () => {
       case 'verification':
         return (
           <SMSVerificationCode
-            phoneNumber={backendPhoneNumber || toBackendPhoneFormat(phoneNumber)}
+            phoneNumber={backendPhoneNumber || phoneNumber}
             onVerify={handleVerifyCode}
             onResend={handleResendCode}
             isLoading={isVerifying}

@@ -445,6 +445,8 @@ export interface SMSPackage {
   created_at: string;
   updated_at: string;
   savings_percentage?: number;
+  subtitle?: string;
+  description?: string;
 }
 
 export interface SMSBalance {

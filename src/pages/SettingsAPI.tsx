@@ -208,11 +208,11 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                   {key.permissions && Object.keys(key.permissions).length > 0 && (
                     <div className="flex gap-1 mt-2 flex-wrap">
                       {Object.entries(key.permissions).flatMap(([resource, perms]: [string, any]) =>
-                        perms.map((perm: string, idx: number) => (
+                        Array.isArray(perms) ? perms.map((perm: string, idx: number) => (
                           <Badge key={`${resource}-${perm}-${idx}`} variant="outline" className="text-xs px-1 py-0">
                             {resource}: {perm}
                           </Badge>
-                        ))
+                        )) : []
                       )}
                     </div>
                   )}

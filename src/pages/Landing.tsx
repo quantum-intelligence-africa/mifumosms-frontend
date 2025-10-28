@@ -72,28 +72,22 @@ const Landing = () => {
 
   type Tier = { name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = useMemo(() => [
-    { name: "Lite", min: 1, max: 5000, rate: 30, rangeLabel: "1 – 5,000 SMS" },
-    { name: "Standard", min: 5001, max: 50000, rate: 25, rangeLabel: "5,001 – 50,000 SMS" },
-    { name: "Pro", min: 50001, max: 250000, rate: 18, rangeLabel: "50,001 – 250,000 SMS" },
-    { name: "Enterprise", min: 1000000, rate: 12, note: "Custom (≤12 TZS/SMS)", rangeLabel: "Enterprise (1M+ SMS)" },
+    { name: "Lite", min: 1, max: 49999, rate: 30, rangeLabel: "1 to 49,999 SMS" },
+    { name: "Standard", min: 50000, max: 149999, rate: 25, rangeLabel: "50,000 to 149,999 SMS" },
+    { name: "Pro", min: 250000, rate: 18, rangeLabel: "250,000 SMS and above" },
   ], []);
 
   const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
   const activeTier = useMemo(() => {
     if (parsedCredits === 0) return null;
-    if (parsedCredits <= 5000) return tiers[0];
-    if (parsedCredits <= 50000) return tiers[1];
-    if (parsedCredits <= 250000) return tiers[2];
-    return tiers[3];
+    if (parsedCredits < 50000) return tiers[0]; // Lite: 1-49,999
+    if (parsedCredits < 250000) return tiers[1]; // Standard: 50,000-149,999
+    return tiers[2]; // Pro: 250,000+
   }, [parsedCredits, tiers]);
 
   const customPrice = useMemo(() => {
     if (!parsedCredits) return 0;
     if (!activeTier) return 0;
-    if (activeTier.name === "Enterprise") {
-      // Show an estimated maximum (≤ rate)
-      return parsedCredits * (activeTier.rate || 12);
-    }
     return parsedCredits * (activeTier.rate as number);
   }, [parsedCredits, activeTier]);
 
@@ -300,7 +294,7 @@ const Landing = () => {
     {
       name: "Lite",
       rate: "TZS 30/SMS",
-      credits: "1 – 5,000 SMS",
+      credits: "1 to 49,999 SMS",
       features: [
         "Instant top-up",
         "Basic delivery reports",
@@ -310,7 +304,7 @@ const Landing = () => {
     {
       name: "Standard",
       rate: "TZS 25/SMS",
-      credits: "5,001 – 50,000 SMS",
+      credits: "50,000 to 149,999 SMS",
       features: [
         "Priority top-up & support",
         "Advanced delivery analytics",
@@ -321,7 +315,7 @@ const Landing = () => {
     {
       name: "Pro",
       rate: "TZS 18/SMS",
-      credits: "50,001 – 250,000 SMS",
+      credits: "250,000 SMS and above",
       features: [
         "Bulk campaign tools",
         "Advanced analytics",

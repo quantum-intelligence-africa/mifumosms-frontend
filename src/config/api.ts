@@ -1,6 +1,7 @@
 // API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
 	// BASE_URL: 'https://mifumosms.servehttp.com/api',
+	BASE_URL: 'http://127.0.0.1:8000/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
@@ -44,6 +45,20 @@ export const API_CONFIG = {
 			SWITCH: '/tenants/switch/',
 			MEMBERS: (id: string) => `/tenants/${id}/members/`,
 			DOMAINS: (id: string) => `/tenants/${id}/domains/`,
+			TEAM: {
+				LIST: (tenantId: string) => `/tenants/${tenantId}/team/`,
+				STATS: (tenantId: string) => `/tenants/${tenantId}/team/stats/`,
+				INVITE: (tenantId: string) => `/tenants/${tenantId}/team/invite/`,
+				DETAIL: (tenantId: string, memberId: string) => `/tenants/${tenantId}/team/${memberId}/`,
+				SUSPEND: (tenantId: string, memberId: string) => `/tenants/${tenantId}/team/${memberId}/suspend/`,
+				ACTIVATE: (tenantId: string, memberId: string) => `/tenants/${tenantId}/team/${memberId}/activate/`,
+				RESEND_INVITATION: (tenantId: string, memberId: string) => `/tenants/${tenantId}/team/${memberId}/resend-invitation/`,
+				TRANSFER_OWNERSHIP: (tenantId: string, memberId: string) => `/tenants/${tenantId}/team/${memberId}/transfer-ownership/`,
+			},
+			INVITES: {
+				ACCEPT: (token: string) => `/invite/${token}/accept/`,
+				REJECT: (token: string) => `/invite/${token}/reject/`,
+			},
 		},
 		MESSAGING: {
 			CONTACTS: {

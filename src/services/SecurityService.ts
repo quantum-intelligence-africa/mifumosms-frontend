@@ -86,7 +86,7 @@ class SecurityService {
   // Get security summary
   async getSecuritySummary(): Promise<{ success: boolean; data: SecuritySummary }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/summary/`,
+      `${API_CONFIG.BASE_URL}/auth/security/summary/`,
       {
         headers: this.getAuthHeaders(),
       }
@@ -102,7 +102,7 @@ class SecurityService {
   // Change password
   async changePassword(data: ChangePasswordRequest): Promise<{ success: boolean; message?: string; errors?: Record<string, string[]> }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/change-password/`,
+      `${API_CONFIG.BASE_URL}/auth/security/change-password/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -120,7 +120,7 @@ class SecurityService {
   // Get 2FA status
   async get2FAStatus(): Promise<{ success: boolean; data: TwoFactorStatus }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/2fa/status/`,
+      `${API_CONFIG.BASE_URL}/auth/security/2fa/status/`,
       {
         headers: this.getAuthHeaders(),
       }
@@ -142,7 +142,7 @@ class SecurityService {
     errors?: Record<string, string[]>;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/2fa/enable/`,
+      `${API_CONFIG.BASE_URL}/auth/security/2fa/enable/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -164,7 +164,7 @@ class SecurityService {
     errors?: Record<string, string[]>;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/2fa/disable/`,
+      `${API_CONFIG.BASE_URL}/auth/security/2fa/disable/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -186,7 +186,7 @@ class SecurityService {
     error?: string;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/2fa/verify/`,
+      `${API_CONFIG.BASE_URL}/auth/security/2fa/verify/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -208,7 +208,7 @@ class SecurityService {
     total_count: number;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/sessions/`,
+      `${API_CONFIG.BASE_URL}/auth/security/sessions/`,
       {
         headers: this.getAuthHeaders(),
       }
@@ -228,7 +228,7 @@ class SecurityService {
     error?: string;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/sessions/${sessionId}/terminate/`,
+      `${API_CONFIG.BASE_URL}/auth/security/sessions/${sessionId}/terminate/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -249,7 +249,7 @@ class SecurityService {
     terminated_count?: number;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/sessions/terminate-all-others/`,
+      `${API_CONFIG.BASE_URL}/auth/security/sessions/terminate-all-others/`,
       {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -270,7 +270,7 @@ class SecurityService {
     total_count: number;
   }> {
     const response = await fetch(
-      `${API_CONFIG.BASE_URL}/api/auth/security/events/`,
+      `${API_CONFIG.BASE_URL}/auth/security/events/`,
       {
         headers: this.getAuthHeaders(),
       }
