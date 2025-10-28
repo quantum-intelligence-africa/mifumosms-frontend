@@ -1,4 +1,4 @@
-// API Configuration and Client for Mifumo WMS
+// API Configuration and Client for Mifumo SMS
 import { API_CONFIG } from '@/config/api';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
@@ -644,18 +644,54 @@ class ApiClient {
   }
 
   async handleResponse<T = unknown>(response: Response): Promise<ApiResponse<T>> {
-    const data = await response.json();
+    // Handle empty responses (common for DELETE operations)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+    }
 
-    if (response.ok) {
-      return { success: true, data: data.data || data, message: data.message, status: response.status };
-    } else {
-      return {
-        success: false,
-        message: data.message || data.detail || 'An error occurred',
-        error: data.message || data.detail || 'An error occurred',
-        errors: data.errors || null,
-        status: response.status
-      };
+    // Check if response has content to parse
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      if (response.ok) {
+        return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+      } else {
+        return {
+          success: false,
+          message: 'An error occurred',
+          error: 'An error occurred',
+          errors: null,
+          status: response.status
+        };
+      }
+    }
+
+    try {
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true, data: data.data || data, message: data.message, status: response.status };
+      } else {
+        return {
+          success: false,
+          message: data.message || data.detail || 'An error occurred',
+          error: data.message || data.detail || 'An error occurred',
+          errors: data.errors || null,
+          status: response.status
+        };
+      }
+    } catch (jsonError) {
+      // If JSON parsing fails but response is OK, consider it successful
+      if (response.ok) {
+        return { success: true, data: null, message: 'Operation completed successfully', status: response.status };
+      } else {
+        return {
+          success: false,
+          message: 'Failed to parse response',
+          error: 'Failed to parse response',
+          errors: null,
+          status: response.status
+        };
+      }
     }
   }
 
@@ -682,7 +718,23 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
+
+      // Log error responses for debugging
+      if (!response.ok) {
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: url,
+          config: config
+        });
+      }
+
       const data = await response.json();
+
+      // Log error response data for debugging
+      if (!response.ok) {
+        console.error('API Error Data:', data);
+      }
 
       // Handle authentication errors with token refresh
       if (response.status === 401 || response.status === 403) {
@@ -869,6 +921,130 @@ class ApiClient {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.NOTIFICATIONS, {
       method: 'PUT',
       body: JSON.stringify(settings),
+    });
+  }
+
+  // API Settings Management
+  async getAPISettings(): Promise<ApiResponse<{
+    api_account: {
+      id: string;
+      account_id: string;
+      name: string;
+      status: string;
+      is_active: boolean;
+      created_at: string;
+    };
+    api_keys: Array<{
+      id: string;
+      key_name: string;
+      api_key: string;
+      secret_key: string;
+      status: string;
+      permissions: Record<string, string[]>;
+      total_uses: number;
+      last_used: string | null;
+      expires_at: string | null;
+      created_at: string;
+    }>;
+    webhooks: Array<{
+      id: string;
+      url: string;
+      events: string[];
+      is_active: boolean;
+      total_calls: number;
+      successful_calls: number;
+      failed_calls: number;
+      last_triggered: string | null;
+      last_error: string;
+      created_at: string;
+    }>;
+    last_updated: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.API);
+  }
+
+  async createAPIKey(data: {
+    key_name: string;
+    permissions: Record<string, string[]>;
+    expires_at?: string | null;
+  }): Promise<ApiResponse<{
+    id: string;
+    key_name: string;
+    api_key: string;
+    secret_key: string;
+    status: string;
+    permissions: Record<string, string[]>;
+    total_uses: number;
+    last_used: string | null;
+    expires_at: string | null;
+    created_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async revokeAPIKey(keyId: string): Promise<ApiResponse<{
+    id: string;
+    status: string;
+    is_active: boolean;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REVOKE(keyId), {
+      method: 'POST',
+    });
+  }
+
+  async regenerateAPIKey(keyId: string): Promise<ApiResponse<{
+    id: string;
+    key_name: string;
+    api_key: string;
+    secret_key: string;
+    status: string;
+    permissions: Record<string, string[]>;
+    last_used: string | null;
+    expires_at: string | null;
+    updated_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REGENERATE(keyId), {
+      method: 'POST',
+    });
+  }
+
+  async createWebhook(data: {
+    url: string;
+    events: string[];
+    is_active?: boolean;
+  }): Promise<ApiResponse<{
+    id: string;
+    url: string;
+    events: string[];
+    is_active: boolean;
+    total_calls: number;
+    successful_calls: number;
+    failed_calls: number;
+    last_triggered: string | null;
+    last_error: string;
+    created_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async toggleWebhook(webhookId: string): Promise<ApiResponse<{
+    id: string;
+    is_active: boolean;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.TOGGLE(webhookId), {
+      method: 'POST',
+    });
+  }
+
+  async deleteWebhook(webhookId: string): Promise<ApiResponse<null>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.WEBHOOKS.DELETE(webhookId), {
+      method: 'DELETE',
     });
   }
 
@@ -1161,9 +1337,9 @@ class ApiClient {
   }): Promise<ApiResponse<{
     success: boolean;
     message: string;
-    imported: number;
-    updated: number;
-    skipped: number;
+    imported_count: number;
+    updated_count: number;
+    skipped_count: number;
     total_processed: number;
     errors: Array<{
       row?: number;
@@ -1188,13 +1364,66 @@ class ApiClient {
         headers: {}, // Don't set Content-Type for FormData
         body: formData,
       });
-    } else {
-      // JSON data (CSV or phone contacts)
+    } else if (data.import_type === 'phone_contacts' && data.contacts) {
+      // Phone contacts - convert to CSV format
+      const csvData = this.convertContactsToCSV(data.contacts);
+      const requestData = {
+        import_type: 'csv',
+        csv_data: csvData,
+        skip_duplicates: data.skip_duplicates ?? true,
+        update_existing: data.update_existing ?? false
+      };
+
       return this.request('/messaging/contacts/bulk-import/', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
+      });
+    } else {
+      // JSON data (CSV)
+      console.log('Bulk import request data:', data);
+
+      // If we have contacts but no csv_data, convert contacts to CSV
+      const requestData = { ...data };
+      if (data.contacts && data.contacts.length > 0 && !data.csv_data) {
+        requestData.csv_data = this.convertContactsToCSV(data.contacts);
+        // Remove contacts from request as we're sending CSV data
+        delete requestData.contacts;
+      }
+
+      console.log('Final request data:', requestData);
+
+      return this.request('/messaging/contacts/bulk-import/', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
       });
     }
+  }
+
+  // Helper method to convert contacts to CSV format
+  private convertContactsToCSV(contacts: CreateContactRequest[]): string {
+    // Use standard column names that the backend expects
+    const headers = ['name', 'phone', 'email'];
+    const rows = contacts.map(contact => {
+      // Ensure phone number has + prefix for E.164 format
+      let phone = contact.phone_e164 || '';
+      if (phone && !phone.startsWith('+')) {
+        phone = '+' + phone;
+      }
+
+      return [
+        contact.name || '',
+        phone,
+        contact.email || ''
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    console.log('Converted CSV data:', csvContent);
+    return csvContent;
   }
 
   // Legacy methods for backward compatibility
@@ -1232,15 +1461,24 @@ class ApiClient {
   // BULK OPERATIONS ENDPOINTS
   // =============================================
 
+  async bulkEditContacts(contactIds: string[], updates: Partial<CreateContactRequest>): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+    total_requested: number;
+    errors: string[];
+  }>> {
+    return this.request('/messaging/contacts/bulk-edit/', {
+      method: 'POST',
+      body: JSON.stringify({ contact_ids: contactIds, updates }),
+    });
+  }
+
   async bulkDeleteContacts(contactIds: string[]): Promise<ApiResponse<{
     success: boolean;
     message: string;
     deleted_count: number;
-    failed_count: number;
-    errors: Array<{
-      contact_id: string;
-      error: string;
-    }>;
+    total_requested: number;
   }>> {
     return this.request('/messaging/contacts/bulk-delete/', {
       method: 'POST',
@@ -1669,6 +1907,59 @@ class ApiClient {
 
   async testSMSConnection(): Promise<ApiResponse<{ connected: boolean; message: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.TEST_CONNECTION);
+  }
+
+  async getDeliveryReports(params?: {
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<ApiResponse<{
+    reports: Array<{
+      message_id: string;
+      status: string;
+      created_at: string;
+      recipient_count: number;
+      content_preview: string;
+      sender_id: string;
+    }>;
+    pagination: {
+      page: number;
+      per_page: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
+
+    const endpoint = `${API_CONFIG.ENDPOINTS.MESSAGING.SMS.DELIVERY_REPORTS}?${queryParams.toString()}`;
+    return this.request(endpoint);
+  }
+
+  async getSMSBalanceIntegration(): Promise<ApiResponse<{
+    account_id: string;
+    balance: number;
+    currency: string;
+    last_updated: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.BALANCE);
+  }
+
+  async getSMSStatus(messageId: string): Promise<ApiResponse<{
+    message_id: string;
+    status: string;
+    created_at: string;
+    recipient_count: number;
+    content_preview: string;
+    sender_id: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.STATUS(messageId));
   }
 
   // =============================================

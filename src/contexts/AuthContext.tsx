@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { apiClient, User, AuthTokens, LoginRequest, RegisterRequest } from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
+import { useSMSVerification } from '@/hooks/useSMSVerification';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isVerified: boolean;
-  canBypassVerification: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; sms_verification?: any }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
-  confirmAccount: (verificationCode: string) => Promise<{ success: boolean; error?: string }>;
+  sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
+  verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,29 +33,9 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { sendAccountVerification, verifyAccount: verifyAccountSMS } = useSMSVerification();
 
   const isAuthenticated = !!user;
-  const isVerified = user?.is_verified || false;
-  const canBypassVerification = user ? (
-    user.is_superuser || 
-    user.is_staff || 
-    user.phone_verified || 
-    user.is_verified ||
-    process.env.NODE_ENV === 'development' // Bypass verification in development mode
-  ) : false;
-
-  // Debug logging for verification bypass
-  useEffect(() => {
-    if (user) {
-      console.log('🔍 User verification status:', {
-        is_superuser: user.is_superuser,
-        is_staff: user.is_staff,
-        phone_verified: user.phone_verified,
-        is_verified: user.is_verified,
-        canBypassVerification
-      });
-    }
-  }, [user, canBypassVerification]);
 
   // Initialize auth state on app load
   useEffect(() => {
@@ -108,19 +88,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
-        
-        // Debug logging for login response
-        console.log('🔐 Login response from backend:', {
-          user: userData,
-          is_superuser: userData.is_superuser,
-          is_staff: userData.is_staff,
-          phone_verified: userData.phone_verified,
-          is_verified: userData.is_verified
-        });
-        
+
         setUser(userData);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
+
+        // Check if user needs verification and send SMS
+        if (userData && userData.phone_number && !userData.phone_verified && !userData.is_verified) {
+          try {
+            await sendAccountVerification({ phone_number: userData.phone_number });
+            console.log('Verification SMS sent to:', userData.phone_number);
+          } catch (error) {
+            console.error('Failed to send verification SMS:', error);
+            // Don't fail login if SMS sending fails
+          }
+        }
+
         return { success: true, user: userData };
       } else {
         return { success: false, error: response.error || 'Login failed' };
@@ -133,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; sms_verification?: any }> => {
+  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.register(userData);
 
@@ -142,11 +125,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response);
 
       if (response.data && response.data.tokens) {
-        const { user: newUser, tokens, sms_verification } = response.data;
+        const { user: newUser, tokens } = response.data;
         setUser(newUser);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
-        return { success: true, sms_verification };
+
+        // Send verification SMS for new users
+        if (newUser && newUser.phone_number) {
+          try {
+            await sendAccountVerification({ phone_number: newUser.phone_number });
+            console.log('Verification SMS sent to new user:', newUser.phone_number);
+          } catch (error) {
+            console.error('Failed to send verification SMS to new user:', error);
+            // Don't fail registration if SMS sending fails
+          }
+        }
+
+        return { success: true };
       } else {
         console.error('Registration failed - no tokens in response:', response);
 
@@ -215,50 +210,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const confirmAccount = async (verificationCode: string): Promise<{ success: boolean; error?: string }> => {
+  const sendAccountVerificationSMS = async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.CONFIRM_ACCOUNT}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          verification_code: verificationCode
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        // Update user verification status
-        if (user) {
-          setUser({ ...user, is_verified: true });
-        }
-        return { success: true };
-      } else {
-        return { success: false, error: result.error || 'Account confirmation failed' };
-      }
+      const result = await sendAccountVerification({ phone_number: phoneNumber });
+      return { success: result.success, error: result.error };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Account confirmation failed'
+        error: error instanceof Error ? error.message : 'Failed to send verification SMS'
       };
     }
   };
 
+  const verifyAccountCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await verifyAccountSMS({ verification_code: code });
+      if (result.success && user) {
+        // Update user verification status
+        setUser({ ...user, phone_verified: true, is_verified: true });
+      }
+      return { success: result.success, error: result.error };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to verify account'
+      };
+    }
+  };
+
+
   const value: AuthContextType = {
     user,
     isAuthenticated,
-    isVerified,
-    canBypassVerification,
     isLoading,
     login,
     register,
     logout,
     refreshToken,
     updateProfile,
-    confirmAccount,
+    sendAccountVerification: sendAccountVerificationSMS,
+    verifyAccount: verifyAccountCode,
   };
 
   return (

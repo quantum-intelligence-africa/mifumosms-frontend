@@ -1,5 +1,5 @@
 // QR Code utility for 2FA setup
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 
 export interface QRCodeData {
   qr_code: string;
@@ -15,7 +15,7 @@ export const generate2FAQRCode = async (
   try {
     // Generate TOTP URI
     const totpUri = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${secretKey}&issuer=${encodeURIComponent(issuer)}`;
-    
+
     // Generate QR code as data URL
     const qrCodeDataUrl = await QRCode.toDataURL(totpUri, {
       width: 256,

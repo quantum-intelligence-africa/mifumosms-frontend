@@ -149,10 +149,24 @@ interface SenderIdsResponse {
   }>;
 }
 
+// Type for campaign with all required fields
+type Campaign = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  sent: number;
+  delivered: number;
+  opened: number;
+  progress: number;
+  created_at: string;
+  created_at_human: string;
+};
+
 export const useDashboard = () => {
   const [metrics, setMetrics] = useState<DashboardMetricsResponse['data'] | null>(null);
   const [overview, setOverview] = useState<DashboardOverviewResponse['data'] | null>(null);
-  const [recentCampaigns, setRecentCampaigns] = useState<RecentCampaignsResponse['summary']['recent_campaigns'] | null>(null);
+  const [recentCampaigns, setRecentCampaigns] = useState<Campaign[] | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivityResponse['data']['activities'] | null>(null);
   const [performanceOverview, setPerformanceOverview] = useState<PerformanceOverviewResponse['data'] | null>(null);
   const [senderIds, setSenderIds] = useState<SenderIdsResponse['data'] | null>(null);
@@ -161,9 +175,11 @@ export const useDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isInitialLoad = false) => {
     try {
-      setIsLoading(true);
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const token = localStorage.getItem('access_token');
@@ -178,7 +194,7 @@ export const useDashboard = () => {
       }
 
       // Fetch dashboard data using the correct API endpoints
-      const [metricsResponse, overviewResponse, campaignsResponse, activityResponse, performanceResponse, senderIdsResponse] = await Promise.all([
+      const [metricsResponse, overviewResponse, activityResponse, performanceResponse, senderIdsResponse] = await Promise.all([
         fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.METRICS}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -186,12 +202,6 @@ export const useDashboard = () => {
           }
         }),
         fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.OVERVIEW}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.CAMPAIGNS.SUMMARY}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -236,6 +246,8 @@ export const useDashboard = () => {
         const overviewData: DashboardOverviewResponse = await overviewResponse.json();
         if (overviewData.success) {
           setOverview(overviewData.data);
+          // Use the campaigns from overview data which has all required fields
+          setRecentCampaigns(overviewData.data.recent_campaigns as Campaign[]);
         } else {
           console.error('Overview API error:', overviewData);
         }
@@ -243,17 +255,18 @@ export const useDashboard = () => {
         console.error('Overview fetch failed:', overviewResponse.status);
       }
 
-      // Handle campaigns response
-      if (campaignsResponse.ok) {
-        const campaignsData: RecentCampaignsResponse = await campaignsResponse.json();
-        if (campaignsData.success) {
-          setRecentCampaigns(campaignsData.summary.recent_campaigns);
-        } else {
-          console.error('Campaigns API error:', campaignsData);
-        }
-      } else {
-        console.error('Campaigns fetch failed:', campaignsResponse.status);
-      }
+      // Note: campaignsResponse is no longer needed as we use overview data
+      // This endpoint might not exist or return different format
+      // if (campaignsResponse.ok) {
+      //   const campaignsData: RecentCampaignsResponse = await campaignsResponse.json();
+      //   if (campaignsData.success) {
+      //     setRecentCampaigns(campaignsData.summary.recent_campaigns);
+      //   } else {
+      //     console.error('Campaigns API error:', campaignsData);
+      //   }
+      // } else {
+      //   console.error('Campaigns fetch failed:', campaignsResponse.status);
+      // }
 
       // Handle activity response
       if (activityResponse.ok) {
@@ -310,15 +323,20 @@ export const useDashboard = () => {
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      if (isInitialLoad) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    // Initial load with loading state
+    fetchDashboardData(true);
 
-    // Set up polling for real-time updates every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000);
+    // Set up polling for real-time updates every 60 seconds (silent refresh)
+    const interval = setInterval(() => {
+      fetchDashboardData(false); // Silent refresh without loading state
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -326,7 +344,7 @@ export const useDashboard = () => {
   return {
     metrics,
     overview,
-    recentCampaigns,
+    recentCampaigns, // campaigns from overview data with all required fields
     recentActivity,
     performanceOverview,
     senderIds,

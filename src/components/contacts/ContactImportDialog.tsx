@@ -45,7 +45,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      
+
       // Auto-detect file type
       const extension = selectedFile.name.split('.').pop()?.toLowerCase();
       if (extension === 'csv') {
@@ -69,7 +69,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
   };
 
   const handlePhoneContactChange = (index: number, field: string, value: string) => {
-    setPhoneContacts(prev => prev.map((contact, i) => 
+    setPhoneContacts(prev => prev.map((contact, i) =>
       i === index ? { ...contact, [field]: value } : contact
     ));
   };
@@ -105,10 +105,10 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
 
         if (importType === 'phone_contacts') {
           // Filter out empty contacts
-          const validContacts = phoneContacts.filter(contact => 
+          const validContacts = phoneContacts.filter(contact =>
             contact.full_name.trim() && contact.phone.trim()
           );
-          
+
           if (validContacts.length === 0) {
             throw new Error('Please add at least one contact');
           }
@@ -185,8 +185,8 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     Phone Contacts
                   </div>
                 </SelectItem>
-                <SelectItem 
-                  value="mobile_contacts" 
+                <SelectItem
+                  value="mobile_contacts"
                   disabled={!isContactPickerSupported() || !isMobileDevice()}
                 >
                   <div className="flex items-center gap-2">
@@ -313,7 +313,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   Add Contact
                 </Button>
               </div>
-              
+
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {phoneContacts.map((contact, index) => (
                   <Card key={index} className="p-4">
@@ -422,7 +422,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     <div className="text-sm text-text-subtle">Total</div>
                   </div>
                 </div>
-                
+
                 <div className="text-sm text-text-subtle">
                   {importResult.message}
                 </div>

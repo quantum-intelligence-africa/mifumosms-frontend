@@ -112,7 +112,7 @@ const ResetPassword = () => {
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
               <span className="font-heading text-2xl font-bold text-gray-900">
-                Mifumo WMS
+                Mifumo SMS
               </span>
             </div>
           </div>
@@ -172,7 +172,7 @@ const ResetPassword = () => {
               <MessageSquare className="w-6 h-6 text-white" />
             </div>
             <span className="font-heading text-2xl font-bold text-gray-900">
-              Mifumo WMS
+              Mifumo SMS
             </span>
           </div>
         </div>

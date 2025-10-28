@@ -4,14 +4,14 @@ This document describes the authentication system implemented for the Mifumo Con
 
 ## Overview
 
-The authentication system has been fully integrated with the Mifumo WMS backend API, providing secure user management and session handling.
+The authentication system has been fully integrated with the Mifumo SMS backend API, providing secure user management and session handling.
 
 ## Features Implemented
 
 ### 1. User Registration
 - **Endpoint**: `POST /api/auth/register/`
 - **Fields**: email, password, first_name, last_name, phone_number (optional)
-- **Features**: 
+- **Features**:
   - Form validation with password strength indicator
   - Real-time password matching validation
   - Terms of service agreement requirement
@@ -27,7 +27,7 @@ The authentication system has been fully integrated with the Mifumo WMS backend 
   - JWT token management
 
 ### 3. User Profile Management
-- **Endpoints**: 
+- **Endpoints**:
   - `GET /api/auth/profile/` - Fetch user profile
   - `PUT /api/auth/profile/` - Update user profile
 - **Features**:
@@ -122,7 +122,7 @@ src/
 1. **Accessing User Data**
    ```tsx
    import { useAuth } from '@/contexts/AuthContext';
-   
+
    const { user, isAuthenticated, login, logout } = useAuth();
    ```
 
@@ -138,7 +138,7 @@ src/
 3. **API Calls**
    ```tsx
    import { apiClient } from '@/lib/api';
-   
+
    const response = await apiClient.getProfile();
    ```
 

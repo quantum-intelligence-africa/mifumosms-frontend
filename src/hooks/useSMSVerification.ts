@@ -1,492 +1,296 @@
-import { useState, useCallback } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { API_CONFIG } from '@/config/api';
-import { normalizePhoneNumber, toBackendPhoneFormat } from '@/utils/phoneUtils';
+import { useState } from 'react';
 
-export interface SMSVerificationRequest {
-  phone_number: string;
-  message_type?: 'verification' | 'password_reset' | 'account_confirmation';
+const API_BASE_URL = 'https://mifumosms.servehttp.com/api';
+
+interface SMSVerificationResponse {
+	success: boolean;
+	error?: string;
+	phone_number?: string;
+	attempts_remaining?: number;
+	locked_until?: string;
 }
 
-export interface SMSVerificationResponse {
-  success: boolean;
-  message: string;
-  phone_number?: string;
-  error?: string;
-  attempts_remaining?: number;
-  locked_until?: string;
+interface PasswordResetResponse {
+	success: boolean;
+	error?: string;
 }
 
-export interface VerifyCodeRequest {
-  phone_number: string;
-  verification_code: string;
-}
-
-export interface VerifyCodeResponse {
-  success: boolean;
-  message: string;
-  phone_verified?: boolean;
-  error?: string;
-  attempts_remaining?: number;
-}
-
-export interface ForgotPasswordRequest {
-  phone_number: string;
-}
-
-export interface ResetPasswordRequest {
-  phone_number: string;
-  verification_code: string;
-  new_password: string;
-  new_password_confirm: string;
-}
-
-export interface ConfirmAccountRequest {
-  verification_code: string;
-}
-
-export interface ConfirmAccountResponse {
-  success: boolean;
-  message: string;
-  is_verified?: boolean;
-  phone_verified?: boolean;
-  error?: string;
-  attempts_remaining?: number;
+interface AccountVerificationResponse {
+	success: boolean;
+	error?: string;
+	phone_number?: string;
+	attempts_remaining?: number;
+	locked_until?: string;
 }
 
 export const useSMSVerification = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const { toast } = useToast();
+	const [isSendingCode, setIsSendingCode] = useState(false);
+	const [isVerifying, setIsVerifying] = useState(false);
 
-  const sendVerificationCode = useCallback(async (data: SMSVerificationRequest): Promise<SMSVerificationResponse> => {
-    setIsSendingCode(true);
-    try {
-      // Normalize phone number
-      const phoneInfo = normalizePhoneNumber(data.phone_number);
-      if (!phoneInfo.isValid) {
-        toast({
-          title: "Invalid Phone Number",
-          description: phoneInfo.error || "Please enter a valid phone number",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: phoneInfo.error,
-        };
-      }
+	const requestPasswordReset = async (data: { phone_number: string }): Promise<SMSVerificationResponse> => {
+		setIsSendingCode(true);
+		try {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/forgot-password/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ phone_number: formattedNumber }),
+			});
 
-      const token = localStorage.getItem('access_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
+			const result = await response.json();
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+			if (response.ok) {
+				return {
+					success: true,
+					phone_number: result.phone_number,
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Failed to send reset code',
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		} finally {
+			setIsSendingCode(false);
+		}
+	};
 
-      // Convert to backend format
-      const backendFormat = toBackendPhoneFormat(phoneInfo.normalized);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          ...data,
-          phone_number: backendFormat
-        }),
-      });
+	const sendVerificationCode = async (data: { phone_number: string; message_type?: string }): Promise<SMSVerificationResponse> => {
+		setIsSendingCode(true);
+		try {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					message_type: data.message_type || 'verification'
+				}),
+			});
 
-      const result = await response.json();
+			const result = await response.json();
 
-      if (response.ok && result.success) {
-        toast({
-          title: "Verification Code Sent",
-          description: `Code sent to ${phoneInfo.formatted}`,
-        });
-        return result;
-      } else {
-        // Handle specific error cases
-        let errorMessage = result.error || "Failed to send verification code";
-        
-        if (response.status === 429) {
-          errorMessage = "Too many requests. Please wait before requesting another code.";
-        } else if (response.status === 400) {
-          errorMessage = "Invalid phone number or request format.";
-        } else if (response.status === 500) {
-          errorMessage = "SMS service temporarily unavailable. Please try again later.";
-        }
+			if (response.ok) {
+				return {
+					success: true,
+					phone_number: result.phone_number,
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Failed to send verification code',
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		} finally {
+			setIsSendingCode(false);
+		}
+	};
 
-        toast({
-          title: "Failed to Send Code",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: errorMessage,
-          attempts_remaining: result.attempts_remaining,
-          locked_until: result.locked_until,
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || "Network error occurred";
-      toast({
-        title: "Network Error",
-        description: `Failed to send verification code: ${errorMessage}`,
-        variant: "destructive",
-      });
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsSendingCode(false);
-    }
-  }, [toast]);
+	const verifyCode = async (data: { phone_number: string; verification_code: string }): Promise<SMSVerificationResponse> => {
+		setIsVerifying(true);
+		try {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/verify-code/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					verification_code: data.verification_code
+				}),
+			});
 
-  const verifyCode = useCallback(async (data: VerifyCodeRequest): Promise<VerifyCodeResponse> => {
-    setIsVerifying(true);
-    try {
-      // Normalize phone number
-      const phoneInfo = normalizePhoneNumber(data.phone_number);
-      if (!phoneInfo.isValid) {
-        toast({
-          title: "Invalid Phone Number",
-          description: phoneInfo.error || "Please enter a valid phone number",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: phoneInfo.error,
-        };
-      }
+			const result = await response.json();
 
-      // Validate verification code format
-      if (!data.verification_code || data.verification_code.length !== 6 || !/^\d{6}$/.test(data.verification_code)) {
-        toast({
-          title: "Invalid Code Format",
-          description: "Please enter a 6-digit verification code",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: "Invalid verification code format",
-        };
-      }
+			if (response.ok) {
+				return {
+					success: true,
+					phone_number: result.phone_number,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Invalid verification code',
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		} finally {
+			setIsVerifying(false);
+		}
+	};
 
-      // Convert to backend format
-      const backendFormat = toBackendPhoneFormat(phoneInfo.normalized);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          phone_number: backendFormat
-        }),
-      });
+	const resetPassword = async (data: {
+		phone_number: string;
+		verification_code: string;
+		new_password: string;
+		new_password_confirm: string;
+	}): Promise<PasswordResetResponse> => {
+		try {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/reset-password/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					verification_code: data.verification_code,
+					new_password: data.new_password,
+					new_password_confirm: data.new_password_confirm
+				}),
+			});
 
-      const result = await response.json();
+			const result = await response.json();
 
-      if (response.ok && result.success) {
-        toast({
-          title: "Verification Successful",
-          description: result.message || "Phone number verified successfully",
-        });
-        return result;
-      } else {
-        // Handle specific error cases
-        let errorMessage = result.error || "Invalid verification code";
-        
-        if (response.status === 400) {
-          if (result.error?.includes('expired')) {
-            errorMessage = "Verification code has expired. Please request a new one.";
-          } else if (result.error?.includes('invalid')) {
-            errorMessage = "Invalid verification code. Please check and try again.";
-          } else {
-            errorMessage = "Invalid request. Please try again.";
-          }
-        } else if (response.status === 429) {
-          errorMessage = "Too many failed attempts. Please wait before trying again.";
-        } else if (response.status === 404) {
-          errorMessage = "No verification code found. Please request a new one.";
-        }
+			if (response.ok) {
+				return {
+					success: true,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Failed to reset password',
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		}
+	};
 
-        toast({
-          title: "Verification Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: errorMessage,
-          attempts_remaining: result.attempts_remaining,
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || "Network error occurred";
-      toast({
-        title: "Network Error",
-        description: `Failed to verify code: ${errorMessage}`,
-        variant: "destructive",
-      });
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [toast]);
+	const sendAccountVerification = async (data: { phone_number: string }): Promise<AccountVerificationResponse> => {
+		setIsSendingCode(true);
+		try {
+			const formattedNumber = data.phone_number.trim();
+			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					phone_number: formattedNumber,
+					message_type: 'account_confirmation'
+				}),
+			});
 
-  const requestPasswordReset = useCallback(async (data: ForgotPasswordRequest): Promise<SMSVerificationResponse> => {
-    setIsLoading(true);
-    try {
-      // Normalize phone number
-      const phoneInfo = normalizePhoneNumber(data.phone_number);
-      if (!phoneInfo.isValid) {
-        toast({
-          title: "Invalid Phone Number",
-          description: phoneInfo.error || "Please enter a valid phone number",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: phoneInfo.error,
-        };
-      }
+			const result = await response.json();
 
-      // Convert to backend format
-      const backendFormat = toBackendPhoneFormat(phoneInfo.normalized);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.FORGOT_PASSWORD}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          phone_number: backendFormat
-        }),
-      });
+			if (response.ok) {
+				return {
+					success: true,
+					phone_number: result.phone_number,
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Failed to send verification SMS',
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		} finally {
+			setIsSendingCode(false);
+		}
+	};
 
-      const result = await response.json();
+	const verifyAccount = async (data: { verification_code: string }): Promise<AccountVerificationResponse> => {
+		setIsVerifying(true);
+		try {
+			const token = localStorage.getItem('access_token');
+			if (!token) {
+				return {
+					success: false,
+					error: 'Authentication required. Please log in.',
+				};
+			}
 
-      if (response.ok && result.success) {
-        toast({
-          title: "Password Reset Code Sent",
-          description: `Reset code sent to ${phoneInfo.formatted}`,
-        });
-        return result;
-      } else {
-        // Handle specific error cases
-        let errorMessage = result.error || "Failed to send password reset code";
-        
-        if (response.status === 404) {
-          errorMessage = "No account found with this phone number.";
-        } else if (response.status === 429) {
-          errorMessage = "Too many requests. Please wait before requesting another code.";
-        } else if (response.status === 400) {
-          errorMessage = "Invalid phone number format.";
-        }
+			const response = await fetch(`${API_BASE_URL}/auth/sms/confirm-account/`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					verification_code: data.verification_code
+				}),
+			});
 
-        toast({
-          title: "Failed to Send Reset Code",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: errorMessage,
-          attempts_remaining: result.attempts_remaining,
-          locked_until: result.locked_until,
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || "Network error occurred";
-      toast({
-        title: "Network Error",
-        description: `Failed to request password reset: ${errorMessage}`,
-        variant: "destructive",
-      });
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+			const result = await response.json();
 
-  const resetPassword = useCallback(async (data: ResetPasswordRequest): Promise<{ success: boolean; message?: string; error?: string }> => {
-    setIsLoading(true);
-    try {
-      // Normalize phone number
-      const phoneInfo = normalizePhoneNumber(data.phone_number);
-      if (!phoneInfo.isValid) {
-        toast({
-          title: "Invalid Phone Number",
-          description: phoneInfo.error || "Please enter a valid phone number",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: phoneInfo.error,
-        };
-      }
+			if (response.ok) {
+				return {
+					success: true,
+				};
+			} else {
+				return {
+					success: false,
+					error: result.error || result.detail || 'Invalid verification code',
+					attempts_remaining: result.attempts_remaining,
+					locked_until: result.locked_until,
+				};
+			}
+		} catch (error) {
+			return {
+				success: false,
+				error: 'Network error. Please try again.',
+			};
+		} finally {
+			setIsVerifying(false);
+		}
+	};
 
-      // Validate password requirements
-      if (data.new_password.length < 8) {
-        toast({
-          title: "Password Too Short",
-          description: "Password must be at least 8 characters long",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: "Password must be at least 8 characters long",
-        };
-      }
+	const resendAccountVerification = async (data: { phone_number: string }): Promise<AccountVerificationResponse> => {
+		// Reuse sendAccountVerification for resending
+		return sendAccountVerification(data);
+	};
 
-      if (data.new_password !== data.new_password_confirm) {
-        toast({
-          title: "Passwords Don't Match",
-          description: "New password and confirmation must match",
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: "Passwords don't match",
-        };
-      }
-
-      // Convert to backend format
-      const backendFormat = toBackendPhoneFormat(phoneInfo.normalized);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.RESET_PASSWORD}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          phone_number: backendFormat
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        toast({
-          title: "Password Reset Successful",
-          description: result.message || "Password reset successfully. You can now login with your new password.",
-        });
-        return result;
-      } else {
-        // Handle specific error cases
-        let errorMessage = result.error || "Failed to reset password";
-        
-        if (response.status === 400) {
-          if (result.error?.includes('verification code')) {
-            errorMessage = "Invalid or expired verification code. Please request a new one.";
-          } else if (result.error?.includes('password')) {
-            errorMessage = "Password does not meet requirements.";
-          } else {
-            errorMessage = "Invalid request. Please check your information.";
-          }
-        } else if (response.status === 404) {
-          errorMessage = "No account found with this phone number.";
-        } else if (response.status === 429) {
-          errorMessage = "Too many attempts. Please wait before trying again.";
-        }
-
-        toast({
-          title: "Password Reset Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return {
-          success: false,
-          error: errorMessage,
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || "Network error occurred";
-      toast({
-        title: "Network Error",
-        description: `Failed to reset password: ${errorMessage}`,
-        variant: "destructive",
-      });
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  const confirmAccount = useCallback(async (data: ConfirmAccountRequest): Promise<ConfirmAccountResponse> => {
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.CONFIRM_ACCOUNT}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        toast({
-          title: "Account Confirmed",
-          description: result.message || "Account confirmed successfully",
-        });
-        return result;
-      } else {
-        toast({
-          title: "Account Confirmation Failed",
-          description: result.error || "Failed to confirm account",
-          variant: "destructive",
-        });
-        return result;
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || "Network error occurred";
-      toast({
-        title: "Network Error",
-        description: `Failed to confirm account: ${errorMessage}`,
-        variant: "destructive",
-      });
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  return {
-    isLoading,
-    isSendingCode,
-    isVerifying,
-    sendVerificationCode,
-    verifyCode,
-    requestPasswordReset,
-    resetPassword,
-    confirmAccount,
-  };
+	return {
+		requestPasswordReset,
+		sendVerificationCode,
+		verifyCode,
+		resetPassword,
+		sendAccountVerification,
+		verifyAccount,
+		resendAccountVerification,
+		isSendingCode,
+		isVerifying,
+	};
 };

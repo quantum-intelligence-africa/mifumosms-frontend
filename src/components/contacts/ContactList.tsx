@@ -8,15 +8,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  MoreVertical, 
-  Edit, 
-  Trash2, 
-  Phone, 
-  Mail, 
+import {
+  Users,
+  Search,
+  Plus,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
   Tag,
   Calendar,
   User
@@ -40,14 +40,14 @@ interface ContactListProps {
   onPreviousPage: () => void;
 }
 
-export function ContactList({ 
-  contacts, 
-  totalCount, 
-  isLoading, 
+export function ContactList({
+  contacts,
+  totalCount,
+  isLoading,
   currentPage,
   hasNextPage,
   hasPreviousPage,
-  onRefresh, 
+  onRefresh,
   onDelete,
   onPageChange,
   onNextPage,
@@ -56,7 +56,7 @@ export function ContactList({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
+
   // Calculate total pages (assuming 20 items per page)
   const itemsPerPage = 20;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -231,7 +231,7 @@ export function ContactList({
                           <Edit className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => handleDelete(contact.id)}
                           className="text-red-600"
                         >

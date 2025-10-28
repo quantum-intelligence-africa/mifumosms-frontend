@@ -20,17 +20,17 @@ const Login = () => {
     rememberMe: false
   });
   const { toast } = useToast();
-  const { login, isAuthenticated, canBypassVerification } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already authenticated and can bypass verification
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && canBypassVerification) {
+    if (isAuthenticated) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, canBypassVerification, navigate, location]);
+  }, [isAuthenticated, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,28 +45,12 @@ const Login = () => {
       if (result.success) {
         toast({
           title: "Login successful",
-          description: "Welcome back to Mifumo WMS!"
+          description: "Welcome back to Mifumo SMS!"
         });
-        
-        // Check if user can bypass verification
-        const canBypass = result.user ? (
-          result.user.is_superuser || 
-          result.user.is_staff || 
-          result.user.phone_verified || 
-          result.user.is_verified
-        ) : false;
 
-        if (canBypass) {
-          const from = location.state?.from?.pathname || "/dashboard";
-          navigate(from, { replace: true });
-        } else {
-          // User cannot bypass verification, show message
-          toast({
-            title: "Account Verification Required",
-            description: "Please verify your phone number to access the dashboard.",
-            variant: "destructive"
-          });
-        }
+        // Redirect to dashboard immediately after successful login
+        const from = location.state?.from?.pathname || "/dashboard";
+        navigate(from, { replace: true });
       } else {
         toast({
           title: "Login failed",
@@ -97,7 +81,7 @@ const Login = () => {
         <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
         <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
       </div>
-      
+
       <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl relative z-10">
         {/* Header */}
         <div className="text-center mb-4 sm:mb-6">
@@ -110,7 +94,7 @@ const Login = () => {
               <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
             <span className="font-heading text-xl sm:text-2xl font-bold text-white">
-              Mifumo WMS
+              Mifumo SMS
             </span>
           </div>
         </div>
