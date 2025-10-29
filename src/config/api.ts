@@ -1,7 +1,7 @@
 // API Configuration - Updated to match backend API guide
 export const API_CONFIG = {
 	// BASE_URL: 'https://mifumosms.servehttp.com/api',
-	BASE_URL: 'http://127.0.0.1:8000/api',
+	BASE_URL: 'https://mifumosms.servehttp.com/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
