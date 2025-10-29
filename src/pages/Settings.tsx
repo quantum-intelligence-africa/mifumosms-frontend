@@ -24,7 +24,8 @@ import {
   Phone,
   MapPin,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  CheckCircle
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -66,6 +67,9 @@ import { apiClient } from "@/lib/api";
 import { useSecurity } from "@/hooks/useSecurity";
 import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
 import { SettingsAPI } from "./SettingsAPI";
+import { useSMSVerification } from "@/hooks/useSMSVerification";
+import { useTenants } from "@/hooks/useTenants";
+import { useTeam, TeamMember, TeamRole } from "@/hooks/useTeam";
 
 interface SettingsCategory {
   id: string;
@@ -149,6 +153,127 @@ const Settings = () => {
     terminateAllOtherSessions,
     fetch2FAStatus,
   } = useSecurity();
+  
+  // SMS Verification state
+  const { sendAccountVerification, verifyAccount, isSendingCode, isVerifying } = useSMSVerification();
+  const [smsVerificationCode, setSmsVerificationCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+
+  // Team state
+  const { currentTenant } = useTenants();
+  const accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') || undefined : undefined;
+  const team = useTeam(currentTenant?.id || null, accessToken);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<TeamRole>("agent");
+
+  useEffect(() => {
+    if (currentCategory === 'team' && currentTenant?.id) {
+      console.log('Loading team members for tenant:', currentTenant.id);
+      team.listMembers().catch(err => console.error('Failed to load team members:', err));
+      team.getStats().catch(err => console.error('Failed to load team stats:', err));
+    }
+  }, [currentCategory, currentTenant?.id]);
+
+  const handleInviteMember = async () => {
+    if (!inviteEmail) return;
+    const res = await team.inviteMember(inviteEmail, inviteRole);
+    if (res.success) {
+      toast({ 
+        title: "Invitation sent", 
+        description: `Invitation sent to ${inviteEmail} as ${inviteRole}. They will receive an email with a link to join.`,
+        duration: 5000 
+      });
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("agent");
+    } else {
+      // Parse detailed error messages from backend
+      let errorMessage = res.error || "Please try again";
+      let showAction = false;
+      let actionText = "";
+      
+      if (res.errors && res.errors.email) {
+        errorMessage = Array.isArray(res.errors.email) ? res.errors.email[0] : res.errors.email;
+      }
+      
+      // Check for specific error patterns and suggest actions
+      if (errorMessage.toLowerCase().includes("pending invitation")) {
+        showAction = true;
+        actionText = "Resend Invitation";
+        // Find the member in the list
+        const pendingMember = team.members.find(m => 
+          m.user_email.toLowerCase() === inviteEmail.toLowerCase() && 
+          m.status === 'pending'
+        );
+        
+        if (pendingMember) {
+          errorMessage += `\n\nWould you like to resend the invitation?`;
+        }
+      } else if (errorMessage.toLowerCase().includes("already an active member")) {
+        // Just show info, they're already added
+        toast({ 
+          title: "Member already active", 
+          description: errorMessage,
+          duration: 7000 
+        });
+        return;
+      } else if (errorMessage.toLowerCase().includes("suspended")) {
+        showAction = true;
+        actionText = "Activate Member";
+        const suspendedMember = team.members.find(m => 
+          m.user_email.toLowerCase() === inviteEmail.toLowerCase() && 
+          m.status === 'suspended'
+        );
+        
+        if (suspendedMember) {
+          errorMessage += `\n\nWould you like to activate them?`;
+        }
+      }
+      
+      toast({ 
+        title: showAction ? "Action needed" : "Failed to send invitation", 
+        description: errorMessage,
+        variant: "destructive",
+        duration: 10000 
+      });
+    }
+  };
+
+  const handleChangeMemberRole = async (member: TeamMember, role: TeamRole) => {
+    // Don't allow changing role for pending members
+    if (member.status === 'pending') {
+      toast({ 
+        title: "Cannot change role", 
+        description: "Pending members must accept their invitation first.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    const res = await team.updateMember(member.id, { role });
+    if (res.success) {
+      toast({ title: "Role updated", description: `Role changed to ${role}` });
+    } else {
+      toast({ title: "Failed to change role", description: res.error || "", variant: "destructive" });
+    }
+  };
+
+  const handleToggleMemberStatus = async (member: TeamMember) => {
+    const action = member.status === 'active' ? team.suspendMember : team.activateMember;
+    const res = await action(member.id);
+    if (!res.success) toast({ title: "Action failed", description: res.error || "", variant: "destructive" });
+  };
+
+  const handleRemoveMember = async (member: TeamMember) => {
+    const res = await team.removeMember(member.id);
+    if (!res.success) toast({ title: "Failed to remove", description: res.error || "", variant: "destructive" });
+  };
+
+  const handleResendInvitation = async (member: TeamMember) => {
+    const res = await team.resendInvitation(member.id);
+    if (res.success) toast({ title: "Invitation resent", description: member.user_email });
+    else toast({ title: "Failed to resend", description: res.error || "", variant: "destructive" });
+  };
 
   const settingsCategories: SettingsCategory[] = [
     {
@@ -776,6 +901,86 @@ const Settings = () => {
       .slice(0, 2);
   };
 
+  // SMS Verification Handlers
+  const handleSendVerificationCode = async () => {
+    if (!user?.phone_number) {
+      toast({
+        title: "Phone number required",
+        description: "Please add a phone number to your profile first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await sendAccountVerification({ phone_number: user.phone_number });
+      if (result.success) {
+        toast({
+          title: "Verification code sent",
+          description: `Code sent to ${user.phone_number}. Please check your messages.`
+        });
+        setCodeSent(true);
+      } else {
+        toast({
+          title: "Failed to send code",
+          description: result.error || "Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to send code",
+        description: "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyAccount = async () => {
+    if (!smsVerificationCode || smsVerificationCode.length !== 6) {
+      toast({
+        title: "Invalid code",
+        description: "Please enter a valid 6-digit verification code.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await verifyAccount({ verification_code: smsVerificationCode });
+      if (result.success) {
+        toast({
+          title: "Account verified",
+          description: "Your account has been successfully verified via SMS."
+        });
+        setSmsVerificationCode("");
+        setCodeSent(false);
+        // Refresh user data
+        if (updateProfile) {
+          updateProfile({ phone_verified: true, is_verified: true });
+        }
+      } else {
+        toast({
+          title: "Verification failed",
+          description: result.error || "Invalid verification code. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Verification failed",
+        description: "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderCategoryContent = () => {
     const category = settingsCategories.find(cat => cat.id === currentCategory);
     if (!category) return null;
@@ -1373,6 +1578,111 @@ const Settings = () => {
               </CardContent>
             </Card>
 
+            {/* SMS Verification */}
+            {!user?.phone_verified && (
+              <Card className="glass border-0">
+                <CardHeader className="p-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Phone className="w-4 h-4" />
+                    SMS Account Verification
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 p-4 pt-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-foreground text-sm">Verification Status</h4>
+                      <p className="text-xs text-text-subtle">
+                        {user?.phone_verified ? "Verified" : "Not verified"}
+                      </p>
+                    </div>
+                    <Badge variant={user?.phone_verified ? "default" : "secondary"} className="text-xs">
+                      {user?.phone_verified ? "Verified" : "Unverified"}
+                    </Badge>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <h5 className="font-medium text-blue-900 text-sm mb-1">Verify Your Phone Number</h5>
+                    <p className="text-xs text-blue-800">
+                      Add an extra layer of security by verifying your phone number with SMS.
+                    </p>
+                  </div>
+
+                  {!codeSent ? (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Phone Number</Label>
+                        <Input
+                          value={user?.phone_number || ""}
+                          disabled
+                          className="glass-subtle border-0 text-sm bg-muted/50"
+                        />
+                        <p className="text-xs text-text-subtle">
+                          We'll send a verification code to this number
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleSendVerificationCode}
+                        disabled={isLoading || isSendingCode}
+                        className="w-full text-sm"
+                      >
+                        <Phone className="w-4 h-4 mr-2" />
+                        {isSendingCode ? "Sending..." : "Send Verification Code"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="verificationCode" className="text-sm">Verification Code</Label>
+                        <Input
+                          id="verificationCode"
+                          placeholder="Enter 6-digit code"
+                          value={smsVerificationCode}
+                          onChange={(e) => setSmsVerificationCode(e.target.value)}
+                          className="glass-subtle border-0 text-sm text-center text-lg tracking-widest"
+                          maxLength={6}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                        <p className="text-xs text-text-subtle">
+                          Check your phone for the verification code sent via SMS
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleVerifyAccount}
+                          disabled={isLoading || isVerifying || smsVerificationCode.length !== 6}
+                          className="flex-1 text-sm"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          {isVerifying ? "Verifying..." : "Verify Account"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCodeSent(false);
+                            setSmsVerificationCode("");
+                          }}
+                          disabled={isLoading}
+                          className="text-sm"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSendVerificationCode}
+                        disabled={isLoading || isSendingCode}
+                        className="w-full text-xs"
+                      >
+                        Didn't receive code? Resend
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Active Sessions */}
             <Card className="glass border-0">
               <CardHeader className="p-4">
@@ -1599,7 +1909,7 @@ const Settings = () => {
                     <Users className="w-4 h-4" />
                     Team Members
                   </div>
-                  <Button size="sm" className="text-xs">
+                  <Button size="sm" className="text-xs" onClick={() => setInviteOpen(true)}>
                     <Plus className="w-3 h-3 mr-1" />
                     Invite
                   </Button>
@@ -1607,26 +1917,42 @@ const Settings = () => {
               </CardHeader>
               <CardContent className="p-4 pt-0">
                 <div className="space-y-3">
-                  {teamMembers.map((member) => (
+                  {Array.isArray(team.members) && team.members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-gradient-surface border border-border-subtle">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
+                          <AvatarImage src={member.user_avatar || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {member.name.split(" ").map(n => n[0]).join("")}
+                            {member.user_name ? member.user_name.split(" ").map(n => n[0]).join("") : 
+                             member.user_email ? member.user_email.substring(0, 2).toUpperCase() :
+                             "AU"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-foreground text-sm">{member.name}</p>
-                          <p className="text-xs text-text-subtle">{member.email}</p>
+                          <p className="font-medium text-foreground text-sm">
+                            {member.user_name || member.user_email || "Unknown User"}
+                          </p>
+                          <p className="text-xs text-text-subtle">
+                            {member.user_email || "No email"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs px-1 py-0">{member.role}</Badge>
+                        <Badge variant="outline" className="text-xs px-1 py-0">{member.role_display || member.role}</Badge>
                         <Badge
-                          variant={member.status === "active" ? "default" : "secondary"}
-                          className="text-xs px-1 py-0"
+                          variant={
+                            member.status === "active" 
+                              ? "default" 
+                              : member.status === 'pending' 
+                                ? 'secondary' 
+                                : 'secondary'
+                          }
+                          className={`text-xs px-1 py-0 ${member.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : ''}`}
                         >
-                          {member.status}
+                          {member.status_display || member.status}
+                          {member.status === 'pending' && (
+                            <span className="ml-1 animate-pulse">⏳</span>
+                          )}
                         </Badge>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1635,22 +1961,70 @@ const Settings = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="glass">
-                            <DropdownMenuItem className="text-xs">
+                            <DropdownMenuItem className="text-xs" onClick={() => handleChangeMemberRole(member, member.role === 'agent' ? 'admin' : 'agent')}>
                               <Edit className="w-3 h-3 mr-2" />
-                              Change Role
+                              {member.role === 'agent' ? 'Promote to Admin' : 'Demote to Agent'}
                             </DropdownMenuItem>
+                            {member.status !== 'pending' && (
+                              <DropdownMenuItem className="text-xs" onClick={() => handleToggleMemberStatus(member)}>
+                                <RefreshCw className="w-3 h-3 mr-2" />
+                                {member.status === 'active' ? 'Suspend' : 'Activate'}
+                              </DropdownMenuItem>
+                            )}
+                            {member.status === 'pending' && (
+                              <DropdownMenuItem className="text-xs" onClick={() => handleResendInvitation(member)}>
+                                <Mail className="w-3 h-3 mr-2" />
+                                Resend Invitation
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="text-destructive text-xs">
                               <Trash2 className="w-3 h-3 mr-2" />
-                              Remove
+                              <span onClick={() => handleRemoveMember(member)}>Remove</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                     </div>
                   ))}
+                  {(!Array.isArray(team.members) || team.members.length === 0) && (
+                    <div className="p-4 rounded-lg bg-muted/30 text-xs text-text-subtle">
+                      {team.isLoading ? 'Loading...' : 'No members yet.'}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
+
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogContent className="glass">
+                <DialogHeader>
+                  <DialogTitle>Invite Team Member</DialogTitle>
+                  <DialogDescription>Send an invitation email to join your team.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="inviteEmail">Email</Label>
+                    <Input id="inviteEmail" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="inviteRole">Role</Label>
+                    <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as TeamRole)}>
+                      <SelectTrigger id="inviteRole" className="glass-subtle border-0">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="agent">Agent</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setInviteOpen(false)} className="text-xs">Cancel</Button>
+                  <Button onClick={handleInviteMember} className="text-xs">Send Invite</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         );
 

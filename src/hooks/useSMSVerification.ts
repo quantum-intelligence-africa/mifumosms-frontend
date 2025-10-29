@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { API_CONFIG } from '@/config/api';
 
-const API_BASE_URL = 'https://mifumosms.servehttp.com/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 interface SMSVerificationResponse {
 	success: boolean;
 	error?: string;
+	error_code?: number; // Error code from backend
+	errors?: Record<string, string[]>; // Field-level validation errors
 	phone_number?: string;
 	attempts_remaining?: number;
 	locked_until?: string;
@@ -31,7 +34,8 @@ export const useSMSVerification = () => {
 		setIsSendingCode(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
-			const response = await fetch(`${API_BASE_URL}/auth/sms/forgot-password/`, {
+			
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.FORGOT_PASSWORD}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -49,9 +53,37 @@ export const useSMSVerification = () => {
 					locked_until: result.locked_until,
 				};
 			} else {
+				// Check for insufficient balance error (error_code: 102)
+				if (result.error_code === 102 || result.error?.toLowerCase().includes('balance')) {
+					return {
+						success: false,
+						error: 'SMS service is temporarily unavailable. Please contact the administrator.',
+						error_code: 102,
+						attempts_remaining: result.attempts_remaining,
+						locked_until: result.locked_until,
+					};
+				}
+				
+				// Parse detailed error messages
+				let errorMessage = result.error || result.detail || 'Failed to send reset code';
+				
+				// If there are field-level errors, format them nicely
+				if (result.errors && typeof result.errors === 'object') {
+					const errorParts: string[] = [];
+					for (const [field, messages] of Object.entries(result.errors)) {
+						const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
+						errorParts.push(`${field}: ${joined}`);
+					}
+					if (errorParts.length > 0) {
+						errorMessage = errorParts.join(' | ');
+					}
+				}
+				
 				return {
 					success: false,
-					error: result.error || result.detail || 'Failed to send reset code',
+					error: errorMessage,
+					error_code: result.error_code,
+					errors: result.errors,
 					attempts_remaining: result.attempts_remaining,
 					locked_until: result.locked_until,
 				};
@@ -70,7 +102,7 @@ export const useSMSVerification = () => {
 		setIsSendingCode(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
-			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -91,9 +123,25 @@ export const useSMSVerification = () => {
 					locked_until: result.locked_until,
 				};
 			} else {
+				// Parse detailed error messages
+				let errorMessage = result.error || result.detail || 'Failed to send verification code';
+				
+				// If there are field-level errors, format them nicely
+				if (result.errors && typeof result.errors === 'object') {
+					const errorParts: string[] = [];
+					for (const [field, messages] of Object.entries(result.errors)) {
+						const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
+						errorParts.push(`${field}: ${joined}`);
+					}
+					if (errorParts.length > 0) {
+						errorMessage = errorParts.join(' | ');
+					}
+				}
+				
 				return {
 					success: false,
-					error: result.error || result.detail || 'Failed to send verification code',
+					error: errorMessage,
+					errors: result.errors,
 					attempts_remaining: result.attempts_remaining,
 					locked_until: result.locked_until,
 				};
@@ -112,40 +160,56 @@ export const useSMSVerification = () => {
 		setIsVerifying(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
-			const response = await fetch(`${API_BASE_URL}/auth/sms/verify-code/`, {
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE}`, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					phone_number: formattedNumber,
-					verification_code: data.verification_code
-				}),
-			});
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				phone_number: formattedNumber,
+				verification_code: data.verification_code
+			}),
+		});
 
-			const result = await response.json();
+		const result = await response.json();
 
-			if (response.ok) {
-				return {
-					success: true,
-					phone_number: result.phone_number,
-				};
-			} else {
-				return {
-					success: false,
-					error: result.error || result.detail || 'Invalid verification code',
-					attempts_remaining: result.attempts_remaining,
-					locked_until: result.locked_until,
-				};
+		if (response.ok) {
+			return {
+				success: true,
+				phone_number: result.phone_number,
+			};
+		} else {
+			// Parse detailed error messages
+			let errorMessage = result.error || result.detail || 'Invalid verification code';
+			
+			// If there are field-level errors, format them nicely
+			if (result.errors && typeof result.errors === 'object') {
+				const errorParts: string[] = [];
+				for (const [field, messages] of Object.entries(result.errors)) {
+					const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
+					errorParts.push(`${field}: ${joined}`);
+				}
+				if (errorParts.length > 0) {
+					errorMessage = errorParts.join(' | ');
+				}
 			}
-		} catch (error) {
+			
 			return {
 				success: false,
-				error: 'Network error. Please try again.',
+				error: errorMessage,
+				errors: result.errors,
+				attempts_remaining: result.attempts_remaining,
+				locked_until: result.locked_until,
 			};
-		} finally {
-			setIsVerifying(false);
 		}
+	} catch (error) {
+		return {
+			success: false,
+			error: 'Network error. Please try again.',
+		};
+	} finally {
+		setIsVerifying(false);
+	}
 	};
 
 	const resetPassword = async (data: {
@@ -156,7 +220,7 @@ export const useSMSVerification = () => {
 	}): Promise<PasswordResetResponse> => {
 		try {
 			const formattedNumber = data.phone_number.trim();
-			const response = await fetch(`${API_BASE_URL}/auth/sms/reset-password/`, {
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.RESET_PASSWORD}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -171,16 +235,31 @@ export const useSMSVerification = () => {
 
 			const result = await response.json();
 
-			if (response.ok) {
-				return {
-					success: true,
-				};
-			} else {
-				return {
-					success: false,
-					error: result.error || result.detail || 'Failed to reset password',
-				};
+		if (response.ok) {
+			return {
+				success: true,
+			};
+		} else {
+			// Parse detailed error messages
+			let errorMessage = result.error || result.detail || 'Failed to reset password';
+			
+			// If there are field-level errors, format them nicely
+			if (result.errors && typeof result.errors === 'object') {
+				const errorParts: string[] = [];
+				for (const [field, messages] of Object.entries(result.errors)) {
+					const joined = Array.isArray(messages) ? messages.join(', ') : String(messages);
+					errorParts.push(`${field}: ${joined}`);
+				}
+				if (errorParts.length > 0) {
+					errorMessage = errorParts.join(' | ');
+				}
 			}
+			
+			return {
+				success: false,
+				error: errorMessage,
+			};
+		}
 		} catch (error) {
 			return {
 				success: false,
@@ -193,7 +272,7 @@ export const useSMSVerification = () => {
 		setIsSendingCode(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
-			const response = await fetch(`${API_BASE_URL}/auth/sms/send-code/`, {
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -242,7 +321,7 @@ export const useSMSVerification = () => {
 				};
 			}
 
-			const response = await fetch(`${API_BASE_URL}/auth/sms/confirm-account/`, {
+			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.CONFIRM_ACCOUNT}`, {
 				method: 'POST',
 				headers: {
 					'Authorization': `Bearer ${token}`,

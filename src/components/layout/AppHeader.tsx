@@ -19,7 +19,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -72,7 +72,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               </Avatar>
               {!isMobile && (
                 <span className="text-sm font-medium">
-                  {user?.first_name || 'User'}
+                  {isLoading ? 'Loading...' : (user?.first_name || 'User')}
                 </span>
               )}
             </Button>
@@ -81,10 +81,10 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {user?.full_name || `${user?.first_name} ${user?.last_name}`}
+                  {isLoading ? 'Loading...' : (user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User')}
                 </p>
                 <p className="text-xs leading-none text-text-subtle">
-                  {user?.email}
+                  {isLoading ? '...' : (user?.email || 'No email')}
                 </p>
               </div>
             </DropdownMenuLabel>

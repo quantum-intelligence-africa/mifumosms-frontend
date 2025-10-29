@@ -54,7 +54,7 @@ interface AppSidebarProps {
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const [smsOpen, setSmsOpen] = useState(true);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const isMobile = useIsMobile();
 
   // Navigation items
@@ -233,10 +233,10 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-xs lg:text-sm font-medium text-foreground truncate">
-              {user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User'}
+              {isLoading ? 'Loading...' : (user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User')}
             </p>
             <p className="text-xs text-text-subtle truncate">
-              {user?.email || 'No email'}
+              {isLoading ? '...' : (user?.email || 'No email')}
             </p>
           </div>
           <Tooltip>
