@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
@@ -175,6 +175,15 @@ export const useDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Track if we've already logged errors to avoid console spam
+  const errorLoggedRef = useRef({
+    metrics: false,
+    overview: false,
+    activity: false,
+    performance: false,
+    senderIds: false
+  });
+
   const fetchDashboardData = async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
@@ -185,133 +194,169 @@ export const useDashboard = () => {
       const token = localStorage.getItem('access_token');
       if (!token) {
         setError('No authentication token found');
-        toast({
-          title: "Authentication required",
-          description: "Please log in to view the dashboard",
-          variant: "destructive"
-        });
+        if (isInitialLoad) {
+          toast({
+            title: "Authentication required",
+            description: "Please log in to view the dashboard",
+            variant: "destructive"
+          });
+        }
         return;
       }
 
-      // Fetch dashboard data using the correct API endpoints
-      const [metricsResponse, overviewResponse, activityResponse, performanceResponse, senderIdsResponse] = await Promise.all([
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.METRICS}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.DASHBOARD.OVERVIEW}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
+      // Use apiClient for dashboard overview and metrics
+      const [metricsResponse, overviewResponse, activityResponse, performanceResponse, senderIdsResponse] = await Promise.allSettled([
+        apiClient.getDashboardMetrics(),
+        apiClient.getDashboardOverview(),
         fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.ACTIVITY.RECENT}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        }),
+        }).catch(() => null),
         fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.PERFORMANCE.OVERVIEW}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        }),
+        }).catch(() => null),
         fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_IDS.BASE}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        })
+        }).catch(() => null)
       ]);
 
       // Handle metrics response
-      if (metricsResponse.ok) {
-        const metricsData: DashboardMetricsResponse = await metricsResponse.json();
-        if (metricsData.success) {
-          setMetrics(metricsData.data);
-        } else {
-          console.error('Metrics API error:', metricsData);
-          setError('Failed to fetch dashboard metrics');
+      if (metricsResponse.status === 'fulfilled' && metricsResponse.value.success) {
+        const metricsData = metricsResponse.value.data;
+        if (metricsData) {
+          // Transform apiClient response to match expected format
+          setMetrics({
+            total_messages: {
+              value: metricsData.total_messages?.value || 0,
+              description: metricsData.total_messages?.description || ''
+            },
+            active_contacts: {
+              value: metricsData.active_contacts?.value || 0,
+              description: metricsData.active_contacts?.description || ''
+            },
+            campaign_success: {
+              value: parseFloat(metricsData.campaign_success?.value?.toString() || '0'),
+              unit: '%',
+              description: metricsData.campaign_success?.description || ''
+            },
+            senderId: {
+              value: metricsData.sender_id?.value || 0,
+              description: metricsData.sender_id?.description || ''
+            }
+          });
+          errorLoggedRef.current.metrics = false; // Reset error flag on success
         }
-      } else {
-        console.error('Metrics fetch failed:', metricsResponse.status);
-        setError('Failed to fetch dashboard metrics');
+      } else if (!errorLoggedRef.current.metrics && isInitialLoad) {
+        // Only log once on initial load
+        console.warn('Dashboard metrics endpoint not available or returned error');
+        errorLoggedRef.current.metrics = true;
       }
 
       // Handle overview response
-      if (overviewResponse.ok) {
-        const overviewData: DashboardOverviewResponse = await overviewResponse.json();
-        if (overviewData.success) {
-          setOverview(overviewData.data);
-          // Use the campaigns from overview data which has all required fields
-          setRecentCampaigns(overviewData.data.recent_campaigns as Campaign[]);
-        } else {
-          console.error('Overview API error:', overviewData);
+      if (overviewResponse.status === 'fulfilled' && overviewResponse.value.success) {
+        const overviewData = overviewResponse.value.data;
+        if (overviewData) {
+          setOverview(overviewData as DashboardOverviewResponse['data']);
+          setRecentCampaigns(overviewData.recent_campaigns as Campaign[]);
+          errorLoggedRef.current.overview = false; // Reset error flag on success
         }
-      } else {
-        console.error('Overview fetch failed:', overviewResponse.status);
+      } else if (!errorLoggedRef.current.overview && isInitialLoad) {
+        console.warn('Dashboard overview endpoint not available or returned error');
+        errorLoggedRef.current.overview = true;
       }
 
-      // Note: campaignsResponse is no longer needed as we use overview data
-      // This endpoint might not exist or return different format
-      // if (campaignsResponse.ok) {
-      //   const campaignsData: RecentCampaignsResponse = await campaignsResponse.json();
-      //   if (campaignsData.success) {
-      //     setRecentCampaigns(campaignsData.summary.recent_campaigns);
-      //   } else {
-      //     console.error('Campaigns API error:', campaignsData);
-      //   }
-      // } else {
-      //   console.error('Campaigns fetch failed:', campaignsResponse.status);
-      // }
-
       // Handle activity response
-      if (activityResponse.ok) {
-        const activityData: RecentActivityResponse = await activityResponse.json();
-        if (activityData.success) {
-          setRecentActivity(activityData.data.activities);
-        } else {
-          console.error('Activity API error:', activityData);
+      if (activityResponse.status === 'fulfilled' && activityResponse.value) {
+        const response = activityResponse.value;
+        if (response.ok) {
+          try {
+            const activityData: RecentActivityResponse = await response.json();
+            if (activityData.success) {
+              setRecentActivity(activityData.data.activities);
+              errorLoggedRef.current.activity = false;
+            }
+          } catch (e) {
+            if (!errorLoggedRef.current.activity && isInitialLoad) {
+              console.warn('Failed to parse activity response');
+              errorLoggedRef.current.activity = true;
+            }
+          }
+        } else if (!errorLoggedRef.current.activity && isInitialLoad && response.status === 400) {
+          // Only log 400 errors once on initial load - suppress subsequent errors
+          errorLoggedRef.current.activity = true;
         }
-      } else {
-        console.error('Activity fetch failed:', activityResponse.status);
+      } else if (!errorLoggedRef.current.activity && isInitialLoad) {
+        console.warn('Activity endpoint request failed');
+        errorLoggedRef.current.activity = true;
       }
 
       // Handle performance response
-      if (performanceResponse.ok) {
-        const performanceData: PerformanceOverviewResponse = await performanceResponse.json();
-        if (performanceData.success) {
-          setPerformanceOverview(performanceData.data);
-        } else {
-          console.error('Performance API error:', performanceData);
+      if (performanceResponse.status === 'fulfilled' && performanceResponse.value) {
+        const response = performanceResponse.value;
+        if (response.ok) {
+          try {
+            const performanceData: PerformanceOverviewResponse = await response.json();
+            if (performanceData.success) {
+              setPerformanceOverview(performanceData.data);
+              errorLoggedRef.current.performance = false;
+            }
+          } catch (e) {
+            if (!errorLoggedRef.current.performance && isInitialLoad) {
+              console.warn('Failed to parse performance response');
+              errorLoggedRef.current.performance = true;
+            }
+          }
+        } else if (!errorLoggedRef.current.performance && isInitialLoad && response.status === 400) {
+          // Suppress 400 errors after first log
+          errorLoggedRef.current.performance = true;
         }
-      } else {
-        console.error('Performance fetch failed:', performanceResponse.status);
+      } else if (!errorLoggedRef.current.performance && isInitialLoad) {
+        console.warn('Performance endpoint request failed');
+        errorLoggedRef.current.performance = true;
       }
 
       // Handle sender IDs response
-      if (senderIdsResponse.ok) {
-        const senderIdsData: SenderIdsResponse = await senderIdsResponse.json();
-        console.log('Sender IDs API Response:', senderIdsData);
-        console.log('Sender IDs Count:', senderIdsData.data?.length);
-        if (senderIdsData.success) {
-          setSenderIds(senderIdsData.data);
-        } else {
-          console.error('Sender IDs API error:', senderIdsData);
+      if (senderIdsResponse.status === 'fulfilled' && senderIdsResponse.value) {
+        const response = senderIdsResponse.value;
+        if (response.ok) {
+          try {
+            const senderIdsData: SenderIdsResponse = await response.json();
+            if (senderIdsData.success) {
+              setSenderIds(senderIdsData.data);
+              errorLoggedRef.current.senderIds = false;
+            }
+          } catch (e) {
+            if (!errorLoggedRef.current.senderIds && isInitialLoad) {
+              console.warn('Failed to parse sender IDs response');
+              errorLoggedRef.current.senderIds = true;
+            }
+          }
+        } else if (!errorLoggedRef.current.senderIds && isInitialLoad && response.status === 400) {
+          // Suppress 400 errors after first log
+          errorLoggedRef.current.senderIds = true;
         }
-      } else {
-        console.error('Sender IDs fetch failed:', senderIdsResponse.status);
+      } else if (!errorLoggedRef.current.senderIds && isInitialLoad) {
+        console.warn('Sender IDs endpoint request failed');
+        errorLoggedRef.current.senderIds = true;
       }
 
-      // Show error toast if critical data failed to load
-      if (!metricsResponse.ok) {
+      // Only show toast on initial load if critical data failed
+      if (isInitialLoad && (
+        (metricsResponse.status === 'fulfilled' && !metricsResponse.value?.success) ||
+        (overviewResponse.status === 'fulfilled' && !overviewResponse.value?.success)
+      )) {
         toast({
-          title: "Failed to load dashboard",
-          description: "Some data may not be available. Please refresh to try again.",
-          variant: "destructive"
+          title: "Partial data loaded",
+          description: "Some dashboard data may not be available.",
+          variant: "default"
         });
       }
     } catch (error) {

@@ -25,7 +25,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
     newTag: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { createContact } = useContacts();
 
   const handleInputChange = (field: string, value: string) => {
@@ -90,14 +90,14 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
       setIsLoading(true);
-      
+
       // Normalize phone number
       const phoneInfo = normalizePhoneNumber(formData.phone);
       if (!phoneInfo.isValid) {
@@ -121,7 +121,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
       });
       setErrors({});
       setIsOpen(false);
-      
+
       if (onContactAdded) {
         onContactAdded();
       }
@@ -156,7 +156,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
             Add New Contact
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name Field */}
           <div className="space-y-2">
@@ -249,7 +249,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               {/* Display Tags */}
               {formData.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">

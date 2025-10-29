@@ -99,8 +99,8 @@ const PurchaseSMS = () => {
       name: "Lite",
       package_type: "lite",
       credits: 5000, // Example amount within range: 1 to 49,999
-      price: "150000.00", // 5000 * 30
-      unit_price: "30.00",
+      price: "90000.00", // 5000 * 18
+      unit_price: "18.00",
       subtitle: "1 to 49,999 SMS",
       description: "Perfect for small businesses and startups",
       is_popular: false,
@@ -122,8 +122,8 @@ const PurchaseSMS = () => {
       credits: 50000, // Minimum of range: 50,000 to 149,999
       subtitle: "50,000 to 149,999 SMS",
       description: "Ideal for growing businesses",
-      price: "1250000.00", // 50000 * 25
-      unit_price: "25.00",
+      price: "700000.00", // 50000 * 14
+      unit_price: "14.00",
       is_popular: true,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -133,7 +133,7 @@ const PurchaseSMS = () => {
         "Advanced delivery analytics",
         "Campaign scheduling"
       ],
-      savings_percentage: 16.7
+      savings_percentage: 22.2
     },
     {
       id: "pro",
@@ -142,8 +142,8 @@ const PurchaseSMS = () => {
       credits: 250000, // Minimum of range: 250,000+
       subtitle: "250,000 SMS and above",
       description: "For established businesses with high volume",
-      price: "4500000.00", // 250000 * 18
-      unit_price: "18.00",
+      price: "3000000.00", // 250000 * 12
+      unit_price: "12.00",
       is_popular: false,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -153,7 +153,7 @@ const PurchaseSMS = () => {
         "Advanced analytics",
         "API access"
       ],
-      savings_percentage: 28.0
+      savings_percentage: 33.3
     },
     {
       id: "enterprise",
@@ -302,9 +302,9 @@ const PurchaseSMS = () => {
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = useMemo(() => [
-    { id: "lite", name: "Lite", min: 1, max: 49999, rate: 30, rangeLabel: "1 to 49,999 SMS" },
-    { id: "standard", name: "Standard", min: 50000, max: 149999, rate: 25, rangeLabel: "50,000 to 149,999 SMS" },
-    { id: "pro", name: "Pro", min: 250000, rate: 18, rangeLabel: "250,000 SMS and above" },
+    { id: "lite", name: "Lite", min: 1, max: 49999, rate: 18, rangeLabel: "1 to 49,999 SMS" },
+    { id: "standard", name: "Standard", min: 50000, max: 149999, rate: 14, rangeLabel: "50,000 to 149,999 SMS" },
+    { id: "pro", name: "Pro", min: 250000, rate: 12, rangeLabel: "250,000 SMS and above" },
   ], []);
 
   const selectedPkg = packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage);
@@ -660,27 +660,27 @@ const PurchaseSMS = () => {
 
             {/* Package Selection */}
             <div>
-              <h2 className="font-heading text-lg sm:text-xl font-semibold mb-3">Choose a Package</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">Choose a Package</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {packagesLoading ? (
                   // Skeleton loaders for packages
-                  Array.from({ length: 4 }).map((_, index) => (
-                    <Card key={index} className="p-3 sm:p-4 glass">
-                      <Skeleton className="h-6 w-20 mb-2" />
-                      <Skeleton className="h-8 w-24 mb-3" />
-                      <div className="space-y-2 mb-3">
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="p-3 sm:p-4 glass h-full">
+                      <Skeleton className="h-5 w-16 mb-2" />
+                      <Skeleton className="h-7 w-24 mb-3" />
+                      <div className="space-y-2 mb-3 flex-1">
                         <Skeleton className="h-4 w-full" />
                         <Skeleton className="h-4 w-3/4" />
                         <Skeleton className="h-4 w-1/2" />
                       </div>
-                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-5 w-full" />
                     </Card>
                   ))
                 ) : (
-                  (packages.length > 0 ? packages : defaultPackages).map((pkg) => (
+                  (packages.length > 0 ? packages : defaultPackages).slice(0, 3).map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative ${
+                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative h-full flex flex-col ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -693,36 +693,36 @@ const PurchaseSMS = () => {
                     }}
                   >
                     {pkg.is_popular && (
-                      <Badge className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs">
+                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-1">
                         Most Popular
                       </Badge>
                     )}
-                    <h3 className="font-heading text-base sm:text-lg font-semibold mb-2">{pkg.name}</h3>
+                    <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-gray-800">{pkg.name}</h3>
                     <div className="mb-3">
-                      <p className="text-xl sm:text-2xl font-bold text-foreground">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
                         TZS {pkg.unit_price}/SMS
                       </p>
-                      <p className="text-xs text-text-subtle">
+                      <p className="text-xs text-gray-500">
                         {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
                          pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
                          pkg.id === 'pro' ? '250,000 SMS and above' :
                          'Custom')}
                       </p>
                     </div>
-                    <div className="space-y-1 mb-3">
+                    <div className="space-y-2 mb-3 flex-1">
                       {/* <div className="flex items-center text-xs">
                         <Check className="w-3 h-3 mr-1 text-success" />
                         <span>Never expires</span>
                       </div> */}
                       {pkg.features?.map((feature, i) => (
-                        <div key={i} className="flex items-center text-xs">
-                          <Check className="w-3 h-3 mr-1 text-success" />
+                        <div key={i} className="flex items-start text-xs text-gray-700">
+                          <Check className="w-3 h-3 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                           <span>{feature}</span>
                         </div>
                       ))}
                     </div>
                     {selectedPackage === pkg.id && (
-                      <Badge variant="secondary" className="w-full justify-center text-xs">
+                      <Badge variant="secondary" className="w-full justify-center text-[10px] mt-auto">
                         Selected
                       </Badge>
                     )}
@@ -744,24 +744,38 @@ const PurchaseSMS = () => {
                   <Input
                     type="number"
                     placeholder="e.g., 5000"
-                    value={customCredits}
+                    value={customCredits !== "" ? customCredits : (selectedPackage ? String(selectedPkg?.credits || "") : "")}
                     onChange={(e) => {
-                      setCustomCredits(e.target.value);
-                      setSelectedPackage("");
-                      setSelectedPackageId("");
+                      const value = e.target.value;
+                      setCustomCredits(value);
+                      if (selectedPackage) {
+                        // Switch to custom mode when user edits credits
+                        setSelectedPackage("");
+                        setSelectedPackageId("");
+                      }
                       setPaymentMethod(""); // Reset payment method when custom amount changes
+                    }}
+                    onFocus={() => {
+                      if (selectedPackage && customCredits === "") {
+                        // Prefill with selected package credits, then switch to custom mode
+                        setCustomCredits(String(selectedPkg?.credits || ""));
+                        setSelectedPackage("");
+                        setSelectedPackageId("");
+                      }
                     }}
                     className={`glass-subtle border-0 h-9 text-sm ${
                       customCreditsError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                     }`}
                     min="100"
                   />
-                  {customCreditsError && (
+                  {selectedPackage && customCredits === "" ? (
+                    <p className="text-xs text-text-subtle">Base credits from selected package. Click to edit and customize.</p>
+                  ) : customCreditsError ? (
                     <p className="text-xs text-red-500 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
                       {customCreditsError}
                     </p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Total Cost</Label>
