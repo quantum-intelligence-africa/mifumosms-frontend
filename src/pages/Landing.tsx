@@ -72,9 +72,9 @@ const Landing = () => {
 
   type Tier = { name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
   const tiers: Tier[] = useMemo(() => [
-    { name: "Lite", min: 1, max: 49999, rate: 30, rangeLabel: "1 to 49,999 SMS" },
-    { name: "Standard", min: 50000, max: 149999, rate: 25, rangeLabel: "50,000 to 149,999 SMS" },
-    { name: "Pro", min: 250000, rate: 18, rangeLabel: "250,000 SMS and above" },
+    { name: "Lite", min: 1, max: 49999, rate: 18, rangeLabel: "1 to 49,999 SMS" },
+    { name: "Standard", min: 50000, max: 149999, rate: 14, rangeLabel: "50,000 to 149,999 SMS" },
+    { name: "Pro", min: 250000, rate: 12, rangeLabel: "250,000 SMS and above" },
   ], []);
 
   const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
@@ -293,7 +293,7 @@ const Landing = () => {
   const pricing = [
     {
       name: "Lite",
-      rate: "TZS 30/SMS",
+      rate: "TZS 18/SMS",
       credits: "1 to 49,999 SMS",
       features: [
         "Instant top-up",
@@ -303,7 +303,7 @@ const Landing = () => {
     },
     {
       name: "Standard",
-      rate: "TZS 25/SMS",
+      rate: "TZS 14/SMS",
       credits: "50,000 to 149,999 SMS",
       features: [
         "Priority top-up & support",
@@ -314,22 +314,12 @@ const Landing = () => {
     },
     {
       name: "Pro",
-      rate: "TZS 18/SMS",
+      rate: "TZS 12/SMS",
       credits: "250,000 SMS and above",
       features: [
         "Bulk campaign tools",
         "Advanced analytics",
         "API access",
-      ],
-    },
-    {
-      name: "Enterprise",
-      rate: "Custom (≤12 TZS/SMS)",
-      credits: "Enterprise (1M+ SMS)",
-      features: [
-        "Dedicated account manager",
-        "Custom invoicing & contracts",
-        "Enterprise API & SSO",
       ],
     }
   ];
@@ -612,7 +602,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {pricing.map((plan, index) => (
               <div key={index} className="relative group">
                 {plan.popular && (
@@ -751,11 +741,7 @@ const Landing = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Rate per SMS:</span>
                       <span className="font-semibold text-gray-900">
-                        {activeTier ? (
-                          activeTier.name === 'Enterprise'
-                            ? (activeTier.note || 'Custom')
-                            : `TZS ${activeTier.rate}/SMS`
-                        ) : '—'}
+                        {activeTier ? `TZS ${activeTier.rate}/SMS` : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
