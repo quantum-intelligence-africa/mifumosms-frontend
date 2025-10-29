@@ -1148,10 +1148,9 @@ type="tel"
 inputMode="tel"
 placeholder={getPhonePlaceholder(createFormData.phone_e164)}
 value={createFormData.phone_e164}
-onChange={(e) => {
-const phoneInfo = normalizePhoneNumber(e.target.value);
-setCreateFormData(prev => ({ ...prev, phone_e164: phoneInfo.normalized }));
-}}
+  onChange={(e) => {
+    setCreateFormData(prev => ({ ...prev, phone_e164: e.target.value }));
+  }}
 className="glass-subtle border-0 text-xs sm:text-sm h-8"
 />
 <p className="text-xs text-text-subtle">
