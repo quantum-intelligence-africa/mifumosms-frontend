@@ -113,6 +113,7 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 const [selectedTags, setSelectedTags] = useState<string[]>([]);
 const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+const [isSelectingAll, setIsSelectingAll] = useState(false);
 const [bulkEditData, setBulkEditData] = useState<Partial<CreateContactRequest>>({
   name: "",
   email: "",
@@ -151,7 +152,7 @@ attributes: contact.attributes || {}
 setIsCreateDialogOpen(true);
 };
 
-const handleBulkSendMessage = () => {
+const handleBulkSendMessage = async () => {
 if (selectedContacts.length === 0) {
 toast({
 title: "No contacts selected",
@@ -161,15 +162,62 @@ variant: "destructive"
 return;
 }
 
-// Get phone numbers for selected contacts
-const selectedContactsData = contacts.filter(contact =>
-selectedContacts.includes(contact.id)
-);
-const phoneNumbers = selectedContactsData.map(contact => contact.phone_e164);
+try {
+setIsBulkActionLoading(true);
+
+// Fetch phone numbers for all selected contacts (fetch all pages without filters since we have specific IDs)
+const phoneNumbers: string[] = [];
+const selectedIdsSet = new Set(selectedContacts);
+let currentPageNum = 1;
+let hasMore = true;
+const pageSizeForFetch = 100;
+
+while (hasMore && phoneNumbers.length < selectedContacts.length) {
+  const response = await apiClient.getContacts({
+    page: currentPageNum,
+    page_size: pageSizeForFetch,
+    // Don't apply filters - we're looking for specific contact IDs
+  });
+
+  if (response.success && response.data) {
+    // Get phone numbers for selected contacts on this page
+    const pagePhoneNumbers = response.data.results
+      .filter(contact => selectedIdsSet.has(contact.id))
+      .map(contact => contact.phone_e164)
+      .filter(phone => phone); // Filter out empty phone numbers
+    phoneNumbers.push(...pagePhoneNumbers);
+
+    hasMore = !!response.data.next;
+    currentPageNum++;
+
+    if (currentPageNum > 1000) break;
+  } else {
+    break;
+  }
+}
+
+if (phoneNumbers.length === 0) {
+  toast({
+    title: "No valid contacts",
+    description: "Selected contacts don't have phone numbers",
+    variant: "destructive"
+  });
+  return;
+}
 
 // Navigate to SMS send page with selected contact phone numbers
 const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
 window.location.href = `/sms/send?contacts=${phoneNumbersParam}`;
+} catch (error) {
+  console.error('Error fetching contacts for bulk send:', error);
+  toast({
+    title: "Failed to send message",
+    description: "An error occurred while preparing contacts. Please try again.",
+    variant: "destructive"
+  });
+} finally {
+  setIsBulkActionLoading(false);
+}
 };
 
 
@@ -264,12 +312,22 @@ return () => clearTimeout(timeoutId);
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [searchQuery]);
 
-const handleSelectContact = (contactId: string) => {
-setSelectedContacts(prev =>
-prev.includes(contactId)
-? prev.filter(id => id !== contactId)
-: [...prev, contactId]
-);
+const handleSelectContact = (contactId: string, checked?: boolean) => {
+setSelectedContacts(prev => {
+  const isSelected = prev.includes(contactId);
+  // If checked parameter is provided, use it; otherwise toggle
+  const shouldSelect = checked !== undefined ? checked : !isSelected;
+
+  if (shouldSelect && !isSelected) {
+    // Add contact if not already selected
+    return [...prev, contactId];
+  } else if (!shouldSelect && isSelected) {
+    // Remove contact if already selected
+    return prev.filter(id => id !== contactId);
+  }
+  // No change needed
+  return prev;
+});
 };
 
 const handleSelectAll = () => {
@@ -298,14 +356,70 @@ if (allCurrentPageSelected) {
 }
 };
 
-const handleSelectAllContacts = () => {
-// This would require fetching all contact IDs from the server
-// For now, we'll show a message that this feature needs backend support
-toast({
-  title: "Select All Contacts",
-  description: "This feature requires backend support to fetch all contact IDs. Currently, you can select all contacts on the current page.",
-  variant: "default"
-});
+const handleSelectAllContacts = async () => {
+  // Check if all contacts are already selected
+  if (selectedContacts.length === totalCount && totalCount > 0) {
+    // Deselect all
+    setSelectedContacts([]);
+    toast({
+      title: "Deselected all contacts",
+      description: `Deselected ${totalCount} contact(s)`,
+    });
+    return;
+  }
+
+  try {
+    setIsSelectingAll(true);
+
+    // Fetch all contact IDs by paginating through all pages
+    const allContactIds: string[] = [];
+    let currentPageNum = 1;
+    let hasMore = true;
+    const pageSizeForFetch = 100; // Use larger page size for fetching IDs
+
+    while (hasMore) {
+      const response = await apiClient.getContacts({
+        page: currentPageNum,
+        page_size: pageSizeForFetch,
+        search: searchQuery.trim() || undefined,
+        tags: filterTag !== "all" ? [filterTag] : undefined,
+      });
+
+      if (response.success && response.data) {
+        const pageContactIds = response.data.results.map(contact => contact.id);
+        allContactIds.push(...pageContactIds);
+
+        // Check if there are more pages
+        hasMore = !!response.data.next;
+        currentPageNum++;
+
+        // Safety check to prevent infinite loops
+        if (currentPageNum > 1000) {
+          console.warn('Reached maximum page limit while fetching all contacts');
+          break;
+        }
+      } else {
+        throw new Error(response.error || 'Failed to fetch contacts');
+      }
+    }
+
+    // Select all fetched contact IDs
+    setSelectedContacts(allContactIds);
+
+    toast({
+      title: "Selected all contacts",
+      description: `Selected ${allContactIds.length} contact(s) from the list`,
+    });
+  } catch (error) {
+    console.error('Error selecting all contacts:', error);
+    toast({
+      title: "Failed to select all contacts",
+      description: error instanceof Error ? error.message : "An error occurred while selecting contacts",
+      variant: "destructive"
+    });
+  } finally {
+    setIsSelectingAll(false);
+  }
 };
 
 const handleTagToggle = (tag: string) => {
@@ -525,7 +639,7 @@ link.click();
 document.body.removeChild(link);
 };
 
-const handleExportSelected = () => {
+const handleExportSelected = async () => {
 if (selectedContacts.length === 0) {
 toast({
 title: "No contacts selected",
@@ -535,9 +649,47 @@ variant: "destructive"
 return;
 }
 
-const contactsToExport = contacts.filter(contact =>
-selectedContacts.includes(contact.id)
-);
+try {
+setIsBulkActionLoading(true);
+
+// Fetch all selected contacts (fetch all pages without filters since we have specific IDs)
+const contactsToExport: Contact[] = [];
+const selectedIdsSet = new Set(selectedContacts);
+let currentPageNum = 1;
+let hasMore = true;
+const pageSizeForFetch = 100;
+
+while (hasMore && contactsToExport.length < selectedContacts.length) {
+  const response = await apiClient.getContacts({
+    page: currentPageNum,
+    page_size: pageSizeForFetch,
+    // Don't apply filters - we're looking for specific contact IDs
+  });
+
+  if (response.success && response.data) {
+    // Get selected contacts from this page
+    const pageContacts = response.data.results.filter(contact =>
+      selectedIdsSet.has(contact.id)
+    );
+    contactsToExport.push(...pageContacts);
+
+    hasMore = !!response.data.next;
+    currentPageNum++;
+
+    if (currentPageNum > 1000) break;
+  } else {
+    break;
+  }
+}
+
+if (contactsToExport.length === 0) {
+  toast({
+    title: "No contacts to export",
+    description: "Selected contacts could not be found",
+    variant: "destructive"
+  });
+  return;
+}
 
 const timestamp = new Date().toISOString().split('T')[0];
 exportToCSV(contactsToExport, `selected-contacts-${timestamp}.csv`);
@@ -546,6 +698,16 @@ toast({
 title: "Export successful",
 description: `Exported ${contactsToExport.length} selected contacts to CSV`,
 });
+} catch (error) {
+  console.error('Error exporting contacts:', error);
+  toast({
+    title: "Export failed",
+    description: "An error occurred while exporting contacts. Please try again.",
+    variant: "destructive"
+  });
+} finally {
+  setIsBulkActionLoading(false);
+}
 };
 
 const handleExportAll = () => {
@@ -886,12 +1048,26 @@ const confirmBulkAddTag = async () => {
   try {
     setIsBulkActionLoading(true);
 
+    const contactCount = selectedContacts.length;
+    const tagCount = selectedTags.length;
     const success = await bulkAddTags(selectedContacts, selectedTags);
 
     if (success) {
       setSelectedContacts([]);
       setSelectedTags([]);
       setIsAddTagDialogOpen(false);
+
+      // Refresh the contact list to show updated tags
+      await fetchContacts({
+        page: currentPage,
+        search: searchQuery.trim() || undefined,
+        tags: filterTag !== "all" ? [filterTag] : undefined,
+      });
+
+      toast({
+        title: "Tags added successfully",
+        description: `Added ${tagCount} tag(s) to ${contactCount} contact(s).`,
+      });
     }
   } catch (error) {
     console.error('Bulk add tag error:', error);
@@ -936,8 +1112,21 @@ const confirmBulkEdit = async () => {
     const success = await bulkEditContacts(selectedContacts, updates);
 
     if (success) {
+      const editedCount = selectedContacts.length;
       setSelectedContacts([]);
       setIsBulkEditDialogOpen(false);
+
+      // Refresh the contact list to show updated data
+      await fetchContacts({
+        page: currentPage,
+        search: searchQuery.trim() || undefined,
+        tags: filterTag !== "all" ? [filterTag] : undefined,
+      });
+
+      toast({
+        title: "Contacts updated successfully",
+        description: `Updated ${editedCount} contact(s).`,
+      });
     }
   } catch (error) {
     console.error('Bulk edit error:', error);
@@ -955,11 +1144,56 @@ const confirmBulkDelete = async () => {
   try {
     setIsBulkActionLoading(true);
 
-    const success = await bulkDeleteContacts(selectedContacts);
+    const deletedCount = selectedContacts.length;
+    const batchSize = 50; // Delete in batches of 50 to avoid API limits
+    const batches: string[][] = [];
 
-    if (success) {
-      setSelectedContacts([]);
-      setIsBulkDeleteDialogOpen(false);
+    // Split selected contacts into batches
+    for (let i = 0; i < selectedContacts.length; i += batchSize) {
+      batches.push(selectedContacts.slice(i, i + batchSize));
+    }
+
+    let totalDeleted = 0;
+    let failedBatches = 0;
+
+    // Delete each batch
+    for (let i = 0; i < batches.length; i++) {
+      try {
+        const success = await bulkDeleteContacts(batches[i]);
+        if (success) {
+          totalDeleted += batches[i].length;
+        } else {
+          failedBatches++;
+          console.error(`Failed to delete batch ${i + 1} of ${batches.length}`);
+        }
+      } catch (error) {
+        failedBatches++;
+        console.error(`Error deleting batch ${i + 1}:`, error);
+      }
+    }
+
+    // Clear selections and close dialog
+    setSelectedContacts([]);
+    setIsBulkDeleteDialogOpen(false);
+
+    // Refresh the contact list to show updated data
+    await fetchContacts({
+      page: 1, // Reset to first page after deletion
+      search: searchQuery.trim() || undefined,
+      tags: filterTag !== "all" ? [filterTag] : undefined,
+    });
+
+    if (failedBatches === 0) {
+      toast({
+        title: "Contacts deleted successfully",
+        description: `${totalDeleted} contact(s) have been permanently deleted.`,
+      });
+    } else {
+      toast({
+        title: "Partial deletion completed",
+        description: `${totalDeleted} out of ${deletedCount} contact(s) were deleted. Some batches may have failed.`,
+        variant: failedBatches === batches.length ? "destructive" : "default"
+      });
     }
   } catch (error) {
     console.error('Bulk delete error:', error);
@@ -1310,14 +1544,26 @@ className="pl-10 glass-subtle border-0 text-sm"
         : "Select Page"
       }
     </Button>
-    {/* <Button
-      variant="outline"
-      size="sm"
-      onClick={handleSelectAllContacts}
-      className="text-xs h-7"
-    >
-      Select All ({totalCount})
-    </Button> */}
+    {totalCount > pageSize && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSelectAllContacts}
+        disabled={isSelectingAll}
+        className="text-xs h-7"
+      >
+        {isSelectingAll ? (
+          <>
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            Loading...
+          </>
+        ) : selectedContacts.length === totalCount && totalCount > 0 ? (
+          `Deselect All (${totalCount})`
+        ) : (
+          `Select All (${totalCount})`
+        )}
+      </Button>
+    )}
   </div>
 </div>
 <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
@@ -1414,7 +1660,7 @@ onClick={() => setSelectedContact(contact)}
 <TableCell onClick={(e) => e.stopPropagation()}>
 <Checkbox
 checked={selectedContacts.includes(contact.id)}
-onCheckedChange={() => handleSelectContact(contact.id)}
+onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
 </TableCell>
