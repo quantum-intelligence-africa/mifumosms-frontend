@@ -23,6 +23,7 @@ import SendSMS from "./pages/sms/SendSMS";
 import PurchaseSMS from "./pages/sms/PurchaseSMS";
 import SenderNames from "./pages/sms/SenderNames";
 import PurchaseHistory from "./pages/sms/PurchaseHistory";
+import IntegrationGuide from "./pages/IntegrationGuide";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -77,6 +78,11 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/integration-guide" element={
+              <ProtectedRoute>
+                <IntegrationGuide />
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={

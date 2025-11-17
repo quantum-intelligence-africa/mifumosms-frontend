@@ -37,15 +37,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!user;
 
+  const persistUser = (data: User | null) => {
+    if (data) {
+      localStorage.setItem('user', JSON.stringify(data));
+    } else {
+      localStorage.removeItem('user');
+    }
+  };
+
+  const mergeUserData = (next: User, prev?: User | null): User => {
+    if (!prev) {
+      return next;
+    }
+    return {
+      ...prev,
+      ...next,
+      email: next.email || prev.email,
+      phone_number: next.phone_number || prev.phone_number,
+      full_name: next.full_name || prev.full_name,
+      first_name: next.first_name || prev.first_name,
+      last_name: next.last_name || prev.last_name,
+    };
+  };
+
+  const updateUserState = (data: User) => {
+    setUser(prev => {
+      const merged = mergeUserData(data, prev);
+      persistUser(merged);
+      return merged;
+    });
+  };
+
+  const clearUserState = () => {
+    setUser(null);
+    persistUser(null);
+  };
+
   // Initialize auth state on app load
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.warn('Failed to parse stored user from storage:', error);
+        localStorage.removeItem('user');
+      }
+    }
+
     const initializeAuth = async () => {
       const token = localStorage.getItem('access_token');
       if (token) {
         try {
           const response = await apiClient.getProfile();
           if (response.data) {
-            setUser(response.data);
+            updateUserState(response.data);
           } else if (response.status === 401 || response.status === 403) {
             // Token is invalid, try to refresh
             const refreshToken = localStorage.getItem('refresh_token');
@@ -55,23 +101,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 apiClient.setToken(refreshResponse.data.access);
                 const profileResponse = await apiClient.getProfile();
                 if (profileResponse.data) {
-                  setUser(profileResponse.data);
+                  updateUserState(profileResponse.data);
                 } else {
                   // Still can't get profile after refresh, clear tokens
                   localStorage.removeItem('access_token');
                   localStorage.removeItem('refresh_token');
                   apiClient.setToken(null);
+                  clearUserState();
                 }
               } else {
                 // Refresh failed, clear tokens
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 apiClient.setToken(null);
+                clearUserState();
               }
             } else {
               // No refresh token, clear access token
               localStorage.removeItem('access_token');
               apiClient.setToken(null);
+              clearUserState();
             }
           } else {
             // Unexpected response but not auth error, keep tokens
@@ -79,10 +128,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } catch (error) {
           console.error('Auth initialization error:', error);
-          
+
           // Never clear tokens on network errors - user might just have poor connection
           const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
-          
+
           if (isNetworkError) {
             // Network error - keep tokens and let user try again or stay logged in
             console.warn('Network error during auth init, keeping tokens');
@@ -108,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.data && response.data.tokens) {
         const { user: userData, tokens } = response.data;
 
-        setUser(userData);
+        updateUserState(userData);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
 
@@ -145,7 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.data && response.data.tokens) {
         const { user: newUser, tokens } = response.data;
-        setUser(newUser);
+        updateUserState(newUser);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
 
@@ -190,7 +239,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      setUser(null);
+      clearUserState();
     }
   };
 
@@ -216,7 +265,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiClient.updateProfile(userData);
 
       if (response.data) {
-        setUser(response.data);
+        updateUserState(response.data);
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Profile update failed' };
@@ -246,7 +295,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await verifyAccountSMS({ verification_code: code });
       if (result.success && user) {
         // Update user verification status
-        setUser({ ...user, phone_verified: true, is_verified: true });
+        const updatedUser = { ...user, phone_verified: true, is_verified: true };
+        updateUserState(updatedUser);
       }
       return { success: result.success, error: result.error };
     } catch (error) {

@@ -153,6 +153,34 @@ export const API_CONFIG = {
 				COMPREHENSIVE: '/billing/history/comprehensive/',
 			},
 		},
+		INTEGRATION: {
+			BASE: '/integration/v1',
+			SMS: {
+				SEND: '/integration/v1/sms/send/',
+				STATUS: (messageId: string) => `/integration/v1/sms/status/${messageId}/`,
+				BALANCE: '/integration/v1/sms/balance/',
+				DELIVERY_REPORTS: '/integration/v1/sms/delivery-reports/',
+			},
+			SENDER_ID: {
+				REQUEST: '/integration/v1/sms/sender-id/request/',
+				REQUESTS: '/integration/v1/sms/sender-id/requests/',
+				AVAILABLE: '/integration/v1/sms/sender-id/available/',
+			},
+			PARTNER: {
+				TENANT_CREATE: '/integration/v1/partner/tenants/create/',
+				TENANT_DETAIL: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/`,
+				PACKAGES: '/integration/v1/partner/packages/',
+				TENANT_CREDITS: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/credits/`,
+				TENANT_PAYMENT_INIT: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/payments/initiate/`,
+				TENANT_PAYMENT_STATUS: (tenantId: string, transactionId: string) =>
+					`/integration/v1/partner/tenants/${tenantId}/payments/${transactionId}/status/`,
+				CUSTOM_PAYMENT_INIT: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/payments/custom/initiate/`,
+				CUSTOM_PAYMENT_STATUS: (tenantId: string, purchaseId: string) =>
+					`/integration/v1/partner/tenants/${tenantId}/payments/custom/${purchaseId}/status/`,
+				PAYMENT_HISTORY: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/payments/history/`,
+				CALCULATE_PRICING: '/integration/v1/partner/pricing/calculate/',
+			},
+		},
 		NOTIFICATIONS: {
 			BASE: '/notifications/',
 			RECENT: '/notifications/recent/',

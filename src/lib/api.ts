@@ -199,6 +199,76 @@ export interface TemplateListResponse {
   };
 }
 
+// Integration API Types
+export interface IntegrationSMSSendRequest {
+  message: string;
+  recipients: string[];
+  sender_id?: string;
+}
+
+export interface IntegrationSMSSendResponse {
+  message_id: string;
+  recipients: string[];
+  successful_sends: number;
+  failed_sends: number;
+  total_recipients: number;
+  cost?: number;
+  currency?: string;
+  provider?: string;
+  sender_id?: string;
+  status: string;
+}
+
+export interface IntegrationDeliveryReport {
+  message_id: string;
+  status: string;
+  recipient_count: number;
+  created_at: string;
+  sender_id: string;
+}
+
+export interface IntegrationSenderIdRequestPayload {
+  sender_id: string;
+  use_case: string;
+}
+
+export interface IntegrationTenantCreateRequest {
+  tenant_id: string;
+  tenant_name: string;
+  owner_email: string;
+  owner_name: string;
+  contact_phone: string;
+  initial_credits?: number;
+}
+
+export interface IntegrationTenantCreditRequest {
+  package_id?: string;
+  credits?: number;
+  payment_reference: string;
+  payment_method: string;
+  amount_paid?: number;
+}
+
+export interface IntegrationPaymentInitiationRequest {
+  package_id: string;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  mobile_money_provider: string;
+}
+
+export interface IntegrationCustomPaymentRequest {
+  credits: number;
+  buyer_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  mobile_money_provider: string;
+}
+
+export interface IntegrationPricingRequest {
+  credits: number;
+}
+
 export interface TemplateFilterParams {
   category?: string;
   language?: string;
@@ -1962,6 +2032,171 @@ class ApiClient {
     sender_id: string;
   }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.STATUS(messageId));
+  }
+
+  // =============================================
+  // INTEGRATION API ENDPOINTS
+  // =============================================
+
+  async integrationSendSMS(data: IntegrationSMSSendRequest): Promise<ApiResponse<IntegrationSMSSendResponse>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SMS.SEND, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationGetMessageStatus(messageId: string): Promise<ApiResponse<IntegrationSMSSendResponse>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SMS.STATUS(messageId));
+  }
+
+  async integrationGetBalance(): Promise<ApiResponse<{
+    account_owner: string;
+    account_owner_name?: string;
+    account_id: string;
+    sms_balance: number;
+    balance_last_updated: string;
+    api_key_prefix?: string;
+    tenant_name?: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SMS.BALANCE);
+  }
+
+  async integrationGetDeliveryReports(params?: {
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<ApiResponse<{
+    messages: IntegrationDeliveryReport[];
+    total: number;
+    page: number;
+    per_page: number;
+  }>> {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.append('start_date', params.start_date);
+    if (params?.end_date) query.append('end_date', params.end_date);
+    if (params?.status) query.append('status', params.status);
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.per_page) query.append('per_page', params.per_page.toString());
+    const endpoint = params ? `${API_CONFIG.ENDPOINTS.INTEGRATION.SMS.DELIVERY_REPORTS}?${query.toString()}` : API_CONFIG.ENDPOINTS.INTEGRATION.SMS.DELIVERY_REPORTS;
+    return this.request(endpoint);
+  }
+
+  async integrationRequestSenderId(data: IntegrationSenderIdRequestPayload): Promise<ApiResponse<{
+    request_id: string;
+    sender_id: string;
+    status: string;
+    use_case: string;
+    created_at: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.REQUEST, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationListSenderIdRequests(): Promise<ApiResponse<{
+    requests: Array<{
+      request_id: string;
+      sender_id: string;
+      status: string;
+      use_case: string;
+      created_at: string;
+      reviewed_at?: string;
+    }>;
+    total: number;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.REQUESTS);
+  }
+
+  async integrationListAvailableSenderIds(): Promise<ApiResponse<{
+    sender_ids: Array<{
+      sender_id: string;
+      status: string;
+      provider?: string;
+      provider_name?: string;
+      created_at: string;
+      approved_at?: string;
+    }>;
+    total: number;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.AVAILABLE);
+  }
+
+  async integrationCreateTenantAccount(data: IntegrationTenantCreateRequest): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationGetTenantAccount(tenantId: string): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_DETAIL(tenantId));
+  }
+
+  async integrationListPackages(): Promise<ApiResponse<{
+    packages: Array<{
+      id: string;
+      name: string;
+      package_type: string;
+      credits: number;
+      price: number;
+      unit_price: number;
+      is_popular: boolean;
+      is_active: boolean;
+      subtitle?: string;
+    }>;
+    total_packages: number;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.PACKAGES);
+  }
+
+  async integrationAddTenantCredits(tenantId: string, data: IntegrationTenantCreditRequest): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_CREDITS(tenantId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationInitiateTenantPayment(tenantId: string, data: IntegrationPaymentInitiationRequest): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_PAYMENT_INIT(tenantId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationCheckTenantPaymentStatus(tenantId: string, transactionId: string): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_PAYMENT_STATUS(tenantId, transactionId));
+  }
+
+  async integrationInitiateCustomPurchase(tenantId: string, data: IntegrationCustomPaymentRequest): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CUSTOM_PAYMENT_INIT(tenantId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async integrationCheckCustomPurchaseStatus(tenantId: string, purchaseId: string): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CUSTOM_PAYMENT_STATUS(tenantId, purchaseId));
+  }
+
+  async integrationGetTenantPaymentHistory(tenantId: string, params?: { status?: string; limit?: number; offset?: number }): Promise<ApiResponse<any>> {
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.offset) query.append('offset', params.offset.toString());
+    const endpoint = params
+      ? `${API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.PAYMENT_HISTORY(tenantId)}?${query.toString()}`
+      : API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.PAYMENT_HISTORY(tenantId);
+    return this.request(endpoint);
+  }
+
+  async integrationCalculatePricing(data: IntegrationPricingRequest): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CALCULATE_PRICING, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // =============================================
