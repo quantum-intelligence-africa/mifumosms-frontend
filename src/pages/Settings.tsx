@@ -153,7 +153,7 @@ const Settings = () => {
     terminateAllOtherSessions,
     fetch2FAStatus,
   } = useSecurity();
-  
+
   // SMS Verification state
   const { sendAccountVerification, verifyAccount, isSendingCode, isVerifying } = useSMSVerification();
   const [smsVerificationCode, setSmsVerificationCode] = useState("");
@@ -179,10 +179,10 @@ const Settings = () => {
     if (!inviteEmail) return;
     const res = await team.inviteMember(inviteEmail, inviteRole);
     if (res.success) {
-      toast({ 
-        title: "Invitation sent", 
+      toast({
+        title: "Invitation sent",
         description: `Invitation sent to ${inviteEmail} as ${inviteRole}. They will receive an email with a link to join.`,
-        duration: 5000 
+        duration: 5000
       });
       setInviteOpen(false);
       setInviteEmail("");
@@ -192,50 +192,50 @@ const Settings = () => {
       let errorMessage = res.error || "Please try again";
       let showAction = false;
       let actionText = "";
-      
+
       if (res.errors && res.errors.email) {
         errorMessage = Array.isArray(res.errors.email) ? res.errors.email[0] : res.errors.email;
       }
-      
+
       // Check for specific error patterns and suggest actions
       if (errorMessage.toLowerCase().includes("pending invitation")) {
         showAction = true;
         actionText = "Resend Invitation";
         // Find the member in the list
-        const pendingMember = team.members.find(m => 
-          m.user_email.toLowerCase() === inviteEmail.toLowerCase() && 
+        const pendingMember = team.members.find(m =>
+          m.user_email.toLowerCase() === inviteEmail.toLowerCase() &&
           m.status === 'pending'
         );
-        
+
         if (pendingMember) {
           errorMessage += `\n\nWould you like to resend the invitation?`;
         }
       } else if (errorMessage.toLowerCase().includes("already an active member")) {
         // Just show info, they're already added
-        toast({ 
-          title: "Member already active", 
+        toast({
+          title: "Member already active",
           description: errorMessage,
-          duration: 7000 
+          duration: 7000
         });
         return;
       } else if (errorMessage.toLowerCase().includes("suspended")) {
         showAction = true;
         actionText = "Activate Member";
-        const suspendedMember = team.members.find(m => 
-          m.user_email.toLowerCase() === inviteEmail.toLowerCase() && 
+        const suspendedMember = team.members.find(m =>
+          m.user_email.toLowerCase() === inviteEmail.toLowerCase() &&
           m.status === 'suspended'
         );
-        
+
         if (suspendedMember) {
           errorMessage += `\n\nWould you like to activate them?`;
         }
       }
-      
-      toast({ 
-        title: showAction ? "Action needed" : "Failed to send invitation", 
+
+      toast({
+        title: showAction ? "Action needed" : "Failed to send invitation",
         description: errorMessage,
         variant: "destructive",
-        duration: 10000 
+        duration: 10000
       });
     }
   };
@@ -243,10 +243,10 @@ const Settings = () => {
   const handleChangeMemberRole = async (member: TeamMember, role: TeamRole) => {
     // Don't allow changing role for pending members
     if (member.status === 'pending') {
-      toast({ 
-        title: "Cannot change role", 
+      toast({
+        title: "Cannot change role",
         description: "Pending members must accept their invitation first.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -330,11 +330,20 @@ const Settings = () => {
   // Initialize profile data from user context
   useEffect(() => {
     if (user) {
+      const resolvedPhone =
+        user.phone_number ||
+        (user as any)?.profile?.phone_number ||
+        (user as any)?.profile?.phone ||
+        (user as any)?.phone ||
+        (user as any)?.phone_e164 ||
+        profileData.phone ||
+        "";
+
       setProfileData({
         firstName: user.first_name || "",
         lastName: user.last_name || "",
         email: user.email || "",
-        phone: user.phone_number || "",
+        phone: resolvedPhone,
       });
     }
   }, [user]);
@@ -646,6 +655,10 @@ const Settings = () => {
         phone_number: profileData.phone,
       };
 
+      if (profileData.email && profileData.email !== user?.email) {
+        updateData.email = profileData.email;
+      }
+
       console.log('Updating profile with data:', updateData);
       const result = await updateProfile(updateData);
       console.log('Profile update result:', result);
@@ -903,7 +916,8 @@ const Settings = () => {
 
   // SMS Verification Handlers
   const handleSendVerificationCode = async () => {
-    if (!user?.phone_number) {
+    const targetPhone = (profileData.phone || user?.phone_number || "").trim();
+    if (!targetPhone) {
       toast({
         title: "Phone number required",
         description: "Please add a phone number to your profile first.",
@@ -914,11 +928,11 @@ const Settings = () => {
 
     setIsLoading(true);
     try {
-      const result = await sendAccountVerification({ phone_number: user.phone_number });
+      const result = await sendAccountVerification({ phone_number: targetPhone });
       if (result.success) {
         toast({
           title: "Verification code sent",
-          description: `Code sent to ${user.phone_number}. Please check your messages.`
+          description: `Code sent to ${targetPhone}. Please check your messages.`
         });
         setCodeSent(true);
       } else {
@@ -1032,10 +1046,12 @@ const Settings = () => {
                         id="email"
                         type="email"
                         value={profileData.email}
-                        disabled
-                        className="glass-subtle border-0 bg-muted/50 text-sm"
+                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                        className="glass-subtle border-0 text-sm"
                       />
-                      <p className="text-xs text-text-subtle">Email cannot be changed</p>
+                      <p className="text-xs text-text-subtle">
+                        Keep your email up to date. Changes may require verification.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-sm">Phone Number</Label>
@@ -1045,7 +1061,9 @@ const Settings = () => {
                         value={profileData.phone}
                         onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
                         className="glass-subtle border-0 text-sm"
+                        placeholder="e.g. +255712345678"
                       />
+                      <p className="text-xs text-text-subtle">Enter phone number in international format.</p>
                     </div>
                   </div>
 
@@ -1612,7 +1630,7 @@ const Settings = () => {
                       <div className="space-y-2">
                         <Label className="text-sm">Phone Number</Label>
                         <Input
-                          value={user?.phone_number || ""}
+                          value={profileData.phone || user?.phone_number || ""}
                           disabled
                           className="glass-subtle border-0 text-sm bg-muted/50"
                         />
@@ -1923,7 +1941,7 @@ const Settings = () => {
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={member.user_avatar || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {member.user_name ? member.user_name.split(" ").map(n => n[0]).join("") : 
+                            {member.user_name ? member.user_name.split(" ").map(n => n[0]).join("") :
                              member.user_email ? member.user_email.substring(0, 2).toUpperCase() :
                              "AU"}
                           </AvatarFallback>
@@ -1941,10 +1959,10 @@ const Settings = () => {
                         <Badge variant="outline" className="text-xs px-1 py-0">{member.role_display || member.role}</Badge>
                         <Badge
                           variant={
-                            member.status === "active" 
-                              ? "default" 
-                              : member.status === 'pending' 
-                                ? 'secondary' 
+                            member.status === "active"
+                              ? "default"
+                              : member.status === 'pending'
+                                ? 'secondary'
                                 : 'secondary'
                           }
                           className={`text-xs px-1 py-0 ${member.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : ''}`}
