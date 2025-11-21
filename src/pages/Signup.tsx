@@ -101,8 +101,7 @@ const Signup = () => {
         password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        phone_number: phoneInfo.normalized,
-        timezone: "UTC"
+        phone_number: phoneInfo.normalized
       });
 
       if (result.success) {

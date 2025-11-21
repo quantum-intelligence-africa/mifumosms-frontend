@@ -30,7 +30,7 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
 
     setIsLoading(true);
     try {
-      const result = await verifyAccount({ verification_code: code });
+      const result = await verifyAccount(code);
 
       if (result.success) {
         toast({
