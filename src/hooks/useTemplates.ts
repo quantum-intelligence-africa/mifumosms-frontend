@@ -57,10 +57,11 @@ export const useTemplates = (initialFilters?: TemplateFilterParams) => {
 			clearTimeout(timeoutId);
 			console.log('Templates API response:', response);
 
-			if (response.success && response.data) {
-				const templates = response.data.templates || [];
-				const filterOptions = response.data.filter_options;
-				const totalCount = response.data.total_count || 0;
+      if (response.success && response.data) {
+        const results = response.data.results || { templates: [], filter_options: null, total_count: 0 };
+        const templates = results.templates || [];
+        const filterOptions = results.filter_options;
+        const totalCount = results.total_count || 0;
 
 				console.log('Templates loaded successfully:', templates.length, 'templates');
 				console.log('Filter options:', filterOptions);

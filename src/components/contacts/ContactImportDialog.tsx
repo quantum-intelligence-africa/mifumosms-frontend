@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, Users, CheckCircle, AlertCircle, X, Smartphone } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
+import { useToast } from '@/hooks/use-toast';
 import { isContactPickerSupported, isMobileDevice } from '@/utils/mobileContactPicker';
 
 interface ContactImportDialogProps {
@@ -39,7 +40,8 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [file, setFile] = useState<File | null>(null);
 
-  const { bulkImportContacts, importMobileContacts } = useContacts();
+  const { bulkImportContacts } = useContacts();
+  const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -84,17 +86,13 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
       setImportResult(null);
 
       if (importType === 'mobile_contacts') {
-        // Use mobile contact import
-        const result = await importMobileContacts();
-        setImportResult({
-          success: true,
-          imported: result.imported || 0,
-          updated: 0,
-          skipped: result.skipped || 0,
-          total_processed: result.total_processed || 0,
-          errors: result.errors || [],
-          message: result.message || 'Mobile contacts imported successfully'
+        // Mobile contacts import not yet implemented in hook
+        toast({
+          title: "Not Implemented",
+          description: "Mobile contacts import is not yet available",
+          variant: "destructive"
         });
+        return;
       } else {
         // Use bulk import for other types
         let importData: any = {

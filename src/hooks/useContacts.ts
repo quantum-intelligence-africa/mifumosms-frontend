@@ -246,9 +246,16 @@ export const useContacts = () => {
     }
   };
 
-  const bulkImportContacts = async (file: File): Promise<boolean> => {
+  const bulkImportContacts = async (data: {
+    import_type: 'csv' | 'excel' | 'phone_contacts';
+    csv_data?: string;
+    file?: File;
+    contacts?: CreateContactRequest[];
+    skip_duplicates?: boolean;
+    update_existing?: boolean;
+  }): Promise<any> => {
     try {
-      const response = await apiClient.bulkImportContacts(file);
+      const response = await apiClient.bulkImportContacts(data);
 
       if (response.success) {
         await fetchContacts(); // Refresh the contacts list
@@ -258,7 +265,7 @@ export const useContacts = () => {
           description: "Your contacts have been successfully imported",
         });
 
-        return true;
+        return response.data || { success: true, imported: 0, updated: 0, skipped: 0, total_processed: 0, errors: [], message: 'Import completed' };
       } else {
 
         toast({
@@ -266,7 +273,7 @@ export const useContacts = () => {
           description: response.error || 'Please check your file format and try again',
           variant: "destructive"
         });
-        return false;
+        return { success: false, imported: 0, updated: 0, skipped: 0, total_processed: 0, errors: [response.error || 'Import failed'], message: response.error || 'Import failed' };
       }
     } catch (error) {
       toast({
@@ -276,7 +283,7 @@ export const useContacts = () => {
         variant: "destructive"
       });
 
-      return false;
+      return { success: false, imported: 0, updated: 0, skipped: 0, total_processed: 0, errors: ['Network error'], message: 'Network error occurred' };
     }
   };
 
