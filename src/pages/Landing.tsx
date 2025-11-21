@@ -496,7 +496,7 @@ const Landing = () => {
               <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
                 Everything you need to
                 <span className="block text-blue-500">
-                  grow your business
+                  manage customer communications
                 </span>
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed">
