@@ -214,9 +214,6 @@ const Signup = () => {
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
                   />
-                  <p className="text-xs text-blue-600 font-medium">
-                    📱 +255700000001, 0700000001, 255700000001
-                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="country" className="text-xs font-semibold text-gray-700">Country</Label>
