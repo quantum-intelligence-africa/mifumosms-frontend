@@ -545,8 +545,8 @@ const Landing = () => {
                 ))}
               </div>
 
-              {/* Desktop: Compact 3 columns, 2 rows layout */}
-              <div className="hidden sm:grid sm:grid-cols-3 gap-4 lg:gap-6">
+              {/* Desktop: Compact 2 columns, 3 rows layout */}
+              <div className="hidden sm:grid sm:grid-cols-2 gap-4 lg:gap-6">
                 {features.map((feature, index) => (
                   <Card
                     key={index}
@@ -557,19 +557,19 @@ const Landing = () => {
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <CardContent className="relative p-6 flex flex-col h-full min-h-[180px]">
+                    <CardContent className="relative p-6 flex flex-col h-full min-h-[140px]">
                       {/* Icon */}
-                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg mx-auto">
+                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
                         <feature.icon className="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" />
                       </div>
 
                       {/* Title */}
-                      <h3 className="font-heading text-sm font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-center mb-3 leading-tight">
+                      <h3 className="font-heading text-sm font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-left mb-3 leading-tight">
                         {feature.title}
                       </h3>
 
                       {/* Description */}
-                      <p className="text-xs text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300 text-center flex-1">
+                      <p className="text-xs text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300 text-left flex-1">
                         {feature.description}
                       </p>
 
