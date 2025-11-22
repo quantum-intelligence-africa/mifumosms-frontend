@@ -55,20 +55,16 @@ const Dashboard = () => {
 
   // Check if user needs email activation
   useEffect(() => {
-    // Check if user is not verified (needs email activation)
-    if (user && !user.is_verified && !showOTPModal) {
-      // Check if there's a pending activation email in localStorage
-      const pendingEmail = localStorage.getItem('pending_email_activation');
-      if (pendingEmail) {
-        setUserEmail(pendingEmail);
-        setShowOTPModal(true);
-        // Clear the flag
-        localStorage.removeItem('pending_email_activation');
-      } else if (user.email) {
-        // If no pending email but user is not verified, show modal with user's email
-        setUserEmail(user.email);
-        setShowOTPModal(true);
-      }
+    // Check if there's a pending activation email in localStorage (from registration)
+    const pendingEmail = localStorage.getItem('pending_email_activation');
+    if (pendingEmail && !showOTPModal) {
+      setUserEmail(pendingEmail);
+      setShowOTPModal(true);
+      // Don't clear the flag yet - wait until verification is complete
+    } else if (user && !user.is_verified && !showOTPModal && user.email) {
+      // If user is not verified and no pending email, show modal with user's email
+      setUserEmail(user.email);
+      setShowOTPModal(true);
     }
   }, [user, showOTPModal]);
 
@@ -101,6 +97,8 @@ const Dashboard = () => {
         });
         setShowOTPModal(false);
         setOtpCode("");
+        // Clear pending activation flag
+        localStorage.removeItem('pending_email_activation');
         // Refresh the page to update user state
         window.location.reload();
       } else {
@@ -159,7 +157,11 @@ const Dashboard = () => {
     }
   };
 
-  if (isLoading) {
+  // Check if user is not authenticated but has pending activation (just registered)
+  const pendingActivation = localStorage.getItem('pending_email_activation');
+  const isUnauthenticatedWithPendingActivation = !user && pendingActivation;
+
+  if (isLoading && !isUnauthenticatedWithPendingActivation) {
     return (
       <div className="flex h-screen bg-background">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -220,6 +222,19 @@ const Dashboard = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6 relative z-0">
+          {/* Show minimal dashboard content if unauthenticated with pending activation */}
+          {isUnauthenticatedWithPendingActivation ? (
+            <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
+              <div className="mb-4 sm:mb-6 lg:mb-8">
+                <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                  Welcome to Mifumo SMS! 👋
+                </h1>
+                <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+                  Please verify your email to continue.
+                </p>
+              </div>
+            </div>
+          ) : (
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Welcome Section */}
             <div className="mb-4 sm:mb-6 lg:mb-8">
@@ -283,6 +298,7 @@ const Dashboard = () => {
               <SenderIds senderIds={senderIds} />
             </div>
           </div>
+          )}
         </main>
       </div>
 

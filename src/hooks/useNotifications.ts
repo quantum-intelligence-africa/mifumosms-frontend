@@ -10,7 +10,7 @@ export const useNotifications = () => {
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [stats, setStats] = useState<NotificationStats | null>(null);
-  
+
   const { toast } = useToast();
 
   // Fetch recent notifications for header dropdown
@@ -18,9 +18,9 @@ export const useNotifications = () => {
     try {
       setIsRefreshing(true);
       setError(null);
-      
+
       const response = await notificationService.getRecentNotifications();
-      
+
       if (response.success) {
         setNotifications(response.notifications);
         setUnreadCount(response.unread_count);
@@ -31,7 +31,7 @@ export const useNotifications = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch notifications';
       setError(errorMessage);
       console.error('Error fetching recent notifications:', err);
-      
+
       toast({
         title: "Error",
         description: "Failed to load notifications",
@@ -48,9 +48,9 @@ export const useNotifications = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await notificationService.getRealNotifications(limit);
-      
+
       if (response.success) {
         setNotifications(response.notifications);
       } else {
@@ -60,7 +60,7 @@ export const useNotifications = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch notifications';
       setError(errorMessage);
       console.error('Error fetching notifications:', err);
-      
+
       toast({
         title: "Error",
         description: "Failed to load notifications",
@@ -80,20 +80,20 @@ export const useNotifications = () => {
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
       const response = await notificationService.markAsRead(notificationId);
-      
+
       if (response.success) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(notification => 
-            notification.id === notificationId 
+        setNotifications(prev =>
+          prev.map(notification =>
+            notification.id === notificationId
               ? { ...notification, is_unread: false, status: 'read' as const }
               : notification
           )
         );
-        
+
         // Update unread count
         setUnreadCount(prev => Math.max(0, prev - 1));
-        
+
         toast({
           title: "Success",
           description: "Notification marked as read",
@@ -104,7 +104,7 @@ export const useNotifications = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to mark notification as read';
       console.error('Error marking notification as read:', err);
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -117,19 +117,19 @@ export const useNotifications = () => {
   const markAllAsRead = useCallback(async () => {
     try {
       const response = await notificationService.markAllAsRead();
-      
+
       if (response.success) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(notification => ({ 
-            ...notification, 
-            is_unread: false, 
-            status: 'read' as const 
+        setNotifications(prev =>
+          prev.map(notification => ({
+            ...notification,
+            is_unread: false,
+            status: 'read' as const
           }))
         );
-        
+
         setUnreadCount(0);
-        
+
         toast({
           title: "Success",
           description: response.message || "All notifications marked as read",
@@ -140,7 +140,7 @@ export const useNotifications = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to mark all notifications as read';
       console.error('Error marking all notifications as read:', err);
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -154,13 +154,13 @@ export const useNotifications = () => {
     try {
       // Update local state immediately for better UX
       setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
-      
+
       // Update unread count if the deleted notification was unread
       const deletedNotification = notifications.find(n => n.id === notificationId);
       if (deletedNotification?.is_unread) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-      
+
       toast({
         title: "Success",
         description: "Notification deleted",
@@ -168,7 +168,7 @@ export const useNotifications = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete notification';
       console.error('Error deleting notification:', err);
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -181,7 +181,7 @@ export const useNotifications = () => {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationService.getUnreadCount();
-      
+
       if (response.success) {
         setUnreadCount(response.unread_count);
       } else {
@@ -196,7 +196,7 @@ export const useNotifications = () => {
   const fetchNotificationSettings = useCallback(async () => {
     try {
       const response = await notificationService.getNotificationSettings();
-      
+
       if (response.success) {
         setSettings(response.data);
       } else {
@@ -211,10 +211,10 @@ export const useNotifications = () => {
   const updateNotificationSettings = useCallback(async (newSettings: Partial<NotificationSettings>) => {
     try {
       const response = await notificationService.updateNotificationSettings(newSettings);
-      
+
       if (response.success) {
         setSettings(response.data);
-        
+
         toast({
           title: "Success",
           description: response.message || "Settings updated successfully",
@@ -225,7 +225,7 @@ export const useNotifications = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update settings';
       console.error('Error updating notification settings:', err);
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -238,7 +238,7 @@ export const useNotifications = () => {
   const fetchNotificationStats = useCallback(async () => {
     try {
       const response = await notificationService.getNotificationStats();
-      
+
       if (response.success) {
         setStats(response.data);
       } else {
@@ -252,7 +252,7 @@ export const useNotifications = () => {
   // Auto-refresh notifications every 30 seconds
   useEffect(() => {
     fetchRecentNotifications();
-    
+
     const interval = setInterval(() => {
       fetchRecentNotifications();
     }, 30000); // 30 seconds
@@ -269,7 +269,7 @@ export const useNotifications = () => {
     error,
     settings,
     stats,
-    
+
     // Actions
     fetchNotifications,
     refreshNotifications,

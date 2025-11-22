@@ -35,7 +35,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
+  // Allow access to dashboard if there's a pending email activation (user just registered)
+  const pendingActivation = localStorage.getItem('pending_email_activation');
+  const isDashboardRoute = location.pathname === '/dashboard';
+
   if (!isAuthenticated) {
+    // Allow temporary access to dashboard for pending activation
+    if (isDashboardRoute && pendingActivation) {
+      return <>{children}</>;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
