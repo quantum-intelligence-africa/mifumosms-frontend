@@ -44,6 +44,10 @@ export interface RegisterRequest {
   first_name: string;
   last_name: string;
   phone_number?: string;
+  timezone?: string;
+  company_name?: string;
+  business_name?: string; // Alias for company_name
+  country?: string;
 }
 
 export interface LoginResponse {
@@ -55,7 +59,10 @@ export interface LoginResponse {
 export interface RegisterResponse {
   message: string;
   user: User;
-  tokens: AuthTokens;
+  tokens?: AuthTokens; // Optional - only present after activation
+  email_verification_sent?: boolean;
+  account_active?: boolean;
+  requires_activation?: boolean;
 }
 
 // Tenant Types
@@ -1144,10 +1151,23 @@ class ApiClient {
     });
   }
 
-  async verifyEmail(token: string): Promise<ApiResponse> {
-    return this.request('/auth/verify-email/', {
+  async verifyEmail(token: string): Promise<ApiResponse<LoginResponse>> {
+    return this.request<LoginResponse>('/auth/verify-email/', {
       method: 'POST',
       body: JSON.stringify({ token }),
+    });
+  }
+
+  async activateAccount(token: string): Promise<ApiResponse> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(token), {
+      method: 'GET',
+    });
+  }
+
+  async resendActivationEmail(email: string): Promise<ApiResponse> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.RESEND_ACTIVATION, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   }
 

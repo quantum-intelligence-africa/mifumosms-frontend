@@ -7,13 +7,15 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
   verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
+  verifyEmail: (token: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
+  resendActivationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,7 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User }> => {
+  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }> => {
     try {
       const response = await apiClient.login(credentials);
 
@@ -160,9 +162,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updateUserState(userData);
         apiClient.setToken(tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
+        localStorage.setItem('user_profile', JSON.stringify(userData));
 
-        // Check if user needs verification and send SMS
-        if (userData && userData.phone_number && !userData.phone_verified && !userData.is_verified) {
+        // Check if user needs verification and send SMS (only for phone verification, not email)
+        if (userData && userData.phone_number && !userData.phone_verified && userData.is_verified) {
           try {
             await sendAccountVerification({ phone_number: userData.phone_number });
             console.log('Verification SMS sent to:', userData.phone_number);
@@ -174,7 +177,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         return { success: true, user: userData };
       } else {
-        return { success: false, error: response.error || 'Login failed' };
+        // Check if error indicates account needs email activation
+        const errorMessage = response.error || 'Login failed';
+        const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
+                                errorMessage.toLowerCase().includes('activation') ||
+                                errorMessage.toLowerCase().includes('verification code');
+
+        if (needsActivation) {
+          // Backend automatically sends a new 6-digit code when login fails for unverified account
+          return {
+            success: false,
+            error: errorMessage,
+            requiresActivation: true,
+            email: credentials.email
+          };
+        }
+
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
       return {
@@ -184,7 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string }> => {
+  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string }> => {
     try {
       const response = await apiClient.register(userData);
 
@@ -192,26 +211,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration request data:', userData);
       console.log('Registration response:', response);
 
-      if (response.data && response.data.tokens) {
-        const { user: newUser, tokens } = response.data;
-        updateUserState(newUser);
-        apiClient.setToken(tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
+      if (response.data) {
+        const { user: newUser, tokens, requires_activation, email_verification_sent } = response.data;
 
-        // Send verification SMS for new users
-        if (newUser && newUser.phone_number) {
-          try {
-            await sendAccountVerification({ phone_number: newUser.phone_number });
-            console.log('Verification SMS sent to new user:', newUser.phone_number);
-          } catch (error) {
-            console.error('Failed to send verification SMS to new user:', error);
-            // Don't fail registration if SMS sending fails
+        // If tokens are present, authenticate the user (even if activation is required)
+        if (tokens) {
+          updateUserState(newUser);
+          apiClient.setToken(tokens.access);
+          localStorage.setItem('refresh_token', tokens.refresh);
+          localStorage.setItem('user_profile', JSON.stringify(newUser));
+
+          // Send verification SMS for new users (only if account is fully activated)
+          if (newUser && newUser.phone_number && newUser.is_verified) {
+            try {
+              await sendAccountVerification({ phone_number: newUser.phone_number });
+              console.log('Verification SMS sent to new user:', newUser.phone_number);
+            } catch (error) {
+              console.error('Failed to send verification SMS to new user:', error);
+              // Don't fail registration if SMS sending fails
+            }
           }
+
+          // If account needs activation, return activation flag
+          if (requires_activation || email_verification_sent || !newUser?.is_verified) {
+            return {
+              success: true,
+              requiresActivation: true,
+              email: newUser?.email || userData.email
+            };
+          }
+
+          return { success: true };
         }
 
+        // If requires activation but no tokens, account was created but needs email activation
+        if (requires_activation || email_verification_sent) {
+          return {
+            success: true,
+            requiresActivation: true,
+            email: newUser?.email || userData.email
+          };
+        }
+
+        // If we have user data but no tokens and no activation flag, treat as success
+        // (might be edge case or backward compatibility)
         return { success: true };
       } else {
-        console.error('Registration failed - no tokens in response:', response);
+        console.error('Registration failed - no data in response:', response);
 
         // Extract specific validation errors
         let errorMessage = response.error || 'Registration failed';
@@ -307,6 +353,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const verifyEmail = async (token: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
+    try {
+      const response = await apiClient.verifyEmail(token);
+      if (response.data && response.data.tokens) {
+        const { user: activatedUser, tokens } = response.data;
+        updateUserState(activatedUser);
+        apiClient.setToken(tokens.access);
+        localStorage.setItem('refresh_token', tokens.refresh);
+        localStorage.setItem('user_profile', JSON.stringify(activatedUser));
+        return { success: true, tokens, user: activatedUser };
+      } else {
+        return {
+          success: false,
+          error: response.error || 'Email verification failed'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Email verification failed'
+      };
+    }
+  };
+
+  const resendActivationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.resendActivationEmail(email);
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: response.error || response.message || 'Failed to resend activation email'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to resend activation email'
+      };
+    }
+  };
 
   const value: AuthContextType = {
     user,
@@ -319,6 +407,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     sendAccountVerification: sendAccountVerificationSMS,
     verifyAccount: verifyAccountCode,
+    verifyEmail,
+    resendActivationEmail,
   };
 
   return (

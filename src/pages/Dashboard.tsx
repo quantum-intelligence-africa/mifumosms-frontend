@@ -20,7 +20,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
 import { SenderIds } from "@/components/dashboard/SenderIds";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useTenants } from "@/hooks/useTenants";
@@ -30,26 +30,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AccountVerification } from "@/components/auth/AccountVerification";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Mail, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, verifyEmail, resendActivationEmail } = useAuth();
   const { metrics, overview, recentCampaigns, recentActivity, performanceOverview, senderIds, isLoading } = useDashboard();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
-  // Check if user needs verification - TEMPORARILY DISABLED
-  // const needsVerification = user && user.phone_number && (!user.phone_verified || !user.is_verified);
-
-  // Show verification if needed and not already shown - TEMPORARILY DISABLED
-  // React.useEffect(() => {
-  //   if (needsVerification && !showVerification) {
-  //     console.log('Setting showVerification to true');
-  //     setShowVerification(true);
-  //   }
-  // }, [needsVerification, showVerification]);
+  // Check if user needs email activation
+  useEffect(() => {
+    // Check if user is not verified (needs email activation)
+    if (user && !user.is_verified && !showOTPModal) {
+      // Check if there's a pending activation email in localStorage
+      const pendingEmail = localStorage.getItem('pending_email_activation');
+      if (pendingEmail) {
+        setUserEmail(pendingEmail);
+        setShowOTPModal(true);
+        // Clear the flag
+        localStorage.removeItem('pending_email_activation');
+      } else if (user.email) {
+        // If no pending email but user is not verified, show modal with user's email
+        setUserEmail(user.email);
+        setShowOTPModal(true);
+      }
+    }
+  }, [user, showOTPModal]);
 
   const handleVerificationComplete = () => {
     setShowVerification(false);
@@ -57,6 +78,85 @@ const Dashboard = () => {
 
   const handleSkipVerification = () => {
     setShowVerification(false);
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otpCode.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter the 6-digit verification code from your email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const result = await verifyEmail(otpCode.trim());
+
+      if (result.success && result.tokens) {
+        toast({
+          title: "Email verified successfully!",
+          description: "Your account has been activated.",
+        });
+        setShowOTPModal(false);
+        setOtpCode("");
+        // Refresh the page to update user state
+        window.location.reload();
+      } else {
+        toast({
+          title: "Verification failed",
+          description: result.error || "Invalid or expired OTP code. Please request a new one.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Verification failed",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!userEmail.trim()) {
+      toast({
+        title: "Email required",
+        description: "Email address is required to resend OTP code.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const result = await resendActivationEmail(userEmail.trim());
+
+      if (result.success) {
+        toast({
+          title: "OTP code sent",
+          description: `A new OTP code has been sent to ${userEmail}. Please check your email inbox.`,
+          duration: 10000
+        });
+      } else {
+        toast({
+          title: "Failed to resend",
+          description: result.error || "Please try again later.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to resend",
+        description: "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResending(false);
+    }
   };
 
   if (isLoading) {
@@ -185,6 +285,101 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
+
+      {/* OTP Verification Modal */}
+      <Dialog open={showOTPModal} onOpenChange={(open) => {
+        if (!isVerifying) {
+          setShowOTPModal(open);
+          if (!open) {
+            setOtpCode("");
+          }
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                <Mail className="w-8 h-8 text-blue-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl font-bold">
+              Verify Your Email
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm text-gray-600">
+              We've sent a 6-digit verification code to <strong>{userEmail}</strong>.
+              Please check your email and enter the code below to activate your account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="otp-code" className="text-sm font-semibold">
+                OTP Code
+              </Label>
+              <Input
+                id="otp-code"
+                type="text"
+                placeholder="Enter 6-digit code"
+                value={otpCode}
+                onChange={(e) => {
+                  // Only allow digits, max 6 characters
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtpCode(value);
+                }}
+                className="h-12 text-center text-lg tracking-widest font-mono"
+                maxLength={6}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={isVerifying}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && otpCode.length === 6 && !isVerifying) {
+                    handleVerifyOTP();
+                  }
+                }}
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 text-center">
+                Check your email inbox (and spam folder) for the 6-digit verification code
+              </p>
+            </div>
+
+            <Button
+              onClick={handleVerifyOTP}
+              disabled={isVerifying || otpCode.length !== 6}
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            >
+              {isVerifying ? "Verifying..." : "Verify Email"}
+            </Button>
+
+            <div className="pt-4 border-t">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-gray-600">
+                  Didn't receive the code?
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResendOTP}
+                  disabled={isResending}
+                  className="w-full"
+                >
+                  {isResending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Resend OTP Code
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     );
   } catch (error) {

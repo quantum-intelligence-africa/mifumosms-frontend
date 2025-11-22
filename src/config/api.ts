@@ -13,6 +13,8 @@ export const API_CONFIG = {
 			PASSWORD_RESET: '/auth/password/reset/',
 
 			VERIFY_EMAIL: '/auth/verify-email/',
+			ACTIVATE_ACCOUNT: (token: string) => `/auth/activate-account/${token}/`,
+			RESEND_ACTIVATION: '/auth/resend-activation/',
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
 			SMS: {

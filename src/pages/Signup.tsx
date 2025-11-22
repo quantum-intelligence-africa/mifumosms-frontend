@@ -95,22 +95,47 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      const result = await register({
+      const registerData: any = {
         email: formData.email,
         password: formData.password,
         password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
         phone_number: phoneInfo.normalized
-      });
+      };
+
+      // Add optional fields if provided
+      if (formData.company) {
+        registerData.company_name = formData.company;
+      }
+      if (formData.country) {
+        registerData.country = formData.country;
+      }
+
+      const result = await register(registerData);
 
       if (result.success) {
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to Mifumo SMS! You can now access your dashboard."
-        });
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
+        if (result.requiresActivation) {
+          // Account created but needs email activation - redirect to dashboard where modal will show
+          toast({
+            title: "Account created successfully!",
+            description: "Please check your email for the OTP code to activate your account.",
+            duration: 10000
+          });
+          // Store flag in localStorage to trigger OTP modal on dashboard
+          localStorage.setItem('pending_email_activation', result.email || formData.email);
+          // Redirect to dashboard - modal will show there
+          const from = location.state?.from?.pathname || "/dashboard";
+          navigate(from, { replace: true });
+        } else {
+          // Account activated immediately (backward compatibility)
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Mifumo SMS! You can now access your dashboard."
+          });
+          const from = location.state?.from?.pathname || "/dashboard";
+          navigate(from, { replace: true });
+        }
       } else {
         toast({
           title: "Registration failed",
