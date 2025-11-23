@@ -158,34 +158,34 @@ const EmailActivation = () => {
         <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
       </div>
 
-      <div className="w-full max-w-md sm:max-w-lg relative z-10">
+      <div className="w-full max-w-md sm:max-w-md lg:max-w-sm relative z-10">
         {/* Header */}
-        <div className="text-center mb-4 sm:mb-6">
-          <Link to="/login" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-3 sm:mb-4 transition-colors">
+        <div className="text-center mb-3 sm:mb-4 lg:mb-3">
+          <Link to="/login" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-2 sm:mb-3 lg:mb-2 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back to login</span>
           </Link>
         </div>
 
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-3 sm:pb-4 px-4 sm:px-6">
-            <div className="flex justify-center mb-3">
+          <CardHeader className="text-center pb-2 sm:pb-3 lg:pb-2 px-4 sm:px-5 lg:px-4">
+            <div className="flex justify-center mb-2 sm:mb-3 lg:mb-2">
               {activationStatus === "success" ? (
-                <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500" />
+                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-green-500" />
               ) : activationStatus === "error" ? (
-                <XCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500" />
+                <XCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-red-500" />
               ) : (
-                <Mail className="w-12 h-12 sm:w-16 sm:h-16 text-blue-500" />
+                <Mail className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-blue-500" />
               )}
             </div>
-            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+            <CardTitle className="text-lg sm:text-xl lg:text-lg font-bold text-gray-900">
               {activationStatus === "success"
                 ? "Account Activated!"
                 : activationStatus === "error"
                 ? "Activation Failed"
                 : "Activate Your Account"}
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base text-gray-600">
+            <CardDescription className="text-xs sm:text-sm lg:text-xs text-gray-600">
               {activationStatus === "success"
                 ? "Your account has been successfully activated. Redirecting to login..."
                 : activationStatus === "error"
@@ -193,24 +193,24 @@ const EmailActivation = () => {
                 : "Enter the 6-digit verification code from the email we sent you"}
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+          <CardContent className="px-4 sm:px-5 lg:px-4 pb-3 sm:pb-4 lg:pb-3">
             {activationStatus === "success" ? (
-              <div className="text-center space-y-4">
-                <p className="text-sm text-gray-600">
+              <div className="text-center space-y-3 sm:space-y-4 lg:space-y-3">
+                <p className="text-xs sm:text-sm lg:text-xs text-gray-600">
                   You will be redirected to your dashboard shortly.
                 </p>
                 <Button
                   onClick={() => navigate("/dashboard", { replace: true })}
-                  className="w-full"
+                  className="w-full h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs"
                 >
                   Go to Dashboard
                 </Button>
               </div>
             ) : (
               <>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 lg:space-y-3">
                   <div className="space-y-2">
-              <Label htmlFor="token" className="text-sm font-semibold text-gray-700">
+              <Label htmlFor="token" className="text-xs sm:text-sm lg:text-xs font-semibold text-gray-700">
                 6-Digit Verification Code
               </Label>
                     <Input
@@ -228,7 +228,7 @@ const EmailActivation = () => {
                       maxLength={6}
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      className="h-10 sm:h-12 text-sm sm:text-base text-center text-lg tracking-widest font-mono border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                      className="h-9 sm:h-10 lg:h-9 text-sm text-center text-base lg:text-sm tracking-widest font-mono border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
                     />
                     <p className="text-xs text-gray-500 text-center">
                       Check your email inbox (and spam folder) for the 6-digit verification code
@@ -237,20 +237,20 @@ const EmailActivation = () => {
 
               <Button
                 type="submit"
-                className="w-full h-10 sm:h-12 text-sm sm:text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading || token.length !== 6}
               >
                 {isLoading ? "Activating..." : "Activate Account"}
               </Button>
                 </form>
 
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600 text-center">
+                <div className="mt-4 sm:mt-5 lg:mt-4 pt-4 sm:pt-5 lg:pt-4 border-t border-gray-200">
+                  <div className="space-y-2 sm:space-y-3 lg:space-y-2">
+                    <p className="text-xs sm:text-sm lg:text-xs text-gray-600 text-center">
                       Didn't receive the email?
                     </p>
                     <div className="space-y-2">
-                      <Label htmlFor="resend-email" className="text-sm font-semibold text-gray-700">
+                      <Label htmlFor="resend-email" className="text-xs sm:text-sm lg:text-xs font-semibold text-gray-700">
                         Email Address
                       </Label>
                       <div className="flex gap-2">
@@ -260,24 +260,24 @@ const EmailActivation = () => {
                           placeholder="Enter your email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="h-10 text-sm border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                          className="h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
                         />
                         <Button
                           type="button"
                           onClick={handleResend}
                           disabled={isResending || !email.trim()}
                           variant="outline"
-                          className="whitespace-nowrap"
+                          className="whitespace-nowrap h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs px-3"
                         >
                           {isResending ? (
                             <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Sending...
+                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2 animate-spin" />
+                              <span className="hidden sm:inline lg:hidden">Sending...</span>
                             </>
                           ) : (
                             <>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Resend
+                              <Mail className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline lg:hidden">Resend</span>
                             </>
                           )}
                         </Button>
@@ -286,8 +286,8 @@ const EmailActivation = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 text-center">
-                  <p className="text-xs sm:text-sm text-gray-600">
+                <div className="mt-3 sm:mt-4 lg:mt-3 text-center">
+                  <p className="text-xs text-gray-600">
                     Already activated?{" "}
                     <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
                       Sign in

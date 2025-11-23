@@ -41,13 +41,9 @@ const Signup = () => {
     { value: "ke", label: "Kenya" },
     { value: "tz", label: "Tanzania" },
     { value: "ug", label: "Uganda" },
-    { value: "ng", label: "Nigeria" },
-    { value: "gh", label: "Ghana" },
-    { value: "za", label: "South Africa" },
-    { value: "eg", label: "Egypt" },
-    { value: "ma", label: "Morocco" },
-    { value: "sn", label: "Senegal" },
-    { value: "ci", label: "Côte d'Ivoire" }
+    { value: "rw", label: "Rwanda" },
+    { value: "bi", label: "Burundi" },
+    { value: "ss", label: "South Sudan" }
   ];
 
   const passwordStrength = {
