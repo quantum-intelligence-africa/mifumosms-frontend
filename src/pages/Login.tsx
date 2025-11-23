@@ -14,7 +14,6 @@ const Login = () => {
   const isMobile = useIsMobile();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showActivationPrompt, setShowActivationPrompt] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -67,10 +66,8 @@ const Login = () => {
             variant: "destructive",
             duration: 10000
           });
-          // Show activation prompt below the form
-          setShowActivationPrompt(true);
-          // Store email for activation modal
-          localStorage.setItem('pending_email_activation', formData.email);
+          // Redirect to activation page
+          navigate('/activate-email', { state: { email: formData.email } });
         } else {
           toast({
             title: "Login failed",
@@ -198,23 +195,6 @@ const Login = () => {
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
-
-            {showActivationPrompt && (
-              <div className="mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-                <p className="text-sm text-yellow-800 mb-3">
-                  A 6-digit verification code has been sent to your email. Please check your inbox and use the code to verify your account.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/activate-email', { state: { email: formData.email } })}
-                  className="w-full"
-                >
-                  Enter Verification Code
-                </Button>
-              </div>
-            )}
 
             <div className="mt-4 sm:mt-6 text-center">
               <p className="text-xs sm:text-sm text-gray-600">

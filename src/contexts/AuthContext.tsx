@@ -177,11 +177,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         return { success: true, user: userData };
       } else {
+        // Extract error message from response
+        // API returns errors in non_field_errors array or error/message fields
+        let errorMessage = response.error || 'Login failed';
+
+        // Check for non_field_errors (common in Django REST Framework)
+        if (response.errors && typeof response.errors === 'object') {
+          const nonFieldErrors = (response.errors as any).non_field_errors;
+          if (nonFieldErrors && Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
+            errorMessage = nonFieldErrors[0];
+          } else if (typeof response.errors === 'string') {
+            errorMessage = response.errors;
+          }
+        }
+
         // Check if error indicates account needs email activation
-        const errorMessage = response.error || 'Login failed';
         const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
                                 errorMessage.toLowerCase().includes('activation') ||
-                                errorMessage.toLowerCase().includes('verification code');
+                                errorMessage.toLowerCase().includes('verification code') ||
+                                errorMessage.toLowerCase().includes('6-digit');
 
         if (needsActivation) {
           // Backend automatically sends a new 6-digit code when login fails for unverified account
@@ -212,9 +226,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response);
 
       if (response.data) {
-        const { user: newUser, tokens, requires_activation, email_verification_sent } = response.data;
+        const { user: newUser, tokens, requires_activation, email_verification_sent, activation_required, account_active } = response.data;
 
-        // If tokens are present, authenticate the user (even if activation is required)
+        // According to new API: tokens are null until account is activated
+        // If tokens are present, account is already activated - authenticate the user
         if (tokens) {
           updateUserState(newUser);
           apiClient.setToken(tokens.access);
@@ -232,20 +247,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
 
-          // If account needs activation, return activation flag
-          if (requires_activation || email_verification_sent || !newUser?.is_verified) {
-            return {
-              success: true,
-              requiresActivation: true,
-              email: newUser?.email || userData.email
-            };
-          }
-
           return { success: true };
         }
 
-        // If requires activation but no tokens, account was created but needs email activation
-        if (requires_activation || email_verification_sent) {
+        // No tokens means account needs email activation
+        // Check various activation flags to determine if activation is required
+        const needsActivation = requires_activation ||
+                                activation_required ||
+                                email_verification_sent ||
+                                !account_active ||
+                                !newUser?.is_verified;
+
+        if (needsActivation) {
           return {
             success: true,
             requiresActivation: true,
@@ -253,9 +266,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
         }
 
-        // If we have user data but no tokens and no activation flag, treat as success
-        // (might be edge case or backward compatibility)
-        return { success: true };
+        // Edge case: user data exists but no clear activation status
+        // Treat as success but require activation to be safe
+        return {
+          success: true,
+          requiresActivation: true,
+          email: newUser?.email || userData.email
+        };
       } else {
         console.error('Registration failed - no data in response:', response);
 

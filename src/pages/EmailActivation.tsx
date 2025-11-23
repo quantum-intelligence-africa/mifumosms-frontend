@@ -23,7 +23,7 @@ const EmailActivation = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // Get token from URL or email from location state
+  // Get token from URL or email from location state or localStorage
   useEffect(() => {
     const urlToken = searchParams.get("token");
     if (urlToken) {
@@ -32,9 +32,14 @@ const EmailActivation = () => {
       handleActivate(urlToken);
     }
 
+    // Get email from location state, localStorage, or keep existing
     const stateEmail = location.state?.email;
+    const storedEmail = localStorage.getItem('pending_email_activation');
     if (stateEmail) {
       setEmail(stateEmail);
+      localStorage.setItem('pending_email_activation', stateEmail);
+    } else if (storedEmail && !email) {
+      setEmail(storedEmail);
     }
   }, [searchParams, location.state]);
 
@@ -68,14 +73,16 @@ const EmailActivation = () => {
 
       if (result.success) {
         setActivationStatus("success");
+        // Clear pending activation flag
+        localStorage.removeItem('pending_email_activation');
         toast({
           title: "Account activated successfully!",
-          description: "You can now log in to your account.",
+          description: "Welcome! Redirecting to your dashboard...",
         });
-        // Redirect to login after 2 seconds
+        // Redirect to dashboard after 1 second (user is already authenticated with tokens)
         setTimeout(() => {
-          navigate("/login", { replace: true });
-        }, 2000);
+          navigate("/dashboard", { replace: true });
+        }, 1000);
       } else {
         setActivationStatus("error");
         setErrorMessage(result.error || "Invalid or expired token. Please request a new activation email.");
@@ -190,13 +197,13 @@ const EmailActivation = () => {
             {activationStatus === "success" ? (
               <div className="text-center space-y-4">
                 <p className="text-sm text-gray-600">
-                  You will be redirected to the login page shortly.
+                  You will be redirected to your dashboard shortly.
                 </p>
                 <Button
-                  onClick={() => navigate("/login", { replace: true })}
+                  onClick={() => navigate("/dashboard", { replace: true })}
                   className="w-full"
                 >
-                  Go to Login
+                  Go to Dashboard
                 </Button>
               </div>
             ) : (

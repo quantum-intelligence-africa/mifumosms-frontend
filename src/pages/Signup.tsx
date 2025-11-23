@@ -116,17 +116,14 @@ const Signup = () => {
 
       if (result.success) {
         if (result.requiresActivation) {
-          // Account created but needs email activation - redirect to dashboard where modal will show
+          // Account created but needs email activation
           toast({
             title: "Account created successfully!",
-            description: "Please check your email for the OTP code to activate your account.",
+            description: "Please check your email for the 6-digit verification code to activate your account.",
             duration: 10000
           });
-          // Store flag in localStorage to trigger OTP modal on dashboard
-          localStorage.setItem('pending_email_activation', result.email || formData.email);
-          // Redirect to dashboard - modal will show there
-          const from = location.state?.from?.pathname || "/dashboard";
-          navigate(from, { replace: true });
+          // Redirect to activation page
+          navigate('/activate-email', { state: { email: result.email || formData.email } });
         } else {
           // Account activated immediately (backward compatibility)
           toast({

@@ -59,10 +59,11 @@ export interface LoginResponse {
 export interface RegisterResponse {
   message: string;
   user: User;
-  tokens?: AuthTokens; // Optional - only present after activation
+  tokens?: AuthTokens | null; // Null until account is activated
   email_verification_sent?: boolean;
   account_active?: boolean;
   requires_activation?: boolean;
+  activation_required?: boolean;
 }
 
 // Tenant Types
@@ -927,6 +928,20 @@ class ApiClient {
     });
   }
 
+  async verifyEmail(token: string): Promise<ApiResponse<{ message: string; user: User; tokens: AuthTokens }>> {
+    return this.request<{ message: string; user: User; tokens: AuthTokens }>('/auth/verify-email/', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async resendActivation(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/auth/resend-activation/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
   async refreshToken(refreshToken: string): Promise<ApiResponse<{ access: string }>> {
     return this.request<{ access: string }>('/auth/token/refresh/', {
       method: 'POST',
@@ -1151,12 +1166,6 @@ class ApiClient {
     });
   }
 
-  async verifyEmail(token: string): Promise<ApiResponse<LoginResponse>> {
-    return this.request<LoginResponse>('/auth/verify-email/', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  }
 
   async activateAccount(token: string): Promise<ApiResponse> {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(token), {
@@ -1164,8 +1173,8 @@ class ApiClient {
     });
   }
 
-  async resendActivationEmail(email: string): Promise<ApiResponse> {
-    return this.request(API_CONFIG.ENDPOINTS.AUTH.RESEND_ACTIVATION, {
+  async resendActivationEmail(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/auth/resend-activation/', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
