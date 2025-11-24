@@ -89,9 +89,37 @@ const securityTips = [
 const IntegrationGuide = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const handleCopyHeader = () => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText("Authorization: Bearer mif_your_api_key_here").catch(() => {});
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const result = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return result;
+    } catch (error) {
+      console.error("Clipboard copy failed:", error);
+      return false;
+    }
+  };
+
+  const handleCopyHeader = async () => {
+    const success = await copyToClipboard("Authorization: Bearer mif_your_api_key_here");
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -151,8 +179,14 @@ const IntegrationGuide = () => {
                       Authorization: Bearer mif_your_api_key_here
                     </code>
                   </div>
-                  <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleCopyHeader}>
-                    Copy Example Header
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={handleCopyHeader}
+                    disabled={copied}
+                  >
+                    {copied ? "Copied!" : "Copy Example Header"}
                   </Button>
                 </div>
               </CardContent>
@@ -192,11 +226,11 @@ const IntegrationGuide = () => {
                           key={endpoint.path}
                           className="p-3 rounded-lg border border-border-subtle bg-muted/20 flex flex-col gap-1"
                         >
-                          <div className="flex items-center gap-2 text-sm font-mono">
+                          <div className="flex items-center gap-2 text-sm font-mono flex-wrap">
                             <Badge variant="outline" className="text-[10px] uppercase">
                               {endpoint.method}
                             </Badge>
-                            <span>{endpoint.path}</span>
+                            <span className="inline-block break-all">{endpoint.path}</span>
                           </div>
                           <p className="text-xs text-text-subtle">{endpoint.description}</p>
                         </div>
