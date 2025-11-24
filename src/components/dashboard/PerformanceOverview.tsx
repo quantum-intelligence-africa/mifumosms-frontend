@@ -12,13 +12,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   LineChart as RechartsLineChart,
   Line,
   PieChart as RechartsPieChart,
   Pie,
-  Cell
+  Cell,
+  PieLabelRenderProps
 } from "recharts";
 
 interface PerformanceOverviewProps {
@@ -26,25 +26,49 @@ interface PerformanceOverviewProps {
     metrics: {
       total_messages: number;
       delivery_rate: number;
-      response_rate: number;
-      active_conversations: number;
-      campaign_success_rate: number;
+      response_rate?: number;
+      active_conversations?: number;
+      campaign_success_rate?: number;
     };
     charts: {
       message_volume: {
         labels: string[];
         data: number[];
+        label?: string;
+        backgroundColor?: string | string[];
+        borderColor?: string | string[];
       };
       delivery_rates: {
         labels: string[];
         data: number[];
+        label?: string;
+        backgroundColor?: string | string[];
+        borderColor?: string | string[];
+      };
+      message_status_distribution?: {
+        labels: string[];
+        data: number[];
+        backgroundColor?: string[];
+        borderColor?: string[];
       };
     };
-    coming_soon: boolean;
+    legend?: Array<{
+      label: string;
+      color: string;
+      description?: string;
+      chartTypes: string[];
+    }>;
+    coming_soon?: boolean;
   } | null;
 }
 
 type ChartType = 'bar' | 'line' | 'pie';
+
+type LegendItem = {
+  label: string;
+  color?: string;
+  description?: string;
+};
 
 export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -55,26 +79,108 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     navigate('/analytics');
   };
 
-  // Transform real data from API to chart format
+  // Transform data for Bar/Line charts (time-series data)
+  // Use message_volume and delivery_rates for bar/line charts
   const currentChartData = performance?.charts?.message_volume ?
     performance.charts.message_volume.labels.map((label, index) => ({
       name: label,
-      messages: performance.charts.message_volume.data[index] || 0,
+      message_volume: performance.charts.message_volume.data[index] || 0,
       delivery_rate: performance.charts.delivery_rates?.data[index] || 0,
     })) : [];
 
-  // Create pie chart data, but only show meaningful values (don't show zero slices)
-  const currentPieData = performance?.metrics ? [
-    { name: 'Messages', value: performance.metrics.total_messages || 0, color: '#8884d8' },
-    { name: 'Active Conversations', value: performance.metrics.active_conversations || 0, color: '#82ca9d' },
-    { name: 'Delivery Rate', value: performance.metrics.delivery_rate || 0, color: '#ffc658' },
-    { name: 'Campaign Success', value: performance.metrics.campaign_success_rate || 0, color: '#ff7300' },
-  ].filter(item => item.value > 0) : [];
+  // Transform data for Pie chart (status distribution)
+  const currentPieData = performance?.charts?.message_status_distribution ?
+    performance.charts.message_status_distribution.labels.map((label, index) => {
+      const bgColors = performance.charts.message_status_distribution.backgroundColor;
+      const color = Array.isArray(bgColors)
+        ? (bgColors[index] || '#8884d8')
+        : (typeof bgColors === 'string' ? bgColors : '#8884d8');
+      return {
+        name: label,
+        value: performance.charts.message_status_distribution.data[index] || 0,
+        color: color
+      };
+    }).filter(item => item.value > 0) : [];
+
+  // Get colors from API or use defaults
+  const messageVolumeColor = (() => {
+    const bgColor = performance?.charts?.message_volume?.backgroundColor;
+    if (Array.isArray(bgColor)) return bgColor[0] || '#8B7FE8';
+    if (typeof bgColor === 'string') return bgColor;
+    return '#8B7FE8';
+  })();
+
+  const deliveryRateColor = (() => {
+    const bgColor = performance?.charts?.delivery_rates?.backgroundColor;
+    if (Array.isArray(bgColor)) return bgColor[0] || '#5DD39E';
+    if (typeof bgColor === 'string') return bgColor;
+    return '#5DD39E';
+  })();
+
+  // Get labels from API
+  const messageVolumeLabel = performance?.charts?.message_volume?.label || 'Message Volume';
+  const deliveryRateLabel = performance?.charts?.delivery_rates?.label || 'Delivery Rate';
 
   // Check if we have data to display
   const hasChartData = currentChartData.length > 0;
   const hasPieData = currentPieData.length > 0;
   const hasData = hasChartData || hasPieData;
+
+  const RADIAN = Math.PI / 180;
+
+  const renderPieLabel = (props: PieLabelRenderProps) => {
+    if (!props?.percent || !props?.name) return null;
+    const baseRadius = typeof props.outerRadius === 'number' ? props.outerRadius : Number(props.outerRadius) || 0;
+    const cx = typeof props.cx === 'number' ? props.cx : Number(props.cx) || 0;
+    const cy = typeof props.cy === 'number' ? props.cy : Number(props.cy) || 0;
+    const radius = baseRadius + (isMobile ? 8 : 16);
+    const x = cx + radius * Math.cos(-props.midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-props.midAngle * RADIAN);
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="#0f172a"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={isMobile ? 10 : 12}
+        fontWeight={600}
+      >
+        {`${props.name}: ${(props.percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+  const legendItems: LegendItem[] = performance?.legend?.length
+    ? performance.legend
+        .filter(item => item.chartTypes.includes(chartType))
+        .map(item => ({ label: item.label, color: item.color, description: item.description }))
+    : (chartType === 'pie'
+      ? currentPieData.map(item => ({ label: item.name, color: item.color }))
+      : [
+          { label: messageVolumeLabel, color: messageVolumeColor },
+          { label: deliveryRateLabel, color: deliveryRateColor }
+        ]);
+
+  const renderLegendContent = () => {
+    if (!legendItems?.length) return null;
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-[11px] sm:text-xs text-foreground/80">
+        {legendItems.map((item, index) => (
+          <div key={`${item.label}-${index}`} className="flex items-center gap-1.5">
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: item.color || '#8B7FE8' }}
+            />
+            <span className="font-medium">{item.label}</span>
+            {item.description && (
+              <span className="text-[10px] text-text-subtle">({item.description})</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const getChartIcon = (type: ChartType) => {
     switch (type) {
@@ -90,8 +196,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   };
 
   const renderChart = () => {
-    // Show loading state if no data is available
-    if (!hasData) {
+    // Show loading state if performance data hasn't loaded yet
+    if (performance === null || performance === undefined) {
       return (
         <div className="h-64 w-full flex items-center justify-center">
           <div className="text-center">
@@ -105,6 +211,21 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
       );
     }
 
+    // Show "No chart yet" if performance data exists but is empty
+    if (!hasData) {
+      return (
+        <div className="h-64 w-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="w-6 h-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
+            <p className="text-xs text-text-subtle">Start sending messages to see your performance data</p>
+          </div>
+        </div>
+      );
+    }
+
     // Check if we have data for the selected chart type
     if (chartType === 'pie' && !hasPieData) {
       return (
@@ -113,8 +234,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <PieChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-xs text-text-subtle mb-1">No pie chart data available</p>
-            <p className="text-xs text-text-subtle">Try switching to bar or line chart</p>
+            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
+            <p className="text-xs text-text-subtle">Try switching to bar or line chart, or start sending messages</p>
           </div>
         </div>
       );
@@ -127,8 +248,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <BarChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-xs text-text-subtle mb-1">No chart data available</p>
-            <p className="text-xs text-text-subtle">Data will appear as it becomes available</p>
+            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
+            <p className="text-xs text-text-subtle">Start sending messages to see your performance trends</p>
           </div>
         </div>
       );
@@ -171,8 +292,18 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                   padding: isMobile ? '4px 8px' : '6px 12px'
                 }}
               />
-              <Bar dataKey="messages" fill="#8884d8" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="delivery_rate" fill="#82ca9d" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="message_volume"
+                fill={messageVolumeColor}
+                radius={[4, 4, 0, 0]}
+                name={messageVolumeLabel}
+              />
+              <Bar
+                dataKey="delivery_rate"
+                fill={deliveryRateColor}
+                radius={[4, 4, 0, 0]}
+                name={deliveryRateLabel}
+              />
             </RechartsBarChart>
           </ResponsiveContainer>
         );
@@ -209,17 +340,19 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
               />
               <Line
                 type="monotone"
-                dataKey="messages"
-                stroke="#8884d8"
+                dataKey="message_volume"
+                stroke={messageVolumeColor}
                 strokeWidth={isMobile ? 1.5 : 2}
                 dot={{ r: isMobile ? 3 : 4 }}
+                name={messageVolumeLabel}
               />
               <Line
                 type="monotone"
                 dataKey="delivery_rate"
-                stroke="#82ca9d"
+                stroke={deliveryRateColor}
                 strokeWidth={isMobile ? 1.5 : 2}
                 dot={{ r: isMobile ? 3 : 4 }}
+                name={deliveryRateLabel}
               />
             </RechartsLineChart>
           </ResponsiveContainer>
@@ -234,23 +367,9 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(props) => {
-                  const { name, percent } = props;
-                  // For mobile, show much shorter labels to prevent cutting off
-                  if (isMobile) {
-                    // For long names, abbreviate or show just key letters
-                    let displayName = name;
-                    if (name === 'Messages') displayName = 'Msgs';
-                    else if (name === 'Active Conversations') displayName = 'Active';
-                    else if (name === 'Delivery Rate') displayName = 'Deliv';
-                    else if (name === 'Campaign Success') displayName = 'Camp';
-                    else if (name.length > 6) displayName = name.substring(0, 5);
-                    return `${displayName} ${(percent * 100).toFixed(0)}%`;
-                  }
-                  return `${name}: ${(percent * 100).toFixed(0)}%`;
-                }}
-                outerRadius={isMobile ? 60 : 90}
-                innerRadius={isMobile ? 35 : 50}
+                label={renderPieLabel}
+                outerRadius={isMobile ? 70 : 95}
+                innerRadius={isMobile ? 40 : 60}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -266,26 +385,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                   fontSize: isMobile ? '11px' : '12px',
                   padding: isMobile ? '4px 8px' : '8px'
                 }}
-                formatter={(value: any, name: string) => [`${value}`, name]}
-              />
-              <Legend
-                wrapperStyle={{
-                  paddingTop: '10px',
-                  fontSize: isMobile ? '11px' : '12px'
-                }}
-                formatter={(value: string, entry: any) => {
-                  if (isMobile) {
-                    // Show abbreviated names in legend for mobile
-                    let displayName = value;
-                    if (value === 'Messages') displayName = 'Msgs';
-                    else if (value === 'Active Conversations') displayName = 'Active Conv';
-                    else if (value === 'Delivery Rate') displayName = 'Deliv Rate';
-                    else if (value === 'Campaign Success') displayName = 'Camp Success';
-                    else if (value.length > 12) displayName = value.substring(0, 12) + '...';
-                    return displayName;
-                  }
-                  return value;
-                }}
+                formatter={(value: number | string, name: string) => [`${value}`, name]}
               />
             </RechartsPieChart>
           </ResponsiveContainer>
@@ -338,6 +438,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         <div className="h-48 sm:h-64 w-full">
           {renderChart()}
         </div>
+        {renderLegendContent()}
 
         {performance && (
           <div className="text-center py-1">
