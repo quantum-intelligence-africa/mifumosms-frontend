@@ -450,12 +450,12 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
       </div>
 
       <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border-subtle">
-        <button
+        {/* <button
           onClick={handleViewDetailedAnalytics}
           className="w-full text-xs text-primary hover:text-primary-dark transition-smooth text-center"
         >
           View detailed analytics
-        </button>
+        </button> */}
       </div>
     </Card>
   );

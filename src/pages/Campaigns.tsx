@@ -72,6 +72,22 @@ const Campaigns = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const searchParamsToObject = () => Object.fromEntries(searchParams.entries());
+
+  const setSearchParam = (key: string, value: string) => {
+    const params = searchParamsToObject();
+    params[key] = value;
+    setSearchParams(params);
+  };
+
+  const removeSearchParam = (key: string) => {
+    const params = searchParamsToObject();
+    if (params[key] !== undefined) {
+      delete params[key];
+      setSearchParams(params);
+    }
+  };
+
   // Edit form state
   const [editForm, setEditForm] = useState({
     name: '',
@@ -96,6 +112,28 @@ const Campaigns = () => {
   const [selectedSegments, setSelectedSegments] = useState<any[]>([]);
   const [audienceMode, setAudienceMode] = useState<'contacts' | 'segments' | 'criteria'>('contacts');
 
+  const performWithRefreshing = async (callback: () => Promise<void>) => {
+    setIsRefreshing(true);
+    try {
+      await callback();
+    } catch (err) {
+      console.error('Campaign refresh error:', err);
+    }
+  };
+
+  const refreshCampaignData = async () => {
+    await performWithRefreshing(async () => {
+      await Promise.all([fetchCampaigns(), refetch()]);
+    });
+  };
+
+  const runActionWithRefresh = async (actionFn: () => Promise<any>) => {
+    await performWithRefreshing(async () => {
+      await actionFn();
+      await Promise.all([fetchCampaigns(), refetch()]);
+    });
+  };
+
   // Use smart campaign hook
   const {
     campaigns,
@@ -119,37 +157,59 @@ const Campaigns = () => {
     isLoading: contactsLoading,
   } = useContacts();
 
-  // Check if we should open the new campaign dialog
-  useEffect(() => {
-    if (searchParams.get("new") === "true") {
-      setIsNewCampaignOpen(true);
-      // Remove the parameter from URL after opening
-      setSearchParams({});
-    }
-  }, [searchParams, setSearchParams]);
-
-  // Reset dialog state when it closes
-  const handleDialogClose = (open: boolean) => {
-    setIsNewCampaignOpen(open);
-    if (!open) {
-      // Reset form state when dialog closes
-      setSearchParams({});
-    }
-  };
-
-  // Filter campaigns based on search and filters
-  const filteredCampaigns = Array.isArray(campaigns) ? campaigns.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         campaign.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
-    const matchesType = typeFilter === "all" || campaign.campaign_type === typeFilter;
-
-    return matchesSearch && matchesStatus && matchesType;
-  }) : [];
-
   const handleCampaignClick = (campaign: any) => {
     setSelectedCampaignForDetails(campaign);
     setIsDetailsModalOpen(true);
+    setSearchParam("campaign", campaign.id);
+    removeSearchParam("mode");
+    removeSearchParam("action");
+  };
+
+  const populateEditForm = (campaign: any) => {
+    setEditForm({
+      name: campaign.name || '',
+      description: campaign.description || '',
+      message_text: campaign.message_text || '',
+      campaign_type: campaign.campaign_type || '',
+      scheduled_at: campaign.scheduled_at || '',
+      is_recurring: campaign.is_recurring || false,
+      target_contact_count: campaign.target_contact_count || 0,
+      target_contact_ids: campaign.target_contact_ids || [],
+      target_segment_ids: campaign.target_segment_ids || [],
+      target_criteria: campaign.target_criteria || {
+        tags: [],
+        groups: [],
+        custom_fields: {}
+      },
+      settings: campaign.settings || {}
+    });
+  };
+
+  const openEditDialog = (campaign: any) => {
+    setSelectedCampaign(campaign);
+    populateEditForm(campaign);
+    setIsEditMode(true);
+    setIsCampaignDetailsOpen(true);
+    setIsDetailsModalOpen(false);
+    setSearchParam("campaign", campaign.id);
+    setSearchParam("mode", "edit");
+    removeSearchParam("action");
+  };
+
+  const closeCampaignDialog = () => {
+    setIsCampaignDetailsOpen(false);
+    setIsEditMode(false);
+    setSelectedCampaign(null);
+    removeSearchParam("mode");
+    removeSearchParam("campaign");
+  };
+
+  const handleCampaignDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsCampaignDetailsOpen(true);
+    } else {
+      closeCampaignDialog();
+    }
   };
 
   const handleCampaignAction = async (action: string, campaignId: string) => {
@@ -166,62 +226,32 @@ const Campaigns = () => {
           if (!campaign.can_start) {
             throw new Error('You do not have permission to start this campaign');
           }
-          // Refresh data immediately first
-          setIsRefreshing(true);
-          refetch().then(() => setIsRefreshing(false));
-          // Start campaign in background
-          startCampaign(campaignId).catch(error => {
-            console.log('Start campaign error (ignored):', error);
-          });
+          await runActionWithRefresh(() => startCampaign(campaignId));
         break;
       case 'pause':
           if (!campaign.can_pause) {
             throw new Error('You do not have permission to pause this campaign');
           }
-          // Refresh data immediately first
-          setIsRefreshing(true);
-          refetch().then(() => setIsRefreshing(false));
-          // Pause campaign in background
-          pauseCampaign(campaignId).catch(error => {
-            console.log('Pause campaign error (ignored):', error);
-          });
+          await runActionWithRefresh(() => pauseCampaign(campaignId));
         break;
       case 'cancel':
           if (!campaign.can_cancel) {
             throw new Error('You do not have permission to cancel this campaign');
           }
-          // Refresh data immediately first
-          setIsRefreshing(true);
-          refetch().then(() => setIsRefreshing(false));
-          // Cancel campaign in background
-          cancelCampaign(campaignId).catch(error => {
-            console.log('Cancel campaign error (ignored):', error);
-          });
+          await runActionWithRefresh(() => cancelCampaign(campaignId));
         break;
       case 'duplicate':
           if (!campaign.can_duplicate) {
             throw new Error('You do not have permission to duplicate this campaign');
           }
-          // Refresh data immediately first
-          setIsRefreshing(true);
-          fetchCampaigns().then(() => setIsRefreshing(false));
-          // Duplicate campaign in background
-          duplicateCampaign(campaignId).catch(error => {
-            console.log('Duplicate campaign error (ignored):', error);
-          });
+          await runActionWithRefresh(() => duplicateCampaign(campaignId));
         break;
       case 'delete':
           if (!campaign.can_delete) {
             throw new Error('You do not have permission to delete this campaign');
           }
         if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-            // Refresh data immediately first
-            setIsRefreshing(true);
-            fetchCampaigns().then(() => setIsRefreshing(false));
-            // Delete campaign in background
-            deleteCampaign(campaignId).catch(error => {
-              console.log('Delete campaign error (ignored):', error);
-            });
+            await runActionWithRefresh(() => deleteCampaign(campaignId));
           }
           break;
         case 'view_analytics':
@@ -235,29 +265,7 @@ const Campaigns = () => {
           if (!campaign.can_edit) {
             throw new Error('You do not have permission to edit this campaign');
           }
-          // Find the campaign and open edit form
-          if (campaign) {
-            setSelectedCampaign(campaign);
-            setEditForm({
-              name: campaign.name || '',
-              description: campaign.description || '',
-              message_text: campaign.message_text || '',
-              campaign_type: campaign.campaign_type || '',
-              scheduled_at: campaign.scheduled_at || '',
-              is_recurring: campaign.is_recurring || false,
-              target_contact_count: campaign.target_contact_count || 0,
-              target_contact_ids: campaign.target_contact_ids || [],
-              target_segment_ids: campaign.target_segment_ids || [],
-              target_criteria: campaign.target_criteria || {
-                tags: [],
-                groups: [],
-                custom_fields: {}
-              },
-              settings: campaign.settings || {}
-            });
-            setIsEditMode(true);
-            setIsCampaignDetailsOpen(true);
-          }
+          openEditDialog(campaign);
         break;
       }
     } catch (error) {
@@ -269,6 +277,87 @@ const Campaigns = () => {
       setIsRefreshing(false);
     }
   };
+
+  // Check if we should open the new campaign dialog
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      setIsNewCampaignOpen(true);
+      removeSearchParam("new");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const campaignParam = searchParams.get("campaign");
+    const modeParam = searchParams.get("mode");
+    const actionParam = searchParams.get("action");
+
+    if (!campaignParam || !Array.isArray(campaigns) || campaigns.length === 0) {
+      return;
+    }
+
+    const campaign = campaigns.find((c) => c.id === campaignParam);
+    if (!campaign) {
+      removeSearchParam("campaign");
+      removeSearchParam("mode");
+      removeSearchParam("action");
+      return;
+    }
+
+    if (actionParam) {
+      // Let action-specific effects handle navigation.
+      return;
+    }
+
+    if (modeParam === "edit") {
+      openEditDialog(campaign);
+    } else {
+      setSelectedCampaignForDetails(campaign);
+      setIsDetailsModalOpen(true);
+    }
+  }, [searchParams, campaigns]);
+
+  useEffect(() => {
+    const actionParam = searchParams.get("action");
+    const campaignParam = searchParams.get("campaign");
+
+    if (actionParam !== "duplicate" || !campaignParam || !Array.isArray(campaigns) || campaigns.length === 0) {
+      return;
+    }
+
+    const campaign = campaigns.find((c) => c.id === campaignParam);
+    if (!campaign) {
+      removeSearchParam("campaign");
+      removeSearchParam("action");
+      return;
+    }
+
+    (async () => {
+      try {
+        await handleCampaignAction("duplicate", campaign.id);
+      } finally {
+        removeSearchParam("action");
+        removeSearchParam("campaign");
+      }
+    })();
+  }, [searchParams, campaigns]);
+
+  // Reset dialog state when it closes
+  const handleDialogClose = (open: boolean) => {
+    setIsNewCampaignOpen(open);
+    if (!open) {
+      removeSearchParam("new");
+    }
+  };
+
+  // Filter campaigns based on search and filters
+  const filteredCampaigns = Array.isArray(campaigns) ? campaigns.filter(campaign => {
+    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         campaign.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
+    const matchesType = typeFilter === "all" || campaign.campaign_type === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  }) : [];
 
   // Handle form input changes
   const handleFormChange = (field: string, value: any) => {
@@ -286,7 +375,7 @@ const Campaigns = () => {
       const result = await updateCampaign(selectedCampaign.id, editForm);
       if (result) {
         setIsEditMode(false);
-        setIsCampaignDetailsOpen(false);
+        closeCampaignDialog();
         // Refresh campaigns list
         await fetchCampaigns();
       }
@@ -298,7 +387,6 @@ const Campaigns = () => {
   // Handle cancel edit
   const handleCancelEdit = () => {
     setIsEditMode(false);
-    setIsCampaignDetailsOpen(false);
     setEditForm({
       name: '',
       description: '',
@@ -319,6 +407,7 @@ const Campaigns = () => {
     setSelectedContacts([]);
     setSelectedSegments([]);
     setAudienceMode('contacts');
+    closeCampaignDialog();
   };
 
   // Handle contact selection
@@ -464,26 +553,35 @@ const Campaigns = () => {
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
               {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 lg:gap-4">
-                <div>
+              <div>
                 <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">Campaigns</h1>
-                  <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+                <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                   Manage and track your marketing campaigns
-                  </p>
-                </div>
-              <CreateCampaignDialog
-                open={isNewCampaignOpen}
-                onOpenChange={handleDialogClose}
-                onSuccess={() => {
-                  // Refresh campaigns data when a new campaign is created
-                  refetch();
-                }}
-              >
-                <Button className="gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Add New Campaign</span>
-                  <span className="sm:hidden">Add New</span>
-                    </Button>
-              </CreateCampaignDialog>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm"
+                  onClick={refreshCampaignData}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+                <CreateCampaignDialog
+                  open={isNewCampaignOpen}
+                  onOpenChange={handleDialogClose}
+                  onSuccess={refreshCampaignData}
+                >
+                  <Button className="gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Add New Campaign</span>
+                    <span className="sm:hidden">Add New</span>
+                  </Button>
+                </CreateCampaignDialog>
+              </div>
             </div>
 
             {/* Summary Cards */}
@@ -565,30 +663,20 @@ const Campaigns = () => {
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
+                  <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="sms">SMS</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
                   </SelectContent>
                 </Select>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => refetch()}
-                    className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9"
-                  >
-                    <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Refresh</span>
-                    <span className="sm:hidden">↻</span>
-                  </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              </div>
+            </CardContent>
+          </Card>
 
             {/* Campaigns Table */}
             <Card className="relative">
@@ -964,7 +1052,7 @@ const Campaigns = () => {
       </div>
 
       {/* Campaign Edit Modal */}
-      <Dialog open={isCampaignDetailsOpen} onOpenChange={setIsCampaignDetailsOpen}>
+      <Dialog open={isCampaignDetailsOpen} onOpenChange={handleCampaignDialogOpenChange}>
         <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-2">
             <DialogTitle className="text-sm sm:text-base flex items-center gap-1">
@@ -1364,7 +1452,7 @@ const Campaigns = () => {
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => setIsCampaignDetailsOpen(false)}
+                      onClick={closeCampaignDialog}
                       className={`${selectedCampaign.can_edit ? "flex-1" : "w-full"} text-xs sm:text-sm h-8 sm:h-9`}
                     >
                       Close
@@ -1381,7 +1469,11 @@ const Campaigns = () => {
       <CampaignDetailsModal
         campaign={selectedCampaignForDetails}
         isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedCampaignForDetails(null);
+          removeSearchParam("campaign");
+        }}
         onAction={handleCampaignAction}
       />
     </div>

@@ -144,6 +144,7 @@ const coreEndpointDetails = [
     "account_id": "JLJYJTEMPEN1YIBCRM29AG"
   }
 }`,
+    note: "sms_balance shows the exact number of SMS credits. Each SMS deducts one credit.",
   },
   {
     name: "Get Message Status",
@@ -159,6 +160,7 @@ const coreEndpointDetails = [
     "created_at": "2025-11-07T10:30:00Z"
   }
 }`,
+    statusValues: ["queued", "sent", "delivered", "failed", "undelivered"],
   },
   {
     name: "Get Delivery Reports",
@@ -503,6 +505,19 @@ const IntegrationGuide = () => {
                       <div>
                         <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Response</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
+                      </div>
+                    )}
+                    {endpoint.note && (
+                      <p className="text-[11px] text-text-subtle italic">{endpoint.note}</p>
+                    )}
+                    {endpoint.statusValues && (
+                      <div>
+                        <p className="text-[11px] font-semibold text-text-subtle uppercase mb-1">Status Values</p>
+                        <ul className="text-[11px] text-text-subtle list-disc list-inside space-y-0.5">
+                          {endpoint.statusValues.map((status) => (
+                            <li key={status}>{status}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </div>

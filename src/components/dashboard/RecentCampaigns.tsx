@@ -61,19 +61,15 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   };
 
   const handleViewDetails = (campaignId: string) => {
-    navigate(`/campaigns/${campaignId}`);
+    navigate(`/campaigns?campaign=${campaignId}`);
   };
 
   const handleDuplicate = (campaignId: string) => {
-    // TODO: Implement duplicate functionality
-    toast({
-      title: "Duplicate Campaign",
-      description: `Duplicating campaign ${campaignId}. This feature will be implemented soon.`,
-    });
+    navigate(`/campaigns?campaign=${campaignId}&action=duplicate`);
   };
 
   const handleEdit = (campaignId: string) => {
-    navigate(`/campaigns/${campaignId}/edit`);
+    navigate(`/campaigns?campaign=${campaignId}&mode=edit`);
   };
 
   return (

@@ -70,10 +70,15 @@ export function QuickActions() {
       </div>
 
       <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-border-subtle">
-        <div className="flex items-center justify-between text-xs sm:text-sm">
-          <span className="text-text-subtle">Need help getting started?</span>
-          <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs sm:text-sm">
-            View tutorials
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs sm:text-sm">
+          <span className="text-text-subtle">Hatuna tutorials kwa sasa. Unahitaji msaada?</span>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-primary text-xs sm:text-sm"
+            onClick={() => window.open("https://wa.me/255614459923", "_blank")}
+          >
+            WhatsApp
           </Button>
         </div>
       </div>

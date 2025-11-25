@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Ban,
   Star,
+  Hash,
   MoreVertical,
   Upload,
   Loader2,
@@ -513,7 +514,7 @@ const SenderNames = () => {
                 <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                     <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Plus className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
+                      <Hash className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
                     </div>
                     <div className="text-center sm:text-left">
                       <p className="text-xs text-text-subtle">Total</p>
@@ -665,11 +666,11 @@ const SenderNames = () => {
 
             {/* Animated Stats Section */}
             <div className="grid grid-cols-4 gap-2 sm:gap-4">
-              <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                  <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Plus className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
-                  </div>
+                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Hash className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
+                    </div>
                   <div className="text-center sm:text-left">
                     <p className="text-xs text-text-subtle">Total</p>
                     <p className="text-sm sm:text-xl font-bold text-foreground">
@@ -831,7 +832,7 @@ const SenderNames = () => {
                 <div className="text-xs sm:text-sm">
                   <p className="font-medium mb-1">Sender Name Requirements</p>
                   <ul className="text-text-subtle space-y-1 list-disc list-inside">
-                    <li>Maximum 17 characters (letters, numbers, spaces, _, -)</li>
+                    <li>Maximum 11 characters (letters, numbers, spaces, _, -)</li>
                     <li>Must be relevant to your business or brand</li>
                     <li>Approval typically takes 1-3 business days</li>
                     <li>Provide valid use case and sample messages</li>
@@ -943,11 +944,11 @@ const SenderNames = () => {
                       placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
                       value={newSenderName}
                       onChange={(e) => setNewSenderName(e.target.value)}
-                      maxLength={17}
+                      maxLength={11}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {newSenderName.length}/17 characters (letters, numbers, spaces, _, -)
+                      {newSenderName.length}/11 characters (letters, numbers, spaces, _, -)
                     </p>
                   </div>
 
@@ -1064,11 +1065,11 @@ const SenderNames = () => {
                       placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
                       value={editSenderName}
                       onChange={(e) => setEditSenderName(e.target.value)}
-                      maxLength={17}
+                      maxLength={11}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {editSenderName.length}/17 characters (letters, numbers, spaces, _, -)
+                      {editSenderName.length}/11 characters (letters, numbers, spaces, _, -)
                     </p>
                   </div>
 
