@@ -1076,11 +1076,6 @@ const PurchaseSMS = () => {
                             After confirming payment, you'll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.
                           </p>
                         </div>
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-1">
-                          <p className="text-xs text-blue-800 dark:text-blue-200">
-                            <strong>Note:</strong> Payment will be processed through ZenoPay mobile money integration.
-                          </p>
-                        </div>
                       </div>
                     </div>
                   )}
