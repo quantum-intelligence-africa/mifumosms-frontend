@@ -19,22 +19,53 @@ import {
 
 const quickStartSteps = [
   {
-    title: "Generate API Key",
-    description: "Dashboard → Settings → API & Webhooks → + New Key",
+    title: "1. Get Your API Key",
+    description: "Create a production-ready key for integrations.",
+    details: [
+      "Log in to the dashboard.",
+      "Navigate to Settings → API & Webhooks.",
+      "Click “+ New Key” and copy the key (format: mif_xxxx).",
+    ],
   },
   {
-    title: "Send Your First SMS",
-    description: `POST /sms/send/ with Authorization header and E.164 recipients.`,
+    title: "2. Send Your First SMS",
+    description: "Use POST /sms/send/ with Authorization header and E.164 recipients.",
+    details: [
+      "Set Content-Type to application/json.",
+      "Provide message body (max 160 chars).",
+      "Include recipients array with +countrycode numbers.",
+    ],
   },
   {
-    title: "Check Balance",
-    description: `GET /sms/balance/ to confirm credits and account ownership.`,
+    title: "3. Check Your Balance",
+    description: "Verify credits remain available for the account.",
+    details: [
+      "Call GET /sms/balance/ with the same API key.",
+      "Inspect sms_balance to confirm credit allocation.",
+    ],
   },
 ];
 
 const baseUrls = [
   { label: "Production", value: "https://mifumosms.servehttp.com/api/integration/v1/" },
   { label: "Development", value: "http://127.0.0.1:8001/api/integration/v1/" },
+];
+
+const curlExamples = [
+  {
+    title: "Send Your First SMS",
+    description: "Fire a production request with a JSON payload and bearer token.",
+    command: `curl -X POST "https://mifumosms.servehttp.com/api/integration/v1/sms/send/" \\
+-H "Content-Type: application/json" \\
+-H "Authorization: Bearer YOUR_API_KEY" \\
+-d '{"message": "Hello from Mifumo SMS!", "recipients": ["+255123456789"]}'`,
+  },
+  {
+    title: "Check Your Balance",
+    description: "Confirm remaining SMS credits for the authenticated account.",
+    command: `curl -X GET "https://mifumosms.servehttp.com/api/integration/v1/sms/balance/" \\
+-H "Authorization: Bearer YOUR_API_KEY"`,
+  },
 ];
 
 const integrationEndpoints = [
@@ -72,6 +103,76 @@ const integrationEndpoints = [
   },
 ];
 
+const coreEndpointDetails = [
+  {
+    name: "Send SMS",
+    method: "POST",
+    path: "/sms/send/",
+    description: "Send SMS to one or many recipients with optional sender ID.",
+    parameters: [
+      "message (required): SMS text, max 160 characters.",
+      "recipients (required): Array of E.164 phone numbers.",
+      'sender_id (optional): Defaults to "Taarifa-SMS" if omitted.',
+    ],
+    request: `{
+  "message": "Hello from Mifumo SMS!",
+  "recipients": ["+255123456789", "+255987654321"],
+  "sender_id": "MIFUMO"
+}`,
+    response: `{
+  "success": true,
+  "message": "SMS sent successfully",
+  "data": {
+    "message_id": "msg_123456789",
+    "successful_sends": 2,
+    "total_recipients": 2,
+    "status": "sent"
+  }
+}`,
+  },
+  {
+    name: "Get Account Balance",
+    method: "GET",
+    path: "/sms/balance/",
+    description: "Retrieve SMS credit inventory for the authenticated owner.",
+    parameters: ["No parameters required beyond Authorization header."],
+    response: `{
+  "success": true,
+  "data": {
+    "account_owner": "user@example.com",
+    "sms_balance": 1000,
+    "account_id": "JLJYJTEMPEN1YIBCRM29AG"
+  }
+}`,
+  },
+  {
+    name: "Get Message Status",
+    method: "GET",
+    path: "/sms/status/{message_id}/",
+    description: "Check message lifecycle (queued → delivered/failed).",
+    parameters: ["message_id (path): Use ID returned from /sms/send/."],
+    response: `{
+  "success": true,
+  "data": {
+    "message_id": "msg_123456789",
+    "status": "delivered",
+    "created_at": "2025-11-07T10:30:00Z"
+  }
+}`,
+  },
+  {
+    name: "Get Delivery Reports",
+    method: "GET",
+    path: "/sms/delivery-reports/",
+    description: "Query delivery logs with rich filters and pagination.",
+    parameters: [
+      "start_date/end_date (optional, ISO 8601).",
+      "status (optional): sent, delivered, failed.",
+      "page/per_page (optional): defaults 1 / 50 (max 100).",
+    ],
+  },
+];
+
 const ownerConfigFields = [
   { key: "api_base_url", note: "Include /api/integration/v1 or allow app to append automatically." },
   { key: "api_key", note: "Starts with mif_; never expose publicly." },
@@ -79,11 +180,140 @@ const ownerConfigFields = [
   { key: "sender_id", note: "Optional but recommended for branding." },
 ];
 
+const accountEndpoints = [
+  {
+    title: "Create Tenant Account",
+    method: "POST",
+    path: "/partner/tenants/create/",
+    request: `{
+  "tenant_id": "customer_12345",
+  "tenant_name": "Acme Corporation",
+  "owner_email": "john@acme.com",
+  "owner_name": "John Doe",
+  "contact_phone": "+255123456789",
+  "initial_credits": 100
+}`,
+    response: `{
+  "success": true,
+  "message": "Tenant account created successfully",
+  "data": {
+    "mifumo_account_id": "550e8400-e29b-41d4-a716-446655440000",
+    "mifumo_api_key": "mif_4ndp-3x-Pf5edLnc-jmW10aHWGfCLJNdtfSxzXJLFIM",
+    "tenant_name": "Acme Corporation",
+    "sms_balance": 100
+  }
+}`,
+  },
+  {
+    title: "List SMS Packages",
+    method: "GET",
+    path: "/partner/packages/",
+    response: `{
+  "success": true,
+  "data": {
+    "packages": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Lite",
+        "credits": 49999,
+        "price": 899982.00,
+        "unit_price": 18.00,
+        "subtitle": "1 to 49,999 SMS"
+      },
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "Standard",
+        "credits": 149999,
+        "price": 2099986.00,
+        "unit_price": 14.00,
+        "is_popular": true,
+        "subtitle": "50,000 to 149,999 SMS"
+      },
+      {
+        "id": "770e8400-e29b-41d4-a716-446655440002",
+        "name": "Pro",
+        "credits": 250000,
+        "price": 3000000.00,
+        "unit_price": 12.00,
+        "subtitle": "250,000 SMS and above"
+      }
+    ]
+  }
+}`,
+  },
+  {
+    title: "Add Credits to Tenant Account",
+    method: "POST",
+    path: "/partner/tenants/{tenant_id}/credits/",
+    request: `{
+  "package_id": "550e8400-e29b-41d4-a716-446655440000",
+  "payment_reference": "TXN-12345",
+  "payment_method": "mpesa",
+  "amount_paid": 180000.00
+}`,
+    requestAlt: `{
+  "credits": 1000,
+  "payment_reference": "TXN-12345",
+  "payment_method": "mpesa"
+}`,
+  },
+  {
+    title: "Calculate SMS Pricing",
+    method: "POST",
+    path: "/partner/pricing/calculate/",
+    request: `{
+  "credits": 5000
+}`,
+    response: `{
+  "success": true,
+  "data": {
+    "credits": 5000,
+    "unit_price": 18.00,
+    "total_price": 90000.00,
+    "active_tier": "Lite",
+    "savings_percentage": 40.0,
+    "currency": "TZS"
+  }
+}`,
+  },
+];
+
+const pricingTiers = [
+  { name: "Lite", range: "1 - 49,999 SMS", unitPrice: "18.00 TZS/SMS" },
+  { name: "Standard", range: "50,000 - 149,999 SMS", unitPrice: "14.00 TZS/SMS", note: "Most Popular" },
+  { name: "Pro", range: "250,000+ SMS", unitPrice: "12.00 TZS/SMS" },
+];
+
 const securityTips = [
   "Use HTTPS everywhere and rotate API keys regularly.",
   "Store credentials in environment variables or vaults, never in client bundles.",
   "Validate phone numbers in E.164 format before sending.",
   "Check response.success and error_code for granular error handling.",
+];
+
+const errorCodes = [
+  { code: "AUTHENTICATION_REQUIRED (401)", note: "Missing Authorization header." },
+  { code: "INVALID_API_KEY (401)", note: "API key is invalid or expired." },
+  { code: "INSUFFICIENT_CREDITS (400)", note: "Account does not have enough SMS credits." },
+  { code: "MISSING_FIELD (400)", note: "Required field omitted from payload." },
+];
+
+const creditManagement = [
+  "1 SMS = 1 credit per recipient.",
+  "Credits deduct only on confirmed successful sends.",
+  "Two recipients = 2 credits; multi-recipient campaigns scale linearly.",
+  "Automatic deduction keeps balances synchronized with delivery confirmations.",
+];
+
+const quickReferenceEndpoints = [
+  "POST /sms/send/ - Send SMS",
+  "GET /sms/balance/ - Check balance",
+  "GET /sms/status/{message_id}/ - Get message status",
+  "GET /sms/delivery-reports/ - Get delivery reports",
+  "POST /partner/tenants/create/ - Create tenant account",
+  "GET /partner/packages/ - List SMS packages",
+  "POST /partner/tenants/{tenant_id}/credits/ - Add credits",
+  "POST /partner/pricing/calculate/ - Calculate pricing",
 ];
 
 const IntegrationGuide = () => {
@@ -151,10 +381,37 @@ const IntegrationGuide = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-text-subtle">{step.description}</p>
+                    {step.details && (
+                      <ul className="mt-2 text-xs text-text-subtle space-y-1 list-disc list-inside">
+                        {step.details.map((detail) => (
+                          <li key={detail}>{detail}</li>
+                        ))}
+                      </ul>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
+
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Zap className="w-4 h-4" />
+                  Quick Start Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {curlExamples.map((example) => (
+                  <div key={example.title} className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <p className="font-medium text-sm">{example.title}</p>
+                      <span className="text-xs text-text-subtle">{example.description}</span>
+                    </div>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{example.command}</pre>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
 
             <Card className="glass">
               <CardHeader>
@@ -212,6 +469,50 @@ const IntegrationGuide = () => {
             <Card className="glass">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
+                  <Code className="w-4 h-4" />
+                  Core API Endpoints
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {coreEndpointDetails.map((endpoint) => (
+                  <div key={endpoint.path} className="p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center flex-wrap gap-2 text-sm font-mono">
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {endpoint.method}
+                        </Badge>
+                        <span className="break-all">{endpoint.path}</span>
+                      </div>
+                      <p className="text-sm font-semibold">{endpoint.name}</p>
+                      <p className="text-xs text-text-subtle">{endpoint.description}</p>
+                    </div>
+                    {endpoint.parameters && (
+                      <ul className="text-xs text-text-subtle list-disc list-inside space-y-1">
+                        {endpoint.parameters.map((param) => (
+                          <li key={param}>{param}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {endpoint.request && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Request</p>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.request}</pre>
+                      </div>
+                    )}
+                    {endpoint.response && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Response</p>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
                   <Layers className="w-4 h-4" />
                   Integration Endpoints
                 </CardTitle>
@@ -241,7 +542,70 @@ const IntegrationGuide = () => {
               </CardContent>
             </Card>
 
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BookOpen className="w-4 h-4" />
+                  Account Creation API
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {accountEndpoints.map((endpoint) => (
+                  <div key={endpoint.title} className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-semibold">{endpoint.title}</p>
+                      <div className="flex items-center flex-wrap gap-2 text-xs font-mono">
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {endpoint.method}
+                        </Badge>
+                        <span className="break-all">{endpoint.path}</span>
+                      </div>
+                    </div>
+                    {endpoint.request && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Request</p>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.request}</pre>
+                      </div>
+                    )}
+                    {endpoint.requestAlt && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Alternative Request</p>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.requestAlt}</pre>
+                      </div>
+                    )}
+                    {endpoint.response && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Response</p>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
             <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="glass">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Server className="w-4 h-4" />
+                    Pricing Tiers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {pricingTiers.map((tier) => (
+                    <div key={tier.name} className="p-3 rounded-lg border border-border-subtle bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold">{tier.name}</p>
+                        {tier.note && <Badge variant="secondary">{tier.note}</Badge>}
+                      </div>
+                      <p className="text-xs text-text-subtle">{tier.range}</p>
+                      <p className="text-sm mt-1">{tier.unitPrice}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
               <Card className="glass">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -261,21 +625,56 @@ const IntegrationGuide = () => {
                   </ul>
                 </CardContent>
               </Card>
+            </div>
 
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Shield className="w-4 h-4" />
+                  Security & Error Handling
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-text-subtle">
+                {securityTips.map((tip) => (
+                  <div key={tip} className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
+                    <p>{tip}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4 lg:grid-cols-2">
               <Card className="glass">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Shield className="w-4 h-4" />
-                    Security & Error Handling
+                    Common Error Codes
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-text-subtle">
-                  {securityTips.map((tip) => (
-                    <div key={tip} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
-                      <p>{tip}</p>
+                  {errorCodes.map((item) => (
+                    <div key={item.code}>
+                      <p className="font-medium">{item.code}</p>
+                      <p>{item.note}</p>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+
+              <Card className="glass">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Zap className="w-4 h-4" />
+                    Credit Management
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm text-text-subtle list-disc list-inside space-y-1">
+                    {creditManagement.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             </div>
@@ -288,19 +687,21 @@ const IntegrationGuide = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 lg:grid-cols-3">
-                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle mb-1">Send SMS</p>
-                  <code className="text-xs font-mono break-all">POST /sms/send/</code>
+                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-text-subtle">Base URL</p>
+                  <code className="text-xs font-mono break-all">https://mifumosms.servehttp.com/api/integration/v1/</code>
                 </div>
-                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle mb-1">Balance</p>
-                  <code className="text-xs font-mono break-all">GET /sms/balance/</code>
+                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-text-subtle">Authentication</p>
+                  <code className="text-xs font-mono break-all">Authorization: Bearer YOUR_API_KEY</code>
                 </div>
-                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle mb-1">Payment History</p>
-                  <code className="text-xs font-mono break-all">
-                    {"GET /partner/tenants/{tenant_id}/payments/history/"}
-                  </code>
+                <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-text-subtle">Endpoints</p>
+                  <ul className="text-xs text-text-subtle space-y-1">
+                    {quickReferenceEndpoints.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
               </CardContent>
             </Card>
