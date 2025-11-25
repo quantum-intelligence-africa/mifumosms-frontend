@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Users, MessageSquare, Calendar, Settings } from 'lucide-react';
+import { Plus, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
   const { createCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
+  const showContactsEmptyState = !contactsLoading && contacts.length === 0;
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -316,6 +317,27 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mx-auto"></div>
                   <p className="text-xs text-muted-foreground mt-1">Loading contacts...</p>
+                </div>
+              ) : showContactsEmptyState ? (
+                <div className="text-center py-6 px-4 border border-dashed border-border-subtle rounded-lg bg-muted/30 space-y-3">
+                  <AlertCircle className="w-8 h-8 mx-auto text-primary" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">No contacts available</p>
+                    <p className="text-xs text-muted-foreground">
+                      Add at least one contact before creating a campaign.
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setStep(1);
+                      setOpen(false);
+                    }}
+                  >
+                    <Link to="/contacts">Go to Contacts</Link>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-2">
