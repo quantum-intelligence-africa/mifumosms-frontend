@@ -306,7 +306,7 @@ const Settings = () => {
     {
       id: "security",
       title: "Security",
-      description: "Password, 2FA, and security settings",
+      description: "Password and account security settings",
       icon: Shield,
       color: "bg-red-500"
     },
@@ -1244,7 +1244,8 @@ const Settings = () => {
       case "security":
         return (
           <div className="space-y-4">
-            {/* Security Summary */}
+            {/* Security Summary - Coming Soon */}
+            {/*
             {securitySummary && (
               <Card className="glass border-0">
                 <CardHeader className="p-4">
@@ -1277,6 +1278,7 @@ const Settings = () => {
                 </CardContent>
               </Card>
             )}
+            */}
 
             {/* Change Password */}
             <Card className="glass border-0">
@@ -1360,7 +1362,8 @@ const Settings = () => {
               </CardContent>
             </Card>
 
-            {/* Two-Factor Authentication */}
+            {/* Two-Factor Authentication - Coming Soon */}
+            {/*
             <Card className="glass border-0">
               <CardHeader className="p-4">
                 <CardTitle className="flex items-center gap-2 text-sm">
@@ -1390,7 +1393,6 @@ const Settings = () => {
                       </p>
                     </div>
 
-                    {/* Step 1: Download App */}
                     <div className="space-y-3">
                       <h6 className="font-medium text-foreground text-sm">Step 1: Download an Authenticator App</h6>
                       <div className="grid grid-cols-2 gap-3">
@@ -1483,121 +1485,6 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    {/* Step 2: Scan QR Code */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h6 className="font-medium text-foreground text-sm">Step 2: Scan QR Code</h6>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            // Refresh 2FA status to get new QR code
-                            await fetch2FAStatus();
-                            // If still no QR code after refresh, generate fallback
-                            if (!twoFactorStatus?.qr_code_data && !fallbackQRCode) {
-                              await generateFallbackQRCode();
-                            }
-                          }}
-                          className="text-xs"
-                        >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Refresh QR
-                        </Button>
-                      </div>
-                      <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-                        <p className="text-xs text-yellow-800 mb-2">
-                          <strong>Note:</strong> The QR code is generated automatically from the server. If you don't see it, click "Refresh QR" above or "Generate QR Code" below.
-                        </p>
-                      </div>
-
-                      {twoFactorStatus?.qr_code_data || fallbackQRCode ? (
-                        <div className="text-center">
-                          <div className="inline-block p-4 bg-white rounded-lg border border-gray-200">
-                            <img
-                              src={(twoFactorStatus?.qr_code_data || fallbackQRCode)?.qr_code}
-                              alt="2FA QR Code"
-                              className="w-48 h-48 mx-auto"
-                            />
-                          </div>
-                          <p className="text-xs text-text-subtle mt-3 mb-2">
-                            Open your authenticator app and scan this QR code
-                          </p>
-                          <div className="space-y-2">
-                            <p className="text-xs text-text-subtle">Or enter this key manually:</p>
-                            <div className="flex items-center gap-2 justify-center">
-                              <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono">
-                                {(twoFactorStatus?.qr_code_data || fallbackQRCode)?.manual_entry_key}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const key = (twoFactorStatus?.qr_code_data || fallbackQRCode)?.manual_entry_key;
-                                  if (key) {
-                                    navigator.clipboard.writeText(key);
-                                    toast({
-                                      title: "Copied",
-                                      description: "Secret key copied to clipboard",
-                                    });
-                                  }
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center p-8 bg-gray-50 rounded-lg">
-                          {isGeneratingQR ? (
-                            <>
-                              <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-                              <p className="text-sm text-text-subtle">Generating QR code...</p>
-                            </>
-                          ) : (
-                            <>
-                              <div className="w-8 h-8 mx-auto mb-3 text-gray-400">
-                                <Shield className="w-8 h-8" />
-                              </div>
-                              <p className="text-sm text-text-subtle mb-3">QR code not available from server</p>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={generateFallbackQRCode}
-                                disabled={isGeneratingQR}
-                                className="text-xs"
-                              >
-                                <RefreshCw className="w-3 h-3 mr-1" />
-                                Generate QR Code
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Step 3: Enter Code */}
-                    <div className="space-y-3">
-                      <h6 className="font-medium text-foreground text-sm">Step 3: Enter Verification Code</h6>
-                      <div className="space-y-2">
-                        <Label htmlFor="totpCode" className="text-sm">6-Digit Code from Your App</Label>
-                        <Input
-                          id="totpCode"
-                          placeholder="Enter 6-digit code from your authenticator app"
-                          value={twoFactorData.totpCode}
-                          onChange={(e) => setTwoFactorData(prev => ({ ...prev, totpCode: e.target.value }))}
-                          className="glass-subtle border-0 text-sm text-center text-lg tracking-widest"
-                          maxLength={6}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                        />
-                        <p className="text-xs text-text-subtle">
-                          The code refreshes every 30 seconds. If it expires, wait for the next one.
-                        </p>
-                      </div>
-                    </div>
-
                     <Button
                       onClick={handleEnable2FA}
                       disabled={isLoading || !twoFactorData.totpCode || twoFactorData.totpCode.length !== 6}
@@ -1628,6 +1515,7 @@ const Settings = () => {
                 )}
               </CardContent>
             </Card>
+            */}
 
             {/* SMS Verification */}
             {!user?.phone_verified && (
@@ -1734,7 +1622,8 @@ const Settings = () => {
               </Card>
             )}
 
-            {/* Active Sessions */}
+            {/* Active Sessions - Coming Soon */}
+            {/*
             <Card className="glass border-0">
               <CardHeader className="p-4">
                 <CardTitle className="flex items-center justify-between text-sm">
@@ -1805,7 +1694,6 @@ const Settings = () => {
               )}
             </Card>
 
-            {/* Security Events */}
             <Card className="glass border-0">
               <CardHeader className="p-4">
                 <CardTitle className="flex items-center justify-between text-sm">
@@ -1846,8 +1734,10 @@ const Settings = () => {
                 </CardContent>
               )}
             </Card>
+            */}
 
-            {/* 2FA Disable Dialog */}
+            {/* 2FA Disable Dialog - Coming Soon */}
+            {/*
             <Dialog open={show2FADisable} onOpenChange={setShow2FADisable}>
               <DialogContent className="glass">
                 <DialogHeader>
@@ -1899,7 +1789,6 @@ const Settings = () => {
               </DialogContent>
             </Dialog>
 
-            {/* Backup Codes Dialog */}
             <Dialog open={showBackupCodes} onOpenChange={setShowBackupCodes}>
               <DialogContent className="glass">
                 <DialogHeader>
@@ -1930,6 +1819,7 @@ const Settings = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            */}
           </div>
         );
 
