@@ -173,6 +173,29 @@ const Settings = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<TeamRole>("agent");
 
+  // Billing state
+  const [billingData, setBillingData] = useState<{
+    balance: {
+      credits: number;
+      total_purchased: number;
+      total_used: number;
+      last_purchase?: string;
+    } | null;
+    packages: Array<{
+      id: number;
+      name: string;
+      credits: number;
+      price: number;
+      currency: string;
+      savings_percentage: number;
+    }>;
+    isLoading: boolean;
+  }>({
+    balance: null,
+    packages: [],
+    isLoading: false,
+  });
+
   useEffect(() => {
     if (currentCategory === 'team' && currentTenant?.id) {
       console.log('Loading team members for tenant:', currentTenant.id);
@@ -180,6 +203,49 @@ const Settings = () => {
       team.getStats().catch(err => console.error('Failed to load team stats:', err));
     }
   }, [currentCategory, currentTenant?.id]);
+
+  // Fetch billing data when billing category is selected
+  useEffect(() => {
+    if (currentCategory === 'billing') {
+      fetchBillingData();
+    }
+  }, [currentCategory]);
+
+  const fetchBillingData = async () => {
+    try {
+      setBillingData(prev => ({ ...prev, isLoading: true }));
+
+      // Fetch balance using the new endpoint
+      const balanceResponse = await apiClient.getBillingBalance();
+      const packagesResponse = await apiClient.getBillingPackages();
+
+      if (balanceResponse.success && balanceResponse.data) {
+        setBillingData(prev => ({
+          ...prev,
+          balance: balanceResponse.data,
+        }));
+      }
+
+      if (packagesResponse.success && packagesResponse.data) {
+        const packagesList = Array.isArray(packagesResponse.data)
+          ? packagesResponse.data
+          : packagesResponse.data.packages || [];
+        setBillingData(prev => ({
+          ...prev,
+          packages: packagesList,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch billing data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load billing information",
+        variant: "destructive",
+      });
+    } finally {
+      setBillingData(prev => ({ ...prev, isLoading: false }));
+    }
+  };
 
   const handleInviteMember = async () => {
     if (!inviteEmail) return;
@@ -1983,67 +2049,153 @@ const Settings = () => {
           <div className="space-y-4">
             <Card className="glass border-0">
               <CardHeader className="p-4">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <CreditCard className="w-4 h-4" />
-                  Billing Information
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <CreditCard className="w-4 h-4" />
+                    Billing Information
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchBillingData}
+                    disabled={billingData.isLoading}
+                    className="text-xs"
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 ${billingData.isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-foreground mb-3 text-sm">Current Plan</h4>
-                    <div className="p-4 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-semibold text-foreground text-sm">Professional</h5>
-                        <Badge variant="default" className="text-xs">Active</Badge>
-                      </div>
-                      <p className="text-lg font-bold text-foreground mb-1">Tsh 99/month</p>
-                      <p className="text-xs text-text-subtle mb-3">
-                        Up to 10,000 messages/month
-                      </p>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        Change Plan
-                      </Button>
-                    </div>
+                {billingData.isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="w-5 h-5 animate-spin text-text-subtle" />
                   </div>
-
-                  <div>
-                    <h4 className="font-medium text-foreground mb-3 text-sm">Usage This Month</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-text-subtle">Messages Sent</span>
-                        <span className="font-medium">7,245 / 10,000</span>
-                      </div>
-                      <div className="w-full bg-gradient-surface rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full" style={{ width: '72%' }}></div>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-text-subtle">Next billing: April 1, 2024</span>
-                        <span className="text-success">Tsh 99.00</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h4 className="font-medium text-foreground mb-3 text-sm">Payment Method</h4>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-surface border border-border-subtle">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-5 bg-primary rounded flex items-center justify-center">
-                          <span className="text-xs text-white font-bold">VISA</span>
+                ) : (
+                  <div className="space-y-4">
+                    {/* SMS Credits Balance */}
+                    <div>
+                      <h4 className="font-medium text-foreground mb-3 text-sm">SMS Credits</h4>
+                      <div className="p-4 rounded-lg bg-gradient-surface border border-border-subtle">
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="font-semibold text-foreground text-sm">Current Balance</h5>
+                          <Badge variant="default" className="text-xs">
+                            {billingData.balance?.credits || 0} Credits
+                          </Badge>
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">•••• •••• •••• 4242</p>
-                          <p className="text-xs text-text-subtle">Expires 12/2025</p>
+                        <p className="text-2xl font-bold text-foreground mb-1">
+                          {billingData.balance?.credits?.toLocaleString() || '0'}
+                        </p>
+                        <p className="text-xs text-text-subtle mb-3">
+                          Total Purchased: {billingData.balance?.total_purchased?.toLocaleString() || '0'} •
+                          Total Used: {billingData.balance?.total_used?.toLocaleString() || '0'}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => window.location.href = '/sms/purchase'}
+                        >
+                          Purchase Credits
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Available Packages */}
+                    {billingData.packages.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-3 text-sm">Available Packages</h4>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {billingData.packages.slice(0, 3).map((pkg) => (
+                            <div
+                              key={pkg.id}
+                              className="p-3 rounded-lg bg-gradient-surface border border-border-subtle"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-semibold text-foreground text-sm">{pkg.name}</h5>
+                                {pkg.savings_percentage > 0 && (
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    Save {pkg.savings_percentage}%
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-lg font-bold text-foreground mb-1">
+                                {pkg.credits.toLocaleString()} Credits
+                              </p>
+                              <p className="text-xs text-text-subtle mb-2">
+                                {pkg.currency} {pkg.price.toLocaleString()}
+                              </p>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        Update
-                      </Button>
+                    )}
+
+                    {/* Usage Statistics */}
+                    {billingData.balance && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-3 text-sm">Usage Statistics</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-text-subtle">Credits Used</span>
+                            <span className="font-medium">
+                              {billingData.balance.total_used?.toLocaleString() || '0'} / {billingData.balance.total_purchased?.toLocaleString() || '0'}
+                            </span>
+                          </div>
+                          {billingData.balance.total_purchased > 0 && (
+                            <>
+                              <div className="w-full bg-gradient-surface rounded-full h-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full"
+                                  style={{
+                                    width: `${Math.min(100, ((billingData.balance.total_used || 0) / billingData.balance.total_purchased) * 100)}%`
+                                  }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-text-subtle">
+                                  {billingData.balance.last_purchase
+                                    ? `Last purchase: ${new Date(billingData.balance.last_purchase).toLocaleDateString()}`
+                                    : 'No purchases yet'}
+                                </span>
+                                <span className="text-success">
+                                  {billingData.balance.credits} Remaining
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Quick Actions */}
+                    <div>
+                      <h4 className="font-medium text-foreground mb-3 text-sm">Quick Actions</h4>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs justify-start"
+                          onClick={() => window.location.href = '/sms/purchase'}
+                        >
+                          <CreditCard className="w-3 h-3 mr-2" />
+                          Purchase Credits
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs justify-start"
+                          onClick={() => window.location.href = '/sms/purchase-history'}
+                        >
+                          <Calendar className="w-3 h-3 mr-2" />
+                          Purchase History
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

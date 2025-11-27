@@ -2645,7 +2645,7 @@ class ApiClient {
       if (params?.start_date) queryParams.append('start_date', params.start_date);
       if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.COMPREHENSIVE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.COMPREHENSIVE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2706,7 +2706,7 @@ class ApiClient {
       if (params?.start_date) queryParams.append('start_date', params.start_date);
       if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.BASE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.BASE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2759,7 +2759,7 @@ class ApiClient {
       if (params?.start_date) queryParams.append('start_date', params.start_date);
       if (params?.end_date) queryParams.append('end_date', params.end_date);
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.SUMMARY}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.SUMMARY}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2800,7 +2800,7 @@ class ApiClient {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.PURCHASES}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.PURCHASES}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2873,7 +2873,7 @@ class ApiClient {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.PAYMENTS}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.PAYMENTS}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2917,7 +2917,7 @@ class ApiClient {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
-      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY.USAGE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.HISTORY_DETAILED.USAGE}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
@@ -2961,6 +2961,74 @@ class ApiClient {
       });
 
       return await this.handleResponse<Subscription>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Get Billing Balance (new endpoint)
+  async getBillingBalance(): Promise<ApiResponse<{
+    credits: number;
+    total_purchased: number;
+    total_used: number;
+    last_purchase?: string;
+    package_history?: Array<{
+      package_name: string;
+      credits: number;
+      purchased_at: string;
+    }>;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.BALANCE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        credits: number;
+        total_purchased: number;
+        total_used: number;
+        last_purchase?: string;
+        package_history?: Array<{
+          package_name: string;
+          credits: number;
+          purchased_at: string;
+        }>;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Get Billing Packages (new endpoint)
+  async getBillingPackages(): Promise<ApiResponse<Array<{
+    id: number;
+    name: string;
+    credits: number;
+    price: number;
+    currency: string;
+    savings_percentage: number;
+  }>>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PACKAGES}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<Array<{
+        id: number;
+        name: string;
+        credits: number;
+        price: number;
+        currency: string;
+        savings_percentage: number;
+      }>>(response);
     } catch (error) {
       return {
         success: false,

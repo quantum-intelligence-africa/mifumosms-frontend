@@ -47,7 +47,7 @@ const quickStartSteps = [
 ];
 
 const baseUrls = [
-  { label: "Production", value: "https://mifumosms.servehttp.com/api/integration/v1/" },
+  { label: "Production", value: "https://mifumosms.mifumolabs.com/api/integration/v1/" },
   { label: "Development", value: "http://127.0.0.1:8001/api/integration/v1/" },
 ];
 
@@ -55,7 +55,7 @@ const curlExamples = [
   {
     title: "Send Your First SMS",
     description: "Fire a production request with a JSON payload and bearer token.",
-    command: `curl -X POST "https://mifumosms.servehttp.com/api/integration/v1/sms/send/" \\
+    command: `curl -X POST "https://mifumosms.mifumolabs.com/api/integration/v1/sms/send/" \\
 -H "Content-Type: application/json" \\
 -H "Authorization: Bearer YOUR_API_KEY" \\
 -d '{"message": "Hello from Mifumo SMS!", "recipients": ["+255123456789"]}'`,
@@ -63,7 +63,7 @@ const curlExamples = [
   {
     title: "Check Your Balance",
     description: "Confirm remaining SMS credits for the authenticated account.",
-    command: `curl -X GET "https://mifumosms.servehttp.com/api/integration/v1/sms/balance/" \\
+    command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/sms/balance/" \\
 -H "Authorization: Bearer YOUR_API_KEY"`,
   },
 ];
@@ -704,7 +704,7 @@ const IntegrationGuide = () => {
               <CardContent className="grid gap-3 lg:grid-cols-3">
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
                   <p className="text-xs uppercase tracking-wide text-text-subtle">Base URL</p>
-                  <code className="text-xs font-mono break-all">https://mifumosms.servehttp.com/api/integration/v1/</code>
+                  <code className="text-xs font-mono break-all">https://mifumosms.mifumolabs.com/api/integration/v1/</code>
                 </div>
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
                   <p className="text-xs uppercase tracking-wide text-text-subtle">Authentication</p>
@@ -735,7 +735,7 @@ const IntegrationGuide = () => {
                 </div>
                 <div>
                   <p className="font-medium">Dashboard</p>
-                  <p className="text-text-subtle">https://mifumosms.servehttp.com</p>
+                  <p className="text-text-subtle">https://mifumosms.mifumolabs.com</p>
                 </div>
               </CardContent>
             </Card>
