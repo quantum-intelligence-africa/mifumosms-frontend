@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User,
   Bell,
@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiClient } from "@/lib/api";
+import { apiClient, User as UserType } from "@/lib/api";
 import { useSecurity } from "@/hooks/useSecurity";
 import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
 import { SettingsAPI } from "./SettingsAPI";
@@ -77,6 +77,65 @@ interface SettingsCategory {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+}
+
+interface ApiAccount {
+  id: string;
+  account_id: string;
+  name: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ApiKey {
+  id: string;
+  key_name: string;
+  api_key: string;
+  secret_key: string;
+  status: string;
+  permissions: Record<string, string[]>;
+  total_uses: number;
+  last_used: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  total_calls: number;
+  successful_calls: number;
+  failed_calls: number;
+  last_triggered: string | null;
+  last_error: string;
+  created_at: string;
+}
+
+interface ApiSettings {
+  api_account?: ApiAccount;
+  api_keys?: ApiKey[];
+  webhooks?: Webhook[];
+  last_updated?: string;
+}
+
+interface ExtendedUser extends UserType {
+  profile_photo?: string;
+  profile?: {
+    phone_number?: string;
+    phone?: string;
+  };
+  phone?: string;
+  phone_e164?: string;
+}
+
+interface ProfileUpdateData {
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  email?: string;
 }
 
 const Settings = () => {
@@ -124,11 +183,7 @@ const Settings = () => {
   });
 
   // API Settings State
-  const [apiSettings, setApiSettings] = useState<{
-    api_account?: any;
-    api_keys?: any[];
-    webhooks?: any[];
-  } | null>(null);
+  const [apiSettings, setApiSettings] = useState<ApiSettings | null>(null);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [showWebhookDialog, setShowWebhookDialog] = useState(false);
   const [newApiKeyForm, setNewApiKeyForm] = useState({ key_name: "", permissions: {} as Record<string, string[]> });
@@ -202,16 +257,9 @@ const Settings = () => {
       team.listMembers().catch(err => console.error('Failed to load team members:', err));
       team.getStats().catch(err => console.error('Failed to load team stats:', err));
     }
-  }, [currentCategory, currentTenant?.id]);
+  }, [currentCategory, currentTenant?.id, team]);
 
-  // Fetch billing data when billing category is selected
-  useEffect(() => {
-    if (currentCategory === 'billing') {
-      fetchBillingData();
-    }
-  }, [currentCategory]);
-
-  const fetchBillingData = async () => {
+  const fetchBillingData = useCallback(async () => {
     try {
       setBillingData(prev => ({ ...prev, isLoading: true }));
 
@@ -227,9 +275,22 @@ const Settings = () => {
       }
 
       if (packagesResponse.success && packagesResponse.data) {
-        const packagesList = Array.isArray(packagesResponse.data)
-          ? packagesResponse.data
-          : packagesResponse.data.packages || [];
+        let packagesList: Array<{
+          id: number;
+          name: string;
+          credits: number;
+          price: number;
+          currency: string;
+          savings_percentage: number;
+        }> = [];
+
+        if (Array.isArray(packagesResponse.data)) {
+          packagesList = packagesResponse.data;
+        } else if (typeof packagesResponse.data === 'object' && packagesResponse.data !== null && 'packages' in packagesResponse.data) {
+          const dataWithPackages = packagesResponse.data as { packages?: typeof packagesList };
+          packagesList = Array.isArray(dataWithPackages.packages) ? dataWithPackages.packages : [];
+        }
+
         setBillingData(prev => ({
           ...prev,
           packages: packagesList,
@@ -245,7 +306,14 @@ const Settings = () => {
     } finally {
       setBillingData(prev => ({ ...prev, isLoading: false }));
     }
-  };
+  }, [toast]);
+
+  // Fetch billing data when billing category is selected
+  useEffect(() => {
+    if (currentCategory === 'billing') {
+      fetchBillingData();
+    }
+  }, [currentCategory, fetchBillingData]);
 
   const handleInviteMember = async () => {
     if (!inviteEmail) return;
@@ -402,13 +470,13 @@ const Settings = () => {
   // Initialize profile data from user context
   useEffect(() => {
     if (user) {
+      const extendedUser = user as ExtendedUser;
       const resolvedPhone =
         user.phone_number ||
-        (user as any)?.profile?.phone_number ||
-        (user as any)?.profile?.phone ||
-        (user as any)?.phone ||
-        (user as any)?.phone_e164 ||
-        profileData.phone ||
+        extendedUser?.profile?.phone_number ||
+        extendedUser?.profile?.phone ||
+        extendedUser?.phone ||
+        extendedUser?.phone_e164 ||
         "";
 
       setProfileData({
@@ -463,7 +531,7 @@ const Settings = () => {
   }, [currentCategory, isMobile]);
 
   // Load API Settings
-  const loadAPISettings = async () => {
+  const loadAPISettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await apiClient.getAPISettings();
@@ -480,14 +548,14 @@ const Settings = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   // Load API settings when API category is selected
   useEffect(() => {
     if (currentCategory === 'api' && !apiSettings) {
       loadAPISettings();
     }
-  }, [currentCategory]);
+  }, [currentCategory, apiSettings, loadAPISettings]);
 
   // API Key Handlers
   const handleCreateAPIKey = async () => {
@@ -721,7 +789,7 @@ const Settings = () => {
     setIsUpdatingProfile(true);
 
     try {
-      const updateData: any = {
+      const updateData: ProfileUpdateData = {
         first_name: profileData.firstName,
         last_name: profileData.lastName,
         phone_number: profileData.phone,
@@ -1086,7 +1154,7 @@ const Settings = () => {
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="flex flex-col items-center gap-4">
                     <Avatar className="w-16 h-16">
-                      <AvatarImage src={(user as any)?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
+                      <AvatarImage src={(user as ExtendedUser)?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
                       <AvatarFallback className="bg-primary/10 text-primary text-lg">
                         {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
                       </AvatarFallback>

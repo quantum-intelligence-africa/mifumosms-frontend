@@ -21,21 +21,59 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface ApiAccount {
+  id: string;
+  account_id: string;
+  name: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ApiKey {
+  id: string;
+  key_name: string;
+  api_key: string;
+  secret_key: string;
+  status: string;
+  permissions: Record<string, string[]>;
+  total_uses: number;
+  last_used: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  total_calls: number;
+  successful_calls: number;
+  failed_calls: number;
+  last_triggered: string | null;
+  last_error: string;
+  created_at: string;
+}
+
+interface ApiSettings {
+  api_account?: ApiAccount;
+  api_keys?: ApiKey[];
+  webhooks?: Webhook[];
+  last_updated?: string;
+}
+
 interface SettingsAPIProps {
-  apiSettings: {
-    api_account?: any;
-    api_keys?: any[];
-    webhooks?: any[];
-  } | null;
+  apiSettings: ApiSettings | null;
   isLoading: boolean;
   showApiKeyDialog: boolean;
   setShowApiKeyDialog: (open: boolean) => void;
   showWebhookDialog: boolean;
   setShowWebhookDialog: (open: boolean) => void;
   newApiKeyForm: { key_name: string; permissions: Record<string, string[]> };
-  setNewApiKeyForm: (form: any) => void;
+  setNewApiKeyForm: (form: { key_name: string; permissions: Record<string, string[]> }) => void;
   newWebhookForm: { url: string; events: string[] };
-  setNewWebhookForm: (form: any) => void;
+  setNewWebhookForm: (form: { url: string; events: string[] }) => void;
   showApiKey: Record<string, boolean>;
   setShowApiKey: (state: Record<string, boolean>) => void;
   copyToClipboard: (text: string) => void;
@@ -207,7 +245,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                   </div>
                   {key.permissions && Object.keys(key.permissions).length > 0 && (
                     <div className="flex gap-1 mt-2 flex-wrap">
-                      {Object.entries(key.permissions).flatMap(([resource, perms]: [string, any]) =>
+                      {Object.entries(key.permissions).flatMap(([resource, perms]: [string, string[]]) =>
                         Array.isArray(perms) ? perms.map((perm: string, idx: number) => (
                           <Badge key={`${resource}-${perm}-${idx}`} variant="outline" className="text-xs px-1 py-0">
                             {resource}: {perm}
