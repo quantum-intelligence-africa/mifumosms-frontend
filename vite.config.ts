@@ -15,4 +15,16 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Ensure SPA routing files are copied to build output
+  publicDir: "public",
+  build: {
+    outDir: "dist",
+    assetsDir: "assets",
+    // Copy important files for SPA routing
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+      },
+    },
+  },
 }));
