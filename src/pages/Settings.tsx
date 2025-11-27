@@ -97,11 +97,17 @@ const Settings = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
   const [twoFactorData, setTwoFactorData] = useState({
     totpCode: "",
     password: "",
     backupCode: "",
   });
+  const [show2FAPassword, setShow2FAPassword] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [show2FADisable, setShow2FADisable] = useState(false);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
@@ -283,13 +289,13 @@ const Settings = () => {
       icon: User,
       color: "bg-blue-500"
     },
-    {
-      id: "preferences",
-      title: "Preferences",
-      description: "Language, timezone, and display settings",
-      icon: Globe,
-      color: "bg-green-500"
-    },
+    // {
+    //   id: "preferences",
+    //   title: "Preferences",
+    //   description: "Language, timezone, and display settings",
+    //   icon: Globe,
+    //   color: "bg-green-500"
+    // },
     {
       id: "notifications",
       title: "Notifications",
@@ -754,32 +760,32 @@ const Settings = () => {
     }
   };
 
-  const handlePreferencesUpdate = async () => {
-    setIsLoading(true);
-    try {
-      const response = await apiClient.updatePreferences(preferences);
-      if (response.success) {
-        toast({
-          title: "Preferences updated successfully",
-          description: "Your preferences have been saved.",
-        });
-      } else {
-        toast({
-          title: "Update failed",
-          description: response.error || "Failed to update preferences. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Update failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const handlePreferencesUpdate = async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     const response = await apiClient.updatePreferences(preferences);
+  //     if (response.success) {
+  //       toast({
+  //         title: "Preferences updated successfully",
+  //         description: "Your preferences have been saved.",
+  //       });
+  //     } else {
+  //       toast({
+  //         title: "Update failed",
+  //         description: response.error || "Failed to update preferences. Please try again.",
+  //         variant: "destructive"
+  //       });
+  //     }
+  //   } catch (error) {
+  //     toast({
+  //       title: "Update failed",
+  //       description: "An unexpected error occurred. Please try again.",
+  //       variant: "destructive"
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleNotificationSettingsUpdate = async () => {
     setIsLoading(true);
@@ -1077,96 +1083,96 @@ const Settings = () => {
           </div>
         );
 
-      case "preferences":
-        return (
-          <div className="space-y-4">
-            <Card className="glass border-0">
-              <CardHeader className="p-4">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Globe className="w-4 h-4" />
-                  Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="language" className="text-sm">Language</Label>
-                    <Select
-                      value={preferences.language}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="en">🇺🇸 English</SelectItem>
-                        <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
-                        <SelectItem value="fr">🇫🇷 Français</SelectItem>
-                        <SelectItem value="ar">🇸🇦 العربية</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone" className="text-sm">Timezone</Label>
-                    <Select
-                      value={preferences.timezone}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
-                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
-                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dateFormat" className="text-sm">Date Format</Label>
-                    <Select
-                      value={preferences.date_format}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, date_format: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                        <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                        <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timeFormat" className="text-sm">Time Format</Label>
-                    <Select
-                      value={preferences.time_format}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, time_format: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="24h">24 Hour (14:30)</SelectItem>
-                        <SelectItem value="12h">12 Hour (2:30 PM)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button
-                  onClick={handlePreferencesUpdate}
-                  disabled={isLoading}
-                  className="w-full text-sm"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isLoading ? "Saving..." : "Save Preferences"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        );
+      // case "preferences":
+      //   return (
+      //     <div className="space-y-4">
+      //       <Card className="glass border-0">
+      //         <CardHeader className="p-4">
+      //           <CardTitle className="flex items-center gap-2 text-sm">
+      //             <Globe className="w-4 h-4" />
+      //             Preferences
+      //           </CardTitle>
+      //         </CardHeader>
+      //         <CardContent className="space-y-4 p-4 pt-0">
+      //           <div className="space-y-3">
+      //             <div className="space-y-2">
+      //               <Label htmlFor="language" className="text-sm">Language</Label>
+      //               <Select
+      //                 value={preferences.language}
+      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
+      //               >
+      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
+      //                   <SelectValue />
+      //                 </SelectTrigger>
+      //                 <SelectContent className="glass">
+      //                   <SelectItem value="en">🇺🇸 English</SelectItem>
+      //                   <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
+      //                   <SelectItem value="fr">🇫🇷 Français</SelectItem>
+      //                   <SelectItem value="ar">🇸🇦 العربية</SelectItem>
+      //                 </SelectContent>
+      //               </Select>
+      //             </div>
+      //             <div className="space-y-2">
+      //               <Label htmlFor="timezone" className="text-sm">Timezone</Label>
+      //               <Select
+      //                 value={preferences.timezone}
+      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
+      //               >
+      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
+      //                   <SelectValue />
+      //                 </SelectTrigger>
+      //                 <SelectContent className="glass">
+      //                   <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
+      //                   <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+      //                   <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
+      //                   <SelectItem value="UTC">UTC</SelectItem>
+      //                 </SelectContent>
+      //               </Select>
+      //             </div>
+      //             <div className="space-y-2">
+      //               <Label htmlFor="dateFormat" className="text-sm">Date Format</Label>
+      //               <Select
+      //                 value={preferences.date_format}
+      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, date_format: value }))}
+      //               >
+      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
+      //                   <SelectValue />
+      //                 </SelectTrigger>
+      //                 <SelectContent className="glass">
+      //                   <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+      //                   <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+      //                   <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+      //                 </SelectContent>
+      //               </Select>
+      //             </div>
+      //             <div className="space-y-2">
+      //               <Label htmlFor="timeFormat" className="text-sm">Time Format</Label>
+      //               <Select
+      //                 value={preferences.time_format}
+      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, time_format: value }))}
+      //               >
+      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
+      //                   <SelectValue />
+      //                 </SelectTrigger>
+      //                 <SelectContent className="glass">
+      //                   <SelectItem value="24h">24 Hour (14:30)</SelectItem>
+      //                   <SelectItem value="12h">12 Hour (2:30 PM)</SelectItem>
+      //                 </SelectContent>
+      //               </Select>
+      //             </div>
+      //           </div>
+      //           <Button
+      //             onClick={handlePreferencesUpdate}
+      //             disabled={isLoading}
+      //             className="w-full text-sm"
+      //           >
+      //             <Save className="w-4 h-4 mr-2" />
+      //             {isLoading ? "Saving..." : "Save Preferences"}
+      //           </Button>
+      //         </CardContent>
+      //       </Card>
+      //     </div>
+      //   );
 
       case "notifications":
         return (
@@ -1284,36 +1290,63 @@ const Settings = () => {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      placeholder="Enter current password"
-                      value={passwordData.currentPassword}
-                      onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="currentPassword"
+                        type={showPasswords.current ? "text" : "password"}
+                        placeholder="Enter current password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        className="glass-subtle border-0 text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-subtle hover:text-foreground transition-colors"
+                      >
+                        {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="newPassword" className="text-sm">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="Enter new password"
-                      value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showPasswords.new ? "text" : "password"}
+                        placeholder="Enter new password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                        className="glass-subtle border-0 text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-subtle hover:text-foreground transition-colors"
+                      >
+                        {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="text-sm">Confirm New Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showPasswords.confirm ? "text" : "password"}
+                        placeholder="Confirm new password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        className="glass-subtle border-0 text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-subtle hover:text-foreground transition-colors"
+                      >
+                        {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <Button
                     onClick={handlePasswordChange}
@@ -1826,14 +1859,23 @@ const Settings = () => {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="disablePassword" className="text-sm">Password</Label>
-                    <Input
-                      id="disablePassword"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={twoFactorData.password}
-                      onChange={(e) => setTwoFactorData(prev => ({ ...prev, password: e.target.value }))}
-                      className="glass-subtle border-0 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="disablePassword"
+                        type={show2FAPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={twoFactorData.password}
+                        onChange={(e) => setTwoFactorData(prev => ({ ...prev, password: e.target.value }))}
+                        className="glass-subtle border-0 text-sm pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShow2FAPassword(!show2FAPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-subtle hover:text-foreground transition-colors"
+                      >
+                        {show2FAPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="disableTotpCode" className="text-sm">6-Digit Code</Label>

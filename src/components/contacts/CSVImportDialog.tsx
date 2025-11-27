@@ -192,25 +192,25 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] sm:max-h-[90vh] max-h-[95vh] flex flex-col p-2 sm:p-6">
-        <DialogHeader className="pb-2 sm:pb-4">
-          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Upload className="w-5 h-5" />
             Import Contacts from File
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto">
           {!parseResult ? (
-            // File Upload Section
-            <div className="space-y-3 sm:space-y-4">
-              {/* Import Type Selection */}
-              <div className="flex gap-2 mb-4">
+            // File Upload Section - Compact Design
+            <div className="space-y-4">
+              {/* File Type & Upload in One Section */}
+              <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant={importType === 'csv' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setImportType('csv')}
-                  className="flex-1"
+                  className="h-12"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   CSV File
@@ -219,48 +219,21 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   variant={importType === 'excel' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setImportType('excel')}
-                  className="flex-1"
+                  className="h-12"
                 >
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Excel File
                 </Button>
               </div>
 
-              {/* Import Options */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="skipDuplicates"
-                    checked={skipDuplicates}
-                    onChange={(e) => setSkipDuplicates(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="skipDuplicates" className="text-sm font-medium">
-                    Skip Duplicates
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="updateExisting"
-                    checked={updateExisting}
-                    onChange={(e) => setUpdateExisting(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="updateExisting" className="text-sm font-medium">
-                    Update Existing
-                  </label>
-                </div>
-              </div>
-
-              <div className="border-2 border-dashed border-border rounded-lg p-4 sm:p-8 text-center hover:border-primary/50 transition-colors">
-                <Upload className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-text-subtle" />
-                <h3 className="text-base sm:text-lg font-semibold mb-2">
+              {/* Upload Area - Compact */}
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                <Upload className="w-10 h-10 mx-auto mb-3 text-text-subtle" />
+                <h3 className="font-semibold mb-2">
                   Upload {importType === 'excel' ? 'Excel' : 'CSV'} File
                 </h3>
-                <p className="text-sm sm:text-base text-text-subtle mb-3 sm:mb-4">
-                  Select a {importType === 'excel' ? 'Excel (.xlsx, .xls)' : 'CSV'} file containing your contacts with name, email, and phone number columns
+                <p className="text-sm text-text-subtle mb-4">
+                  Select a file with name, phone, and email columns
                 </p>
                 <input
                   ref={fileInputRef}
@@ -269,72 +242,90 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   onChange={handleFileSelect}
                   className="hidden"
                 />
-                <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                <Button onClick={() => fileInputRef.current?.click()}>
                   Choose {importType === 'excel' ? 'Excel' : 'CSV'} File
                 </Button>
               </div>
 
-              <Card>
-                <CardHeader className="pb-2 sm:pb-4">
-                  <CardTitle className="text-xs sm:text-sm">
-                    {importType === 'excel' ? 'Excel' : 'CSV'} Format Requirements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 p-3 sm:p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs sm:text-sm">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-foreground text-sm">Required Columns:</h4>
-                      <div className="space-y-1">
-                        <div className="flex items-start gap-2">
-                          <Users className="w-3 h-3 sm:w-4 sm:h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">name (or full_name, fullname, contact_name)</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">phone (or phone_number, mobile, mobile_number, tel, telephone)</span>
+              {/* Options & Requirements in Tabs/Accordion Style */}
+              <div className="grid grid-cols-1 gap-4">
+                {/* Import Options - Compact */}
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="skipDuplicates"
+                        checked={skipDuplicates}
+                        onChange={(e) => setSkipDuplicates(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="skipDuplicates" className="text-sm font-medium">
+                        Skip Duplicates
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="updateExisting"
+                        checked={updateExisting}
+                        onChange={(e) => setUpdateExisting(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="updateExisting" className="text-sm font-medium">
+                        Update Existing
+                      </label>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleDownloadSample}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Sample
+                  </Button>
+                </div>
+
+                {/* Format Requirements - Collapsible */}
+                <details className="group">
+                  <summary className="flex items-center justify-between p-3 bg-muted/20 rounded-lg cursor-pointer hover:bg-muted/40 transition-colors">
+                    <span className="font-medium text-sm">Format Requirements</span>
+                    <span className="text-xs text-text-subtle group-open:hidden">Click to view</span>
+                    <span className="text-xs text-text-subtle hidden group-open:inline">Click to hide</span>
+                  </summary>
+                  <div className="mt-3 p-4 bg-muted/10 rounded-lg border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <h4 className="font-medium text-primary mb-2">Required:</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3 h-3 text-primary" />
+                            <span>name, full_name</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-primary" />
+                            <span>phone, mobile</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-foreground text-sm">Optional Columns:</h4>
-                      <div className="space-y-1">
-                        <div className="flex items-start gap-2">
-                          <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">email (or email_address, e_mail)</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Tag className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">tags (comma-separated)</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Building className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">company (or organization, org)</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Users2 className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle mt-0.5 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">department (or dept, division)</span>
+                      <div>
+                        <h4 className="font-medium text-text-subtle mb-2">Optional:</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3 text-text-subtle" />
+                            <span>email</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Tag className="w-3 h-3 text-text-subtle" />
+                            <span>tags</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Building className="w-3 h-3 text-text-subtle" />
+                            <span>company</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  {importType === 'excel' && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        <strong>Excel Support:</strong> Excel files (.xlsx, .xls) are automatically parsed.
-                        The first row should contain column headers, and data should start from the second row.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="pt-3 sm:pt-4 border-t">
-                    <Button variant="outline" size="sm" onClick={handleDownloadSample} className="w-full sm:w-auto">
-                      <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                      Download Sample CSV
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                </details>
+              </div>
             </div>
           ) : (
             // Parse Results Section
@@ -525,15 +516,17 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
           )}
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 pt-2 sm:pt-4">
-          <div className="text-xs sm:text-sm text-text-subtle order-2 sm:order-1">
-            {importType === 'excel'
-              ? 'Excel file ready for import'
-              : `${selectedContacts.length} contact${selectedContacts.length !== 1 ? 's' : ''} selected`
-            }
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+        <DialogFooter className="flex items-center justify-between pt-4 border-t">
+          {parseResult && (
+            <div className="text-sm text-text-subtle">
+              {importType === 'excel'
+                ? 'Ready to import'
+                : `${selectedContacts.length} selected`
+              }
+            </div>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             {parseResult && (
@@ -544,13 +537,12 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   (importType === 'excel' && !fileInputRef.current?.files?.[0]) ||
                   isImporting
                 }
-                className="w-full sm:w-auto"
               >
                 {isImporting
                   ? 'Importing...'
                   : importType === 'excel'
-                    ? 'Import Excel File'
-                    : `Import ${selectedContacts.length} Contacts`
+                    ? 'Import File'
+                    : `Import (${selectedContacts.length})`
                 }
               </Button>
             )}

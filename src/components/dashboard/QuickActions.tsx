@@ -37,31 +37,31 @@ const quickActions = [
 export function QuickActions() {
   const navigate = useNavigate();
   return (
-    <Card className="p-4 sm:p-6 glass border-0">
-      <div className="flex items-center gap-2 mb-4 sm:mb-6">
+    <Card className="p-4 sm:p-5 glass border-0">
+      <div className="flex items-center gap-2 mb-4">
         <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           Quick Actions
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <Button
               key={action.name}
               variant={action.variant}
-              className="h-auto p-3 sm:p-4 flex-col items-start text-left whitespace-normal min-h-[80px] sm:min-h-[90px]"
+              className="h-auto p-2 sm:p-3 flex-col items-start text-left whitespace-normal min-h-[65px] sm:min-h-[75px]"
               onClick={() => action.to && navigate(action.to)}
             >
-              <div className="flex items-center gap-2 sm:gap-3 w-full mb-1 sm:mb-2">
-                <Icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                <span className="font-medium text-sm sm:text-base flex-1 min-w-0 leading-tight">
+              <div className="flex items-center gap-2 w-full mb-1">
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium text-xs sm:text-sm flex-1 min-w-0 leading-tight">
                   {action.name}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm opacity-80 text-left leading-relaxed">
+              <p className="text-xs opacity-75 text-left leading-tight">
                 {action.description}
               </p>
             </Button>
@@ -69,9 +69,9 @@ export function QuickActions() {
         })}
       </div>
 
-      <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-border-subtle">
+      <div className="mt-4 pt-3 border-t border-border-subtle">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs sm:text-sm">
-          <span className="text-text-subtle">Hatuna tutorials kwa sasa. Unahitaji msaada?</span>
+          <span className="text-text-subtle">Need help?</span>
           <Button
             variant="link"
             size="sm"

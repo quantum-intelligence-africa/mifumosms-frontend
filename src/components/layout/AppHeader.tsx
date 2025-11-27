@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import NotificationDropdown from "@/components/notifications/NotificationDropdown";
+// import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
@@ -57,8 +57,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       {/* Actions */}
       <div className="flex items-center gap-1 lg:gap-3">
 
-        {/* Notifications */}
-        <NotificationDropdown />
+        {/* Notifications - Removed for now */}
+        {/* <NotificationDropdown /> */}
 
         {/* User Profile */}
         <DropdownMenu>
