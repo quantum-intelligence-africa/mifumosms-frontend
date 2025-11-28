@@ -112,14 +112,25 @@ const Signup = () => {
 
       if (result.success) {
         if (result.requiresActivation) {
-          // Account created but needs email activation
+          // Account created but needs activation
+          const verificationMethod = result.verificationMethod || (result.phoneNumber ? 'sms' : 'email');
+          const message = verificationMethod === 'sms'
+            ? `Please check your phone (${result.phoneNumber}) for the 6-digit verification code to activate your account.`
+            : "Please check your email for the 6-digit verification code to activate your account.";
+
           toast({
             title: "Account created successfully!",
-            description: "Please check your email for the 6-digit verification code to activate your account.",
+            description: message,
             duration: 10000
           });
-          // Redirect to activation page
-          navigate('/activate-email', { state: { email: result.email || formData.email } });
+          // Redirect to activation page with verification method info
+          navigate('/activate-email', {
+            state: {
+              email: result.email || formData.email,
+              phoneNumber: result.phoneNumber,
+              verificationMethod: verificationMethod
+            }
+          });
         } else {
           // Account activated immediately (backward compatibility)
           toast({

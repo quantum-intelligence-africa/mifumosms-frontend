@@ -14,14 +14,16 @@ export const API_CONFIG = {
 			FORGOT_PASSWORD: '/auth/forgot-password/',
 			VERIFY_PHONE: '/auth/verify-phone/',
 
-			VERIFY_EMAIL: '/auth/verify-email/',
+			VERIFY_EMAIL: '/auth/verify-email/', // Also used for SMS verification codes
 			ACTIVATE_ACCOUNT: (token: string) => `/auth/activate-account/${token}/`,
-			RESEND_ACTIVATION: '/auth/resend-activation/',
+			RESEND_ACTIVATION: '/auth/resend-activation/', // Handles SMS first, then email fallback
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
 			SMS: {
-				SEND_CODE: '/auth/sms/send-code/',
-				VERIFY_CODE: '/auth/sms/verify-code/',
+				// Note: SMS verification uses VERIFY_EMAIL endpoint above
+				// Backend automatically detects SMS vs email codes
+				SEND_CODE: '/auth/sms/send-code/', // Not used - backend handles via RESEND_ACTIVATION
+				VERIFY_CODE: '/auth/verify-email/', // SMS codes verified through verify-email endpoint
 				FORGOT_PASSWORD: '/auth/sms/forgot-password/',
 				RESET_PASSWORD: '/auth/sms/reset-password/',
 				CONFIRM_ACCOUNT: '/auth/sms/confirm-account/',
