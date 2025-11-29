@@ -397,13 +397,13 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   };
 
   return (
-    <Card className="p-3 sm:p-4 glass border-0">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-        <h3 className="font-heading text-sm sm:text-base font-semibold text-foreground">
+    <Card className="p-4 sm:p-5 glass border border-border-subtle">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-5 gap-2">
+        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           Performance Overview
         </h3>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
+        <div className="flex items-center gap-2.5">
+          <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5">
             {hasData ? "Real Data" : "Loading..."}
           </Badge>
           <Select value={chartType} onValueChange={(value: ChartType) => setChartType(value)}>

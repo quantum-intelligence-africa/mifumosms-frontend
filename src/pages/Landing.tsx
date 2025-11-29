@@ -809,7 +809,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
           <Link to="/signup">
               <Button
-                size="hero"
+                size="lg"
                 className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
               >
               Get Started

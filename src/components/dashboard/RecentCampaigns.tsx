@@ -73,13 +73,13 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   };
 
   return (
-    <Card className="p-6 glass border-0">
+    <Card className="p-6 glass border border-border-subtle">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="font-heading text-lg font-semibold text-foreground">
+        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           Recent Campaigns
         </h3>
-        <Button variant="outline" size="sm" onClick={handleViewAll}>
-          View all
+        <Button variant="outline" size="sm" onClick={handleViewAll} className="text-[13px] font-medium">
+          View all →
         </Button>
       </div>
 
@@ -97,7 +97,7 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
           return (
             <div
               key={campaign.id}
-              className="p-4 rounded-lg glass-subtle hover:bg-accent/30 transition-smooth cursor-pointer"
+              className="p-4 rounded-xl glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
               onClick={() => handleViewDetails(campaign.id)}
             >
               <div className="flex items-start justify-between mb-3">
