@@ -1,4 +1,4 @@
-import { Menu, User, Settings, LogOut } from "lucide-react";
+import { Menu, User, Settings, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTheme } from "next-themes";
 // import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface AppHeaderProps {
@@ -22,6 +23,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -59,6 +61,18 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
         {/* Notifications - Removed for now */}
         {/* <NotificationDropdown /> */}
+
+        {/* Theme Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="h-9 w-9 rounded-lg hover:bg-accent transition-smooth"
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
 
         {/* User Profile */}
         <DropdownMenu>
