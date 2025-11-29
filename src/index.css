@@ -8,183 +8,211 @@ All colors MUST be HSL for consistency and theming.
 
 @layer base {
     :root {
-        /* Core Background & Surface Colors */
-        --background: 220 20% 97%;
-        --foreground: 230 15% 15%;
-        --surface: 220 25% 98%;
-        --surface-variant: 220 15% 94%;
+        /* Core Background & Surface Colors - Layered approach */
+        --background: 220 18% 98%;
+        --foreground: 222 24% 12%;
+        --surface: 220 20% 99%;
+        --surface-elevated: 0 0% 100%;
+        --surface-variant: 220 14% 96%;
 
-        /* Card & Container Colors */
+        /* Card & Container Colors - Multiple depths */
         --card: 0 0% 100%;
-        --card-foreground: 230 15% 15%;
-        --card-glass: 220 25% 98%;
+        --card-foreground: 222 24% 12%;
+        --card-glass: 0 0% 100% / 0.7;
+        --card-elevated: 0 0% 100%;
 
         /* Popover & Overlay Colors */
         --popover: 0 0% 100%;
-        --popover-foreground: 230 15% 15%;
+        --popover-foreground: 222 24% 12%;
 
-        /* Primary Brand Colors - Deep Blue */
-        --primary: 220 70% 25%;
+        /* Primary Brand Colors - Refined deep blue */
+        --primary: 221 83% 53%;
         --primary-foreground: 0 0% 100%;
-        --primary-light: 220 65% 35%;
-        --primary-dark: 220 75% 20%;
+        --primary-light: 221 78% 63%;
+        --primary-dark: 221 88% 43%;
+        --primary-hover: 221 83% 48%;
 
-        /* Secondary Brand Colors - Warm Orange */
-        --secondary: 35 90% 50%;
+        /* Secondary Brand Colors - Refined orange */
+        --secondary: 25 95% 53%;
         --secondary-foreground: 0 0% 100%;
-        --secondary-light: 35 85% 60%;
-        --secondary-dark: 35 95% 40%;
+        --secondary-light: 25 90% 63%;
+        --secondary-dark: 25 100% 43%;
+        --secondary-hover: 25 95% 48%;
 
-        /* Success Colors - African Green */
-        --success: 155 65% 35%;
+        /* Success Colors */
+        --success: 142 71% 45%;
         --success-foreground: 0 0% 100%;
-        --success-light: 155 60% 45%;
+        --success-light: 142 66% 55%;
+        --success-hover: 142 71% 40%;
 
-        /* Earth Tone Accents */
-        --earth-clay: 25 45% 55%;
-        --earth-terracotta: 15 65% 50%;
-        --earth-sand: 45 25% 75%;
+        /* Earth Tone Accents - More refined */
+        --earth-clay: 25 42% 58%;
+        --earth-terracotta: 15 62% 53%;
+        --earth-sand: 45 22% 78%;
 
-        /* Muted & Text Colors */
-        --muted: 220 15% 94%;
-        --muted-foreground: 230 10% 45%;
-        --text-subtle: 230 8% 60%;
+        /* Muted & Text Colors - Better hierarchy */
+        --muted: 220 14% 96%;
+        --muted-foreground: 220 12% 50%;
+        --text-subtle: 220 9% 62%;
+        --text-placeholder: 220 8% 68%;
 
         /* Accent & Interactive Colors */
-        --accent: 220 15% 94%;
-        --accent-foreground: 230 15% 15%;
+        --accent: 220 14% 96%;
+        --accent-foreground: 222 24% 12%;
+        --accent-hover: 220 16% 94%;
 
         /* Status Colors */
-        --destructive: 0 75% 55%;
+        --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 100%;
-        --warning: 35 90% 50%;
+        --warning: 38 92% 50%;
         --warning-foreground: 0 0% 100%;
+        --info: 199 89% 48%;
+        --info-foreground: 0 0% 100%;
 
-        /* Border & Input Colors */
-        --border: 220 15% 88%;
-        --border-subtle: 220 10% 92%;
-        --input: 220 15% 88%;
-        --ring: 220 70% 25%;
+        /* Border & Input Colors - Subtle */
+        --border: 220 13% 91%;
+        --border-subtle: 220 10% 94%;
+        --border-hover: 220 16% 87%;
+        --input: 220 13% 91%;
+        --ring: 221 83% 53%;
 
-        /* Glass Effect Variables */
-        --glass-bg: 0 0% 100% / 0.8;
-        --glass-border: 220 15% 88% / 0.6;
-        --glass-shadow: 220 50% 15% / 0.08;
+        /* Glass Effect Variables - Refined */
+        --glass-bg: 0 0% 100% / 0.75;
+        --glass-border: 220 13% 91% / 0.5;
+        --glass-shadow: 220 40% 10% / 0.06;
 
-        /* Gradients */
-        --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-        --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-light)));
-        --gradient-surface: linear-gradient(135deg, hsl(var(--surface)), hsl(var(--surface-variant)));
-        --gradient-glass: linear-gradient(135deg, hsl(var(--glass-bg)), hsl(0 0% 100% / 0.4));
+        /* Gradients - Subtle and refined */
+        --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 78% 63%));
+        --gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(25 90% 63%));
+        --gradient-surface: linear-gradient(180deg, hsl(220 20% 99%), hsl(220 14% 97%));
+        --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.75), hsl(0 0% 100% / 0.5));
 
-        /* Shadows */
-        --shadow-sm: 0 2px 8px hsl(var(--glass-shadow));
-        --shadow-md: 0 4px 16px hsl(var(--glass-shadow));
-        --shadow-lg: 0 8px 32px hsl(var(--glass-shadow));
-        --shadow-glass: 0 8px 32px hsl(220 50% 15% / 0.12);
+        /* Shadows - Layered depths */
+        --shadow-xs: 0 1px 2px 0 hsl(220 40% 10% / 0.05);
+        --shadow-sm: 0 1px 3px 0 hsl(220 40% 10% / 0.08), 0 1px 2px -1px hsl(220 40% 10% / 0.08);
+        --shadow-md: 0 4px 6px -1px hsl(220 40% 10% / 0.08), 0 2px 4px -2px hsl(220 40% 10% / 0.08);
+        --shadow-lg: 0 10px 15px -3px hsl(220 40% 10% / 0.08), 0 4px 6px -4px hsl(220 40% 10% / 0.08);
+        --shadow-xl: 0 20px 25px -5px hsl(220 40% 10% / 0.08), 0 8px 10px -6px hsl(220 40% 10% / 0.08);
+        --shadow-glass: 0 4px 20px hsl(220 40% 10% / 0.06);
 
-        /* Animations */
-        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Animations - Refined timing */
+        --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-        --radius: 0.75rem;
+        --radius: 0.625rem;
+        --radius-sm: 0.5rem;
+        --radius-lg: 0.875rem;
 
-        --sidebar-background: 0 0% 98%;
-
-        --sidebar-foreground: 240 5.3% 26.1%;
-
-        --sidebar-primary: 240 5.9% 10%;
-
-        --sidebar-primary-foreground: 0 0% 98%;
-
-        --sidebar-accent: 240 4.8% 95.9%;
-
-        --sidebar-accent-foreground: 240 5.9% 10%;
-
+        /* Sidebar - Refined */
+        --sidebar-background: 0 0% 100%;
+        --sidebar-foreground: 222 24% 12%;
+        --sidebar-primary: 221 83% 53%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 220 14% 96%;
+        --sidebar-accent-foreground: 222 24% 12%;
         --sidebar-border: 220 13% 91%;
-
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        --sidebar-ring: 221 83% 53%;
     }
 
     .dark {
-        /* Core Background & Surface Colors - Dark Mode */
-        --background: 230 20% 8%;
-        --foreground: 220 15% 90%;
-        --surface: 230 25% 10%;
-        --surface-variant: 230 20% 12%;
+        /* Core Background & Surface Colors - Layered dark mode */
+        --background: 222 28% 7%;
+        --foreground: 220 15% 92%;
+        --surface: 222 25% 9%;
+        --surface-elevated: 222 22% 11%;
+        --surface-variant: 222 20% 13%;
 
-        /* Card & Container Colors */
-        --card: 230 25% 10%;
-        --card-foreground: 220 15% 90%;
-        --card-glass: 230 25% 12%;
+        /* Card & Container Colors - Multiple depths */
+        --card: 222 24% 10%;
+        --card-foreground: 220 15% 92%;
+        --card-glass: 222 24% 10% / 0.7;
+        --card-elevated: 222 22% 12%;
 
         /* Popover & Overlay Colors */
-        --popover: 230 25% 10%;
-        --popover-foreground: 220 15% 90%;
+        --popover: 222 24% 10%;
+        --popover-foreground: 220 15% 92%;
 
-        /* Primary Brand Colors - Deep Blue (Adjusted for dark) */
-        --primary: 220 65% 65%;
-        --primary-foreground: 230 20% 8%;
-        --primary-light: 220 60% 75%;
-        --primary-dark: 220 70% 55%;
+        /* Primary Brand Colors - Vibrant in dark */
+        --primary: 221 83% 53%;
+        --primary-foreground: 0 0% 100%;
+        --primary-light: 221 78% 63%;
+        --primary-dark: 221 88% 43%;
+        --primary-hover: 221 83% 58%;
 
-        /* Secondary Brand Colors - Warm Orange */
-        --secondary: 35 85% 60%;
-        --secondary-foreground: 230 20% 8%;
-        --secondary-light: 35 80% 70%;
-        --secondary-dark: 35 90% 50%;
+        /* Secondary Brand Colors */
+        --secondary: 25 95% 53%;
+        --secondary-foreground: 0 0% 100%;
+        --secondary-light: 25 90% 63%;
+        --secondary-dark: 25 100% 43%;
+        --secondary-hover: 25 95% 58%;
 
         /* Success Colors */
-        --success: 155 60% 50%;
-        --success-foreground: 230 20% 8%;
-        --success-light: 155 55% 60%;
+        --success: 142 71% 45%;
+        --success-foreground: 0 0% 100%;
+        --success-light: 142 66% 55%;
+        --success-hover: 142 71% 50%;
 
-        /* Earth Tone Accents - Dark Mode */
-        --earth-clay: 25 40% 65%;
-        --earth-terracotta: 15 60% 60%;
-        --earth-sand: 45 20% 60%;
+        /* Earth Tone Accents - Adjusted for dark */
+        --earth-clay: 25 38% 62%;
+        --earth-terracotta: 15 58% 57%;
+        --earth-sand: 45 18% 65%;
 
-        /* Muted & Text Colors */
-        --muted: 230 20% 12%;
-        --muted-foreground: 220 10% 60%;
-        --text-subtle: 220 8% 50%;
+        /* Muted & Text Colors - Better hierarchy */
+        --muted: 222 20% 13%;
+        --muted-foreground: 220 12% 58%;
+        --text-subtle: 220 9% 48%;
+        --text-placeholder: 220 8% 40%;
 
         /* Accent & Interactive Colors */
-        --accent: 230 20% 12%;
-        --accent-foreground: 220 15% 90%;
+        --accent: 222 20% 13%;
+        --accent-foreground: 220 15% 92%;
+        --accent-hover: 222 22% 15%;
 
         /* Status Colors */
-        --destructive: 0 70% 65%;
-        --destructive-foreground: 230 20% 8%;
-        --warning: 35 85% 60%;
-        --warning-foreground: 230 20% 8%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --warning: 38 92% 50%;
+        --warning-foreground: 0 0% 100%;
+        --info: 199 89% 48%;
+        --info-foreground: 0 0% 100%;
 
-        /* Border & Input Colors */
-        --border: 230 15% 18%;
-        --border-subtle: 230 10% 15%;
-        --input: 230 15% 18%;
-        --ring: 220 65% 65%;
+        /* Border & Input Colors - Subtle contrast */
+        --border: 222 16% 18%;
+        --border-subtle: 222 12% 14%;
+        --border-hover: 222 18% 22%;
+        --input: 222 16% 18%;
+        --ring: 221 83% 53%;
 
-        /* Glass Effect Variables - Dark Mode */
-        --glass-bg: 230 25% 10% / 0.8;
-        --glass-border: 230 15% 18% / 0.6;
-        --glass-shadow: 230 80% 5% / 0.3;
+        /* Glass Effect Variables - Dark glass */
+        --glass-bg: 222 24% 10% / 0.7;
+        --glass-border: 222 16% 18% / 0.5;
+        --glass-shadow: 222 50% 4% / 0.4;
+
+        /* Gradients - Subtle dark gradients */
+        --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 78% 63%));
+        --gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(25 90% 63%));
+        --gradient-surface: linear-gradient(180deg, hsl(222 25% 9%), hsl(222 20% 11%));
+        --gradient-glass: linear-gradient(135deg, hsl(222 24% 10% / 0.7), hsl(222 24% 10% / 0.5));
 
         /* Shadows - Enhanced for dark mode */
-        --shadow-sm: 0 2px 8px hsl(var(--glass-shadow));
-        --shadow-md: 0 4px 16px hsl(var(--glass-shadow));
-        --shadow-lg: 0 8px 32px hsl(var(--glass-shadow));
-        --shadow-glass: 0 8px 32px hsl(230 80% 5% / 0.4);
+        --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
+        --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+        --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.25), 0 2px 4px -2px hsl(0 0% 0% / 0.25);
+        --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+        --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.35), 0 8px 10px -6px hsl(0 0% 0% / 0.35);
+        --shadow-glass: 0 4px 20px hsl(0 0% 0% / 0.4);
 
-        /* Sidebar Colors */
-        --sidebar-background: 230 25% 8%;
-        --sidebar-foreground: 220 15% 90%;
-        --sidebar-primary: 220 65% 65%;
-        --sidebar-primary-foreground: 230 20% 8%;
-        --sidebar-accent: 230 20% 12%;
-        --sidebar-accent-foreground: 220 15% 90%;
-        --sidebar-border: 230 15% 18%;
-        --sidebar-ring: 220 65% 65%;
+        /* Sidebar Colors - Darker in dark mode */
+        --sidebar-background: 222 28% 7%;
+        --sidebar-foreground: 220 15% 92%;
+        --sidebar-primary: 221 83% 53%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 222 20% 13%;
+        --sidebar-accent-foreground: 220 15% 92%;
+        --sidebar-border: 222 16% 18%;
+        --sidebar-ring: 221 83% 53%;
     }
 }
 
@@ -194,8 +222,12 @@ All colors MUST be HSL for consistency and theming.
     }
 
     body {
-        @apply bg-background text-foreground font-sans;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        @apply bg-background text-foreground font-sans antialiased;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     h1,
@@ -204,31 +236,53 @@ All colors MUST be HSL for consistency and theming.
     h4,
     h5,
     h6 {
-        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
         font-weight: 600;
+        letter-spacing: -0.015em;
     }
+
+    h1 { @apply text-2xl sm:text-3xl; }
+    h2 { @apply text-xl sm:text-2xl; }
+    h3 { @apply text-lg sm:text-xl; }
+    h4 { @apply text-base sm:text-lg; }
 }
 
 @layer components {
 
-    /* Glass Effect Utility Classes */
+    /* Glass Effect Utility Classes - Refined */
     .glass {
-        background: hsl(var(--glass-bg));
-        backdrop-filter: blur(12px);
+        background: hsl(var(--card-glass));
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
         border: 1px solid hsl(var(--glass-border));
-        box-shadow: var(--shadow-glass);
+        box-shadow: var(--shadow-glass), inset 0 1px 0 0 hsl(0 0% 100% / 0.1);
     }
 
     .glass-subtle {
-        background: hsl(var(--glass-bg));
-        backdrop-filter: blur(8px);
-        border: 1px solid hsl(var(--glass-border));
+        background: hsl(var(--card-glass));
+        backdrop-filter: blur(12px) saturate(160%);
+        -webkit-backdrop-filter: blur(12px) saturate(160%);
+        border: 1px solid hsl(var(--border-subtle));
         box-shadow: var(--shadow-sm);
     }
 
-    /* African-inspired gradient backgrounds */
+    /* Refined gradient backgrounds */
     .gradient-primary {
         background: var(--gradient-primary);
+        position: relative;
+    }
+
+    .gradient-primary::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(135deg, hsl(var(--primary-light)), transparent);
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0.5;
     }
 
     .gradient-secondary {
@@ -239,13 +293,30 @@ All colors MUST be HSL for consistency and theming.
         background: var(--gradient-surface);
     }
 
-    /* Smooth transitions */
+    /* Refined transitions */
+    .transition-fast {
+        transition: var(--transition-fast);
+    }
+
     .transition-smooth {
         transition: var(--transition-smooth);
     }
 
+    .transition-slow {
+        transition: var(--transition-slow);
+    }
+
     .transition-bounce {
         transition: var(--transition-bounce);
+    }
+
+    /* Interactive states */
+    .interactive-card {
+        @apply transition-smooth hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 cursor-pointer;
+    }
+
+    .interactive-button {
+        @apply transition-fast hover:scale-[1.02] active:scale-[0.98];
     }
 
     /* Custom scrollbar for webkit browsers */
