@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }>;
   register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email' }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }> => {
+  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }> => {
     try {
       const response = await apiClient.login(credentials);
 
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // Check if error indicates account needs email activation
+        // Check if error indicates account needs activation
         const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
                                 errorMessage.toLowerCase().includes('activation') ||
                                 errorMessage.toLowerCase().includes('verification code') ||
@@ -192,11 +192,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (needsActivation) {
           // Backend automatically sends a new 6-digit code when login fails for unverified account
+          // Try to get phone number from response data or stored data
+          let phoneNumber: string | undefined = undefined;
+
+          // Check if response includes user data with phone number
+          if (response.data && (response.data as any).user) {
+            phoneNumber = (response.data as any).user.phone_number;
+          }
+
+          // If not in response, check stored data
+          if (!phoneNumber) {
+            phoneNumber = localStorage.getItem('pending_phone_activation') || undefined;
+          }
+
           return {
             success: false,
             error: errorMessage,
             requiresActivation: true,
-            email: credentials.email
+            email: credentials.email,
+            phoneNumber: phoneNumber
           };
         }
 
@@ -247,13 +261,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const hasPhoneNumber = !!phoneNumber;
 
         // Determine verification method based on API response
+        // Default to SMS verification
         // If sms_verification_sent is true, SMS was sent
         // Otherwise, email was used (or SMS failed and fell back to email)
-        let verificationMethod: 'sms' | 'email' = 'email';
-        if (sms_verification_sent && hasPhoneNumber) {
-          verificationMethod = 'sms';
-        } else if (email_verification_sent) {
+        let verificationMethod: 'sms' | 'email' = 'sms';
+        if (email_verification_sent && !sms_verification_sent) {
           verificationMethod = 'email';
+        } else if (sms_verification_sent && hasPhoneNumber) {
+          verificationMethod = 'sms';
         } else if (hasPhoneNumber) {
           // If phone number exists but no explicit verification method, assume SMS was attempted
           verificationMethod = 'sms';

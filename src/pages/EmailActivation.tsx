@@ -58,19 +58,23 @@ const EmailActivation = () => {
       setPhoneNumber(storedPhone);
     }
 
-    // Always default to SMS first if phone number is available
+    // Determine verification method: prioritize state method, then phone number, then stored method, default to SMS
     const finalPhone = statePhone || storedPhone;
-    if (finalPhone) {
-      setVerificationMethod('sms');
-      localStorage.setItem('pending_verification_method', 'sms');
-    } else if (stateMethod) {
+    if (stateMethod) {
+      // If verification method is explicitly passed in state, use it
       setVerificationMethod(stateMethod);
       localStorage.setItem('pending_verification_method', stateMethod);
+    } else if (finalPhone) {
+      // If phone exists, default to SMS
+      setVerificationMethod('sms');
+      localStorage.setItem('pending_verification_method', 'sms');
     } else if (storedMethod) {
+      // Use stored method if available
       setVerificationMethod(storedMethod);
     } else {
-      // Default to email if no phone number
-      setVerificationMethod('email');
+      // Default to SMS verification
+      setVerificationMethod('sms');
+      localStorage.setItem('pending_verification_method', 'sms');
     }
   }, [searchParams, location.state]);
 
