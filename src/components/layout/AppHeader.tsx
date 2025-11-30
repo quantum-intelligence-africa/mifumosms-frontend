@@ -40,7 +40,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-3 lg:px-6 relative z-50 backdrop-blur-xl">
+    <header className="sticky top-0 h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-3 lg:px-6 relative z-50 backdrop-blur-xl lg:z-50">
       {/* Mobile menu button */}
       {isMobile && (
         <Button
@@ -77,8 +77,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         {/* User Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className={`h-9 hover:bg-accent rounded-lg transition-fast ${isMobile ? 'px-1.5' : 'px-2.5'}`}
             >
               <Avatar className={`h-7 w-7 ring-2 ring-border ${isMobile ? '' : 'mr-2.5'}`}>
@@ -114,23 +114,23 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border-subtle" />
-            <DropdownMenuItem 
-              onClick={() => navigate('/settings')} 
+            <DropdownMenuItem
+              onClick={() => navigate('/settings')}
               className="cursor-pointer hover:bg-accent transition-fast py-2.5"
             >
               <User className="mr-3 h-4 w-4" />
               <span className="text-sm">Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => navigate('/settings')} 
+            <DropdownMenuItem
+              onClick={() => navigate('/settings')}
               className="cursor-pointer hover:bg-accent transition-fast py-2.5"
             >
               <Settings className="mr-3 h-4 w-4" />
               <span className="text-sm">Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border-subtle" />
-            <DropdownMenuItem 
-              onClick={handleLogout} 
+            <DropdownMenuItem
+              onClick={handleLogout}
               className="text-destructive cursor-pointer hover:bg-destructive/10 transition-fast py-2.5"
             >
               <LogOut className="mr-3 h-4 w-4" />
