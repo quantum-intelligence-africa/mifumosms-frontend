@@ -105,7 +105,7 @@ const Dashboard = () => {
             </div>
 
             {/* Metrics Grid - 4 Main Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <MetricCard
                 title="Total Messages"
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}

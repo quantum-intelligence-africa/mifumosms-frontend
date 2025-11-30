@@ -11,12 +11,13 @@ export const API_CONFIG = {
 			LOGOUT: '/auth/logout/',
 			PASSWORD_CHANGE: '/auth/password/change/',
 			PASSWORD_RESET: '/auth/password/reset/',
+			PASSWORD_RESET_CONFIRM: '/auth/password/reset/confirm/',
 			FORGOT_PASSWORD: '/auth/forgot-password/',
 			VERIFY_PHONE: '/auth/verify-phone/',
 
 			VERIFY_EMAIL: '/auth/verify-email/', // Also used for SMS verification codes
-			ACTIVATE_ACCOUNT: (token: string) => `/auth/activate-account/${token}/`,
-			RESEND_ACTIVATION: '/auth/resend-activation/', // Handles SMS first, then email fallback
+			ACTIVATE_ACCOUNT: (code: string) => `/auth/activate-account/${code}/`, // GET endpoint - code is 6-digit verification code
+			RESEND_ACTIVATION: '/auth/resend-activation/', // POST endpoint - Handles SMS first, then email fallback
 			API_KEY_GENERATE: '/auth/api-key/generate/',
 			API_KEY_REVOKE: '/auth/api-key/revoke/',
 			SMS: {
@@ -70,8 +71,11 @@ export const API_CONFIG = {
 			CONTACTS: {
 				BASE: '/messaging/contacts/',
 				BULK_IMPORT: '/messaging/contacts/bulk-import/',
+				BULK_DELETE: '/messaging/contacts/bulk-delete/',
 				MOBILE_IMPORT: '/messaging/contacts/import/',
 				DETAIL: (id: string) => `/messaging/contacts/${id}/`,
+				OPT_IN: (id: string) => `/messaging/contacts/${id}/opt-in/`,
+				OPT_OUT: (id: string) => `/messaging/contacts/${id}/opt-out/`,
 			},
 			SEGMENTS: '/messaging/segments/',
 			TEMPLATES: '/messaging/templates/',
@@ -90,6 +94,12 @@ export const API_CONFIG = {
 			CAMPAIGNS: {
 				BASE: '/messaging/campaigns/',
 				SUMMARY: '/messaging/campaigns/summary/',
+				DETAIL: (id: string) => `/messaging/campaigns/${id}/`,
+				START: (id: string) => `/messaging/campaigns/${id}/start/`,
+				PAUSE: (id: string) => `/messaging/campaigns/${id}/pause/`,
+				CANCEL: (id: string) => `/messaging/campaigns/${id}/cancel/`,
+				ANALYTICS: (id: string) => `/messaging/campaigns/${id}/analytics/`,
+				DUPLICATE: (id: string) => `/messaging/campaigns/${id}/duplicate/`,
 			},
 			ANALYTICS: '/messaging/analytics/overview/',
 			DASHBOARD: {
@@ -106,16 +116,19 @@ export const API_CONFIG = {
 			SENDER_IDS: {
 				BASE: '/messaging/sender-ids/',
 				LIST: '/messaging/sender-ids/',
+				REQUEST: '/messaging/sender-ids/request/',
+				STATUS: (id: string) => `/messaging/sender-ids/${id}/status/`,
 			},
 			SMS: {
 				SEND: '/messaging/sms/send/',
-				STATUS: (messageId: string) => `/messaging/sms/status/${messageId}/`,
+				QUICK: '/messaging/sms/quick/',
+				STATUS: (messageId: string) => `/messaging/sms/${messageId}/status/`,
 				HISTORY: '/messaging/sms/history/',
 				STATS: '/messaging/sms/stats/',
 				VALIDATE_PHONE: '/messaging/sms/validate-phone/',
 				TEST_CONNECTION: '/messaging/sms/test-connection/',
 				DELIVERY_REPORTS: '/sms/delivery-reports/',
-				BALANCE: '/sms/balance/',
+				BALANCE: '/messaging/sms/balance/',
 			},
 			SENDER_ID_REQUESTS: {
 				BASE: '/messaging/sender-requests/',

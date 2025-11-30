@@ -43,7 +43,7 @@ export interface RegisterRequest {
   password_confirm: string;
   first_name: string;
   last_name: string;
-  phone_number?: string;
+  phone_number: string; // Required: E.164 format (e.g., +255123456789)
   timezone?: string;
   company_name?: string;
   business_name?: string; // Alias for company_name
@@ -60,10 +60,11 @@ export interface RegisterResponse {
   message: string;
   user: User;
   tokens?: AuthTokens | null; // Null until account is activated
-  email_verification_sent?: boolean;
-  account_active?: boolean;
-  requires_activation?: boolean;
-  activation_required?: boolean;
+  sms_verification_sent?: boolean; // True if SMS verification code was sent
+  email_verification_sent?: boolean; // True if email verification was sent (fallback)
+  account_active?: boolean; // False until account is activated
+  requires_activation?: boolean; // True if account needs activation
+  activation_required?: boolean; // True if activation is required
 }
 
 // Tenant Types
@@ -1167,10 +1168,65 @@ class ApiClient {
   }
 
 
-  async activateAccount(token: string): Promise<ApiResponse> {
-    return this.request(API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(token), {
+  async activateAccount(code: string): Promise<ApiResponse> {
+    // Note: This endpoint returns HTML, not JSON
+    // We need to handle the response differently
+    const url = `${this.baseURL}${API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(code)}`;
+
+    const config: RequestInit = {
       method: 'GET',
-    });
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    // Add token if available (though activation might not require it)
+    if (this.token) {
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${this.token}`,
+      };
+    }
+
+    try {
+      const response = await fetch(url, config);
+
+      // For activation endpoint, we check status code
+      // 200 = success, 400 = invalid/expired code
+      if (response.ok) {
+        // Try to parse as text (HTML response)
+        const text = await response.text();
+        return {
+          status: response.status,
+          success: true,
+          data: { message: 'Account activated successfully' },
+        };
+      } else {
+        // Error response - try to parse as JSON first, then text
+        let errorMessage = 'Invalid or expired verification code';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If JSON parsing fails, read as text
+          const errorText = await response.text();
+          // Try to extract error message from HTML if possible
+          errorMessage = errorText || errorMessage;
+        }
+
+        return {
+          status: response.status,
+          success: false,
+          error: errorMessage,
+        };
+      }
+    } catch (error) {
+      return {
+        status: 500,
+        success: false,
+        error: error instanceof Error ? error.message : 'Activation request failed',
+      };
+    }
   }
 
   async resendActivationEmail(email: string): Promise<ApiResponse<{ message: string }>> {
@@ -1912,14 +1968,21 @@ class ApiClient {
     recent_campaigns: Array<{
       id: string;
       name: string;
-      type: string;
+      type?: string;
+      campaign_type?: string;
+      campaign_type_display?: string;
       status: string;
-      sent: number;
-      delivered: number;
-      opened: number;
-      progress: number;
+      sent?: number;
+      sent_count?: number;
+      delivered?: number;
+      delivered_count?: number;
+      opened?: number;
+      read_count?: number;
+      progress?: number;
+      progress_percentage?: number;
       created_at: string;
-      created_at_human: string;
+      created_at_human?: string;
+      timeAgo?: string;
     }>;
     message_stats: {
       today: number;

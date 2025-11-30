@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
@@ -43,7 +43,9 @@ interface DashboardOverviewResponse {
     recent_campaigns: Array<{
       id: string;
       name: string;
-      type: string;
+      type?: string;
+      campaign_type?: string;
+      campaign_type_display?: string;
       status: string;
       sent: number;
       delivered: number;
@@ -104,7 +106,7 @@ interface RecentActivityResponse {
       time_ago: string;
       is_live: boolean;
       metadata: {
-        [key: string]: any;
+        [key: string]: unknown;
       };
     }>;
     has_more: boolean;
@@ -153,7 +155,9 @@ interface SenderIdsResponse {
 type Campaign = {
   id: string;
   name: string;
-  type: string;
+  type?: string;
+  campaign_type?: string;
+  campaign_type_display?: string;
   status: string;
   sent: number;
   delivered: number;
@@ -184,7 +188,7 @@ export const useDashboard = () => {
     senderIds: false
   });
 
-  const fetchDashboardData = async (isInitialLoad = false) => {
+  const fetchDashboardData = useCallback(async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
         setIsLoading(true);
@@ -265,7 +269,68 @@ export const useDashboard = () => {
         const overviewData = overviewResponse.value.data;
         if (overviewData) {
           setOverview(overviewData as DashboardOverviewResponse['data']);
-          setRecentCampaigns(overviewData.recent_campaigns as Campaign[]);
+          // Map recent campaigns to ensure we have the correct structure
+          // Prioritize campaign_type_display and campaign_type over type field
+          const mappedCampaigns: Campaign[] = overviewData.recent_campaigns.map((campaign: {
+            id: string;
+            name: string;
+            type?: string;
+            campaign_type?: string;
+            campaign_type_display?: string;
+            status: string;
+            sent?: number;
+            sent_count?: number;
+            delivered?: number;
+            delivered_count?: number;
+            opened?: number;
+            read_count?: number;
+            progress?: number;
+            progress_percentage?: number;
+            created_at: string;
+            created_at_human?: string;
+            timeAgo?: string;
+          }) => {
+            // Debug: Log the raw campaign data to see what fields are available
+            if (isInitialLoad && overviewData.recent_campaigns.indexOf(campaign) === 0) {
+              console.log('Sample campaign data from API:', campaign);
+            }
+
+            // Get the correct campaign type - prioritize campaign_type_display, then campaign_type
+            // NEVER use 'type' field if it says 'WhatsApp' as it appears to be hardcoded incorrectly
+            // Always prefer campaign_type_display or campaign_type from the API
+            let campaignType: string | undefined;
+            if (campaign.campaign_type_display) {
+              campaignType = campaign.campaign_type_display;
+            } else if (campaign.campaign_type) {
+              // Convert campaign_type to display format (e.g., 'sms' -> 'SMS', 'whatsapp' -> 'WhatsApp')
+              const typeMap: Record<string, string> = {
+                'sms': 'SMS',
+                'whatsapp': 'WhatsApp',
+                'email': 'Email',
+                'mixed': 'Mixed'
+              };
+              campaignType = typeMap[campaign.campaign_type.toLowerCase()] || campaign.campaign_type;
+            } else if (campaign.type && campaign.type.toLowerCase() !== 'whatsapp') {
+              // Only use 'type' field as last resort if it's not the incorrect 'WhatsApp' value
+              campaignType = campaign.type;
+            }
+
+            return {
+              id: campaign.id,
+              name: campaign.name,
+              type: campaignType, // Use the correctly prioritized type
+              campaign_type: campaign.campaign_type,
+              campaign_type_display: campaign.campaign_type_display,
+              status: campaign.status,
+              sent: campaign.sent || campaign.sent_count || 0,
+              delivered: campaign.delivered || campaign.delivered_count || 0,
+              opened: campaign.opened || campaign.read_count || 0,
+              progress: campaign.progress || campaign.progress_percentage || 0,
+              created_at: campaign.created_at,
+              created_at_human: campaign.created_at_human || campaign.timeAgo || '',
+            };
+          });
+          setRecentCampaigns(mappedCampaigns);
           errorLoggedRef.current.overview = false; // Reset error flag on success
         }
       } else if (!errorLoggedRef.current.overview && isInitialLoad) {
@@ -372,7 +437,7 @@ export const useDashboard = () => {
         setIsLoading(false);
       }
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     // Initial load with loading state
@@ -384,7 +449,7 @@ export const useDashboard = () => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchDashboardData]);
 
   return {
     metrics,

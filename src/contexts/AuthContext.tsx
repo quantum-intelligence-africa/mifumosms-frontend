@@ -219,7 +219,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response);
 
       if (response.data) {
-        const { user: newUser, tokens, requires_activation, email_verification_sent, activation_required, account_active } = response.data;
+        const {
+          user: newUser,
+          tokens,
+          requires_activation,
+          activation_required,
+          account_active,
+          sms_verification_sent,
+          email_verification_sent
+        } = response.data;
 
         // According to new API: tokens are null until account is activated
         // If tokens are present, account is already activated - authenticate the user
@@ -234,27 +242,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // No tokens means account needs activation
         // Backend automatically sends SMS verification code on registration if phone number exists
-        // If SMS fails, backend automatically falls back to email
+        // Check sms_verification_sent to determine if SMS was sent
         const phoneNumber = newUser?.phone_number || userData.phone_number;
         const hasPhoneNumber = !!phoneNumber;
 
-        // Backend handles SMS/email automatically, so we just need to determine the method
-        // Based on whether user has phone number (backend tries SMS first if available)
+        // Determine verification method based on API response
+        // If sms_verification_sent is true, SMS was sent
+        // Otherwise, email was used (or SMS failed and fell back to email)
+        let verificationMethod: 'sms' | 'email' = 'email';
+        if (sms_verification_sent && hasPhoneNumber) {
+          verificationMethod = 'sms';
+        } else if (email_verification_sent) {
+          verificationMethod = 'email';
+        } else if (hasPhoneNumber) {
+          // If phone number exists but no explicit verification method, assume SMS was attempted
+          verificationMethod = 'sms';
+        }
+
+        // Check if activation is required
         const needsActivation = requires_activation ||
                                 activation_required ||
-                                email_verification_sent ||
                                 !account_active ||
+                                sms_verification_sent ||
+                                email_verification_sent ||
                                 !newUser?.is_verified;
 
         if (needsActivation) {
-          // Backend automatically tries SMS first if phone number exists, then falls back to email
-          // We assume SMS if phone number exists (backend will handle fallback automatically)
           return {
             success: true,
             requiresActivation: true,
             email: newUser?.email || userData.email,
             phoneNumber: phoneNumber,
-            verificationMethod: hasPhoneNumber ? 'sms' : 'email'
+            verificationMethod: verificationMethod
           };
         }
 
@@ -265,7 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           requiresActivation: true,
           email: newUser?.email || userData.email,
           phoneNumber: phoneNumber,
-          verificationMethod: hasPhoneNumber ? 'email' : 'email'
+          verificationMethod: verificationMethod
         };
       } else {
         console.error('Registration failed - no data in response:', response);
@@ -364,48 +383,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyEmail = async (token: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
+  const verifyEmail = async (code: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
     try {
-      const response = await apiClient.verifyEmail(token);
-      if (response.data && response.data.tokens) {
-        const { user: activatedUser, tokens } = response.data;
-        updateUserState(activatedUser);
-        apiClient.setToken(tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
-        localStorage.setItem('user_profile', JSON.stringify(activatedUser));
-        return { success: true, tokens, user: activatedUser };
+      // Use the new activation endpoint: GET /api/auth/activate-account/{code}/
+      // This endpoint returns HTML, so we check the status code
+      const response = await apiClient.activateAccount(code);
+
+      if (response.status === 200) {
+        // Account activated successfully
+        // The endpoint returns HTML, but we need to get user data
+        // Try to fetch profile to get user data and check if we can get tokens
+        try {
+          const profileResponse = await apiClient.getProfile();
+          if (profileResponse.data) {
+            updateUserState(profileResponse.data);
+            // Check if we have tokens in localStorage
+            const accessToken = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (accessToken && refreshToken) {
+              return {
+                success: true,
+                tokens: { access: accessToken, refresh: refreshToken },
+                user: profileResponse.data
+              };
+            } else {
+              // Account is activated but no tokens - user needs to login
+              return {
+                success: true,
+                user: profileResponse.data
+              };
+            }
+          }
+        } catch (profileError) {
+          // Profile fetch failed, but activation succeeded
+          // User will need to login
+          return { success: true };
+        }
+        return { success: true };
       } else {
         return {
           success: false,
-          error: response.error || 'Email verification failed'
+          error: response.error || 'Invalid or expired verification code'
         };
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Email verification failed'
+        error: error instanceof Error ? error.message : 'Verification failed'
       };
     }
   };
 
   const verifySMS = async (phoneNumber: string, code: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
     try {
-      // Use verify-email endpoint for SMS verification codes
-      // Backend handles both SMS and email verification codes through this endpoint
-      // The endpoint automatically detects if code is from SMS or email
-      const response = await apiClient.verifyEmail(code);
+      // Use the new activation endpoint: GET /api/auth/activate-account/{code}/
+      // This endpoint works for both SMS and email verification codes
+      // It returns HTML, so we check the status code
+      const response = await apiClient.activateAccount(code);
 
-      if (response.data && response.data.tokens) {
-        const { user: activatedUser, tokens } = response.data;
-        updateUserState(activatedUser);
-        apiClient.setToken(tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
-        localStorage.setItem('user_profile', JSON.stringify(activatedUser));
-        return { success: true, tokens, user: activatedUser };
+      if (response.status === 200) {
+        // Account activated successfully
+        // The endpoint returns HTML, but we need to get user data
+        // Try to fetch profile to get user data and check if we can get tokens
+        try {
+          const profileResponse = await apiClient.getProfile();
+          if (profileResponse.data) {
+            updateUserState(profileResponse.data);
+            // Check if we have tokens in localStorage
+            const accessToken = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (accessToken && refreshToken) {
+              return {
+                success: true,
+                tokens: { access: accessToken, refresh: refreshToken },
+                user: profileResponse.data
+              };
+            } else {
+              // Account is activated but no tokens - user needs to login
+              return {
+                success: true,
+                user: profileResponse.data
+              };
+            }
+          }
+        } catch (profileError) {
+          // Profile fetch failed, but activation succeeded
+          // User will need to login
+          return { success: true };
+        }
+        return { success: true };
       } else {
         return {
           success: false,
-          error: response.error || 'SMS verification failed'
+          error: response.error || 'Invalid or expired verification code'
         };
       }
     } catch (error) {
