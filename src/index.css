@@ -9,20 +9,20 @@ All colors MUST be HSL for consistency and theming.
 @layer base {
     :root {
         /* Core Background & Surface Colors - Layered approach */
-        --background: 220 18% 98%;
+        --background: 220 18% 95%;
         --foreground: 222 24% 12%;
-        --surface: 220 20% 99%;
-        --surface-elevated: 0 0% 100%;
-        --surface-variant: 220 14% 96%;
+        --surface: 220 20% 96%;
+        --surface-elevated: 0 0% 97%;
+        --surface-variant: 220 14% 93%;
 
         /* Card & Container Colors - Multiple depths */
-        --card: 0 0% 100%;
+        --card: 0 0% 97%;
         --card-foreground: 222 24% 12%;
-        --card-glass: 0 0% 100% / 0.7;
-        --card-elevated: 0 0% 100%;
+        --card-glass: 0 0% 97% / 0.7;
+        --card-elevated: 0 0% 98%;
 
         /* Popover & Overlay Colors */
-        --popover: 0 0% 100%;
+        --popover: 0 0% 97%;
         --popover-foreground: 222 24% 12%;
 
         /* Primary Brand Colors - Refined deep blue */
@@ -51,15 +51,15 @@ All colors MUST be HSL for consistency and theming.
         --earth-sand: 45 22% 78%;
 
         /* Muted & Text Colors - Better hierarchy */
-        --muted: 220 14% 96%;
+        --muted: 220 14% 93%;
         --muted-foreground: 220 12% 50%;
         --text-subtle: 220 9% 62%;
         --text-placeholder: 220 8% 68%;
 
         /* Accent & Interactive Colors */
-        --accent: 220 14% 96%;
+        --accent: 220 14% 93%;
         --accent-foreground: 222 24% 12%;
-        --accent-hover: 220 16% 94%;
+        --accent-hover: 220 16% 91%;
 
         /* Status Colors */
         --destructive: 0 84% 60%;
@@ -70,22 +70,22 @@ All colors MUST be HSL for consistency and theming.
         --info-foreground: 0 0% 100%;
 
         /* Border & Input Colors - Subtle */
-        --border: 220 13% 91%;
-        --border-subtle: 220 10% 94%;
-        --border-hover: 220 16% 87%;
-        --input: 220 13% 91%;
+        --border: 220 13% 88%;
+        --border-subtle: 220 10% 91%;
+        --border-hover: 220 16% 84%;
+        --input: 220 13% 88%;
         --ring: 221 83% 53%;
 
         /* Glass Effect Variables - Refined */
-        --glass-bg: 0 0% 100% / 0.75;
-        --glass-border: 220 13% 91% / 0.5;
+        --glass-bg: 0 0% 97% / 0.75;
+        --glass-border: 220 13% 88% / 0.5;
         --glass-shadow: 220 40% 10% / 0.06;
 
         /* Gradients - Subtle and refined */
         --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 78% 63%));
         --gradient-secondary: linear-gradient(135deg, hsl(25 95% 53%), hsl(25 90% 63%));
-        --gradient-surface: linear-gradient(180deg, hsl(220 20% 99%), hsl(220 14% 97%));
-        --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.75), hsl(0 0% 100% / 0.5));
+        --gradient-surface: linear-gradient(180deg, hsl(220 20% 96%), hsl(220 14% 94%));
+        --gradient-glass: linear-gradient(135deg, hsl(0 0% 97% / 0.75), hsl(0 0% 97% / 0.5));
 
         /* Shadows - Layered depths */
         --shadow-xs: 0 1px 2px 0 hsl(220 40% 10% / 0.05);
@@ -106,13 +106,13 @@ All colors MUST be HSL for consistency and theming.
         --radius-lg: 0.875rem;
 
         /* Sidebar - Refined */
-        --sidebar-background: 0 0% 100%;
+        --sidebar-background: 0 0% 97%;
         --sidebar-foreground: 222 24% 12%;
         --sidebar-primary: 221 83% 53%;
         --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 220 14% 96%;
+        --sidebar-accent: 220 14% 93%;
         --sidebar-accent-foreground: 222 24% 12%;
-        --sidebar-border: 220 13% 91%;
+        --sidebar-border: 220 13% 88%;
         --sidebar-ring: 221 83% 53%;
     }
 
