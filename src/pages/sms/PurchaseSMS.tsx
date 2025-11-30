@@ -697,12 +697,12 @@ const PurchaseSMS = () => {
                         Most Popular
                       </Badge>
                     )}
-                    <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-gray-800">{pkg.name}</h3>
+                    <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
                     <div className="mb-3">
-                      <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground mb-1">
                         TZS {pkg.unit_price}/SMS
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-text-subtle">
                         {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
                          pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
                          pkg.id === 'pro' ? '250,000 SMS and above' :
@@ -715,8 +715,8 @@ const PurchaseSMS = () => {
                         <span>Never expires</span>
                       </div> */}
                       {pkg.features?.map((feature, i) => (
-                        <div key={i} className="flex items-start text-xs text-gray-700">
-                          <Check className="w-3 h-3 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                        <div key={i} className="flex items-start text-xs text-foreground">
+                          <Check className="w-3 h-3 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
                           <span>{feature}</span>
                         </div>
                       ))}
@@ -861,10 +861,10 @@ const PurchaseSMS = () => {
                         <RadioGroupItem value={method.id} id={method.id} className="h-4 w-4" />
                         <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-2">
                           <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                            method.id === 'mpesa' ? 'bg-green-100 text-green-600' :
-                            method.id === 'tigopesa' ? 'bg-blue-100 text-blue-600' :
-                            method.id === 'airtel' ? 'bg-red-100 text-red-600' :
-                            method.id === 'bank' ? 'bg-gray-100 text-gray-600' :
+                            method.id === 'mpesa' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                            method.id === 'tigopesa' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                            method.id === 'airtel' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                            method.id === 'bank' ? 'bg-muted text-foreground' :
                             'bg-primary/10 text-primary'
                           }`}>
                             {method.id === 'bank' ? (

@@ -66,19 +66,19 @@ export const SMSPackageCards: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-gray-100 p-6">
+    <div className="w-full bg-background p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
         {smsPackages.map((pkg) => (
           <Card
             key={pkg.id}
-            className={`relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-              pkg.isSelected ? 'ring-2 ring-blue-600 border-blue-600' : 'border-gray-200'
+            className={`relative bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow border ${
+              pkg.isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
             }`}
           >
             {/* Most Popular Badge */}
             {pkg.isPopular && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                <Badge className="bg-blue-600 text-white px-3 py-1 text-xs font-semibold rounded-full">
+                <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full">
                   Most Popular
                 </Badge>
               </div>
@@ -86,25 +86,25 @@ export const SMSPackageCards: React.FC = () => {
 
             <CardContent className="p-6 text-center h-full flex flex-col">
               {/* Package Name */}
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
+              <h3 className="text-xl font-bold text-foreground mb-3">
                 {pkg.name}
               </h3>
 
               {/* Price */}
-              <div className="text-3xl font-bold text-gray-800 mb-2">
+              <div className="text-3xl font-bold text-foreground mb-2">
                 {pkg.price}
               </div>
 
               {/* SMS Range */}
-              <div className="text-sm text-gray-500 mb-6">
+              <div className="text-sm text-text-subtle mb-6">
                 {pkg.smsRange}
               </div>
 
               {/* Features */}
               <div className="space-y-3 mb-6 flex-1">
                 {pkg.features.map((feature, index) => (
-                  <div key={index} className="flex items-start text-sm text-gray-700">
-                    <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                  <div key={index} className="flex items-start text-sm text-foreground">
+                    <Check className="w-4 h-4 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-left">{feature}</span>
                   </div>
                 ))}
@@ -115,8 +115,8 @@ export const SMSPackageCards: React.FC = () => {
                 onClick={() => handleSelect(pkg.id)}
                 className={`w-full ${
                   pkg.isSelected
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300'
+                    ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
                 }`}
                 variant={pkg.isSelected ? 'default' : 'outline'}
               >
