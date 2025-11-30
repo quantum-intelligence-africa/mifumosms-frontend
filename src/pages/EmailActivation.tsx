@@ -105,24 +105,30 @@ const EmailActivation = () => {
     setErrorMessage("");
 
     try {
-      let result;
-
-      if (verificationMethod === 'sms' && phoneNumber) {
-        // Verify via SMS
-        result = await verifySMS(phoneNumber, tokenValue);
-      } else {
-        // Verify via Email
-        result = await verifyEmail(tokenValue);
+      // SMS-only verification - phone number is required
+      if (!phoneNumber) {
+        toast({
+          title: "Phone number required",
+          description: "Phone number is required for SMS verification. Please provide your phone number.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
       }
 
+      // Verify via SMS using the new endpoint
+      const result = await verifySMS(phoneNumber, tokenValue);
+
       if (result.success) {
+        // ✅ Code is correct - NOW redirect to dashboard
         setActivationStatus("success");
+
         // Clear pending activation flags
         localStorage.removeItem('pending_email_activation');
         localStorage.removeItem('pending_phone_activation');
         localStorage.removeItem('pending_verification_method');
 
-        // If tokens are returned, set them
+        // Store tokens and user data
         if (result.tokens) {
           const apiClient = (await import('@/lib/api')).apiClient;
           apiClient.setToken(result.tokens.access);
@@ -130,67 +136,43 @@ const EmailActivation = () => {
           if (result.user) {
             localStorage.setItem('user_profile', JSON.stringify(result.user));
           }
-        } else if (result.user) {
-          // User data returned but no tokens - account is activated, user needs to login
-          // Or we can try to get tokens by refreshing
-          localStorage.setItem('user_profile', JSON.stringify(result.user));
         }
 
         toast({
           title: "Account activated successfully!",
-          description: verificationMethod === 'sms'
-            ? "Your account has been activated. Please log in to continue."
-            : "Welcome! Redirecting to your dashboard...",
+          description: "Welcome! Redirecting to your dashboard...",
         });
 
-        // If we have tokens, redirect to dashboard, otherwise redirect to login
-        if (result.tokens) {
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true });
-          }, 1000);
-        } else {
-          setTimeout(() => {
-            navigate("/login", { replace: true });
-          }, 2000);
-        }
+        // Redirect to dashboard only when code is correct
+        setTimeout(() => {
+          navigate("/dashboard", { replace: true });
+        }, 1500);
       } else {
+        // ❌ Code is wrong - STAY on verification form, show error
         setActivationStatus("error");
-        const errorMsg = result.error || (verificationMethod === 'sms'
-          ? "Invalid or expired code. Please request a new verification code."
-          : "Invalid or expired token. Please request a new activation email.");
+        const errorMsg = result.error || "Invalid verification code. Please check your SMS and try again.";
         setErrorMessage(errorMsg);
 
-        // If SMS verification failed and email is available, show option to switch
-        if (verificationMethod === 'sms' && email.trim() && result.error) {
-          const errorLower = result.error.toLowerCase();
-          // Check if error indicates SMS failure (not just invalid code)
-          if (errorLower.includes('failed') || errorLower.includes('unable') || errorLower.includes('error') || errorLower.includes('network')) {
-            setShowSwitchToEmail(true);
-          }
-        }
-
         toast({
-          title: "Activation failed",
+          title: "Verification failed",
           description: errorMsg,
           variant: "destructive"
         });
+        // DO NOT redirect - keep user on verification form
+        setIsLoading(false);
       }
     } catch (error) {
+      // ❌ Error occurred - STAY on verification form
       setActivationStatus("error");
       const errorMsg = error instanceof Error ? error.message : "An error occurred. Please try again.";
       setErrorMessage(errorMsg);
 
-      // If SMS verification failed and email is available, show option to switch
-      if (verificationMethod === 'sms' && email.trim()) {
-        setShowSwitchToEmail(true);
-      }
-
       toast({
-        title: "Activation failed",
+        title: "Verification failed",
         description: errorMsg,
         variant: "destructive"
       });
-    } finally {
+      // DO NOT redirect - keep user on verification form
       setIsLoading(false);
     }
   };
@@ -306,58 +288,47 @@ const EmailActivation = () => {
       return;
     }
 
+    // Resend-activation accepts email OR phone_number
+    if (!phoneNumber.trim() && !email.trim()) {
+      toast({
+        title: "Email or phone required",
+        description: "Please provide either your email address or phone number to resend the SMS verification code.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsResending(true);
     try {
-      // Use resend-activation endpoint which the backend handles automatically
-      // Backend will try SMS first if phone number is available, then fallback to email
-      const result = await resendActivationEmail(email.trim(), phoneNumber.trim());
+      // Use resend-activation endpoint - accepts email OR phone_number, sends SMS only
+      const result = await resendActivationEmail(email.trim() || undefined, phoneNumber.trim() || undefined);
+
+      // Update phone number if returned from response
+      if (result.phoneNumber && !phoneNumber) {
+        setPhoneNumber(result.phoneNumber);
+        localStorage.setItem('pending_phone_activation', result.phoneNumber);
+      }
 
       if (result.success) {
-        const method = result.method || 'sms';
-        if (method === 'sms') {
-          toast({
-            title: "SMS verification code sent",
-            description: `Please check your phone (${phoneNumber}) for the 6-digit verification code.`,
-            duration: 10000
-          });
-          setVerificationMethod('sms');
-          setShowSwitchToEmail(false);
-        } else {
-          // Backend fell back to email
-          toast({
-            title: "Email verification sent",
-            description: `SMS failed. Please check your inbox at ${email} for the activation code.`,
-            duration: 10000
-          });
-          setVerificationMethod('email');
-          setShowSwitchToEmail(false);
-        }
+        // SMS only - no email codes
+        const displayPhone = result.phoneNumber || phoneNumber;
+        toast({
+          title: "SMS verification code sent",
+          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''}. Please check your SMS messages.`,
+          duration: 10000
+        });
+        setVerificationMethod('sms');
         setActivationStatus("idle");
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
-        // If SMS failed and email is available, offer to switch
-        if (email.trim()) {
-          setShowSwitchToEmail(true);
-          toast({
-            title: "SMS failed",
-            description: result.error || "SMS could not be sent. You can switch to email verification.",
-            variant: "destructive",
-            duration: 8000
-          });
-        } else {
-          toast({
-            title: "Failed to send code",
-            description: result.error || "Please try again later.",
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Failed to send code",
+          description: result.error || "Please try again later.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      // If SMS failed and email is available, offer to switch
-      if (email.trim()) {
-        setShowSwitchToEmail(true);
-      }
       toast({
         title: "Failed to send code",
         description: "An error occurred. Please try again.",
@@ -369,10 +340,11 @@ const EmailActivation = () => {
   };
 
   const handleResendEmail = async () => {
-    if (!email.trim()) {
+    // Resend-activation accepts email OR phone_number, sends SMS only
+    if (!email.trim() && !phoneNumber.trim()) {
       toast({
-        title: "Email required",
-        description: "Please enter your email address to resend the activation email.",
+        title: "Email or phone required",
+        description: "Please provide either your email address or phone number to resend the SMS verification code.",
         variant: "destructive"
       });
       return;
@@ -380,27 +352,37 @@ const EmailActivation = () => {
 
     setIsResending(true);
     try {
-      const result = await resendActivationEmail(email.trim(), undefined);
+      // Use resend-activation with email - backend will send SMS only
+      const result = await resendActivationEmail(email.trim() || undefined, phoneNumber.trim() || undefined);
+
+      // Update phone number if returned from response
+      if (result.phoneNumber && !phoneNumber) {
+        setPhoneNumber(result.phoneNumber);
+        localStorage.setItem('pending_phone_activation', result.phoneNumber);
+      }
 
       if (result.success) {
+        // SMS only - no email codes
+        const displayPhone = result.phoneNumber || phoneNumber;
         toast({
-          title: "Activation email sent",
-          description: `Please check your inbox at ${email} for the activation code.`,
+          title: "SMS verification code sent",
+          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''}. Please check your SMS messages.`,
           duration: 10000
         });
+        setVerificationMethod('sms');
         setActivationStatus("idle");
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
         toast({
-          title: "Failed to resend email",
+          title: "Failed to send code",
           description: result.error || "Please try again later.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Failed to resend email",
+        title: "Failed to send code",
         description: "An error occurred. Please try again.",
         variant: "destructive"
       });

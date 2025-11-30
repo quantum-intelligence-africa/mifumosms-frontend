@@ -1229,10 +1229,42 @@ class ApiClient {
     }
   }
 
-  async resendActivationEmail(email: string): Promise<ApiResponse<{ message: string }>> {
-    return this.request<{ message: string }>('/auth/resend-activation/', {
+  async resendActivationEmail(email?: string, phoneNumber?: string): Promise<ApiResponse<{ message: string; phone_number?: string }>> {
+    const body: { email?: string; phone_number?: string } = {};
+    if (email) body.email = email;
+    if (phoneNumber) body.phone_number = phoneNumber;
+
+    return this.request<{ message: string; phone_number?: string }>(API_CONFIG.ENDPOINTS.AUTH.RESEND_ACTIVATION, {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
+    });
+  }
+
+  async verifySMSCode(phoneNumber: string, verificationCode: string): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    phone_verified: boolean;
+    account_activated: boolean;
+    is_verified: boolean;
+    is_active: boolean;
+    tokens: AuthTokens;
+    user: User;
+  }>> {
+    return this.request<{
+      success: boolean;
+      message: string;
+      phone_verified: boolean;
+      account_activated: boolean;
+      is_verified: boolean;
+      is_active: boolean;
+      tokens: AuthTokens;
+      user: User;
+    }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
+      method: 'POST',
+      body: JSON.stringify({
+        phone_number: phoneNumber,
+        verification_code: verificationCode,
+      }),
     });
   }
 

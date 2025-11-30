@@ -16,7 +16,7 @@ interface AuthContextType {
   verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
   verifySMS: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
-  resendActivationEmail: (email: string, phoneNumber?: string) => Promise<{ success: boolean; error?: string; method?: 'sms' | 'email' }>;
+  resendActivationEmail: (email?: string, phoneNumber?: string) => Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (needsActivation) {
           // Backend automatically sends a new 6-digit code when login fails for unverified account
-          // Try to get phone number from response data or stored data
+          // Try to get phone number from response data, stored data, or fetch from backend
           let phoneNumber: string | undefined = undefined;
 
           // Check if response includes user data with phone number
@@ -203,6 +203,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // If not in response, check stored data
           if (!phoneNumber) {
             phoneNumber = localStorage.getItem('pending_phone_activation') || undefined;
+          }
+
+          // If still not available, try to fetch it from backend via resend-activation
+          if (!phoneNumber) {
+            try {
+              const resendResponse = await apiClient.resendActivationEmail(credentials.email);
+              // Check if response includes phone number
+              if (resendResponse.data) {
+                const responseData = resendResponse.data as any;
+                if (responseData.phone_number) {
+                  phoneNumber = responseData.phone_number;
+                } else if (responseData.user && responseData.user.phone_number) {
+                  phoneNumber = responseData.user.phone_number;
+                }
+              }
+              // Store phone number if found
+              if (phoneNumber) {
+                localStorage.setItem('pending_phone_activation', phoneNumber);
+              }
+            } catch (fetchError) {
+              // Silently fail - phone number fetch is optional
+              console.log('Could not fetch phone number:', fetchError);
+            }
           }
 
           return {
@@ -451,41 +474,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const verifySMS = async (phoneNumber: string, code: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
     try {
-      // Use the new activation endpoint: GET /api/auth/activate-account/{code}/
-      // This endpoint works for both SMS and email verification codes
-      // It returns HTML, so we check the status code
-      const response = await apiClient.activateAccount(code);
+      // Use the new RECOMMENDED endpoint: POST /api/auth/sms/verify-code/
+      const response = await apiClient.verifySMSCode(phoneNumber, code);
 
-      if (response.status === 200) {
-        // Account activated successfully
-        // The endpoint returns HTML, but we need to get user data
-        // Try to fetch profile to get user data and check if we can get tokens
-        try {
-          const profileResponse = await apiClient.getProfile();
-          if (profileResponse.data) {
-            updateUserState(profileResponse.data);
-            // Check if we have tokens in localStorage
-            const accessToken = localStorage.getItem('access_token');
-            const refreshToken = localStorage.getItem('refresh_token');
-            if (accessToken && refreshToken) {
-              return {
-                success: true,
-                tokens: { access: accessToken, refresh: refreshToken },
-                user: profileResponse.data
-              };
-            } else {
-              // Account is activated but no tokens - user needs to login
-              return {
-                success: true,
-                user: profileResponse.data
-              };
-            }
-          }
-        } catch (profileError) {
-          // Profile fetch failed, but activation succeeded
-          // User will need to login
-          return { success: true };
+      if (response.success && response.data) {
+        const { tokens, user: userData } = response.data;
+
+        if (tokens && userData) {
+          // Account activated successfully with tokens - user is automatically logged in
+          updateUserState(userData);
+          apiClient.setToken(tokens.access);
+          localStorage.setItem('refresh_token', tokens.refresh);
+          localStorage.setItem('user_profile', JSON.stringify(userData));
+
+          return {
+            success: true,
+            tokens: tokens,
+            user: userData
+          };
         }
+
         return { success: true };
       } else {
         return {
@@ -501,28 +509,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const resendActivationEmail = async (email: string, phoneNumber?: string): Promise<{ success: boolean; error?: string; method?: 'sms' | 'email' }> => {
-    // Use the resend-activation endpoint which the backend handles automatically
-    // Backend will try SMS first if phone number is available, then fallback to email
+  const resendActivationEmail = async (email?: string, phoneNumber?: string): Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }> => {
+    // Use the resend-activation endpoint - accepts email OR phone_number, sends SMS only
     try {
-      const response = await apiClient.resendActivationEmail(email);
+      const response = await apiClient.resendActivationEmail(email, phoneNumber);
       if (response.success !== false) {
-        // Backend automatically tries SMS first if phone number is available
-        // We determine the method based on whether phone number was provided
-        const method = phoneNumber ? 'sms' : 'email';
-        return { success: true, method };
+        // Backend sends SMS only - no email codes
+        const returnedPhone = response.data?.phone_number || phoneNumber;
+        return {
+          success: true,
+          method: 'sms',
+          phoneNumber: returnedPhone
+        };
       } else {
         return {
           success: false,
           error: response.error || response.message || 'Failed to resend activation code',
-          method: phoneNumber ? 'sms' : 'email'
+          method: 'sms'
         };
       }
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to resend activation code',
-        method: phoneNumber ? 'sms' : 'email'
+        method: 'sms'
       };
     }
   };
