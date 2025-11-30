@@ -879,6 +879,7 @@ class ApiClient {
       if (!response.ok) {
         return {
           data: data,
+          message: data?.message,
           error: data?.message || data?.error || 'An error occurred',
           status: response.status,
           success: false,
@@ -887,14 +888,28 @@ class ApiClient {
       }
 
       // Handle backend response format: { "success": true, "data": {...} }
+      // OR: { "success": true, "tokens": {...}, "user": {...} } (for verify-code endpoint)
       if (data && typeof data === 'object' && 'success' in data) {
-        return {
-          data: data.data,
-          status: response.status,
-          success: data.success,
-          message: data.message,
-          error: data.success ? undefined : (data.message || data.error),
-        };
+        // Check if data has nested 'data' field (standard format)
+        // OR if it has 'tokens' and 'user' at root level (verify-code format)
+        if (data.data) {
+          return {
+            data: data.data,
+            status: response.status,
+            success: data.success,
+            message: data.message,
+            error: data.success ? undefined : (data.message || data.error),
+          };
+        } else {
+          // Response has success:true but data is at root level (e.g., verify-code endpoint)
+          return {
+            data: data, // Return the whole response as data since tokens/user are at root
+            status: response.status,
+            success: data.success,
+            message: data.message,
+            error: data.success ? undefined : (data.message || data.error),
+          };
+        }
       }
 
       return {

@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email' }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
@@ -247,7 +247,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email' }> => {
+  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean }> => {
     try {
       const response = await apiClient.register(userData);
 
@@ -255,7 +255,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration request data:', userData);
       console.log('Registration response:', response);
 
-      if (response.data) {
+      // CRITICAL: Check status code first
+      // Status 400 = Validation failed, account NOT created - stay on page
+      if (response.status === 400) {
+        // Account was NOT created - validation failed
+        // API returns error message in 'message' field: "Phone Number: This phone number is already registered..."
+        const errorMessage = response.message || response.error || 'Validation failed';
+
+        return {
+          success: false,
+          error: errorMessage,
+          errors: response.errors || {},
+          stayOnPage: true // Explicit flag to prevent redirects
+        };
+      }
+
+      // Status 201 = Account created successfully - can redirect
+      if (response.status === 201 && response.data) {
         const {
           user: newUser,
           tokens,
@@ -325,6 +341,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           verificationMethod: verificationMethod
         };
       } else {
+        // Other error cases (500, etc.)
         console.error('Registration failed - no data in response:', response);
 
         // Extract specific validation errors
@@ -336,7 +353,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           errorMessage = `Validation failed: ${errorDetails}`;
         }
 
-        return { success: false, error: errorMessage };
+        return {
+          success: false,
+          error: errorMessage,
+          errors: response.errors || {},
+          stayOnPage: response.status === 400 // Stay on page for 400 errors
+        };
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -477,6 +499,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Use the new RECOMMENDED endpoint: POST /api/auth/sms/verify-code/
       const response = await apiClient.verifySMSCode(phoneNumber, code);
 
+      // Check if verification was successful
       if (response.success && response.data) {
         const { tokens, user: userData } = response.data;
 
@@ -494,13 +517,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
         }
 
+        // If we have success but no tokens/user, still return success
         return { success: true };
-      } else {
-        return {
-          success: false,
-          error: response.error || 'Invalid or expired verification code'
-        };
       }
+
+      // Error case - verification failed
+      return {
+        success: false,
+        error: response.error || response.message || 'Invalid or expired verification code'
+      };
     } catch (error) {
       return {
         success: false,

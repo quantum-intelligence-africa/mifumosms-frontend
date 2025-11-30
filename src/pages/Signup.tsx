@@ -110,10 +110,46 @@ const Signup = () => {
 
       const result = await register(registerData);
 
+      // CRITICAL: Check if we should stay on page (status 400 - validation failed)
+      if (result.stayOnPage || (!result.success && (result.errors || result.error))) {
+        // ❌ Status 400 - Account NOT created, validation failed
+        // Stay on registration page, show error messages
+
+        // First, show the main error message if available
+        if (result.error) {
+          toast({
+            title: "Validation failed",
+            description: result.error,
+            variant: "destructive",
+            duration: 10000
+          });
+        }
+
+        // Then show field-specific errors if available
+        if (result.errors && Object.keys(result.errors).length > 0) {
+          Object.entries(result.errors).forEach(([field, errors]) => {
+            const errorMessage = Array.isArray(errors) ? errors[0] : errors;
+            // Only show if different from main error message
+            if (errorMessage !== result.error) {
+              toast({
+                title: `${field.charAt(0).toUpperCase() + field.slice(1)} error`,
+                description: errorMessage,
+                variant: "destructive",
+                duration: 8000
+              });
+            }
+          });
+        }
+
+        // DO NOT redirect - stay on registration page
+        return;
+      }
+
       if (result.success) {
+        // ✅ Status 201 - Account created successfully
         if (result.requiresActivation) {
           // Account created but needs activation
-          const verificationMethod = result.verificationMethod || (result.phoneNumber ? 'sms' : 'email');
+          const verificationMethod = result.verificationMethod || 'sms';
           const message = verificationMethod === 'sms'
             ? `Please check your phone (${result.phoneNumber}) for the 6-digit verification code to activate your account.`
             : "Please check your email for the 6-digit verification code to activate your account.";
@@ -141,6 +177,7 @@ const Signup = () => {
           navigate(from, { replace: true });
         }
       } else {
+        // Other error cases
         toast({
           title: "Registration failed",
           description: result.error || "Please check your information and try again.",
