@@ -510,11 +510,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.setItem('refresh_token', tokens.refresh);
           localStorage.setItem('user_profile', JSON.stringify(userData));
 
-          return {
-            success: true,
+              return {
+                success: true,
             tokens: tokens,
             user: userData
-          };
+              };
         }
 
         // If we have success but no tokens/user, still return success
@@ -522,10 +522,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Error case - verification failed
-      return {
-        success: false,
+        return {
+          success: false,
         error: response.error || response.message || 'Invalid or expired verification code'
-      };
+        };
     } catch (error) {
       return {
         success: false,

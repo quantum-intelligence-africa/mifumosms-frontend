@@ -19,7 +19,9 @@ import {
   Sparkles,
   Wifi,
   Network,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +35,9 @@ const Landing = () => {
   const [currentMessage, setCurrentMessage] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [currentBusiness, setCurrentBusiness] = useState(0);
+  const [isPhoneHovered, setIsPhoneHovered] = useState(false);
+  const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
 
   // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
@@ -43,24 +48,69 @@ const Landing = () => {
     }
   ];
 
-  // SMS Animation messages - Company informational messages
-  const messages = [
-    { text: "MIFUMO SMS: Usikose! Kumbusha wateja wako kuhusu punguzo la mwisho wa mwezi.", sender: "Mifumo SMS", time: "1:00 PM", type: "sms" },
-    { text: "MIFUMO SMS: Vikumbusho vya oda vimefufua wateja 24 waliokuwa kimya.", sender: "Mifumo SMS", time: "2:30 PM", type: "whatsapp" },
-    { text: "MIFUMO SMS: Ujumbe wako wa ‘Asante Mteja’ umetumwa kwa wateja 1,200.", sender: "Mifumo SMS", time: "3:10 PM", type: "sms" },
-    { text: "MIFUMO SMS: Je, salio limeisha? Ongeza sasa ili kampeni zako ziendelee.", sender: "Mifumo SMS", time: "3:40 PM", type: "sms" },
-    { text: "MIFUMO SMS: Ofa mpya ya ‘SMS Weekend’ ipo hewani. Tuma zaidi kwa gharama nafuu!", sender: "Mifumo SMS", time: "4:15 PM", type: "sms" },
-    { text: "MIFUMO SMS: Ripoti mpya iko tayari – angalia wateja wanaojibu zaidi.", sender: "Mifumo SMS", time: "5:00 PM", type: "sms" },
-    { text: "MIFUMO SMS: Ujumbe wako wa WhatsApp umegusa wateja 2,000 leo. Hongera kwa hatua!", sender: "Mifumo SMS", time: "6:10 PM", type: "whatsapp" }
-  ];
+  // Business profiles with their SMS messages
+  const businessProfiles = useMemo(() => [
+    {
+      name: "Mifumo SMS",
+      sender: "Mifumo SMS",
+      messages: [
+        { text: "MIFUMO SMS: Usikose! Kumbusha wateja wako kuhusu punguzo la mwisho wa mwezi.", time: "1:00 PM" },
+        { text: "MIFUMO SMS: Vikumbusho vya oda vimefufua wateja 24 waliokuwa kimya.", time: "2:30 PM" },
+        { text: "MIFUMO SMS: Ujumbe wako wa 'Asante Mteja' umetumwa kwa wateja 1,200.", time: "3:10 PM" },
+        { text: "MIFUMO SMS: Je, salio limeisha? Ongeza sasa ili kampeni zako ziendelee.", time: "3:40 PM" },
+      ]
+    },
+    {
+      name: "QUANTUM",
+      sender: "QUANTUM",
+      messages: [
+        { text: "QUANTUM: Habari! Tunakukumbusha kuwa ofa yako ya mwisho wa mwezi inaisha kesho. Usikose!", time: "10:15 AM" },
+        { text: "QUANTUM: Asante kwa kuwa mteja wetu. Tuna furaha kukujulisha kuwa bidhaa mpya zimefika.", time: "11:30 AM" },
+        { text: "QUANTUM: Kumbuka! Oda yako ya leo itakuwa tayari kesho asubuhi. Tutakupigia simu.", time: "2:45 PM" },
+        { text: "QUANTUM: Tafadhali tujulishe maoni yako kuhusu huduma yetu. Asante!", time: "4:20 PM" },
+      ]
+    },
+    {
+      name: "SURAFOFT",
+      sender: "SURAFOFT",
+      messages: [
+        { text: "SURAFOFT: Habari! Kamera yako ya CCTV ya AI imegundua harakati isiyo ya kawaida eneo la kazi. Angalia taarifa hii mara moja.", time: "8:30 AM" },
+        { text: "SURAFOFT: Taarifa: Mfumo wako wa usalama umeunganishwa kikamilifu. Kamera zote 12 zinafanya kazi kwa ufanisi.", time: "10:00 AM" },
+        { text: "SURAFOFT: Kumbuka: Backup ya video yako ya jana imehifadhiwa kikamilifu. Unaweza kupata kwa mfumo wetu wa wingu.", time: "2:15 PM" },
+        { text: "SURAFOFT: Asante kwa kuwa mteja wetu. Tuna teknolojia mpya ya AI inayoweza kutambua watu na magari kwa usahihi zaidi.", time: "4:30 PM" },
+        { text: "SURAFOFT: Taarifa: Mfumo wako unahitaji uangalizi wa kila mwezi. Tafadhali panga miadi ya huduma.", time: "5:45 PM" },
+      ]
+    },
+    {
+      name: "MFUMO LAB",
+      sender: "MFUMO LAB",
+      messages: [
+        { text: "MFUMO LAB: Habari! Programu yako ya maendeleo imekamilika na tayari kwa kujaribwa. Tafadhali angalia na tujulishe maoni.", time: "9:00 AM" },
+        { text: "MFUMO LAB: Kumbuka: Simu yako ya Android ina update mpya inayojumuisha features za ziada. Update sasa!", time: "11:00 AM" },
+        { text: "MFUMO LAB: Taarifa: Mfumo wako wa maendeleo ya programu unahitaji backup. Tafadhali fanya backup ya data zako.", time: "1:30 PM" },
+        { text: "MFUMO LAB: Asante kwa kuwa mteja wetu. Tuna teknolojia mpya ya maendeleo ya programu za simu na vifaa vya mkononi.", time: "3:00 PM" },
+        { text: "MFUMO LAB: Kumbuka: Miadi yako ya msaada wa kiufundi ni kesho. Tafadhali tayarisha maswali yako.", time: "4:00 PM" },
+        { text: "MFUMO LAB: Taarifa: Programu yako mpya ya iOS imetengenezwa na tayari kwa kujaribwa. Angalia App Store.", time: "5:30 PM" },
+      ]
+    }
+  ], []);
 
-  // Cycle through messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentMessage((prev) => (prev + 1) % messages.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [messages.length]);
+  // Get current business messages
+  const currentBusinessData = businessProfiles[currentBusiness];
+  const messages = currentBusinessData.messages.map(msg => ({
+    ...msg,
+    sender: currentBusinessData.sender,
+    type: "sms"
+  }));
+
+  // Navigation functions
+  const goToPreviousBusiness = () => {
+    setCurrentBusiness((prev) => (prev > 0 ? prev - 1 : businessProfiles.length - 1));
+  };
+
+  const goToNextBusiness = () => {
+    setCurrentBusiness((prev) => (prev < businessProfiles.length - 1 ? prev + 1 : 0));
+  };
 
   // No need to cycle through background slides since we only have blue
   // useEffect(() => {
@@ -167,91 +217,113 @@ const Landing = () => {
     );
   };
 
-  // SMS Animation Component
+  // SMS Animation Component with navigation buttons
   const SMSAnimation = () => {
-    const message = messages[currentMessage];
-
     return (
-      <div className="relative w-full max-w-[280px] mx-auto sm:max-w-[300px] lg:max-w-[320px]">
-        {/* Slim Smartphone Mockup - Clean design */}
-        <div className="relative bg-black rounded-[2.5rem] p-1.5 shadow-xl">
-          {/* Slim Frame */}
-          <div className="bg-black rounded-[2.3rem] p-0.5">
-            <div className="bg-white rounded-[2.1rem] overflow-hidden relative">
-              {/* Simple Dynamic Island */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-24 h-5 bg-black rounded-full z-10"></div>
+      <div className="relative w-full max-w-[260px] mx-auto sm:max-w-[280px] lg:max-w-[300px]">
+        {/* Navigation Button - Left */}
+        <button
+          onClick={goToPreviousBusiness}
+          className="absolute -left-8 sm:-left-10 top-1/2 -translate-y-1/2 z-30 bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+          aria-label="Previous company"
+        >
+          <ChevronLeft className="w-4 h-4 text-white" />
+        </button>
 
-              {/* Clean Status Bar */}
-              <div className="bg-white pt-7 pb-2 px-5 flex justify-between items-center text-xs font-semibold text-black">
-                <span>9:41</span>
-                <div className="flex items-center gap-1">
-                  {/* Signal bars */}
-                  <div className="flex items-end gap-0.5">
-                    <div className="w-1 h-2 bg-black rounded-sm"></div>
-                    <div className="w-1 h-3 bg-black rounded-sm"></div>
-                    <div className="w-1 h-4 bg-black rounded-sm"></div>
-                    <div className="w-1 h-4 bg-black rounded-sm"></div>
-                  </div>
-                  {/* WiFi */}
-                  <div className="w-4 h-3 bg-black rounded-sm ml-1"></div>
-                  {/* Battery */}
-                  <div className="flex items-center gap-1 ml-1">
-                    <span className="text-xs font-medium">100%</span>
-                    <div className="w-6 h-3 border border-black rounded-sm relative">
-                      <div className="w-4 h-2 bg-black rounded-sm m-0.5"></div>
-                      <div className="absolute -right-0.5 top-0.5 w-0.5 h-2 bg-black rounded-r-sm"></div>
-                    </div>
-                  </div>
+        {/* Navigation Button - Right */}
+        <button
+          onClick={goToNextBusiness}
+          className="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-30 bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+          aria-label="Next company"
+        >
+          <ChevronRight className="w-4 h-4 text-white" />
+        </button>
+
+        {/* Phone container */}
+        <div
+          key={currentBusiness}
+          className="relative animate-in fade-in duration-500"
+        >
+        {/* iPhone Frame - Using transparent PNG */}
+        <div className="relative w-full h-auto">
+          {/* iPhone PNG Background - Transparent frame */}
+          <img
+            src="/iphone_PNG5735.png"
+            alt="iPhone mockup"
+            className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
+            style={{ filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.5))' }}
+          />
+
+          {/* Screen mask: Realistic phone screen covering blue background - Proper fit with correct height and width */}
+          <div
+            className="absolute z-10 overflow-hidden bg-white flex flex-col"
+            style={{
+              top: '16%',
+              left: '15.5%',
+              right: '16%',
+              bottom: '18.5%',
+              borderRadius: '0.6rem',
+            }}
+          >
+            {/* Status Bar Area - Matching iPhone style */}
+            <div className="flex justify-between items-center px-2.5 pt-0.5 pb-0.5 text-[9px] font-semibold text-black bg-white flex-shrink-0">
+              <span>9:41</span>
+              <div className="flex items-center gap-0.5">
+                {/* Signal bars */}
+                <div className="flex items-end gap-0.5">
+                  <div className="w-0.5 h-1.5 bg-black rounded-sm" />
+                  <div className="w-0.5 h-2 bg-black rounded-sm" />
+                  <div className="w-0.5 h-2.5 bg-black rounded-sm" />
+                  <div className="w-0.5 h-2.5 bg-black rounded-sm" />
                 </div>
-              </div>
-
-              {/* Messages App Interface */}
-              <div className="bg-gray-50 h-[400px] sm:h-[450px] lg:h-[480px]">
-                {/* App Header */}
-                <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-gray-900 font-semibold text-sm">{message.sender}</h3>
-                    <p className="text-gray-500 text-xs">System Messages</p>
-                  </div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                </div>
-
-                {/* Messages Area */}
-                <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 h-[320px] sm:h-[360px] lg:h-[400px] overflow-y-auto bg-gray-50">
-                  {/* Previous messages */}
-                  {messages.slice(0, currentMessage).map((msg, index) => (
-                    <div key={index} className="flex justify-start">
-                      <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-3 py-2 shadow-sm">
-                        <p className="text-gray-900 text-xs leading-relaxed">{msg.text}</p>
-                        <p className="text-gray-400 text-[10px] mt-1">{msg.time}</p>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Current message with animation */}
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] bg-white border border-gray-200 rounded-2xl px-3 py-2 shadow-sm animate-pulse">
-                      <p className="text-gray-900 text-xs leading-relaxed">{message.text}</p>
-                      <p className="text-gray-400 text-[10px] mt-1">{message.time}</p>
-                    </div>
+                {/* WiFi */}
+                <div className="w-3 h-2 bg-black rounded-sm ml-0.5" />
+                {/* Battery */}
+                <div className="flex items-center gap-0.5 ml-0.5">
+                  <span className="text-[8px] font-medium">100%</span>
+                  <div className="w-5 h-2.5 border border-black rounded-sm relative">
+                    <div className="w-3.5 h-1.5 bg-black rounded-sm m-0.5" />
+                    <div className="absolute -right-0.5 top-0.5 w-0.5 h-1.5 bg-black rounded-r-sm" />
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Simple Home indicator */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-white rounded-full"></div>
+            {/* Messages App Interface */}
+            <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+              {/* App Header */}
+              <div className="bg-white border-b border-gray-200 px-2.5 py-2 flex items-center gap-2 flex-shrink-0">
+                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="w-3 h-3 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-gray-900 font-semibold text-[10px] truncate">{currentBusinessData.sender}</h3>
+                  <p className="text-gray-500 text-[8px]">System Messages</p>
+                </div>
+                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
+              </div>
+
+              {/* Messages Area - Show ALL messages at once */}
+              <div className="flex-1 p-2 space-y-1.5 overflow-y-auto bg-gray-50 scrollbar-hide">
+                {messages.map((msg, index) => (
+                  <div key={index} className="flex justify-start">
+                    <div className="max-w-[88%] bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+                      <p className="text-gray-900 text-[10px] leading-relaxed">{msg.text}</p>
+                      <p className="text-gray-400 text-[9px] mt-0.5">{msg.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
         </div>
 
-        {/* Simple floating notification icons */}
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
+        {/* Floating notification icons */}
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg z-20">
           <Send className="w-3 h-3 text-white" />
         </div>
-        <div className="absolute -bottom-1 -left-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+        <div className="absolute -bottom-1 -left-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow-lg z-20">
           <MessageSquare className="w-2.5 h-2.5 text-white" />
         </div>
       </div>
@@ -373,6 +445,53 @@ const Landing = () => {
               opacity: 1;
             }
           }
+          @keyframes rotatePhone {
+            0%, 90%, 100% {
+              transform: perspective(1000px) rotateY(0deg);
+            }
+            5%, 85% {
+              transform: perspective(1000px) rotateY(180deg);
+            }
+          }
+          @keyframes fadeInOut {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.3;
+            }
+          }
+          @keyframes smoothFlip {
+            0% {
+              transform: perspective(1000px) rotateY(0deg) scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: perspective(1000px) rotateY(90deg) scale(0.95);
+              opacity: 0;
+            }
+            100% {
+              transform: perspective(1000px) rotateY(0deg) scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes elegantFade {
+            0% {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+            50% {
+              opacity: 0;
+              transform: scale(0.98) translateY(-10px);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+          .phone-transition {
+            animation: elegantFade 1.2s ease-in-out;
+          }
           .float-animation {
             animation: float 4s ease-in-out infinite;
           }
@@ -381,6 +500,13 @@ const Landing = () => {
           }
           .glow-animation {
             animation: glow 2s ease-in-out infinite;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
           }
         `
       }} />
