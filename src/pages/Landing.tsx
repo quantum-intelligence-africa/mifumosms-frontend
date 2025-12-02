@@ -452,23 +452,23 @@ const Landing = () => {
                   <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
                 </Button>
               </Link>
-              <Button
+              {/* <Button
                 variant="outline"
-                className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105 group"
+                className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 border-2 border-white/80 text-white bg-white/10 hover:bg-white/20 hover:border-white backdrop-blur-md transition-all duration-300 hover:scale-105 group shadow-lg"
               >
                 <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 group-hover:scale-110 transition-transform duration-300" />
                 Watch Demo
-              </Button>
+              </Button> */}
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 pt-3 sm:pt-4">
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">1000+</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">50+</div>
                 <div className="text-xs text-white/70">Active Businesses</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">50M+</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">1M+</div>
                 <div className="text-xs text-white/70">Messages Sent</div>
               </div>
               <div className="text-center lg:text-left">
