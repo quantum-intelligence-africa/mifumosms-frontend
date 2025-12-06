@@ -19,7 +19,7 @@ import Campaigns from "./pages/Campaigns";
 import Templates from "./pages/Templates";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
-// import Notifications from "./pages/Notifications";
+import Notifications from "./pages/Notifications";
 // import NotificationSettings from "./pages/NotificationSettings";
 import SendSMS from "./pages/sms/SendSMS";
 import PurchaseSMS from "./pages/sms/PurchaseSMS";
@@ -89,13 +89,12 @@ const App = () => (
                 <IntegrationGuide />
               </ProtectedRoute>
             } />
-            {/* Notification routes - Removed for now */}
-            {/* <Route path="/notifications" element={
+            <Route path="/notifications" element={
               <ProtectedRoute>
                 <Notifications />
               </ProtectedRoute>
             } />
-            <Route path="/notification-settings" element={
+            {/* <Route path="/notification-settings" element={
               <ProtectedRoute>
                 <NotificationSettings />
               </ProtectedRoute>
