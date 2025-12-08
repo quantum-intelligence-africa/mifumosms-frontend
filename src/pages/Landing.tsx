@@ -430,14 +430,14 @@ const Landing = () => {
             </div>
 
             <div className="space-y-3 sm:space-y-4 md:space-y-5">
-              <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight animate-fade-in-up">
-                Sell more
+              <h1 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl text-white leading-tight animate-fade-in-up">
+                Getting customers is cheap,
                 <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
-                  Spend less
+                  Churn isn't
                 </span>
               </h1>
               <p className="text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-              Automate customers outreach on WhatsApp and SMS, that drives replies, repeat purchases, and track every conversation back to revenue.
+              Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. drives replies, repeat purchases, and track every conversation back to revenue.
               </p>
             </div>
 
