@@ -11,6 +11,8 @@ interface SMSVerificationResponse {
 	phone_number?: string;
 	attempts_remaining?: number;
 	locked_until?: string;
+	tokens?: { access: string; refresh: string }; // Tokens returned after account activation
+	user?: any; // User data returned after account activation
 }
 
 interface PasswordResetResponse {
@@ -34,7 +36,7 @@ export const useSMSVerification = () => {
 		setIsSendingCode(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
-			
+
 			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.FORGOT_PASSWORD}`, {
 				method: 'POST',
 				headers: {
@@ -63,10 +65,10 @@ export const useSMSVerification = () => {
 						locked_until: result.locked_until,
 					};
 				}
-				
+
 				// Parse detailed error messages
 				let errorMessage = result.error || result.detail || 'Failed to send reset code';
-				
+
 				// If there are field-level errors, format them nicely
 				if (result.errors && typeof result.errors === 'object') {
 					const errorParts: string[] = [];
@@ -78,7 +80,7 @@ export const useSMSVerification = () => {
 						errorMessage = errorParts.join(' | ');
 					}
 				}
-				
+
 				return {
 					success: false,
 					error: errorMessage,
@@ -125,7 +127,7 @@ export const useSMSVerification = () => {
 			} else {
 				// Parse detailed error messages
 				let errorMessage = result.error || result.detail || 'Failed to send verification code';
-				
+
 				// If there are field-level errors, format them nicely
 				if (result.errors && typeof result.errors === 'object') {
 					const errorParts: string[] = [];
@@ -137,7 +139,7 @@ export const useSMSVerification = () => {
 						errorMessage = errorParts.join(' | ');
 					}
 				}
-				
+
 				return {
 					success: false,
 					error: errorMessage,
@@ -177,11 +179,13 @@ export const useSMSVerification = () => {
 			return {
 				success: true,
 				phone_number: result.phone_number,
+				tokens: result.tokens, // Tokens if account activation returns them
+				user: result.user, // User data if account activation returns it
 			};
 		} else {
 			// Parse detailed error messages
 			let errorMessage = result.error || result.detail || 'Invalid verification code';
-			
+
 			// If there are field-level errors, format them nicely
 			if (result.errors && typeof result.errors === 'object') {
 				const errorParts: string[] = [];
@@ -193,7 +197,7 @@ export const useSMSVerification = () => {
 					errorMessage = errorParts.join(' | ');
 				}
 			}
-			
+
 			return {
 				success: false,
 				error: errorMessage,
@@ -242,7 +246,7 @@ export const useSMSVerification = () => {
 		} else {
 			// Parse detailed error messages
 			let errorMessage = result.error || result.detail || 'Failed to reset password';
-			
+
 			// If there are field-level errors, format them nicely
 			if (result.errors && typeof result.errors === 'object') {
 				const errorParts: string[] = [];
@@ -254,7 +258,7 @@ export const useSMSVerification = () => {
 					errorMessage = errorParts.join(' | ');
 				}
 			}
-			
+
 			return {
 				success: false,
 				error: errorMessage,
