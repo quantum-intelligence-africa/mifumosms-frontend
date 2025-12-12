@@ -514,26 +514,35 @@ const Landing = () => {
       {/* Sliding Background */}
       <SlidingBackground />
 
-      {/* Header */}
-      <header className="relative z-10 glass border-b border-border-subtle backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+      {/* Header - Clean & Minimal */}
+      <header className="relative z-10 bg-white/5 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
-                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
+            {/* Logo */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
-                Mifumo SMS
+              <span className="font-heading text-base sm:text-lg lg:text-xl font-semibold text-white tracking-tight">
+                Mifumo
               </span>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+            
+            {/* Mobile: Hamburger menu icon (visual only for now) */}
+            <div className="flex items-center gap-3 sm:gap-4">
               <Link to="/login">
-                <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 hover:bg-white/10 transition-all duration-300">
+                <Button 
+                  variant="ghost" 
+                  className="hidden sm:inline-flex text-sm h-9 px-4 text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200"
+                >
                   Login
                 </Button>
               </Link>
               <Link to="/signup">
-                <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <Button 
+                  variant="default" 
+                  className="text-sm h-9 sm:h-10 px-4 sm:px-5 bg-white text-gray-900 hover:bg-gray-100 font-medium transition-all duration-200 shadow-lg shadow-black/10"
+                >
                   Get Started
                 </Button>
               </Link>
@@ -542,454 +551,307 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 lg:px-6 relative py-6 sm:py-8 md:py-12 lg:py-0 z-10">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center w-full">
-          {/* Text Content */}
-          <div className="text-center lg:text-left lg:col-span-1 w-full space-y-6 sm:space-y-8 md:space-y-10">
-            {/* Badge */}
-            <div className="flex justify-center lg:justify-start">
-              {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span>Trusted by 1000+ African Businesses</span>
-              </div> */}
-            </div>
-
-            <div className="space-y-3 sm:space-y-4 md:space-y-5">
-              <h1 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl text-white leading-tight animate-fade-in-up">
-                Getting customers is cheap,
-                <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
-                  Churn isn't
-                </span>
+      {/* Hero Section - Clean & Focused */}
+      <section id="about" className="min-h-[calc(100vh-72px)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative py-12 sm:py-16 lg:py-0 z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center w-full">
+          {/* Text Content - Mobile First */}
+          <div className="text-center lg:text-left space-y-6 sm:space-y-8 order-1">
+            {/* Main headline - Clean typography */}
+            <div className="space-y-4 sm:space-y-5">
+              <h1 className="font-heading text-[1.75rem] sm:text-3xl md:text-4xl lg:text-5xl text-white leading-[1.15] tracking-tight">
+                Unlock growth with
+                <span className="block text-white/90">seamless, flexible</span>
+                <span className="block text-white">messaging.</span>
               </h1>
-              <p className="text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-              Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. drives replies, repeat purchases, and track every conversation back to revenue.
+              <p className="text-sm sm:text-base lg:text-lg text-white/70 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+                Reach your customers instantly. Send reminders, promotions, and updates—without complexity.
               </p>
             </div>
 
-            <div className="flex flex-row gap-2 sm:gap-4 lg:gap-6 justify-center lg:justify-start">
-              <Link to="/signup">
+            {/* CTA Buttons - Thumb-friendly */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+              <Link to="/signup" className="w-full sm:w-auto">
                 <Button
-                  className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
+                  className="w-full sm:w-auto text-sm sm:text-base h-12 sm:h-11 px-6 sm:px-8 bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-all duration-200 shadow-lg shadow-emerald-500/20"
                   onMouseEnter={() => setIsHovering(true)}
                   onMouseLeave={() => setIsHovering(false)}
                 >
-                  Start Free Trial
-                  <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
+                  Get Started
+                  <ArrowRight className={`w-4 h-4 ml-2 transition-transform duration-200 ${isHovering ? 'translate-x-0.5' : ''}`} />
                 </Button>
               </Link>
-              {/* <Button
-                variant="outline"
-                className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 border-2 border-white/80 text-white bg-white/10 hover:bg-white/20 hover:border-white backdrop-blur-md transition-all duration-300 hover:scale-105 group shadow-lg"
-              >
-                <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 group-hover:scale-110 transition-transform duration-300" />
-                Watch Demo
-              </Button> */}
+              <Link to="/login" className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto text-sm sm:text-base h-12 sm:h-11 px-6 sm:px-8 border-white/20 text-white bg-white/5 hover:bg-white/10 font-medium transition-all duration-200"
+                >
+                  Speak to Sales
+                </Button>
+              </Link>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 pt-3 sm:pt-4">
+            {/* Stats - Clean grid */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-white/10">
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">50+</div>
-                <div className="text-xs text-white/70">Active Businesses</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white tracking-tight">50+</div>
+                <div className="text-xs sm:text-sm text-white/50 mt-0.5">Businesses</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">1M+</div>
-                <div className="text-xs text-white/70">Messages Sent</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white tracking-tight">1M+</div>
+                <div className="text-xs sm:text-sm text-white/50 mt-0.5">Messages</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">98%</div>
-                <div className="text-xs text-white/70">Delivery Rate</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white tracking-tight">98%</div>
+                <div className="text-xs sm:text-sm text-white/50 mt-0.5">Delivered</div>
               </div>
             </div>
           </div>
 
-          {/* SMS Animation - Responsive sizing with layered effect */}
-          <div className="flex justify-center lg:justify-end mt-6 lg:mt-0">
-            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right scale-75 sm:scale-90 lg:scale-100 relative z-10">
+          {/* SMS Animation - Hide on small mobile, show on larger */}
+          <div className="hidden sm:flex justify-center lg:justify-end order-2">
+            <div className="transform hover:scale-[1.02] transition-transform duration-500 scale-90 lg:scale-100 relative z-10">
               <SMSAnimation />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
+      {/* Features Section - Clean & Scannable */}
+      <section id="features" className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative bg-white">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-center">
-            {/* Left Column - Heading and Description */}
-            <div className="text-left flex flex-col justify-center">
-              <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Everything you need to
-                <span className="block text-blue-500">
-                  manage customer communications
-                </span>
-              </h2>
-              <p className="text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed">
-                Powerful features designed for African businesses to scale their customer communication
-              </p>
-            </div>
-
-            {/* Right Column - Feature Cards Grid */}
-            <div className="w-full">
-              {/* Mobile: Reference-style layout with alternating descriptions */}
-              <div className="sm:hidden space-y-8">
-                {features.map((feature, index) => (
-                  <div key={index} className={`flex items-start gap-6 ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
-                    {/* Feature Block */}
-                    <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 flex flex-col items-center justify-center shadow-sm ${
-                      index === 0 ? 'bg-white border-gray-300' :
-                      index === 1 ? 'bg-blue-50 border-blue-300' :
-                      index === 2 ? 'bg-red-50 border-red-300' :
-                      'bg-green-50 border-green-300'
-                    }`}>
-                      {/* Icon at top-center */}
-                      <feature.icon className={`w-8 h-8 mb-2 ${
-                        index === 0 ? 'text-gray-700' :
-                        index === 1 ? 'text-blue-600' :
-                        index === 2 ? 'text-red-600' :
-                        'text-green-600'
-                      }`} />
-                      {/* Title centered below icon */}
-                      <h3 className={`font-bold text-sm text-center leading-tight ${
-                        index === 0 ? 'text-gray-800' :
-                        index === 1 ? 'text-blue-700' :
-                        index === 2 ? 'text-red-700' :
-                        'text-green-700'
-                      }`}>
-                        {feature.title}
-                      </h3>
-                    </div>
-
-                    {/* Description text - alternates sides */}
-                    <div className="flex-1 pt-3">
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop: Compact 2 columns, 3 rows layout */}
-              <div className="hidden sm:grid sm:grid-cols-2 gap-4 lg:gap-6">
-                {features.map((feature, index) => (
-                  <Card
-                    key={index}
-                    className="group relative bg-white border-0 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 rounded-xl overflow-hidden animate-in slide-in-from-right-7 fade-in-50"
-                    style={{
-                      animationDelay: `${index * 150}ms`,
-                      animationFillMode: 'both'
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <CardContent className="relative p-6 flex flex-col h-full min-h-[140px]">
-                      {/* Icon */}
-                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                        <feature.icon className="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" />
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="font-heading text-sm font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-left mb-3 leading-tight">
-                        {feature.title}
-                      </h3>
-
-                      {/* Description */}
-                      <p className="text-xs text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300 text-left flex-1">
-                        {feature.description}
-                      </p>
-
-                      {/* Hover effect indicator */}
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials removed */}
-
-      {/* Pricing */}
-      <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-
-            <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              {/* Simple, transparent */}
-              <span className="block bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">
-                Pricing packages
-              </span>
+          {/* Section Header */}
+          <div className="text-center mb-10 sm:mb-14 lg:mb-16">
+            <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 mb-3 tracking-tight">
+              Everything you need
             </h2>
-            <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              Choose the plan that fits your business needs
+            <p className="text-sm sm:text-base text-gray-500 max-w-md mx-auto">
+              Simple, powerful tools to manage your customer communications
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {pricing.map((plan, index) => (
-              <div key={index} className="relative group">
-                {plan.popular && (
-                  <div className="absolute -top-6 sm:-top-7 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10">
-                    <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 text-xs sm:text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
-                    Most Popular
-                  </Badge>
-                  </div>
-                )}
-                <Card
-                  className={`relative overflow-hidden bg-white/90 backdrop-blur-sm border-0 transition-all duration-500 hover:-translate-y-2 hover:scale-105 cursor-pointer ${
-                    plan.popular
-                      ? 'shadow-xl ring-2 ring-yellow-500/20 scale-105 hover:ring-yellow-500/30 hover:shadow-2xl'
-                      : 'shadow-md hover:shadow-xl'
-                  }`}
-                  style={{
-                    animationDelay: `${index * 150}ms`
-                  }}
-                >
+          {/* Features Grid - Mobile optimized */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {features.map((feature, index) => (
+              <div
+                key={index}
+                className="group p-5 sm:p-6 rounded-2xl bg-gray-50 hover:bg-gray-100/80 transition-colors duration-200"
+              >
+                {/* Icon */}
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gray-900 flex items-center justify-center mb-4">
+                  <feature.icon className="w-5 h-5 text-white" />
+                </div>
 
-                <div className={`absolute inset-0 bg-gradient-to-br ${
-                  plan.popular
-                    ? 'from-yellow-500/10 via-transparent to-blue-500/10'
-                    : 'from-blue-500/5 via-transparent to-yellow-500/5'
-                } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                {/* Title */}
+                <h3 className="font-medium text-base sm:text-lg text-gray-900 mb-2">
+                  {feature.title}
+                </h3>
 
-                <CardContent className="relative p-4 sm:p-6 lg:p-8">
-                  <div className="text-center mb-6">
-                    <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
-                    {plan.name}
-                  </h3>
-                    <div className="mb-2">
-                      <span className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                        {plan.rate}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                      {plan.credits}
-                    </p>
-                  </div>
-
-                  <ul className="space-y-3 mb-6">
-                    {plan.features?.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Check className="w-2.5 h-2.5 text-green-600" />
-                        </div>
-                        <span className="text-xs text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link to="/signup">
-                    <Button
-                      className={`w-full text-xs sm:text-sm h-8 sm:h-10 font-bold transition-all duration-300 group-hover:scale-105 ${
-                        plan.popular
-                          ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black shadow-lg hover:shadow-yellow-500/25'
-                          : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
-                      }`}
-                    >
-                      Get Started
-                      <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-                    </Button>
-                  </Link>
-                </CardContent>
-                </Card>
+                {/* Description */}
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  {feature.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Custom Amount Calculator (public view) */}
-      <section className="py-12 sm:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
+      {/* Testimonials removed */}
 
-            <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-              {/* Calculate Your */}
-              <span className="block bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
-                Pricing Calculator
-              </span>
-            </h3>
-            <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
-              Enter your desired SMS credits to see the exact pricing based on our tiered structure
+      {/* Pricing - Clean & Minimal */}
+      <section id="pricing" className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          {/* Section Header */}
+          <div className="text-center mb-10 sm:mb-12">
+            <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 mb-3 tracking-tight">
+              Simple pricing
+            </h2>
+            <p className="text-sm sm:text-base text-gray-500">
+              Pay only for what you use. No hidden fees.
             </p>
           </div>
 
-          <Card className="p-6 sm:p-8 bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-blue-500" />
-                    Number of SMS Credits
-                  </Label>
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+            {pricing.map((plan, index) => (
+              <div 
+                key={index} 
+                className={`relative p-5 sm:p-6 rounded-2xl transition-all duration-200 ${
+                  plan.popular 
+                    ? 'bg-gray-900 text-white' 
+                    : 'bg-white border border-gray-200'
+                }`}
+              >
+                {/* Popular badge */}
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="px-3 py-1 text-xs font-medium bg-emerald-500 text-white rounded-full">
+                      Popular
+                    </span>
+                  </div>
+                )}
+
+                {/* Plan name */}
+                <h3 className={`font-medium text-lg mb-2 ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
+                  {plan.name}
+                </h3>
+
+                {/* Price */}
+                <div className="mb-1">
+                  <span className={`text-2xl sm:text-3xl font-semibold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
+                    {plan.rate}
+                  </span>
+                </div>
+                <p className={`text-sm mb-5 ${plan.popular ? 'text-white/60' : 'text-gray-500'}`}>
+                  {plan.credits}
+                </p>
+
+                {/* Features */}
+                <ul className="space-y-2.5 mb-6">
+                  {plan.features?.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2.5">
+                      <Check className={`w-4 h-4 flex-shrink-0 ${plan.popular ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={`text-sm ${plan.popular ? 'text-white/80' : 'text-gray-600'}`}>
+                        {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA */}
+                <Link to="/signup" className="block">
+                  <Button
+                    className={`w-full h-11 text-sm font-medium transition-all duration-200 ${
+                      plan.popular
+                        ? 'bg-white text-gray-900 hover:bg-gray-100'
+                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Calculator - Simplified */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 relative bg-white">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h3 className="font-heading text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+              Calculate your cost
+            </h3>
+            <p className="text-sm text-gray-500">
+              Enter your volume to see pricing
+            </p>
+          </div>
+
+          <div className="p-6 sm:p-8 rounded-2xl bg-gray-50 border border-gray-200">
+            <div className="space-y-5">
+              {/* Input */}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Number of SMS
+                </Label>
                 <Input
                   type="number"
                   placeholder="e.g., 5000"
                   value={customCredits}
                   onChange={(e) => setCustomCredits(e.target.value)}
-                    className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                  className="h-12 text-base bg-white border-gray-200 focus:border-gray-400 focus:ring-0"
                   min="100"
                 />
-                </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    Total Cost
-                  </Label>
-                  <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">TZS {customPrice.toLocaleString()}</span>
-                    <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                      {activeTier?.name || 'Select amount'}
-                    </div>
+              {/* Result */}
+              <div className="p-4 rounded-xl bg-gray-900 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white/60 text-sm">Total cost</p>
+                    <p className="text-2xl sm:text-3xl font-semibold">
+                      TZS {customPrice.toLocaleString()}
+                    </p>
                   </div>
+                  {activeTier && (
+                    <div className="text-right">
+                      <p className="text-white/60 text-sm">Tier</p>
+                      <p className="font-medium">{activeTier.name}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-blue-50 to-yellow-50 p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-blue-600" />
-                    Pricing Details
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Active Tier:</span>
-                      <span className="font-semibold text-gray-900">
-                        {activeTier ? activeTier.name : '—'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Rate per SMS:</span>
-                      <span className="font-semibold text-gray-900">
-                        {activeTier ? `TZS ${activeTier.rate}/SMS` : '—'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">SMS Range:</span>
-                      <span className="font-semibold text-gray-900">
-                        {activeTier ? activeTier.rangeLabel : '—'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <div className="flex items-start gap-2">
-                    <Shield className="w-4 h-4 text-yellow-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-yellow-800">Minimum Purchase</p>
-                      <p className="text-xs text-yellow-700">100 SMS credits required</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* CTA */}
+              {parsedCredits > 0 && (
+                <Link to="/signup" className="block">
+                  <Button className="w-full h-12 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white">
+                    Buy {parsedCredits.toLocaleString()} SMS
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              )}
             </div>
-
-            {parsedCredits > 0 && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-center sm:text-left">
-                    <p className="text-sm text-gray-600">Ready to get started?</p>
-                    <p className="text-xs text-gray-500">Purchase {parsedCredits.toLocaleString()} SMS credits</p>
-                  </div>
-                  <Link to="/signup">
-                    <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-2 h-10 transition-all duration-300 hover:scale-105">
-                      Buy Now
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
-            </div>
-            )}
-          </Card>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 overflow-hidden">
-        {/* Background decorations */}
-        <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400/20 rounded-full animate-pulse" />
-          <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
-          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
-        </div>
-
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-
-          <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
-            Ready to transform your
-            <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">
-              customer communication?
-            </span>
-          </h2>
-          <p className="text-sm sm:text-base md:text-lg text-white/90 mb-6 max-w-2xl mx-auto leading-relaxed">
-            Join thousands of African businesses already using Mifumo SMS
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-          <Link to="/signup">
-              <Button
-                size="lg"
-                className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
-              >
-              Get Started
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-              </Button>
-            </Link>
-            {/* <Button
-              size="hero"
-              variant="outline"
-              className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105"
-            >
-              Contact Sales
-            </Button> */}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="glass border-t border-border-subtle py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+      {/* CTA Section - Clean & Focused */}
+      <section id="contact" className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 relative bg-gray-900">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-4 tracking-tight">
+            Ready to get started?
+          </h2>
+          <p className="text-sm sm:text-base text-white/60 mb-8 max-w-md mx-auto">
+            Join businesses across Africa using Mifumo SMS to reach their customers
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/signup">
+              <Button className="h-12 px-8 text-base font-medium bg-white text-gray-900 hover:bg-gray-100">
+                Get Started
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <a href="https://wa.me/255614459923" target="_blank" rel="noreferrer">
+              <Button variant="outline" className="h-12 px-8 text-base font-medium border-white/20 text-white bg-transparent hover:bg-white/10">
+                Talk to Sales
+              </Button>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer - Minimal */}
+      <footer className="py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-white border-t border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Brand */}
-            <div className="flex items-center gap-1 sm:gap-2">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg gradient-primary flex items-center justify-center">
-                  <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
-                  Mifumo SMS
-                </span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-white" />
               </div>
+              <span className="font-heading text-base font-semibold text-gray-900">
+                Mifumo
+              </span>
+            </div>
 
             {/* Nav */}
-            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-foreground/80">
-              <a className="hover:underline" href="#about">About</a>
-              <a className="hover:underline" href="#features">Features</a>
-              <a className="hover:underline" href="#pricing">Pricing</a>
+            <nav className="flex items-center gap-6 text-sm text-gray-500">
+              <a className="hover:text-gray-900 transition-colors" href="#features">Features</a>
+              <a className="hover:text-gray-900 transition-colors" href="#pricing">Pricing</a>
+              <Link to="/login" className="hover:text-gray-900 transition-colors">Login</Link>
             </nav>
 
             {/* Contact */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-foreground/80">+255 614 459 923</span>
-              <a
-                href="https://wa.me/255614459923"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90 text-xs sm:text-sm"
-              >
-                WhatsApp
-              </a>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">+255 614 459 923</span>
             </div>
           </div>
 
-          <div className="border-t border-border-subtle mt-3 sm:mt-4 pt-3 sm:pt-4 text-center text-text-subtle">
-            <p className="text-xs sm:text-sm">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400">&copy; 2025 Mifumo SMS. All rights reserved.</p>
           </div>
         </div>
       </footer>
