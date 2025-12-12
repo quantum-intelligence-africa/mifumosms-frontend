@@ -1,5 +1,5 @@
 // Enhanced API service with retry logic and error handling
-import { apiClient, ApiResponse } from '@/lib/api';
+import { apiClient, ApiResponse, RegisterRequest } from '@/lib/api';
 import { handleAPIError, handleNetworkError, isRetryableError, getRetryDelay, logError } from '@/utils/errorHandler';
 
 export interface RetryOptions {
@@ -85,10 +85,10 @@ export class APIService {
 		password_confirm: string;
 		first_name: string;
 		last_name: string;
-		phone_number?: string;
+		phone_number: string;
 	}) {
 		return this.withRetry(
-			() => apiClient.register(userData),
+			() => apiClient.register(userData as RegisterRequest),
 			'User registration'
 		);
 	}
