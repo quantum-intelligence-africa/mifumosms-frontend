@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -19,7 +18,7 @@ import Campaigns from "./pages/Campaigns";
 import Templates from "./pages/Templates";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
-import Notifications from "./pages/Notifications";
+// import Notifications from "./pages/Notifications";
 // import NotificationSettings from "./pages/NotificationSettings";
 import SendSMS from "./pages/sms/SendSMS";
 import PurchaseSMS from "./pages/sms/PurchaseSMS";
@@ -34,12 +33,11 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -89,12 +87,13 @@ const App = () => (
                 <IntegrationGuide />
               </ProtectedRoute>
             } />
-            <Route path="/notifications" element={
+            {/* Notification routes - Removed for now */}
+            {/* <Route path="/notifications" element={
               <ProtectedRoute>
                 <Notifications />
               </ProtectedRoute>
             } />
-            {/* <Route path="/notification-settings" element={
+            <Route path="/notification-settings" element={
               <ProtectedRoute>
                 <NotificationSettings />
               </ProtectedRoute>
@@ -122,10 +121,9 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

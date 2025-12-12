@@ -59,48 +59,15 @@ const Login = () => {
                                 errorMessage.toLowerCase().includes('verification code');
 
         if (needsActivation) {
-          // Get phone number from result or stored data
-          const resultPhone = (result as any).phoneNumber;
-          const storedPhone = localStorage.getItem('pending_phone_activation');
-          const storedMethod = localStorage.getItem('pending_verification_method') as 'sms' | 'email' | null;
-
-          // Determine verification method: prefer stored method, or SMS if phone exists, else default to SMS
-          let verificationMethod: 'sms' | 'email' = 'sms';
-          let phoneNumber: string | undefined = resultPhone || storedPhone || undefined;
-
-          if (storedMethod) {
-            verificationMethod = storedMethod;
-          } else if (phoneNumber) {
-            verificationMethod = 'sms';
-            // Store phone number for later use
-            localStorage.setItem('pending_phone_activation', phoneNumber);
-            localStorage.setItem('pending_verification_method', 'sms');
-          } else {
-            // Default to SMS verification
-            verificationMethod = 'sms';
-            localStorage.setItem('pending_verification_method', 'sms');
-          }
-
-          // Update toast message - always mention SMS
-          const toastMessage = phoneNumber
-            ? `A new 6-digit verification code has been sent to your phone (${phoneNumber}). Please check your SMS messages and use the code to verify your account.`
-            : "A new 6-digit verification code has been sent to your phone. Please check your SMS messages and use the code to verify your account.";
-
+          // Backend automatically sends a new 6-digit code when login fails for unverified account
           toast({
             title: "Account not activated",
-            description: toastMessage,
+            description: "A new 6-digit verification code has been sent to your email. Please check your inbox and use the code to verify your account.",
             variant: "destructive",
             duration: 10000
           });
-
-          // Redirect to activation page with verification method info
-          navigate('/activate-email', {
-            state: {
-              email: formData.email,
-              phoneNumber: phoneNumber,
-              verificationMethod: verificationMethod
-            }
-          });
+          // Redirect to activation page
+          navigate('/activate-email', { state: { email: formData.email } });
         } else {
           toast({
             title: "Login failed",

@@ -95,17 +95,17 @@ const Dashboard = () => {
         <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6 relative z-0">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Welcome Section */}
-            <div className="mb-6 sm:mb-8">
-              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2 tracking-tight">
-                Welcome back 👋
+            <div className="mb-4 sm:mb-6 lg:mb-8">
+              <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                Welcome to Mifumo SMS! 👋
               </h1>
-              <p className="text-[13px] sm:text-sm text-text-subtle">
+              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 Monitor your communication platform performance in real-time.
               </p>
             </div>
 
             {/* Metrics Grid - 4 Main Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
               <MetricCard
                 title="Total Messages"
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}
@@ -133,7 +133,7 @@ const Dashboard = () => {
             </div>
 
             {/* Main Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
               {/* Quick Actions */}
               <div className="lg:col-span-1 order-2 lg:order-1">
                 <QuickActions />
@@ -146,13 +146,13 @@ const Dashboard = () => {
             </div>
 
             {/* Activity Feed and Performance Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
               <ActivityFeed />
               <PerformanceOverview performance={performanceOverview} />
             </div>
 
             {/* Sender IDs */}
-            <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:gap-6">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
               <SenderIds senderIds={senderIds} />
             </div>
           </div>

@@ -43,7 +43,7 @@ export interface RegisterRequest {
   password_confirm: string;
   first_name: string;
   last_name: string;
-  phone_number: string; // Required: E.164 format (e.g., +255123456789)
+  phone_number?: string;
   timezone?: string;
   company_name?: string;
   business_name?: string; // Alias for company_name
@@ -60,11 +60,10 @@ export interface RegisterResponse {
   message: string;
   user: User;
   tokens?: AuthTokens | null; // Null until account is activated
-  sms_verification_sent?: boolean; // True if SMS verification code was sent
-  email_verification_sent?: boolean; // True if email verification was sent (fallback)
-  account_active?: boolean; // False until account is activated
-  requires_activation?: boolean; // True if account needs activation
-  activation_required?: boolean; // True if activation is required
+  email_verification_sent?: boolean;
+  account_active?: boolean;
+  requires_activation?: boolean;
+  activation_required?: boolean;
 }
 
 // Tenant Types
@@ -879,7 +878,6 @@ class ApiClient {
       if (!response.ok) {
         return {
           data: data,
-          message: data?.message,
           error: data?.message || data?.error || 'An error occurred',
           status: response.status,
           success: false,
@@ -888,11 +886,7 @@ class ApiClient {
       }
 
       // Handle backend response format: { "success": true, "data": {...} }
-      // OR: { "success": true, "tokens": {...}, "user": {...} } (for verify-code endpoint)
       if (data && typeof data === 'object' && 'success' in data) {
-        // Check if data has nested 'data' field (standard format)
-        // OR if it has 'tokens' and 'user' at root level (verify-code format)
-        if (data.data) {
         return {
           data: data.data,
           status: response.status,
@@ -900,16 +894,6 @@ class ApiClient {
           message: data.message,
           error: data.success ? undefined : (data.message || data.error),
         };
-        } else {
-          // Response has success:true but data is at root level (e.g., verify-code endpoint)
-          return {
-            data: data, // Return the whole response as data since tokens/user are at root
-            status: response.status,
-            success: data.success,
-            message: data.message,
-            error: data.success ? undefined : (data.message || data.error),
-          };
-        }
       }
 
       return {
@@ -1183,103 +1167,16 @@ class ApiClient {
   }
 
 
-  async activateAccount(code: string): Promise<ApiResponse> {
-    // Note: This endpoint returns HTML, not JSON
-    // We need to handle the response differently
-    const url = `${this.baseURL}${API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(code)}`;
-
-    const config: RequestInit = {
+  async activateAccount(token: string): Promise<ApiResponse> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.ACTIVATE_ACCOUNT(token), {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    };
-
-    // Add token if available (though activation might not require it)
-    if (this.token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${this.token}`,
-      };
-    }
-
-    try {
-      const response = await fetch(url, config);
-
-      // For activation endpoint, we check status code
-      // 200 = success, 400 = invalid/expired code
-      if (response.ok) {
-        // Try to parse as text (HTML response)
-        const text = await response.text();
-        return {
-          status: response.status,
-          success: true,
-          data: { message: 'Account activated successfully' },
-        };
-      } else {
-        // Error response - try to parse as JSON first, then text
-        let errorMessage = 'Invalid or expired verification code';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          // If JSON parsing fails, read as text
-          const errorText = await response.text();
-          // Try to extract error message from HTML if possible
-          errorMessage = errorText || errorMessage;
-        }
-
-        return {
-          status: response.status,
-          success: false,
-          error: errorMessage,
-        };
-      }
-    } catch (error) {
-      return {
-        status: 500,
-        success: false,
-        error: error instanceof Error ? error.message : 'Activation request failed',
-      };
-    }
-  }
-
-  async resendActivationEmail(email?: string, phoneNumber?: string): Promise<ApiResponse<{ message: string; phone_number?: string }>> {
-    const body: { email?: string; phone_number?: string } = {};
-    if (email) body.email = email;
-    if (phoneNumber) body.phone_number = phoneNumber;
-
-    return this.request<{ message: string; phone_number?: string }>(API_CONFIG.ENDPOINTS.AUTH.RESEND_ACTIVATION, {
-      method: 'POST',
-      body: JSON.stringify(body),
     });
   }
 
-  async verifySMSCode(phoneNumber: string, verificationCode: string): Promise<ApiResponse<{
-    success: boolean;
-    message: string;
-    phone_verified: boolean;
-    account_activated: boolean;
-    is_verified: boolean;
-    is_active: boolean;
-    tokens: AuthTokens;
-    user: User;
-  }>> {
-    return this.request<{
-      success: boolean;
-      message: string;
-      phone_verified: boolean;
-      account_activated: boolean;
-      is_verified: boolean;
-      is_active: boolean;
-      tokens: AuthTokens;
-      user: User;
-    }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
+  async resendActivationEmail(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/auth/resend-activation/', {
       method: 'POST',
-      body: JSON.stringify({
-        phone_number: phoneNumber,
-        verification_code: verificationCode,
-      }),
+      body: JSON.stringify({ email }),
     });
   }
 
@@ -2015,21 +1912,14 @@ class ApiClient {
     recent_campaigns: Array<{
       id: string;
       name: string;
-      type?: string;
-      campaign_type?: string;
-      campaign_type_display?: string;
+      type: string;
       status: string;
-      sent?: number;
-      sent_count?: number;
-      delivered?: number;
-      delivered_count?: number;
-      opened?: number;
-      read_count?: number;
-      progress?: number;
-      progress_percentage?: number;
+      sent: number;
+      delivered: number;
+      opened: number;
+      progress: number;
       created_at: string;
-      created_at_human?: string;
-      timeAgo?: string;
+      created_at_human: string;
     }>;
     message_stats: {
       today: number;

@@ -15,9 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Campaign {
   id: string;
   name: string;
-  type?: string;
-  campaign_type?: string;
-  campaign_type_display?: string;
+  type: string;
   status: string;
   sent: number;
   delivered: number;
@@ -75,13 +73,13 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   };
 
   return (
-    <Card className="p-6 glass border border-border-subtle">
+    <Card className="p-6 glass border-0">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
+        <h3 className="font-heading text-lg font-semibold text-foreground">
           Recent Campaigns
         </h3>
-        <Button variant="outline" size="sm" onClick={handleViewAll} className="text-[13px] font-medium">
-          View all →
+        <Button variant="outline" size="sm" onClick={handleViewAll}>
+          View all
         </Button>
       </div>
 
@@ -92,34 +90,32 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
             <p className="text-sm">Create your first campaign to get started</p>
           </div>
         ) : (
-          campaigns.slice(0, 3).map((campaign) => {
+          campaigns.map((campaign) => {
           const StatusIcon = statusConfig[campaign.status as keyof typeof statusConfig]?.icon || Send;
           const statusColor = statusConfig[campaign.status as keyof typeof statusConfig]?.color || "muted";
 
           return (
             <div
               key={campaign.id}
-              className="p-3 rounded-xl glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
+              className="p-4 rounded-lg glass-subtle hover:bg-accent/30 transition-smooth cursor-pointer"
               onClick={() => handleViewDetails(campaign.id)}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-foreground text-xs sm:text-sm">{campaign.name}</h4>
-                    {campaign.type && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
-                        {campaign.type}
-                      </Badge>
-                    )}
+                    <h4 className="font-medium text-foreground">{campaign.name}</h4>
+                    <Badge variant="outline" className="text-xs">
+                      {campaign.type}
+                    </Badge>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <StatusIcon className={`w-3 h-3 text-${statusColor}`} />
-                    <span className={`text-xs text-${statusColor} capitalize`}>
+                    <StatusIcon className={`w-4 h-4 text-${statusColor}`} />
+                    <span className={`text-sm text-${statusColor} capitalize`}>
                       {statusConfig[campaign.status as keyof typeof statusConfig]?.label}
                     </span>
-                    <span className="text-xs text-text-subtle">•</span>
-                    <span className="text-xs text-text-subtle">{campaign.created_at_human}</span>
+                    <span className="text-sm text-text-subtle">•</span>
+                    <span className="text-sm text-text-subtle">{campaign.created_at_human}</span>
                   </div>
                 </div>
 
@@ -167,8 +163,8 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-4">
                   <span className="text-text-subtle">
                     Sent: <span className="text-foreground font-medium">{campaign.sent}</span>
                   </span>

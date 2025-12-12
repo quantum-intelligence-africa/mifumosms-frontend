@@ -735,7 +735,7 @@ const IntegrationGuide = () => {
                 </div>
                 <div>
                   <p className="font-medium">Dashboard</p>
-                  <p className="text-text-subtle">https://sms.mifumolabs.com</p>
+                  <p className="text-text-subtle">https://mifumosms.mifumolabs.com</p>
                 </div>
               </CardContent>
             </Card>

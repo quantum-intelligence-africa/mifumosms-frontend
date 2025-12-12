@@ -7,16 +7,15 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
   verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
-  verifySMS: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
-  resendActivationEmail: (email?: string, phoneNumber?: string) => Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }>;
+  resendActivationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,7 +35,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { sendAccountVerification, verifyAccount: verifyAccountSMS, verifyCode } = useSMSVerification();
+  const { sendAccountVerification, verifyAccount: verifyAccountSMS } = useSMSVerification();
 
   const isAuthenticated = !!user;
 
@@ -153,7 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }> => {
+  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string }> => {
     try {
       const response = await apiClient.login(credentials);
 
@@ -165,8 +164,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('refresh_token', tokens.refresh);
         localStorage.setItem('user_profile', JSON.stringify(userData));
 
-        // Note: SMS verification is handled automatically by backend during registration
-        // No need to send SMS here as backend manages verification code sending
+        // Check if user needs verification and send SMS (only for phone verification, not email)
+        if (userData && userData.phone_number && !userData.phone_verified && userData.is_verified) {
+          try {
+            await sendAccountVerification({ phone_number: userData.phone_number });
+            console.log('Verification SMS sent to:', userData.phone_number);
+          } catch (error) {
+            console.error('Failed to send verification SMS:', error);
+            // Don't fail login if SMS sending fails
+          }
+        }
 
         return { success: true, user: userData };
       } else {
@@ -184,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // Check if error indicates account needs activation
+        // Check if error indicates account needs email activation
         const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
                                 errorMessage.toLowerCase().includes('activation') ||
                                 errorMessage.toLowerCase().includes('verification code') ||
@@ -192,48 +199,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (needsActivation) {
           // Backend automatically sends a new 6-digit code when login fails for unverified account
-          // Try to get phone number from response data, stored data, or fetch from backend
-          let phoneNumber: string | undefined = undefined;
-
-          // Check if response includes user data with phone number
-          if (response.data && (response.data as any).user) {
-            phoneNumber = (response.data as any).user.phone_number;
-          }
-
-          // If not in response, check stored data
-          if (!phoneNumber) {
-            phoneNumber = localStorage.getItem('pending_phone_activation') || undefined;
-          }
-
-          // If still not available, try to fetch it from backend via resend-activation
-          if (!phoneNumber) {
-            try {
-              const resendResponse = await apiClient.resendActivationEmail(credentials.email);
-              // Check if response includes phone number
-              if (resendResponse.data) {
-                const responseData = resendResponse.data as any;
-                if (responseData.phone_number) {
-                  phoneNumber = responseData.phone_number;
-                } else if (responseData.user && responseData.user.phone_number) {
-                  phoneNumber = responseData.user.phone_number;
-                }
-              }
-              // Store phone number if found
-              if (phoneNumber) {
-                localStorage.setItem('pending_phone_activation', phoneNumber);
-              }
-            } catch (fetchError) {
-              // Silently fail - phone number fetch is optional
-              console.log('Could not fetch phone number:', fetchError);
-            }
-          }
-
           return {
             success: false,
             error: errorMessage,
             requiresActivation: true,
-            email: credentials.email,
-            phoneNumber: phoneNumber
+            email: credentials.email
           };
         }
 
@@ -247,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean }> => {
+  const register = async (userData: RegisterRequest): Promise<{ success: boolean; error?: string; requiresActivation?: boolean; email?: string }> => {
     try {
       const response = await apiClient.register(userData);
 
@@ -255,32 +225,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration request data:', userData);
       console.log('Registration response:', response);
 
-      // CRITICAL: Check status code first
-      // Status 400 = Validation failed, account NOT created - stay on page
-      if (response.status === 400) {
-        // Account was NOT created - validation failed
-        // API returns error message in 'message' field: "Phone Number: This phone number is already registered..."
-        const errorMessage = response.message || response.error || 'Validation failed';
-
-        return {
-          success: false,
-          error: errorMessage,
-          errors: response.errors || {},
-          stayOnPage: true // Explicit flag to prevent redirects
-        };
-      }
-
-      // Status 201 = Account created successfully - can redirect
-      if (response.status === 201 && response.data) {
-        const {
-          user: newUser,
-          tokens,
-          requires_activation,
-          activation_required,
-          account_active,
-          sms_verification_sent,
-          email_verification_sent
-        } = response.data;
+      if (response.data) {
+        const { user: newUser, tokens, requires_activation, email_verification_sent, activation_required, account_active } = response.data;
 
         // According to new API: tokens are null until account is activated
         // If tokens are present, account is already activated - authenticate the user
@@ -290,44 +236,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.setItem('refresh_token', tokens.refresh);
           localStorage.setItem('user_profile', JSON.stringify(newUser));
 
+          // Send verification SMS for new users (only if account is fully activated)
+          if (newUser && newUser.phone_number && newUser.is_verified) {
+            try {
+              await sendAccountVerification({ phone_number: newUser.phone_number });
+              console.log('Verification SMS sent to new user:', newUser.phone_number);
+            } catch (error) {
+              console.error('Failed to send verification SMS to new user:', error);
+              // Don't fail registration if SMS sending fails
+            }
+          }
+
           return { success: true };
         }
 
-        // No tokens means account needs activation
-        // Backend automatically sends SMS verification code on registration if phone number exists
-        // Check sms_verification_sent to determine if SMS was sent
-        const phoneNumber = newUser?.phone_number || userData.phone_number;
-        const hasPhoneNumber = !!phoneNumber;
-
-        // Determine verification method based on API response
-        // Default to SMS verification
-        // If sms_verification_sent is true, SMS was sent
-        // Otherwise, email was used (or SMS failed and fell back to email)
-        let verificationMethod: 'sms' | 'email' = 'sms';
-        if (email_verification_sent && !sms_verification_sent) {
-          verificationMethod = 'email';
-        } else if (sms_verification_sent && hasPhoneNumber) {
-          verificationMethod = 'sms';
-        } else if (hasPhoneNumber) {
-          // If phone number exists but no explicit verification method, assume SMS was attempted
-          verificationMethod = 'sms';
-        }
-
-        // Check if activation is required
+        // No tokens means account needs email activation
+        // Check various activation flags to determine if activation is required
         const needsActivation = requires_activation ||
                                 activation_required ||
-                                !account_active ||
-                                sms_verification_sent ||
                                 email_verification_sent ||
+                                !account_active ||
                                 !newUser?.is_verified;
 
         if (needsActivation) {
           return {
             success: true,
             requiresActivation: true,
-            email: newUser?.email || userData.email,
-            phoneNumber: phoneNumber,
-            verificationMethod: verificationMethod
+            email: newUser?.email || userData.email
           };
         }
 
@@ -336,12 +271,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return {
           success: true,
           requiresActivation: true,
-          email: newUser?.email || userData.email,
-          phoneNumber: phoneNumber,
-          verificationMethod: verificationMethod
+          email: newUser?.email || userData.email
         };
       } else {
-        // Other error cases (500, etc.)
         console.error('Registration failed - no data in response:', response);
 
         // Extract specific validation errors
@@ -353,12 +285,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           errorMessage = `Validation failed: ${errorDetails}`;
         }
 
-        return {
-          success: false,
-          error: errorMessage,
-          errors: response.errors || {},
-          stayOnPage: response.status === 400 // Stay on page for 400 errors
-        };
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -443,121 +370,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyEmail = async (code: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
+  const verifyEmail = async (token: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
     try {
-      // Use the new activation endpoint: GET /api/auth/activate-account/{code}/
-      // This endpoint returns HTML, so we check the status code
-      const response = await apiClient.activateAccount(code);
-
-      if (response.status === 200) {
-        // Account activated successfully
-        // The endpoint returns HTML, but we need to get user data
-        // Try to fetch profile to get user data and check if we can get tokens
-        try {
-          const profileResponse = await apiClient.getProfile();
-          if (profileResponse.data) {
-            updateUserState(profileResponse.data);
-            // Check if we have tokens in localStorage
-            const accessToken = localStorage.getItem('access_token');
-            const refreshToken = localStorage.getItem('refresh_token');
-            if (accessToken && refreshToken) {
-              return {
-                success: true,
-                tokens: { access: accessToken, refresh: refreshToken },
-                user: profileResponse.data
-              };
-            } else {
-              // Account is activated but no tokens - user needs to login
-              return {
-                success: true,
-                user: profileResponse.data
-              };
-            }
-          }
-        } catch (profileError) {
-          // Profile fetch failed, but activation succeeded
-          // User will need to login
-          return { success: true };
-        }
-        return { success: true };
+      const response = await apiClient.verifyEmail(token);
+      if (response.data && response.data.tokens) {
+        const { user: activatedUser, tokens } = response.data;
+        updateUserState(activatedUser);
+        apiClient.setToken(tokens.access);
+        localStorage.setItem('refresh_token', tokens.refresh);
+        localStorage.setItem('user_profile', JSON.stringify(activatedUser));
+        return { success: true, tokens, user: activatedUser };
       } else {
         return {
           success: false,
-          error: response.error || 'Invalid or expired verification code'
+          error: response.error || 'Email verification failed'
         };
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Verification failed'
+        error: error instanceof Error ? error.message : 'Email verification failed'
       };
     }
   };
 
-  const verifySMS = async (phoneNumber: string, code: string): Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }> => {
+  const resendActivationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Use the new RECOMMENDED endpoint: POST /api/auth/sms/verify-code/
-      const response = await apiClient.verifySMSCode(phoneNumber, code);
-
-      // Check if verification was successful
-      if (response.success && response.data) {
-        const { tokens, user: userData } = response.data;
-
-        if (tokens && userData) {
-          // Account activated successfully with tokens - user is automatically logged in
-          updateUserState(userData);
-          apiClient.setToken(tokens.access);
-          localStorage.setItem('refresh_token', tokens.refresh);
-          localStorage.setItem('user_profile', JSON.stringify(userData));
-
-              return {
-                success: true,
-            tokens: tokens,
-            user: userData
-              };
-        }
-
-        // If we have success but no tokens/user, still return success
-        return { success: true };
-      }
-
-      // Error case - verification failed
-        return {
-          success: false,
-        error: response.error || response.message || 'Invalid or expired verification code'
-        };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'SMS verification failed'
-      };
-    }
-  };
-
-  const resendActivationEmail = async (email?: string, phoneNumber?: string): Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }> => {
-    // Use the resend-activation endpoint - accepts email OR phone_number, sends SMS only
-    try {
-      const response = await apiClient.resendActivationEmail(email, phoneNumber);
+      const response = await apiClient.resendActivationEmail(email);
       if (response.success !== false) {
-        // Backend sends SMS only - no email codes
-        const returnedPhone = response.data?.phone_number || phoneNumber;
-        return {
-          success: true,
-          method: 'sms',
-          phoneNumber: returnedPhone
-        };
+        return { success: true };
       } else {
         return {
           success: false,
-          error: response.error || response.message || 'Failed to resend activation code',
-          method: 'sms'
+          error: response.error || response.message || 'Failed to resend activation email'
         };
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to resend activation code',
-        method: 'sms'
+        error: error instanceof Error ? error.message : 'Failed to resend activation email'
       };
     }
   };
@@ -574,7 +425,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     sendAccountVerification: sendAccountVerificationSMS,
     verifyAccount: verifyAccountCode,
     verifyEmail,
-    verifySMS,
     resendActivationEmail,
   };
 
