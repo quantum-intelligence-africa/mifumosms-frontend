@@ -543,10 +543,10 @@ const Landing = () => {
       </header>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 lg:px-6 relative py-6 sm:py-8 md:py-12 lg:py-0 z-10">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-center w-full">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-5 lg:px-6 relative pt-6 pb-4 sm:pt-10 sm:pb-6 md:pt-12 md:pb-8 lg:pt-12 lg:pb-8 z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 md:gap-10 lg:gap-12 items-center w-full">
           {/* Text Content */}
-          <div className="text-center lg:text-left lg:col-span-1 w-full space-y-6 sm:space-y-8 md:space-y-10">
+          <div className="text-center lg:text-left lg:col-span-1 w-full space-y-5 sm:space-y-7 md:space-y-8 max-w-3xl lg:max-w-4xl mx-auto lg:mx-0">
             {/* Badge */}
             <div className="flex justify-center lg:justify-start">
               {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium">
@@ -555,15 +555,15 @@ const Landing = () => {
               </div> */}
             </div>
 
-            <div className="space-y-3 sm:space-y-4 md:space-y-5">
-              <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight animate-fade-in-up">
-                Sell more
+            <div className="space-y-3.5 sm:space-y-5 md:space-y-6">
+              <h1 className="font-heading text-center lg:text-left text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-7xl font-bold text-white leading-tight animate-fade-in-up max-w-4xl mx-auto lg:mx-0">
+                Getting customers is cheap,
                 <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
-                  Spend less
+                  Churn isn&apos;t
                 </span>
               </h1>
-              <p className="text-sm sm:text-base md:text-lg lg:text-lg xl:text-xl text-white/90 max-w-3xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-              Automate customers outreach on WhatsApp and SMS, that drives replies, repeat purchases, and track every conversation back to revenue.
+              <p className="text-center lg:text-left text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-2xl text-white/90 max-w-4xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+                Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
               </p>
             </div>
 
@@ -588,27 +588,36 @@ const Landing = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 pt-3 sm:pt-4">
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 pt-4 sm:pt-5">
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">50+</div>
-                <div className="text-xs text-white/70">Active Businesses</div>
+                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">50+</div>
+                <div className="text-base sm:text-lg text-white/70">Active Businesses</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">1M+</div>
-                <div className="text-xs text-white/70">Messages Sent</div>
+                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">1M+</div>
+                <div className="text-base sm:text-lg text-white/70">Messages Sent</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white">98%</div>
-                <div className="text-xs text-white/70">Delivery Rate</div>
+                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">98%</div>
+                <div className="text-base sm:text-lg text-white/70">Delivery Rate</div>
               </div>
             </div>
           </div>
 
           {/* SMS Animation - Responsive sizing with layered effect */}
-          <div className="flex justify-center lg:justify-end mt-6 lg:mt-0">
-            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right scale-75 sm:scale-90 lg:scale-100 relative z-10">
+          <div className="hidden lg:flex justify-center lg:justify-end order-2 lg:order-2 mt-8 sm:mt-10 lg:mt-0 w-full">
+            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right scale-75 sm:scale-90 lg:scale-100 relative z-10 w-full max-w-[320px] sm:max-w-[360px] md:max-w-[400px]">
               <SMSAnimation />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mobile SMS animation follows hero */}
+      <section className="lg:hidden px-4 sm:px-5 pb-12">
+        <div className="flex justify-center w-full">
+          <div className="transform scale-75 sm:scale-90 transition-transform duration-500 w-full max-w-[340px] sm:max-w-[380px]">
+            <SMSAnimation />
           </div>
         </div>
       </section>
