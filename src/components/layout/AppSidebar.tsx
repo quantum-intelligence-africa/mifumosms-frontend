@@ -91,58 +91,78 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
   return (
     <TooltipProvider>
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay - Higher z-index to appear above header */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        flex h-screen flex-col glass border-r border-border-subtle
+        flex h-screen flex-col glass-subtle border-r border-border backdrop-blur-xl
         ${isMobile
-          ? `fixed left-0 top-0 z-50 w-64 sm:w-72 transform transition-transform duration-300 ease-in-out ${
+          ? `fixed left-0 top-0 z-[110] w-64 sm:w-72 transform transition-all duration-300 ease-out shadow-2xl ${
               isOpen ? 'translate-x-0' : '-translate-x-full'
             }`
-          : 'w-56 relative'
+          : 'w-64 relative'
         }
       `}>
-        {/* Header */}
-        <div className="flex items-center gap-2 p-3 border-b border-border-subtle">
-          <div className="w-6 h-6 rounded-lg gradient-primary flex items-center justify-center">
-            <MessageSquare className="w-3 h-3 text-primary-foreground" />
+        {/* Mobile Header with Close Button - Prominent Design */}
+        {isMobile && (
+          <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-background/95 backdrop-blur-xl">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-md flex-shrink-0">
+                <MessageSquare className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-heading text-base font-semibold text-foreground truncate">Mifumo SMS</h1>
+                <p className="text-xs text-text-subtle truncate">Communication Hub</p>
+              </div>
+            </div>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-10 w-10 flex-shrink-0 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-fast ml-2"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-heading text-sm font-semibold text-foreground truncate">Mifumo SMS</h1>
-            <p className="text-xs text-text-subtle truncate">Communication Hub</p>
+        )}
+
+        {/* Desktop Header */}
+        {!isMobile && (
+          <div className="flex items-center gap-3 p-4 border-b border-border-subtle">
+            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
+              <MessageSquare className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-heading text-[15px] font-semibold text-foreground truncate">Mifumo SMS</h1>
+              <p className="text-[11px] text-text-subtle truncate">Communication Hub</p>
+            </div>
           </div>
-          {isMobile && onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0"
-            >
-              <X className="h-3 h-4 sm:h-4 sm:w-4" />
-            </Button>
-          )}
-        </div>
+        )}
 
       {/* Quick Actions */}
-      <div className="px-3 py-2 border-b border-border-subtle">
+      <div className={`border-b border-border-subtle ${isMobile ? 'px-4 py-3.5' : 'px-4 py-3'}`}>
         <Link to="/sms/purchase" onClick={isMobile ? onClose : undefined}>
-          <Button variant="hero" size="sm" className="w-full text-xs h-7">
-            <Plus className="w-3 h-3" />
-            <span>Buy SMS</span>
+          <Button variant="default" size="sm" className={`w-full font-medium shadow-sm hover:shadow-md interactive-button ${
+            isMobile ? 'text-sm h-10' : 'text-[13px] h-9'
+          }`}>
+            <Plus className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+            <span>Buy SMS Credits</span>
           </Button>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 custom-scrollbar overflow-y-auto">
-        <ul className="space-y-0.5">
+      <nav className={`flex-1 custom-scrollbar overflow-y-auto ${isMobile ? 'px-3 py-4' : 'px-3 py-3'}`}>
+        <ul className={`${isMobile ? 'space-y-1.5' : 'space-y-1'}`}>
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
@@ -155,19 +175,21 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start h-8 px-2 text-xs"
+                        className={`w-full justify-start px-3 font-medium hover:bg-accent rounded-lg transition-fast ${
+                          isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'
+                        }`}
                       >
-                        <Icon className="w-3 h-3 flex-shrink-0" />
+                        <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
                         <span className="flex-1 text-left truncate">{item.name}</span>
                         {smsOpen ? (
-                          <ChevronDown className="w-3 h-3 ml-auto flex-shrink-0" />
+                          <ChevronDown className={`ml-auto flex-shrink-0 transition-transform ${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
                         ) : (
-                          <ChevronRight className="w-3 h-3 ml-auto flex-shrink-0" />
+                          <ChevronRight className={`ml-auto flex-shrink-0 transition-transform ${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
                         )}
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-1">
-                      <ul className="space-y-0.5 ml-2 pl-2 border-l-2 border-border-subtle">
+                      <ul className={`${isMobile ? 'space-y-1.5 ml-4 pl-4' : 'space-y-1 ml-3 pl-3'} border-l-2 border-border-subtle`}>
                         {item.children!.map((child) => {
                           const ChildIcon = child.icon;
                           const childActive = location.pathname === child.href;
@@ -181,9 +203,11 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                                 <Button
                                   variant={childActive ? "secondary" : "ghost"}
                                   size="sm"
-                                  className="w-full justify-start h-6 text-xs px-2"
+                                  className={`w-full justify-start px-3 rounded-lg transition-fast ${
+                                    childActive ? 'font-medium shadow-sm' : 'font-normal'
+                                  } ${isMobile ? 'h-9 text-sm' : 'h-8 text-[13px]'}`}
                                 >
-                                  <ChildIcon className="w-3 h-3 flex-shrink-0" />
+                                  <ChildIcon className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
                                   <span className="truncate">{child.name}</span>
                                 </Button>
                               </Link>
@@ -206,12 +230,16 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                 >
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
-                    className="w-full justify-start h-8 px-2 text-xs"
+                    className={`w-full justify-start px-3 rounded-lg transition-fast ${
+                      isActive ? 'font-medium shadow-sm' : 'font-normal'
+                    } ${isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'}`}
                   >
-                    <Icon className="w-3 h-3 flex-shrink-0" />
+                    <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
                     <span className="flex-1 text-left truncate">{item.name}</span>
                     {item.count && (
-                      <Badge variant="secondary" className="ml-auto text-xs px-1 py-0.5 flex-shrink-0">
+                      <Badge variant="secondary" className={`ml-auto px-1.5 py-0.5 flex-shrink-0 font-medium ${
+                        isMobile ? 'text-xs' : 'text-[11px]'
+                      }`}>
                         {item.count}
                       </Badge>
                     )}
@@ -224,19 +252,27 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       </nav>
 
       {/* User Profile */}
-      <div className="p-2 border-t border-border-subtle">
-        <div className="flex items-center gap-2 p-2 rounded-lg glass-subtle">
-          <Avatar className="h-6 w-6 flex-shrink-0">
+      <div className={`border-t border-border-subtle ${isMobile ? 'p-4' : 'p-3'}`}>
+        <div className={`flex items-center gap-3 rounded-xl glass-subtle hover:bg-accent transition-fast ${
+          isMobile ? 'p-3.5' : 'p-3'
+        }`}>
+          <Avatar className={`flex-shrink-0 ring-2 ring-border ${isMobile ? 'h-10 w-10' : 'h-9 w-9'}`}>
             <AvatarImage src="" alt={user?.full_name || user?.first_name} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+            <AvatarFallback className={`bg-gradient-to-br from-primary to-primary-light text-primary-foreground font-semibold ${
+              isMobile ? 'text-sm' : 'text-xs'
+            }`}>
               {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground truncate">
+            <p className={`font-semibold text-foreground truncate leading-tight ${
+              isMobile ? 'text-sm' : 'text-[13px]'
+            }`}>
               {isLoading ? 'Loading...' : (user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User')}
             </p>
-            <p className="text-xs text-text-subtle truncate">
+            <p className={`text-text-subtle truncate leading-tight mt-0.5 ${
+              isMobile ? 'text-xs' : 'text-[11px]'
+            }`}>
               {isLoading ? '...' : (user?.email || 'No email')}
             </p>
           </div>
@@ -245,13 +281,15 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 flex-shrink-0"
+                className={`flex-shrink-0 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-fast ${
+                  isMobile ? 'h-9 w-9' : 'h-8 w-8'
+                }`}
                 onClick={logout}
               >
-                <LogOut className="w-3 h-3" />
+                <LogOut className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="top" className="text-xs">
               <p>Log out</p>
             </TooltipContent>
           </Tooltip>

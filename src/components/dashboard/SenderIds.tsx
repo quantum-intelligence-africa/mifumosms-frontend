@@ -55,12 +55,12 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   };
 
   return (
-    <Card className="p-4 glass border-0">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading text-base font-semibold text-foreground">
+    <Card className="p-5 sm:p-6 glass border border-border-subtle">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           Active Sender IDs
         </h3>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5">
           {senderIds?.length || 0} Active
         </Badge>
       </div>

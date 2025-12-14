@@ -57,13 +57,16 @@ export function ActivityFeed() {
   };
 
   return (
-    <Card className="p-4 glass border-0">
-      <div className="flex items-center justify-between mb-4">
+    <Card className="p-5 sm:p-6 glass border border-border-subtle">
+      <div className="flex items-center justify-between mb-5">
         <h3 className="font-heading text-base font-semibold text-foreground">
           Recent Activity
         </h3>
-        <Badge variant="outline" className="text-xs">
-          Live
+        <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5 bg-success/10 text-success border-success/20">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            Live
+          </div>
         </Badge>
       </div>
 
@@ -76,9 +79,9 @@ export function ActivityFeed() {
             return (
               <div
                 key={activity.id}
-                className="flex items-start gap-2 p-2 rounded-lg hover:bg-accent/50 transition-smooth"
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent transition-fast"
               >
-                <div className="p-1.5 rounded-md bg-primary/10">
+                <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
                   <Icon className="w-3.5 h-3.5 text-primary" />
                 </div>
 
