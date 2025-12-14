@@ -27,6 +27,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 
 const Landing = () => {
+  // Force light theme on marketing surfaces
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    document.body.classList.remove('dark');
+    document.documentElement.setAttribute('data-theme', 'light');
+  }, []);
+
   // Check if user is authenticated by checking localStorage
   const isAuthenticated = !!localStorage.getItem('access_token');
   const user = null; // We don't need user data on the landing page
@@ -921,23 +928,23 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 overflow-hidden">
+      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50 overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400/20 rounded-full animate-pulse" />
-          <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
-          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
+          <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-300/25 rounded-full animate-pulse" />
+          <div className="absolute bottom-10 right-10 w-16 h-16 bg-blue-200/25 rounded-full animate-bounce" />
+          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-200/30 rounded-lg rotate-45 animate-ping" />
         </div>
 
         <div className="max-w-3xl mx-auto text-center relative z-10">
 
-          <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
+          <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight">
             Ready to transform your
             <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">
               customer communication?
             </span>
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-white/90 mb-6 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed">
             Join thousands of African businesses already using Mifumo SMS
           </p>
 

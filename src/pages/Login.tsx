@@ -24,6 +24,13 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Force light theme on auth page
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
