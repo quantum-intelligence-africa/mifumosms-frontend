@@ -21,7 +21,9 @@ import {
   Network,
   Activity,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu,
+  X
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
@@ -45,6 +47,7 @@ const Landing = () => {
   const [currentBusiness, setCurrentBusiness] = useState(0);
   const [isPhoneHovered, setIsPhoneHovered] = useState(false);
   const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
@@ -155,70 +158,12 @@ const Landing = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Sliding Background Component - Static blue background with flowing animations
+  // Sliding Background Component - Static blue background without animations
   const SlidingBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-blue-800/30 to-blue-900/40" />
-
-            {/* Animated geometric shapes */}
-            <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full animate-pulse" />
-            <div className="absolute top-40 right-20 w-24 h-24 bg-white/5 rounded-lg rotate-45 animate-bounce" />
-            <div className="absolute bottom-32 left-1/4 w-16 h-16 bg-white/10 rounded-full animate-ping" />
-            <div className="absolute bottom-20 right-1/3 w-20 h-20 bg-white/5 rounded-lg rotate-12 animate-pulse" />
-
-          {/* Flowing SMS/Chat Icons */}
-          <div className="absolute top-20 left-10 w-12 h-12 text-white float-animation">
-            <MessageSquare className="w-full h-full" />
-          </div>
-          <div className="absolute top-40 right-20 w-10 h-10 text-white drift-animation">
-            <Send className="w-full h-full" />
-          </div>
-          <div className="absolute bottom-32 left-1/4 w-14 h-14 text-white animate-ping glow-animation" style={{animationDuration: '4s'}}>
-            <MessageSquare className="w-full h-full" />
-          </div>
-          <div className="absolute bottom-20 right-1/3 w-11 h-11 text-white float-animation" style={{animationDelay: '1s'}}>
-            <Send className="w-full h-full" />
-          </div>
-
-          {/* Additional flowing SMS icons with staggered animations */}
-          <div className="absolute top-1/3 left-1/3 w-8 h-8 text-white drift-animation" style={{animationDelay: '2s'}}>
-            <MessageSquare className="w-full h-full" />
-          </div>
-          <div className="absolute top-2/3 right-1/4 w-9 h-9 text-white float-animation" style={{animationDelay: '0.5s'}}>
-            <Send className="w-full h-full" />
-          </div>
-          <div className="absolute bottom-1/3 left-1/2 w-7 h-7 text-white animate-pulse glow-animation" style={{animationDelay: '0.5s', animationDuration: '3.5s'}}>
-            <MessageSquare className="w-full h-full" />
-          </div>
-
-          {/* More SMS icons for better coverage */}
-          <div className="absolute top-1/6 right-1/6 w-6 h-6 text-white drift-animation" style={{animationDelay: '1.8s'}}>
-            <Send className="w-full h-full" />
-          </div>
-          <div className="absolute bottom-1/6 left-1/6 w-8 h-8 text-white float-animation" style={{animationDelay: '0.3s'}}>
-            <MessageSquare className="w-full h-full" />
-          </div>
-          <div className="absolute top-5/6 right-1/2 w-7 h-7 text-white drift-animation" style={{animationDelay: '2.3s'}}>
-            <Send className="w-full h-full" />
-          </div>
-
-
-          {/* Connection Lines/Dots */}
-          <div className="absolute top-1/3 right-1/3 w-4 h-4 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '1.5s'}} />
-          <div className="absolute bottom-1/3 left-1/3 w-5 h-5 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '2.5s'}} />
-          <div className="absolute top-2/3 left-2/3 w-3 h-3 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '0.8s'}} />
-
-          {/* Floating SMS bubbles */}
-          <div className="absolute top-1/4 right-1/3 w-5 h-5 bg-white rounded-full animate-bounce glow-animation" style={{animationDelay: '1.5s'}} />
-          <div className="absolute bottom-1/4 left-1/5 w-4 h-4 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '2.5s'}} />
-          <div className="absolute top-3/4 left-2/3 w-6 h-6 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '0.8s'}} />
-
-          {/* Additional floating elements */}
-          <div className="absolute top-1/2 left-1/4 w-3 h-3 bg-white rounded-full animate-bounce glow-animation" style={{animationDelay: '3.2s'}} />
-          <div className="absolute bottom-1/2 right-1/4 w-4 h-4 bg-white rounded-full animate-pulse glow-animation" style={{animationDelay: '1.8s'}} />
-          <div className="absolute top-1/6 left-1/2 w-2 h-2 bg-white rounded-full animate-ping glow-animation" style={{animationDelay: '2.2s'}} />
         </div>
       </div>
     );
@@ -231,35 +176,32 @@ const Landing = () => {
         {/* Navigation Button - Left */}
         <button
           onClick={goToPreviousBusiness}
-          className="absolute -left-8 sm:-left-10 top-1/2 -translate-y-1/2 z-30 bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+          className="absolute -left-4 sm:-left-6 md:-left-8 lg:-left-10 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
           aria-label="Previous company"
         >
-          <ChevronLeft className="w-4 h-4 text-white" />
+          <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
         </button>
 
         {/* Navigation Button - Right */}
         <button
           onClick={goToNextBusiness}
-          className="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-30 bg-blue-600 hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+          className="absolute -right-2 sm:-right-3 md:-right-4 lg:-right-5 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
           aria-label="Next company"
         >
-          <ChevronRight className="w-4 h-4 text-white" />
+          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
         </button>
 
-        {/* Phone container */}
-        <div
-          key={currentBusiness}
-          className="relative animate-in fade-in duration-500"
-        >
-        {/* iPhone Frame - Using transparent PNG */}
+        {/* Phone container - Static, no rotation */}
         <div className="relative w-full h-auto">
-          {/* iPhone PNG Background - Transparent frame */}
-          <img
-            src="/iphone_PNG5735.png"
-            alt="iPhone mockup"
-            className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
-            style={{ filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.5))' }}
-          />
+          {/* iPhone Frame - Using transparent PNG */}
+          <div className="relative w-full h-auto">
+            {/* iPhone PNG Background - Transparent frame */}
+            <img
+              src="/iphone_PNG5735.png"
+              alt="iPhone mockup"
+              className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
+              style={{ filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.5))' }}
+            />
 
           {/* Screen mask: Realistic phone screen covering blue background - Proper fit with correct height and width */}
           <div
@@ -272,66 +214,61 @@ const Landing = () => {
               borderRadius: '0.6rem',
             }}
           >
-            {/* Status Bar Area - Matching iPhone style */}
-            <div className="flex justify-between items-center px-2.5 pt-0.5 pb-0.5 text-[9px] font-semibold text-black bg-white flex-shrink-0">
-              <span>9:41</span>
-              <div className="flex items-center gap-0.5">
-                {/* Signal bars */}
-                <div className="flex items-end gap-0.5">
-                  <div className="w-0.5 h-1.5 bg-black rounded-sm" />
-                  <div className="w-0.5 h-2 bg-black rounded-sm" />
-                  <div className="w-0.5 h-2.5 bg-black rounded-sm" />
-                  <div className="w-0.5 h-2.5 bg-black rounded-sm" />
-                </div>
-                {/* WiFi */}
-                <div className="w-3 h-2 bg-black rounded-sm ml-0.5" />
-                {/* Battery */}
-                <div className="flex items-center gap-0.5 ml-0.5">
-                  <span className="text-[8px] font-medium">100%</span>
-                  <div className="w-5 h-2.5 border border-black rounded-sm relative">
-                    <div className="w-3.5 h-1.5 bg-black rounded-sm m-0.5" />
-                    <div className="absolute -right-0.5 top-0.5 w-0.5 h-1.5 bg-black rounded-r-sm" />
+            {/* Content wrapper with smooth transition on change */}
+            <div key={currentBusiness} className="phone-content-transition w-full h-full flex flex-col">
+              {/* Status Bar Area - Matching iPhone style */}
+              <div className="flex justify-between items-center px-2.5 pt-0.5 pb-0.5 text-[9px] font-semibold text-black bg-white flex-shrink-0">
+                <span>9:41</span>
+                <div className="flex items-center gap-0.5">
+                  {/* Signal bars */}
+                  <div className="flex items-end gap-0.5">
+                    <div className="w-0.5 h-1.5 bg-black rounded-sm" />
+                    <div className="w-0.5 h-2 bg-black rounded-sm" />
+                    <div className="w-0.5 h-2.5 bg-black rounded-sm" />
+                    <div className="w-0.5 h-2.5 bg-black rounded-sm" />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages App Interface */}
-            <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
-              {/* App Header */}
-              <div className="bg-white border-b border-gray-200 px-2.5 py-2 flex items-center gap-2 flex-shrink-0">
-                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-3 h-3 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-gray-900 font-semibold text-[10px] truncate">{currentBusinessData.sender}</h3>
-                  <p className="text-gray-500 text-[8px]">System Messages</p>
-                </div>
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
-              </div>
-
-              {/* Messages Area - Show ALL messages at once */}
-              <div className="flex-1 p-2 space-y-1.5 overflow-y-auto bg-gray-50 scrollbar-hide">
-                {messages.map((msg, index) => (
-                  <div key={index} className="flex justify-start">
-                    <div className="max-w-[88%] bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-sm">
-                      <p className="text-gray-900 text-[10px] leading-relaxed">{msg.text}</p>
-                      <p className="text-gray-400 text-[9px] mt-0.5">{msg.time}</p>
+                  {/* WiFi */}
+                  <div className="w-3 h-2 bg-black rounded-sm ml-0.5" />
+                  {/* Battery */}
+                  <div className="flex items-center gap-0.5 ml-0.5">
+                    <span className="text-[8px] font-medium">100%</span>
+                    <div className="w-5 h-2.5 border border-black rounded-sm relative">
+                      <div className="w-3.5 h-1.5 bg-black rounded-sm m-0.5" />
+                      <div className="absolute -right-0.5 top-0.5 w-0.5 h-1.5 bg-black rounded-r-sm" />
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* Messages App Interface */}
+              <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                {/* App Header */}
+                <div className="bg-white border-b border-gray-200 px-2.5 py-2 flex items-center gap-2 flex-shrink-0">
+                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="w-3 h-3 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-gray-900 font-semibold text-[10px] truncate">{currentBusinessData.sender}</h3>
+                    <p className="text-gray-500 text-[8px]">System Messages</p>
+                  </div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
+                </div>
+
+                {/* Messages Area - Show ALL messages at once */}
+                <div className="flex-1 p-2 space-y-1.5 overflow-y-auto bg-gray-50 scrollbar-hide">
+                  {messages.map((msg, index) => (
+                    <div key={index} className="flex justify-start">
+                      <div className="max-w-[88%] bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+                        <p className="text-gray-900 text-[10px] leading-relaxed">{msg.text}</p>
+                        <p className="text-gray-400 text-[9px] mt-0.5">{msg.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-        </div>
-
-        {/* Floating notification icons */}
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg z-20">
-          <Send className="w-3 h-3 text-white" />
-        </div>
-        <div className="absolute -bottom-1 -left-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow-lg z-20">
-          <MessageSquare className="w-2.5 h-2.5 text-white" />
         </div>
       </div>
     );
@@ -407,106 +344,21 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Custom CSS for flowing animations */}
+      {/* Custom CSS */}
       <style dangerouslySetInnerHTML={{
         __html: `
-          @keyframes float {
-            0%, 100% {
-              transform: translateY(0px) rotate(0deg) scale(1);
-              filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
-            }
-            50% {
-              transform: translateY(-30px) rotate(10deg) scale(1.1);
-              filter: drop-shadow(0 0 15px rgba(255,255,255,1));
-            }
-          }
-          @keyframes drift {
+          @keyframes smoothContentFade {
             0% {
-              transform: translateX(0px) translateY(0px) rotate(0deg) scale(1);
-              filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
-            }
-            25% {
-              transform: translateX(20px) translateY(-15px) rotate(5deg) scale(1.05);
-              filter: drop-shadow(0 0 12px rgba(255,255,255,0.8));
-            }
-            50% {
-              transform: translateX(-10px) translateY(-30px) rotate(-5deg) scale(1.1);
-              filter: drop-shadow(0 0 18px rgba(255,255,255,1));
-            }
-            75% {
-              transform: translateX(-20px) translateY(-10px) rotate(3deg) scale(1.05);
-              filter: drop-shadow(0 0 12px rgba(255,255,255,0.8));
-            }
-            100% {
-              transform: translateX(0px) translateY(0px) rotate(0deg) scale(1);
-              filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
-            }
-          }
-          @keyframes glow {
-            0%, 100% {
-              filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
-              opacity: 0.8;
-            }
-            50% {
-              filter: drop-shadow(0 0 30px rgba(255,255,255,1));
-              opacity: 1;
-            }
-          }
-          @keyframes rotatePhone {
-            0%, 90%, 100% {
-              transform: perspective(1000px) rotateY(0deg);
-            }
-            5%, 85% {
-              transform: perspective(1000px) rotateY(180deg);
-            }
-          }
-          @keyframes fadeInOut {
-            0%, 100% {
-              opacity: 1;
-            }
-            50% {
-              opacity: 0.3;
-            }
-          }
-          @keyframes smoothFlip {
-            0% {
-              transform: perspective(1000px) rotateY(0deg) scale(1);
-              opacity: 1;
-            }
-            50% {
-              transform: perspective(1000px) rotateY(90deg) scale(0.95);
               opacity: 0;
-            }
-            100% {
-              transform: perspective(1000px) rotateY(0deg) scale(1);
-              opacity: 1;
-            }
-          }
-          @keyframes elegantFade {
-            0% {
-              opacity: 1;
-              transform: scale(1) translateY(0);
-            }
-            50% {
-              opacity: 0;
-              transform: scale(0.98) translateY(-10px);
+              transform: translateY(10px);
             }
             100% {
               opacity: 1;
-              transform: scale(1) translateY(0);
+              transform: translateY(0);
             }
           }
-          .phone-transition {
-            animation: elegantFade 1.2s ease-in-out;
-          }
-          .float-animation {
-            animation: float 4s ease-in-out infinite;
-          }
-          .drift-animation {
-            animation: drift 6s ease-in-out infinite;
-          }
-          .glow-animation {
-            animation: glow 2s ease-in-out infinite;
+          .phone-content-transition {
+            animation: smoothContentFade 0.4s ease-out;
           }
           .scrollbar-hide {
             -ms-overflow-style: none;
@@ -514,6 +366,19 @@ const Landing = () => {
           }
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
+          }
+          .touch-manipulation {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+          }
+          /* Mobile viewport optimization */
+          @media (max-width: 640px) {
+            #about {
+              min-height: 100vh;
+              min-height: 100dvh; /* Dynamic viewport height for mobile */
+              padding-top: env(safe-area-inset-top, 0.5rem);
+              padding-bottom: env(safe-area-inset-bottom, 0.75rem);
+            }
           }
         `
       }} />
@@ -533,27 +398,65 @@ const Landing = () => {
                 Mifumo SMS
               </span>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-              <Link to="/login">
-                <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 hover:bg-white/10 transition-all duration-300">
+            <div className="flex items-center gap-2 sm:gap-2 lg:gap-4">
+              <div className="hidden sm:flex items-center gap-2 lg:gap-4">
+                <Link to="/login">
+                  <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 hover:bg-white/10 transition-all duration-300">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+              <Button
+                variant="outline"
+                className="sm:hidden h-9 w-9 px-0 border-white/60 text-white bg-white/10 hover:bg-white/20"
+                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                aria-expanded={isMobileMenuOpen}
+                aria-label="Toggle mobile menu"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
+          </div>
+
+          {isMobileMenuOpen && (
+            <div className="sm:hidden mt-3 rounded-xl border border-white/20 bg-white/90 backdrop-blur shadow-lg p-4 space-y-3 text-sm text-gray-800">
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start text-sm">
                   Login
                 </Button>
               </Link>
-              <Link to="/signup">
-                <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button className="w-full justify-center text-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md">
                   Get Started
                 </Button>
               </Link>
+              <div className="flex flex-col gap-1">
+                <a href="tel:+255742123456" className="font-semibold text-blue-600">
+                  +255 742 123 456
+                </a>
+                <p className="text-xs text-gray-500">Call us Mon-Fri, 9am-6pm</p>
+              </div>
+              <a href="https://wa.me/255742123456" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="outline" className="w-full justify-center gap-2 border-green-500 text-green-600 hover:bg-green-50">
+                  <MessageSquare className="w-4 h-4" />
+                  WhatsApp
+                </Button>
+              </a>
             </div>
-          </div>
+          )}
         </div>
       </header>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-5 lg:px-6 relative pt-6 pb-4 sm:pt-10 sm:pb-6 md:pt-12 md:pb-8 lg:pt-12 lg:pb-8 z-10">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 md:gap-10 lg:gap-12 items-center w-full">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3 md:gap-5 lg:gap-12 items-center w-full">
           {/* Text Content */}
-          <div className="text-center lg:text-left lg:col-span-1 w-full space-y-5 sm:space-y-7 md:space-y-8 max-w-3xl lg:max-w-4xl mx-auto lg:mx-0">
+          <div className="text-left lg:col-span-1 w-full space-y-2 sm:space-y-2.5 md:space-y-4 lg:space-y-8 max-w-3xl lg:max-w-4xl mx-auto lg:mx-0">
             {/* Badge */}
             <div className="flex justify-center lg:justify-start">
               {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium">
@@ -562,27 +465,27 @@ const Landing = () => {
               </div> */}
             </div>
 
-            <div className="space-y-3.5 sm:space-y-5 md:space-y-6">
-              <h1 className="font-heading text-center lg:text-left text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-7xl font-bold text-white leading-tight animate-fade-in-up max-w-4xl mx-auto lg:mx-0">
+            <div className="space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-6">
+              <h1 className="font-heading text-left text-xl sm:text-2xl md:text-3xl lg:text-5xl xl:text-5xl font-bold text-white leading-[1.2] sm:leading-tight animate-fade-in-up max-w-4xl">
                 Getting customers is cheap,
-                <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse">
+                <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse mt-0.5 sm:mt-1">
                   Churn isn&apos;t
                 </span>
               </h1>
-              <p className="text-center lg:text-left text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-2xl text-white/90 max-w-4xl mx-auto lg:mx-0 leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+              <p className="text-left text-xs sm:text-sm md:text-base lg:text-xl xl:text-xl text-white/90 max-w-4xl leading-snug sm:leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
                 Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
               </p>
             </div>
 
-            <div className="flex flex-row gap-2 sm:gap-4 lg:gap-6 justify-center lg:justify-start">
+            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:gap-6 justify-center lg:justify-start pt-1 sm:pt-1.5">
               <Link to="/signup">
                 <Button
-                  className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
+                  className="text-xs sm:text-sm lg:text-base h-7 sm:h-8 md:h-9 lg:h-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
                   onMouseEnter={() => setIsHovering(true)}
                   onMouseLeave={() => setIsHovering(false)}
                 >
                   Start Free Trial
-                  <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
+                  <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
                 </Button>
               </Link>
               {/* <Button
@@ -595,131 +498,117 @@ const Landing = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 pt-4 sm:pt-5">
-              <div className="text-center lg:text-left">
-                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">50+</div>
-                <div className="text-base sm:text-lg text-white/70">Active Businesses</div>
+            <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 lg:gap-8 pt-1.5 sm:pt-2 md:pt-3 lg:pt-5">
+              <div className="text-left">
+                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">50+</div>
+                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Active Businesses</div>
               </div>
-              <div className="text-center lg:text-left">
-                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">1M+</div>
-                <div className="text-base sm:text-lg text-white/70">Messages Sent</div>
+              <div className="text-left">
+                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">1M+</div>
+                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Messages Sent</div>
               </div>
-              <div className="text-center lg:text-left">
-                <div className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white">98%</div>
-                <div className="text-base sm:text-lg text-white/70">Delivery Rate</div>
+              <div className="text-left">
+                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">98%</div>
+                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Delivery Rate</div>
               </div>
             </div>
           </div>
 
-          {/* SMS Animation - Responsive sizing with layered effect */}
-          <div className="hidden lg:flex justify-center lg:justify-end order-2 lg:order-2 mt-8 sm:mt-10 lg:mt-0 w-full">
-            <div className="transform hover:scale-105 transition-transform duration-500 animate-fade-in-right scale-75 sm:scale-90 lg:scale-100 relative z-10 w-full max-w-[320px] sm:max-w-[360px] md:max-w-[400px]">
+          {/* SMS Animation - Visible on all devices including mobile */}
+          <div className="flex justify-center lg:justify-end order-2 lg:order-2 mt-2 sm:mt-3 md:mt-4 lg:mt-0 w-full">
+            <div className="lg:transform lg:hover:scale-105 lg:transition-transform lg:duration-500 animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 lg:scale-100 relative z-10 w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[420px]">
               <SMSAnimation />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Mobile SMS animation follows hero */}
-      <section className="lg:hidden px-4 sm:px-5 pb-12">
-        <div className="flex justify-center w-full">
-          <div className="transform scale-75 sm:scale-90 transition-transform duration-500 w-full max-w-[340px] sm:max-w-[380px]">
-            <SMSAnimation />
+      {/* Features Section */}
+      <section id="features" className="py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 relative bg-gray-50">
+        {/* Mobile block (unchanged) */}
+        <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-yellow-50 shadow-sm px-4 py-5 sm:hidden">
+          <div className="text-left mb-8">
+            <h2 className="font-heading text-xl font-bold text-gray-900 mb-2 leading-tight">
+              Everything you need to
+              <span className="block text-blue-500">
+                manage customer communications
+              </span>
+            </h2>
+            <p className="text-xs text-gray-600 leading-relaxed max-w-3xl">
+              Powerful features designed for African businesses to scale their customer communication
+            </p>
+          </div>
+          <div className="space-y-8">
+            {features.map((feature, index) => {
+              const colorSchemes = [
+                { bg: 'bg-white', border: 'border-gray-300', icon: 'text-gray-700', title: 'text-gray-800' },
+                { bg: 'bg-blue-50', border: 'border-blue-300', icon: 'text-blue-600', title: 'text-blue-700' },
+                { bg: 'bg-red-50', border: 'border-red-300', icon: 'text-red-600', title: 'text-red-700' },
+                { bg: 'bg-green-50', border: 'border-green-300', icon: 'text-green-600', title: 'text-green-700' },
+              ];
+              const colors = colorSchemes[index % colorSchemes.length];
+              const isEven = index % 2 === 0;
+              return (
+                <div key={index} className={`flex items-start gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 ${colors.bg} ${colors.border} flex flex-col items-center justify-center shadow-sm`}>
+                    <feature.icon className={`w-8 h-8 mb-2 ${colors.icon}`} />
+                    <h3 className={`font-bold text-xs text-center leading-tight px-1 ${colors.title}`}>
+                      {feature.title}
+                    </h3>
+                  </div>
+                  <div className="flex-1 pt-3">
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-6 relative bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-center">
-            {/* Left Column - Heading and Description */}
-            <div className="text-left flex flex-col justify-center">
-              <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Everything you need to
-                <span className="block text-blue-500">
-                  manage customer communications
-                </span>
-              </h2>
-              <p className="text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed">
-                Powerful features designed for African businesses to scale their customer communication
-              </p>
-            </div>
-
-            {/* Right Column - Feature Cards Grid */}
-            <div className="w-full">
-              {/* Mobile: Reference-style layout with alternating descriptions */}
-              <div className="sm:hidden space-y-8">
-                {features.map((feature, index) => (
-                  <div key={index} className={`flex items-start gap-6 ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}>
-                    {/* Feature Block */}
-                    <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 flex flex-col items-center justify-center shadow-sm ${
-                      index === 0 ? 'bg-white border-gray-300' :
-                      index === 1 ? 'bg-blue-50 border-blue-300' :
-                      index === 2 ? 'bg-red-50 border-red-300' :
-                      'bg-green-50 border-green-300'
-                    }`}>
-                      {/* Icon at top-center */}
-                      <feature.icon className={`w-8 h-8 mb-2 ${
-                        index === 0 ? 'text-gray-700' :
-                        index === 1 ? 'text-blue-600' :
-                        index === 2 ? 'text-red-600' :
-                        'text-green-600'
-                      }`} />
-                      {/* Title centered below icon */}
-                      <h3 className={`font-bold text-sm text-center leading-tight ${
-                        index === 0 ? 'text-gray-800' :
-                        index === 1 ? 'text-blue-700' :
-                        index === 2 ? 'text-red-700' :
-                        'text-green-700'
-                      }`}>
-                        {feature.title}
-                      </h3>
-                    </div>
-
-                    {/* Description text - alternates sides */}
-                    <div className="flex-1 pt-3">
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+        {/* Desktop block matching reference image */}
+        <div className="hidden sm:block">
+          <div className="max-w-7xl mx-auto px-2 lg:px-0">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-10 lg:gap-14">
+              <div className="flex-1 max-w-xl text-left">
+                <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
+                  Everything you need to
+                  <span className="block text-blue-500">
+                    manage customer communications
+                  </span>
+                </h2>
+                <p className="mt-4 text-base md:text-lg text-gray-600 leading-relaxed">
+                  Powerful features designed for African businesses to scale their customer communication
+                </p>
               </div>
 
-              {/* Desktop: Compact 2 columns, 3 rows layout */}
-              <div className="hidden sm:grid sm:grid-cols-2 gap-4 lg:gap-6">
-                {features.map((feature, index) => (
-                  <Card
-                    key={index}
-                    className="group relative bg-white border-0 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 hover:scale-105 rounded-xl overflow-hidden animate-in slide-in-from-right-7 fade-in-50"
-                    style={{
-                      animationDelay: `${index * 150}ms`,
-                      animationFillMode: 'both'
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <CardContent className="relative p-6 flex flex-col h-full min-h-[140px]">
-                      {/* Icon */}
-                      <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-md group-hover:shadow-lg">
-                        <feature.icon className="w-6 h-6 text-white group-hover:scale-110 transition-transform duration-300" />
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="font-heading text-sm font-bold text-blue-500 group-hover:text-blue-600 transition-colors duration-300 text-left mb-3 leading-tight">
-                        {feature.title}
-                      </h3>
-
-                      {/* Description */}
-                      <p className="text-xs text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300 text-left flex-1">
-                        {feature.description}
-                      </p>
-
-                      {/* Hover effect indicator */}
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="flex-1 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8">
+                  {features.map((feature, index) => (
+                    <Card
+                      key={index}
+                      className="group relative bg-white border border-gray-100 shadow-md lg:shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1.5 hover:scale-[1.02] rounded-2xl overflow-hidden"
+                      style={{
+                        animationDelay: `${index * 150}ms`,
+                        animationFillMode: 'both'
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <CardContent className="relative p-6 lg:p-7 flex flex-col h-full min-h-[160px] lg:min-h-[180px]">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-4 shadow-md group-hover:scale-110 group-hover:rotate-2 transition-all duration-300">
+                          <feature.icon className="w-5 h-5 text-white" />
+                        </div>
+                        <h3 className="font-heading text-sm lg:text-base font-bold text-blue-500 mb-2">
+                          {feature.title}
+                        </h3>
+                        <p className="text-xs lg:text-sm text-gray-600 leading-relaxed flex-1">
+                          {feature.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
