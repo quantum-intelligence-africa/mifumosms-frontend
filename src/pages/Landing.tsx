@@ -202,7 +202,7 @@ const Landing = () => {
   // SMS Animation Component with navigation buttons
   const SMSAnimation = () => {
     return (
-      <div className="relative w-full max-w-[260px] mx-auto sm:max-w-[280px] lg:max-w-[300px]">
+      <div className="relative w-full max-w-[320px] mx-auto sm:max-w-[360px] md:max-w-[400px] lg:max-w-[420px]">
         {/* Navigation Button - Left */}
         <button
           onClick={goToPreviousBusiness}
@@ -244,8 +244,8 @@ const Landing = () => {
               borderRadius: '0.6rem',
             }}
           >
-            {/* Content wrapper with smooth transition on change */}
-            <div key={currentBusiness} className="phone-content-transition w-full h-full flex flex-col">
+            {/* Content wrapper - Static frame, no animation */}
+            <div className="w-full h-full flex flex-col">
               {/* Status Bar Area - Matching iPhone style */}
               <div className="flex justify-between items-center px-2.5 pt-0.5 pb-0.5 text-[9px] font-semibold text-black bg-white flex-shrink-0">
                 <span>9:41</span>
@@ -278,14 +278,14 @@ const Landing = () => {
                     <MessageSquare className="w-3 h-3 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-gray-900 font-semibold text-[10px] truncate">{currentBusinessData.sender}</h3>
+                    <h3 key={currentBusiness} className="text-gray-900 font-semibold text-[10px] truncate phone-content-transition">{currentBusinessData.sender}</h3>
                     <p className="text-gray-500 text-[8px]">System Messages</p>
                   </div>
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
                 </div>
 
-                {/* Messages Area - Show ALL messages at once */}
-                <div className="flex-1 p-2 space-y-1.5 overflow-y-auto bg-gray-50 scrollbar-hide">
+                {/* Messages Area - Show ALL messages at once - Only this content changes */}
+                <div key={currentBusiness} className="flex-1 p-2 space-y-1.5 overflow-y-auto bg-gray-50 scrollbar-hide phone-content-transition">
                   {messages.map((msg, index) => (
                     <div key={index} className="flex justify-start">
                       <div className="max-w-[88%] bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-sm">
@@ -380,15 +380,13 @@ const Landing = () => {
           @keyframes smoothContentFade {
             0% {
               opacity: 0;
-              transform: translateY(10px);
             }
             100% {
               opacity: 1;
-              transform: translateY(0);
             }
           }
           .phone-content-transition {
-            animation: smoothContentFade 0.4s ease-out;
+            animation: smoothContentFade 0.3s ease-in-out;
           }
           .scrollbar-hide {
             -ms-overflow-style: none;
@@ -667,8 +665,8 @@ const Landing = () => {
             </div>
 
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
-            <div className="flex justify-center lg:hidden order-2 mt-4 sm:mt-6 md:mt-8 w-full">
-              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px]">
+            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full">
+              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[380px] sm:max-w-[420px] md:max-w-[460px]">
               <SMSAnimation />
               </div>
             </div>
