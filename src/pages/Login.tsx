@@ -131,27 +131,64 @@ const Login = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-3 sm:p-4 lg:p-6 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0">
-        <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400/20 rounded-full animate-pulse" />
-        <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
-        <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
+  // Sliding Background Component - Light blue gradient like Landing page
+  const SlidingBackground = () => {
+    return (
+      <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
+        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
+          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-full h-full">
+              <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="patternGradientLogin" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
+                  </linearGradient>
+                </defs>
+                {/* Wavy/fluid patterns - more subtle */}
+                <path
+                  d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
+                  fill="url(#patternGradientLogin)"
+                  opacity="0.5"
+                />
+                <path
+                  d="M600,300 Q750,250 900,300 T1200,300 L1200,800 L600,800 Z"
+                  fill="url(#patternGradientLogin)"
+                  opacity="0.4"
+                />
+                <path
+                  d="M400,400 Q600,300 800,400 T1200,400 L1200,800 L400,800 Z"
+                  fill="url(#patternGradientLogin)"
+                  opacity="0.3"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4 lg:p-6 relative overflow-hidden">
+      {/* Sliding Background */}
+      <SlidingBackground />
 
       <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl relative z-10">
         {/* Header */}
         <div className="text-center mb-4 sm:mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-3 sm:mb-4 transition-colors">
+          <Link to="/" className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-3 sm:mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back to homepage</span>
           </Link>
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
               <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
-            <span className="font-heading text-xl sm:text-2xl font-bold text-white">
+            <span className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
               Mifumo SMS
             </span>
           </div>
@@ -247,14 +284,14 @@ const Login = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-4 sm:mt-6 text-center text-xs text-white/80">
+        <div className="mt-4 sm:mt-6 text-center text-xs text-gray-600">
           <p>
             By signing in, you agree to our{" "}
-            <Link to="/terms" className="text-yellow-300 hover:text-yellow-200 hover:underline">
+            <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link to="/privacy" className="text-yellow-300 hover:text-yellow-200 hover:underline">
+            <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">
               Privacy Policy
             </Link>
           </p>
