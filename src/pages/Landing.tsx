@@ -498,64 +498,59 @@ const Landing = () => {
                   Getting customers is cheap.
                   <br />
                   <span className="text-blue-600">Churn isn&apos;t</span>
-                </h1>
+              </h1>
                 <p className="text-center text-sm sm:text-base md:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed font-normal">
-                  Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
-                </p>
-              </div>
+                Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
+              </p>
+            </div>
 
               <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center pt-2">
-                <Link to="/signup">
-                  <Button
+              <Link to="/signup">
+                <Button
                     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                    onMouseEnter={() => setIsHovering(true)}
-                    onMouseLeave={() => setIsHovering(false)}
-                  >
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                >
                     Try now for free
-                  </Button>
-                </Link>
+                </Button>
+              </Link>
                 <a href="#pricing">
                   <Button
-                    variant="outline"
+                variant="outline"
                     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
-                  >
+              >
                     View pricing
                   </Button>
                 </a>
-              </div>
+            </div>
 
-              {/* Supporting Text */}
-              <p className="text-center text-xs sm:text-sm text-gray-500 pt-1" id="credit-text">
-                No credit card required • Get free credit for testing
-              </p>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-4 sm:pt-6 md:pt-8">
+            {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-0 sm:pt-1 md:pt-2">
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">50+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Active Businesses</div>
-                </div>
+              </div>
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">1M+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Messages Sent</div>
-                </div>
+              </div>
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">98%</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Delivery Rate</div>
-                </div>
               </div>
+            </div>
 
               {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
-              <div className="flex flex-row items-center justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 pt-0 w-full hidden lg:flex">
+              <div className="flex flex-row items-center justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex">
                 {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95">
+                <div className="relative w-[700px] sm:w-[750px] md:w-[800px] lg:w-[850px] h-auto opacity-95 -mr-8 sm:-mr-12 md:-mr-16 lg:-mr-24">
                   {/* Mobile Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
                     style={{
                       top: '7%',
                       left: '20%',
-                      right: '18%',
+                      right: '20%',
                       bottom: '7%',
                       borderRadius: '0.8rem',
                     }}
@@ -584,18 +579,18 @@ const Landing = () => {
                       filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
                     }}
                   />
-                </div>
+          </div>
 
                 {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-                <div className="relative w-[1100px] sm:w-[1200px] md:w-[1300px] lg:w-[1400px] xl:w-[1500px] h-auto opacity-95">
+                <div className="relative w-[1500px] sm:w-[1600px] md:w-[1700px] lg:w-[1800px] xl:w-[1900px] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14">
                   {/* Desktop Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
                     style={{
                       top: '17%',
                       left: '6.7%',
-                      right: '6.7%',
-                      bottom: '10%',
+                      right: '7%',
+                      bottom: '4%',
                       borderRadius: '0.5rem',
                     }}
                   >
@@ -626,7 +621,7 @@ const Landing = () => {
                 </div>
 
                 {/* iPhone with SMS Content */}
-                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95">
+                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24">
                   <img
                     src="/iphone_PNG5735.png"
                     alt="iPhone mockup"
@@ -674,7 +669,7 @@ const Landing = () => {
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
             <div className="flex justify-center lg:hidden order-2 mt-4 sm:mt-6 md:mt-8 w-full">
               <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px]">
-                <SMSAnimation />
+              <SMSAnimation />
               </div>
             </div>
           </div>
