@@ -468,12 +468,12 @@ const Landing = () => {
                 </Button>
               </Link>
               <div className="flex flex-col gap-1">
-                <a href="tel:+255742123456" className="font-semibold text-blue-600">
-                  +255 742 123 456
+                <a href="tel:+255614459923" className="font-semibold text-blue-600">
+                  +255 614 459 923
                 </a>
                 <p className="text-xs text-gray-500">Call us Mon-Fri, 9am-6pm</p>
               </div>
-              <a href="https://wa.me/255742123456" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+              <a href="https://wa.me/255614459923" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
                 <Button variant="outline" className="w-full justify-center gap-2 border-green-500 text-green-600 hover:bg-green-50">
                   <MessageSquare className="w-4 h-4" />
                   WhatsApp
