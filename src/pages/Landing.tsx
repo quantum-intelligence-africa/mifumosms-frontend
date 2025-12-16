@@ -158,12 +158,42 @@ const Landing = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Sliding Background Component - Static blue background without animations
+  // Sliding Background Component - Light blue gradient like Textmagic
   const SlidingBackground = () => {
     return (
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-blue-800/30 to-blue-900/40" />
+      <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
+        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
+          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-full h-full">
+              <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="patternGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
+                  </linearGradient>
+                </defs>
+                {/* Wavy/fluid patterns - more subtle */}
+                <path
+                  d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
+                  fill="url(#patternGradient)"
+                  opacity="0.5"
+                />
+                <path
+                  d="M600,300 Q750,250 900,300 T1200,300 L1200,800 L600,800 Z"
+                  fill="url(#patternGradient)"
+                  opacity="0.4"
+                />
+                <path
+                  d="M400,400 Q600,300 800,400 T1200,400 L1200,800 L400,800 Z"
+                  fill="url(#patternGradient)"
+                  opacity="0.3"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -371,6 +401,10 @@ const Landing = () => {
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
           }
+          .bg-blue-grad.has-image.height-auto.main-section.has-bg-blue {
+            height: 100vh;
+            min-height: 100vh;
+          }
           /* Mobile viewport optimization */
           @media (max-width: 640px) {
             #about {
@@ -387,33 +421,33 @@ const Landing = () => {
       <SlidingBackground />
 
       {/* Header */}
-      <header className="relative z-10 glass border-b border-border-subtle backdrop-blur-md">
+      <header className="relative z-10 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
-              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
+              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-gray-900">
                 Mifumo SMS
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-2 lg:gap-4">
               <div className="hidden sm:flex items-center gap-2 lg:gap-4">
                 <Link to="/login">
-                  <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 hover:bg-white/10 transition-all duration-300">
+                  <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 text-gray-700 hover:bg-gray-100 transition-all duration-300">
                     Login
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all duration-300 shadow-lg hover:shadow-xl">
                     Get Started
                   </Button>
                 </Link>
               </div>
               <Button
                 variant="outline"
-                className="sm:hidden h-9 w-9 px-0 border-white/60 text-white bg-white/10 hover:bg-white/20"
+                className="sm:hidden h-9 w-9 px-0 border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
                 aria-expanded={isMobileMenuOpen}
                 aria-label="Toggle mobile menu"
@@ -424,7 +458,7 @@ const Landing = () => {
           </div>
 
           {isMobileMenuOpen && (
-            <div className="sm:hidden mt-3 rounded-xl border border-white/20 bg-white/90 backdrop-blur shadow-lg p-4 space-y-3 text-sm text-gray-800">
+            <div className="sm:hidden mt-3 rounded-xl border border-gray-200 bg-white shadow-lg p-4 space-y-3 text-sm text-gray-800">
               <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
                 <Button variant="ghost" className="w-full justify-start text-sm">
                   Login
@@ -454,70 +488,192 @@ const Landing = () => {
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3 md:gap-5 lg:gap-12 items-center w-full">
-          {/* Text Content */}
-          <div className="text-left lg:col-span-1 w-full space-y-2 sm:space-y-2.5 md:space-y-4 lg:space-y-8 max-w-3xl lg:max-w-4xl mx-auto lg:mx-0">
-            {/* Badge */}
-            <div className="flex justify-center lg:justify-start">
-              {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span>Trusted by 1000+ African Businesses</span>
-              </div> */}
-            </div>
+        <div className="max-w-7xl mx-auto w-full relative">
+          {/* Content - Centered like Textmagic */}
+          <div className="relative z-10 w-full flex flex-col items-center">
+            {/* Text Content - Centered */}
+            <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
+              <div className="space-y-3 sm:space-y-4 md:space-y-5">
+                <h1 className="font-heading text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                  Getting customers is cheap.
+                  <br />
+                  <span className="text-blue-600">Churn isn&apos;t</span>
+                </h1>
+                <p className="text-center text-sm sm:text-base md:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed font-normal">
+                  Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
+                </p>
+              </div>
 
-            <div className="space-y-1.5 sm:space-y-2 md:space-y-3 lg:space-y-6">
-              <h1 className="font-heading text-left text-xl sm:text-2xl md:text-3xl lg:text-5xl xl:text-5xl font-bold text-white leading-[1.2] sm:leading-tight animate-fade-in-up max-w-4xl">
-                Getting customers is cheap,
-                <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent animate-pulse mt-0.5 sm:mt-1">
-                  Churn isn&apos;t
-                </span>
-              </h1>
-              <p className="text-left text-xs sm:text-sm md:text-base lg:text-xl xl:text-xl text-white/90 max-w-4xl leading-snug sm:leading-relaxed font-light animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-                Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
+              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center pt-2">
+                <Link to="/signup">
+                  <Button
+                    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    onMouseEnter={() => setIsHovering(true)}
+                    onMouseLeave={() => setIsHovering(false)}
+                  >
+                    Try now for free
+                  </Button>
+                </Link>
+                <a href="#pricing">
+                  <Button
+                    variant="outline"
+                    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+                  >
+                    View pricing
+                  </Button>
+                </a>
+              </div>
+
+              {/* Supporting Text */}
+              <p className="text-center text-xs sm:text-sm text-gray-500 pt-1" id="credit-text">
+                No credit card required • Get free credit for testing
               </p>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-4 sm:pt-6 md:pt-8">
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">50+</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Active Businesses</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">1M+</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Messages Sent</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">98%</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Delivery Rate</div>
+                </div>
+              </div>
+
+              {/* Device Mockups Container - Positioned below stats, arranged straight beside each other */}
+              <div className="flex flex-row items-center justify-center gap-4 sm:gap-6 md:gap-8 lg:gap-12 pt-8 sm:pt-10 md:pt-12 lg:pt-16 w-full hidden lg:flex">
+                {/* Mobile Phone with Mobile Cover Image */}
+                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto opacity-95">
+                  {/* Mobile Cover Image - Behind the mockup, visible through screen */}
+                  <div
+                    className="absolute z-0 overflow-hidden"
+                    style={{
+                      top: '7%',
+                      left: '20%',
+                      right: '18%',
+                      bottom: '7%',
+                      borderRadius: '0.8rem',
+                    }}
+                  >
+                    <img
+                      src="/mobile cover.png"
+                      alt="Mobile app screen"
+                      className="w-full h-full"
+                      style={{
+                        borderRadius: '0.8rem',
+                        objectFit: 'cover',
+                        objectPosition: 'top',
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                      }}
+                    />
+                  </div>
+                  {/* Mobile Mockup Frame - On top of the cover */}
+                  <img
+                    src="/mobile 1.webp"
+                    alt="Mobile mockup"
+                    className="relative z-10 w-full h-auto object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                    }}
+                  />
+                </div>
+
+                {/* Desktop Monitor with Desktop Cover Image */}
+                <div className="relative w-[600px] sm:w-[650px] md:w-[700px] lg:w-[750px] h-auto opacity-95">
+                  {/* Desktop Cover Image - Behind the mockup, visible through screen */}
+                  <div
+                    className="absolute z-0 overflow-hidden"
+                    style={{
+                      top: '17%',
+                      left: '6.7%',
+                      right: '6.7%',
+                      bottom: '10%',
+                      borderRadius: '0.5rem',
+                    }}
+                  >
+                    <img
+                      src="/desktop cover.png"
+                      alt="Desktop app screen"
+                      className="w-full h-full"
+                      style={{
+                        borderRadius: '0.5rem',
+                        objectFit: 'contain',
+                        objectPosition: 'top center',
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                      }}
+                    />
+                  </div>
+                  {/* Desktop Mockup Frame - On top of the cover */}
+                  <img
+                    src="/desktop.png"
+                    alt="Desktop mockup"
+                    className="relative z-10 w-full h-auto object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                    }}
+                  />
+                </div>
+
+                {/* iPhone with SMS Content */}
+                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto opacity-95">
+                  <img
+                    src="/iphone_PNG5735.png"
+                    alt="iPhone mockup"
+                    className="w-full h-auto object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                    }}
+                  />
+                  {/* SMS Content Overlay for iPhone */}
+                  <div
+                    className="absolute z-10 overflow-hidden bg-white flex flex-col"
+                    style={{
+                      top: '16%',
+                      left: '15.5%',
+                      right: '16%',
+                      bottom: '18.5%',
+                      borderRadius: '0.6rem',
+                    }}
+                  >
+                    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                      <div className="bg-white border-b border-gray-200 px-2 py-1.5 flex items-center gap-1.5 flex-shrink-0">
+                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MessageSquare className="w-2 h-2 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-gray-900 font-semibold text-[8px] truncate">{currentBusinessData.sender}</h3>
+                        </div>
+                      </div>
+                      <div className="flex-1 p-1.5 space-y-1 overflow-y-auto bg-gray-50">
+                        {currentBusinessData.messages.slice(0, 3).map((msg, index) => (
+                          <div key={index} className="flex justify-start">
+                            <div className="max-w-[88%] bg-white border border-gray-200 rounded-lg px-2 py-1 shadow-sm">
+                              <p className="text-gray-900 text-[8px] leading-tight">{msg.text}</p>
+                              <p className="text-gray-400 text-[7px] mt-0.5">{msg.time}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:gap-6 justify-center lg:justify-start pt-1 sm:pt-1.5">
-              <Link to="/signup">
-                <Button
-                  className="text-xs sm:text-sm lg:text-base h-7 sm:h-8 md:h-9 lg:h-12 px-3 sm:px-4 lg:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                >
-                  Start Free Trial
-                  <ArrowRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-1.5 transition-transform duration-300 ${isHovering ? 'translate-x-1' : ''}`} />
-                </Button>
-              </Link>
-              {/* <Button
-                variant="outline"
-                className="text-xs sm:text-sm lg:text-base h-8 sm:h-10 lg:h-12 px-3 sm:px-4 lg:px-6 border-2 border-white/80 text-white bg-white/10 hover:bg-white/20 hover:border-white backdrop-blur-md transition-all duration-300 hover:scale-105 group shadow-lg"
-              >
-                <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 group-hover:scale-110 transition-transform duration-300" />
-                Watch Demo
-              </Button> */}
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 lg:gap-8 pt-1.5 sm:pt-2 md:pt-3 lg:pt-5">
-              <div className="text-left">
-                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">50+</div>
-                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Active Businesses</div>
+            {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
+            <div className="flex justify-center lg:hidden order-2 mt-4 sm:mt-6 md:mt-8 w-full">
+              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px]">
+                <SMSAnimation />
               </div>
-              <div className="text-left">
-                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">1M+</div>
-                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Messages Sent</div>
-              </div>
-              <div className="text-left">
-                <div className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-white">98%</div>
-                <div className="text-[10px] sm:text-xs md:text-sm lg:text-lg text-white/70 leading-tight">Delivery Rate</div>
-              </div>
-            </div>
-          </div>
-
-          {/* SMS Animation - Visible on all devices including mobile */}
-          <div className="flex justify-center lg:justify-end order-2 lg:order-2 mt-2 sm:mt-3 md:mt-4 lg:mt-0 w-full">
-            <div className="lg:transform lg:hover:scale-105 lg:transition-transform lg:duration-500 animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 lg:scale-100 relative z-10 w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[420px]">
-              <SMSAnimation />
             </div>
           </div>
         </div>
