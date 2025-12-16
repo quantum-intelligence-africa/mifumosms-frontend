@@ -545,10 +545,10 @@ const Landing = () => {
                 </div>
               </div>
 
-              {/* Device Mockups Container - Positioned below stats, arranged straight beside each other */}
-              <div className="flex flex-row items-center justify-center gap-4 sm:gap-6 md:gap-8 lg:gap-12 pt-8 sm:pt-10 md:pt-12 lg:pt-16 w-full hidden lg:flex">
+              {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
+              <div className="flex flex-row items-center justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 pt-0 w-full hidden lg:flex">
                 {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto opacity-95">
+                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95">
                   {/* Mobile Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -571,6 +571,7 @@ const Landing = () => {
                         display: 'block',
                         width: '100%',
                         height: '100%',
+                        imageRendering: 'crisp-edges',
                       }}
                     />
                   </div>
@@ -585,8 +586,8 @@ const Landing = () => {
                   />
                 </div>
 
-                {/* Desktop Monitor with Desktop Cover Image */}
-                <div className="relative w-[600px] sm:w-[650px] md:w-[700px] lg:w-[750px] h-auto opacity-95">
+                {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
+                <div className="relative w-[1100px] sm:w-[1200px] md:w-[1300px] lg:w-[1400px] xl:w-[1500px] h-auto opacity-95">
                   {/* Desktop Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -609,6 +610,7 @@ const Landing = () => {
                         display: 'block',
                         width: '100%',
                         height: '100%',
+                        imageRendering: 'crisp-edges',
                       }}
                     />
                   </div>
@@ -624,7 +626,7 @@ const Landing = () => {
                 </div>
 
                 {/* iPhone with SMS Content */}
-                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto opacity-95">
+                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95">
                   <img
                     src="/iphone_PNG5735.png"
                     alt="iPhone mockup"
