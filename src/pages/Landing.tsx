@@ -202,7 +202,7 @@ const Landing = () => {
   // SMS Animation Component with navigation buttons
   const SMSAnimation = () => {
     return (
-      <div className="relative w-full max-w-[320px] mx-auto sm:max-w-[360px] md:max-w-[400px] lg:max-w-[420px]">
+      <div className="relative w-full max-w-[400px] mx-auto sm:max-w-[450px] md:max-w-[500px] lg:max-w-[550px]">
         {/* Navigation Button - Left */}
         <button
           onClick={goToPreviousBusiness}
@@ -373,7 +373,7 @@ const Landing = () => {
   // Testimonials section removed
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-visible">
       {/* Custom CSS */}
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -485,10 +485,10 @@ const Landing = () => {
       </header>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">
-        <div className="max-w-7xl mx-auto w-full relative">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10 overflow-visible">
+        <div className="w-full relative overflow-visible">
           {/* Content - Centered like Textmagic */}
-          <div className="relative z-10 w-full flex flex-col items-center">
+          <div className="relative z-10 w-full flex flex-col items-center overflow-visible">
             {/* Text Content - Centered */}
             <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
@@ -509,7 +509,7 @@ const Landing = () => {
                   onMouseEnter={() => setIsHovering(true)}
                   onMouseLeave={() => setIsHovering(false)}
                 >
-                    Try now for free
+                    Get started
                 </Button>
               </Link>
                 <a href="#pricing">
@@ -539,9 +539,9 @@ const Landing = () => {
             </div>
 
               {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
-              <div className="flex flex-row items-center justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex">
+              <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative" style={{ width: '100vw', left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw' }}>
                 {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[700px] sm:w-[750px] md:w-[800px] lg:w-[850px] h-auto opacity-95 -mr-8 sm:-mr-12 md:-mr-16 lg:-mr-24">
+                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] h-auto opacity-95 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32">
                   {/* Mobile Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -580,7 +580,7 @@ const Landing = () => {
           </div>
 
                 {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-                <div className="relative w-[1500px] sm:w-[1600px] md:w-[1700px] lg:w-[1800px] xl:w-[1900px] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14">
+                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14">
                   {/* Desktop Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -619,7 +619,7 @@ const Landing = () => {
                 </div>
 
                 {/* iPhone with SMS Content */}
-                <div className="relative w-[450px] sm:w-[500px] md:w-[550px] lg:w-[600px] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24">
+                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24">
                   <img
                     src="/iphone_PNG5735.png"
                     alt="iPhone mockup"
@@ -640,20 +640,20 @@ const Landing = () => {
                     }}
                   >
                     <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                      <div className="bg-white border-b border-gray-200 px-2 py-1.5 flex items-center gap-1.5 flex-shrink-0">
-                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="w-2 h-2 text-white" />
+                      <div className="bg-white border-b border-gray-200 px-1 py-0.5 flex items-center gap-0.5 flex-shrink-0">
+                        <div className="w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MessageSquare className="w-1.5 h-1.5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-gray-900 font-semibold text-[8px] truncate">{currentBusinessData.sender}</h3>
                         </div>
                       </div>
-                      <div className="flex-1 p-1.5 space-y-1 overflow-y-auto bg-gray-50">
+                      <div className="flex-1 p-1 space-y-0.5 overflow-y-auto bg-gray-50">
                         {currentBusinessData.messages.slice(0, 3).map((msg, index) => (
                           <div key={index} className="flex justify-start">
-                            <div className="max-w-[88%] bg-white border border-gray-200 rounded-lg px-2 py-1 shadow-sm">
+                            <div className="max-w-[88%] bg-white border border-gray-200 rounded px-1 py-0.5 shadow-sm">
                               <p className="text-gray-900 text-[8px] leading-tight">{msg.text}</p>
-                              <p className="text-gray-400 text-[7px] mt-0.5">{msg.time}</p>
+                              <p className="text-gray-400 text-[6px] mt-0.5">{msg.time}</p>
                             </div>
                           </div>
                         ))}
@@ -666,7 +666,7 @@ const Landing = () => {
 
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
             <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full">
-              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[380px] sm:max-w-[420px] md:max-w-[460px]">
+              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px]">
               <SMSAnimation />
               </div>
             </div>
