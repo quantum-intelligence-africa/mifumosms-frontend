@@ -36,6 +36,28 @@ const Landing = () => {
     document.documentElement.setAttribute('data-theme', 'light');
   }, []);
 
+  // Preload critical images to ensure they're available
+  useEffect(() => {
+    const imageUrls = [
+      '/mobile cover.png',
+      '/mobile 1.webp',
+      '/desktop cover.png',
+      '/desktop.png',
+      '/iphone_PNG5735.png'
+    ];
+
+    imageUrls.forEach((url) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        console.log(`Successfully preloaded: ${url}`);
+      };
+      img.onerror = () => {
+        console.error(`Failed to preload image: ${url}`);
+      };
+    });
+  }, []);
+
   // Check if user is authenticated by checking localStorage
   const isAuthenticated = !!localStorage.getItem('access_token');
   const user = null; // We don't need user data on the landing page
@@ -230,6 +252,11 @@ const Landing = () => {
               src="/iphone_PNG5735.png"
               alt="iPhone mockup"
               className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
+              loading="eager"
+              onError={(e) => {
+                console.error('Failed to load iPhone mockup image in SMSAnimation');
+                e.currentTarget.style.display = 'none';
+              }}
               style={{ filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.5))' }}
             />
 
@@ -546,22 +573,28 @@ const Landing = () => {
               {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
               <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative">
                 {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-95 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
+                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-100 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
                   {/* Mobile Cover Image - Behind the mockup, visible through screen */}
                   <div
-                    className="absolute z-0 overflow-hidden"
+                    className="absolute z-[1] overflow-hidden"
                     style={{
                       top: '7%',
                       left: '20%',
                       right: '20%',
                       bottom: '7%',
                       borderRadius: '0.8rem',
+                      zIndex: 1,
                     }}
                   >
                     <img
                       src="/mobile cover.png"
                       alt="Mobile app screen"
                       className="w-full h-full"
+                      loading="eager"
+                      onError={(e) => {
+                        console.error('Failed to load mobile cover image');
+                        e.currentTarget.style.display = 'none';
+                      }}
                       style={{
                         borderRadius: '0.8rem',
                         objectFit: 'cover',
@@ -577,30 +610,43 @@ const Landing = () => {
                   <img
                     src="/mobile 1.webp"
                     alt="Mobile mockup"
-                    className="relative z-10 w-full h-auto object-contain"
+                    className="relative z-[2] w-full h-auto object-contain"
+                    loading="eager"
+                    onError={(e) => {
+                      console.error('Failed to load mobile mockup image');
+                      e.currentTarget.style.display = 'none';
+                    }}
                     style={{
                       filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                      zIndex: 2,
+                      position: 'relative',
                     }}
                   />
           </div>
 
                 {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
+                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-100 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
                   {/* Desktop Cover Image - Behind the mockup, visible through screen */}
                   <div
-                    className="absolute z-0 overflow-hidden"
+                    className="absolute z-[1] overflow-hidden"
                     style={{
                       top: '17%',
                       left: '6.7%',
                       right: '7%',
                       bottom: '4%',
                       borderRadius: '0.5rem',
+                      zIndex: 1,
                     }}
                   >
                     <img
                       src="/desktop cover.png"
                       alt="Desktop app screen"
                       className="w-full h-full"
+                      loading="eager"
+                      onError={(e) => {
+                        console.error('Failed to load desktop cover image');
+                        e.currentTarget.style.display = 'none';
+                      }}
                       style={{
                         borderRadius: '0.5rem',
                         objectFit: 'contain',
@@ -616,32 +662,47 @@ const Landing = () => {
                   <img
                     src="/desktop.png"
                     alt="Desktop mockup"
-                    className="relative z-10 w-full h-auto object-contain"
+                    className="relative z-[2] w-full h-auto object-contain"
+                    loading="eager"
+                    onError={(e) => {
+                      console.error('Failed to load desktop mockup image');
+                      e.currentTarget.style.display = 'none';
+                    }}
                     style={{
                       filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                      zIndex: 2,
+                      position: 'relative',
                     }}
                   />
                 </div>
 
                 {/* iPhone with SMS Content */}
-                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
+                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-100 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
                   <img
                     src="/iphone_PNG5735.png"
                     alt="iPhone mockup"
-                    className="w-full h-auto object-contain"
+                    className="w-full h-auto object-contain relative z-[1]"
+                    loading="eager"
+                    onError={(e) => {
+                      console.error('Failed to load iPhone mockup image');
+                      e.currentTarget.style.display = 'none';
+                    }}
                     style={{
                       filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                      zIndex: 1,
+                      position: 'relative',
                     }}
                   />
                   {/* SMS Content Overlay for iPhone */}
                   <div
-                    className="absolute z-10 overflow-hidden bg-white flex flex-col"
+                    className="absolute z-[2] overflow-hidden bg-white flex flex-col"
                     style={{
                       top: '16%',
                       left: '15.5%',
                       right: '16%',
                       bottom: '18.5%',
                       borderRadius: '0.6rem',
+                      zIndex: 2,
                     }}
                   >
                     <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
