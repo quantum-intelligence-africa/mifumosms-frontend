@@ -373,7 +373,7 @@ const Landing = () => {
   // Testimonials section removed
 
   return (
-    <div className="min-h-screen bg-background relative overflow-visible">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
       {/* Custom CSS */}
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -411,6 +411,11 @@ const Landing = () => {
               padding-top: env(safe-area-inset-top, 0.5rem);
               padding-bottom: env(safe-area-inset-bottom, 0.75rem);
             }
+          }
+          /* Prevent horizontal scrolling */
+          body, html {
+            overflow-x: hidden;
+            max-width: 100%;
           }
         `
       }} />
@@ -485,10 +490,10 @@ const Landing = () => {
       </header>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10 overflow-visible">
-        <div className="w-full relative overflow-visible">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">
+        <div className="w-full relative">
           {/* Content - Centered like Textmagic */}
-          <div className="relative z-10 w-full flex flex-col items-center overflow-visible">
+          <div className="relative z-10 w-full flex flex-col items-center">
             {/* Text Content - Centered */}
             <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
@@ -539,9 +544,9 @@ const Landing = () => {
             </div>
 
               {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
-              <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative" style={{ width: '100vw', left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw' }}>
+              <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative">
                 {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] h-auto opacity-95 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32">
+                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-95 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
                   {/* Mobile Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -580,7 +585,7 @@ const Landing = () => {
           </div>
 
                 {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14">
+                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-95 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
                   {/* Desktop Cover Image - Behind the mockup, visible through screen */}
                   <div
                     className="absolute z-0 overflow-hidden"
@@ -619,7 +624,7 @@ const Landing = () => {
                 </div>
 
                 {/* iPhone with SMS Content */}
-                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24">
+                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-95 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
                   <img
                     src="/iphone_PNG5735.png"
                     alt="iPhone mockup"
@@ -665,8 +670,8 @@ const Landing = () => {
             </div>
 
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
-            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full">
-              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px]">
+            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full overflow-x-hidden">
+              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden">
               <SMSAnimation />
               </div>
             </div>
