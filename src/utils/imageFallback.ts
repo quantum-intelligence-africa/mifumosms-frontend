@@ -58,21 +58,40 @@ const imageFallbacks: Record<string, string> = {
 };
 
 /**
+ * Encodes image path to handle spaces and special characters for server compatibility
+ * @param path - The image path (e.g., "/mobile cover.png")
+ * @returns The properly encoded path
+ */
+export const encodeImagePath = (path: string): string => {
+  // Split path into parts
+  const parts = path.split('/').filter(Boolean);
+
+  if (parts.length === 0) return path;
+
+  // Encode each part separately (preserves directory structure)
+  const encodedParts = parts.map(part => encodeURIComponent(part));
+
+  // Reconstruct path with leading slash
+  return '/' + encodedParts.join('/');
+};
+
+/**
  * Gets the appropriate image source based on WebP support
  * @param webpSrc - The WebP image source
  * @param fallbackSrc - Optional explicit fallback (overrides automatic mapping)
- * @returns The appropriate image source
+ * @returns The appropriately encoded image source
  */
 export const getImageSrc = (webpSrc: string, fallbackSrc?: string): string => {
   const fallback = fallbackSrc || imageFallbacks[webpSrc];
 
   if (!fallback) {
-    // No fallback available, return original (might still work in some cases)
-    return webpSrc;
+    // No fallback available, return encoded original
+    return encodeImagePath(webpSrc);
   }
 
-  // Use WebP if supported, otherwise use fallback
-  return supportsWebP() ? webpSrc : fallback;
+  // Use WebP if supported, otherwise use fallback - both encoded
+  const src = supportsWebP() ? webpSrc : fallback;
+  return encodeImagePath(src);
 };
 
 /**

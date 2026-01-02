@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { getImageSrc } from "@/utils/imageFallback";
+import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
 
 const Landing = () => {
   // Force light theme on marketing surfaces
@@ -40,11 +40,11 @@ const Landing = () => {
   // Preload critical images to ensure they're available
   useEffect(() => {
     const imageUrls = [
-      '/mobile cover.png',
+      encodeImagePath('/mobile cover.png'),
       getImageSrc('/mobile 1.webp', '/mobile2.png'),
-      '/desktop cover.png',
-      '/desktop.png',
-      '/iphone_PNG5735.png'
+      encodeImagePath('/desktop cover.png'),
+      encodeImagePath('/desktop.png'),
+      encodeImagePath('/iphone_PNG5735.png')
     ];
 
     imageUrls.forEach((url) => {
@@ -250,7 +250,7 @@ const Landing = () => {
           <div className="relative w-full h-auto">
             {/* iPhone PNG Background - Transparent frame */}
             <img
-              src="/iphone_PNG5735.png"
+              src={encodeImagePath('/iphone_PNG5735.png')}
               alt="iPhone mockup"
               className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
               loading="eager"
@@ -588,7 +588,7 @@ const Landing = () => {
                     }}
                   >
                     <img
-                      src="/mobile cover.png"
+                      src={encodeImagePath('/mobile cover.png')}
                       alt="Mobile app screen"
                       className="w-full h-full"
                       loading="eager"
@@ -640,7 +640,7 @@ const Landing = () => {
                     }}
                   >
                     <img
-                      src="/desktop cover.png"
+                      src={encodeImagePath('/desktop cover.png')}
                       alt="Desktop app screen"
                       className="w-full h-full"
                       loading="eager"
@@ -661,7 +661,7 @@ const Landing = () => {
                   </div>
                   {/* Desktop Mockup Frame - On top of the cover */}
                   <img
-                    src="/desktop.png"
+                    src={encodeImagePath('/desktop.png')}
                     alt="Desktop mockup"
                     className="relative z-[2] w-full h-auto object-contain"
                     loading="eager"
@@ -680,7 +680,7 @@ const Landing = () => {
                 {/* iPhone with SMS Content */}
                 <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-100 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
                   <img
-                    src="/iphone_PNG5735.png"
+                    src={encodeImagePath('/iphone_PNG5735.png')}
                     alt="iPhone mockup"
                     className="w-full h-auto object-contain relative z-[1]"
                     loading="eager"

@@ -1,15 +1,6 @@
 # Netlify redirects for SPA (Single Page Application)
+# Netlify automatically serves static files that exist, so we only need to redirect non-existent routes
 # This ensures all routes are handled by index.html for client-side routing
 
-# Handle all routes by serving index.html
+# Handle all routes by serving index.html (static files are served automatically if they exist)
 /*    /index.html   200
-
-# Optional: Handle API calls if you have a backend
-# /api/*  https://your-backend-api.com/api/:splat  200
-
-# Optional: Handle specific file types that should not be redirected
-# *.js    /assets/:splat  200
-# *.css   /assets/:splat  200
-# *.png   /assets/:splat  200
-# *.jpg   /assets/:splat  200
-# *.svg   /assets/:splat  200
