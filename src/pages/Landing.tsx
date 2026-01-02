@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { getImageSrc } from "@/utils/imageFallback";
 
 const Landing = () => {
   // Force light theme on marketing surfaces
@@ -40,7 +41,7 @@ const Landing = () => {
   useEffect(() => {
     const imageUrls = [
       '/mobile cover.png',
-      '/mobile 1.webp',
+      getImageSrc('/mobile 1.webp', '/mobile2.png'),
       '/desktop cover.png',
       '/desktop.png',
       '/iphone_PNG5735.png'
@@ -608,7 +609,7 @@ const Landing = () => {
                   </div>
                   {/* Mobile Mockup Frame - On top of the cover */}
                   <img
-                    src="/mobile 1.webp"
+                    src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
                     alt="Mobile mockup"
                     className="relative z-[2] w-full h-auto object-contain"
                     loading="eager"
