@@ -216,6 +216,12 @@ export const API_CONFIG = {
 				PAYMENT_HISTORY: (tenantId: string) => `/integration/v1/partner/tenants/${tenantId}/payments/history/`,
 				CALCULATE_PRICING: '/integration/v1/partner/pricing/calculate/',
 			},
+			PERTINA: {
+				TENANT_BALANCE: (tenantId: string) => `/integration/v1/pertina/tenants/${tenantId}/balance/`,
+				ALL_BALANCE: '/integration/v1/pertina/balance/',
+				TENANT_USAGE: (tenantId: string) => `/integration/v1/pertina/tenants/${tenantId}/usage/`,
+				ALL_USAGE: '/integration/v1/pertina/usage/',
+			},
 		},
 		NOTIFICATIONS: {
 			BASE: '/notifications/',

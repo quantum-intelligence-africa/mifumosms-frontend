@@ -2338,6 +2338,23 @@ class ApiClient {
     });
   }
 
+  // Pertina Integration Endpoints
+  async pertinaGetTenantBalance(tenantId: string): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_BALANCE(tenantId));
+  }
+
+  async pertinaGetAllBalance(): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_BALANCE);
+  }
+
+  async pertinaGetTenantUsage(tenantId: string): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_USAGE(tenantId));
+  }
+
+  async pertinaGetAllUsage(): Promise<ApiResponse<any>> {
+    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_USAGE);
+  }
+
   // =============================================
   // PAYMENT MANAGEMENT ENDPOINTS - Updated to match backend API
   // =============================================

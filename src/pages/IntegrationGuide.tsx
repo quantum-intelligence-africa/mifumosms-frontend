@@ -66,6 +66,30 @@ const curlExamples = [
     command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/sms/balance/" \\
 -H "Authorization: Bearer YOUR_API_KEY"`,
   },
+  {
+    title: "Get Credit Balance (Single Tenant)",
+    description: "Get credit balance for a specific tenant using Pertina integration.",
+    command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/{tenant_id}/balance/" \\
+-H "Authorization: Bearer YOUR_API_KEY"`,
+  },
+  {
+    title: "Get Credit Balance (All Clients)",
+    description: "Get credit balance for all clients using Pertina integration.",
+    command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/balance/" \\
+-H "Authorization: Bearer YOUR_API_KEY"`,
+  },
+  {
+    title: "Get SMS Usage by User (Single Tenant)",
+    description: "Get SMS usage statistics for a specific tenant.",
+    command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/{tenant_id}/usage/" \\
+-H "Authorization: Bearer YOUR_API_KEY"`,
+  },
+  {
+    title: "Get SMS Usage by User (All Tenants)",
+    description: "Get SMS usage statistics for all tenants.",
+    command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/usage/" \\
+-H "Authorization: Bearer YOUR_API_KEY"`,
+  },
 ];
 
 const integrationEndpoints = [
@@ -99,6 +123,15 @@ const integrationEndpoints = [
       { path: "/partner/tenants/{tenant_id}/payments/custom/{purchase_id}/status/", method: "GET", description: "Check custom payment status." },
       { path: "/partner/tenants/{tenant_id}/payments/history/", method: "GET", description: "Fetch payment history with status filters." },
       { path: "/partner/pricing/calculate/", method: "POST", description: "Price calculator using tiered pricing." },
+    ],
+  },
+  {
+    category: "Pertina Integration",
+    endpoints: [
+      { path: "/pertina/tenants/{tenant_id}/balance/", method: "GET", description: "Get credit balance for a specific tenant." },
+      { path: "/pertina/balance/", method: "GET", description: "Get credit balance for all clients." },
+      { path: "/pertina/tenants/{tenant_id}/usage/", method: "GET", description: "Get SMS usage statistics for a specific tenant." },
+      { path: "/pertina/usage/", method: "GET", description: "Get SMS usage statistics for all tenants." },
     ],
   },
 ];
@@ -399,7 +432,7 @@ const IntegrationGuide = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Zap className="w-4 h-4" />
-                  Quick Start Requests
+                  Quick Start Requests (cURL)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -412,6 +445,92 @@ const IntegrationGuide = () => {
                     <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{example.command}</pre>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Code className="w-4 h-4" />
+                  Python Examples - Pertina Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <p className="font-medium text-sm">Get Credit Balance (Single Tenant)</p>
+                    <span className="text-xs text-text-subtle">Get balance for a specific tenant</span>
+                  </div>
+                  <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/e35bb90d-d67b-4e97-aa00-d983c2d282d9/balance/"
+
+payload = {}
+headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.text)`}</pre>
+                </div>
+
+                <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <p className="font-medium text-sm">Get Credit Balance (All Clients)</p>
+                    <span className="text-xs text-text-subtle">Get balance for all clients</span>
+                  </div>
+                  <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/balance/"
+
+payload = {}
+headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.text)`}</pre>
+                </div>
+
+                <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <p className="font-medium text-sm">Get SMS Usage by User (Single Tenant)</p>
+                    <span className="text-xs text-text-subtle">Get usage statistics for a specific tenant</span>
+                  </div>
+                  <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/e35bb90d-d67b-4e97-aa00-d983c2d282d9/usage/"
+
+payload = {}
+headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.text)`}</pre>
+                </div>
+
+                <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <p className="font-medium text-sm">Get SMS Usage by User (All Tenants)</p>
+                    <span className="text-xs text-text-subtle">Get usage statistics for all tenants</span>
+                  </div>
+                  <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/usage/"
+
+payload = {}
+headers = {
+  'Authorization': 'Bearer YOUR_API_KEY'
+}
+
+response = requests.request("GET", url, headers=headers, data=payload)
+
+print(response.text)`}</pre>
+                </div>
               </CardContent>
             </Card>
 
