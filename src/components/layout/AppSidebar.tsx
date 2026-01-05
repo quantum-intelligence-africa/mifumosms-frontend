@@ -16,6 +16,7 @@ import {
   X,
   LogOut,
   BookOpen,
+  Server,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     // { name: "Templates", href: "/templates", icon: FileText },
     // { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Integration Guide", href: "/integration-guide", icon: BookOpen },
+    { name: "Pertina Reference", href: "/pertina-integration", icon: Server },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 

@@ -26,6 +26,7 @@ import PurchaseSMS from "./pages/sms/PurchaseSMS";
 import SenderNames from "./pages/sms/SenderNames";
 import PurchaseHistory from "./pages/sms/PurchaseHistory";
 import IntegrationGuide from "./pages/IntegrationGuide";
+import PertinaIntegration from "./pages/PertinaIntegration";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -87,6 +88,11 @@ const App = () => (
             <Route path="/integration-guide" element={
               <ProtectedRoute>
                 <IntegrationGuide />
+              </ProtectedRoute>
+            } />
+            <Route path="/pertina-integration" element={
+              <ProtectedRoute>
+                <PertinaIntegration />
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={
