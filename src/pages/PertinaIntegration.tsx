@@ -183,48 +183,48 @@ const PertinaIntegration = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 text-sm">
-          <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-5 text-sm text-foreground">
+          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5">
             <div>
               <h1 className="font-heading text-xl sm:text-2xl font-bold">Pertina Integration Reference</h1>
-              <p className="text-sm text-text-subtle max-w-2xl">
+              <p className="text-sm text-foreground/90 max-w-2xl">
                 Everything you need to wire the Pertina partner endpoints into the dashboard, from API
                 configuration to example requests for credit balance and usage statistics.
               </p>
             </div>
 
-            <Card className="glass">
+            <Card className="glass p-3 sm:p-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="w-4 h-4" />
                   Endpoint Overview
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-text-subtle">
+              <CardContent className="space-y-2">
+                <p className="text-sm text-foreground/90">
                   Pertina endpoints sit under `/integration/v1/pertina` and are protected with the same API key
                   used for sending SMS. Each request expects the standard Authorization header.
                 </p>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
                   {pertinaEndpoints.map((endpoint) => (
-                    <div key={endpoint.path} className="p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-2">
+                    <div key={endpoint.path} className="p-3 sm:p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <Badge variant="outline" className="text-[10px] uppercase">
                           {endpoint.method}
                         </Badge>
-                        <span className="text-[11px] text-text-subtle flex-1 break-all">{endpoint.path}</span>
+                        <span className="text-[11px] text-foreground/80 flex-1 break-all">{endpoint.path}</span>
                       </div>
                       <p className="text-sm font-semibold">{endpoint.title}</p>
-                      <p className="text-xs text-text-subtle">{endpoint.description}</p>
+                      <p className="text-xs text-foreground/80">{endpoint.description}</p>
                       {endpoint.parameters && (
-                        <ul className="text-[11px] text-text-subtle list-disc list-inside space-y-0.5">
+                        <ul className="text-[11px] text-foreground/80 list-disc list-inside space-y-0.5">
                           {endpoint.parameters.map((param) => (
                             <li key={param}>{param}</li>
                           ))}
                         </ul>
                       )}
                       <div>
-                        <p className="text-[11px] font-semibold uppercase text-text-subtle mb-1">Sample response</p>
+                        <p className="text-[11px] font-semibold uppercase text-foreground/80 mb-1">Sample response</p>
                         <pre className="text-[10px] font-mono whitespace-pre-wrap bg-background p-2 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
                       </div>
                     </div>
@@ -233,15 +233,15 @@ const PertinaIntegration = () => {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card className="glass">
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Card className="glass p-3 sm:p-4 overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Server className="w-4 h-4" />
                     Configuration Checklist
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-text-subtle">
+                <CardContent className="space-y-1 text-sm text-foreground/90">
                   <p>
                     Keep `src/config/api.ts` updated so the client can resolve the Pertina routes referenced by `src/lib/api.ts`.
                     When you add a new Pertina endpoint, register it in the `PERTINA` block below.
@@ -254,15 +254,15 @@ const PertinaIntegration = () => {
                 </CardContent>
               </Card>
 
-              <Card className="glass">
+              <Card className="glass p-3 sm:p-4">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <LinkIcon className="w-4 h-4" />
                     Implementation Steps
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ul className="text-sm text-text-subtle list-disc list-inside space-y-1">
+                <CardContent className="space-y-2">
+                  <ul className="text-sm text-foreground/90 list-disc list-inside space-y-1 break-words">
                     {implementationSteps.map((step) => (
                       <li key={step}>{step}</li>
                     ))}
@@ -271,19 +271,19 @@ const PertinaIntegration = () => {
               </Card>
             </div>
 
-            <Card className="glass">
+            <Card className="glass p-3 sm:p-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
                   Pertina Python Examples
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {pythonExamples.map((example) => (
                   <div key={example.title} className="p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <p className="font-medium text-sm">{example.title}</p>
-                      <span className="text-xs text-text-subtle">{example.description}</span>
+                      <span className="text-xs text-foreground/90">{example.description}</span>
                     </div>
                     <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{example.command}</pre>
                   </div>
@@ -291,14 +291,14 @@ const PertinaIntegration = () => {
               </CardContent>
             </Card>
 
-            <Card className="glass">
+            <Card className="glass p-3 sm:p-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Zap className="w-4 h-4" />
                   Notes
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-text-subtle space-y-2">
+              <CardContent className="text-sm text-foreground/90 space-y-1">
                 <p>Persist the API key in a secure vault and rotate it regularly—Pertina endpoints rely on the same credentials as your SMS sends.</p>
                 <p>Always inspect `response.success` before trusting the data, especially for usage summaries that drive billing.</p>
                 <p>Add pagination query parameters when tenant usage responses grow beyond a page.</p>
