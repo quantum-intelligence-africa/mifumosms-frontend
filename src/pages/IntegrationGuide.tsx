@@ -399,7 +399,7 @@ const IntegrationGuide = () => {
           <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             <div className="space-y-1">
               <h1 className="font-heading text-xl sm:text-2xl font-bold">Mifumo SMS Integration Guide</h1>
-              <p className="text-sm text-text-subtle">
+              <p className="text-sm text-foreground/70">
                 Version 1.3 &middot; Last updated November 15, 2025 &middot; Production-ready.
               </p>
             </div>
@@ -408,16 +408,16 @@ const IntegrationGuide = () => {
               {quickStartSteps.map((step, index) => (
                 <Card key={step.title} className="glass">
                   <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-text-subtle">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-foreground/70">
                       <span>Step {index + 1}</span>
                       <Zap className="w-3 h-3" />
                     </div>
                     <CardTitle className="text-base">{step.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-text-subtle">{step.description}</p>
+                    <p className="text-sm text-foreground/70">{step.description}</p>
                     {step.details && (
-                      <ul className="mt-2 text-xs text-text-subtle space-y-1 list-disc list-inside">
+                      <ul className="mt-2 text-xs text-foreground/70 space-y-1 list-disc list-inside">
                         {step.details.map((detail) => (
                           <li key={detail}>{detail}</li>
                         ))}
@@ -440,7 +440,7 @@ const IntegrationGuide = () => {
                   <div key={example.title} className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <p className="font-medium text-sm">{example.title}</p>
-                      <span className="text-xs text-text-subtle">{example.description}</span>
+                      <span className="text-xs text-foreground/70">{example.description}</span>
                     </div>
                     <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{example.command}</pre>
                   </div>
@@ -459,7 +459,7 @@ const IntegrationGuide = () => {
                 <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <p className="font-medium text-sm">Get Credit Balance (Single Tenant)</p>
-                    <span className="text-xs text-text-subtle">Get balance for a specific tenant</span>
+                    <span className="text-xs text-foreground/70">Get balance for a specific tenant</span>
                   </div>
                   <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
 
@@ -478,7 +478,7 @@ print(response.text)`}</pre>
                 <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <p className="font-medium text-sm">Get Credit Balance (All Clients)</p>
-                    <span className="text-xs text-text-subtle">Get balance for all clients</span>
+                    <span className="text-xs text-foreground/70">Get balance for all clients</span>
                   </div>
                   <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
 
@@ -497,7 +497,7 @@ print(response.text)`}</pre>
                 <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <p className="font-medium text-sm">Get SMS Usage by User (Single Tenant)</p>
-                    <span className="text-xs text-text-subtle">Get usage statistics for a specific tenant</span>
+                    <span className="text-xs text-foreground/70">Get usage statistics for a specific tenant</span>
                   </div>
                   <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
 
@@ -516,7 +516,7 @@ print(response.text)`}</pre>
                 <div className="p-4 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <p className="font-medium text-sm">Get SMS Usage by User (All Tenants)</p>
-                    <span className="text-xs text-text-subtle">Get usage statistics for all tenants</span>
+                    <span className="text-xs text-foreground/70">Get usage statistics for all tenants</span>
                   </div>
                   <pre className="text-xs font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{`import requests
 
@@ -545,7 +545,7 @@ print(response.text)`}</pre>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {baseUrls.map((item) => (
                     <div key={item.label} className="p-3 rounded-lg bg-muted/40 border border-border-subtle">
-                      <p className="text-xs uppercase tracking-wide text-text-subtle">{item.label}</p>
+                      <p className="text-xs uppercase tracking-wide text-foreground/70">{item.label}</p>
                       <code className="text-sm font-mono break-all">{item.value}</code>
                     </div>
                   ))}
@@ -580,7 +580,7 @@ print(response.text)`}</pre>
               <CardContent className="grid gap-3 sm:grid-cols-2">
                 {ownerConfigFields.map((field) => (
                   <div key={field.key} className="p-3 rounded-lg border border-border-subtle bg-muted/30">
-                    <p className="text-xs uppercase tracking-wide text-text-subtle">{field.key}</p>
+                    <p className="text-xs uppercase tracking-wide text-foreground/70">{field.key}</p>
                     <p className="text-sm">{field.note}</p>
                   </div>
                 ))}
@@ -605,10 +605,10 @@ print(response.text)`}</pre>
                         <span className="break-all">{endpoint.path}</span>
                       </div>
                       <p className="text-sm font-semibold">{endpoint.name}</p>
-                      <p className="text-xs text-text-subtle">{endpoint.description}</p>
+                      <p className="text-xs text-foreground/70">{endpoint.description}</p>
                     </div>
                     {endpoint.parameters && (
-                      <ul className="text-xs text-text-subtle list-disc list-inside space-y-1">
+                      <ul className="text-xs text-foreground/70 list-disc list-inside space-y-1">
                         {endpoint.parameters.map((param) => (
                           <li key={param}>{param}</li>
                         ))}
@@ -616,23 +616,23 @@ print(response.text)`}</pre>
                     )}
                     {endpoint.request && (
                       <div>
-                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Request</p>
+                        <p className="text-xs font-semibold uppercase text-foreground/70 mb-1">Request</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.request}</pre>
                       </div>
                     )}
                     {endpoint.response && (
                       <div>
-                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Response</p>
+                        <p className="text-xs font-semibold uppercase text-foreground/70 mb-1">Response</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
                       </div>
                     )}
                     {endpoint.note && (
-                      <p className="text-[11px] text-text-subtle italic">{endpoint.note}</p>
+                      <p className="text-[11px] text-foreground/70 italic">{endpoint.note}</p>
                     )}
                     {endpoint.statusValues && (
                       <div>
-                        <p className="text-[11px] font-semibold text-text-subtle uppercase mb-1">Status Values</p>
-                        <ul className="text-[11px] text-text-subtle list-disc list-inside space-y-0.5">
+                        <p className="text-[11px] font-semibold text-foreground/70 uppercase mb-1">Status Values</p>
+                        <ul className="text-[11px] text-foreground/70 list-disc list-inside space-y-0.5">
                           {endpoint.statusValues.map((status) => (
                             <li key={status}>{status}</li>
                           ))}
@@ -667,7 +667,7 @@ print(response.text)`}</pre>
                             </Badge>
                             <span className="inline-block break-all">{endpoint.path}</span>
                           </div>
-                          <p className="text-xs text-text-subtle">{endpoint.description}</p>
+                          <p className="text-xs text-foreground/70">{endpoint.description}</p>
                         </div>
                       ))}
                     </div>
@@ -697,19 +697,19 @@ print(response.text)`}</pre>
                     </div>
                     {endpoint.request && (
                       <div>
-                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Request</p>
+                        <p className="text-xs font-semibold uppercase text-foreground/70 mb-1">Request</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.request}</pre>
                       </div>
                     )}
                     {endpoint.requestAlt && (
                       <div>
-                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Alternative Request</p>
+                        <p className="text-xs font-semibold uppercase text-foreground/70 mb-1">Alternative Request</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.requestAlt}</pre>
                       </div>
                     )}
                     {endpoint.response && (
                       <div>
-                        <p className="text-xs font-semibold uppercase text-text-subtle mb-1">Response</p>
+                        <p className="text-xs font-semibold uppercase text-foreground/70 mb-1">Response</p>
                         <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
                       </div>
                     )}
@@ -733,7 +733,7 @@ print(response.text)`}</pre>
                         <p className="text-sm font-semibold">{tier.name}</p>
                         {tier.note && <Badge variant="secondary">{tier.note}</Badge>}
                       </div>
-                      <p className="text-xs text-text-subtle">{tier.range}</p>
+                      <p className="text-xs text-foreground/70">{tier.range}</p>
                       <p className="text-sm mt-1">{tier.unitPrice}</p>
                     </div>
                   ))}
@@ -747,7 +747,7 @@ print(response.text)`}</pre>
                     Automatic Tenant Provisioning
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-text-subtle">
+                <CardContent className="space-y-3 text-sm text-foreground/70">
                   <p>
                     Once the owner configures API settings, every tenant creation event can automatically create a
                     Mifumo SMS account, supply an API key, and inherit the owner’s approved sender IDs.
@@ -768,7 +768,7 @@ print(response.text)`}</pre>
                   Security & Error Handling
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm text-text-subtle">
+              <CardContent className="space-y-2 text-sm text-foreground/70">
                 {securityTips.map((tip) => (
                   <div key={tip} className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-primary mt-0.5" />
@@ -786,7 +786,7 @@ print(response.text)`}</pre>
                     Common Error Codes
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-text-subtle">
+                <CardContent className="space-y-2 text-sm text-foreground/70">
                   {errorCodes.map((item) => (
                     <div key={item.code}>
                       <p className="font-medium">{item.code}</p>
@@ -804,7 +804,7 @@ print(response.text)`}</pre>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-sm text-text-subtle list-disc list-inside space-y-1">
+                  <ul className="text-sm text-foreground/70 list-disc list-inside space-y-1">
                     {creditManagement.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
@@ -822,16 +822,16 @@ print(response.text)`}</pre>
               </CardHeader>
               <CardContent className="grid gap-3 lg:grid-cols-3">
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle">Base URL</p>
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">Base URL</p>
                   <code className="text-xs font-mono break-all">https://mifumosms.mifumolabs.com/api/integration/v1/</code>
                 </div>
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle">Authentication</p>
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">Authentication</p>
                   <code className="text-xs font-mono break-all">Authorization: Bearer YOUR_API_KEY</code>
                 </div>
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-text-subtle">Endpoints</p>
-                  <ul className="text-xs text-text-subtle space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">Endpoints</p>
+                  <ul className="text-xs text-foreground/70 space-y-1">
                     {quickReferenceEndpoints.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
@@ -850,11 +850,11 @@ print(response.text)`}</pre>
               <CardContent className="flex flex-wrap gap-3 text-sm">
                 <div>
                   <p className="font-medium">Email</p>
-                  <p className="text-text-subtle">support@mifumosms.com</p>
+                  <p className="text-foreground/70">support@mifumosms.com</p>
                 </div>
                 <div>
                   <p className="font-medium">Dashboard</p>
-                  <p className="text-text-subtle">https://sms.mifumolabs.com</p>
+                  <p className="text-foreground/70">https://sms.mifumolabs.com</p>
                 </div>
               </CardContent>
             </Card>

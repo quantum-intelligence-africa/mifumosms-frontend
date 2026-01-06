@@ -30,6 +30,7 @@ import PertinaIntegration from "./pages/PertinaIntegration";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import PertinaInsights from "./pages/PertinaInsights";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,11 @@ const App = () => (
             <Route path="/pertina-integration" element={
               <ProtectedRoute>
                 <PertinaIntegration />
+              </ProtectedRoute>
+            } />
+            <Route path="/pertina-insights" element={
+              <ProtectedRoute>
+                <PertinaInsights />
               </ProtectedRoute>
             } />
             <Route path="/notifications" element={

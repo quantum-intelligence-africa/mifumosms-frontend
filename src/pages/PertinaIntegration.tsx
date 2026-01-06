@@ -183,7 +183,7 @@ const PertinaIntegration = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 text-sm">
           <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             <div>
               <h1 className="font-heading text-xl sm:text-2xl font-bold">Pertina Integration Reference</h1>

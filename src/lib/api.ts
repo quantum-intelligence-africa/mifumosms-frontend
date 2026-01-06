@@ -236,6 +236,59 @@ export interface IntegrationDeliveryReport {
   sender_id: string;
 }
 
+export interface PertinaTenantBalance {
+  tenant_id: string;
+  tenant_name: string;
+  current_balance: number;
+  total_purchased: number;
+  total_used: number;
+  unused_credits: number;
+  balance_last_updated: string;
+}
+
+export interface PertinaBalanceSummary {
+  total_tenants: number;
+  total_credits: number;
+  total_used: number;
+  total_unused: number;
+}
+
+export interface PertinaAllBalanceResponse {
+  tenants: PertinaTenantBalance[];
+  summary: PertinaBalanceSummary;
+}
+
+export interface PertinaUsageByUser {
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  credits_used: number;
+  usage_count: number;
+  first_used: string;
+  last_used: string;
+}
+
+export interface PertinaTenantUsageSummary {
+  total_users: number;
+  total_usage_records: number;
+  average_credits_per_user: number;
+}
+
+export interface PertinaTenantUsageResponse {
+  tenant_id: string;
+  tenant_name: string;
+  total_credits: number;
+  used_credits: number;
+  unused_credits: number;
+  usage_by_user: PertinaUsageByUser[];
+  summary: PertinaTenantUsageSummary;
+}
+
+export interface PertinaAllUsageResponse {
+  tenants: PertinaTenantUsageResponse[];
+  total_tenants: number;
+}
+
 export interface IntegrationSenderIdRequestPayload {
   sender_id: string;
   use_case: string;
@@ -2339,20 +2392,44 @@ class ApiClient {
   }
 
   // Pertina Integration Endpoints
-  async pertinaGetTenantBalance(tenantId: string): Promise<ApiResponse<any>> {
-    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_BALANCE(tenantId));
+
+  private buildPertinaQuery(params?: { start_date?: string; end_date?: string }) {
+    const query = new URLSearchParams();
+    if (params?.start_date) {
+      query.append('start_date', params.start_date);
+    }
+    if (params?.end_date) {
+      query.append('end_date', params.end_date);
+    }
+    return query.toString();
   }
 
-  async pertinaGetAllBalance(): Promise<ApiResponse<any>> {
-    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_BALANCE);
+  private appendPertinaQuery(base: string, params?: { start_date?: string; end_date?: string }) {
+    const queryString = this.buildPertinaQuery(params);
+    return queryString ? `${base}?${queryString}` : base;
   }
 
-  async pertinaGetTenantUsage(tenantId: string): Promise<ApiResponse<any>> {
-    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_USAGE(tenantId));
+  async pertinaGetTenantBalance(tenantId: string): Promise<ApiResponse<PertinaTenantBalance>> {
+    return this.request<PertinaTenantBalance>(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_BALANCE(tenantId));
   }
 
-  async pertinaGetAllUsage(): Promise<ApiResponse<any>> {
-    return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_USAGE);
+  async pertinaGetAllBalance(): Promise<ApiResponse<PertinaAllBalanceResponse>> {
+    return this.request<PertinaAllBalanceResponse>(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_BALANCE);
+  }
+
+  async pertinaGetTenantUsage(
+    tenantId: string,
+    params?: { start_date?: string; end_date?: string },
+  ): Promise<ApiResponse<PertinaTenantUsageResponse>> {
+    const endpoint = this.appendPertinaQuery(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.TENANT_USAGE(tenantId), params);
+    return this.request<PertinaTenantUsageResponse>(endpoint);
+  }
+
+  async pertinaGetAllUsage(
+    params?: { start_date?: string; end_date?: string },
+  ): Promise<ApiResponse<PertinaAllUsageResponse>> {
+    const endpoint = this.appendPertinaQuery(API_CONFIG.ENDPOINTS.INTEGRATION.PERTINA.ALL_USAGE, params);
+    return this.request<PertinaAllUsageResponse>(endpoint);
   }
 
   // =============================================
