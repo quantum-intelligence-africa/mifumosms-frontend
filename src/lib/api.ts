@@ -3549,7 +3549,7 @@ class ApiClient {
     }>;
   }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.STATUS}`, {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_ID_REQUESTS.DEFAULT_OVERVIEW}`, {
         headers: this.getHeaders()
       });
 
@@ -3632,7 +3632,7 @@ class ApiClient {
       if (search) url += `&search=${encodeURIComponent(search)}`;
 
       console.log('=== API CLIENT getUserRequests ===');
-      console.log('URL:', url);
+      console.log('URL:', url.trim());
       console.log('Headers:', this.getHeaders());
       console.log('Token:', this.token);
       console.log('Note: This endpoint should return only current user\'s sender requests');
@@ -3688,9 +3688,11 @@ class ApiClient {
       if (tenantId) {
         url += `?tenant_id=${tenantId}`;
       }
+      // Ensure URL is clean with no extra spaces
+      url = url.trim();
 
       console.log('=== API CLIENT getUnifiedSenderNames ===');
-      console.log('URL:', url);
+      console.log('URL:', url.trim());
 
       const response = await fetch(url, {
         headers: this.getHeaders()
