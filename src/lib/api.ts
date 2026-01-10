@@ -440,6 +440,22 @@ export interface SenderNameRequest {
   tenant?: string;
 }
 
+// Unified Sender Names Response (from /api/messaging/sms/sender-names/)
+export interface UnifiedSenderName {
+  sender_name: string;
+  status: "active" | "pending";
+  tenant_name: string;
+  tenant_id: string;
+  created_at: string;
+  source: "SMSSenderID" | "SenderNameRequest";
+}
+
+export interface UnifiedSenderNamesResponse {
+  success: boolean;
+  count: number;
+  data: UnifiedSenderName[];
+}
+
 // Payment Types
 export interface PaymentProgress {
   step: number;
@@ -3664,7 +3680,39 @@ class ApiClient {
     }
   }
 
-  // 4. GET STATISTICS
+  // 4. GET UNIFIED SENDER NAMES
+  // GET /api/messaging/sms/sender-names/
+  async getUnifiedSenderNames(tenantId?: string): Promise<ApiResponse<UnifiedSenderNamesResponse>> {
+    try {
+      let url = `${API_BASE_URL}/messaging/sms/sender-names/`;
+      if (tenantId) {
+        url += `?tenant_id=${tenantId}`;
+      }
+
+      console.log('=== API CLIENT getUnifiedSenderNames ===');
+      console.log('URL:', url);
+
+      const response = await fetch(url, {
+        headers: this.getHeaders()
+      });
+
+      console.log('Raw response status:', response.status);
+      console.log('Raw response ok:', response.ok);
+
+      const result = await this.handleResponse<UnifiedSenderNamesResponse>(response);
+
+      console.log('Processed result:', result);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 5. GET STATISTICS
   // GET /api/messaging/sender-requests/stats/
   async getStatistics(): Promise<ApiResponse<SenderNameStats>> {
     try {

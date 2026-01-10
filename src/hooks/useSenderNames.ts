@@ -30,7 +30,7 @@ export function useSenderNames() {
 	// Ensure senderNames is always an array
 	const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
 
-	const fetchSenderNames = async () => {
+	const fetchSenderNames = async (useUnified: boolean = false, tenantId?: string) => {
 		if (!isAuthenticated) {
 			console.log('User not authenticated, skipping API call');
 			setLoading(false);
@@ -38,12 +38,21 @@ export function useSenderNames() {
 		}
 
 		try {
-			console.log('Fetching sender names...');
+			console.log('Fetching sender names...', { useUnified, tenantId });
 			setLoading(true);
 			setError(null);
 
-			const response = await apiClient.getUserRequests();
-			console.log('=== SENDER NAMES API RESPONSE ===');
+			let response;
+			if (useUnified) {
+				// Use the new unified endpoint
+				response = await apiClient.getUnifiedSenderNames(tenantId);
+				console.log('=== UNIFIED SENDER NAMES API RESPONSE ===');
+			} else {
+				// Use the legacy endpoint
+				response = await apiClient.getUserRequests();
+				console.log('=== SENDER NAMES API RESPONSE ===');
+			}
+
 			console.log('Full response object:', response);
 			console.log('Response success:', response.success);
 			console.log('Response data:', response.data);
@@ -57,64 +66,67 @@ export function useSenderNames() {
 				console.log('Response data type:', typeof response.data);
 				console.log('Response data keys:', Object.keys(response.data || {}));
 
-				// Handle different possible response structures
 				let results = [];
-				if (Array.isArray(response.data)) {
-					// If data is directly an array
-					results = response.data;
-					console.log('Data is direct array, results:', results);
-				} else if ((response.data as any).results && Array.isArray((response.data as any).results)) {
-					// If data has a results property
-					results = (response.data as any).results;
-					console.log('Data has results property, results:', results);
-				} else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
-					// If data has a nested data property
-					results = (response.data as any).data;
-					console.log('Data has nested data property, results:', results);
+				if (useUnified) {
+					// Handle unified response structure
+					if ((response.data as any).data && Array.isArray((response.data as any).data)) {
+						results = (response.data as any).data;
+						console.log('Unified data structure, results:', results);
+					} else {
+						console.log('No valid unified data structure found, response.data:', response.data);
+					}
 				} else {
-					console.log('No valid data structure found, response.data:', response.data);
-				}
+					// Handle legacy response structures
+					if (Array.isArray(response.data)) {
+						// If data is directly an array
+						results = response.data;
+						console.log('Data is direct array, results:', results);
+					} else if ((response.data as any).results && Array.isArray((response.data as any).results)) {
+						// If data has a results property
+						results = (response.data as any).results;
+						console.log('Data has results property, results:', results);
+					} else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
+						// If data has a nested data property
+						results = (response.data as any).data;
+						console.log('Data has nested data property, results:', results);
+					} else {
+						console.log('No valid data structure found, response.data:', response.data);
+					}
 
-				// Additional validation: Ensure we only show current user's requests
-				// Filter out any requests that might belong to other users
-				const currentUserId = authContext?.user?.id;
+					// Additional validation: Ensure we only show current user's requests
+					// Filter out any requests that might belong to other users
+					const currentUserId = authContext?.user?.id;
 
-				// TEMPORARY: If the API already returns only current user's requests,
-				// you can uncomment the lines below to test without filtering
-				// console.log('Skipping user filtering - using all results from API');
-				// console.log('Total results from API:', results.length);
-				// setSenderNames(results);
-				// return;
+					if (currentUserId) {
+						results = results.filter((request: any) => {
+							// Check if the request belongs to the current user
+							// Use the correct field extraction: user_id || user
+							const requestUserId = request.user_id || request.user;
 
-				if (currentUserId) {
-					results = results.filter((request: any) => {
-						// Check if the request belongs to the current user
-						// Use the correct field extraction: user_id || user
-						const requestUserId = request.user_id || request.user;
+							// Debug logging to see exactly what's happening
+							console.log('=== DEBUGGING USER ID FILTERING ===');
+							console.log('Request object:', request);
+							console.log('Request.user:', request.user);
+							console.log('Request.user_id:', request.user_id);
+							console.log('Current user ID:', currentUserId);
+							console.log('Extracted requestUserId:', requestUserId);
+							console.log('Comparison result:', requestUserId === currentUserId);
+							console.log('=====================================');
 
-						// Debug logging to see exactly what's happening
-						console.log('=== DEBUGGING USER ID FILTERING ===');
-						console.log('Request object:', request);
-						console.log('Request.user:', request.user);
-						console.log('Request.user_id:', request.user_id);
-						console.log('Current user ID:', currentUserId);
-						console.log('Extracted requestUserId:', requestUserId);
-						console.log('Comparison result:', requestUserId === currentUserId);
-						console.log('=====================================');
+							const isCurrentUser = requestUserId === currentUserId;
 
-						const isCurrentUser = requestUserId === currentUserId;
+							if (!isCurrentUser) {
+								console.log(`Filtering out request from other user: ${request.requested_sender_id || request.sender_name}, User ID: ${requestUserId}, Current User ID: ${currentUserId}`);
+							} else {
+								console.log(`✅ Keeping request from current user: ${request.requested_sender_id || request.sender_name}`);
+							}
 
-						if (!isCurrentUser) {
-							console.log(`Filtering out request from other user: ${request.requested_sender_id || request.sender_name}, User ID: ${requestUserId}, Current User ID: ${currentUserId}`);
-						} else {
-							console.log(`✅ Keeping request from current user: ${request.requested_sender_id || request.sender_name}`);
-						}
-
-						return isCurrentUser;
-					});
-					console.log('Filtered results for current user:', results.length, 'requests');
-				} else {
-					console.log('No current user ID available, showing all results');
+							return isCurrentUser;
+						});
+						console.log('Filtered results for current user:', results.length, 'requests');
+					} else {
+						console.log('No current user ID available, showing all results');
+					}
 				}
 
 				console.log('Final results array:', results);
@@ -320,9 +332,9 @@ export function useSenderNames() {
 	useEffect(() => {
 		requestsCompleted.current = false;
 
-		// Fetch both sender names and stats
+		// Fetch both sender names and stats using unified endpoint
 		const fetchData = async () => {
-			await fetchSenderNames();
+			await fetchSenderNames(true); // Use unified endpoint
 			await fetchStats();
 		};
 
@@ -353,8 +365,13 @@ export function useSenderNames() {
 
 	const refreshData = async () => {
 		console.log('Manual refresh triggered...');
-		await fetchSenderNames();
+		await fetchSenderNames(true); // Use unified endpoint
 		await fetchStats();
+	};
+
+	const fetchSenderNamesByTenant = async (tenantId: string) => {
+		console.log('Fetching sender names for tenant:', tenantId);
+		await fetchSenderNames(true, tenantId);
 	};
 
 	return {
@@ -363,6 +380,7 @@ export function useSenderNames() {
 		loading,
 		error,
 		fetchSenderNames,
+		fetchSenderNamesByTenant,
 		fetchStats,
 		createSenderName,
 		updateSenderName,

@@ -21,7 +21,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useDefaultSender } from "@/hooks/useDefaultSender";
-import { SenderNameRequest } from "@/lib/api";
+import { SenderNameRequest, UnifiedSenderName } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
-type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes";
+type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
 const SenderNames = () => {
   const { toast } = useToast();
@@ -67,7 +67,8 @@ const SenderNames = () => {
     updateSenderName,
     deleteSenderName,
     getSenderName,
-    refreshData
+    refreshData,
+    fetchSenderNamesByTenant
   } = useSenderNames();
 
   // Add default sender functionality
@@ -122,6 +123,7 @@ const SenderNames = () => {
       rejected: "destructive",
       suspended: "destructive",
       requires_changes: "outline",
+      active: "default",
     };
 
     const statusLabels: Record<SenderStatus, string> = {
@@ -131,6 +133,7 @@ const SenderNames = () => {
       rejected: "Rejected",
       suspended: "Suspended",
       requires_changes: "Requires Changes",
+      active: "Active",
     };
 
     return (
@@ -154,6 +157,8 @@ const SenderNames = () => {
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
   const [selectedSender, setSelectedSender] = useState<SenderNameRequest | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [tenantFilter, setTenantFilter] = useState<string>("");
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
 
   const handleViewDetails = async (sender: SenderNameRequest) => {
@@ -378,6 +383,17 @@ const SenderNames = () => {
       }
     } catch (error) {
       console.error('Error requesting default sender:', error);
+    }
+  };
+
+  const handleTenantFilter = async (tenantId: string | null) => {
+    setSelectedTenantId(tenantId);
+    if (tenantId && fetchSenderNamesByTenant) {
+      // Use the new tenant filtering function from the hook
+      await fetchSenderNamesByTenant(tenantId);
+    } else {
+      // Refresh all data
+      await refreshData();
     }
   };
 
@@ -658,10 +674,57 @@ const SenderNames = () => {
                   Manage your registered sender IDs for SMS campaigns
                 </p>
               </div>
-              <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Request Sender Name
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Request Sender Name
+                </Button>
+                <Button
+                  onClick={async () => {
+                    await Promise.all([refreshData(), refreshDefaultSender()]);
+                  }}
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={loading || defaultSenderLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            {/* Tenant Filter */}
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+              <Label className="text-sm font-medium">Filter by Tenant:</Label>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Input
+                  placeholder="Enter tenant ID or name..."
+                  value={tenantFilter}
+                  onChange={(e) => setTenantFilter(e.target.value)}
+                  className="w-full sm:w-64"
+                />
+                <Button
+                  onClick={() => handleTenantFilter(tenantFilter.trim() || null)}
+                  variant="outline"
+                  disabled={loading}
+                >
+                  Filter
+                </Button>
+                {selectedTenantId && (
+                  <Button
+                    onClick={() => handleTenantFilter(null)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {selectedTenantId && (
+                <Badge variant="secondary" className="text-xs">
+                  Filtered: {selectedTenantId}
+                </Badge>
+              )}
             </div>
 
             {/* Animated Stats Section */}
@@ -848,67 +911,86 @@ const SenderNames = () => {
                   <TableRow className="border-border-subtle">
                     <TableHead className="min-w-[120px]">Sender Name</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="hidden sm:table-cell min-w-[150px]">Use Case</TableHead>
+                    <TableHead className="hidden sm:table-cell min-w-[150px]">Tenant</TableHead>
                     <TableHead className="hidden md:table-cell min-w-[100px]">Created</TableHead>
                     <TableHead className="text-right min-w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {safeSenderNames.map((sender, index) => (
-                    <TableRow
-                      key={sender.id}
-                      className="border-border-subtle animate-in slide-in-from-left-4 fade-in-50"
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-semibold text-sm">{sender.sender_name}</span>
-                        </div>
-                        <div className="sm:hidden text-xs text-text-subtle mt-1">
-                          {sender.use_case || "—"}
-                        </div>
-                        <div className="md:hidden text-xs text-text-subtle">
-                          {safeFormatDate(sender.created_at)}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(sender.status)}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="max-w-xs truncate text-text-subtle text-sm">
-                          {sender.use_case || "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-text-subtle text-sm">
-                        {safeFormatDate(sender.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="glass">
-                            <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
-                              View Details
-                            </DropdownMenuItem>
-                            {(sender.status === "pending" || sender.status === "requires_changes") && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleEditRequest(sender)}>
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteRequest(sender.id)}
-                                >
-                                  Delete Request
-                                </DropdownMenuItem>
-                              </>
+                  {safeSenderNames.map((sender, index) => {
+                    // Handle both UnifiedSenderName and SenderNameRequest types
+                    const isUnified = 'tenant_name' in sender;
+                    const unifiedSender = sender as UnifiedSenderName;
+                    const legacySender = sender as SenderNameRequest;
+
+                    return (
+                      <TableRow
+                        key={isUnified ? `${unifiedSender.sender_name}-${unifiedSender.tenant_id}` : legacySender.id}
+                        className="border-border-subtle animate-in slide-in-from-left-4 fade-in-50"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-semibold text-sm">{sender.sender_name}</span>
+                            {isUnified && unifiedSender.source === "SMSSenderID" && (
+                              <Badge variant="outline" className="text-xs">
+                                Active ID
+                              </Badge>
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          </div>
+                          <div className="sm:hidden text-xs text-text-subtle mt-1">
+                            {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
+                          </div>
+                          <div className="md:hidden text-xs text-text-subtle">
+                            {safeFormatDate(sender.created_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(sender.status as SenderStatus)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="max-w-xs truncate text-text-subtle text-sm">
+                            {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-text-subtle text-sm">
+                          {safeFormatDate(sender.created_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="glass">
+                              {!isUnified && (
+                                <DropdownMenuItem onClick={() => handleViewDetails(legacySender)}>
+                                  View Details
+                                </DropdownMenuItem>
+                              )}
+                              {isUnified && unifiedSender.source === "SenderNameRequest" && (
+                                <DropdownMenuItem disabled>
+                                  View Details (Not Available)
+                                </DropdownMenuItem>
+                              )}
+                              {(sender.status === "pending" || sender.status === "requires_changes") && !isUnified && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEditRequest(legacySender)}>
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteRequest(legacySender.id)}
+                                  >
+                                    Delete Request
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
 
