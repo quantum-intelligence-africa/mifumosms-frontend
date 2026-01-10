@@ -118,7 +118,7 @@ export const API_CONFIG = {
 				STATUS: (id: string) => `/messaging/sender-ids/${id}/status/`,
 			},
 			SENDER_NAMES: {
-				UNIFIED: '/messaging/sms/sender-names/',
+				UNIFIED: '/messaging/sender-ids/',
 			},
 			SMS: {
 				SEND: '/messaging/sms/send/',
