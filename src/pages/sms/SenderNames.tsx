@@ -14,7 +14,10 @@ import {
   RefreshCw,
   Zap,
   CreditCard,
-  ShoppingCart
+  ShoppingCart,
+  Eye,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -161,31 +164,62 @@ const SenderNames = () => {
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
 
-  const handleViewDetails = async (sender: SenderNameRequest) => {
+  const handleViewDetails = async (sender: SenderNameRequest | UnifiedSenderName) => {
     try {
-      // Fetch fresh details from API
-      const result = await getSenderName(sender.id);
+      // For unified senders, we can only show the available data
+      const isUnified = 'tenant_name' in sender;
+      if (isUnified) {
+        const unifiedSender = sender as UnifiedSenderName;
+        // Create a compatible object for the details dialog
+        const compatibleSender = {
+          id: `${unifiedSender.sender_id}-${unifiedSender.tenant_id}`,
+          sender_name: unifiedSender.sender_id,
+          status: unifiedSender.status,
+          use_case: unifiedSender.tenant_name || 'N/A',
+          created_at: unifiedSender.created_at,
+          updated_at: unifiedSender.updated_at,
+          supporting_documents: [],
+          supporting_documents_count: 0
+        };
+        setSelectedSender(compatibleSender as SenderNameRequest);
+        setShowDetailsDialog(true);
+        return;
+      }
+
+      // For legacy senders, try to fetch fresh details
+      const legacySender = sender as SenderNameRequest;
+      const result = await getSenderName(legacySender.id);
       if (result.success && result.data) {
         setSelectedSender(result.data);
         setShowDetailsDialog(true);
       } else {
         console.error('Failed to fetch sender details:', result.error);
         // Fallback to using existing data
-        setSelectedSender(sender);
+        setSelectedSender(legacySender);
         setShowDetailsDialog(true);
       }
     } catch (error) {
       console.error('Error fetching sender details:', error);
       // Fallback to using existing data
-      setSelectedSender(sender);
+      setSelectedSender(sender as SenderNameRequest);
       setShowDetailsDialog(true);
     }
   };
 
-  const handleEditRequest = (sender: SenderNameRequest) => {
-    setEditingSender(sender);
-    setEditSenderName(sender.sender_name);
-    setEditUseCase(sender.use_case);
+  const handleEditRequest = (sender: SenderNameRequest | UnifiedSenderName) => {
+    // Handle both unified and legacy sender types
+    const isUnified = 'tenant_name' in sender;
+    if (isUnified) {
+      const unifiedSender = sender as UnifiedSenderName;
+      setEditingSender(unifiedSender as unknown as SenderNameRequest);
+      setEditSenderName(unifiedSender.sender_id);
+      setEditUseCase(unifiedSender.tenant_name || '');
+    } else {
+      const legacySender = sender as SenderNameRequest;
+      setEditingSender(legacySender);
+      setEditSenderName(legacySender.sender_name);
+      setEditUseCase(legacySender.use_case);
+    }
     setEditSelectedFiles([]);
     setShowEditDialog(true);
   };
@@ -924,7 +958,6 @@ const SenderNames = () => {
                 <TableHeader>
                   <TableRow className="border-border-subtle">
                     <TableHead className="min-w-[120px]">Sender Name</TableHead>
-                    <TableHead className="min-w-[200px]">Sample Content</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
                     <TableHead className="min-w-[150px]">Tenant</TableHead>
                     <TableHead className="min-w-[120px]">Created</TableHead>
@@ -940,7 +973,7 @@ const SenderNames = () => {
 
                     return (
                       <TableRow
-                        key={isUnified ? `${unifiedSender.sender_id}-${unifiedSender.tenant_id}` : legacySender.id}
+                        key={isUnified ? `${unifiedSender.id}-${unifiedSender.sender_id}-${index}` : `${legacySender.id}-${index}`}
                         className="border-border-subtle animate-in slide-in-from-left-4 fade-in-50"
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
@@ -952,11 +985,6 @@ const SenderNames = () => {
                                 Active ID
                               </Badge>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          <div className="truncate text-sm text-text-subtle" title={isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}>
-                            {isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(sender.status as SenderStatus)}</TableCell>
@@ -976,29 +1004,25 @@ const SenderNames = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="glass">
-                              {!isUnified && (
-                                <DropdownMenuItem onClick={() => handleViewDetails(legacySender)}>
-                                  View Details
-                                </DropdownMenuItem>
-                              )}
-                              {isUnified && unifiedSender.source === "SenderIDRequest" && (
-                                <DropdownMenuItem disabled>
-                                  View Details (Not Available)
-                                </DropdownMenuItem>
-                              )}
-                              {(sender.status === "pending" || sender.status === "requires_changes") && !isUnified && (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleEditRequest(legacySender)}>
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteRequest(legacySender.id)}
-                                  >
-                                    Delete Request
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEditRequest(sender)}
+                                disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                {sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteRequest(isUnified ? unifiedSender.id : legacySender.id)}
+                                disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                {sender.status === "pending" || sender.status === "requires_changes" ? "Delete Request" : "Delete (Not Available)"}
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1046,7 +1070,7 @@ const SenderNames = () => {
 
                   return (
                     <Card
-                      key={isUnified ? `${unifiedSender.sender_id}-${unifiedSender.tenant_id}` : legacySender.id}
+                      key={isUnified ? `${unifiedSender.id}-${unifiedSender.sender_id}-${index}` : `${legacySender.id}-${index}`}
                       className="glass p-4 sm:p-6 animate-in slide-in-from-bottom-4 fade-in-50"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
@@ -1072,40 +1096,34 @@ const SenderNames = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="glass">
-                                {!isUnified && (
-                                  <DropdownMenuItem onClick={() => handleViewDetails(legacySender)}>
-                                    View Details
-                                  </DropdownMenuItem>
-                                )}
-                                {isUnified && unifiedSender.source === "SenderIDRequest" && (
-                                  <DropdownMenuItem disabled>
-                                    View Details (Not Available)
-                                  </DropdownMenuItem>
-                                )}
-                                {(sender.status === "pending" || sender.status === "requires_changes") && !isUnified && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => handleEditRequest(legacySender)}>
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() => handleDeleteRequest(legacySender.id)}
-                                    >
-                                      Delete Request
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleEditRequest(sender)}
+                                  disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  {isUnified ?
+                                    (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Edit" : "Edit (Not Available)") :
+                                    (sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)")
+                                  }
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteRequest(isUnified ? unifiedSender.id : legacySender.id)}
+                                  disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  {isUnified ?
+                                    (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Delete Request" : "Delete (Not Available)") :
+                                    (sender.status === "pending" || sender.status === "requires_changes" ? "Delete Request" : "Delete (Not Available)")
+                                  }
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                        </div>
-
-                        {/* Sample Content */}
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-text-subtle uppercase tracking-wide">Sample Content</p>
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}
-                          </p>
                         </div>
 
                         {/* Footer with Tenant and Date */}

@@ -444,7 +444,6 @@ export interface SenderNameRequest {
 export interface UnifiedSenderName {
   id: string;
   sender_id: string;
-  sample_content: string;
   status: "approved" | "active" | "rejected" | "pending" | "requires_changes" | "suspended" | "verifying";
   tenant_id: string;
   tenant_name: string;
