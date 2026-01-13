@@ -440,14 +440,17 @@ export interface SenderNameRequest {
   tenant?: string;
 }
 
-// Unified Sender Names Response (from /api/messaging/sms/sender-names/)
+// Unified Sender Names Response (from /api/messaging/sender-ids/)
 export interface UnifiedSenderName {
-  sender_name: string;
-  status: "active" | "pending";
-  tenant_name: string;
+  id: string;
+  sender_id: string;
+  sample_content: string;
+  status: "approved" | "active" | "rejected" | "pending" | "requires_changes" | "suspended" | "verifying";
   tenant_id: string;
+  tenant_name: string;
+  source: "SenderIDRequest" | "SMSSenderID";
   created_at: string;
-  source: "SMSSenderID" | "SenderNameRequest";
+  updated_at: string;
 }
 
 export interface UnifiedSenderNamesResponse {
@@ -819,7 +822,7 @@ class ApiClient {
       const data = await response.json();
 
       if (response.ok) {
-        return { success: true, data: data.data || data, message: data.message, status: response.status };
+        return { success: true, data: data, message: data.message, status: response.status };
       } else {
         return {
           success: false,

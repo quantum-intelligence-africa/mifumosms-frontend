@@ -118,12 +118,12 @@ const SenderNames = () => {
   const getStatusBadge = (status: SenderStatus) => {
     const variants: Record<SenderStatus, "default" | "secondary" | "outline" | "destructive"> = {
       approved: "default",
+      active: "default",
       pending: "secondary",
       verifying: "secondary",
       rejected: "destructive",
       suspended: "destructive",
       requires_changes: "outline",
-      active: "default",
     };
 
     const statusLabels: Record<SenderStatus, string> = {
@@ -662,226 +662,240 @@ const SenderNames = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                  Sender Names
-                </h1>
-                <p className="text-sm sm:text-base text-text-subtle">
-                  Manage your registered sender IDs for SMS campaigns
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Request Sender Name
-                </Button>
-                <Button
-                  onClick={async () => {
-                    await Promise.all([refreshData(), refreshDefaultSender()]);
-                  }}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={loading || defaultSenderLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                    Sender Names
+                  </h1>
+                  <p className="text-sm sm:text-base text-text-subtle">
+                    Manage your registered sender IDs for SMS campaigns
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+                  <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto h-9 sm:h-10">
+                    <Plus className="w-4 h-4 mr-2" />
+                    <span className="hidden xs:inline">Request Sender Name</span>
+                    <span className="xs:hidden">Request</span>
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await Promise.all([refreshData(), refreshDefaultSender()]);
+                    }}
+                    variant="outline"
+                    className="w-full sm:w-auto h-9 sm:h-10"
+                    disabled={loading || defaultSenderLoading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Tenant Filter */}
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-              <Label className="text-sm font-medium">Filter by Tenant:</Label>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Input
-                  placeholder="Enter tenant ID or name..."
-                  value={tenantFilter}
-                  onChange={(e) => setTenantFilter(e.target.value)}
-                  className="w-full sm:w-64"
-                />
-                <Button
-                  onClick={() => handleTenantFilter(tenantFilter.trim() || null)}
-                  variant="outline"
-                  disabled={loading}
-                >
-                  Filter
-                </Button>
-                {selectedTenantId && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <Label className="text-sm font-medium shrink-0">Filter by Tenant:</Label>
+                <div className="flex gap-2 w-full min-w-0">
+                  <Input
+                    placeholder="Enter tenant ID or name..."
+                    value={tenantFilter}
+                    onChange={(e) => setTenantFilter(e.target.value)}
+                    className="flex-1 sm:w-64"
+                  />
                   <Button
-                    onClick={() => handleTenantFilter(null)}
+                    onClick={() => handleTenantFilter(tenantFilter.trim() || null)}
                     variant="outline"
-                    size="sm"
+                    disabled={loading}
+                    className="shrink-0"
                   >
-                    Clear
+                    <span className="hidden sm:inline">Filter</span>
+                    <span className="sm:hidden">Filter</span>
                   </Button>
-                )}
+                  {selectedTenantId && (
+                    <Button
+                      onClick={() => handleTenantFilter(null)}
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                    >
+                      <span className="hidden sm:inline">Clear</span>
+                      <span className="sm:hidden">Clear</span>
+                    </Button>
+                  )}
+                </div>
               </div>
               {selectedTenantId && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs self-start">
                   Filtered: {selectedTenantId}
                 </Badge>
               )}
             </div>
 
             {/* Animated Stats Section */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
-                  <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Hash className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Hash className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary" />
                     </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs text-text-subtle">Total</p>
-                    <p className="text-sm sm:text-xl font-bold text-foreground">
-                      {loading ? (
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="animate-in fade-in-50 duration-500">
-                          {stats?.total_requests || safeSenderNames.length || 0}
-                        </span>
-                      )}
-                    </p>
+                    <div className="text-center sm:text-left min-w-0">
+                      <p className="text-xs sm:text-sm text-text-subtle">Total</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                        {loading ? (
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
+                        ) : (
+                          <span className="animate-in fade-in-50 duration-500">
+                            {stats?.total_requests || safeSenderNames.length || 0}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-100">
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                  <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-warning/10 flex items-center justify-center">
-                    <Clock className="w-3 h-3 sm:w-5 sm:h-5 text-warning" />
+                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-100">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-warning" />
+                    </div>
+                    <div className="text-center sm:text-left min-w-0">
+                      <p className="text-xs sm:text-sm text-text-subtle">Pending</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                        {loading ? (
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
+                        ) : (
+                          <span className="animate-in fade-in-50 duration-500 delay-200">
+                              {stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs text-text-subtle">Pending</p>
-                    <p className="text-sm sm:text-xl font-bold text-foreground">
-                      {loading ? (
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="animate-in fade-in-50 duration-500 delay-200">
-                            {stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-200">
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                  <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-success/10 flex items-center justify-center">
-                    <Check className="w-3 h-3 sm:w-5 sm:h-5 text-success" />
+                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-200">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-success" />
+                    </div>
+                    <div className="text-center sm:text-left min-w-0">
+                      <p className="text-xs sm:text-sm text-text-subtle">Approved</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                        {loading ? (
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
+                        ) : (
+                          <span className="animate-in fade-in-50 duration-500 delay-300">
+                              {stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs text-text-subtle">Approved</p>
-                    <p className="text-sm sm:text-xl font-bold text-foreground">
-                      {loading ? (
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="animate-in fade-in-50 duration-500 delay-300">
-                            {stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-300">
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                  <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <X className="w-3 h-3 sm:w-5 sm:h-5 text-destructive" />
+                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-300">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                      <X className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-destructive" />
+                    </div>
+                    <div className="text-center sm:text-left min-w-0">
+                      <p className="text-xs sm:text-sm text-text-subtle">Rejected</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                        {loading ? (
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
+                        ) : (
+                          <span className="animate-in fade-in-50 duration-500 delay-400">
+                              {stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs text-text-subtle">Rejected</p>
-                    <p className="text-sm sm:text-xl font-bold text-foreground">
-                      {loading ? (
-                        <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span className="animate-in fade-in-50 duration-500 delay-400">
-                            {stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </Card>
+                </Card>
             </div>
 
             {/* Default Sender Card */}
             {overview && (
-              <Card className="p-4 glass border-l-4 border-blue-500">
-                <div className="flex gap-3">
-                  <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                      <div>
-                        <h3 className="font-semibold text-blue-600 mb-1">Default Sender ID</h3>
-                        <p className="text-sm text-text-subtle">
-                          Use the default sender ID "{getDefaultSenderName?.() || 'Taarifa-SMS'}" for instant SMS sending
-                        </p>
+              <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-blue-500">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-blue-600 mb-1">Default Sender ID</h3>
+                          <p className="text-sm text-text-subtle">
+                            Use the default sender ID "{getDefaultSenderName?.() || 'Taarifa-SMS'}" for instant SMS sending
+                          </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                          {(canRequestDefaultSender && canRequestDefaultSender()) ? (
+                            <Button
+                              onClick={handleRequestDefaultSender}
+                              disabled={isRequesting}
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                            >
+                              {isRequesting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Requesting...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4 mr-2" />
+                                  <span className="hidden sm:inline">Request Default Sender</span>
+                                  <span className="sm:hidden">Request</span>
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <div className="text-left sm:text-right w-full sm:w-auto">
+                              <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'} className="mb-2">
+                                {safeGetStatusIcon((overview.active_request?.status || 'approved') as SenderStatus)}
+                                <span className="ml-1">{overview.active_request?.status || 'Available'}</span>
+                              </Badge>
+                              {getCannotRequestReason?.() && (
+                                <p className="text-xs text-text-subtle">{getCannotRequestReason()}</p>
+                              )}
+                              {(overview.active_request?.status === 'pending' || overview.active_request?.status === 'approved') && (
+                                <div className="mt-2">
+                                  <Button
+                                    onClick={async () => { await cancelDefaultSender?.(); await refreshDefaultSender(); }}
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isRequesting}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    <span className="hidden sm:inline">Cancel Default Sender</span>
+                                    <span className="sm:hidden">Cancel</span>
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {(canRequestDefaultSender && canRequestDefaultSender()) ? (
-                          <Button
-                            onClick={handleRequestDefaultSender}
-                            disabled={isRequesting}
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            {isRequesting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Requesting...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="w-4 h-4 mr-2" />
-                                Request Default Sender
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <div className="text-right">
-                            <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'}>
-                              {safeGetStatusIcon((overview.active_request?.status || 'approved') as SenderStatus)}
-                              <span className="ml-1">{overview.active_request?.status || 'Available'}</span>
-                            </Badge>
-                            {getCannotRequestReason?.() && (
-                              <p className="text-xs text-text-subtle mt-1">{getCannotRequestReason()}</p>
-                            )}
-                            {(overview.active_request?.status === 'pending' || overview.active_request?.status === 'approved') && (
-                              <div className="mt-2">
-                                <Button
-                                  onClick={async () => { await cancelDefaultSender?.(); await refreshDefaultSender(); }}
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isRequesting}
-                                >
-                                  Cancel Default Sender
-                                </Button>
-                              </div>
-                            )}
+
+                      {/* Balance and Purchase Info */}
+                      <div className="flex flex-col gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-text-subtle shrink-0" />
+                          <span className="text-text-subtle">Credits:</span>
+                          <span className="font-medium">{getCurrentCredits?.() || 0}</span>
+                        </div>
+                        {needsPurchaseCredits?.() && (
+                          <div className="flex items-center gap-2">
+                            <ShoppingCart className="w-4 h-4 text-orange-500 shrink-0" />
+                            <span className="text-orange-600 font-medium">Purchase credits to send SMS</span>
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Balance and Purchase Info */}
-                    <div className="flex flex-col sm:flex-row gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="w-4 h-4 text-text-subtle" />
-                        <span className="text-text-subtle">Credits:</span>
-                        <span className="font-medium">{getCurrentCredits?.() || 0}</span>
-                      </div>
-                      {needsPurchaseCredits?.() && (
-                        <div className="flex items-center gap-2">
-                          <ShoppingCart className="w-4 h-4 text-orange-500" />
-                          <span className="text-orange-600 font-medium">Purchase credits to send SMS</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -889,12 +903,12 @@ const SenderNames = () => {
             )}
 
             {/* Info Card */}
-            <Card className="p-3 sm:p-4 glass border-l-4 border-primary">
-              <div className="flex gap-2 sm:gap-3">
-                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
-                <div className="text-xs sm:text-sm">
-                  <p className="font-medium mb-1">Sender Name Requirements</p>
-                  <ul className="text-text-subtle space-y-1 list-disc list-inside">
+            <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">
+              <div className="flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium mb-2">Sender Name Requirements</p>
+                  <ul className="text-text-subtle space-y-1.5 list-disc list-inside leading-relaxed">
                     <li>Maximum 11 characters (letters, numbers, spaces, _, -)</li>
                     <li>Must be relevant to your business or brand</li>
                     <li>Approval typically takes 1-3 business days</li>
@@ -904,15 +918,16 @@ const SenderNames = () => {
               </div>
             </Card>
 
-            {/* Sender Names Table */}
-            <Card className="glass overflow-x-auto">
+            {/* Sender Names Table - Desktop */}
+            <Card className="glass overflow-x-auto hidden lg:block">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border-subtle">
                     <TableHead className="min-w-[120px]">Sender Name</TableHead>
+                    <TableHead className="min-w-[200px]">Sample Content</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="hidden sm:table-cell min-w-[150px]">Tenant</TableHead>
-                    <TableHead className="hidden md:table-cell min-w-[100px]">Created</TableHead>
+                    <TableHead className="min-w-[150px]">Tenant</TableHead>
+                    <TableHead className="min-w-[120px]">Created</TableHead>
                     <TableHead className="text-right min-w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -920,38 +935,37 @@ const SenderNames = () => {
                   {safeSenderNames.map((sender, index) => {
                     // Handle both UnifiedSenderName and SenderNameRequest types
                     const isUnified = 'tenant_name' in sender;
-                    const unifiedSender = sender as UnifiedSenderName;
+                    const unifiedSender = sender as unknown as UnifiedSenderName;
                     const legacySender = sender as SenderNameRequest;
 
                     return (
                       <TableRow
-                        key={isUnified ? `${unifiedSender.sender_name}-${unifiedSender.tenant_id}` : legacySender.id}
+                        key={isUnified ? `${unifiedSender.sender_id}-${unifiedSender.tenant_id}` : legacySender.id}
                         className="border-border-subtle animate-in slide-in-from-left-4 fade-in-50"
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold text-sm">{sender.sender_name}</span>
+                            <span className="font-mono font-semibold text-sm">{isUnified ? unifiedSender.sender_id : sender.sender_name}</span>
                             {isUnified && unifiedSender.source === "SMSSenderID" && (
                               <Badge variant="outline" className="text-xs">
                                 Active ID
                               </Badge>
                             )}
                           </div>
-                          <div className="sm:hidden text-xs text-text-subtle mt-1">
-                            {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
-                          </div>
-                          <div className="md:hidden text-xs text-text-subtle">
-                            {safeFormatDate(sender.created_at)}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="truncate text-sm text-text-subtle" title={isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}>
+                            {isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(sender.status as SenderStatus)}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell>
                           <div className="max-w-xs truncate text-text-subtle text-sm">
                             {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-text-subtle text-sm">
+                        <TableCell className="text-text-subtle text-sm">
                           {safeFormatDate(sender.created_at)}
                         </TableCell>
                         <TableCell className="text-right">
@@ -967,7 +981,7 @@ const SenderNames = () => {
                                   View Details
                                 </DropdownMenuItem>
                               )}
-                              {isUnified && unifiedSender.source === "SenderNameRequest" && (
+                              {isUnified && unifiedSender.source === "SenderIDRequest" && (
                                 <DropdownMenuItem disabled>
                                   View Details (Not Available)
                                 </DropdownMenuItem>
@@ -1008,6 +1022,109 @@ const SenderNames = () => {
                 </div>
               )}
             </Card>
+
+            {/* Mobile Card Layout */}
+            <div className="lg:hidden space-y-3 sm:space-y-4">
+              {safeSenderNames.length === 0 ? (
+                <Card className="glass p-6 sm:p-12 text-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                    <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                  </div>
+                  <h3 className="font-heading text-base sm:text-lg font-semibold mb-2">
+                    No sender names yet
+                  </h3>
+                  <p className="text-sm sm:text-base text-text-subtle">
+                    Request your first sender name to start sending SMS
+                  </p>
+                </Card>
+              ) : (
+                safeSenderNames.map((sender, index) => {
+                  // Handle both UnifiedSenderName and SenderNameRequest types
+                  const isUnified = 'tenant_name' in sender;
+                  const unifiedSender = sender as unknown as UnifiedSenderName;
+                  const legacySender = sender as SenderNameRequest;
+
+                  return (
+                    <Card
+                      key={isUnified ? `${unifiedSender.sender_id}-${unifiedSender.tenant_id}` : legacySender.id}
+                      className="glass p-4 sm:p-6 animate-in slide-in-from-bottom-4 fade-in-50"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="flex flex-col space-y-3">
+                        {/* Header with Sender Name and Status */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="font-mono font-semibold text-sm sm:text-base truncate">
+                              {isUnified ? unifiedSender.sender_id : sender.sender_name}
+                            </span>
+                            {isUnified && unifiedSender.source === "SMSSenderID" && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                Active ID
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {getStatusBadge(sender.status as SenderStatus)}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="glass">
+                                {!isUnified && (
+                                  <DropdownMenuItem onClick={() => handleViewDetails(legacySender)}>
+                                    View Details
+                                  </DropdownMenuItem>
+                                )}
+                                {isUnified && unifiedSender.source === "SenderIDRequest" && (
+                                  <DropdownMenuItem disabled>
+                                    View Details (Not Available)
+                                  </DropdownMenuItem>
+                                )}
+                                {(sender.status === "pending" || sender.status === "requires_changes") && !isUnified && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleEditRequest(legacySender)}>
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => handleDeleteRequest(legacySender.id)}
+                                    >
+                                      Delete Request
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+
+                        {/* Sample Content */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-text-subtle uppercase tracking-wide">Sample Content</p>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {isUnified ? unifiedSender.sample_content : (legacySender.use_case || "—")}
+                          </p>
+                        </div>
+
+                        {/* Footer with Tenant and Date */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border-subtle">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                            <span className="text-xs text-text-subtle">
+                              <span className="font-medium">Tenant:</span> {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
+                            </span>
+                          </div>
+                          <span className="text-xs text-text-subtle">
+                            {safeFormatDate(sender.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
 
             {/* Request Dialog */}
             <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
