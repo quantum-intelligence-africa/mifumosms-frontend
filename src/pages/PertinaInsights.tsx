@@ -187,7 +187,7 @@ const PertinaInsights = () => {
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-6 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Pertina Insights</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Partner Insights</p>
                 <h1 className="font-heading text-lg sm:text-xl font-bold text-foreground">
                   Monitor your tenants' credit health in one place.
                 </h1>

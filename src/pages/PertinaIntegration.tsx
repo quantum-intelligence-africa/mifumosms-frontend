@@ -186,7 +186,7 @@ const PertinaIntegration = () => {
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-5 text-sm text-foreground">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5">
             <div>
-              <h1 className="font-heading text-xl sm:text-2xl font-bold">Pertina Integration Reference</h1>
+              <h1 className="font-heading text-xl sm:text-2xl font-bold">Partner Integration Reference</h1>
               <p className="text-sm text-foreground/90 max-w-2xl">
                 Everything you need to wire the Pertina partner endpoints into the dashboard, from API
                 configuration to example requests for credit balance and usage statistics.

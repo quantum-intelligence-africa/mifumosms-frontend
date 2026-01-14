@@ -964,13 +964,13 @@ class ApiClient {
         // Check if data has nested 'data' field (standard format)
         // OR if it has 'tokens' and 'user' at root level (verify-code format)
         if (data.data) {
-        return {
-          data: data.data,
-          status: response.status,
-          success: data.success,
-          message: data.message,
-          error: data.success ? undefined : (data.message || data.error),
-        };
+          return {
+            data: data.data,
+            status: response.status,
+            success: data.success,
+            message: data.message,
+            error: data.success ? undefined : (data.message || data.error),
+          };
         } else {
           // Response has success:true but data is at root level (e.g., verify-code endpoint)
           return {

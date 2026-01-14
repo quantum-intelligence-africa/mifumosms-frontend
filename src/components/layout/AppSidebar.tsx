@@ -77,9 +77,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     { name: "Campaigns", href: "/campaigns", icon: Send },
     // { name: "Templates", href: "/templates", icon: FileText },
     // { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Pertina Insights", href: "/pertina-insights", icon: BarChart3 },
+    { name: "Partner Insights", href: "/pertina-insights", icon: BarChart3 },
     { name: "Integration Guide", href: "/integration-guide", icon: BookOpen },
-    { name: "Pertina Reference", href: "/pertina-integration", icon: Server },
+    { name: "Partner Reference", href: "/pertina-integration", icon: Server },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 

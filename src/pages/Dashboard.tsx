@@ -126,7 +126,7 @@ const Dashboard = () => {
               />
               <MetricCard
                 title="Sender ID"
-                value={senderIds?.length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
+                value={senderIds?.filter(id => id.status?.toLowerCase() === 'active').length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
                 icon={Hash}
                 description="Approved sender names"
               />
