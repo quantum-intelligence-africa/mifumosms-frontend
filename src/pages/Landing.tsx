@@ -62,6 +62,17 @@ const Landing = () => {
   // Check if user is authenticated by checking localStorage
   const isAuthenticated = !!localStorage.getItem('access_token');
   const user = null; // We don't need user data on the landing page
+
+  // Smooth scroll function for navigation
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  };
   const navigate = useNavigate();
   const [customCredits, setCustomCredits] = useState<string>("");
   const [currentMessage, setCurrentMessage] = useState(0);
@@ -71,6 +82,20 @@ const Landing = () => {
   const [isPhoneHovered, setIsPhoneHovered] = useState(false);
   const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
@@ -478,44 +503,127 @@ const Landing = () => {
               </div>
               <Button
                 variant="outline"
-                className="sm:hidden h-9 w-9 px-0 border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                className="sm:hidden h-10 w-10 p-0 border-gray-300 text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
                 aria-expanded={isMobileMenuOpen}
                 aria-label="Toggle mobile menu"
               >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                <div className="relative w-5 h-5">
+                  <Menu className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
+                  <X className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} />
+                </div>
               </Button>
             </div>
           </div>
-
-          {isMobileMenuOpen && (
-            <div className="sm:hidden mt-3 rounded-xl border border-gray-200 bg-white shadow-lg p-4 space-y-3 text-sm text-gray-800">
-              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Login
-                </Button>
-              </Link>
-              <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button className="w-full justify-center text-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md">
-                  Get Started
-                </Button>
-              </Link>
-              <div className="flex flex-col gap-1">
-                <a href="tel:+255614459923" className="font-semibold text-blue-600">
-                  +255 614 459 923
-                </a>
-                <p className="text-xs text-gray-500">Call us Mon-Fri, 9am-6pm</p>
-              </div>
-              <a href="https://wa.me/255614459923" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full justify-center gap-2 border-green-500 text-green-600 hover:bg-green-50">
-                  <MessageSquare className="w-4 h-4" />
-                  WhatsApp
-                </Button>
-              </a>
-            </div>
-          )}
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      <>
+        {/* Mobile Menu Backdrop */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-lg z-[1000] sm:hidden animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)} />
+        )}
+
+        {/* Mobile Menu - Slide from Right */}
+        {isMobileMenuOpen && (
+          <div className="fixed top-0 right-0 h-full w-5/6 max-w-xs bg-gradient-to-b from-white via-gray-50 to-gray-100 shadow-2xl z-[1001] sm:hidden flex flex-col transform transition-transform duration-300 ease-out overflow-hidden" style={{ transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)' }}>
+            {/* Header with Close Button */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+                    <MessageSquare className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-gray-900">
+                      Mifumo SMS
+                    </h2>
+                    <p className="text-xs text-gray-500">Navigation</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="h-10 w-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+            </div>
+
+            {/* Menu Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 sm:space-y-6 bg-white/95 backdrop-blur-sm">
+              {/* COMMENTED OUT: Navigation Section - temporarily hidden */}
+              {/*
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Navigate</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                    <button onClick={() => { scrollToSection('about'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
+                      <span className="font-semibold text-sm">About</span>
+                    </button>
+                    <button onClick={() => { scrollToSection('features'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
+                      <span className="font-semibold text-sm">Features</span>
+                    </button>
+                    <button onClick={() => { scrollToSection('pricing'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
+                      <span className="font-semibold text-sm">Pricing</span>
+                    </button>
+                </div>
+              </div>
+              */}
+
+              {/* Account Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Account</p>
+                </div>
+                <div className="space-y-3">
+                    <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full justify-center text-xs sm:text-sm h-12 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 border-2 border-gray-300 hover:border-gray-400 transition-all duration-300 font-semibold touch-manipulation rounded-xl shadow-sm hover:shadow-md transform hover:scale-[1.02]">
+                        Login
+                      </Button>
+                    </Link>
+                    <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button className="w-full justify-center text-xs sm:text-sm h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-white touch-manipulation rounded-xl transform hover:scale-[1.02]">
+                        Get Started
+                      </Button>
+                    </Link>
+                </div>
+              </div>
+
+              {/* Contact Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
+                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Contact Us</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 border border-blue-200 shadow-sm">
+                    <a href="tel:+255614459923" className="font-bold text-blue-700 hover:text-blue-800 transition-colors text-sm">
+                      +255 614 459 923
+                    </a>
+                    <p className="text-xs text-gray-600 font-medium">
+                      Mon-Fri, 9am-6pm
+                    </p>
+                  </div>
+                    <a href="https://wa.me/255614459923" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full justify-center gap-3 border-blue-500 text-blue-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-blue-600 h-12 transition-all duration-300 hover:shadow-lg font-semibold rounded-xl touch-manipulation transform hover:scale-[1.02]">
+                        <MessageSquare className="w-5 h-5" />
+                        WhatsApp Chat
+                      </Button>
+                    </a>
+                </div>
+              </div>
+            </div>
+          </div>
+      )}
+      </>
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">

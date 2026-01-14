@@ -91,12 +91,12 @@ const App = () => (
                 <IntegrationGuide />
               </ProtectedRoute>
             } />
-            <Route path="/pertina-integration" element={
+            <Route path="/partner-integration" element={
               <ProtectedRoute>
                 <PertinaIntegration />
               </ProtectedRoute>
             } />
-            <Route path="/pertina-insights" element={
+            <Route path="/partner-insights" element={
               <ProtectedRoute>
                 <PertinaInsights />
               </ProtectedRoute>
