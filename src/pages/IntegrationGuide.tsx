@@ -68,13 +68,13 @@ const curlExamples = [
   },
   {
     title: "Get Credit Balance (Single Tenant)",
-    description: "Get credit balance for a specific tenant using Pertina integration.",
+    description: "Get credit balance for a specific tenant using Partner integration.",
     command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/{tenant_id}/balance/" \\
 -H "Authorization: Bearer YOUR_API_KEY"`,
   },
   {
     title: "Get Credit Balance (All Clients)",
-    description: "Get credit balance for all clients using Pertina integration.",
+    description: "Get credit balance for all clients using Partner integration.",
     command: `curl -X GET "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/balance/" \\
 -H "Authorization: Bearer YOUR_API_KEY"`,
   },
@@ -452,7 +452,7 @@ const IntegrationGuide = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
-                  Python Examples - Pertina Integration
+                  Python Examples - Partner Integration
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

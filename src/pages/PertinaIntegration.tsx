@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Server, Code, Link as LinkIcon, Zap } from "lucide-react";
 
-const pertinaEndpoints = [
+const partnerEndpoints = [
   {
     title: "Tenant Balance",
     path: "/integration/v1/pertina/tenants/{tenant_id}/balance/",
@@ -30,7 +30,7 @@ const pertinaEndpoints = [
     title: "All Clients Balance",
     path: "/integration/v1/pertina/balance/",
     method: "GET",
-    description: "Fetches credit balances for all clients under the Pertina partner account.",
+    description: "Fetches credit balances for all clients under the Partner account.",
     parameters: [
       "Optional filters: ?tenant_id={uuid}",
       "Requires Authorization header",
@@ -68,7 +68,7 @@ const pertinaEndpoints = [
     title: "Global Usage",
     path: "/integration/v1/pertina/usage/",
     method: "GET",
-    description: "Aggregate SMS usage statistics for all tenants managed by the Pertina partner.",
+    description: "Aggregate SMS usage statistics for all tenants managed by the Partner.",
     parameters: [
       "Optional filters: tenant_id, start_date, end_date",
       "Requires Authorization header",
@@ -91,7 +91,7 @@ const implementationSteps = [
   "Add a dedicated `PERTINA` section to `API_CONFIG.ENDPOINTS.INTEGRATION` and keep the helper functions listed above in sync.",
   "Expose helper methods in `src/lib/api.ts` (`pertinaGetTenantBalance`, `pertinaGetAllBalance`, etc.) so consumers can call `apiClient` directly.",
   "If you use `APIService`, wrap the helper methods there so UI components stay consistent with retry/error patterns.",
-  "Document the endpoints in the new Pertina reference page and link to it from navigation (this page).",
+  "Document the endpoints in the new Partner reference page and link to it from navigation (this page).",
 ];
 
 const configSnippet = String.raw`PERTINA: {
@@ -113,7 +113,7 @@ async pertinaGetAllBalance(): Promise<ApiResponse<any>> {
 // Repeat for usage endpoints
 `;
 
-const pythonExamples = [
+const partnerExamples = [
   {
     title: "Get Credit Balance (Single Tenant)",
     description: "Point to /pertina/tenants/{tenant_id}/balance/ and swap in your API key.",
@@ -188,9 +188,15 @@ const PertinaIntegration = () => {
             <div>
               <h1 className="font-heading text-xl sm:text-2xl font-bold">Partner Integration Reference</h1>
               <p className="text-sm text-foreground/90 max-w-2xl">
-                Everything you need to wire the Pertina partner endpoints into the dashboard, from API
+                Everything you need to wire the Partner integration endpoints into the dashboard, from API
                 configuration to example requests for credit balance and usage statistics.
               </p>
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> Partner integration endpoints are currently not implemented on the backend.
+                  This documentation is for future reference when the feature becomes available.
+                </p>
+              </div>
             </div>
 
             <Card className="glass p-3 sm:p-4">
@@ -202,11 +208,11 @@ const PertinaIntegration = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm text-foreground/90">
-                  Pertina endpoints sit under `/integration/v1/pertina` and are protected with the same API key
+                  Partner endpoints sit under `/integration/v1/pertina` and are protected with the same API key
                   used for sending SMS. Each request expects the standard Authorization header.
                 </p>
                 <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
-                  {pertinaEndpoints.map((endpoint) => (
+                  {partnerEndpoints.map((endpoint) => (
                     <div key={endpoint.path} className="p-3 sm:p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <Badge variant="outline" className="text-[10px] uppercase">
@@ -243,8 +249,8 @@ const PertinaIntegration = () => {
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm text-foreground/90">
                   <p>
-                    Keep `src/config/api.ts` updated so the client can resolve the Pertina routes referenced by `src/lib/api.ts`.
-                    When you add a new Pertina endpoint, register it in the `PERTINA` block below.
+                    Keep `src/config/api.ts` updated so the client can resolve the Partner routes referenced by `src/lib/api.ts`.
+                    When you add a new Partner endpoint, register it in the `PERTINA` block below.
                   </p>
                   <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{configSnippet}</pre>
                   <p>
@@ -275,11 +281,11 @@ const PertinaIntegration = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
-                  Pertina Python Examples
+                  Partner Python Examples
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {pythonExamples.map((example) => (
+                {partnerExamples.map((example) => (
                   <div key={example.title} className="p-4 rounded-lg border border-border-subtle bg-muted/20 space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                       <p className="font-medium text-sm">{example.title}</p>
@@ -299,7 +305,7 @@ const PertinaIntegration = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-foreground/90 space-y-1">
-                <p>Persist the API key in a secure vault and rotate it regularly—Pertina endpoints rely on the same credentials as your SMS sends.</p>
+                <p>Persist the API key in a secure vault and rotate it regularly—Partner endpoints rely on the same credentials as your SMS sends.</p>
                 <p>Always inspect `response.success` before trusting the data, especially for usage summaries that drive billing.</p>
                 <p>Add pagination query parameters when tenant usage responses grow beyond a page.</p>
               </CardContent>

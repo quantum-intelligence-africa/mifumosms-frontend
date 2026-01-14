@@ -89,7 +89,17 @@ const PertinaInsights = () => {
     return { totalUsers, totalUsageRecords, avgCreditsPerUser };
   }, [allUsage]);
 
-  const handleApiError = (message?: string) => {
+  const handleApiError = (error?: any, message?: string) => {
+    // Check if it's a 404 error for pertina endpoints
+    if (error?.status === 404 && message?.includes('pertina')) {
+      toast({
+        title: "Feature not available",
+        description: "Partner integration endpoints are not yet implemented on the backend.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
       title: "Request failed",
       description: message || "Unable to load data at the moment.",
@@ -112,10 +122,10 @@ const PertinaInsights = () => {
       if (response.success && response.data) {
         setTenantBalance(response.data);
       } else {
-        handleApiError(response.error || response.message);
+        handleApiError(response, response.error || response.message);
       }
     } catch (error) {
-      handleApiError(error instanceof Error ? error.message : undefined);
+      handleApiError(error, error instanceof Error ? error.message : undefined);
     } finally {
       setLoadingState((prev) => ({ ...prev, singleBalance: false }));
     }
@@ -128,10 +138,10 @@ const PertinaInsights = () => {
       if (response.success && response.data) {
         setAllBalance(response.data);
       } else {
-        handleApiError(response.error || response.message);
+        handleApiError(response, response.error || response.message);
       }
     } catch (error) {
-      handleApiError(error instanceof Error ? error.message : undefined);
+      handleApiError(error, error instanceof Error ? error.message : undefined);
     } finally {
       setLoadingState((prev) => ({ ...prev, allBalance: false }));
     }
@@ -152,10 +162,10 @@ const PertinaInsights = () => {
       if (response.success && response.data) {
         setTenantUsage(response.data);
       } else {
-        handleApiError(response.error || response.message);
+        handleApiError(response, response.error || response.message);
       }
     } catch (error) {
-      handleApiError(error instanceof Error ? error.message : undefined);
+      handleApiError(error, error instanceof Error ? error.message : undefined);
     } finally {
       setLoadingState((prev) => ({ ...prev, singleUsage: false }));
     }
@@ -168,10 +178,10 @@ const PertinaInsights = () => {
       if (response.success && response.data) {
         setAllUsage(response.data);
       } else {
-        handleApiError(response.error || response.message);
+        handleApiError(response, response.error || response.message);
       }
     } catch (error) {
-      handleApiError(error instanceof Error ? error.message : undefined);
+      handleApiError(error, error instanceof Error ? error.message : undefined);
     } finally {
       setLoadingState((prev) => ({ ...prev, allUsage: false }));
     }
@@ -189,10 +199,10 @@ const PertinaInsights = () => {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">Partner Insights</p>
                 <h1 className="font-heading text-lg sm:text-xl font-bold text-foreground">
-                  Monitor your tenants' credit health in one place.
+                  Monitor your partners' credit health in one place.
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-                  Fetch the latest balances and usage stats per tenant or across all tenants with a single click.
+                  Fetch the latest balances and usage stats per partner or across all partners with a single click.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -205,6 +215,8 @@ const PertinaInsights = () => {
               </div>
             </div>
 
+            {/* COMMENTED OUT: Single Tenant Balance section - temporarily hidden */}
+            {/*
             <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -273,6 +285,7 @@ const PertinaInsights = () => {
                 </div>
               )}
             </section>
+            */}
 
             <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-4">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -342,6 +355,8 @@ const PertinaInsights = () => {
               )}
             </section>
 
+            {/* COMMENTED OUT: Single Tenant Usage section - temporarily hidden */}
+            {/*
             <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -443,6 +458,7 @@ const PertinaInsights = () => {
                 </div>
               )}
             </section>
+            */}
 
             <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
