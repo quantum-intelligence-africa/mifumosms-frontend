@@ -29,10 +29,11 @@ export const useContacts = () => {
     page?: number;
     page_size?: number;
   }) => {
-    console.log('=== FETCH CONTACTS CALLED ===');
-    console.log('isAuthenticated:', isAuthenticated);
-    console.log('authContext:', authContext);
-    console.log('params:', params);
+    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+      console.log('=== FETCH CONTACTS CALLED ===');
+      console.log('isAuthenticated:', isAuthenticated);
+      console.log('params:', params);
+    }
 
     if (!isAuthenticated) {
       console.log('User not authenticated, skipping contacts fetch');
@@ -49,23 +50,27 @@ export const useContacts = () => {
 
 
       // Use the API client instead of direct fetch
-      console.log('🌐 Using API client to fetch contacts');
-      console.log('   Params:', params);
+      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+        console.log('🌐 Using API client to fetch contacts');
+        console.log('   Params:', params);
+      }
 
       const response = await apiClient.getContacts({
         ...params,
         page: params?.page || currentPage,
         page_size: params?.page_size || pageSize
       });
-      console.log('📦 API Response:', response);
+      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+        console.log('📦 API Response received');
+      }
 
       // Handle response
       if (response.success && response.data) {
-        console.log('=== CONTACTS API RESPONSE ===');
-        console.log('Full response object:', response);
-        console.log('Response success:', response.success);
-        console.log('Response data:', response.data);
-        console.log('Requested page:', params?.page || currentPage);
+        if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+          console.log('=== CONTACTS API RESPONSE ===');
+          console.log('Response success:', response.success);
+          console.log('Requested page:', params?.page || currentPage);
+        }
 
         let results = response.data.results || [];
 

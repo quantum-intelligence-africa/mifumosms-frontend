@@ -14,13 +14,20 @@ export interface ApiResponse<T = unknown> {
 
 // Authentication Types
 export interface User {
-  id: number;
+  id: string | number;
   email: string;
   first_name: string;
   last_name: string;
   full_name?: string;
+  phone?: string;
   phone_number?: string;
+  date_joined?: string;
+  last_login?: string;
   is_verified: boolean;
+  user_type?: 'admin' | 'parent' | 'regular';
+  profile_image?: string;
+  bio?: string;
+  company?: string;
   is_superuser?: boolean;
   is_staff?: boolean;
   phone_verified?: boolean;
@@ -43,7 +50,7 @@ export interface RegisterRequest {
   password_confirm: string;
   first_name: string;
   last_name: string;
-  phone_number: string; // Required: E.164 format (e.g., +255123456789)
+  phone: string; // Required: E.164 format (e.g., +255123456789)
   timezone?: string;
   company_name?: string;
   business_name?: string; // Alias for company_name
@@ -892,7 +899,9 @@ class ApiClient {
       if (response.status === 401 || response.status === 403) {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken && !endpoint.includes('/auth/token/refresh/')) {
-          console.log('Token expired, attempting refresh...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Token expired, attempting refresh...');
+          }
           try {
             const refreshResponse = await this.refreshToken(refreshToken);
             if (refreshResponse.success && refreshResponse.data?.access) {
@@ -1029,6 +1038,21 @@ class ApiClient {
     });
   }
 
+  // Phone Verification
+  async sendPhoneVerification(phone: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE, {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  }
+
+  async verifyPhoneCode(phone: string, code: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    });
+  }
+
   async refreshToken(refreshToken: string): Promise<ApiResponse<{ access: string }>> {
     return this.request<{ access: string }>('/auth/token/refresh/', {
       method: 'POST',
@@ -1037,11 +1061,11 @@ class ApiClient {
   }
 
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PROFILE);
+    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }
 
   async updateProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
-    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.PROFILE, {
+    return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE, {
       method: 'PUT',
       body: JSON.stringify(userData),
     });
@@ -1188,6 +1212,51 @@ class ApiClient {
     updated_at: string;
   }>> {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REGENERATE(keyId), {
+      method: 'POST',
+    });
+  }
+
+  // New API Key Management (matching backend docs)
+  async generateApiKey(keyData: { name: string; permissions?: string[] }): Promise<ApiResponse<{
+    key_id: string;
+    key: string;
+    name: string;
+    created_at: string;
+    expires_at?: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.API_KEY_GENERATE, {
+      method: 'POST',
+      body: JSON.stringify(keyData),
+    });
+  }
+
+  async listApiKeys(): Promise<ApiResponse<Array<{
+    key_id: string;
+    name: string;
+    created_at: string;
+    expires_at?: string;
+    last_used?: string;
+  }>>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.API_KEYS);
+  }
+
+  async revokeApiKey(keyId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.API_KEY_REVOKE, {
+      method: 'POST',
+      body: JSON.stringify({ key_id: keyId }),
+    });
+  }
+
+  // Two-Factor Authentication
+  async enableTwoFactor(phone: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SECURITY.TWO_FACTOR_ENABLE, {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  }
+
+  async disableTwoFactor(): Promise<ApiResponse<{ message: string }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SECURITY.TWO_FACTOR_DISABLE, {
       method: 'POST',
     });
   }
@@ -1655,7 +1724,9 @@ class ApiClient {
       });
     } else {
       // JSON data (CSV)
-      console.log('Bulk import request data:', data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Bulk import request initiated');
+      }
 
       // If we have contacts but no csv_data, convert contacts to CSV
       const requestData = { ...data };
@@ -1697,7 +1768,9 @@ class ApiClient {
       ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    console.log('Converted CSV data:', csvContent);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('CSV data converted successfully');
+    }
     return csvContent;
   }
 
@@ -2081,7 +2154,7 @@ class ApiClient {
       total_messages: number;
       active_contacts: number;
       campaign_success_rate: number;
-      sender_ids_this_month: number;
+      current_credits: number;
     };
     recent_campaigns: Array<{
       id: string;
@@ -2106,13 +2179,24 @@ class ApiClient {
       today: number;
       this_week: number;
       this_month: number;
-      growth_rate: number;
     };
-    contact_stats: {
-      total: number;
-      active: number;
-      new_this_month: number;
-      growth_rate: number;
+    personal_usage: {
+      this_month: {
+        credits_used: number;
+        messages_sent: number;
+      };
+      usage_trends: Array<{
+        date: string;
+        credits_used: number;
+        message_count: number;
+      }>;
+      recent_messages: Array<{
+        id: string;
+        recipient: string;
+        status: string;
+        sent_at: string;
+        cost_amount: string;
+      }>;
     };
     last_updated: string;
   }>> {
@@ -3633,18 +3717,22 @@ class ApiClient {
       if (status) url += `&status=${status}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
 
-      console.log('=== API CLIENT getUserRequests ===');
-      console.log('URL:', url.trim());
-      console.log('Headers:', this.getHeaders());
-      console.log('Token:', this.token);
-      console.log('Note: This endpoint should return only current user\'s sender requests');
+      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+        console.log('=== API CLIENT getUserRequests ===');
+        console.log('URL:', url.trim());
+        console.log('Headers: [REDACTED]');
+        console.log('Token: [REDACTED]');
+        console.log('Note: This endpoint should return only current user\'s sender requests');
+      }
 
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
 
-      console.log('Raw response status:', response.status);
-      console.log('Raw response ok:', response.ok);
+      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+        console.log('Raw response status:', response.status);
+        console.log('Raw response ok:', response.ok);
+      }
 
       const result = await this.handleResponse<{
         results: SenderNameRequest[];
@@ -3693,8 +3781,10 @@ class ApiClient {
       // Ensure URL is clean with no extra spaces
       url = url.trim();
 
-      console.log('=== API CLIENT getUnifiedSenderNames ===');
-      console.log('URL:', url.trim());
+      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+        console.log('=== API CLIENT getUnifiedSenderNames ===');
+        console.log('URL:', url.trim());
+      }
 
       const response = await fetch(url, {
         headers: this.getHeaders()
@@ -3876,14 +3966,20 @@ class ApiClient {
   }
 
   async refreshTokenAndRetry(context: string): Promise<boolean> {
-    console.log('Token expired, attempting to refresh...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Token expired, attempting to refresh...');
+    }
     const refreshResult = await this.refreshTokenFromStorage();
 
     if (refreshResult.success) {
-      console.log('Token refreshed successfully');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Token refreshed successfully');
+      }
       return true;
     } else {
-      console.log('Token refresh failed, redirecting to login');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Token refresh failed, redirecting to login');
+      }
       this.redirectToLogin();
       return false;
     }

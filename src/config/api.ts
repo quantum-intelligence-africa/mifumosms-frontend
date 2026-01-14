@@ -1,4 +1,4 @@
-// API Configuration - Updated to match backend API guide
+// API Configuration - Updated to match backend API documentation
 export const API_CONFIG = {
 	// BASE_URL: 'https://mifumosms.servehttp.com/api',
 	BASE_URL: 'https://mifumosms.mifumolabs.com/api',
@@ -33,6 +33,7 @@ export const API_CONFIG = {
 				NOTIFICATIONS: '/auth/settings/notifications/',
 				SECURITY: '/auth/settings/security/',
 				API: '/auth/settings/',
+				API_KEYS: '/auth/settings/',
 				KEYS: {
 					CREATE: '/auth/keys/create/',
 					REVOKE: (keyId: string) => `/auth/keys/${keyId}/revoke/`,
@@ -43,6 +44,10 @@ export const API_CONFIG = {
 					TOGGLE: (webhookId: string) => `/auth/webhooks/${webhookId}/toggle/`,
 					DELETE: (webhookId: string) => `/auth/webhooks/${webhookId}/delete/`,
 				},
+			},
+			SECURITY: {
+				TWO_FACTOR_ENABLE: '/auth/security/2fa/enable/',
+				TWO_FACTOR_DISABLE: '/auth/security/2fa/disable/',
 			},
 		},
 		TENANTS: {

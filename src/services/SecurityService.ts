@@ -1,5 +1,6 @@
 // Security Service - API client for security endpoints
 import { API_CONFIG } from '@/config/api';
+import { apiClient } from '@/lib/api';
 
 // Types based on the real API documentation
 export interface SecuritySummary {
@@ -141,20 +142,9 @@ class SecurityService {
     warning?: string;
     errors?: Record<string, string[]>;
   }> {
-    const response = await fetch(
-      `${API_CONFIG.BASE_URL}/auth/security/2fa/enable/`,
-      {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to enable 2FA: ${response.statusText}`);
-    }
-
-    return response.json();
+    // Extract phone number from the request data
+    const phone = data.phone || data.phone_number;
+    return apiClient.enableTwoFactor(phone);
   }
 
   // Disable 2FA
@@ -163,20 +153,7 @@ class SecurityService {
     message?: string;
     errors?: Record<string, string[]>;
   }> {
-    const response = await fetch(
-      `${API_CONFIG.BASE_URL}/auth/security/2fa/disable/`,
-      {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to disable 2FA: ${response.statusText}`);
-    }
-
-    return response.json();
+    return apiClient.disableTwoFactor();
   }
 
   // Verify 2FA

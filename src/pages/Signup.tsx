@@ -9,11 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizePhoneNumber } from "@/utils/phoneUtils";
+import { apiClient } from "@/lib/api";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [registeredPhone, setRegisteredPhone] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -28,6 +32,48 @@ const Signup = () => {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Handle phone verification
+  const handleVerifyPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!verificationCode || verificationCode.length !== 6) {
+      toast({
+        title: "Invalid code",
+        description: "Please enter a valid 6-digit verification code.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await apiClient.verifyPhoneCode(registeredPhone, verificationCode);
+
+      if (result.success) {
+        toast({
+          title: "Phone verified successfully!",
+          description: "Your account is now active. You can log in.",
+          duration: 5000
+        });
+        navigate('/login');
+      } else {
+        toast({
+          title: "Verification failed",
+          description: result.message || "Invalid verification code. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Verification failed",
+        description: "An error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Force light theme on auth page
   useEffect(() => {
@@ -104,7 +150,7 @@ const Signup = () => {
         password_confirm: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        phone_number: phoneInfo.normalized
+        phone: phoneInfo.normalized
       };
 
       // Add optional fields if provided
@@ -155,24 +201,15 @@ const Signup = () => {
       if (result.success) {
         // ✅ Status 201 - Account created successfully
         if (result.requiresActivation) {
-          // Account created but needs activation
-          const verificationMethod = result.verificationMethod || 'sms';
-          const message = verificationMethod === 'sms'
-            ? `Please check your phone (${result.phoneNumber}) for the 6-digit verification code to activate your account.`
-            : "Please check your email for the 6-digit verification code to activate your account.";
+          // Account created but needs phone verification
+          const phoneNumber = result.phoneNumber || phoneInfo.normalized;
+          setRegisteredPhone(phoneNumber);
+          setShowVerification(true);
 
           toast({
             title: "Account created successfully!",
-            description: message,
+            description: `Please check your phone (${phoneNumber}) for the 6-digit verification code.`,
             duration: 10000
-          });
-          // Redirect to activation page with verification method info
-          navigate('/activate-email', {
-            state: {
-              email: result.email || formData.email,
-              phoneNumber: result.phoneNumber,
-              verificationMethod: verificationMethod
-            }
           });
         } else {
           // Account activated immediately (backward compatibility)
@@ -269,11 +306,17 @@ const Signup = () => {
         <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
           <CardHeader className="text-center pb-2 sm:pb-3 px-4 sm:px-6">
             <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">
-              Create your account
+              {showVerification ? "Verify your phone" : "Create your account"}
             </CardTitle>
+            {showVerification && (
+              <CardDescription className="text-sm text-gray-600">
+                Enter the 6-digit code sent to {registeredPhone}
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
-              <form onSubmit={handleSubmit} className="space-y-3">
+              {!showVerification ? (
+                <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="firstName" className="text-xs font-semibold text-gray-700">First name</Label>
@@ -410,14 +453,51 @@ const Signup = () => {
               </div>
 
 
-              <Button
-                type="submit"
-                className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating account..." : "Create account"}
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Creating account..." : "Create account"}
+                </Button>
+              </form>
+              ) : (
+                <form onSubmit={handleVerifyPhone} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
+                      Verification Code
+                    </Label>
+                    <Input
+                      id="verificationCode"
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      required
+                      className="h-12 text-center text-2xl font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={isLoading || verificationCode.length !== 6}
+                  >
+                    {isLoading ? "Verifying..." : "Verify Phone"}
+                  </Button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowVerification(false)}
+                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Back to registration
+                    </button>
+                  </div>
+                </form>
+              )}
 
             <div className="mt-4 text-center">
               <div className="flex items-center justify-center gap-4">

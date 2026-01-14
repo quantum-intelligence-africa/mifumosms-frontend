@@ -32,13 +32,9 @@ interface DashboardOverviewResponse {
   data: {
     metrics: {
       total_messages: number;
-      total_sms_messages: number;
       active_contacts: number;
       campaign_success_rate: number;
-      sms_delivery_rate: number;
       current_credits: number;
-      total_purchased: number;
-      sender_ids_this_month: number;
     };
     recent_campaigns: Array<{
       id: string;
@@ -58,23 +54,24 @@ interface DashboardOverviewResponse {
       today: number;
       this_week: number;
       this_month: number;
-      growth_rate: number;
     };
-    sms_stats: {
-      today: number;
-      this_month: number;
-      delivery_rate: number;
-    };
-    contact_stats: {
-      total: number;
-      active: number;
-      new_this_month: number;
-      growth_rate: number;
-    };
-    billing_stats: {
-      current_credits: number;
-      total_purchased: number;
-      credits_used: number;
+    personal_usage: {
+      this_month: {
+        credits_used: number;
+        messages_sent: number;
+      };
+      usage_trends: Array<{
+        date: string;
+        credits_used: number;
+        message_count: number;
+      }>;
+      recent_messages: Array<{
+        id: string;
+        recipient: string;
+        status: string;
+        sent_at: string;
+        cost_amount: string;
+      }>;
     };
     last_updated: string;
   };
@@ -291,8 +288,13 @@ export const useDashboard = () => {
             timeAgo?: string;
           }) => {
             // Debug: Log the raw campaign data to see what fields are available
-            if (isInitialLoad && overviewData.recent_campaigns.indexOf(campaign) === 0) {
-              console.log('Sample campaign data from API:', campaign);
+            if (isInitialLoad && overviewData.recent_campaigns.indexOf(campaign) === 0 && process.env.NODE_ENV === 'development') {
+              console.log('Sample campaign data from API (dev only):', {
+                id: campaign.id,
+                name: campaign.name,
+                status: campaign.status,
+                type: campaign.campaign_type || campaign.type
+              });
             }
 
             // Get the correct campaign type - prioritize campaign_type_display, then campaign_type

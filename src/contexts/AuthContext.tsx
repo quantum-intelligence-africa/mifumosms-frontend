@@ -17,6 +17,14 @@ interface AuthContextType {
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
   verifySMS: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
   resendActivationEmail: (email?: string, phoneNumber?: string) => Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }>;
+  // New API methods
+  sendPhoneVerification: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPhoneCode: (phone: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  generateApiKey: (keyData: { name: string; permissions?: string[] }) => Promise<{ success: boolean; error?: string; data?: any }>;
+  listApiKeys: () => Promise<{ success: boolean; error?: string; data?: any[] }>;
+  revokeApiKey: (keyId: string) => Promise<{ success: boolean; error?: string }>;
+  enableTwoFactor: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  disableTwoFactor: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -562,6 +570,119 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // New API methods
+  const sendPhoneVerification = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.sendPhoneVerification(phone);
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Failed to send phone verification' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send phone verification'
+      };
+    }
+  };
+
+  const verifyPhoneCode = async (phone: string, code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.verifyPhoneCode(phone, code);
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Failed to verify phone code' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to verify phone code'
+      };
+    }
+  };
+
+  const generateApiKey = async (keyData: { name: string; permissions?: string[] }): Promise<{ success: boolean; error?: string; data?: any }> => {
+    try {
+      const response = await apiClient.generateApiKey(keyData);
+      if (response.success !== false && response.data) {
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Failed to generate API key' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate API key'
+      };
+    }
+  };
+
+  const listApiKeys = async (): Promise<{ success: boolean; error?: string; data?: any[] }> => {
+    try {
+      const response = await apiClient.listApiKeys();
+      if (response.success !== false && response.data) {
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, error: response.error || 'Failed to list API keys' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to list API keys'
+      };
+    }
+  };
+
+  const revokeApiKey = async (keyId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.revokeApiKey(keyId);
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Failed to revoke API key' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to revoke API key'
+      };
+    }
+  };
+
+  const enableTwoFactor = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.enableTwoFactor(phone);
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Failed to enable two-factor authentication' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to enable two-factor authentication'
+      };
+    }
+  };
+
+  const disableTwoFactor = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await apiClient.disableTwoFactor();
+      if (response.success !== false) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.error || 'Failed to disable two-factor authentication' };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to disable two-factor authentication'
+      };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated,
@@ -576,6 +697,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     verifyEmail,
     verifySMS,
     resendActivationEmail,
+    // New API methods
+    sendPhoneVerification,
+    verifyPhoneCode,
+    generateApiKey,
+    listApiKeys,
+    revokeApiKey,
+    enableTwoFactor,
+    disableTwoFactor,
   };
 
   return (

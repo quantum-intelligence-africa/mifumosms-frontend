@@ -176,10 +176,12 @@ const Settings = () => {
   const [fallbackQRCode, setFallbackQRCode] = useState<QRCodeData | null>(null);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [preferences, setPreferences] = useState({
+    theme: "light",
     language: "en",
     timezone: "Africa/Dar_es_Salaam",
-    date_format: "DD/MM/YYYY",
-    time_format: "24h",
+    email_notifications: true,
+    sms_notifications: false,
+    marketing_emails: true
   });
 
   // API Settings State
@@ -423,13 +425,13 @@ const Settings = () => {
       icon: User,
       color: "bg-blue-500"
     },
-    // {
-    //   id: "preferences",
-    //   title: "Preferences",
-    //   description: "Language, timezone, and display settings",
-    //   icon: Globe,
-    //   color: "bg-green-500"
-    // },
+    {
+      id: "preferences",
+      title: "Preferences",
+      description: "Theme, language, timezone, and notification preferences",
+      icon: Globe,
+      color: "bg-green-500"
+    },
     {
       id: "notifications",
       title: "Notifications",
@@ -534,15 +536,30 @@ const Settings = () => {
   const loadAPISettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.getAPISettings();
+      const response = await apiClient.listApiKeys();
       if (response.success && response.data) {
-        setApiSettings(response.data);
+        // Transform the new API response format to match the existing interface
+        setApiSettings({
+          api_keys: response.data.map(key => ({
+            id: key.key_id,
+            key_name: key.name,
+            api_key: key.key,
+            secret_key: key.key, // New API doesn't have separate secret
+            status: 'active', // Assume active if returned
+            permissions: {}, // New API doesn't return permissions in list
+            total_uses: 0,
+            last_used: key.last_used,
+            expires_at: key.expires_at,
+            created_at: key.created_at
+          })),
+          last_updated: new Date().toISOString()
+        });
       }
     } catch (error) {
       console.error('Failed to load API settings:', error);
       toast({
         title: "Failed to load API settings",
-        description: "Could not fetch API keys and webhooks.",
+        description: "Could not fetch API keys.",
         variant: "destructive"
       });
     } finally {
@@ -570,11 +587,14 @@ const Settings = () => {
 
     setIsLoading(true);
     try {
-      const response = await apiClient.createAPIKey(newApiKeyForm);
+      const response = await apiClient.generateApiKey({
+        name: newApiKeyForm.key_name,
+        permissions: newApiKeyForm.permissions ? Object.values(newApiKeyForm.permissions).flat() : undefined
+      });
       if (response.success && response.data) {
         setNewlyCreatedKey({
-          api_key: response.data.api_key,
-          secret_key: response.data.secret_key
+          api_key: response.data.key,
+          secret_key: response.data.key // API returns single key, not separate secret
         });
         setShowCreatedKeyDialog(true);
         setShowApiKeyDialog(false);
@@ -596,7 +616,7 @@ const Settings = () => {
   const handleRevokeAPIKey = async (keyId: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.revokeAPIKey(keyId);
+      const response = await apiClient.revokeApiKey(keyId);
       if (response.success) {
         toast({
           title: "API key revoked",
@@ -624,7 +644,7 @@ const Settings = () => {
       if (response.success && response.data) {
         setNewlyCreatedKey({
           api_key: response.data.api_key,
-          secret_key: response.data.secret_key
+          secret_key: response.data.secret_key || response.data.api_key
         });
         setShowCreatedKeyDialog(true);
         await loadAPISettings();
@@ -894,32 +914,32 @@ const Settings = () => {
     }
   };
 
-  // const handlePreferencesUpdate = async () => {
-  //   setIsLoading(true);
-  //   try {
-  //     const response = await apiClient.updatePreferences(preferences);
-  //     if (response.success) {
-  //       toast({
-  //         title: "Preferences updated successfully",
-  //         description: "Your preferences have been saved.",
-  //       });
-  //     } else {
-  //       toast({
-  //         title: "Update failed",
-  //         description: response.error || "Failed to update preferences. Please try again.",
-  //         variant: "destructive"
-  //       });
-  //     }
-  //   } catch (error) {
-  //     toast({
-  //       title: "Update failed",
-  //       description: "An unexpected error occurred. Please try again.",
-  //       variant: "destructive"
-  //     });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+  const handlePreferencesUpdate = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.updatePreferences(preferences);
+      if (response.success) {
+        toast({
+          title: "Preferences updated successfully",
+          description: "Your preferences have been saved.",
+        });
+      } else {
+        toast({
+          title: "Update failed",
+          description: response.error || "Failed to update preferences. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleNotificationSettingsUpdate = async () => {
     setIsLoading(true);
@@ -1217,96 +1237,125 @@ const Settings = () => {
           </div>
         );
 
-      // case "preferences":
-      //   return (
-      //     <div className="space-y-4">
-      //       <Card className="glass border-0">
-      //         <CardHeader className="p-4">
-      //           <CardTitle className="flex items-center gap-2 text-sm">
-      //             <Globe className="w-4 h-4" />
-      //             Preferences
-      //           </CardTitle>
-      //         </CardHeader>
-      //         <CardContent className="space-y-4 p-4 pt-0">
-      //           <div className="space-y-3">
-      //             <div className="space-y-2">
-      //               <Label htmlFor="language" className="text-sm">Language</Label>
-      //               <Select
-      //                 value={preferences.language}
-      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
-      //               >
-      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
-      //                   <SelectValue />
-      //                 </SelectTrigger>
-      //                 <SelectContent className="glass">
-      //                   <SelectItem value="en">🇺🇸 English</SelectItem>
-      //                   <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
-      //                   <SelectItem value="fr">🇫🇷 Français</SelectItem>
-      //                   <SelectItem value="ar">🇸🇦 العربية</SelectItem>
-      //                 </SelectContent>
-      //               </Select>
-      //             </div>
-      //             <div className="space-y-2">
-      //               <Label htmlFor="timezone" className="text-sm">Timezone</Label>
-      //               <Select
-      //                 value={preferences.timezone}
-      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
-      //               >
-      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
-      //                   <SelectValue />
-      //                 </SelectTrigger>
-      //                 <SelectContent className="glass">
-      //                   <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
-      //                   <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
-      //                   <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
-      //                   <SelectItem value="UTC">UTC</SelectItem>
-      //                 </SelectContent>
-      //               </Select>
-      //             </div>
-      //             <div className="space-y-2">
-      //               <Label htmlFor="dateFormat" className="text-sm">Date Format</Label>
-      //               <Select
-      //                 value={preferences.date_format}
-      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, date_format: value }))}
-      //               >
-      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
-      //                   <SelectValue />
-      //                 </SelectTrigger>
-      //                 <SelectContent className="glass">
-      //                   <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-      //                   <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-      //                   <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-      //                 </SelectContent>
-      //               </Select>
-      //             </div>
-      //             <div className="space-y-2">
-      //               <Label htmlFor="timeFormat" className="text-sm">Time Format</Label>
-      //               <Select
-      //                 value={preferences.time_format}
-      //                 onValueChange={(value) => setPreferences(prev => ({ ...prev, time_format: value }))}
-      //               >
-      //                 <SelectTrigger className="glass-subtle border-0 text-sm">
-      //                   <SelectValue />
-      //                 </SelectTrigger>
-      //                 <SelectContent className="glass">
-      //                   <SelectItem value="24h">24 Hour (14:30)</SelectItem>
-      //                   <SelectItem value="12h">12 Hour (2:30 PM)</SelectItem>
-      //                 </SelectContent>
-      //               </Select>
-      //             </div>
-      //           </div>
-      //           <Button
-      //             onClick={handlePreferencesUpdate}
-      //             disabled={isLoading}
-      //             className="w-full text-sm"
-      //           >
-      //             <Save className="w-4 h-4 mr-2" />
-      //             {isLoading ? "Saving..." : "Save Preferences"}
-      //           </Button>
-      //         </CardContent>
-      //       </Card>
-      //     </div>
-      //   );
+      case "preferences":
+        return (
+          <div className="space-y-4">
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Globe className="w-4 h-4" />
+                  Preferences
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-4 pt-0">
+                <div className="space-y-4">
+                  {/* Theme Selection */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Theme</Label>
+                    <Select
+                      value={preferences.theme}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, theme: value }))}
+                    >
+                      <SelectTrigger className="glass-subtle border-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="light">☀️ Light</SelectItem>
+                        <SelectItem value="dark">🌙 Dark</SelectItem>
+                        <SelectItem value="system">💻 System</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Language Selection */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Language</Label>
+                    <Select
+                      value={preferences.language}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
+                    >
+                      <SelectTrigger className="glass-subtle border-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="en">🇺🇸 English</SelectItem>
+                        <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
+                        <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                        <SelectItem value="ar">🇸🇦 العربية</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Timezone Selection */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Timezone</Label>
+                    <Select
+                      value={preferences.timezone}
+                      onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
+                    >
+                      <SelectTrigger className="glass-subtle border-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="glass">
+                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
+                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Notification Preferences */}
+                  <div className="space-y-3">
+                    <Label className="text-sm">Notification Preferences</Label>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm">Email Notifications</Label>
+                        <p className="text-xs text-text-subtle">Receive notifications via email</p>
+                      </div>
+                      <Switch
+                        checked={preferences.email_notifications}
+                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, email_notifications: checked }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm">SMS Notifications</Label>
+                        <p className="text-xs text-text-subtle">Receive notifications via SMS</p>
+                      </div>
+                      <Switch
+                        checked={preferences.sms_notifications}
+                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, sms_notifications: checked }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm">Marketing Emails</Label>
+                        <p className="text-xs text-text-subtle">Receive marketing and promotional emails</p>
+                      </div>
+                      <Switch
+                        checked={preferences.marketing_emails}
+                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, marketing_emails: checked }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handlePreferencesUpdate}
+                  disabled={isLoading}
+                  className="w-full text-sm"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isLoading ? "Saving..." : "Save Preferences"}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
 
       case "notifications":
         return (

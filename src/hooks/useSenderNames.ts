@@ -32,13 +32,17 @@ export function useSenderNames() {
 
 	const fetchSenderNames = async (useUnified: boolean = false, tenantId?: string) => {
 		if (!isAuthenticated) {
-			console.log('User not authenticated, skipping API call');
+			if (process.env.NODE_ENV === 'development') {
+				console.log('User not authenticated, skipping API call');
+			}
 			setLoading(false);
 			return;
 		}
 
 		try {
-			console.log('Fetching sender names...', { useUnified, tenantId });
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Fetching sender names...', { useUnified, tenantId });
+			}
 			setLoading(true);
 			setError(null);
 
@@ -46,20 +50,17 @@ export function useSenderNames() {
 			if (useUnified) {
 				// Use the new unified endpoint
 				response = await apiClient.getUnifiedSenderNames(tenantId);
-				console.log('=== UNIFIED SENDER NAMES API RESPONSE ===');
 			} else {
 				// Use the legacy endpoint
 				response = await apiClient.getUserRequests();
-				console.log('=== SENDER NAMES API RESPONSE ===');
 			}
 
-			console.log('Full response object:', response);
-			console.log('Response success:', response.success);
-			console.log('Response data:', response.data);
-			console.log('Response error:', response.error);
-			console.log('Response status:', response.status);
-			console.log('Response data type:', typeof response.data);
-			console.log('Response data keys:', response.data ? Object.keys(response.data) : 'No data');
+			if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
+				console.log('=== SENDER NAMES API RESPONSE ===');
+				console.log('Response success:', response.success);
+				console.log('Response data type:', typeof response.data);
+				console.log('Response data keys:', response.data ? Object.keys(response.data) : 'No data');
+			}
 
 			if (response.success && response.data) {
 				console.log('Full response data:', response.data);
