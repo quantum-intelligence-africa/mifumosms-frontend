@@ -32,17 +32,11 @@ export function useSenderNames() {
 
 	const fetchSenderNames = async (useUnified: boolean = false, tenantId?: string) => {
 		if (!isAuthenticated) {
-			if (process.env.NODE_ENV === 'development') {
-				console.log('User not authenticated, skipping API call');
-			}
 			setLoading(false);
 			return;
 		}
 
 		try {
-			if (process.env.NODE_ENV === 'development') {
-				console.log('Fetching sender names...', { useUnified, tenantId });
-			}
 			setLoading(true);
 			setError(null);
 
@@ -55,89 +49,44 @@ export function useSenderNames() {
 				response = await apiClient.getUserRequests();
 			}
 
-			if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-				console.log('=== SENDER NAMES API RESPONSE ===');
-				console.log('Response success:', response.success);
-				console.log('Response data type:', typeof response.data);
-				console.log('Response data keys:', response.data ? Object.keys(response.data) : 'No data');
-			}
-
 			if (response.success && response.data) {
-				console.log('Full response data:', response.data);
-				console.log('Response data type:', typeof response.data);
-				console.log('Response data keys:', Object.keys(response.data || {}));
-
 				let results = [];
 				if (useUnified) {
 					// Handle unified response structure
 					if ((response.data as any).data && Array.isArray((response.data as any).data)) {
 						results = (response.data as any).data;
-						console.log('Unified data structure, results:', results);
-					} else {
-						console.log('No valid unified data structure found, response.data:', response.data);
 					}
 				} else {
 					// Handle legacy response structures
 					if (Array.isArray(response.data)) {
 						// If data is directly an array
 						results = response.data;
-						console.log('Data is direct array, results:', results);
 					} else if ((response.data as any).results && Array.isArray((response.data as any).results)) {
 						// If data has a results property
 						results = (response.data as any).results;
-						console.log('Data has results property, results:', results);
 					} else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
 						// If data has a nested data property
 						results = (response.data as any).data;
-						console.log('Data has nested data property, results:', results);
-					} else {
-						console.log('No valid data structure found, response.data:', response.data);
-					}
-
-					// Additional validation: Ensure we only show current user's requests
-					// Filter out any requests that might belong to other users
-					const currentUserId = authContext?.user?.id;
-
-					if (currentUserId) {
-						results = results.filter((request: any) => {
-							// Check if the request belongs to the current user
-							// Use the correct field extraction: user_id || user
-							const requestUserId = request.user_id || request.user;
-
-							// Debug logging to see exactly what's happening
-							console.log('=== DEBUGGING USER ID FILTERING ===');
-							console.log('Request object:', request);
-							console.log('Request.user:', request.user);
-							console.log('Request.user_id:', request.user_id);
-							console.log('Current user ID:', currentUserId);
-							console.log('Extracted requestUserId:', requestUserId);
-							console.log('Comparison result:', requestUserId === currentUserId);
-							console.log('=====================================');
-
-							const isCurrentUser = requestUserId === currentUserId;
-
-							if (!isCurrentUser) {
-								console.log(`Filtering out request from other user: ${request.requested_sender_id || request.sender_name}, User ID: ${requestUserId}, Current User ID: ${currentUserId}`);
-							} else {
-								console.log(`✅ Keeping request from current user: ${request.requested_sender_id || request.sender_name}`);
-							}
-
-							return isCurrentUser;
-						});
-						console.log('Filtered results for current user:', results.length, 'requests');
-					} else {
-						console.log('No current user ID available, showing all results');
 					}
 				}
 
-				console.log('Final results array:', results);
-				console.log('Results length:', results.length);
+				// Additional validation: Ensure we only show current user's requests
+				// Filter out any requests that might belong to other users
+				const currentUserId = authContext?.user?.id;
+
+				if (currentUserId) {
+					results = results.filter((request: any) => {
+						// Check if the request belongs to the current user
+						// Use the correct field extraction: user_id || user
+						const requestUserId = request.user_id || request.user;
+						return requestUserId === currentUserId;
+					});
+				}
+
 				setSenderNames(results);
-				console.log('Sender names set:', results);
 
 				// Calculate stats from the fetched sender names as a fallback
 				const calculatedStats = calculateStatsFromSenderNames(results);
-				console.log('Calculated stats from sender names:', calculatedStats);
 				setStats(calculatedStats);
 			} else {
 				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
@@ -162,42 +111,25 @@ export function useSenderNames() {
 
 	const fetchStats = async () => {
 		if (!isAuthenticated) {
-			console.log('User not authenticated, skipping stats fetch');
 			return;
 		}
 
 		try {
-			console.log('Fetching sender name statistics for current user...');
 			const response = await apiClient.getStatistics();
 
-			console.log('=== STATS API RESPONSE ===');
-			console.log('Full response object:', response);
-			console.log('Response success:', response.success);
-			console.log('Response data:', response.data);
-			console.log('Response error:', response.error);
-			console.log('Response status:', response.status);
-
 			if (response.success && response.data) {
-				console.log('Stats response data:', response.data);
 				// The stats should already be user-specific from the API
 				// but let's add some validation to ensure data integrity
 				const statsData = response.data;
-				console.log('Setting stats for current user:', statsData);
 				setStats(statsData);
 			} else {
-				console.error('Failed to fetch stats:', response.error);
 				// If stats API fails, calculate stats from the sender names list
-				console.log('Stats API failed, calculating stats from sender names list...');
 				const calculatedStats = calculateStatsFromSenderNames(senderNames);
-				console.log('Calculated stats:', calculatedStats);
 				setStats(calculatedStats);
 			}
 		} catch (err) {
-			console.error('Failed to fetch sender name stats:', err);
 			// If stats API fails, calculate stats from the sender names list
-			console.log('Stats API error, calculating stats from sender names list...');
 			const calculatedStats = calculateStatsFromSenderNames(senderNames);
-			console.log('Calculated stats:', calculatedStats);
 			setStats(calculatedStats);
 		}
 	};
@@ -220,7 +152,6 @@ export function useSenderNames() {
 				});
 
 				// Refresh data from server to ensure consistency
-				console.log('Refreshing data after successful creation...');
 				await fetchSenderNames();
 				await fetchStats();
 
@@ -257,7 +188,6 @@ export function useSenderNames() {
 				});
 
 				// Refresh data from server to ensure consistency
-				console.log('Refreshing data after successful update...');
 				await fetchSenderNames();
 				await fetchStats();
 
@@ -290,7 +220,6 @@ export function useSenderNames() {
 				});
 
 				// Refresh data from server to ensure consistency
-				console.log('Refreshing data after successful deletion...');
 				await fetchSenderNames();
 				await fetchStats();
 
@@ -344,7 +273,6 @@ export function useSenderNames() {
 		// Add a timeout to prevent infinite loading
 		const timeout = setTimeout(() => {
 			if (!requestsCompleted.current) {
-				console.log('Loading timeout reached, setting loading to false');
 				setLoading(false);
 				setError('Request timeout - please check your connection');
 				setSenderNames([]); // Ensure it's always an array
@@ -357,21 +285,17 @@ export function useSenderNames() {
 	// Recalculate stats whenever senderNames changes
 	useEffect(() => {
 		if (senderNames.length > 0) {
-			console.log('Recalculating stats from sender names:', senderNames.length);
 			const calculatedStats = calculateStatsFromSenderNames(senderNames);
-			console.log('Updated calculated stats:', calculatedStats);
 			setStats(calculatedStats);
 		}
 	}, [senderNames]);
 
 	const refreshData = async () => {
-		console.log('Manual refresh triggered...');
 		await fetchSenderNames(true); // Use unified endpoint
 		await fetchStats();
 	};
 
 	const fetchSenderNamesByTenant = async (tenantId: string) => {
-		console.log('Fetching sender names for tenant:', tenantId);
 		await fetchSenderNames(true, tenantId);
 	};
 

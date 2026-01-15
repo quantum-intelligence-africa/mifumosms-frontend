@@ -1423,17 +1423,6 @@ class ApiClient {
     });
   }
 
-  async generateApiKey(): Promise<ApiResponse<{ api_key: string }>> {
-    return this.request<{ api_key: string }>('/auth/api-key/generate/', {
-      method: 'POST',
-    });
-  }
-
-  async revokeApiKey(): Promise<ApiResponse> {
-    return this.request('/auth/api-key/revoke/', {
-      method: 'POST',
-    });
-  }
 
   async logout(): Promise<ApiResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
@@ -3717,22 +3706,10 @@ class ApiClient {
       if (status) url += `&status=${status}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
 
-      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-        console.log('=== API CLIENT getUserRequests ===');
-        console.log('URL:', url.trim());
-        console.log('Headers: [REDACTED]');
-        console.log('Token: [REDACTED]');
-        console.log('Note: This endpoint should return only current user\'s sender requests');
-      }
 
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
-
-      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-        console.log('Raw response status:', response.status);
-        console.log('Raw response ok:', response.ok);
-      }
 
       const result = await this.handleResponse<{
         results: SenderNameRequest[];
@@ -3781,21 +3758,12 @@ class ApiClient {
       // Ensure URL is clean with no extra spaces
       url = url.trim();
 
-      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-        console.log('=== API CLIENT getUnifiedSenderNames ===');
-        console.log('URL:', url.trim());
-      }
 
       const response = await fetch(url, {
         headers: this.getHeaders()
       });
 
-      console.log('Raw response status:', response.status);
-      console.log('Raw response ok:', response.ok);
-
       const result = await this.handleResponse<UnifiedSenderNamesResponse>(response);
-
-      console.log('Processed result:', result);
       return result;
     } catch (error) {
       return {

@@ -434,22 +434,6 @@ const SenderNames = () => {
   // Final safety check - ensure senderNames is always an array
   const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
 
-  // Debug logging
-  console.log('SenderNames render:', {
-    loading,
-    error,
-    senderNames: senderNames?.length,
-    senderNamesData: senderNames,
-    stats,
-    statsTotal: stats?.total_requests,
-    statsPending: stats?.pending_requests,
-    statsApproved: stats?.approved_requests,
-    statsRejected: stats?.rejected_requests,
-    isArray: Array.isArray(senderNames),
-    safeSenderNamesLength: safeSenderNames.length,
-    safeSenderNames: safeSenderNames
-  });
-
   // Show a fallback UI if we're stuck in loading state for too long
   if (loading && safeSenderNames.length === 0 && !error) {
     // Show the page structure with a loading indicator

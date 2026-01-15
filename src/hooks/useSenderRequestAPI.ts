@@ -13,16 +13,13 @@ export function useSenderRequestAPI() {
 
 	const fetchSenderNames = async () => {
 		try {
-			console.log('Fetching sender names...');
 			setLoading(true);
 			setError(null);
 
 			const response = await apiClient.getUserRequests();
-			console.log('Sender names response:', response);
 
 			if (response.success && response.data) {
 				setSenderNames(response.data.results || []);
-				console.log('Sender names set:', response.data.results);
 			} else {
 				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
 
@@ -161,7 +158,6 @@ export function useSenderRequestAPI() {
 		// Add a timeout to prevent infinite loading
 		const timeout = setTimeout(() => {
 			if (loading) {
-				console.log('Loading timeout reached, setting loading to false');
 				setLoading(false);
 				setError('Request timeout - please check your connection');
 				setSenderNames([]);

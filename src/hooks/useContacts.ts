@@ -29,14 +29,7 @@ export const useContacts = () => {
     page?: number;
     page_size?: number;
   }) => {
-    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-      console.log('=== FETCH CONTACTS CALLED ===');
-      console.log('isAuthenticated:', isAuthenticated);
-      console.log('params:', params);
-    }
-
     if (!isAuthenticated) {
-      console.log('User not authenticated, skipping contacts fetch');
       setIsLoading(false);
       setContacts([]);
       setTotalCount(0);
@@ -44,52 +37,27 @@ export const useContacts = () => {
     }
 
     try {
-      console.log('Fetching contacts for current user...');
       setIsLoading(true);
       setError(null);
-
-
-      // Use the API client instead of direct fetch
-      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-        console.log('🌐 Using API client to fetch contacts');
-        console.log('   Params:', params);
-      }
 
       const response = await apiClient.getContacts({
         ...params,
         page: params?.page || currentPage,
         page_size: params?.page_size || pageSize
       });
-      if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-        console.log('📦 API Response received');
-      }
 
       // Handle response
       if (response.success && response.data) {
-        if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG === 'true') {
-          console.log('=== CONTACTS API RESPONSE ===');
-          console.log('Response success:', response.success);
-          console.log('Requested page:', params?.page || currentPage);
-        }
-
         let results = response.data.results || [];
 
         // The API should already return only the current user's contacts
         // No additional filtering needed as the backend handles user-specific data
-        console.log('Contacts received from API:', results.length, 'contacts');
 
         setContacts(results);
         setTotalCount(response.data.count || results.length);
         setCurrentPage(params?.page || currentPage);
         setHasNextPage(!!response.data.next);
         setHasPreviousPage(!!response.data.previous);
-        console.log('Pagination state updated:', {
-          currentPage: params?.page || currentPage,
-          hasNextPage: !!response.data.next,
-          hasPreviousPage: !!response.data.previous,
-          totalCount: response.data.count || results.length
-        });
-        console.log('Contacts set:', results);
       } else {
         console.error('Failed to fetch contacts:', response.error, 'Status:', response.status);
         if (response.status === 403) {
@@ -135,7 +103,6 @@ export const useContacts = () => {
         setTotalCount(prev => prev + 1);
 
         // Refresh data from server to ensure consistency
-        console.log('Refreshing contacts after successful creation...');
         await fetchContacts();
 
         toast({
@@ -187,7 +154,6 @@ export const useContacts = () => {
         setContacts(prev => prev.map(c => c.id === contactId ? response.data! : c));
 
         // Refresh data from server to ensure consistency
-        console.log('Refreshing contacts after successful update...');
         await fetchContacts();
 
         toast({
@@ -228,7 +194,6 @@ export const useContacts = () => {
       setTotalCount(prev => prev - 1);
 
       // Refresh data from server to ensure consistency
-      console.log('Refreshing contacts after successful deletion...');
       await fetchContacts();
 
       toast({
@@ -246,7 +211,6 @@ export const useContacts = () => {
         title: "Contact deleted",
         description: "Contact has been removed from your database",
       });
-      console.log('Delete contact completed (with minor error):', error);
       return true;
     }
   };
@@ -423,33 +387,22 @@ export const useContacts = () => {
 
   // Pagination functions
   const goToNextPage = useCallback(() => {
-    console.log('🔄 goToNextPage called', { hasNextPage, currentPage });
     if (hasNextPage) {
-
       const nextPage = currentPage + 1;
-      console.log('📄 Going to next page:', nextPage);
       setCurrentPage(nextPage);
       fetchContacts({ page: nextPage });
-    } else {
-      console.log('❌ No next page available');
     }
   }, [hasNextPage, currentPage]);
 
   const goToPreviousPage = useCallback(() => {
-    console.log('🔄 goToPreviousPage called', { hasPreviousPage, currentPage });
     if (hasPreviousPage) {
-
       const prevPage = currentPage - 1;
-      console.log('📄 Going to previous page:', prevPage);
       setCurrentPage(prevPage);
       fetchContacts({ page: prevPage });
-    } else {
-      console.log('❌ No previous page available');
     }
   }, [hasPreviousPage, currentPage]);
 
   const goToPage = useCallback((page: number) => {
-    console.log('🔄 goToPage called', { page, currentPage });
     setCurrentPage(page);
     fetchContacts({ page });
   }, []);
@@ -460,7 +413,6 @@ export const useContacts = () => {
   }, [isAuthenticated]);
 
   const refreshData = async () => {
-    console.log('Manual refresh triggered for contacts...');
     await fetchContacts();
   };
 
