@@ -283,7 +283,7 @@ useEffect(() => {
 
 
 // Get all unique tags from contacts
-const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags)));
+const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags).filter(tag => tag && tag.trim() !== "")));
 
 // For client-side filtering (when not using server-side search)
 const filteredContacts = (contacts || []).filter(contact => {

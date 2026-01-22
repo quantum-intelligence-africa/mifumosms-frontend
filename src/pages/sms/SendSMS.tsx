@@ -92,7 +92,8 @@ const SendSMS = () => {
 
   // Reduce to approved sender IDs only
   const approvedSenderRequests = useMemo(() => {
-    return (senderNames || []).filter((req) => req.status === "approved");
+    return (senderNames || [])
+      .filter((req) => req.status === "approved" && req.id && req.id.trim() !== "");
   }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
