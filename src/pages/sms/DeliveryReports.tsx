@@ -45,7 +45,7 @@ const DeliveryReports = () => {
   const [filters, setFilters] = useState({
     start_date: "",
     end_date: "",
-    status: "",
+    status: "all",
     search: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,7 +57,7 @@ const DeliveryReports = () => {
       const response = await apiClient.getDeliveryReports({
         start_date: filters.start_date || undefined,
         end_date: filters.end_date || undefined,
-        status: filters.status || undefined,
+        status: filters.status === "all" ? undefined : filters.status,
         page: currentPage,
         per_page: 20,
       });
@@ -95,7 +95,7 @@ const DeliveryReports = () => {
     setFilters({
       start_date: "",
       end_date: "",
-      status: "",
+      status: "all",
       search: "",
     });
     setCurrentPage(1);
@@ -236,7 +236,7 @@ const DeliveryReports = () => {
                           <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="">All statuses</SelectItem>
+                          <SelectItem value="all">All statuses</SelectItem>
                           <SelectItem value="sent">Sent</SelectItem>
                           <SelectItem value="delivered">Delivered</SelectItem>
                           <SelectItem value="failed">Failed</SelectItem>

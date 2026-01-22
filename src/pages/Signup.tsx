@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizePhoneNumber } from "@/utils/phoneUtils";
@@ -144,7 +145,16 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      const registerData: any = {
+      const registerData: {
+        email: string;
+        password: string;
+        password_confirm: string;
+        first_name: string;
+        last_name: string;
+        phone: string;
+        company_name?: string;
+        country?: string;
+      } = {
         email: formData.email,
         password: formData.password,
         password_confirm: formData.confirmPassword,
@@ -286,234 +296,319 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4 lg:p-6 relative overflow-hidden">
+    <div className="min-h-screen flex">
       {/* Sliding Background */}
       <SlidingBackground />
 
-      <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl relative z-10">
-        {/* Header */}
-        <div className="text-center mb-3 sm:mb-4">
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+      <div className="flex w-full">
+        {/* Left Column - Header and Image */}
+        <div className="hidden md:flex md:w-1/2 lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-blue-50 to-blue-100 flex-col justify-center p-8 relative overflow-hidden">
+          {/* Image Section with Header Overlay */}
+          <div className="relative z-10 w-full max-w-md flex-1 flex items-center">
+            {/* Header positioned at the top of the image */}
+            <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+                  <MessageSquare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <span className="font-heading text-2xl font-bold text-gray-900">
+                    Mifumo SMS
+                  </span>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Reliable SMS solutions for businesses across East Africa
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
-              Mifumo SMS
-            </span>
+
+            {/* Mifumo SMS Information - positioned at bottom of image area */}
+            <div className="absolute bottom-4 left-4 right-4 z-20">
+              <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Why Choose Mifumo SMS?</h3>
+                <ul className="space-y-1 text-xs text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Reliable delivery across East Africa</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Competitive pricing with bulk discounts</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Advanced analytics and reporting</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>24/7 customer support</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <img
+              src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-login-form/draw2.svg"
+              className="w-full h-auto object-contain"
+              alt="Sign up illustration"
+            />
+          </div>
+
+          {/* Decorative elements */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200 rounded-full"></div>
+            <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-300 rounded-full"></div>
+            <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-blue-400 rounded-full"></div>
           </div>
         </div>
 
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-2 sm:pb-3 px-4 sm:px-6">
-            <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">
-              {showVerification ? "Verify your phone" : "Create your account"}
-            </CardTitle>
-            {showVerification && (
-              <CardDescription className="text-sm text-gray-600">
-                Enter the 6-digit code sent to {registeredPhone}
-              </CardDescription>
-            )}
-          </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
-              {!showVerification ? (
-                <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+        {/* Right Column - Form */}
+        <div className="w-full md:w-1/2 lg:w-7/12 xl:w-1/2 flex items-center justify-center p-4 md:p-8 bg-white relative z-10">
+          <div className="w-full max-w-md space-y-6">
+            {/* Form Header */}
+            <div className="text-center mb-6">
+              {/* Logo */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-heading text-lg font-bold text-gray-900">
+                  Mifumo SMS
+                </span>
+              </div>
+
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                {showVerification ? "Verify your phone" : "Create your account"}
+              </h2>
+              {showVerification && (
+                <p className="text-xs text-gray-600">
+                  Enter the 6-digit code sent to {registeredPhone}
+                </p>
+              )}
+            </div>
+
+            {!showVerification ? (
+              <form onSubmit={handleSubmit} className="space-y-3">
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">First name</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="First name"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      required
+                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="lastName" className="text-xs font-medium text-gray-700">Last name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Last name"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange("lastName", e.target.value)}
+                      required
+                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
                 <div className="space-y-1">
-                  <Label htmlFor="firstName" className="text-xs font-semibold text-gray-700">First name</Label>
+                  <Label htmlFor="email" className="text-xs font-medium text-gray-700">Email address</Label>
                   <Input
-                    id="firstName"
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="example@company.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     required
-                    className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
+                    className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
                   />
                 </div>
+
+                {/* Phone and Country */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="phone" className="text-xs font-medium text-gray-700">Phone</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+255 700 000 001"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="country" className="text-xs font-medium text-gray-700">Country</Label>
+                    <Select onValueChange={(value) => handleInputChange("country", value)}>
+                      <SelectTrigger className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                        {countries.map((country) => (
+                          <SelectItem key={country.value} value={country.value}>
+                            {country.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Company */}
                 <div className="space-y-1">
-                  <Label htmlFor="lastName" className="text-xs font-semibold text-gray-700">Last name</Label>
+                  <Label htmlFor="company" className="text-xs font-medium text-gray-700">Company name</Label>
                   <Input
-                    id="lastName"
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    id="company"
+                    placeholder="Your Company Ltd"
+                    value={formData.company}
+                    onChange={(e) => handleInputChange("company", e.target.value)}
                     required
-                    className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
+                    className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs font-semibold text-gray-700">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@company.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                  className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+                {/* Password */}
                 <div className="space-y-1">
-                  <Label htmlFor="phone" className="text-xs font-semibold text-gray-700">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+255 700 000 001"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
-                  />
+                  <Label htmlFor="password" className="text-xs font-medium text-gray-700">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      required
+                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-12 rounded-lg text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-9 px-3 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Confirm Password */}
                 <div className="space-y-1">
-                  <Label htmlFor="country" className="text-xs font-semibold text-gray-700">Country</Label>
-                  <Select onValueChange={(value) => handleInputChange("country", value)}>
-                    <SelectTrigger className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      {countries.map((country) => (
-                        <SelectItem key={country.value} value={country.value}>
-                          {country.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">Confirm password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      required
+                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 pr-12 rounded-lg text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-9 px-3 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="company" className="text-xs font-semibold text-gray-700">Company name</Label>
-                <Input
-                  id="company"
-                  placeholder="Your Company Ltd"
-                  value={formData.company}
-                  onChange={(e) => handleInputChange("company", e.target.value)}
-                  required
-                  className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
-                />
-              </div>
+                {/* Terms and Conditions */}
+                <div className="flex items-start space-x-2">
+                  <Checkbox id="terms" required className="mt-0.5" />
+                  <label htmlFor="terms" className="text-xs text-gray-600 leading-tight">
+                    I agree to the{" "}
+                    <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">
+                      Privacy Policy
+                    </Link>
+                  </label>
+                </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="password" className="text-xs font-semibold text-gray-700">Password</Label>
-                <div className="relative">
+                {/* Sign Up Button */}
+                <Button
+                  type="submit"
+                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Creating account..." : "Sign up"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyPhone} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode" className="text-xs font-medium text-gray-700">
+                    Verification Code
+                  </Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    id="verificationCode"
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
                     required
-                    className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 pr-10 transition-all duration-300"
+                    className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-9 px-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-gray-400" />
-                    )}
-                  </Button>
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="confirmPassword" className="text-xs font-semibold text-gray-700">Confirm password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    required
-                    className="h-9 text-sm border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 pr-10 transition-all duration-300"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-9 px-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-gray-400" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
 
                 <Button
                   type="submit"
-                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                  disabled={isLoading}
+                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
+                  disabled={isLoading || verificationCode.length !== 6}
                 >
-                  {isLoading ? "Creating account..." : "Create account"}
+                  {isLoading ? "Verifying..." : "Verify Phone"}
                 </Button>
-              </form>
-              ) : (
-                <form onSubmit={handleVerifyPhone} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="verificationCode" className="text-sm font-semibold text-gray-700">
-                      Verification Code
-                    </Label>
-                    <Input
-                      id="verificationCode"
-                      type="text"
-                      placeholder="Enter 6-digit code"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      maxLength={6}
-                      required
-                      className="h-12 text-center text-2xl font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all duration-300"
-                    />
-                  </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={isLoading || verificationCode.length !== 6}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowVerification(false)}
+                    className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
                   >
-                    {isLoading ? "Verifying..." : "Verify Phone"}
-                  </Button>
+                    Back to registration
+                  </button>
+                </div>
+              </form>
+            )}
 
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowVerification(false)}
-                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                    >
-                      Back to registration
-                    </button>
-                  </div>
-                </form>
-              )}
-
-            <div className="mt-4 text-center">
-              <div className="flex items-center justify-center gap-4">
-                <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-xs">
+            {/* Footer Links */}
+            <div className="text-center space-y-1">
+              <div className="flex items-center justify-center gap-3">
+                <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">
                   Home
                 </Link>
+                <span className="text-gray-400 text-xs">|</span>
                 <p className="text-xs text-gray-600">
                   Already have an account?{" "}
-                  <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
+                  <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
                     Sign in
                   </Link>
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
