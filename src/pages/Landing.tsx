@@ -28,6 +28,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
+import { useStaggeredReveal, useScrollReveal } from "@/hooks/useScrollReveal";
 
 const Landing = () => {
   // Force light theme on marketing surfaces
@@ -423,6 +424,12 @@ const Landing = () => {
     }
   ];
 
+  // Scroll reveal animations
+  const featuresReveal = useStaggeredReveal(features.length, 150);
+  const pricingReveal = useStaggeredReveal(pricing.length, 200);
+  const heroStatsReveal = useStaggeredReveal(3, 200); // 3 stats cards
+  const ctaReveal = useScrollReveal({ threshold: 0.2 });
+
   // Testimonials section removed
 
   return (
@@ -430,6 +437,128 @@ const Landing = () => {
       {/* Custom CSS */}
       <style dangerouslySetInnerHTML={{
         __html: `
+          /* Modern Scroll Reveal Animations */
+          @keyframes slideInFromBottom {
+            0% {
+              opacity: 0;
+              transform: translateY(30px) scale(0.95);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+
+          @keyframes slideInFromLeft {
+            0% {
+              opacity: 0;
+              transform: translateX(-30px) scale(0.95);
+            }
+            100% {
+              opacity: 1;
+              transform: translateX(0) scale(1);
+            }
+          }
+
+          @keyframes slideInFromRight {
+            0% {
+              opacity: 0;
+              transform: translateX(30px) scale(0.95);
+            }
+            100% {
+              opacity: 1;
+              transform: translateX(0) scale(1);
+            }
+          }
+
+          @keyframes fadeInUp {
+            0% {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes scaleIn {
+            0% {
+              opacity: 0;
+              transform: scale(0.8);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          @keyframes bounceIn {
+            0% {
+              opacity: 0;
+              transform: scale(0.3);
+            }
+            50% {
+              opacity: 1;
+              transform: scale(1.05);
+            }
+            70% {
+              transform: scale(0.9);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          /* Animation classes */
+          .animate-slide-in-bottom {
+            animation: slideInFromBottom 0.8s ease-out forwards;
+          }
+
+          .animate-slide-in-left {
+            animation: slideInFromLeft 0.8s ease-out forwards;
+          }
+
+          .animate-slide-in-right {
+            animation: slideInFromRight 0.8s ease-out forwards;
+          }
+
+          .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+          }
+
+          .animate-scale-in {
+            animation: scaleIn 0.5s ease-out forwards;
+          }
+
+          .animate-bounce-in {
+            animation: bounceIn 0.8s ease-out forwards;
+          }
+
+          /* Staggered animation delays */
+          .animate-delay-100 { animation-delay: 100ms; }
+          .animate-delay-200 { animation-delay: 200ms; }
+          .animate-delay-300 { animation-delay: 300ms; }
+          .animate-delay-400 { animation-delay: 400ms; }
+          .animate-delay-500 { animation-delay: 500ms; }
+          .animate-delay-600 { animation-delay: 600ms; }
+          .animate-delay-700 { animation-delay: 700ms; }
+          .animate-delay-800 { animation-delay: 800ms; }
+
+          /* Initial hidden state */
+          .reveal-hidden {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .reveal-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+
+          /* Smooth content transitions */
           @keyframes smoothContentFade {
             0% {
               opacity: 0;
@@ -441,6 +570,8 @@ const Landing = () => {
           .phone-content-transition {
             animation: smoothContentFade 0.3s ease-in-out;
           }
+
+          /* Scrollbar and touch utilities */
           .scrollbar-hide {
             -ms-overflow-style: none;
             scrollbar-width: none;
@@ -452,10 +583,13 @@ const Landing = () => {
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
           }
+
+          /* Background utilities */
           .bg-blue-grad.has-image.height-auto.main-section.has-bg-blue {
             height: 100vh;
             min-height: 100vh;
           }
+
           /* Mobile viewport optimization */
           @media (max-width: 640px) {
             #about {
@@ -465,10 +599,31 @@ const Landing = () => {
               padding-bottom: env(safe-area-inset-bottom, 0.75rem);
             }
           }
+
           /* Prevent horizontal scrolling */
           body, html {
             overflow-x: hidden;
             max-width: 100%;
+          }
+
+          /* Responsive animation adjustments */
+          @media (prefers-reduced-motion: reduce) {
+            .animate-slide-in-bottom,
+            .animate-slide-in-left,
+            .animate-slide-in-right,
+            .animate-fade-in-up,
+            .animate-scale-in,
+            .animate-bounce-in {
+              animation: none;
+              opacity: 1;
+              transform: none;
+            }
+
+            .reveal-hidden {
+              opacity: 1;
+              transform: none;
+              transition: none;
+            }
           }
         `
       }} />
@@ -477,7 +632,7 @@ const Landing = () => {
       <SlidingBackground />
 
       {/* Header */}
-      <header className="relative z-10 bg-white border-b border-gray-200">
+      <header className="relative z-10 bg-white">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
@@ -493,11 +648,6 @@ const Landing = () => {
                 <Link to="/login">
                   <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 text-gray-700 hover:bg-gray-100 transition-all duration-300">
                     Login
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button variant="default" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all duration-300 shadow-lg hover:shadow-xl">
-                    Get Started
                   </Button>
                 </Link>
               </div>
@@ -663,21 +813,21 @@ const Landing = () => {
                 </a>
             </div>
 
-            {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-0 sm:pt-1 md:pt-2">
-                <div className="text-center">
+              {/* Stats */}
+              <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-0 sm:pt-1 md:pt-2">
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">50+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Active Businesses</div>
-              </div>
-                <div className="text-center">
+                </div>
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">1M+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Messages Sent</div>
-              </div>
-                <div className="text-center">
+                </div>
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">98%</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Delivery Rate</div>
+                </div>
               </div>
-            </div>
 
               {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
               <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative">
@@ -897,7 +1047,14 @@ const Landing = () => {
         <div className="hidden sm:block">
           <div className="max-w-7xl mx-auto px-2 lg:px-0">
             <div className="flex flex-col lg:flex-row items-start lg:items-center gap-10 lg:gap-14">
-              <div className="flex-1 max-w-xl text-left">
+              <div
+                ref={featuresReveal.containerRef}
+                className={`flex-1 max-w-xl text-left transition-all duration-800 ${
+                  featuresReveal.isVisible
+                    ? 'animate-slide-in-left'
+                    : 'opacity-0 translate-x-[-30px] scale-95'
+                }`}
+              >
                 <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
                   Everything you need to
                   <span className="block text-blue-500">
@@ -914,9 +1071,13 @@ const Landing = () => {
                   {features.map((feature, index) => (
                     <Card
                       key={index}
-                      className="group relative bg-white border border-gray-100 shadow-md lg:shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1.5 hover:scale-[1.02] rounded-2xl overflow-hidden"
+                      className={`group relative bg-white border border-gray-100 shadow-md lg:shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1.5 hover:scale-[1.02] rounded-2xl overflow-hidden ${
+                        featuresReveal.isVisible
+                          ? 'animate-slide-in-bottom'
+                          : 'reveal-hidden'
+                      }`}
                       style={{
-                        animationDelay: `${index * 150}ms`,
+                        animationDelay: featuresReveal.isVisible ? `${index * 150}ms` : '0ms',
                         animationFillMode: 'both'
                       }}
                     >
@@ -959,9 +1120,16 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          <div ref={pricingReveal.containerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {pricing.map((plan, index) => (
-              <div key={index} className="relative group">
+              <div key={index} className={`relative group ${
+                pricingReveal.isVisible
+                  ? 'animate-scale-in'
+                  : 'reveal-hidden'
+              }`} style={{
+                animationDelay: pricingReveal.isVisible ? `${index * 200}ms` : '0ms',
+                animationFillMode: 'both'
+              }}>
                 {plan.popular && (
                   <div className="absolute -top-6 sm:-top-7 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10">
                     <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 text-xs sm:text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
@@ -975,9 +1143,6 @@ const Landing = () => {
                       ? 'shadow-xl ring-2 ring-yellow-500/20 scale-105 hover:ring-yellow-500/30 hover:shadow-2xl'
                       : 'shadow-md hover:shadow-xl'
                   }`}
-                  style={{
-                    animationDelay: `${index * 150}ms`
-                  }}
                 >
 
                 <div className={`absolute inset-0 bg-gradient-to-br ${
@@ -1151,19 +1316,31 @@ const Landing = () => {
           <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-200/30 rounded-lg rotate-45 animate-ping" />
         </div>
 
-        <div className="max-w-3xl mx-auto text-center relative z-10">
+        <div ref={ctaReveal.elementRef} className="max-w-3xl mx-auto text-center relative z-10">
 
-          <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight">
+          <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
+            ctaReveal.isVisible
+              ? 'animate-fade-in-up'
+              : 'opacity-0 translate-y-4'
+          }`}>
             Ready to transform your
             <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">
               customer communication?
             </span>
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed">
+          <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
+            ctaReveal.isVisible
+              ? 'animate-fade-in-up'
+              : 'opacity-0 translate-y-4'
+          }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
             Join thousands of African businesses already using Mifumo SMS
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-800 delay-400 ${
+            ctaReveal.isVisible
+              ? 'animate-scale-in'
+              : 'opacity-0 scale-95'
+          }`} style={{ animationDelay: ctaReveal.isVisible ? '400ms' : '0ms' }}>
           <Link to="/signup">
               <Button
                 size="lg"
