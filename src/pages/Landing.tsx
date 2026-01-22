@@ -25,7 +25,7 @@ import {
   Menu,
   X
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
 import { useStaggeredReveal, useScrollReveal } from "@/hooks/useScrollReveal";
@@ -83,6 +83,23 @@ const Landing = () => {
   const [isPhoneHovered, setIsPhoneHovered] = useState(false);
   const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const location = useLocation();
+
+  // Handle cross-page navigation with scroll parameters or hash
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const scrollTo = searchParams.get('scroll') || location.hash.substring(1); // Remove # from hash
+
+    if (scrollTo) {
+      // Small delay to ensure the page has fully loaded
+      setTimeout(() => {
+        scrollToSection(scrollTo);
+        // Clean up the URL by removing the scroll parameter and hash
+        window.history.replaceState({}, '', location.pathname);
+      }, 100);
+    }
+  }, [location.search, location.hash]);
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -97,6 +114,22 @@ const Landing = () => {
       document.body.style.overflow = 'unset';
     };
   }, [isMobileMenuOpen]);
+
+  // Handle scroll-based header color change
+  useEffect(() => {
+    const handleScroll = () => {
+      const heroSection = document.getElementById('about');
+      if (heroSection) {
+        const heroBottom = heroSection.offsetTop + heroSection.offsetHeight;
+        setIsScrolled(window.scrollY > heroBottom - 100); // Add small offset
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial state
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
@@ -207,69 +240,28 @@ const Landing = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Sliding Background Component - Light blue gradient like Textmagic
+  // Hero Background Component - Using home background image
   const SlidingBackground = () => {
     return (
-      <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
-        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
-          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 right-0 w-full h-full">
-              <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="patternGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.08" />
-                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
-                  </linearGradient>
-                </defs>
-                {/* Wavy/fluid patterns - more subtle */}
-                <path
-                  d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
-                  fill="url(#patternGradient)"
-                  opacity="0.5"
-                />
-                <path
-                  d="M600,300 Q750,250 900,300 T1200,300 L1200,800 L600,800 Z"
-                  fill="url(#patternGradient)"
-                  opacity="0.4"
-                />
-                <path
-                  d="M400,400 Q600,300 800,400 T1200,400 L1200,800 L400,800 Z"
-                  fill="url(#patternGradient)"
-                  opacity="0.3"
-                />
-              </svg>
-            </div>
-          </div>
+      <div className="absolute inset-0 overflow-hidden z-0">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img
+            src="/home background12.jpg"
+            alt="Hero background"
+            className="w-full h-full object-cover"
+          />
+          {/* Dark overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/20"></div>
         </div>
       </div>
     );
   };
 
-  // SMS Animation Component with navigation buttons
+  // SMS Animation Component
   const SMSAnimation = () => {
     return (
       <div className="relative w-full max-w-[400px] mx-auto sm:max-w-[450px] md:max-w-[500px] lg:max-w-[550px]">
-        {/* Navigation Button - Left */}
-        <button
-          onClick={goToPreviousBusiness}
-          className="absolute -left-4 sm:-left-6 md:-left-8 lg:-left-10 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
-          aria-label="Previous company"
-        >
-          <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
-        </button>
-
-        {/* Navigation Button - Right */}
-        <button
-          onClick={goToNextBusiness}
-          className="absolute -right-2 sm:-right-3 md:-right-4 lg:-right-5 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
-          aria-label="Next company"
-        >
-          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
-        </button>
-
         {/* Phone container - Static, no rotation */}
         <div className="relative w-full h-auto">
           {/* iPhone Frame - Using transparent PNG */}
@@ -632,40 +624,84 @@ const Landing = () => {
       <SlidingBackground />
 
       {/* Header */}
-      <header className="relative z-10 bg-white">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+      <header className="fixed top-0 left-0 z-[50] w-full bg-transparent py-4 backdrop-blur-xl">
+        <section className="mx-4 md:mx-12 lg:mx-16 xl:mx-24 flex items-center justify-between">
+
+          {/* Logo */}
+          <div onClick={() => scrollToSection('about')} className="w-28 flex items-center justify-center cursor-pointer">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 h-8">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg flex-shrink-0">
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
-              <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-gray-900">
+              <span className={`font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none transition-colors duration-300 ${
+                isScrolled ? 'text-gray-900' : 'text-white'
+              }`}>
                 Mifumo SMS
               </span>
             </div>
-            <div className="flex items-center gap-2 sm:gap-2 lg:gap-4">
-              <div className="hidden sm:flex items-center gap-2 lg:gap-4">
-                <Link to="/login">
-                  <Button variant="ghost" className="text-xs sm:text-sm h-6 sm:h-7 lg:h-8 px-2 sm:px-3 text-gray-700 hover:bg-gray-100 transition-all duration-300">
-                    Login
-                  </Button>
-                </Link>
-              </div>
-              <Button
-                variant="outline"
-                className="sm:hidden h-10 w-10 p-0 border-gray-300 text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md"
-                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                aria-expanded={isMobileMenuOpen}
-                aria-label="Toggle mobile menu"
-              >
-                <div className="relative w-5 h-5">
-                  <Menu className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
-                  <X className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} />
-                </div>
-              </Button>
-            </div>
           </div>
-        </div>
+
+          {/* Navigation */}
+          <div className="hidden lg:flex items-center gap-8">
+            <button onClick={() => scrollToSection('features')} className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${
+              isScrolled
+                ? 'text-gray-900 hover:text-gray-700'
+                : 'text-white hover:text-gray-200'
+            }`}>
+              Features
+            </button>
+            <button onClick={() => scrollToSection('pricing')} className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${
+              isScrolled
+                ? 'text-gray-900 hover:text-gray-700'
+                : 'text-white hover:text-gray-200'
+            }`}>
+              Pricing
+            </button>
+            <Link to="/developer" className={`transition-colors duration-300 ${
+              isScrolled
+                ? 'text-gray-900 hover:text-gray-700'
+                : 'text-white hover:text-gray-200'
+            }`}>
+              Developer
+            </Link>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
+              <Link to="/login">
+                <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center ${
+                  isScrolled
+                    ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                    : 'border border-white text-white hover:bg-white hover:text-gray-900'
+                }`}>
+                  Login
+                </button>
+              </Link>
+              <Link to="/signup">
+                <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer inline-flex items-center justify-center leading-tight whitespace-nowrap ${
+                  isScrolled
+                    ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                    : 'border border-white text-white hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                }`}>
+                  Get started
+                </button>
+              </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className={`lg:hidden relative p-2 cursor-pointer transition-colors duration-300 ${
+              isScrolled
+                ? 'text-gray-900 hover:text-gray-700'
+                : 'text-white hover:text-gray-200'
+            }`}
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            aria-expanded={isMobileMenuOpen}
+            aria-label="Toggle mobile menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </section>
       </header>
 
       {/* Mobile Menu Overlay */}
@@ -677,9 +713,9 @@ const Landing = () => {
 
         {/* Mobile Menu - Slide from Right */}
         {isMobileMenuOpen && (
-          <div className="fixed top-0 right-0 h-full w-5/6 max-w-xs bg-gradient-to-b from-white via-gray-50 to-gray-100 shadow-2xl z-[1001] sm:hidden flex flex-col transform transition-transform duration-300 ease-out overflow-hidden" style={{ transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)' }}>
+          <div className="fixed top-0 right-0 h-full w-5/6 max-w-xs bg-white/95 backdrop-blur-xl shadow-2xl z-[1001] lg:hidden flex flex-col transform transition-transform duration-300 ease-out overflow-hidden border-l border-gray-200" style={{ transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)' }}>
             {/* Header with Close Button */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
                     <MessageSquare className="w-5 h-5 text-white" />
@@ -688,7 +724,7 @@ const Landing = () => {
                     <h2 className="font-heading text-sm font-bold text-gray-900">
                       Mifumo SMS
                     </h2>
-                    <p className="text-xs text-gray-500">Navigation</p>
+                    <p className="text-xs text-gray-600">Navigation</p>
                   </div>
                 </div>
                 <Button
@@ -702,47 +738,45 @@ const Landing = () => {
             </div>
 
             {/* Menu Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 sm:space-y-6 bg-white/95 backdrop-blur-sm">
-              {/* COMMENTED OUT: Navigation Section - temporarily hidden */}
-              {/*
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5 sm:space-y-6">
+              {/* Navigation Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Navigate</p>
+                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Navigate</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                    <button onClick={() => { scrollToSection('about'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
-                      <span className="font-semibold text-sm">About</span>
-                    </button>
-                    <button onClick={() => { scrollToSection('features'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
+                    <button onClick={() => { scrollToSection('features'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-blue-50 active:bg-blue-100 text-gray-900 hover:text-blue-600 transition-all duration-300 group border border-gray-200 hover:border-blue-300 touch-manipulation transform hover:scale-[1.02]">
                       <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
                       <span className="font-semibold text-sm">Features</span>
                     </button>
-                    <button onClick={() => { scrollToSection('pricing'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 active:bg-blue-100 text-gray-700 hover:text-blue-800 transition-all duration-300 group border border-gray-200 hover:border-blue-300 hover:shadow-lg touch-manipulation transform hover:scale-[1.02]">
+                    <button onClick={() => { scrollToSection('pricing'); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-blue-50 active:bg-blue-100 text-gray-900 hover:text-blue-600 transition-all duration-300 group border border-gray-200 hover:border-blue-300 touch-manipulation transform hover:scale-[1.02]">
                       <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
                       <span className="font-semibold text-sm">Pricing</span>
                     </button>
+                    <Link to="/developer" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-4 w-full text-left py-4 px-5 rounded-2xl hover:bg-blue-50 active:bg-blue-100 text-gray-900 hover:text-blue-600 transition-all duration-300 group border border-gray-200 hover:border-blue-300 touch-manipulation transform hover:scale-[1.02]">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 opacity-60 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-sm"></div>
+                      <span className="font-semibold text-sm">Developer</span>
+                    </Link>
                 </div>
               </div>
-              */}
 
               {/* Account Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Account</p>
+                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Account</p>
                 </div>
                 <div className="space-y-3">
                     <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full justify-center text-xs sm:text-sm h-12 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 border-2 border-gray-300 hover:border-gray-400 transition-all duration-300 font-semibold touch-manipulation rounded-xl shadow-sm hover:shadow-md transform hover:scale-[1.02]">
+                      <button className="w-full justify-center text-sm h-12 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all duration-300 font-semibold touch-manipulation rounded-xl shadow-sm hover:shadow-md transform hover:scale-[1.02] flex items-center">
                         Login
-                      </Button>
+                      </button>
                     </Link>
                     <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button className="w-full justify-center text-xs sm:text-sm h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-white touch-manipulation rounded-xl transform hover:scale-[1.02]">
+                      <button className="w-full justify-center text-sm h-12 bg-blue-600 hover:bg-blue-700 border-2 border-blue-600 text-white transition-all duration-300 font-semibold touch-manipulation rounded-xl shadow-sm hover:shadow-md transform hover:scale-[1.02] flex items-center">
                         Get Started
-                      </Button>
+                      </button>
                     </Link>
                 </div>
               </div>
@@ -751,11 +785,11 @@ const Landing = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full"></div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Contact Us</p>
+                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">Contact Us</p>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-2 p-5 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 border border-blue-200 shadow-sm">
-                    <a href="tel:+255614459923" className="font-bold text-blue-700 hover:text-blue-800 transition-colors text-sm">
+                  <div className="flex flex-col gap-2 p-5 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm">
+                    <a href="tel:+255614459923" className="font-bold text-gray-900 hover:text-blue-600 transition-colors text-sm">
                       +255 614 459 923
                     </a>
                     <p className="text-xs text-gray-600 font-medium">
@@ -763,7 +797,7 @@ const Landing = () => {
                     </p>
                   </div>
                     <a href="https://wa.me/255614459923" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full justify-center gap-3 border-blue-500 text-blue-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-blue-600 h-12 transition-all duration-300 hover:shadow-lg font-semibold rounded-xl touch-manipulation transform hover:scale-[1.02]">
+                      <Button className="w-full justify-center gap-3 bg-green-600 hover:bg-green-700 text-white border-green-600 h-12 transition-all duration-300 hover:shadow-lg font-semibold rounded-xl touch-manipulation transform hover:scale-[1.02]">
                         <MessageSquare className="w-5 h-5" />
                         WhatsApp Chat
                       </Button>
@@ -776,33 +810,24 @@ const Landing = () => {
       </>
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-2 pb-3 sm:pt-4 sm:pb-4 md:pt-8 md:pb-6 lg:pt-12 lg:pb-8 z-10">
+      <section id="about" className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-6 lg:pt-32 lg:pb-8 z-10">
         <div className="w-full relative">
-          {/* Content - Centered like Textmagic */}
-          <div className="relative z-10 w-full flex flex-col items-center">
-            {/* Text Content - Centered */}
-            <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
+          {/* Content - Two column layout on desktop */}
+          <div className="relative z-10 w-full flex flex-col lg:flex-row items-center lg:items-start lg:justify-between gap-8 lg:gap-12">
+            {/* Text Content - Left side on desktop, centered on mobile */}
+            <div className="text-center lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
-                <h1 className="font-heading text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                <h1 className="font-heading text-center lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
                   Getting customers is cheap.
                   <br />
-                  <span className="text-blue-600">Churn isn&apos;t</span>
+                  <span className="text-blue-200">Churn isn&apos;t</span>
               </h1>
-                <p className="text-center text-sm sm:text-base md:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed font-normal">
+                <p className="text-center lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal">
                 Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
               </p>
             </div>
 
-              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center pt-2">
-              <Link to="/signup">
-                <Button
-                    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                >
-                    Get started
-                </Button>
-              </Link>
+              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center sm:justify-start pt-2">
                 <a href="#pricing">
                   <Button
                 variant="outline"
@@ -813,186 +838,214 @@ const Landing = () => {
                 </a>
             </div>
 
-              {/* Stats */}
-              <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-0 sm:pt-1 md:pt-2">
+            {/* Stats - Below buttons in the left column */}
+            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12">
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">50+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Active Businesses</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Active Businesses</div>
                 </div>
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">1M+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Messages Sent</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1M+</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Messages Sent</div>
                 </div>
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">98%</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight mt-1">Delivery Rate</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">98%</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Delivery Rate</div>
                 </div>
               </div>
 
-              {/* Device Mockups Container - Positioned directly below stats, arranged straight beside each other */}
-              <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden lg:flex overflow-visible relative">
-                {/* Mobile Phone with Mobile Cover Image */}
-                <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-100 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
-                  {/* Mobile Cover Image - Behind the mockup, visible through screen */}
-                  <div
-                    className="absolute z-[1] overflow-hidden"
-                    style={{
-                      top: '7%',
-                      left: '20%',
-                      right: '20%',
-                      bottom: '7%',
-                      borderRadius: '0.8rem',
-                      zIndex: 1,
-                    }}
-                  >
-                    <img
-                      src={encodeImagePath('/mobile cover.png')}
-                      alt="Mobile app screen"
-                      className="w-full h-full"
-                      loading="eager"
-                      onError={(e) => {
-                        console.error('Failed to load mobile cover image');
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      style={{
-                        borderRadius: '0.8rem',
-                        objectFit: 'cover',
-                        objectPosition: 'top',
-                        display: 'block',
-                        width: '100%',
-                        height: '100%',
-                        imageRendering: 'crisp-edges',
-                      }}
-                    />
-                  </div>
-                  {/* Mobile Mockup Frame - On top of the cover */}
-                  <img
-                    src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
-                    alt="Mobile mockup"
-                    className="relative z-[2] w-full h-auto object-contain"
-                    loading="eager"
-                    onError={(e) => {
-                      console.error('Failed to load mobile mockup image');
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    style={{
-                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                      zIndex: 2,
-                      position: 'relative',
-                    }}
-                  />
-          </div>
+            </div>
 
-                {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-                <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-100 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
-                  {/* Desktop Cover Image - Behind the mockup, visible through screen */}
-                  <div
-                    className="absolute z-[1] overflow-hidden"
-                    style={{
-                      top: '17%',
-                      left: '6.7%',
-                      right: '7%',
-                      bottom: '4%',
-                      borderRadius: '0.5rem',
-                      zIndex: 1,
-                    }}
-                  >
-                    <img
-                      src={encodeImagePath('/desktop cover.png')}
-                      alt="Desktop app screen"
-                      className="w-full h-full"
-                      loading="eager"
-                      onError={(e) => {
-                        console.error('Failed to load desktop cover image');
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      style={{
-                        borderRadius: '0.5rem',
-                        objectFit: 'contain',
-                        objectPosition: 'top center',
-                        display: 'block',
-                        width: '100%',
-                        height: '100%',
-                        imageRendering: 'crisp-edges',
-                      }}
-                    />
-                  </div>
-                  {/* Desktop Mockup Frame - On top of the cover */}
-                  <img
-                    src={encodeImagePath('/desktop.png')}
-                    alt="Desktop mockup"
-                    className="relative z-[2] w-full h-auto object-contain"
-                    loading="eager"
-                    onError={(e) => {
-                      console.error('Failed to load desktop mockup image');
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    style={{
-                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                      zIndex: 2,
-                      position: 'relative',
-                    }}
-                  />
-                </div>
-
-                {/* iPhone with SMS Content */}
-                <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-100 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
-                  <img
-                    src={encodeImagePath('/iphone_PNG5735.png')}
-                    alt="iPhone mockup"
-                    className="w-full h-auto object-contain relative z-[1]"
-                    loading="eager"
-                    onError={(e) => {
-                      console.error('Failed to load iPhone mockup image');
-                      e.currentTarget.style.display = 'none';
-                    }}
-                    style={{
-                      filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                      zIndex: 1,
-                      position: 'relative',
-                    }}
-                  />
-                  {/* SMS Content Overlay for iPhone */}
-                  <div
-                    className="absolute z-[2] overflow-hidden bg-white flex flex-col"
-                    style={{
-                      top: '16%',
-                      left: '15.5%',
-                      right: '16%',
-                      bottom: '18.5%',
-                      borderRadius: '0.6rem',
-                      zIndex: 2,
-                    }}
-                  >
-                    <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                      <div className="bg-white border-b border-gray-200 px-1 py-0.5 flex items-center gap-0.5 flex-shrink-0">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="w-1.5 h-1.5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-gray-900 font-semibold text-[8px] truncate">{currentBusinessData.sender}</h3>
-                        </div>
-                      </div>
-                      <div className="flex-1 p-1 space-y-0.5 overflow-y-auto bg-gray-50">
-                        {currentBusinessData.messages.slice(0, 3).map((msg, index) => (
-                          <div key={index} className="flex justify-start">
-                            <div className="max-w-[88%] bg-white border border-gray-200 rounded px-1 py-0.5 shadow-sm">
-                              <p className="text-gray-900 text-[8px] leading-tight">{msg.text}</p>
-                              <p className="text-gray-400 text-[6px] mt-0.5">{msg.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Hero Banner - Absolutely positioned on right side for desktop */}
+            <div className="hidden lg:block absolute top-1/2 right-8 transform -translate-y-1/2 z-10">
+              <img
+                src="/hero-section-banner.svg"
+                alt="Hero banner"
+                className="w-200 h-auto object-contain opacity-90"
+              />
             </div>
 
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
-            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full overflow-x-hidden">
+            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full overflow-x-hidden relative">
+              {/* Navigation Button - Left */}
+              <button
+                onClick={goToPreviousBusiness}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
+                aria-label="Previous company"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+              </button>
+
+              {/* Navigation Button - Right */}
+              <button
+                onClick={goToNextBusiness}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
+                aria-label="Next company"
+              >
+                <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+              </button>
+
               <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden">
               <SMSAnimation />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Device Mockups Container - Positioned below the main content */}
+          <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden overflow-visible relative">
+            {/* Mobile Phone with Mobile Cover Image */}
+            <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-100 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
+              {/* Mobile Cover Image - Behind the mockup, visible through screen */}
+              <div
+                className="absolute z-[1] overflow-hidden"
+                style={{
+                  top: '7%',
+                  left: '20%',
+                  right: '20%',
+                  bottom: '7%',
+                  borderRadius: '0.8rem',
+                  zIndex: 1,
+                }}
+              >
+                <img
+                  src={encodeImagePath('/mobile cover.png')}
+                  alt="Mobile app screen"
+                  className="w-full h-full"
+                  loading="eager"
+                  onError={(e) => {
+                    console.error('Failed to load mobile cover image');
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  style={{
+                    borderRadius: '0.8rem',
+                    objectFit: 'cover',
+                    objectPosition: 'top',
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    imageRendering: 'crisp-edges',
+                  }}
+                />
+              </div>
+              {/* Mobile Mockup Frame - On top of the cover */}
+              <img
+                src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
+                alt="Mobile mockup"
+                className="relative z-[2] w-full h-auto object-contain"
+                loading="eager"
+                onError={(e) => {
+                  console.error('Failed to load mobile mockup image');
+                  e.currentTarget.style.display = 'none';
+                }}
+                style={{
+                  filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                  zIndex: 2,
+                  position: 'relative',
+                }}
+              />
+          </div>
+
+          {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
+          <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-100 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
+            {/* Desktop Cover Image - Behind the mockup, visible through screen */}
+            <div
+              className="absolute z-[1] overflow-hidden"
+              style={{
+                top: '17%',
+                left: '6.7%',
+                right: '7%',
+                bottom: '4%',
+                borderRadius: '0.5rem',
+                zIndex: 1,
+              }}
+            >
+              <img
+                src={encodeImagePath('/desktop cover.png')}
+                alt="Desktop app screen"
+                className="w-full h-full"
+                loading="eager"
+                onError={(e) => {
+                  console.error('Failed to load desktop cover image');
+                  e.currentTarget.style.display = 'none';
+                }}
+                style={{
+                  borderRadius: '0.5rem',
+                  objectFit: 'contain',
+                  objectPosition: 'top center',
+                  display: 'block',
+                  width: '100%',
+                  height: '100%',
+                  imageRendering: 'crisp-edges',
+                }}
+              />
+            </div>
+            {/* Desktop Mockup Frame - On top of the cover */}
+            <img
+              src={encodeImagePath('/desktop.png')}
+              alt="Desktop mockup"
+              className="relative z-[2] w-full h-auto object-contain"
+              loading="eager"
+              onError={(e) => {
+                console.error('Failed to load desktop mockup image');
+                e.currentTarget.style.display = 'none';
+              }}
+              style={{
+                filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                zIndex: 2,
+                position: 'relative',
+              }}
+            />
+          </div>
+
+          {/* iPhone with SMS Content */}
+          <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-100 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
+            <img
+              src={encodeImagePath('/iphone_PNG5735.png')}
+              alt="iPhone mockup"
+              className="w-full h-auto object-contain relative z-[1]"
+              loading="eager"
+              onError={(e) => {
+                console.error('Failed to load iPhone mockup image');
+                e.currentTarget.style.display = 'none';
+              }}
+              style={{
+                filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                zIndex: 1,
+                position: 'relative',
+              }}
+            />
+            {/* SMS Content Overlay for iPhone */}
+            <div
+              className="absolute z-[2] overflow-hidden bg-white flex flex-col"
+              style={{
+                top: '16%',
+                left: '15.5%',
+                right: '16%',
+                bottom: '18.5%',
+                borderRadius: '0.6rem',
+                zIndex: 2,
+              }}
+            >
+              <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                <div className="bg-white border-b border-gray-200 px-1 py-0.5 flex items-center gap-0.5 flex-shrink-0">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="w-1.5 h-1.5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-gray-900 font-semibold text-[8px] truncate">{currentBusinessData.sender}</h3>
+                  </div>
+                </div>
+                <div className="flex-1 p-1 space-y-0.5 overflow-y-auto bg-gray-50">
+                  {currentBusinessData.messages.slice(0, 3).map((msg, index) => (
+                    <div key={index} className="flex justify-start">
+                      <div className="max-w-[88%] bg-white border border-gray-200 rounded px-1 py-0.5 shadow-sm">
+                        <p className="text-gray-900 text-[8px] leading-tight">{msg.text}</p>
+                        <p className="text-gray-400 text-[6px] mt-0.5">{msg.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1000,7 +1053,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 relative bg-gray-50">
+      <section id="features" className="py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 relative bg-gray-50 shadow-lg border-t border-gray-200">
         {/* Mobile block (unchanged) */}
         <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-yellow-50 shadow-sm px-4 py-5 sm:hidden">
           <div className="text-left mb-8">
@@ -1105,13 +1158,13 @@ const Landing = () => {
       {/* Testimonials removed */}
 
       {/* Pricing */}
-      <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-12 lg:mb-16">
 
             <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
               {/* Simple, transparent */}
-              <span className="block bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-700 bg-clip-text text-transparent">
+              <span className="block text-blue-600">
                 Pricing packages
               </span>
             </h2>
@@ -1200,13 +1253,13 @@ const Landing = () => {
       </section>
 
       {/* Custom Amount Calculator (public view) */}
-      <section className="py-12 sm:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <section className="py-12 sm:py-16 px-3 sm:px-4 lg:px-6 relative bg-white">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
 
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
               {/* Calculate Your */}
-              <span className="block bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
+              <span className="block text-blue-600">
                 Pricing Calculator
               </span>
             </h3>
@@ -1215,7 +1268,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <Card className="p-6 sm:p-8 bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <Card className="p-6 sm:p-8 bg-gradient-to-br from-blue-50/50 to-white border-2 border-blue-100 shadow-xl hover:shadow-2xl transition-all duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1228,7 +1281,7 @@ const Landing = () => {
                   placeholder="e.g., 5000"
                   value={customCredits}
                   onChange={(e) => setCustomCredits(e.target.value)}
-                    className="h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                    className="h-12 text-base border-2 border-blue-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-blue-50/30 transition-all duration-300"
                   min="100"
                 />
                 </div>
@@ -1238,9 +1291,9 @@ const Landing = () => {
                     <TrendingUp className="w-4 h-4 text-green-500" />
                     Total Cost
                   </Label>
-                  <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 flex items-center justify-between">
-                    <span className="text-lg font-bold text-gray-900">TZS {customPrice.toLocaleString()}</span>
-                    <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+                  <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-blue-100 to-blue-50 border-2 border-blue-300 flex items-center justify-between">
+                    <span className="text-lg font-bold text-blue-900">TZS {customPrice.toLocaleString()}</span>
+                    <div className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
                       {activeTier?.name || 'Select amount'}
                     </div>
                   </div>
@@ -1248,39 +1301,39 @@ const Landing = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-blue-50 to-yellow-50 p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
                     Pricing Details
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Active Tier:</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="text-blue-700">Active Tier:</span>
+                      <span className="font-semibold text-blue-900">
                         {activeTier ? activeTier.name : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Rate per SMS:</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="text-blue-700">Rate per SMS:</span>
+                      <span className="font-semibold text-blue-900">
                         {activeTier ? `TZS ${activeTier.rate}/SMS` : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">SMS Range:</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="text-blue-700">SMS Range:</span>
+                      <span className="font-semibold text-blue-900">
                         {activeTier ? activeTier.rangeLabel : '—'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                   <div className="flex items-start gap-2">
-                    <Shield className="w-4 h-4 text-yellow-600 mt-0.5" />
+                    <Shield className="w-4 h-4 text-red-600 mt-0.5" />
                     <div>
-                      <p className="text-xs font-semibold text-yellow-800">Minimum Purchase</p>
-                      <p className="text-xs text-yellow-700">100 SMS credits required</p>
+                      <p className="text-xs font-semibold text-red-800">Minimum Purchase</p>
+                      <p className="text-xs text-red-700">100 SMS credits required</p>
                     </div>
                   </div>
                 </div>
@@ -1308,12 +1361,12 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-gradient-to-br from-blue-50 via-white to-yellow-50 overflow-hidden">
+      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-white overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-300/25 rounded-full animate-pulse" />
+          <div className="absolute top-10 left-10 w-20 h-20 bg-blue-300/25 rounded-full animate-pulse" />
           <div className="absolute bottom-10 right-10 w-16 h-16 bg-blue-200/25 rounded-full animate-bounce" />
-          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-200/30 rounded-lg rotate-45 animate-ping" />
+          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-blue-100/30 rounded-lg rotate-45 animate-ping" />
         </div>
 
         <div ref={ctaReveal.elementRef} className="max-w-3xl mx-auto text-center relative z-10">
@@ -1324,7 +1377,7 @@ const Landing = () => {
               : 'opacity-0 translate-y-4'
           }`}>
             Ready to transform your
-            <span className="block bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">
+            <span className="block text-blue-600">
               customer communication?
             </span>
           </h2>
@@ -1344,7 +1397,7 @@ const Landing = () => {
           <Link to="/signup">
               <Button
                 size="lg"
-                className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 group"
+                className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group"
               >
               Get Started
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
@@ -1362,42 +1415,54 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="glass border-t border-border-subtle py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
-        <div className="max-w-7xl mx-auto">
+      <footer className="relative py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
+        {/* Background Image for Footer */}
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src="/home background12.jpg"
+            alt="Footer background"
+            className="w-full h-full object-cover"
+          />
+          {/* Dark overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/20"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
             {/* Brand */}
-            <div className="flex items-center gap-1 sm:gap-2">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg gradient-primary flex items-center justify-center">
+            <div onClick={() => scrollToSection('about')} className="flex items-center gap-1 sm:gap-2 cursor-pointer">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-foreground">
+                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
                   Mifumo SMS
                 </span>
               </div>
 
             {/* Nav */}
-            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-foreground/80">
-              <a className="hover:underline" href="#about">About</a>
-              <a className="hover:underline" href="#features">Features</a>
-              <a className="hover:underline" href="#pricing">Pricing</a>
+            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
+              <a className="hover:underline hover:text-white" href="#about">About</a>
+              <a className="hover:underline hover:text-white" href="#features">Features</a>
+              <a className="hover:underline hover:text-white" href="#pricing">Pricing</a>
+              <a href="/developer#developer-hero" className="hover:underline hover:text-white">Developer</a>
             </nav>
 
             {/* Contact */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-foreground/80">+255 614 459 923</span>
+              <span className="text-xs sm:text-sm text-white/90">+255 614 459 923</span>
               <a
                 href="https://wa.me/255614459923"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90 text-xs sm:text-sm"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm transition-colors duration-300"
               >
                 WhatsApp
               </a>
             </div>
           </div>
 
-          <div className="border-t border-border-subtle mt-3 sm:mt-4 pt-3 sm:pt-4 text-center text-text-subtle">
-            <p className="text-xs sm:text-sm">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+          <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. All rights reserved.</p>
           </div>
         </div>
       </footer>

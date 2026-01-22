@@ -31,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PertinaInsights from "./pages/PertinaInsights";
+import Developer from "./pages/Developer";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/activate-email" element={<EmailActivation />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/developer" element={<Developer />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

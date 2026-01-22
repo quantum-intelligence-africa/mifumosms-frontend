@@ -179,9 +179,9 @@ const Login = () => {
 
       <div className="flex flex-col md:flex-row w-full min-h-screen md:min-h-0">
         {/* Left Column - Header and Image */}
-        <div className="hidden md:flex md:w-1/2 lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-blue-50 to-blue-100 flex-col justify-center p-6 lg:p-8 relative overflow-hidden">
+        <div className="hidden md:flex md:w-1/2 flex-col justify-center p-6 lg:p-8 relative overflow-hidden min-h-screen">
           {/* Image Section with Header Overlay */}
-          <div className="relative z-10 w-full max-w-md flex-1 flex items-center">
+          <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
             {/* Header positioned at the top of the image */}
             <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
               <div className="flex items-center gap-3">
@@ -192,8 +192,8 @@ const Login = () => {
                   <span className="font-heading text-2xl font-bold text-gray-900">
                     Mifumo SMS
                   </span>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Reliable SMS solutions for businesses across East Africa
+                  <p className="text-base text-black mt-1">
+                    Reliable SMS solutions for businesses
                   </p>
                 </div>
               </div>
@@ -202,11 +202,11 @@ const Login = () => {
             {/* Mifumo SMS Information - positioned at bottom of image area */}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Why Choose Mifumo SMS?</h3>
-                <ul className="space-y-1 text-xs text-gray-600">
+                <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
+                <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Reliable delivery across East Africa</span>
+                    <span>Reliable delivery across all networks</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
@@ -225,22 +225,24 @@ const Login = () => {
             </div>
 
             <img
-              src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-login-form/draw2.svg"
+              src="/sign in image.png"
               className="w-full h-auto object-contain"
               alt="Login illustration"
             />
           </div>
 
-          {/* Decorative elements */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200 rounded-full"></div>
-            <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-300 rounded-full"></div>
-            <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-blue-400 rounded-full"></div>
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img
+              src="/home background12.jpg"
+              alt="Login background"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
 
         {/* Right Column - Form */}
-        <div className="w-full md:w-1/2 lg:w-7/12 xl:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 bg-white/95 backdrop-blur-sm relative z-10 min-h-screen md:min-h-0">
+        <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen">
           <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
             {/* Form Header */}
             <div className="text-center mb-4 sm:mb-6">
