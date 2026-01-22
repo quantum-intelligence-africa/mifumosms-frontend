@@ -827,7 +827,7 @@ const Landing = () => {
               </p>
             </div>
 
-              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center sm:justify-start pt-2">
+              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center lg:justify-start pt-2">
                 <a href="#pricing">
                   <Button
                 variant="outline"
