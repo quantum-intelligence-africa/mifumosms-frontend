@@ -85,7 +85,7 @@ export class APIService {
 		password_confirm: string;
 		first_name: string;
 		last_name: string;
-		phone_number?: string;
+		phone_number: string;
 	}) {
 		return this.withRetry(
 			() => apiClient.register(userData),

@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Mail, Lock, User, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { normalizePhoneNumber } from "@/utils/phoneUtils";
 import { apiClient } from "@/lib/api";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { motion } from "framer-motion";
 
 const Signup = () => {
+  const isMobile = useIsMobile();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,8 +57,6 @@ const Signup = () => {
         const { tokens, user: userData, message } = result.data;
 
         if (tokens && userData) {
-          // Account activated successfully with tokens - user is automatically logged in
-          // Update user state and tokens
           const updatedUser = {
             ...userData,
             is_verified: true,
@@ -65,7 +64,6 @@ const Signup = () => {
             phone_verified: true
           };
 
-          // Store tokens and user data
           localStorage.setItem('access_token', tokens.access);
           localStorage.setItem('refresh_token', tokens.refresh);
           localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -76,10 +74,8 @@ const Signup = () => {
             duration: 5000
           });
 
-          // Navigate to dashboard
           navigate('/dashboard', { replace: true });
         } else {
-          // Verification successful but no tokens (fallback)
           toast({
             title: "Phone verified successfully!",
             description: message || "Your phone has been verified. Please log in to access your account.",
@@ -125,20 +121,11 @@ const Signup = () => {
     { value: "tz", label: "Tanzania" }
   ];
 
-  const passwordStrength = {
-    length: formData.password.length >= 8,
-    uppercase: /[A-Z]/.test(formData.password),
-    lowercase: /[a-z]/.test(formData.password),
-    number: /\d/.test(formData.password),
-    special: /[!@#$%^&*]/.test(formData.password)
-  };
-
   const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate password length
     if (!formData.password || formData.password.length < 8) {
       toast({
         title: "Password too short",
@@ -157,7 +144,6 @@ const Signup = () => {
       return;
     }
 
-    // Validate phone number - must be present and valid
     if (!formData.phone || !formData.phone.trim()) {
       toast({
         title: "Phone number required",
@@ -167,7 +153,6 @@ const Signup = () => {
       return;
     }
 
-    // Basic phone validation - check minimum length and digits
     const trimmedPhone = formData.phone.trim();
     const phoneDigitsOnly = trimmedPhone.replace(/\D/g, '');
 
@@ -180,14 +165,9 @@ const Signup = () => {
       return;
     }
 
-    // Process phone number - keep it simple
-    console.log('Starting phone processing with:', formData.phone);
     let processedPhone = formData.phone.trim();
     const digitsOnly = processedPhone.replace(/\D/g, '');
 
-    console.log('Phone processing step 1:', { processedPhone, digitsOnly });
-
-    // Ensure we have at least 9 digits
     if (digitsOnly.length < 9) {
       toast({
         title: "Invalid phone number",
@@ -197,7 +177,6 @@ const Signup = () => {
       return;
     }
 
-    // Format phone number
     if (digitsOnly.startsWith('255')) {
       processedPhone = '+' + digitsOnly;
     } else if (digitsOnly.startsWith('0')) {
@@ -206,11 +185,7 @@ const Signup = () => {
       processedPhone = '+255' + digitsOnly;
     }
 
-    console.log('Final processed phone:', processedPhone);
-
-    // Ensure processedPhone is valid
     if (!processedPhone || processedPhone.trim() === '') {
-      console.error('Processed phone is empty!', processedPhone);
       toast({
         title: "Phone processing error",
         description: "Failed to process phone number. Please try again.",
@@ -245,23 +220,10 @@ const Signup = () => {
         registerData.country = formData.country;
       }
 
-      console.log('Phone processing debug:', {
-        formDataPhone: formData.phone,
-        processedPhone: processedPhone,
-        registerDataPhone: registerData.phone_number
-      });
-      console.log('Registration data:', registerData);
-
       const result = await register(registerData);
 
-      // CRITICAL: Check if we should stay on page (status 400 - validation failed)
       if (result.stayOnPage || (!result.success && (result.errors || result.error))) {
-        // ❌ Status 400 - Account NOT created, validation failed
-        // Stay on registration page, show error messages
-
-        // First, show the main error message if available
         if (result.error) {
-          // Ensure error is a string, not an object
           const safeErrorMessage = typeof result.error === 'string' ? result.error : 'Validation failed';
           toast({
             title: "Validation failed",
@@ -271,13 +233,10 @@ const Signup = () => {
           });
         }
 
-        // Then show field-specific errors if available
         if (result.errors && Object.keys(result.errors).length > 0) {
           Object.entries(result.errors).forEach(([field, errors]) => {
             const errorMessage = Array.isArray(errors) ? errors[0] : errors;
-            // Ensure errorMessage is a string, not an object
             const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : 'Validation error occurred';
-            // Only show if different from main error message
             if (safeErrorMessage !== result.error) {
               toast({
                 title: `${field.charAt(0).toUpperCase() + field.slice(1)} error`,
@@ -288,15 +247,11 @@ const Signup = () => {
             }
           });
         }
-
-        // DO NOT redirect - stay on registration page
         return;
       }
 
       if (result.success) {
-        // ✅ Status 201 - Account created successfully
         if (result.requiresActivation) {
-          // Account created but needs phone verification
           const phoneNumber = result.phoneNumber || processedPhone;
           setRegisteredPhone(phoneNumber);
           setSmsFailed(result.smsFailed || false);
@@ -311,12 +266,11 @@ const Signup = () => {
           } else {
             toast({
               title: "Account created successfully!",
-              description: result.message || `Please check your phone (${phoneNumber}) for the 6-digit verification code to activate your account. After verification, you will be automatically logged in and redirected to the dashboard.`,
+              description: result.message || `Please check your phone (${phoneNumber}) for the 6-digit verification code to activate your account.`,
               duration: 10000
             });
           }
         } else {
-          // Account activated immediately (backward compatibility)
           toast({
             title: "Account created successfully!",
             description: result.message || "Welcome to Mifumo SMS! You can now access your dashboard."
@@ -325,7 +279,6 @@ const Signup = () => {
           navigate(from, { replace: true });
         }
       } else {
-        // Other error cases
         toast({
           title: "Registration failed",
           description: result.error || "Please check your information and try again.",
@@ -347,14 +300,27 @@ const Signup = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Mobile Background Component
+  const MobileBackground = () => {
+    return (
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4BC5E8] via-[#2BA3D4] to-[#1E90C8]">
+          <div className="absolute top-0 left-0 w-full h-full">
+            <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-[#3BB8E0]/30" />
+            <div className="absolute top-1/4 -left-16 w-48 h-48 rounded-full bg-[#5CCFF0]/20" />
+            <div className="absolute top-40 right-10 w-24 h-24 rounded-full bg-[#2A9FCD]/40" />
+            <div className="absolute bottom-48 -left-10 w-32 h-32 rounded-full bg-[#3BB8E0]/25" />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-  // Sliding Background Component - Light blue gradient like Landing page
+  // Desktop Sliding Background Component
   const SlidingBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
-        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
-          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-0 right-0 w-full h-full">
               <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
@@ -365,7 +331,6 @@ const Signup = () => {
                     <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
                   </linearGradient>
                 </defs>
-                {/* Wavy/fluid patterns - more subtle */}
                 <path
                   d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
                   fill="url(#patternGradientSignup)"
@@ -389,17 +354,239 @@ const Signup = () => {
     );
   };
 
+  // Mobile Signup UI
+  if (isMobile) {
+    return (
+      <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <MobileBackground />
+        
+        {/* Header Area */}
+        <div className="relative z-10 flex-shrink-0 pt-12 pb-6 px-6">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-2xl font-bold text-white text-center tracking-wide"
+          >
+            {showVerification ? "VERIFY PHONE" : "CREATE YOUR ACCOUNT"}
+          </motion.h1>
+        </div>
+
+        {/* White Curved Container */}
+        <motion.div 
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-8 pb-6 shadow-2xl overflow-y-auto"
+        >
+          {!showVerification ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name Fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <Input
+                    placeholder="First Name"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    required
+                    className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  />
+                </div>
+                <div className="relative">
+                  <Input
+                    placeholder="Last Name"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    required
+                    className="h-12 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Email Input */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  required
+                  className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                />
+              </div>
+
+              {/* Phone Input */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <Input
+                  type="tel"
+                  placeholder="Phone (+255...)"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  required
+                  className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                />
+              </div>
+
+              {/* Password Input */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  required
+                  className="h-12 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Confirm Password Input */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  required
+                  className="h-12 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Terms */}
+              <div className="flex items-start space-x-2 pt-2">
+                <Checkbox id="terms" required className="mt-0.5" />
+                <label htmlFor="terms" className="text-xs text-gray-500 leading-tight">
+                  I agree to the{" "}
+                  <Link to="/terms" className="text-[#2BA3D4] hover:underline">Terms</Link>
+                  {" "}and{" "}
+                  <Link to="/privacy" className="text-[#2BA3D4] hover:underline">Privacy Policy</Link>
+                </label>
+              </div>
+
+              {/* Sign Up Button */}
+              <motion.div
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.1 }}
+                className="pt-2"
+              >
+                <Button
+                  type="submit"
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#2BA3D4] to-[#1E90C8] hover:from-[#239AC8] hover:to-[#1A82B5] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Creating account..." : "SIGN UP"}
+                </Button>
+              </motion.div>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyPhone} className="space-y-6">
+              <p className="text-center text-gray-600 text-sm">
+                {smsFailed
+                  ? `We encountered an issue sending your verification code. Please contact support.`
+                  : `Enter the 6-digit code sent to ${registeredPhone}`
+                }
+              </p>
+              
+              {!smsFailed && (
+                <div className="space-y-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    required
+                    className="h-14 text-center text-2xl font-mono tracking-widest border-2 border-gray-200 focus:border-[#2BA3D4] focus:ring-0 rounded-xl"
+                  />
+                </div>
+              )}
+
+              {!smsFailed ? (
+                <motion.div whileTap={{ scale: 0.98 }}>
+                  <Button
+                    type="submit"
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg"
+                    disabled={isLoading || verificationCode.length !== 6}
+                  >
+                    {isLoading ? "Verifying..." : "Verify Phone"}
+                  </Button>
+                </motion.div>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => window.open('mailto:support@mifumosms.com', '_blank')}
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full shadow-lg"
+                >
+                  Contact Support
+                </Button>
+              )}
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowVerification(false)}
+                  className="text-sm text-[#2BA3D4] hover:underline"
+                >
+                  Back to registration
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Sign In Link */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-500 text-sm">
+              Already have account?{" "}
+              <Link 
+                to="/login" 
+                className="text-[#2BA3D4] font-semibold hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Desktop Signup UI (unchanged from original)
   return (
     <div className="min-h-screen flex">
-      {/* Sliding Background */}
       <SlidingBackground />
 
       <div className="flex w-full">
         {/* Left Column - Header and Image */}
         <div className="hidden md:flex md:w-1/2 flex-col justify-center p-8 relative overflow-hidden min-h-screen">
-          {/* Image Section with Header Overlay */}
-            <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
-            {/* Header positioned at the top of the image */}
+          <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
             <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
@@ -416,7 +603,6 @@ const Signup = () => {
               </div>
             </div>
 
-            {/* Mifumo SMS Information - positioned at bottom of image area */}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
                 <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
@@ -448,7 +634,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Background Image */}
           <div className="absolute inset-0">
             <img
               src="/home background12.jpg"
@@ -461,9 +646,7 @@ const Signup = () => {
         {/* Right Column - Form */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen md:min-h-screen">
           <div className="w-full max-w-md space-y-4 sm:space-y-6">
-            {/* Form Header */}
             <div className="text-center mb-4 sm:mb-6">
-              {/* Logo */}
               <div className="flex items-center justify-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
                   <MessageSquare className="w-5 h-5 text-white" />
@@ -488,7 +671,6 @@ const Signup = () => {
 
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-                {/* Name Fields */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">
                     <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">First name</Label>
@@ -514,7 +696,6 @@ const Signup = () => {
                   </div>
                 </div>
 
-                {/* Email */}
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs font-medium text-gray-700">Email address</Label>
                   <Input
@@ -528,7 +709,6 @@ const Signup = () => {
                   />
                 </div>
 
-                {/* Phone and Country */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
@@ -539,10 +719,7 @@ const Signup = () => {
                       type="tel"
                       placeholder="+255 700 000 001"
                       value={formData.phone || ''}
-                      onChange={(e) => {
-                        console.log('Phone input changed:', e.target.value);
-                        handleInputChange("phone", e.target.value);
-                      }}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
                       required
                       className={`h-9 border rounded-lg text-sm ${
                         formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8
@@ -568,7 +745,6 @@ const Signup = () => {
                   </div>
                 </div>
 
-                {/* Company */}
                 <div className="space-y-1">
                   <Label htmlFor="company" className="text-xs font-medium text-gray-700">Company name</Label>
                   <Input
@@ -581,7 +757,6 @@ const Signup = () => {
                   />
                 </div>
 
-                {/* Password */}
                 <div className="space-y-1">
                   <Label htmlFor="password" className="text-xs font-medium text-gray-700">Password</Label>
                   <div className="relative">
@@ -610,7 +785,6 @@ const Signup = () => {
                   </div>
                 </div>
 
-                {/* Confirm Password */}
                 <div className="space-y-1">
                   <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">Confirm password</Label>
                   <div className="relative">
@@ -639,7 +813,6 @@ const Signup = () => {
                   </div>
                 </div>
 
-                {/* Terms and Conditions */}
                 <div className="flex items-start space-x-2">
                   <Checkbox id="terms" required className="mt-0.5" />
                   <label htmlFor="terms" className="text-xs text-gray-600 leading-tight">
@@ -654,7 +827,6 @@ const Signup = () => {
                   </label>
                 </div>
 
-                {/* Sign Up Button */}
                 <Button
                   type="submit"
                   className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
@@ -713,7 +885,6 @@ const Signup = () => {
               </form>
             )}
 
-            {/* Footer Links */}
             <div className="text-center space-y-1">
               <div className="flex items-center justify-center gap-3">
                 <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">

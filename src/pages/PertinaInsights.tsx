@@ -112,7 +112,7 @@ const PertinaInsights = () => {
       return toast({
         title: "Select a tenant",
         description: "Choose a tenant before fetching the balance.",
-        variant: "warning",
+        variant: "default",
       });
     }
 
@@ -152,7 +152,7 @@ const PertinaInsights = () => {
       return toast({
         title: "Select a tenant",
         description: "Choose a tenant before fetching usage.",
-        variant: "warning",
+        variant: "default",
       });
     }
 

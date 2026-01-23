@@ -135,7 +135,7 @@ class SecurityService {
   }
 
   // Enable 2FA
-  async enable2FA(data: TwoFactorEnableRequest): Promise<{
+  async enable2FA(data: TwoFactorEnableRequest & { phone?: string; phone_number?: string }): Promise<{
     success: boolean;
     message?: string;
     backup_codes?: string[];
@@ -143,8 +143,15 @@ class SecurityService {
     errors?: Record<string, string[]>;
   }> {
     // Extract phone number from the request data
-    const phone = data.phone || data.phone_number;
-    return apiClient.enableTwoFactor(phone);
+    const phone = (data as any).phone || (data as any).phone_number;
+    const response = await apiClient.enableTwoFactor(phone);
+    const responseData = response.data as any;
+    return {
+      success: response.success ?? false,
+      message: response.message,
+      backup_codes: responseData?.backup_codes,
+      errors: response.errors
+    };
   }
 
   // Disable 2FA
@@ -153,7 +160,12 @@ class SecurityService {
     message?: string;
     errors?: Record<string, string[]>;
   }> {
-    return apiClient.disableTwoFactor();
+    const response = await apiClient.disableTwoFactor();
+    return {
+      success: response.success ?? false,
+      message: response.message,
+      errors: response.errors
+    };
   }
 
   // Verify 2FA
