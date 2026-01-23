@@ -101,7 +101,7 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
         <CardDescription className="text-gray-600">
           We've sent a verification code to your phone number
         </CardDescription>
-        <div className="text-sm text-gray-500 mt-2">
+        <div className="text-sm text-gray-500 mt-4 md:mt-2">
           {phoneNumber}
         </div>
       </CardHeader>
