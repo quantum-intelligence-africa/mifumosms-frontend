@@ -740,7 +740,7 @@ const Landing = () => {
             }`}>
               Pricing
             </button>
-            <Link to="/developer" className={`transition-colors duration-300 ${
+            <Link to="/developer#developer-hero" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
@@ -1520,7 +1520,7 @@ const Landing = () => {
               <a className="hover:underline hover:text-white" href="#about">About</a>
               <a className="hover:underline hover:text-white" href="#features">Features</a>
               <a className="hover:underline hover:text-white" href="#pricing">Pricing</a>
-              <a href="/developer#developer-hero" className="hover:underline hover:text-white">Developer</a>
+              <a href="/developer" className="hover:underline hover:text-white">Developer</a>
             </nav>
 
             {/* Contact */}

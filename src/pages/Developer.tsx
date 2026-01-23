@@ -104,7 +104,7 @@ const Developer = () => {
             }`}>
               Pricing
             </Link>
-            <Link to="/developer" className={`transition-colors duration-300 ${
+            <Link to="/developer#developer-hero" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
