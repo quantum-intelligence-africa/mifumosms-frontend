@@ -75,6 +75,7 @@ export interface RegisterResponse {
   activation_required?: boolean; // True if activation is required
   next_step?: string; // Next step in the flow (e.g., "verify_code")
   after_verification?: string; // What happens after verification (e.g., "dashboard_access")
+  error?: string; // Error message if registration fails
 }
 
 // Tenant Types
