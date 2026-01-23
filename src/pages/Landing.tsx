@@ -26,9 +26,10 @@ import {
   X
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
 import { useStaggeredReveal, useScrollReveal } from "@/hooks/useScrollReveal";
+import { useScroll, useTransform, motion, MotionValue } from "motion/react";
 
 const Landing = () => {
   // Force light theme on marketing surfaces
@@ -85,6 +86,29 @@ const Landing = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+
+  // Scroll-based animations for the desktop section
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll();
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileDevice(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
+
+  const scaleDimensions = () => {
+    return isMobileDevice ? [0.7, 0.9] : [1.05, 1];
+  };
+
+  const rotate = useTransform(scrollYProgress, [0, 0.3], [20, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.3], scaleDimensions());
 
   // Handle cross-page navigation with scroll parameters or hash
   useEffect(() => {
@@ -349,6 +373,65 @@ const Landing = () => {
       </div>
     );
   };
+
+  // ContainerScroll Component with motion animations
+  const ContainerScroll = ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => {
+    const translate = useTransform(scrollYProgress, [0, 1], [50, -50]);
+
+    return (
+        <div
+          className="h-[30rem] md:h-[40rem] w-full flex items-center justify-center relative"
+          ref={containerRef}
+        >
+        <div
+          className="w-full relative"
+          style={{
+            perspective: "1000px",
+          }}
+        >
+          <MotionCard rotate={rotate} scale={scale}>
+            {/* Invisible content to maintain container dimensions */}
+            <div className="invisible w-full h-full">
+              {children}
+            </div>
+            {children}
+          </MotionCard>
+        </div>
+      </div>
+    );
+  };
+
+
+  const MotionCard = ({
+    rotate,
+    scale,
+    children,
+  }: {
+    rotate: MotionValue<number>;
+    scale: MotionValue<number>;
+    children: React.ReactNode;
+  }) => {
+    return (
+      <motion.div
+        style={{
+          rotateX: rotate,
+          scale,
+          boxShadow:
+            "0 0 #0000004d, 0 9px 20px #0000004a, 0 37px 37px #00000042, 0 84px 50px #00000026, 0 149px 60px #0000000a, 0 233px 65px #00000003",
+        }}
+        className="w-[48rem] max-w-3xl mt-8 mx-auto h-[25rem] md:h-[35rem] border-4 border-[#6C6C6C] p-2 md:p-6 bg-[#222222] rounded-[30px] shadow-2xl"
+      >
+        <div className=" h-full w-full  overflow-hidden rounded-2xl bg-gray-100 dark:bg-zinc-900 md:rounded-2xl md:p-2 ">
+          {children}
+        </div>
+      </motion.div>
+    );
+  };
+
   const features = [
     {
       icon: MessageSquare,
@@ -861,7 +944,7 @@ const Landing = () => {
               <img
                 src="/hero-section-banner.svg"
                 alt="Hero banner"
-                className="w-200 h-auto object-contain opacity-90"
+                className="w-99 h-auto object-contain opacity-50"
               />
             </div>
 
@@ -892,164 +975,157 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Device Mockups Container - Positioned below the main content */}
-          <div className="flex flex-row items-center justify-center gap-0 -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 pt-0 w-full hidden overflow-visible relative">
-            {/* Mobile Phone with Mobile Cover Image */}
-            <div className="relative w-[1400px] sm:w-[1600px] md:w-[1800px] lg:w-[2000px] max-w-[30vw] h-auto opacity-100 -mr-20 sm:-mr-24 md:-mr-28 lg:-mr-32 flex-shrink-0">
-              {/* Mobile Cover Image - Behind the mockup, visible through screen */}
-              <div
-                className="absolute z-[1] overflow-hidden"
+        {/* Desktop: ContainerScroll with mobile and iPhone mockups positioned beside */}
+        <div className="hidden lg:block mt-8 lg:mt-12">
+          <div className="relative w-full max-w-7xl mx-auto">
+            <div className="flex items-center justify-center gap-0 lg:gap-0">
+              {/* Mobile Phone Mockup - Left Side */}
+              <motion.div
                 style={{
-                  top: '7%',
-                  left: '20%',
-                  right: '20%',
-                  bottom: '7%',
-                  borderRadius: '0.8rem',
-                  zIndex: 1,
+                  rotateX: rotate,
+                  scale,
                 }}
+                className="relative w-[300px] lg:w-[350px] xl:w-[400px] h-auto opacity-100 flex-shrink-0 -mr-24 lg:-mr-32 -mt-4 lg:-mt-6 self-start"
               >
+                {/* Mobile Cover Image - Behind the mockup, visible through screen */}
+                <div
+                  className="absolute z-[1] overflow-hidden"
+                  style={{
+                    top: '7%',
+                    left: '20%',
+                    right: '20%',
+                    bottom: '7%',
+                    borderRadius: '0.8rem',
+                    zIndex: 1,
+                  }}
+                >
+                  <img
+                    src={encodeImagePath('/mobile cover.png')}
+                    alt="Mobile app screen"
+                    className="w-full h-full"
+                    loading="eager"
+                    onError={(e) => {
+                      console.error('Failed to load mobile cover image');
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    style={{
+                      borderRadius: '0.8rem',
+                      objectFit: 'cover',
+                      objectPosition: 'top',
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      imageRendering: 'crisp-edges',
+                    }}
+                  />
+                </div>
+                {/* Mobile Mockup Frame - On top of the cover */}
                 <img
-                  src={encodeImagePath('/mobile cover.png')}
-                  alt="Mobile app screen"
-                  className="w-full h-full"
+                  src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
+                  alt="Mobile mockup"
+                  className="relative z-[2] w-full h-auto object-contain object-left"
                   loading="eager"
                   onError={(e) => {
-                    console.error('Failed to load mobile cover image');
+                    console.error('Failed to load mobile mockup image');
                     e.currentTarget.style.display = 'none';
                   }}
                   style={{
-                    borderRadius: '0.8rem',
-                    objectFit: 'cover',
-                    objectPosition: 'top',
-                    display: 'block',
-                    width: '100%',
-                    height: '100%',
-                    imageRendering: 'crisp-edges',
+                    filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                    zIndex: 2,
+                    position: 'relative',
                   }}
                 />
-              </div>
-              {/* Mobile Mockup Frame - On top of the cover */}
-              <img
-                src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
-                alt="Mobile mockup"
-                className="relative z-[2] w-full h-auto object-contain"
-                loading="eager"
-                onError={(e) => {
-                  console.error('Failed to load mobile mockup image');
-                  e.currentTarget.style.display = 'none';
-                }}
-                style={{
-                  filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                  zIndex: 2,
-                  position: 'relative',
-                }}
-              />
-          </div>
+              </motion.div>
 
-          {/* Desktop Monitor with Desktop Cover Image - Largest mockup */}
-          <div className="relative w-[3200px] sm:w-[3600px] md:w-[4000px] lg:w-[4400px] xl:w-[4800px] max-w-[50vw] h-auto opacity-100 -mt-8 sm:-mt-10 md:-mt-12 lg:-mt-14 flex-shrink-0">
-            {/* Desktop Cover Image - Behind the mockup, visible through screen */}
+              {/* ContainerScroll Motion Card - Center */}
+              <div className="flex-shrink-0">
+                <ContainerScroll>
+            {/* Desktop Cover Image inside the motion card */}
             <div
-              className="absolute z-[1] overflow-hidden"
+              className="absolute inset-2 z-[1] overflow-hidden"
               style={{
-                top: '17%',
-                left: '6.7%',
-                right: '7%',
-                bottom: '4%',
-                borderRadius: '0.5rem',
+                borderRadius: '0.8rem',
                 zIndex: 1,
               }}
             >
               <img
                 src={encodeImagePath('/desktop cover.png')}
-                alt="Desktop app screen"
-                className="w-full h-full"
+                alt="Desktop app interface"
+                className="w-full h-full object-cover object-left"
                 loading="eager"
                 onError={(e) => {
                   console.error('Failed to load desktop cover image');
                   e.currentTarget.style.display = 'none';
                 }}
                 style={{
-                  borderRadius: '0.5rem',
-                  objectFit: 'contain',
-                  objectPosition: 'top center',
-                  display: 'block',
-                  width: '100%',
-                  height: '100%',
-                  imageRendering: 'crisp-edges',
+                  borderRadius: '0.8rem',
                 }}
               />
             </div>
-            {/* Desktop Mockup Frame - On top of the cover */}
-            <img
-              src={encodeImagePath('/desktop.png')}
-              alt="Desktop mockup"
-              className="relative z-[2] w-full h-auto object-contain"
-              loading="eager"
-              onError={(e) => {
-                console.error('Failed to load desktop mockup image');
-                e.currentTarget.style.display = 'none';
-              }}
-              style={{
-                filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                zIndex: 2,
-                position: 'relative',
-              }}
-            />
-          </div>
+                </ContainerScroll>
+              </div>
 
-          {/* iPhone with SMS Content */}
-          <div className="relative w-[800px] sm:w-[900px] md:w-[1000px] lg:w-[1100px] max-w-[20vw] h-auto opacity-100 -ml-8 sm:-ml-12 md:-ml-16 lg:-ml-24 flex-shrink-0">
-            <img
-              src={encodeImagePath('/iphone_PNG5735.png')}
-              alt="iPhone mockup"
-              className="w-full h-auto object-contain relative z-[1]"
-              loading="eager"
-              onError={(e) => {
-                console.error('Failed to load iPhone mockup image');
-                e.currentTarget.style.display = 'none';
-              }}
-              style={{
-                filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
-                zIndex: 1,
-                position: 'relative',
-              }}
-            />
-            {/* SMS Content Overlay for iPhone */}
-            <div
-              className="absolute z-[2] overflow-hidden bg-white flex flex-col"
-              style={{
-                top: '16%',
-                left: '15.5%',
-                right: '16%',
-                bottom: '18.5%',
-                borderRadius: '0.6rem',
-                zIndex: 2,
-              }}
-            >
-              <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
-                <div className="bg-white border-b border-gray-200 px-1 py-0.5 flex items-center gap-0.5 flex-shrink-0">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MessageSquare className="w-1.5 h-1.5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-gray-900 font-semibold text-[8px] truncate">{currentBusinessData.sender}</h3>
-                  </div>
-                </div>
-                <div className="flex-1 p-1 space-y-0.5 overflow-y-auto bg-gray-50">
-                  {currentBusinessData.messages.slice(0, 3).map((msg, index) => (
-                    <div key={index} className="flex justify-start">
-                      <div className="max-w-[88%] bg-white border border-gray-200 rounded px-1 py-0.5 shadow-sm">
-                        <p className="text-gray-900 text-[8px] leading-tight">{msg.text}</p>
-                        <p className="text-gray-400 text-[6px] mt-0.5">{msg.time}</p>
+              {/* iPhone Mockup - Right Side */}
+              <motion.div
+                style={{
+                  rotateX: rotate,
+                  scale,
+                }}
+                className="relative w-[250px] lg:w-[300px] xl:w-[350px] h-auto opacity-100 flex-shrink-0 -ml-24 lg:-ml-32"
+              >
+                <img
+                  src={encodeImagePath('/iphone_PNG5735.png')}
+                  alt="iPhone mockup"
+                  className="w-full h-auto object-contain relative z-[1]"
+                  loading="eager"
+                  onError={(e) => {
+                    console.error('Failed to load iPhone mockup image');
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  style={{
+                    filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.2))',
+                    zIndex: 1,
+                    position: 'relative',
+                  }}
+                />
+                {/* SMS Content Overlay for iPhone */}
+                <div
+                  className="absolute z-[2] overflow-hidden bg-white flex flex-col"
+                  style={{
+                    top: '16%',
+                    left: '15.5%',
+                    right: '16%',
+                    bottom: '18.5%',
+                    borderRadius: '0.6rem',
+                    zIndex: 2,
+                  }}
+                >
+                  <div className="flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                    <div className="bg-white border-b border-gray-200 px-1 py-0.5 flex items-center gap-0.5 flex-shrink-0">
+                      <div className="w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <MessageSquare className="w-1.5 h-1.5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-gray-900 font-semibold text-[10px] truncate">{currentBusinessData.sender}</h3>
                       </div>
                     </div>
-                  ))}
+                    <div className="flex-1 p-0.5 space-y-0.5 overflow-y-auto bg-gray-50">
+                      {currentBusinessData.messages.slice(0, 2).map((msg, index) => (
+                        <div key={index} className="flex justify-start">
+                          <div className="max-w-[88%] bg-white border border-gray-200 rounded px-0.5 py-0.5 shadow-sm">
+                            <p className="text-gray-900 text-[10px] leading-tight">{msg.text}</p>
+                            <p className="text-gray-400 text-[8px] mt-0.5">{msg.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
+
       </section>
 
       {/* Features Section */}
