@@ -127,19 +127,13 @@ const Login = () => {
   const MobileBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden">
-        {/* Blue gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4BC5E8] via-[#2BA3D4] to-[#1E90C8]">
-          {/* Abstract circular shapes */}
-          <div className="absolute top-0 left-0 w-full h-full">
-            {/* Large curved shape top-right */}
-            <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-[#3BB8E0]/30" />
-            {/* Medium curved shape left */}
-            <div className="absolute top-1/4 -left-16 w-48 h-48 rounded-full bg-[#5CCFF0]/20" />
-            {/* Small accent circle */}
-            <div className="absolute top-40 right-10 w-24 h-24 rounded-full bg-[#2A9FCD]/40" />
-            {/* Bottom left curve */}
-            <div className="absolute bottom-48 -left-10 w-32 h-32 rounded-full bg-[#3BB8E0]/25" />
-          </div>
+        <div className="absolute inset-0">
+          <img
+            src="/home background12.jpg"
+            className="w-full h-full object-cover"
+            alt="Mobile background"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
       </div>
     );
@@ -188,30 +182,50 @@ const Login = () => {
     return (
       <div className="min-h-screen flex flex-col relative overflow-hidden">
         <MobileBackground />
-        
+
         {/* Header Area */}
-        <div className="relative z-10 flex-shrink-0 pt-16 pb-8 px-6">
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-3xl font-bold text-white text-center tracking-wide"
-          >
-            SIGN IN
-          </motion.h1>
+        <div className="relative z-10 flex-shrink-0 pt-16 pb-8 px-6 backdrop-blur-sm rounded-b-2xl shadow-lg">
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <span className="font-heading text-2xl font-bold text-white">
+                Mifumo SMS
+              </span>
+              <p className="text-base text-white/90 mt-1">
+                Reliable SMS solutions for businesses
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* White Curved Container */}
-        <motion.div 
+        <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-8 pt-10 pb-8 shadow-2xl"
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-8 pt-44 pb-8 shadow-2xl"
         >
+          {/* Form Title */}
+          <div className="text-center mb-6">
+            <motion.h2
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-2xl font-bold text-gray-800 mb-2"
+            >
+              Welcome back
+            </motion.h2>
+            <p className="text-sm text-gray-600">
+              Sign in to your account
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Input */}
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
                 <Mail className="w-5 h-5" />
               </div>
               <Input
@@ -220,13 +234,13 @@ const Login = () => {
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 required
-                className="h-14 pl-12 pr-4 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300"
+                className="h-14 pl-12 pr-4 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300"
               />
             </div>
 
             {/* Password Input */}
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
                 <Lock className="w-5 h-5" />
               </div>
               <Input
@@ -235,7 +249,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 required
-                className="h-14 pl-12 pr-12 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300"
+                className="h-14 pl-12 pr-12 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300"
               />
               <button
                 type="button"
@@ -246,11 +260,22 @@ const Login = () => {
               </button>
             </div>
 
-            {/* Forgot Password */}
-            <div className="text-right">
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember-mobile"
+                  checked={formData.rememberMe}
+                  onCheckedChange={(checked) => handleInputChange("rememberMe", checked as boolean)}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="remember-mobile" className="text-sm text-gray-600">
+                  Remember me
+                </Label>
+              </div>
               <Link
                 to="/forgot-password"
-                className="text-sm text-gray-500 hover:text-[#2BA3D4] transition-colors"
+                className="text-sm text-gray-500 hover:text-blue-600 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -263,7 +288,7 @@ const Login = () => {
             >
               <Button
                 type="submit"
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#2BA3D4] to-[#1E90C8] hover:from-[#239AC8] hover:to-[#1A82B5] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "SIGN IN"}
@@ -271,17 +296,26 @@ const Login = () => {
             </motion.div>
           </form>
 
-          {/* Sign Up Link */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-500 text-sm">
-              Don't have account?{" "}
-              <Link 
-                to="/signup" 
-                className="text-[#2BA3D4] font-semibold hover:underline"
+          {/* Links */}
+          <div className="mt-8 text-center space-y-4">
+            <div className="flex items-center justify-center gap-4">
+              <Link
+                to="/"
+                className="text-sm text-blue-600 font-semibold hover:text-blue-700 hover:underline"
               >
-                Sign up
+                Home
               </Link>
-            </p>
+              <span className="text-gray-400">|</span>
+              <p className="text-gray-500 text-sm">
+                Don't have account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
+                >
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>

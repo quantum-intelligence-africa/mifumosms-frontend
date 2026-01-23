@@ -304,13 +304,13 @@ const Signup = () => {
   const MobileBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4BC5E8] via-[#2BA3D4] to-[#1E90C8]">
-          <div className="absolute top-0 left-0 w-full h-full">
-            <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-[#3BB8E0]/30" />
-            <div className="absolute top-1/4 -left-16 w-48 h-48 rounded-full bg-[#5CCFF0]/20" />
-            <div className="absolute top-40 right-10 w-24 h-24 rounded-full bg-[#2A9FCD]/40" />
-            <div className="absolute bottom-48 -left-10 w-32 h-32 rounded-full bg-[#3BB8E0]/25" />
-          </div>
+        <div className="absolute inset-0">
+          <img
+            src="/home background12.jpg"
+            className="w-full h-full object-cover"
+            alt="Mobile background"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
       </div>
     );
@@ -359,32 +359,53 @@ const Signup = () => {
     return (
       <div className="min-h-screen flex flex-col relative overflow-hidden">
         <MobileBackground />
-        
+
         {/* Header Area */}
-        <div className="relative z-10 flex-shrink-0 pt-12 pb-6 px-6">
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-2xl font-bold text-white text-center tracking-wide"
-          >
-            {showVerification ? "VERIFY PHONE" : "CREATE YOUR ACCOUNT"}
-          </motion.h1>
+        <div className="relative z-10 flex-shrink-0 pt-12 pb-4 px-6 backdrop-blur-sm rounded-b-2xl shadow-lg">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <span className="font-heading text-lg font-bold text-white">
+                Mifumo SMS
+              </span>
+              <p className="text-sm text-white/90 mt-0.5">
+                Reliable SMS solutions for businesses
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* White Curved Container */}
-        <motion.div 
+        <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-8 pb-6 shadow-2xl overflow-y-auto"
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-16 pb-4 shadow-2xl overflow-y-auto"
         >
           {!showVerification ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-3">
+            <>
+              {/* Form Title */}
+              <div className="text-center mb-4">
+                <motion.h2
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-xl font-bold text-gray-800 mb-1"
+                >
+                  Create your account
+                </motion.h2>
+                <p className="text-xs text-gray-600">
+                  Join Mifumo SMS today
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-3">
+                {/* Name Fields */}
+              <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
                     <User className="w-4 h-4" />
                   </div>
                   <Input
@@ -392,7 +413,7 @@ const Signup = () => {
                     value={formData.firstName}
                     onChange={(e) => handleInputChange("firstName", e.target.value)}
                     required
-                    className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                    className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                   />
                 </div>
                 <div className="relative">
@@ -401,14 +422,14 @@ const Signup = () => {
                     value={formData.lastName}
                     onChange={(e) => handleInputChange("lastName", e.target.value)}
                     required
-                    className="h-12 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                    className="h-10 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                   />
                 </div>
               </div>
 
               {/* Email Input */}
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
                   <Mail className="w-4 h-4" />
                 </div>
                 <Input
@@ -417,13 +438,13 @@ const Signup = () => {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
-                  className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                 />
               </div>
 
               {/* Phone Input */}
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
                   <Phone className="w-4 h-4" />
                 </div>
                 <Input
@@ -432,13 +453,40 @@ const Signup = () => {
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   required
-                  className="h-12 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  className="h-10 pl-10 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                 />
+              </div>
+
+              {/* Country and Company Row */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <Select onValueChange={(value) => handleInputChange("country", value)}>
+                    <SelectTrigger className="h-10 pl-3 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm">
+                      <SelectValue placeholder="Country" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                      {countries.map((country) => (
+                        <SelectItem key={country.value} value={country.value}>
+                          {country.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="relative">
+                  <Input
+                    placeholder="Company"
+                    value={formData.company}
+                    onChange={(e) => handleInputChange("company", e.target.value)}
+                    required
+                    className="h-10 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
+                  />
+                </div>
               </div>
 
               {/* Password Input */}
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
                   <Lock className="w-4 h-4" />
                 </div>
                 <Input
@@ -447,7 +495,7 @@ const Signup = () => {
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
                   required
-                  className="h-12 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  className="h-10 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                 />
                 <button
                   type="button"
@@ -460,7 +508,7 @@ const Signup = () => {
 
               {/* Confirm Password Input */}
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2BA3D4]">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600">
                   <Lock className="w-4 h-4" />
                 </div>
                 <Input
@@ -469,7 +517,7 @@ const Signup = () => {
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                   required
-                  className="h-12 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-[#2BA3D4] focus:ring-0 transition-all duration-300 text-sm"
+                  className="h-10 pl-10 pr-10 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
                 />
                 <button
                   type="button"
@@ -481,13 +529,13 @@ const Signup = () => {
               </div>
 
               {/* Terms */}
-              <div className="flex items-start space-x-2 pt-2">
+              <div className="flex items-start space-x-2 pt-1">
                 <Checkbox id="terms" required className="mt-0.5" />
                 <label htmlFor="terms" className="text-xs text-gray-500 leading-tight">
                   I agree to the{" "}
-                  <Link to="/terms" className="text-[#2BA3D4] hover:underline">Terms</Link>
+                  <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">Terms</Link>
                   {" "}and{" "}
-                  <Link to="/privacy" className="text-[#2BA3D4] hover:underline">Privacy Policy</Link>
+                  <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</Link>
                 </label>
               </div>
 
@@ -495,37 +543,54 @@ const Signup = () => {
               <motion.div
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.1 }}
-                className="pt-2"
+                className="pt-1"
               >
                 <Button
                   type="submit"
-                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#2BA3D4] to-[#1E90C8] hover:from-[#239AC8] hover:to-[#1A82B5] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
                   disabled={isLoading}
                 >
                   {isLoading ? "Creating account..." : "SIGN UP"}
                 </Button>
               </motion.div>
             </form>
+            </>
           ) : (
-            <form onSubmit={handleVerifyPhone} className="space-y-6">
-              <p className="text-center text-gray-600 text-sm">
+            <>
+              {/* Verification Title */}
+              <div className="text-center mb-4">
+                <motion.h2
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-xl font-bold text-gray-800 mb-1"
+                >
+                  Verify your phone
+                </motion.h2>
+                <p className="text-xs text-gray-600">
+                  Enter the 6-digit code sent to your phone
+                </p>
+              </div>
+
+              <form onSubmit={handleVerifyPhone} className="space-y-4">
+                <p className="text-center text-gray-600 text-xs">
                 {smsFailed
                   ? `We encountered an issue sending your verification code. Please contact support.`
                   : `Enter the 6-digit code sent to ${registeredPhone}`
                 }
               </p>
-              
+
               {!smsFailed && (
                 <div className="space-y-2">
-                  <Input
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    maxLength={6}
-                    required
-                    className="h-14 text-center text-2xl font-mono tracking-widest border-2 border-gray-200 focus:border-[#2BA3D4] focus:ring-0 rounded-xl"
-                  />
+                    <Input
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      required
+                      className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-0 rounded-xl"
+                    />
                 </div>
               )}
 
@@ -533,7 +598,7 @@ const Signup = () => {
                 <motion.div whileTap={{ scale: 0.98 }}>
                   <Button
                     type="submit"
-                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg"
                     disabled={isLoading || verificationCode.length !== 6}
                   >
                     {isLoading ? "Verifying..." : "Verify Phone"}
@@ -542,36 +607,46 @@ const Signup = () => {
               ) : (
                 <Button
                   type="button"
-                  onClick={() => window.open('mailto:support@mifumosms.com', '_blank')}
-                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full shadow-lg"
+                  onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
+                  className="w-full h-12 text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg"
                 >
                   Contact Support
                 </Button>
               )}
 
-              <div className="text-center">
+              <div className="text-center mt-2">
                 <button
                   type="button"
                   onClick={() => setShowVerification(false)}
-                  className="text-sm text-[#2BA3D4] hover:underline"
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Back to registration
                 </button>
               </div>
             </form>
+            </>
           )}
 
-          {/* Sign In Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm">
-              Already have account?{" "}
-              <Link 
-                to="/login" 
-                className="text-[#2BA3D4] font-semibold hover:underline"
+          {/* Links */}
+          <div className="mt-3 text-center space-y-2">
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                to="/"
+                className="text-xs text-blue-600 font-semibold hover:text-blue-700 hover:underline"
               >
-                Sign in
+                Home
               </Link>
-            </p>
+              <span className="text-gray-400">|</span>
+              <p className="text-gray-500 text-xs">
+                Already have account?{" "}
+                <Link
+                  to="/login"
+                  className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>
