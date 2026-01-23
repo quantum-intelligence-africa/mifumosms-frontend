@@ -501,11 +501,14 @@ const Settings = () => {
         ]);
 
         if (prefsResponse.success && prefsResponse.data) {
+          const prefsData = prefsResponse.data as any;
           setPreferences({
-            language: prefsResponse.data.language,
-            timezone: prefsResponse.data.timezone,
-            date_format: prefsResponse.data.date_format,
-            time_format: prefsResponse.data.time_format,
+            theme: prefsData.theme || 'light',
+            language: prefsData.language || 'en',
+            timezone: prefsData.timezone || 'Africa/Dar_es_Salaam',
+            email_notifications: prefsData.email_notifications ?? true,
+            sms_notifications: prefsData.sms_notifications ?? false,
+            marketing_emails: prefsData.marketing_emails ?? true,
           });
         }
 
@@ -541,16 +544,16 @@ const Settings = () => {
       if (response.success && response.data) {
         // Transform the new API response format to match the existing interface
         setApiSettings({
-          api_keys: response.data.map(key => ({
+          api_keys: response.data.map((key: { key_id: string; name: string; created_at: string; expires_at?: string; last_used?: string }) => ({
             id: key.key_id,
             key_name: key.name,
-            api_key: key.key,
-            secret_key: key.key, // New API doesn't have separate secret
+            api_key: key.key_id, // Use key_id as the API key reference
+            secret_key: key.key_id, // New API doesn't have separate secret
             status: 'active', // Assume active if returned
             permissions: {}, // New API doesn't return permissions in list
             total_uses: 0,
-            last_used: key.last_used,
-            expires_at: key.expires_at,
+            last_used: key.last_used || null,
+            expires_at: key.expires_at || null,
             created_at: key.created_at
           })),
           last_updated: new Date().toISOString()

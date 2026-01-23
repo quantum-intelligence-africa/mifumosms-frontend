@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Mail, Lock } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { motion } from "framer-motion";
 
 const Login = () => {
   const isMobile = useIsMobile();
@@ -55,23 +55,19 @@ const Login = () => {
           description: "Welcome back to Mifumo SMS!"
         });
 
-        // Redirect to dashboard immediately after successful login
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
       } else {
-        // Check if error indicates account needs activation
         const errorMessage = result.error || "Please check your credentials and try again.";
         const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
                                 errorMessage.toLowerCase().includes('activation') ||
                                 errorMessage.toLowerCase().includes('verification code');
 
         if (needsActivation) {
-          // Get phone number from result or stored data
           const resultPhone = (result as any).phoneNumber;
           const storedPhone = localStorage.getItem('pending_phone_activation');
           const storedMethod = localStorage.getItem('pending_verification_method') as 'sms' | 'email' | null;
 
-          // Determine verification method: prefer stored method, or SMS if phone exists, else default to SMS
           let verificationMethod: 'sms' | 'email' = 'sms';
           let phoneNumber: string | undefined = resultPhone || storedPhone || undefined;
 
@@ -79,16 +75,13 @@ const Login = () => {
             verificationMethod = storedMethod;
           } else if (phoneNumber) {
             verificationMethod = 'sms';
-            // Store phone number for later use
             localStorage.setItem('pending_phone_activation', phoneNumber);
             localStorage.setItem('pending_verification_method', 'sms');
           } else {
-            // Default to SMS verification
             verificationMethod = 'sms';
             localStorage.setItem('pending_verification_method', 'sms');
           }
 
-          // Update toast message - always mention SMS
           const toastMessage = phoneNumber
             ? `A new 6-digit verification code has been sent to your phone (${phoneNumber}). Please check your SMS messages and use the code to verify your account.`
             : "A new 6-digit verification code has been sent to your phone. Please check your SMS messages and use the code to verify your account.";
@@ -100,7 +93,6 @@ const Login = () => {
             duration: 10000
           });
 
-          // Redirect to activation page with verification method info
           navigate('/activate-email', {
             state: {
               email: formData.email,
@@ -131,13 +123,27 @@ const Login = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Sliding Background Component - Light blue gradient like Landing page
+  // Mobile Background Component - Blue gradient with abstract shapes
+  const MobileBackground = () => {
+    return (
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="/home background12.jpg"
+            className="w-full h-full object-cover"
+            alt="Mobile background"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
+        </div>
+      </div>
+    );
+  };
+
+  // Desktop Sliding Background Component
   const SlidingBackground = () => {
     return (
       <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
-        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
-          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-0 right-0 w-full h-full">
               <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
@@ -148,7 +154,6 @@ const Login = () => {
                     <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
                   </linearGradient>
                 </defs>
-                {/* Wavy/fluid patterns - more subtle */}
                 <path
                   d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
                   fill="url(#patternGradientLogin)"
@@ -172,17 +177,160 @@ const Login = () => {
     );
   };
 
+  // Mobile Login UI
+  if (isMobile) {
+    return (
+      <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <MobileBackground />
+
+        {/* Header Area */}
+        <div className="relative z-10 flex-shrink-0 pt-16 pb-8 px-6 backdrop-blur-sm rounded-b-2xl shadow-lg">
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+              <MessageSquare className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <span className="font-heading text-2xl font-bold text-white">
+                Mifumo SMS
+              </span>
+              <p className="text-base text-white/90 mt-1">
+                Reliable SMS solutions for businesses
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* White Curved Container */}
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-8 pt-44 pb-8 shadow-2xl"
+        >
+          {/* Form Title */}
+          <div className="text-center mb-6">
+            <motion.h2
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-2xl font-bold text-gray-800 mb-2"
+            >
+              Welcome back
+            </motion.h2>
+            <p className="text-sm text-gray-600">
+              Sign in to your account
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Input */}
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
+                <Mail className="w-5 h-5" />
+              </div>
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                required
+                className="h-14 pl-12 pr-4 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300"
+              />
+            </div>
+
+            {/* Password Input */}
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
+                <Lock className="w-5 h-5" />
+              </div>
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                required
+                className="h-14 pl-12 pr-12 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300"
+              />
+              <button
+                type="button"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember-mobile"
+                  checked={formData.rememberMe}
+                  onCheckedChange={(checked) => handleInputChange("rememberMe", checked as boolean)}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="remember-mobile" className="text-sm text-gray-600">
+                  Remember me
+                </Label>
+              </div>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            {/* Sign In Button */}
+            <motion.div
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.1 }}
+            >
+              <Button
+                type="submit"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing in..." : "SIGN IN"}
+              </Button>
+            </motion.div>
+          </form>
+
+          {/* Links */}
+          <div className="mt-8 text-center space-y-4">
+            <div className="flex items-center justify-center gap-4">
+              <Link
+                to="/"
+                className="text-sm text-blue-600 font-semibold hover:text-blue-700 hover:underline"
+              >
+                Home
+              </Link>
+              <span className="text-gray-400">|</span>
+              <p className="text-gray-500 text-sm">
+                Don't have account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
+                >
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Desktop Login UI (unchanged)
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Sliding Background */}
       <SlidingBackground />
 
       <div className="flex flex-col md:flex-row w-full min-h-screen md:min-h-0">
         {/* Left Column - Header and Image */}
         <div className="hidden md:flex md:w-1/2 flex-col justify-center p-6 lg:p-8 relative overflow-hidden min-h-screen">
-          {/* Image Section with Header Overlay */}
           <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
-            {/* Header positioned at the top of the image */}
             <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
@@ -199,7 +347,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Mifumo SMS Information - positioned at bottom of image area */}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
                 <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
@@ -231,7 +378,6 @@ const Login = () => {
             />
           </div>
 
-          {/* Background Image */}
           <div className="absolute inset-0">
             <img
               src="/home background12.jpg"
@@ -244,9 +390,7 @@ const Login = () => {
         {/* Right Column - Form */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen">
           <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
-            {/* Form Header */}
             <div className="text-center mb-4 sm:mb-6">
-              {/* Logo */}
               <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -335,7 +479,6 @@ const Login = () => {
               </Button>
             </form>
 
-            {/* Footer Links */}
             <div className="text-center space-y-2 sm:space-y-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-4">
                 <Link to="/" className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-semibold">
