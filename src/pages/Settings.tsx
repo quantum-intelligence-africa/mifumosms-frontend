@@ -62,6 +62,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getToastVariant, getToastTitle } from "@/utils/toastUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient, User as UserType } from "@/lib/api";
 import { useSecurity } from "@/hooks/useSecurity";
@@ -1096,17 +1097,23 @@ const Settings = () => {
         });
         setCodeSent(true);
       } else {
+        const errorMessage = result.error || "Please try again.";
+        const variant = getToastVariant(errorMessage);
+        const title = getToastTitle("Failed to send code", errorMessage, variant);
         toast({
-          title: "Failed to send code",
-          description: result.error || "Please try again.",
-          variant: "destructive"
+          title,
+          description: errorMessage,
+          variant
         });
       }
     } catch (error) {
+      const errorMessage = "An error occurred. Please try again.";
+      const variant = getToastVariant(errorMessage);
+      const title = getToastTitle("Failed to send code", errorMessage, variant);
       toast({
-        title: "Failed to send code",
-        description: "An error occurred. Please try again.",
-        variant: "destructive"
+        title,
+        description: errorMessage,
+        variant
       });
     } finally {
       setIsLoading(false);

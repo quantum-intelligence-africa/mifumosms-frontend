@@ -96,7 +96,7 @@ const Login = () => {
           toast({
             title: "Account not activated",
             description: toastMessage,
-            variant: "destructive",
+            variant: "default",
             duration: 10000
           });
 

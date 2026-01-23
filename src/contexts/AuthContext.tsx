@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }>;
-  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean }>;
+  register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean; message?: string; smsFailed?: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
@@ -287,7 +287,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           activation_required,
           account_active,
           sms_verification_sent,
-          email_verification_sent
+          email_verification_sent,
+          message,
+          error: responseError
         } = response.data;
 
         // According to new API: tokens are null until account is activated
@@ -298,7 +300,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.setItem('refresh_token', tokens.refresh);
           localStorage.setItem('user_profile', JSON.stringify(newUser));
 
-          return { success: true };
+          return { success: true, message };
         }
 
         // No tokens means account needs activation
@@ -307,6 +309,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const phoneNumber = newUser?.phone_number || userData.phone_number;
         const hasPhoneNumber = !!phoneNumber;
 
+        // Check if there was an SMS sending error
+        const smsSendingFailed = responseError && typeof responseError === 'string' &&
+          (responseError.includes('Failed to send verification SMS') ||
+           responseError.includes('SMS') ||
+           responseError.includes('verification code'));
+
         // Determine verification method based on API response
         // Default to SMS verification
         // If sms_verification_sent is true, SMS was sent
@@ -314,7 +322,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         let verificationMethod: 'sms' | 'email' = 'sms';
         if (email_verification_sent && !sms_verification_sent) {
           verificationMethod = 'email';
-        } else if (sms_verification_sent && hasPhoneNumber) {
+        } else if ((sms_verification_sent || smsSendingFailed) && hasPhoneNumber) {
           verificationMethod = 'sms';
         } else if (hasPhoneNumber) {
           // If phone number exists but no explicit verification method, assume SMS was attempted
@@ -327,6 +335,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                                 !account_active ||
                                 sms_verification_sent ||
                                 email_verification_sent ||
+                                smsSendingFailed ||
                                 !newUser?.is_verified;
 
         if (needsActivation) {
@@ -335,7 +344,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             requiresActivation: true,
             email: newUser?.email || userData.email,
             phoneNumber: phoneNumber,
-            verificationMethod: verificationMethod
+            verificationMethod: verificationMethod,
+            message,
+            smsFailed: smsSendingFailed
           };
         }
 
@@ -346,7 +357,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           requiresActivation: true,
           email: newUser?.email || userData.email,
           phoneNumber: phoneNumber,
-          verificationMethod: verificationMethod
+          verificationMethod: verificationMethod,
+          message,
+          smsFailed: smsSendingFailed
         };
       } else {
         // Other error cases (500, etc.)

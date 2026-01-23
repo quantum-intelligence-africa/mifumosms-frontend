@@ -19,6 +19,7 @@ const Signup = () => {
   const [showVerification, setShowVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [registeredPhone, setRegisteredPhone] = useState("");
+  const [smsFailed, setSmsFailed] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -51,17 +52,45 @@ const Signup = () => {
     try {
       const result = await apiClient.verifyPhoneCode(registeredPhone, verificationCode);
 
-      if (result.success) {
-        toast({
-          title: "Phone verified successfully!",
-          description: "Your account is now active. You can log in.",
-          duration: 5000
-        });
-        navigate('/login');
+      if (result.success && result.data) {
+        const { tokens, user: userData, message } = result.data;
+
+        if (tokens && userData) {
+          // Account activated successfully with tokens - user is automatically logged in
+          // Update user state and tokens
+          const updatedUser = {
+            ...userData,
+            is_verified: true,
+            is_active: true,
+            phone_verified: true
+          };
+
+          // Store tokens and user data
+          localStorage.setItem('access_token', tokens.access);
+          localStorage.setItem('refresh_token', tokens.refresh);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+
+          toast({
+            title: "Account activated successfully!",
+            description: message || "Welcome to Mifumo SMS! You are now logged in and being redirected to your dashboard.",
+            duration: 5000
+          });
+
+          // Navigate to dashboard
+          navigate('/dashboard', { replace: true });
+        } else {
+          // Verification successful but no tokens (fallback)
+          toast({
+            title: "Phone verified successfully!",
+            description: message || "Your phone has been verified. Please log in to access your account.",
+            duration: 5000
+          });
+          navigate('/login');
+        }
       } else {
         toast({
           title: "Verification failed",
-          description: result.message || "Invalid verification code. Please try again.",
+          description: result.error || result.message || "Invalid verification code. Please try again.",
           variant: "destructive"
         });
       }
@@ -93,11 +122,7 @@ const Signup = () => {
 
   const countries = [
     { value: "ke", label: "Kenya" },
-    { value: "tz", label: "Tanzania" },
-    { value: "ug", label: "Uganda" },
-    { value: "rw", label: "Rwanda" },
-    { value: "bi", label: "Burundi" },
-    { value: "ss", label: "South Sudan" }
+    { value: "tz", label: "Tanzania" }
   ];
 
   const passwordStrength = {
@@ -113,6 +138,16 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate password length
+    if (!formData.password || formData.password.length < 8) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!passwordsMatch) {
       toast({
         title: "Passwords don't match",
@@ -122,7 +157,8 @@ const Signup = () => {
       return;
     }
 
-    if (!formData.phone) {
+    // Validate phone number - must be present and valid
+    if (!formData.phone || !formData.phone.trim()) {
       toast({
         title: "Phone number required",
         description: "Please provide a phone number.",
@@ -131,12 +167,53 @@ const Signup = () => {
       return;
     }
 
-    // Validate and normalize phone number
-    const phoneInfo = normalizePhoneNumber(formData.phone);
-    if (!phoneInfo.isValid) {
+    // Basic phone validation - check minimum length and digits
+    const trimmedPhone = formData.phone.trim();
+    const phoneDigitsOnly = trimmedPhone.replace(/\D/g, '');
+
+    if (phoneDigitsOnly.length < 8) {
       toast({
-        title: "Invalid Phone Number",
-        description: phoneInfo.error || "Please enter a valid phone number",
+        title: "Phone number too short",
+        description: "Please enter a complete phone number with at least 8 digits.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Process phone number - keep it simple
+    console.log('Starting phone processing with:', formData.phone);
+    let processedPhone = formData.phone.trim();
+    const digitsOnly = processedPhone.replace(/\D/g, '');
+
+    console.log('Phone processing step 1:', { processedPhone, digitsOnly });
+
+    // Ensure we have at least 9 digits
+    if (digitsOnly.length < 9) {
+      toast({
+        title: "Invalid phone number",
+        description: "Please enter a complete phone number with at least 9 digits.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Format phone number
+    if (digitsOnly.startsWith('255')) {
+      processedPhone = '+' + digitsOnly;
+    } else if (digitsOnly.startsWith('0')) {
+      processedPhone = '+255' + digitsOnly.substring(1);
+    } else {
+      processedPhone = '+255' + digitsOnly;
+    }
+
+    console.log('Final processed phone:', processedPhone);
+
+    // Ensure processedPhone is valid
+    if (!processedPhone || processedPhone.trim() === '') {
+      console.error('Processed phone is empty!', processedPhone);
+      toast({
+        title: "Phone processing error",
+        description: "Failed to process phone number. Please try again.",
         variant: "destructive"
       });
       return;
@@ -151,25 +228,29 @@ const Signup = () => {
         password_confirm: string;
         first_name: string;
         last_name: string;
-        phone: string;
-        company_name?: string;
+        phone_number: string;
+        company_name: string;
         country?: string;
       } = {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         password_confirm: formData.confirmPassword,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        phone: phoneInfo.normalized
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        phone_number: processedPhone,
+        company_name: formData.company.trim()
       };
 
-      // Add optional fields if provided
-      if (formData.company) {
-        registerData.company_name = formData.company;
-      }
       if (formData.country) {
         registerData.country = formData.country;
       }
+
+      console.log('Phone processing debug:', {
+        formDataPhone: formData.phone,
+        processedPhone: processedPhone,
+        registerDataPhone: registerData.phone_number
+      });
+      console.log('Registration data:', registerData);
 
       const result = await register(registerData);
 
@@ -180,9 +261,11 @@ const Signup = () => {
 
         // First, show the main error message if available
         if (result.error) {
+          // Ensure error is a string, not an object
+          const safeErrorMessage = typeof result.error === 'string' ? result.error : 'Validation failed';
           toast({
             title: "Validation failed",
-            description: result.error,
+            description: safeErrorMessage,
             variant: "destructive",
             duration: 10000
           });
@@ -192,11 +275,13 @@ const Signup = () => {
         if (result.errors && Object.keys(result.errors).length > 0) {
           Object.entries(result.errors).forEach(([field, errors]) => {
             const errorMessage = Array.isArray(errors) ? errors[0] : errors;
+            // Ensure errorMessage is a string, not an object
+            const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : 'Validation error occurred';
             // Only show if different from main error message
-            if (errorMessage !== result.error) {
+            if (safeErrorMessage !== result.error) {
               toast({
                 title: `${field.charAt(0).toUpperCase() + field.slice(1)} error`,
-                description: errorMessage,
+                description: safeErrorMessage,
                 variant: "destructive",
                 duration: 8000
               });
@@ -212,20 +297,29 @@ const Signup = () => {
         // ✅ Status 201 - Account created successfully
         if (result.requiresActivation) {
           // Account created but needs phone verification
-          const phoneNumber = result.phoneNumber || phoneInfo.normalized;
+          const phoneNumber = result.phoneNumber || processedPhone;
           setRegisteredPhone(phoneNumber);
+          setSmsFailed(result.smsFailed || false);
           setShowVerification(true);
 
-          toast({
-            title: "Account created successfully!",
-            description: `Please check your phone (${phoneNumber}) for the 6-digit verification code.`,
-            duration: 10000
-          });
+          if (result.smsFailed) {
+            toast({
+              title: "Account created successfully!",
+              description: `Your account has been created, but we encountered an issue sending the verification SMS. Please contact support for assistance with account activation.`,
+              duration: 10000
+            });
+          } else {
+            toast({
+              title: "Account created successfully!",
+              description: result.message || `Please check your phone (${phoneNumber}) for the 6-digit verification code to activate your account. After verification, you will be automatically logged in and redirected to the dashboard.`,
+              duration: 10000
+            });
+          }
         } else {
           // Account activated immediately (backward compatibility)
           toast({
             title: "Account created successfully!",
-            description: "Welcome to Mifumo SMS! You can now access your dashboard."
+            description: result.message || "Welcome to Mifumo SMS! You can now access your dashboard."
           });
           const from = location.state?.from?.pathname || "/dashboard";
           navigate(from, { replace: true });
@@ -384,7 +478,10 @@ const Signup = () => {
               </h2>
               {showVerification && (
                 <p className="text-xs text-gray-600">
-                  Enter the 6-digit code sent to {registeredPhone}
+                  {smsFailed
+                    ? `We encountered an issue sending your verification code. Please contact support for assistance with account activation.`
+                    : `Enter the 6-digit code sent to ${registeredPhone}. After verification, you'll be automatically logged in and redirected to your dashboard.`
+                  }
                 </p>
               )}
             </div>
@@ -434,14 +531,24 @@ const Signup = () => {
                 {/* Phone and Country */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="phone" className="text-xs font-medium text-gray-700">Phone</Label>
+                    <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
+                      Phone {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="+255 700 000 001"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
+                      value={formData.phone || ''}
+                      onChange={(e) => {
+                        console.log('Phone input changed:', e.target.value);
+                        handleInputChange("phone", e.target.value);
+                      }}
+                      required
+                      className={`h-9 border rounded-lg text-sm ${
+                        formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8
+                          ? 'border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200'
+                          : 'border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                      }`}
                     />
                   </div>
                   <div className="space-y-1">
@@ -558,29 +665,41 @@ const Signup = () => {
               </form>
             ) : (
               <form onSubmit={handleVerifyPhone} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="verificationCode" className="text-xs font-medium text-gray-700">
-                    Verification Code
-                  </Label>
-                  <Input
-                    id="verificationCode"
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    maxLength={6}
-                    required
-                    className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
-                  />
-                </div>
+                {!smsFailed && (
+                  <div className="space-y-2">
+                    <Label htmlFor="verificationCode" className="text-xs font-medium text-gray-700">
+                      Verification Code
+                    </Label>
+                    <Input
+                      id="verificationCode"
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      required
+                      className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
+                    />
+                  </div>
+                )}
 
-                <Button
-                  type="submit"
-                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
-                  disabled={isLoading || verificationCode.length !== 6}
-                >
-                  {isLoading ? "Verifying..." : "Verify Phone"}
-                </Button>
+                {!smsFailed ? (
+                  <Button
+                    type="submit"
+                    className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
+                    disabled={isLoading || verificationCode.length !== 6}
+                  >
+                    {isLoading ? "Verifying..." : "Verify Phone"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
+                    className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
+                  >
+                    Contact Support
+                  </Button>
+                )}
 
                 <div className="text-center">
                   <button

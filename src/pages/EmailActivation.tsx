@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { Mail, CheckCircle, XCircle, ArrowLeft, RefreshCw, Smartphone } from "lucide-react";
+import { Mail, CheckCircle, XCircle, ArrowLeft, RefreshCw, Smartphone, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { getToastVariant, getToastTitle } from "@/utils/toastUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -21,6 +22,13 @@ const EmailActivation = () => {
   const [showSwitchToEmail, setShowSwitchToEmail] = useState(false);
 
   const { toast } = useToast();
+
+  // Force light theme on auth page
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("dark");
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
   const { verifyEmail, verifySMS, resendActivationEmail } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -322,17 +330,23 @@ const EmailActivation = () => {
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
+        const errorMessage = result.error || "Please try again later.";
+        const variant = getToastVariant(errorMessage);
+        const title = getToastTitle("Failed to send code", errorMessage, variant);
         toast({
-          title: "Failed to send code",
-          description: result.error || "Please try again later.",
-          variant: "destructive"
+          title,
+          description: errorMessage,
+          variant
         });
       }
     } catch (error) {
+      const errorMessage = "An error occurred. Please try again.";
+      const variant = getToastVariant(errorMessage);
+      const title = getToastTitle("Failed to send code", errorMessage, variant);
       toast({
-        title: "Failed to send code",
-        description: "An error occurred. Please try again.",
-        variant: "destructive"
+        title,
+        description: errorMessage,
+        variant
       });
     } finally {
       setIsResending(false);
@@ -374,17 +388,23 @@ const EmailActivation = () => {
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
+        const errorMessage = result.error || "Please try again later.";
+        const variant = getToastVariant(errorMessage);
+        const title = getToastTitle("Failed to send code", errorMessage, variant);
         toast({
-          title: "Failed to send code",
-          description: result.error || "Please try again later.",
-          variant: "destructive"
+          title,
+          description: errorMessage,
+          variant
         });
       }
     } catch (error) {
+      const errorMessage = "An error occurred. Please try again.";
+      const variant = getToastVariant(errorMessage);
+      const title = getToastTitle("Failed to send code", errorMessage, variant);
       toast({
-        title: "Failed to send code",
-        description: "An error occurred. Please try again.",
-        variant: "destructive"
+        title,
+        description: errorMessage,
+        variant
       });
     } finally {
       setIsResending(false);
@@ -396,99 +416,253 @@ const EmailActivation = () => {
     handleActivate();
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 flex items-center justify-center p-3 sm:p-4 lg:p-6 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0">
-        <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400/20 rounded-full animate-pulse" />
-        <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" />
-        <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-yellow-300/30 rounded-lg rotate-45 animate-ping" />
+  // Sliding Background Component - Light blue gradient like Landing page
+  const SlidingBackground = () => {
+    return (
+      <div className="absolute inset-0 overflow-hidden bg-blue-grad has-image height-auto main-section has-bg-blue">
+        {/* Light blue gradient background - almost white at top, slightly darker blue towards bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-blue-50/80 to-blue-100/60">
+          {/* Subtle abstract patterns overlay - positioned on right side like Textmagic */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-full h-full">
+              <svg className="w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="patternGradientEmailActivation" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.08" />
+                  </linearGradient>
+                </defs>
+                {/* Wavy/fluid patterns - more subtle */}
+                <path
+                  d="M800,200 Q900,150 1000,200 T1200,200 L1200,800 L800,800 Z"
+                  fill="url(#patternGradientEmailActivation)"
+                  opacity="0.5"
+                />
+                <path
+                  d="M600,300 Q750,250 900,300 T1200,300 L1200,800 L600,800 Z"
+                  fill="url(#patternGradientEmailActivation)"
+                  opacity="0.4"
+                />
+                <path
+                  d="M400,400 Q600,300 800,400 T1200,400 L1200,800 L400,800 Z"
+                  fill="url(#patternGradientEmailActivation)"
+                  opacity="0.3"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
+    );
+  };
 
-      <div className="w-full max-w-md sm:max-w-md lg:max-w-sm relative z-10">
-        {/* Header */}
-        <div className="text-center mb-3 sm:mb-4 lg:mb-3">
-          <Link to="/login" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-2 sm:mb-3 lg:mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to login</span>
-          </Link>
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Sliding Background */}
+      <SlidingBackground />
+
+      <div className="flex flex-col md:flex-row w-full min-h-screen md:min-h-0">
+        {/* Left Column - Header and Image */}
+        <div className="hidden md:flex md:w-1/2 flex-col justify-center p-6 lg:p-8 relative overflow-hidden min-h-screen">
+          {/* Image Section with Header Overlay */}
+          <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
+            {/* Header positioned at the top of the image */}
+            <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+                  <MessageSquare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <span className="font-heading text-2xl font-bold text-gray-900">
+                    Mifumo SMS
+                  </span>
+                  <p className="text-base text-black mt-1">
+                    Reliable SMS solutions for businesses
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mifumo SMS Information - positioned at bottom of image area */}
+            <div className="absolute bottom-4 left-4 right-4 z-20">
+              <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
+                <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
+                <ul className="space-y-1 text-sm text-black">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Reliable delivery across all networks</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Competitive pricing with bulk discounts</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>Advanced analytics and reporting</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>24/7 customer support</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <img
+              src="/sign in image.png"
+              className="w-full h-auto object-contain"
+              alt="Email activation illustration"
+            />
+          </div>
+
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img
+              src="/home background12.jpg"
+              alt="Email activation background"
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
 
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-2 sm:pb-3 lg:pb-2 px-4 sm:px-5 lg:px-4">
-            <div className="flex justify-center mb-2 sm:mb-3 lg:mb-2">
-              {activationStatus === "success" ? (
-                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-green-500" />
-              ) : activationStatus === "error" ? (
-                <XCircle className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-red-500" />
-              ) : (
-                verificationMethod === 'sms' ? (
-                  <Smartphone className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-blue-500" />
+        {/* Right Column - Form */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen">
+          <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
+            {/* Form Header */}
+            <div className="text-center mb-4 sm:mb-6">
+              {/* Logo */}
+              <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                </div>
+                <span className="font-heading text-base sm:text-lg font-bold text-gray-900">
+                  Mifumo SMS
+                </span>
+              </div>
+
+              <div className="flex justify-center mb-2 sm:mb-3">
+                {activationStatus === "success" ? (
+                  <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-green-500" />
+                ) : activationStatus === "error" ? (
+                  <XCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-500" />
                 ) : (
-                  <Mail className="w-10 h-10 sm:w-12 sm:h-12 lg:w-10 lg:h-10 text-blue-500" />
-                )
-              )}
+                  verificationMethod === 'sms' ? (
+                    <Smartphone className="w-10 h-10 sm:w-12 sm:h-12 text-blue-500" />
+                  ) : (
+                    <Mail className="w-10 h-10 sm:w-12 sm:h-12 text-blue-500" />
+                  )
+                )}
+              </div>
+
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
+                {activationStatus === "success"
+                  ? "Account Activated!"
+                  : activationStatus === "error"
+                  ? "Activation Failed"
+                  : "Verify Your Account"}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600">
+                {activationStatus === "success"
+                  ? "Your account has been successfully activated. Redirecting to login..."
+                  : activationStatus === "error"
+                  ? errorMessage
+                  : verificationMethod === 'sms'
+                  ? `Enter the 6-digit verification code sent to your phone (${phoneNumber || 'your number'})`
+                  : "Enter the 6-digit verification code from the email we sent you"}
+              </p>
+
+              {/* Back to login link */}
+              <div className="mt-4">
+                <Link to="/login" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm">Back to login</span>
+                </Link>
+              </div>
             </div>
-            <CardTitle className="text-lg sm:text-xl lg:text-lg font-bold text-gray-900">
-              {activationStatus === "success"
-                ? "Account Activated!"
-                : activationStatus === "error"
-                ? "Activation Failed"
-                : "Activate Your Account"}
-            </CardTitle>
-            <CardDescription className="text-xs sm:text-sm lg:text-xs text-gray-600">
-              {activationStatus === "success"
-                ? "Your account has been successfully activated. Redirecting to login..."
-                : activationStatus === "error"
-                ? errorMessage
-                : verificationMethod === 'sms'
-                ? `Enter the 6-digit verification code sent to your phone (${phoneNumber || 'your number'})`
-                : "Enter the 6-digit verification code from the email we sent you"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 sm:px-5 lg:px-4 pb-3 sm:pb-4 lg:pb-3">
             {activationStatus === "success" ? (
-              <div className="text-center space-y-3 sm:space-y-4 lg:space-y-3">
-                <p className="text-xs sm:text-sm lg:text-xs text-gray-600">
+              <div className="text-center space-y-3 sm:space-y-4">
+                <p className="text-xs sm:text-sm text-gray-600">
                   You will be redirected to your dashboard shortly.
                 </p>
                 <Button
                   onClick={() => navigate("/dashboard", { replace: true })}
-                  className="w-full h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs"
+                  className="w-full h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   Go to Dashboard
                 </Button>
               </div>
             ) : (
               <>
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 lg:space-y-3">
-                  <div className="space-y-2">
-              <Label htmlFor="token" className="text-xs sm:text-sm lg:text-xs font-semibold text-gray-700">
-                6-Digit Verification Code
-              </Label>
-                    <Input
-                      id="token"
-                      type="text"
-                      placeholder="Enter 6-digit code"
-                      value={token}
-                      onChange={(e) => {
-                        // Only allow digits, max 6 characters
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        setToken(value);
-                      }}
-                      required
-                      disabled={isLoading}
-                      maxLength={6}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      className="h-9 sm:h-10 lg:h-9 text-sm text-center text-base lg:text-sm tracking-widest font-mono border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
-                    />
-                    <p className="text-xs text-gray-500 text-center">
-                      {verificationMethod === 'sms'
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                <div className="space-y-1">
+                  <Label htmlFor="token" className="text-xs sm:text-sm font-medium text-gray-700">
+                    Verification Code
+                  </Label>
+                  <Input
+                    id="token"
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={token}
+                    onChange={(e) => {
+                      // Only allow digits, max 6 characters
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setToken(value);
+                    }}
+                    required
+                    disabled={isLoading}
+                    maxLength={6}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
+                  />
+                  <p className="text-xs text-gray-500 text-center">
+                    {verificationMethod === 'sms'
                         ? `Check your phone (${phoneNumber || 'your number'}) for the 6-digit verification code`
                         : "Check your email inbox (and spam folder) for the 6-digit verification code"}
                     </p>
                   </div>
+
+                  {/* Phone Number Input for SMS Resend */}
+                  {verificationMethod === 'sms' && (
+                    <div className="space-y-1">
+                      <Label htmlFor="phone" className="text-xs sm:text-sm font-medium text-gray-700">
+                        Phone Number (for resending SMS)
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="Enter your phone number"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          className="h-9 sm:h-10 text-xs sm:text-sm border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleResendSMS}
+                          disabled={isResending || !phoneNumber.trim()}
+                          variant="outline"
+                          className="whitespace-nowrap h-9 sm:h-10 text-xs sm:text-sm px-3"
+                        >
+                          {isResending ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                              Resend SMS
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">
+                        Enter your phone number to receive a new verification code
+                      </p>
+                    </div>
+                  )}
 
                   {/* Show switch to email option if SMS failed */}
                   {showSwitchToEmail && verificationMethod === 'sms' && email.trim() && (
@@ -518,149 +692,35 @@ const EmailActivation = () => {
                     </div>
                   )}
 
-              <Button
-                type="submit"
-                className="w-full h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                disabled={isLoading || token.length !== 6}
-              >
-                {isLoading ? "Activating..." : "Activate Account"}
-              </Button>
+                <Button
+                  type="submit"
+                  className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
+                  disabled={isLoading || token.length !== 6}
+                >
+                  {isLoading ? "Activating..." : "Activate Account"}
+                </Button>
                 </form>
 
-                <div className="mt-4 sm:mt-5 lg:mt-4 pt-4 sm:pt-5 lg:pt-4 border-t border-gray-200">
-                  {verificationMethod === 'sms' ? (
-                    // SMS Verification Section - Show only SMS details
-                    <div className="space-y-2 sm:space-y-3 lg:space-y-2">
-                      <p className="text-xs sm:text-sm lg:text-xs text-gray-600 text-center">
-                        Didn't receive the SMS?
-                      </p>
-
-                      {/* Switch to Email Option */}
-                      {email.trim() && !showSwitchToEmail && (
-                        <div className="text-center mb-2">
-                          <Button
-                            type="button"
-                            onClick={handleSwitchToEmail}
-                            disabled={isResending}
-                            variant="ghost"
-                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline h-auto p-1"
-                          >
-                            <Mail className="w-3 h-3 mr-1 inline" />
-                            Use email verification instead
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Phone Number Input and Resend SMS Button */}
-                      <div className="space-y-1">
-                        <Label htmlFor="resend-phone" className="text-xs sm:text-sm lg:text-xs font-semibold text-gray-700">
-                          Phone Number
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="resend-phone"
-                            type="tel"
-                            placeholder="Enter your phone number"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            className="h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
-                          />
-                          <Button
-                            type="button"
-                            onClick={handleResendSMS}
-                            disabled={isResending || !phoneNumber.trim()}
-                            variant="outline"
-                            className="whitespace-nowrap h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs px-3"
-                          >
-                            {isResending ? (
-                              <>
-                                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2 animate-spin" />
-                                <span className="hidden sm:inline lg:hidden">Sending...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Smartphone className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2" />
-                                <span className="hidden sm:inline lg:hidden">Resend SMS</span>
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    // Email Verification Section - Show only Email details
-                    <div className="space-y-2 sm:space-y-3 lg:space-y-2">
-                      <p className="text-xs sm:text-sm lg:text-xs text-gray-600 text-center">
-                        Didn't receive the email?
-                      </p>
-
-                      {/* Switch to SMS Option */}
-                      {phoneNumber.trim() && (
-                        <div className="text-center mb-2">
-                          <Button
-                            type="button"
-                            onClick={handleSwitchToSMS}
-                            disabled={isResending}
-                            variant="ghost"
-                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline h-auto p-1"
-                          >
-                            <Smartphone className="w-3 h-3 mr-1 inline" />
-                            Use SMS verification instead
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Email Input and Resend Email Button */}
-                      <div className="space-y-1">
-                        <Label htmlFor="resend-email" className="text-xs sm:text-sm lg:text-xs font-semibold text-gray-700">
-                          Email Address
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="resend-email"
-                            type="email"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
-                          />
-                          <Button
-                            type="button"
-                            onClick={handleResendEmail}
-                            disabled={isResending || !email.trim()}
-                            variant="outline"
-                            className="whitespace-nowrap h-9 sm:h-10 lg:h-9 text-xs sm:text-sm lg:text-xs px-3"
-                          >
-                            {isResending ? (
-                              <>
-                                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2 animate-spin" />
-                                <span className="hidden sm:inline lg:hidden">Sending...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="w-3 h-3 sm:w-4 sm:h-4 lg:w-3 lg:h-3 mr-1 sm:mr-2" />
-                                <span className="hidden sm:inline lg:hidden">Resend Email</span>
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-3 sm:mt-4 lg:mt-3 text-center">
-                  <p className="text-xs text-gray-600">
-                    Already activated?{" "}
-                    <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                      Sign in
-                    </Link>
-                  </p>
-                </div>
               </>
             )}
-          </CardContent>
-        </Card>
+
+            {/* Footer Links */}
+            <div className="text-center space-y-1 pt-4">
+              <div className="flex items-center justify-center gap-3">
+                <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">
+                  Home
+                </Link>
+                <span className="text-gray-400 text-xs">|</span>
+                <p className="text-xs text-gray-600">
+                  Already have an account?{" "}
+                  <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

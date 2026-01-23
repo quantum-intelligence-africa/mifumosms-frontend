@@ -24,6 +24,7 @@ export interface User {
   date_joined?: string;
   last_login?: string;
   is_verified: boolean;
+  is_active?: boolean;
   user_type?: 'admin' | 'parent' | 'regular';
   profile_image?: string;
   bio?: string;
@@ -50,7 +51,7 @@ export interface RegisterRequest {
   password_confirm: string;
   first_name: string;
   last_name: string;
-  phone: string; // Required: E.164 format (e.g., +255123456789)
+  phone_number: string; // Required: E.164 format (e.g., +255123456789)
   timezone?: string;
   company_name?: string;
   business_name?: string; // Alias for company_name
@@ -72,6 +73,8 @@ export interface RegisterResponse {
   account_active?: boolean; // False until account is activated
   requires_activation?: boolean; // True if account needs activation
   activation_required?: boolean; // True if activation is required
+  next_step?: string; // Next step in the flow (e.g., "verify_code")
+  after_verification?: string; // What happens after verification (e.g., "dashboard_access")
 }
 
 // Tenant Types
@@ -1046,8 +1049,8 @@ class ApiClient {
     });
   }
 
-  async verifyPhoneCode(phone: string, code: string): Promise<ApiResponse<{ message: string }>> {
-    return this.request<{ message: string }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
+  async verifyPhoneCode(phone: string, code: string): Promise<ApiResponse<{ message: string; tokens?: AuthTokens; user?: User }>> {
+    return this.request<{ message: string; tokens?: AuthTokens; user?: User }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     });
