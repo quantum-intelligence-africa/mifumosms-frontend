@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare, Mail, Lock, User, Phone } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Mail, Lock, User, Phone, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion } from "framer-motion";
+import MobileMenu from "@/components/layout/MobileMenu";
 
 const Signup = () => {
   const isMobile = useIsMobile();
@@ -21,6 +22,7 @@ const Signup = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [smsFailed, setSmsFailed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -35,6 +37,18 @@ const Signup = () => {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   // Handle phone verification
   const handleVerifyPhone = async (e: React.FormEvent) => {
@@ -360,29 +374,42 @@ const Signup = () => {
       <div className="min-h-screen flex flex-col relative overflow-hidden">
         <MobileBackground />
 
-        {/* Header Area */}
-        <div className="relative z-10 flex-shrink-0 pt-12 pb-4 px-6 backdrop-blur-sm rounded-b-2xl shadow-lg">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-5 h-5 text-white" />
-            </div>
-            <div>
+        {/* Fixed Header with Menu Button */}
+        <header className="fixed top-0 left-0 right-0 z-[50] px-4 py-3 bg-gradient-to-b from-black/20 to-transparent">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+                <MessageSquare className="w-4 h-4 text-white" />
+              </div>
               <span className="font-heading text-lg font-bold text-white">
                 Mifumo SMS
               </span>
-              <p className="text-sm text-white/90 mt-0.5">
-                Reliable SMS solutions for businesses
-              </p>
-            </div>
+            </Link>
+            
+            {/* Hamburger Menu Button */}
+            <button
+              className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
           </div>
-        </div>
+        </header>
+
+        {/* Mobile Menu */}
+        <MobileMenu 
+          isOpen={isMobileMenuOpen} 
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
         {/* White Curved Container */}
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-16 pb-4 shadow-2xl overflow-y-auto"
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-6 pt-20 pb-4 shadow-2xl overflow-y-auto mt-14"
         >
           {!showVerification ? (
             <>

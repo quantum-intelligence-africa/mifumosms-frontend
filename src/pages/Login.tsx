@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, MessageSquare, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Mail, Lock, Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import MobileMenu from "@/components/layout/MobileMenu";
 
 const Login = () => {
   const isMobile = useIsMobile();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,6 +25,18 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   // Force light theme on auth page
   useEffect(() => {
@@ -183,29 +197,42 @@ const Login = () => {
       <div className="min-h-screen flex flex-col relative overflow-hidden">
         <MobileBackground />
 
-        {/* Header Area */}
-        <div className="relative z-10 flex-shrink-0 pt-16 pb-8 px-6 backdrop-blur-sm rounded-b-2xl shadow-lg">
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <span className="font-heading text-2xl font-bold text-white">
+        {/* Fixed Header with Menu Button */}
+        <header className="fixed top-0 left-0 right-0 z-[50] px-4 py-3 bg-gradient-to-b from-black/20 to-transparent">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+                <MessageSquare className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-heading text-lg font-bold text-white">
                 Mifumo SMS
               </span>
-              <p className="text-base text-white/90 mt-1">
-                Reliable SMS solutions for businesses
-              </p>
-            </div>
+            </Link>
+            
+            {/* Hamburger Menu Button */}
+            <button
+              className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
           </div>
-        </div>
+        </header>
+
+        {/* Mobile Menu */}
+        <MobileMenu 
+          isOpen={isMobileMenuOpen} 
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
 
         {/* White Curved Container */}
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-8 pt-44 pb-8 shadow-2xl"
+          className="relative z-10 flex-1 bg-white rounded-t-[40px] px-8 pt-12 pb-8 shadow-2xl mt-24"
         >
           {/* Form Title */}
           <div className="text-center mb-6">
