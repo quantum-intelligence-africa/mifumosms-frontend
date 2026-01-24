@@ -322,19 +322,18 @@ const PurchaseSMS = () => {
   }, [parsedCredits, tiers]);
 
   const customPrice = useMemo(() => {
-    if (selectedPackage) {
-      // Package selected - use package price
-      return selectedPkg ? parseFloat(selectedPkg.price) : 0;
-    }
-    // Custom credits - use API calculation if available
-    if (customSMSState) {
+    const localPrice = (() => {
+      if (!parsedCredits) return 0;
+      if (!activeTier) return 0;
+      return parsedCredits * (activeTier.rate as number);
+    })();
+
+    if (customSMSState && customSMSState.totalPrice) {
       return customSMSState.totalPrice;
     }
-    // Fallback to local calculation
-    if (!parsedCredits) return 0;
-    if (!activeTier) return 0;
-    return parsedCredits * (activeTier.rate as number);
-  }, [selectedPackage, selectedPkg, parsedCredits, activeTier, customSMSState]);
+
+    return localPrice;
+  }, [parsedCredits, activeTier, customSMSState]);
 
   // Calculate custom SMS pricing using API
   const calculateCustomSMSPrice = async (credits: number) => {
@@ -793,18 +792,18 @@ const PurchaseSMS = () => {
               </div>
 
               {/* Custom SMS Pricing Details */}
-              {customSMSState && (
+              {parsedCredits > 0 && !selectedPackage && (
                 <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Active Tier:</span>
-                      <Badge variant="secondary">{customSMSState.activeTier}</Badge>
+                      <Badge variant="secondary">{customSMSState?.activeTier || activeTier?.name}</Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-text-subtle">Unit Price:</span>
-                      <span className="text-sm font-medium">TZS {customSMSState.unitPrice}/SMS</span>
+                      <span className="text-sm font-medium">TZS {customSMSState?.unitPrice || activeTier?.rate}/SMS</span>
                     </div>
-                    {customSMSState.savingsPercentage > 0 && (
+                    {customSMSState?.savingsPercentage > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-text-subtle">Savings:</span>
                         <span className="text-sm font-medium text-success">
