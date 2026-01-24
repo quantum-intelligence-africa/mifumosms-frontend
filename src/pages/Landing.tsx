@@ -117,12 +117,12 @@ const Landing = () => {
     const scrollTo = searchParams.get('scroll') || location.hash.substring(1); // Remove # from hash
 
     if (scrollTo) {
-      // Small delay to ensure the page has fully loaded
+      // Quick delay to ensure the page has loaded
       setTimeout(() => {
         scrollToSection(scrollTo);
         // Clean up the URL by removing the scroll parameter and hash
         window.history.replaceState({}, '', location.pathname);
-      }, 100);
+      }, 50);
     }
   }, [location.search, location.hash]);
 
@@ -789,8 +789,8 @@ const Landing = () => {
       </header>
 
       {/* Mobile Menu - Half page overlay */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         scrollToSection={scrollToSection}
       />

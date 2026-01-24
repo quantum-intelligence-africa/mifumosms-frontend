@@ -54,19 +54,16 @@ const Developer = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Prevent body scroll when mobile menu is open
+  // Handle URL hash on page load
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+    const hash = window.location.hash;
+    if (hash === '#developer-hero') {
+      // Small delay to ensure the page has fully loaded
+      setTimeout(() => {
+        scrollToSection('developer-hero');
+      }, 100);
     }
-
-    // Cleanup on unmount
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -358,8 +355,8 @@ const Developer = () => {
       </footer>
 
       {/* Mobile Menu - Half page overlay */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         scrollToSection={scrollToSection}
       />

@@ -35,44 +35,50 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
             onClick={onClose}
           />
 
-          {/* Menu Panel - Half screen from top, positioned below header */}
+          {/* Menu Panel - Responsive height for tablets and mobile */}
           <motion.div
             initial={{ y: '-100%' }}
             animate={{ y: 0 }}
             exit={{ y: '-100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="absolute top-[60px] left-0 right-0 bg-white shadow-2xl flex flex-col overflow-hidden rounded-b-2xl"
-            style={{ maxHeight: 'calc(50vh - 30px)' }}
+            className="absolute top-[60px] left-0 right-0 bg-white shadow-2xl flex flex-col overflow-hidden rounded-b-2xl max-h-[calc(100vh-80px)] md:max-h-[70vh] lg:max-h-[60vh]"
           >
-            {/* Menu Items */}
-            <nav className="flex-1 overflow-y-auto px-4 py-4">
+            <nav className="flex-1 px-4 py-4 overflow-y-auto sm:overflow-y-visible">
               {/* Features */}
-              <motion.button
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.05, duration: 0.2 }}
-                onClick={() => handleNavClick('features')}
-                className="w-full flex items-center justify-between py-4 border-b border-gray-100 group touch-manipulation"
               >
-                <span className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  Features
-                </span>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </motion.button>
+                <Link
+                  to="/#features"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-100 group touch-manipulation"
+                >
+                  <span className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    Features
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                </Link>
+              </motion.div>
 
               {/* Pricing */}
-              <motion.button
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1, duration: 0.2 }}
-                onClick={() => handleNavClick('pricing')}
-                className="w-full flex items-center justify-between py-4 border-b border-gray-100 group touch-manipulation"
               >
-                <span className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  Pricing
-                </span>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-              </motion.button>
+                <Link
+                  to="/#pricing"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-100 group touch-manipulation"
+                >
+                  <span className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    Pricing
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                </Link>
+              </motion.div>
 
               {/* Developer */}
               <motion.div
@@ -81,7 +87,7 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
                 transition={{ delay: 0.15, duration: 0.2 }}
               >
                 <Link
-                  to="/developer"
+                  to="/developer#developer-hero"
                   onClick={onClose}
                   className="w-full flex items-center justify-between py-4 border-b border-gray-100 group touch-manipulation"
                 >
