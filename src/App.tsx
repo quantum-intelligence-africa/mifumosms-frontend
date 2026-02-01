@@ -32,9 +32,22 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PertinaInsights from "./pages/PertinaInsights";
 import Developer from "./pages/Developer";
+import { MetadataRoute } from "next";
 
 const queryClient = new QueryClient();
 
+// export default function sitemap(): MetadataRoute.Sitemap {
+//   return [
+//     {
+//       url: "https://sms.mifumolabs.com/",
+//       lastModified: new Date(),
+//     },
+//     {
+//       url: "https://sms.mifumolabs.com/developer",
+//       lastModified: new Date(),
+//     },
+//   ];
+// }
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
