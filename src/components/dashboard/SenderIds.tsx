@@ -77,8 +77,8 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {senderIds.slice(0, 3).map((senderId) => (
-                <TableRow key={senderId.id} className="hover:bg-accent/50 transition-smooth">
+              {senderIds.slice(0, 3).map((senderId, index) => (
+                <TableRow key={senderId.id || `sender-${index}`} className="hover:bg-accent/50 transition-smooth">
                   <TableCell className="font-medium text-foreground py-2">
                     <div className="flex items-center gap-1.5">
                       <Hash className="w-3.5 h-3.5 text-primary" />

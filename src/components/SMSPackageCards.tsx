@@ -68,9 +68,9 @@ export const SMSPackageCards: React.FC = () => {
   return (
     <div className="w-full bg-background p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
-        {smsPackages.map((pkg) => (
+        {smsPackages.map((pkg, index) => (
           <Card
-            key={pkg.id}
+            key={pkg.id || `package-${index}`}
             className={`relative bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow border ${
               pkg.isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
             }`}

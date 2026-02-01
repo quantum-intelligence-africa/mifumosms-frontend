@@ -165,8 +165,8 @@ export function ContactList({
           </TableHeader>
           <TableBody>
             {filteredContacts.length > 0 ? (
-              filteredContacts.map((contact) => (
-                <TableRow key={contact.id} className="hover:bg-accent/50">
+              filteredContacts.map((contact, index) => (
+                <TableRow key={contact.id || `contact-${index}`} className="hover:bg-accent/50">
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">

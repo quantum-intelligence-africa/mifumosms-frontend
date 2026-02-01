@@ -113,18 +113,7 @@ const EmailActivation = () => {
     setErrorMessage("");
 
     try {
-      // SMS-only verification - phone number is required
-      if (!phoneNumber) {
-        toast({
-          title: "Phone number required",
-          description: "Phone number is required for SMS verification. Please provide your phone number.",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Verify via SMS using the new endpoint
+      // Verify via SMS using the new endpoint (phone number stored in backend)
       const result = await verifySMS(phoneNumber, tokenValue);
 
       if (result.success) {
@@ -599,70 +588,47 @@ const EmailActivation = () => {
                   <Label htmlFor="token" className="text-xs sm:text-sm font-medium text-gray-700">
                     Verification Code
                   </Label>
-                  <Input
-                    id="token"
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={token}
-                    onChange={(e) => {
-                      // Only allow digits, max 6 characters
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                      setToken(value);
-                    }}
-                    required
-                    disabled={isLoading}
-                    maxLength={6}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="token"
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={token}
+                      onChange={(e) => {
+                        // Only allow digits, max 6 characters
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setToken(value);
+                      }}
+                      required
+                      disabled={isLoading}
+                      maxLength={6}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="h-12 text-center text-xl font-mono tracking-widest border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg flex-1"
+                    />
+                    {verificationMethod === 'sms' && (
+                      <Button
+                        type="button"
+                        onClick={handleResendSMS}
+                        disabled={isResending || isLoading}
+                        variant="outline"
+                        className="h-12 px-3 sm:px-4"
+                        title="Resend verification code"
+                      >
+                        {isResending ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 text-center">
                     {verificationMethod === 'sms'
                         ? `Check your phone (${phoneNumber || 'your number'}) for the 6-digit verification code`
                         : "Check your email inbox (and spam folder) for the 6-digit verification code"}
                     </p>
                   </div>
-
-                  {/* Phone Number Input for SMS Resend */}
-                  {verificationMethod === 'sms' && (
-                    <div className="space-y-1">
-                      <Label htmlFor="phone" className="text-xs sm:text-sm font-medium text-gray-700">
-                        Phone Number (for resending SMS)
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="Enter your phone number"
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          className="h-9 sm:h-10 text-xs sm:text-sm border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleResendSMS}
-                          disabled={isResending || !phoneNumber.trim()}
-                          variant="outline"
-                          className="whitespace-nowrap h-9 sm:h-10 text-xs sm:text-sm px-3"
-                        >
-                          {isResending ? (
-                            <>
-                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                              Resend SMS
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center">
-                        Enter your phone number to receive a new verification code
-                      </p>
-                    </div>
-                  )}
 
                   {/* Show switch to email option if SMS failed */}
                   {showSwitchToEmail && verificationMethod === 'sms' && email.trim() && (

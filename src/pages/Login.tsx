@@ -209,7 +209,7 @@ const Login = () => {
                 Mifumo SMS
               </span>
             </Link>
-            
+
             {/* Hamburger Menu Button */}
             <button
               className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
@@ -222,8 +222,8 @@ const Login = () => {
         </header>
 
         {/* Mobile Menu */}
-        <MobileMenu 
-          isOpen={isMobileMenuOpen} 
+        <MobileMenu
+          isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
@@ -276,6 +276,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 required
+                autoComplete="current-password"
                 className="h-14 pl-12 pr-12 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300"
               />
               <button

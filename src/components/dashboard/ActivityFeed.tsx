@@ -72,13 +72,13 @@ export function ActivityFeed() {
 
       <div className="space-y-3">
         {activities.length > 0 ? (
-          activities.slice(0, 3).map((activity) => {
+          activities.slice(0, 3).map((activity, index) => {
             const Icon = getActivityIcon(activity.type);
             const status = getActivityStatus(activity.type, activity.is_live);
 
             return (
               <div
-                key={activity.id}
+                key={activity.id || `activity-${index}`}
                 className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent transition-fast"
               >
                 <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">

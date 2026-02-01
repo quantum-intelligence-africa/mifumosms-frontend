@@ -356,9 +356,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </div>
 
                   <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
-                    {contacts.map((contact) => (
+                    {contacts.map((contact, index) => (
                       <div
-                        key={contact.id}
+                        key={contact.id || `contact-${index}`}
                         className="flex items-center space-x-2 p-1 hover:bg-muted rounded-lg"
                       >
                         <Checkbox

@@ -53,7 +53,7 @@ export const detectWebPSupport = (): Promise<boolean> => {
  * Maps WebP images to their PNG fallbacks
  */
 const imageFallbacks: Record<string, string> = {
-  '/mobile 1.webp': '/mobile2.png',
+  '/mobile1.webp': '/mobile2.png',
   '/3desktop3.webp': '/desktop.png', // Assuming desktop.png as fallback
 };
 

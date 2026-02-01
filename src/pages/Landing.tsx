@@ -44,7 +44,7 @@ const Landing = () => {
   useEffect(() => {
     const imageUrls = [
       encodeImagePath('/mobile cover.png'),
-      getImageSrc('/mobile 1.webp', '/mobile2.png'),
+      getImageSrc('/mobile1.webp', '/mobile2.png'),
       encodeImagePath('/desktop cover.png'),
       encodeImagePath('/desktop.png'),
       encodeImagePath('/iphone_PNG5735.png')
@@ -124,7 +124,7 @@ const Landing = () => {
         window.history.replaceState({}, '', location.pathname);
       }, 50);
     }
-  }, [location.search, location.hash]);
+  }, [location.search, location.hash, location.pathname]);
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -924,7 +924,7 @@ const Landing = () => {
                 </div>
                 {/* Mobile Mockup Frame - On top of the cover */}
                 <img
-                  src={getImageSrc('/mobile 1.webp', '/mobile2.png')}
+                  src={getImageSrc('/mobile1.webp', '/mobile2.png')}
                   alt="Mobile mockup"
                   className="relative z-[2] w-full h-auto object-contain object-left"
                   loading="eager"

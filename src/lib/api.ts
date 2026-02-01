@@ -864,6 +864,9 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
+    // Get current token from storage (in case it was updated elsewhere)
+    const currentToken = localStorage.getItem('access_token') || this.token;
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -872,10 +875,11 @@ class ApiClient {
       ...options,
     };
 
-    if (this.token) {
+    // Always include Authorization header if token exists
+    if (currentToken) {
       config.headers = {
         ...config.headers,
-        Authorization: `Bearer ${this.token}`,
+        'Authorization': `Bearer ${currentToken}`,
       };
     }
 
@@ -913,7 +917,7 @@ class ApiClient {
               this.setToken(refreshResponse.data.access);
               config.headers = {
                 ...config.headers,
-                Authorization: `Bearer ${refreshResponse.data.access}`,
+                'Authorization': `Bearer ${refreshResponse.data.access}`,
               };
 
               const retryResponse = await fetch(url, config);
@@ -1409,6 +1413,15 @@ class ApiClient {
     tokens: AuthTokens;
     user: User;
   }>> {
+    // Build request body - only include phone_number if provided
+    const body: Record<string, string> = {
+      verification_code: verificationCode,
+    };
+    
+    if (phoneNumber && phoneNumber.trim()) {
+      body.phone_number = phoneNumber;
+    }
+
     return this.request<{
       success: boolean;
       message: string;
@@ -1420,10 +1433,7 @@ class ApiClient {
       user: User;
     }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
       method: 'POST',
-      body: JSON.stringify({
-        phone_number: phoneNumber,
-        verification_code: verificationCode,
-      }),
+      body: JSON.stringify(body),
     });
   }
 

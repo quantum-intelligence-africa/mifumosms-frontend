@@ -92,13 +92,13 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
             <p className="text-sm">Create your first campaign to get started</p>
           </div>
         ) : (
-          campaigns.slice(0, 3).map((campaign) => {
+          campaigns.slice(0, 3).map((campaign, index) => {
           const StatusIcon = statusConfig[campaign.status as keyof typeof statusConfig]?.icon || Send;
           const statusColor = statusConfig[campaign.status as keyof typeof statusConfig]?.color || "muted";
 
           return (
             <div
-              key={campaign.id}
+              key={campaign.id || `campaign-${index}`}
               className="p-3 rounded-xl glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
               onClick={() => handleViewDetails(campaign.id)}
             >

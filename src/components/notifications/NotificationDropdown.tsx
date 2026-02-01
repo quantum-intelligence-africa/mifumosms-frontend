@@ -17,14 +17,14 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { 
-    notifications, 
-    unreadCount, 
-    isRefreshing, 
-    markAsRead, 
-    markAllAsRead, 
+  const {
+    notifications,
+    unreadCount,
+    isRefreshing,
+    markAsRead,
+    markAllAsRead,
     deleteNotification,
-    refreshNotifications 
+    refreshNotifications
   } = useNotifications();
 
   // Close dropdown when clicking outside
@@ -43,7 +43,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
     if (notification.is_unread) {
       await markAsRead(notification.id);
     }
-    
+
     // Handle action URL if present
     if (notification.action_url) {
       if (notification.action_url.startsWith('http')) {
@@ -103,8 +103,8 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <Badge 
-            variant="destructive" 
+          <Badge
+            variant="destructive"
             className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -156,9 +156,9 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
+                {notifications.map((notification, index) => (
                   <div
-                    key={notification.id}
+                    key={notification.id || `notification-${index}`}
                     className={cn(
                       "p-4 hover:bg-gray-50 cursor-pointer transition-colors",
                       notification.is_unread && "bg-blue-50 border-l-4 border-l-blue-500"
@@ -169,29 +169,29 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
                       <div className="text-lg flex-shrink-0">
                         {getTypeIcon(notification.notification_type)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="text-sm font-medium text-gray-900 truncate">
                             {notification.title}
                           </h4>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={cn("text-xs px-1.5 py-0.5", getPriorityColor(notification.priority))}
                           >
                             {notification.priority}
                           </Badge>
                         </div>
-                        
+
                         <p className="text-sm text-gray-600 mb-2 line-clamp-2">
                           {notification.message}
                         </p>
-                        
+
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">
                             {notification.time_ago}
                           </span>
-                          
+
                           <div className="flex items-center gap-1">
                             {notification.action_url && (
                               <Button
@@ -207,7 +207,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
                                 {notification.action_text || 'View'}
                               </Button>
                             )}
-                            
+
                             <Button
                               variant="ghost"
                               size="sm"
