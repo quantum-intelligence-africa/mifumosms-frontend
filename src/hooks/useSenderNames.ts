@@ -52,7 +52,7 @@ export function useSenderNames() {
 			if (response.success && response.data) {
 				let results = [];
 				if (useUnified) {
-					// Handle unified response structure
+					// Handle unified response structure - just use data array directly
 					if ((response.data as any).data && Array.isArray((response.data as any).data)) {
 						results = (response.data as any).data;
 					}
@@ -68,19 +68,19 @@ export function useSenderNames() {
 						// If data has a nested data property
 						results = (response.data as any).data;
 					}
-				}
 
-				// Additional validation: Ensure we only show current user's requests
-				// Filter out any requests that might belong to other users
-				const currentUserId = authContext?.user?.id;
+					// Additional validation: Ensure we only show current user's requests (legacy only)
+					// Filter out any requests that might belong to other users
+					const currentUserId = authContext?.user?.id;
 
-				if (currentUserId) {
-					results = results.filter((request: any) => {
-						// Check if the request belongs to the current user
-						// Use the correct field extraction: user_id || user
-						const requestUserId = request.user_id || request.user;
-						return requestUserId === currentUserId;
-					});
+					if (currentUserId) {
+						results = results.filter((request: any) => {
+							// Check if the request belongs to the current user
+							// Use the correct field extraction: user_id || user
+							const requestUserId = request.user_id || request.user;
+							return requestUserId === currentUserId;
+						});
+					}
 				}
 
 				setSenderNames(results);

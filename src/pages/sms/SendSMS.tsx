@@ -90,11 +90,17 @@ const SendSMS = () => {
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
   const { fetchContacts } = useContacts();
 
-  // Reduce to approved sender IDs only
+  // Reduce to approved sender names only
   const approvedSenderRequests = useMemo(() => {
     return (senderNames || [])
       .filter((req) => req.status === "approved" && req.id && req.id.trim() !== "");
   }, [senderNames]);
+
+  // Log for debugging
+  useEffect(() => {
+    console.log('Sender Names loaded:', senderNames);
+    console.log('Approved Sender Names:', approvedSenderRequests);
+  }, [senderNames, approvedSenderRequests]);
 
   const segments: Segment[] = useMemo(() => [
     { id: "1", name: "VIP Customers", contact_count: segmentCounts.vipContacts },
@@ -212,15 +218,15 @@ const SendSMS = () => {
     if (selectedSender) return;
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
-    // Prefer Taarifa-SMS if available and approved, otherwise first approved
-    const defaultPreferred = approvedSenderRequests.find(r => r.sender_name === "Taarifa-SMS");
+    // Prefer Mifumosms if available and active, otherwise first approved
+    const defaultPreferred = approvedSenderRequests.find(r => r.sender_id === "Mifumosms");
     const firstApproved = defaultPreferred || approvedSenderRequests[0];
     if (firstApproved?.id) setSelectedSender(firstApproved.id);
   }, [selectedSender, approvedSenderRequests]);
 
   const getSelectedSenderName = () => {
     const found = approvedSenderRequests.find(r => r.id === selectedSender);
-    return found?.sender_name || "";
+    return found?.sender_id || "";
   };
 
   const addRecipient = () => {
@@ -672,7 +678,7 @@ const SendSMS = () => {
                       <SelectContent className="glass">
                         {approvedSenderRequests.map((req) => (
                           <SelectItem key={req.id} value={req.id}>
-                            {req.sender_name}
+                            {req.sender_id}
                           </SelectItem>
                         ))}
                       </SelectContent>

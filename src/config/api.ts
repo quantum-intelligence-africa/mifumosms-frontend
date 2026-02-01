@@ -123,7 +123,7 @@ export const API_CONFIG = {
 				STATUS: (id: string) => `/messaging/sender-ids/${id}/status/`,
 			},
 			SENDER_NAMES: {
-				UNIFIED: '/messaging/sender-ids/',
+				UNIFIED: '/messaging/sms/sender-names/',
 			},
 			SMS: {
 				SEND: '/messaging/sms/send/',

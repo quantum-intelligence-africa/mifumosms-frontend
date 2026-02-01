@@ -455,12 +455,12 @@ export interface SenderNameRequest {
 export interface UnifiedSenderName {
   id: string;
   sender_id: string;
-  status: "approved" | "active" | "rejected" | "pending" | "requires_changes" | "suspended" | "verifying";
-  tenant_id: string;
-  tenant_name: string;
-  source: "SenderIDRequest" | "SMSSenderID";
+  status: "active" | "inactive" | "pending" | "suspended" | "approved" | "rejected" | "requires_changes" | "verifying";
   created_at: string;
-  updated_at: string;
+  source: "provider" | "SenderIDRequest" | "SMSSenderID";
+  updated_at?: string;
+  tenant_id?: string;
+  tenant_name?: string;
 }
 
 export interface UnifiedSenderNamesResponse {
@@ -1417,7 +1417,7 @@ class ApiClient {
     const body: Record<string, string> = {
       verification_code: verificationCode,
     };
-    
+
     if (phoneNumber && phoneNumber.trim()) {
       body.phone_number = phoneNumber;
     }
@@ -3765,13 +3765,12 @@ class ApiClient {
   // GET /api/messaging/sender-ids/
   async getUnifiedSenderNames(tenantId?: string): Promise<ApiResponse<UnifiedSenderNamesResponse>> {
     try {
-      let url = `${API_BASE_URL}/messaging/sender-ids/`;
+      let url = `${API_BASE_URL}/messaging/sms/sender-names/`;
       if (tenantId) {
         url += `?tenant_id=${tenantId}`;
       }
       // Ensure URL is clean with no extra spaces
       url = url.trim();
-
 
       const response = await fetch(url, {
         headers: this.getHeaders()
