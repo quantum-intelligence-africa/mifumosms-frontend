@@ -75,26 +75,34 @@ const SenderNames = () => {
   } = useSenderNames();
 
   // Add default sender functionality
-  const {
-    overview,
-    availableSenders,
-    isLoading: defaultSenderLoading,
-    error: defaultSenderError,
-    isRequesting,
-    requestDefaultSender,
-    cancelDefaultSender,
-    refreshData: refreshDefaultSender,
-    canRequestDefaultSender,
-    needsPurchaseCredits,
-    getCurrentCredits,
-    getDefaultSenderName,
-    getCurrentSenderID,
-    getCannotRequestReason,
-    getAllAvailableSenders,
-    getStatusBadgeVariant,
-    formatDate,
-    getStatusIcon
-  } = useDefaultSender();
+  let overview, availableSenders, isLoadingDefault, errorDefault, isRequesting, requestDefaultSender, cancelDefaultSender, refreshDefaultSender, fetchSenderNamesByTenantDefault;
+  let canRequestDefaultSender, needsPurchaseCredits, getCurrentCredits, getDefaultSenderName, getCurrentSenderID, getCannotRequestReason, getAllAvailableSenders, getStatusBadgeVariant, formatDate, getStatusIcon;
+
+  try {
+    const defaultSenderHook = useDefaultSender();
+    ({
+      overview,
+      availableSenders,
+      isLoading: isLoadingDefault,
+      error: errorDefault,
+      isRequesting,
+      requestDefaultSender,
+      cancelDefaultSender,
+      refreshData: refreshDefaultSender,
+      canRequestDefaultSender,
+      needsPurchaseCredits,
+      getCurrentCredits,
+      getDefaultSenderName,
+      getCurrentSenderID,
+      getCannotRequestReason,
+      getAllAvailableSenders,
+      getStatusBadgeVariant,
+      formatDate,
+      getStatusIcon
+    } = defaultSenderHook);
+  } catch (err) {
+    console.error('Error initializing useDefaultSender hook:', err);
+  }
 
   // Fallback functions in case the hook fails
   const safeFormatDate = formatDate || ((dateString: string) =>
@@ -465,9 +473,9 @@ const SenderNames = () => {
                     }}
                     variant="outline"
                     className="w-full sm:w-auto"
-                    disabled={loading || defaultSenderLoading}
+                    disabled={loading || isLoadingDefault}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
@@ -535,9 +543,9 @@ const SenderNames = () => {
                     }}
                     variant="outline"
                     className="w-full sm:w-auto"
-                    disabled={loading || defaultSenderLoading}
+                    disabled={loading || isLoadingDefault}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
@@ -705,9 +713,9 @@ const SenderNames = () => {
                     }}
                     variant="outline"
                     className="w-full sm:w-auto h-9 sm:h-10"
-                    disabled={loading || defaultSenderLoading}
+                    disabled={loading || isLoadingDefault}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || defaultSenderLoading) ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
                     <span className="hidden sm:inline">Refresh</span>
                   </Button>
                 </div>

@@ -90,17 +90,11 @@ const SendSMS = () => {
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
   const { fetchContacts } = useContacts();
 
-  // Reduce to approved sender names only
+  // Reduce to approved/active sender names only
   const approvedSenderRequests = useMemo(() => {
     return (senderNames || [])
-      .filter((req) => req.status === "approved" && req.id && req.id.trim() !== "");
+      .filter((req) => (req.status === "approved" || req.status === "active") && req.sender_id && req.sender_id.trim() !== "");
   }, [senderNames]);
-
-  // Log for debugging
-  useEffect(() => {
-    console.log('Sender Names loaded:', senderNames);
-    console.log('Approved Sender Names:', approvedSenderRequests);
-  }, [senderNames, approvedSenderRequests]);
 
   const segments: Segment[] = useMemo(() => [
     { id: "1", name: "VIP Customers", contact_count: segmentCounts.vipContacts },
@@ -218,14 +212,14 @@ const SendSMS = () => {
     if (selectedSender) return;
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
-    // Prefer Mifumosms if available and active, otherwise first approved
-    const defaultPreferred = approvedSenderRequests.find(r => r.sender_id === "Mifumosms");
+    // Prefer Taarifa-SMS if available and approved, otherwise first approved
+    const defaultPreferred = approvedSenderRequests.find(r => r.sender_id === "Taarifa-SMS");
     const firstApproved = defaultPreferred || approvedSenderRequests[0];
-    if (firstApproved?.id) setSelectedSender(firstApproved.id);
+    if (firstApproved?.sender_id) setSelectedSender(firstApproved.sender_id);
   }, [selectedSender, approvedSenderRequests]);
 
   const getSelectedSenderName = () => {
-    const found = approvedSenderRequests.find(r => r.id === selectedSender);
+    const found = approvedSenderRequests.find(r => r.sender_id === selectedSender);
     return found?.sender_id || "";
   };
 
@@ -677,7 +671,7 @@ const SendSMS = () => {
                       </SelectTrigger>
                       <SelectContent className="glass">
                         {approvedSenderRequests.map((req) => (
-                          <SelectItem key={req.id} value={req.id}>
+                          <SelectItem key={req.sender_id} value={req.sender_id || req.id}>
                             {req.sender_id}
                           </SelectItem>
                         ))}

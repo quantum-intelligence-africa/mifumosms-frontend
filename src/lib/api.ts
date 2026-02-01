@@ -3765,7 +3765,7 @@ class ApiClient {
   // GET /api/messaging/sender-ids/
   async getUnifiedSenderNames(tenantId?: string): Promise<ApiResponse<UnifiedSenderNamesResponse>> {
     try {
-      let url = `${API_BASE_URL}/messaging/sms/sender-names/`;
+      let url = `${API_BASE_URL}/messaging/sender-ids/`;
       if (tenantId) {
         url += `?tenant_id=${tenantId}`;
       }
