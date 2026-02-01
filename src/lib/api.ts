@@ -100,6 +100,40 @@ export interface CreateTenantRequest {
   email?: string;
 }
 
+// API Key Types
+export interface ApiKey {
+  id: string;
+  key_name: string;
+  api_key: string;
+  secret_key: string;
+  permissions: string[];
+  status: "active" | "inactive" | "revoked";
+  total_uses: number;
+  last_used: string | null;
+  created_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+}
+
+export interface ApiAccount {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
+export interface ApiSettings {
+  api_account: ApiAccount;
+  api_keys: ApiKey[];
+  webhooks: any[];
+}
+
+export interface CreateApiKeyRequest {
+  key_name: string;
+  permissions: string[];
+  expires_at?: string;
+}
+
 // Contact Types
 export interface Contact {
   id: string;

@@ -540,30 +540,21 @@ const Settings = () => {
   const loadAPISettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.listApiKeys();
+      const response = await apiClient.getAPISettings();
       if (response.success && response.data) {
-        // Transform the new API response format to match the existing interface
-        setApiSettings({
-          api_keys: response.data.map((key: { key_id: string; name: string; created_at: string; expires_at?: string; last_used?: string }) => ({
-            id: key.key_id,
-            key_name: key.name,
-            api_key: key.key_id, // Use key_id as the API key reference
-            secret_key: key.key_id, // New API doesn't have separate secret
-            status: 'active', // Assume active if returned
-            permissions: {}, // New API doesn't return permissions in list
-            total_uses: 0,
-            last_used: key.last_used || null,
-            expires_at: key.expires_at || null,
-            created_at: key.created_at
-          })),
-          last_updated: new Date().toISOString()
+        setApiSettings(response.data as any);
+      } else {
+        toast({
+          title: "Failed to load API settings",
+          description: response.error || "Could not fetch API keys.",
+          variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Failed to load API settings:', error);
       toast({
         title: "Failed to load API settings",
-        description: "Could not fetch API keys.",
+        description: error instanceof Error ? error.message : "Could not fetch API keys.",
         variant: "destructive"
       });
     } finally {
