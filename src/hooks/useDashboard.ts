@@ -287,16 +287,6 @@ export const useDashboard = () => {
             created_at_human?: string;
             timeAgo?: string;
           }) => {
-            // Debug: Log the raw campaign data to see what fields are available
-            if (isInitialLoad && overviewData.recent_campaigns.indexOf(campaign) === 0 && process.env.NODE_ENV === 'development') {
-              console.log('Sample campaign data from API (dev only):', {
-                id: campaign.id,
-                name: campaign.name,
-                status: campaign.status,
-                type: campaign.campaign_type || campaign.type
-              });
-            }
-
             // Get the correct campaign type - prioritize campaign_type_display, then campaign_type
             // NEVER use 'type' field if it says 'WhatsApp' as it appears to be hardcoded incorrectly
             // Always prefer campaign_type_display or campaign_type from the API

@@ -1,5 +1,6 @@
 // API Configuration and Client for Mifumo SMS
 import { API_CONFIG } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
@@ -106,31 +107,39 @@ export interface ApiKey {
   key_name: string;
   api_key: string;
   secret_key: string;
-  permissions: string[];
-  status: "active" | "inactive" | "revoked";
+  permissions: Record<string, string[]> | string[];
+  status: "active" | "inactive" | "revoked" | string;
   total_uses: number;
   last_used: string | null;
   created_at: string;
   expires_at: string | null;
-  is_active: boolean;
+  is_active?: boolean;
 }
 
 export interface ApiAccount {
   id: string;
   name: string;
-  description: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
   created_at: string;
 }
 
 export interface ApiSettings {
   api_account: ApiAccount;
   api_keys: ApiKey[];
-  webhooks: any[];
+  webhooks: Webhook[];
 }
 
 export interface CreateApiKeyRequest {
   key_name: string;
-  permissions: string[];
+  permissions: Record<string, string[]> | string[];
   expires_at?: string;
 }
 
@@ -346,6 +355,19 @@ export interface IntegrationTenantCreateRequest {
   owner_name: string;
   contact_phone: string;
   initial_credits?: number;
+}
+
+export interface IntegrationTenantAccount {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  owner_email: string;
+  owner_name: string;
+  contact_phone: string;
+  credits_balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface IntegrationTenantCreditRequest {
@@ -920,30 +942,23 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
 
-      // Log error responses for debugging
+      // Log error responses for debugging (without exposing full URL)
       if (!response.ok) {
-        console.error('API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          url: url,
-          config: config
-        });
+        logger.error('API request failed', { status: response.status, method: config.method || 'GET' });
       }
 
       const data = await response.json();
 
       // Log error response data for debugging
       if (!response.ok) {
-        console.error('API Error Data:', data);
+        logger.error('API error response received');
       }
 
       // Handle authentication errors with token refresh
       if (response.status === 401 || response.status === 403) {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken && !endpoint.includes('/auth/token/refresh/')) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Token expired, attempting refresh...');
-          }
+          logger.debug('Token expired, attempting refresh');
           try {
             const refreshResponse = await this.refreshToken(refreshToken);
             if (refreshResponse.success && refreshResponse.data?.access) {
@@ -990,7 +1005,7 @@ class ApiClient {
               this.setToken(null);
             }
           } catch (refreshError) {
-            console.error('Token refresh failed:', refreshError);
+            logger.error('Token refresh failed');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             this.setToken(null);
@@ -1761,9 +1776,7 @@ class ApiClient {
       });
     } else {
       // JSON data (CSV)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Bulk import request initiated');
-      }
+      logger.debug('Bulk import request initiated');
 
       // If we have contacts but no csv_data, convert contacts to CSV
       const requestData = { ...data };
@@ -1773,7 +1786,7 @@ class ApiClient {
         delete requestData.contacts;
       }
 
-      console.log('Final request data:', requestData);
+      logger.debug('Final request data prepared');
 
       return this.request('/messaging/contacts/bulk-import/', {
         method: 'POST',
@@ -1805,9 +1818,7 @@ class ApiClient {
       ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('CSV data converted successfully');
-    }
+    logger.debug('CSV data converted', { rowCount: rows.length });
     return csvContent;
   }
 
@@ -2455,14 +2466,14 @@ class ApiClient {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.AVAILABLE);
   }
 
-  async integrationCreateTenantAccount(data: IntegrationTenantCreateRequest): Promise<ApiResponse<any>> {
+  async integrationCreateTenantAccount(data: IntegrationTenantCreateRequest): Promise<ApiResponse<IntegrationTenantAccount>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_CREATE, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async integrationGetTenantAccount(tenantId: string): Promise<ApiResponse<any>> {
+  async integrationGetTenantAccount(tenantId: string): Promise<ApiResponse<IntegrationTenantAccount>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_DETAIL(tenantId));
   }
 
@@ -2483,36 +2494,36 @@ class ApiClient {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.PACKAGES);
   }
 
-  async integrationAddTenantCredits(tenantId: string, data: IntegrationTenantCreditRequest): Promise<ApiResponse<any>> {
+  async integrationAddTenantCredits(tenantId: string, data: IntegrationTenantCreditRequest): Promise<ApiResponse<{ credits_added: number; new_balance: number; transaction_id: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_CREDITS(tenantId), {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async integrationInitiateTenantPayment(tenantId: string, data: IntegrationPaymentInitiationRequest): Promise<ApiResponse<any>> {
+  async integrationInitiateTenantPayment(tenantId: string, data: IntegrationPaymentInitiationRequest): Promise<ApiResponse<{ payment_url: string; transaction_id: string; amount: number }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_PAYMENT_INIT(tenantId), {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async integrationCheckTenantPaymentStatus(tenantId: string, transactionId: string): Promise<ApiResponse<any>> {
+  async integrationCheckTenantPaymentStatus(tenantId: string, transactionId: string): Promise<ApiResponse<{ status: string; transaction_id: string; amount: number; created_at: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.TENANT_PAYMENT_STATUS(tenantId, transactionId));
   }
 
-  async integrationInitiateCustomPurchase(tenantId: string, data: IntegrationCustomPaymentRequest): Promise<ApiResponse<any>> {
+  async integrationInitiateCustomPurchase(tenantId: string, data: IntegrationCustomPaymentRequest): Promise<ApiResponse<{ payment_url: string; purchase_id: string; amount: number }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CUSTOM_PAYMENT_INIT(tenantId), {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async integrationCheckCustomPurchaseStatus(tenantId: string, purchaseId: string): Promise<ApiResponse<any>> {
+  async integrationCheckCustomPurchaseStatus(tenantId: string, purchaseId: string): Promise<ApiResponse<{ status: string; purchase_id: string; amount: number; created_at: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CUSTOM_PAYMENT_STATUS(tenantId, purchaseId));
   }
 
-  async integrationGetTenantPaymentHistory(tenantId: string, params?: { status?: string; limit?: number; offset?: number }): Promise<ApiResponse<any>> {
+  async integrationGetTenantPaymentHistory(tenantId: string, params?: { status?: string; limit?: number; offset?: number }): Promise<ApiResponse<{ transactions: Array<{ id: string; amount: number; status: string; created_at: string }>; total: number }>> {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.limit) query.append('limit', params.limit.toString());
@@ -2523,7 +2534,7 @@ class ApiClient {
     return this.request(endpoint);
   }
 
-  async integrationCalculatePricing(data: IntegrationPricingRequest): Promise<ApiResponse<any>> {
+  async integrationCalculatePricing(data: IntegrationPricingRequest): Promise<ApiResponse<{ total_cost: number; unit_price: number; quantity: number; currency: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.INTEGRATION.PARTNER.CALCULATE_PRICING, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -3766,7 +3777,7 @@ class ApiClient {
         previous?: string;
       }>(response);
 
-      console.log('Processed result:', result);
+      logger.debug('Request processed');
       return result;
     } catch (error) {
       return {
@@ -3958,22 +3969,22 @@ class ApiClient {
   // ========================================
   async handleAPIError(result: ApiResponse, context = 'operation'): Promise<boolean> {
     if (!result.success) {
-      console.error(`${context} failed:`, result.error);
+      logger.error(`${context} failed`, { status: result.status });
 
       // Handle specific error types
       if (result.status === 401) {
         // Token expired, try to refresh
         return await this.refreshTokenAndRetry(context);
       } else if (result.status === 403) {
-        console.error(`Access denied: ${result.error}`);
+        logger.error('Access denied');
       } else if (result.status === 404) {
-        console.error('Resource not found');
+        logger.error('Resource not found');
       } else if (result.status === 400) {
-        console.error(`Validation error: ${result.error}`);
+        logger.error('Validation error');
       } else if (result.status === 500) {
-        console.error('Server error. Please try again later.');
+        logger.error('Server error');
       } else {
-        console.error(result.error || 'An unexpected error occurred');
+        logger.error('Unexpected error occurred');
       }
       return false;
     }
@@ -3981,20 +3992,14 @@ class ApiClient {
   }
 
   async refreshTokenAndRetry(context: string): Promise<boolean> {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Token expired, attempting to refresh...');
-    }
+    logger.debug('Token expired, attempting to refresh');
     const refreshResult = await this.refreshTokenFromStorage();
 
     if (refreshResult.success) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Token refreshed successfully');
-      }
+      logger.debug('Token refreshed successfully');
       return true;
     } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Token refresh failed, redirecting to login');
-      }
+      logger.debug('Token refresh failed, redirecting to login');
       this.redirectToLogin();
       return false;
     }

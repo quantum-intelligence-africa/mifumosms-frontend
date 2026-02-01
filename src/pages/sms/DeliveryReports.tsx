@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { logger } from "@/utils/logger";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -67,7 +68,7 @@ const DeliveryReports = () => {
         setPagination(response.data.pagination);
       }
     } catch (error) {
-      console.error("Failed to load delivery reports:", error);
+      logger.warn('Failed to load delivery reports');
       toast({
         title: "Failed to load reports",
         description: "Could not fetch delivery reports.",

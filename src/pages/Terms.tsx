@@ -34,14 +34,21 @@ const Terms = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
 
-  // Handle scroll-based header color change
+  // Handle scroll-based header color change with performance optimization
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      setIsScrolled(scrollTop > 10);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 10);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -341,7 +348,7 @@ const Terms = () => {
               <a className="hover:underline hover:text-white" href="/#about">About</a>
               <a className="hover:underline hover:text-white" href="/#features">Features</a>
               <a className="hover:underline hover:text-white" href="/#pricing">Pricing</a>
-              <a href="/developer#developer-hero" className="hover:underline hover:text-white">Developer</a>
+              <a href="/developer" className="hover:underline hover:text-white">Developer</a>
             </nav>
 
             {/* Contact */}

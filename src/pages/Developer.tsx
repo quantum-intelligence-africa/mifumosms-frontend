@@ -38,31 +38,45 @@ const Developer = () => {
     }
   };
 
-  // Handle scroll-based header color change
+  // Handle scroll-based header color change with performance optimization
   useEffect(() => {
-    const handleScroll = () => {
+    let ticking = false;
+    let cachedHeroBottom = 0;
+
+    const cacheHeroBottom = () => {
       const heroSection = document.getElementById('developer-hero');
       if (heroSection) {
-        const heroBottom = heroSection.offsetTop + heroSection.offsetHeight;
-        setIsScrolled(window.scrollY > heroBottom - 100); // Add small offset
+        cachedHeroBottom = heroSection.offsetTop + heroSection.offsetHeight;
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > cachedHeroBottom - 100);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    cacheHeroBottom();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', cacheHeroBottom, { passive: true });
     handleScroll(); // Check initial state
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', cacheHeroBottom);
+    };
   }, []);
 
-  // Handle URL hash on page load
+  // Auto-scroll to hero section on page load
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash === '#developer-hero') {
-      // Small delay to ensure the page has fully loaded
-      setTimeout(() => {
-        scrollToSection('developer-hero');
-      }, 100);
-    }
+    // Small delay to ensure the page has fully loaded
+    setTimeout(() => {
+      scrollToSection('developer-hero');
+    }, 100);
   }, []);
 
   return (
@@ -102,7 +116,7 @@ const Developer = () => {
             }`}>
               Pricing
             </Link>
-            <Link to="/developer#developer-hero" className={`transition-colors duration-300 ${
+            <Link to="/developer" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'

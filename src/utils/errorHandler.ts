@@ -1,5 +1,6 @@
 // Error handling utilities for API calls
 import { ApiResponse } from '@/lib/api';
+import { logger } from '@/utils/logger';
 
 export interface ErrorDetails {
 	message: string;
@@ -23,7 +24,7 @@ export class APIError extends Error {
 }
 
 export const handleAPIError = (response: ApiResponse, context: string = 'API call'): ErrorDetails => {
-	console.error(`${context} failed:`, response);
+	logger.error(`${context} failed`);
 
 	if (!response.success) {
 		// Handle specific error types
@@ -110,7 +111,7 @@ export const handleAPIError = (response: ApiResponse, context: string = 'API cal
 };
 
 export const handleNetworkError = (error: unknown, context: string = 'Network request'): ErrorDetails => {
-	console.error(`${context} network error:`, error);
+	logger.error(`${context} network error`);
 
 	if (error instanceof TypeError && error.message.includes('fetch')) {
 		return {
@@ -171,11 +172,11 @@ export const getErrorMessage = (error: unknown, fallback: string = 'An error occ
 };
 
 export const logError = (error: unknown, context: string = 'Application'): void => {
-	console.error(`[${context}] Error:`, error);
+	logger.error(`${context}: Error occurred`, { type: error instanceof Error ? error.constructor.name : typeof error });
 
 	// In production, you might want to send this to an error tracking service
 	// like Sentry, LogRocket, or Bugsnag
-	if (process.env.NODE_ENV === 'production') {
+	if (import.meta.env.MODE === 'production') {
 		// Example: Sentry.captureException(error);
 	}
 };

@@ -4,13 +4,13 @@
  */
 
 export const SECURITY_CONFIG = {
-  // Environment detection
-  isDevelopment: process.env.NODE_ENV === 'development',
-  isProduction: process.env.NODE_ENV === 'production',
+  // Environment detection (use import.meta.env for Vite compatibility)
+  isDevelopment: import.meta.env.MODE === 'development',
+  isProduction: import.meta.env.MODE === 'production',
 
   // Debug settings
-  enableDebugLogging: process.env.REACT_APP_DEBUG === 'true',
-  enableConsoleLogging: process.env.REACT_APP_ENABLE_CONSOLE_LOGGING === 'true',
+  enableDebugLogging: import.meta.env.REACT_APP_DEBUG === 'true',
+  enableConsoleLogging: import.meta.env.REACT_APP_ENABLE_CONSOLE_LOGGING === 'true',
 
   // Security features
   sanitizeLogs: true,
@@ -34,7 +34,12 @@ export const SECURITY_CONFIG = {
     /balance/i,
     /card/i,
     /ssn/i,
-    /social/i
+    /social/i,
+    /url/i,  // Don't log full URLs with API endpoints
+    /endpoint/i,  // Don't log API endpoints
+    /profile/i,  // User profile endpoints
+    /user/i,  // User-specific data
+    /account/i  // Account information
   ]
 };
 

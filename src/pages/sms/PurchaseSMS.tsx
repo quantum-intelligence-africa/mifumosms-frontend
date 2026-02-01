@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { logger } from "@/utils/logger";
 import {
   CreditCard,
   Wallet,
@@ -193,16 +194,16 @@ const PurchaseSMS = () => {
             // Handle new response format
             setPackages(packagesResponse.data.results);
           } else {
-            console.warn('No packages returned from API, using default packages');
+            logger.warn('No packages returned from API, using defaults');
             setPackages(defaultPackages);
           }
         } else {
           // Use default packages if API doesn't return any
-          console.warn('API packages request failed, using default packages');
+          logger.warn('API packages request failed, using defaults');
           setPackages(defaultPackages);
         }
       } catch (error) {
-        console.error('Error fetching packages:', error);
+        logger.warn('Error fetching packages');
         setPackages(defaultPackages);
       } finally {
         setPackagesLoading(false);
@@ -218,7 +219,7 @@ const PurchaseSMS = () => {
           setBalance(balanceResponse.data);
         }
       } catch (error) {
-        console.error('Error fetching balance:', error);
+        logger.warn('Error fetching balance');
       } finally {
         setBalanceLoading(false);
       }
@@ -233,7 +234,7 @@ const PurchaseSMS = () => {
           setMobileMoneyProviders(providersResponse.data.providers);
         }
       } catch (error) {
-        console.error('Error fetching providers:', error);
+        logger.warn('Error fetching providers');
       } finally {
         setProvidersLoading(false);
       }
@@ -354,7 +355,7 @@ const PurchaseSMS = () => {
         });
       }
     } catch (error) {
-      console.error('Error calculating custom SMS price:', error);
+      logger.warn('Error calculating custom SMS price');
     } finally {
       setIsCalculatingCustom(false);
     }
@@ -440,7 +441,7 @@ const PurchaseSMS = () => {
         }
       }
     } catch (error) {
-      console.error('Error polling payment status:', error);
+      logger.warn('Error polling payment status');
     }
   };
 
@@ -512,8 +513,7 @@ const PurchaseSMS = () => {
       if (selectedPackage) {
         // Package purchase
         const packageId = selectedPackageId || selectedPackage;
-        console.log('Selected package ID:', packageId);
-        console.log('Available packages:', packages.map(p => ({ id: p.id, name: p.name, package_type: p.package_type })));
+        logger.debug('Processing package purchase', { packageId });
 
         const paymentData = {
           package_id: packageId, // Use the actual package ID
@@ -523,7 +523,7 @@ const PurchaseSMS = () => {
           mobile_money_provider: paymentMethod
         };
 
-        console.log('Payment data being sent:', paymentData);
+        logger.debug('Payment initiated');
         response = await apiClient.initiatePayment(paymentData);
       } else if (customCredits) {
         // Custom SMS purchase
@@ -589,7 +589,7 @@ const PurchaseSMS = () => {
 
       } else {
         setProcessing(false);
-        console.error('Payment initiation failed:', response);
+        logger.error('Payment initiation failed', { status: response.status });
 
         // Check for specific package ID format error
         if (response.error && response.error.includes('Invalid package ID format')) {
@@ -608,7 +608,7 @@ const PurchaseSMS = () => {
       }
     } catch (error) {
       setProcessing(false);
-      console.error('Payment error:', error);
+      logger.error('Payment error occurred');
       toast({
         title: "Payment error",
         description: "An unexpected error occurred. Please try again.",

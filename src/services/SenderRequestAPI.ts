@@ -1,5 +1,6 @@
 import { API_CONFIG } from '@/config/api';
 import { SenderNameRequest, SenderNameStats, CreateSenderNameRequest, UpdateSenderNameRequest } from '@/lib/api';
+import { logger } from '@/utils/logger';
 
 interface ApiResponse<T = unknown> {
 	data?: T;
@@ -46,7 +47,7 @@ class SenderRequestAPI {
 	// Handle API responses
 	private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
 		const data = await response.json();
-		console.log('Raw API response data:', data);
+		logger.debug('API response received');
 
 		if (!response.ok) {
 			return {
@@ -59,7 +60,7 @@ class SenderRequestAPI {
 
 		// Handle backend response format: { "success": true, "data": {...} }
 		if (data && typeof data === 'object' && 'success' in data) {
-			console.log('Processing success response, data.data:', data.data);
+			logger.debug('Processing success response');
 			return {
 				data: data.data,
 				status: response.status,
@@ -69,7 +70,7 @@ class SenderRequestAPI {
 			};
 		}
 
-		console.log('Processing direct response, data:', data);
+		logger.debug('Processing direct response');
 		return {
 			data: data,
 			status: response.status,
@@ -88,7 +89,7 @@ class SenderRequestAPI {
 
 			return await this.handleResponse<SenderNameStats>(response);
 		} catch (error) {
-			console.error('Error fetching stats:', error);
+			logger.error('Error fetching stats');
 			return {
 				error: error instanceof Error ? error.message : 'Network error',
 				status: 0,

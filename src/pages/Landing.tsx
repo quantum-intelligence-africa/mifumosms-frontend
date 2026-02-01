@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { logger } from "@/utils/logger";
 import {
   MessageSquare,
   Users,
@@ -54,10 +55,10 @@ const Landing = () => {
       const img = new Image();
       img.src = url;
       img.onload = () => {
-        console.log(`Successfully preloaded: ${url}`);
+        logger.debug('Image preloaded');
       };
       img.onerror = () => {
-        console.error(`Failed to preload image: ${url}`);
+        logger.warn('Image preload failed');
       };
     });
   }, []);
@@ -140,20 +141,37 @@ const Landing = () => {
     };
   }, [isMobileMenuOpen]);
 
-  // Handle scroll-based header color change
+  // Handle scroll-based header color change with performance optimization
   useEffect(() => {
-    const handleScroll = () => {
+    let ticking = false;
+    let cachedHeroBottom = 0;
+
+    const cacheHeroBottom = () => {
       const heroSection = document.getElementById('about');
       if (heroSection) {
-        const heroBottom = heroSection.offsetTop + heroSection.offsetHeight;
-        setIsScrolled(window.scrollY > heroBottom - 100); // Add small offset
+        cachedHeroBottom = heroSection.offsetTop + heroSection.offsetHeight;
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > cachedHeroBottom - 100);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    cacheHeroBottom();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', cacheHeroBottom, { passive: true });
     handleScroll(); // Check initial state
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', cacheHeroBottom);
+    };
   }, []);
 
   // Background slides with company colors - Only blue gradient
@@ -298,7 +316,7 @@ const Landing = () => {
               className="w-full h-auto object-contain drop-shadow-2xl pointer-events-none select-none"
               loading="eager"
               onError={(e) => {
-                console.error('Failed to load iPhone mockup image in SMSAnimation');
+                logger.warn('iPhone mockup image failed to load');
                 e.currentTarget.style.display = 'none';
               }}
               style={{ filter: 'drop-shadow(0 25px 50px -12px rgba(0, 0, 0, 0.5))' }}
@@ -741,7 +759,7 @@ const Landing = () => {
             }`}>
               Pricing
             </button>
-            <Link to="/developer#developer-hero" className={`transition-colors duration-300 ${
+            <Link to="/developer" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
@@ -908,7 +926,7 @@ const Landing = () => {
                     className="w-full h-full"
                     loading="eager"
                     onError={(e) => {
-                      console.error('Failed to load mobile cover image');
+                      logger.warn('Mobile cover image failed to load');
                       e.currentTarget.style.display = 'none';
                     }}
                     style={{
@@ -929,7 +947,7 @@ const Landing = () => {
                   className="relative z-[2] w-full h-auto object-contain object-left"
                   loading="eager"
                   onError={(e) => {
-                    console.error('Failed to load mobile mockup image');
+                    logger.warn('Mobile mockup image failed to load');
                     e.currentTarget.style.display = 'none';
                   }}
                   style={{
@@ -957,7 +975,7 @@ const Landing = () => {
                 className="w-full h-full object-cover object-left"
                 loading="eager"
                 onError={(e) => {
-                  console.error('Failed to load desktop cover image');
+                  logger.warn('Desktop cover image failed to load');
                   e.currentTarget.style.display = 'none';
                 }}
                 style={{
@@ -982,7 +1000,7 @@ const Landing = () => {
                   className="w-full h-auto object-contain relative z-[1]"
                   loading="eager"
                   onError={(e) => {
-                    console.error('Failed to load iPhone mockup image');
+                    logger.warn('iPhone mockup image failed to load');
                     e.currentTarget.style.display = 'none';
                   }}
                   style={{

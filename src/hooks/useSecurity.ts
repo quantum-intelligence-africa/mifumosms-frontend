@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/utils/logger';
 import { securityService, SecuritySummary, TwoFactorStatus, SecuritySession, SecurityEvent } from '@/services/SecurityService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,7 +24,7 @@ export const useSecurity = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch security summary';
       setError(errorMessage);
-      console.error('Error fetching security summary:', err);
+      logger.warn('Error fetching security summary');
     }
   }, []);
 
@@ -31,17 +32,17 @@ export const useSecurity = () => {
   const fetch2FAStatus = useCallback(async () => {
     try {
       const response = await securityService.get2FAStatus();
-      console.log('2FA Status Response:', response);
+      logger.debug('2FA status fetch initiated');
       if (response.success) {
         setTwoFactorStatus(response.data);
-        console.log('2FA Status Data:', response.data);
+        logger.debug('2FA status updated');
       } else {
         throw new Error('Failed to fetch 2FA status');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch 2FA status';
       setError(errorMessage);
-      console.error('Error fetching 2FA status:', err);
+      logger.warn('Error fetching 2FA status');
     }
   }, []);
 
@@ -57,7 +58,7 @@ export const useSecurity = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch active sessions';
       setError(errorMessage);
-      console.error('Error fetching active sessions:', err);
+      logger.warn('Error fetching active sessions');
     }
   }, []);
 
@@ -73,7 +74,7 @@ export const useSecurity = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch security events';
       setError(errorMessage);
-      console.error('Error fetching security events:', err);
+      logger.warn('Error fetching security events');
     }
   }, []);
 
@@ -99,10 +100,10 @@ export const useSecurity = () => {
         await fetchSecuritySummary();
         return { success: true };
       } else {
-        const errorMessage = response.errors 
+        const errorMessage = response.errors
           ? Object.values(response.errors).flat().join(', ')
           : 'Failed to change password';
-        
+
         toast({
           title: "Password change failed",
           description: errorMessage,
@@ -135,10 +136,10 @@ export const useSecurity = () => {
         await fetch2FAStatus();
         return { success: true, backupCodes: response.backup_codes };
       } else {
-        const errorMessage = response.errors 
+        const errorMessage = response.errors
           ? Object.values(response.errors).flat().join(', ')
           : 'Failed to enable 2FA';
-        
+
         toast({
           title: "2FA Enable Failed",
           description: errorMessage,
@@ -174,10 +175,10 @@ export const useSecurity = () => {
         await fetch2FAStatus();
         return { success: true };
       } else {
-        const errorMessage = response.errors 
+        const errorMessage = response.errors
           ? Object.values(response.errors).flat().join(', ')
           : 'Failed to disable 2FA';
-        
+
         toast({
           title: "2FA Disable Failed",
           description: errorMessage,
@@ -265,7 +266,7 @@ export const useSecurity = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       await Promise.all([
         fetchSecuritySummary(),
         fetch2FAStatus(),
@@ -273,7 +274,7 @@ export const useSecurity = () => {
         fetchSecurityEvents(),
       ]);
     } catch (err) {
-      console.error('Error loading security data:', err);
+      logger.warn('Error loading security data');
     } finally {
       setIsLoading(false);
     }
@@ -282,10 +283,10 @@ export const useSecurity = () => {
   // Auto-refresh security data
   useEffect(() => {
     loadSecurityData();
-    
+
     // Refresh every 5 minutes
     const interval = setInterval(loadSecurityData, 5 * 60 * 1000);
-    
+
     return () => clearInterval(interval);
   }, [loadSecurityData]);
 
@@ -297,7 +298,7 @@ export const useSecurity = () => {
     securityEvents,
     isLoading,
     error,
-    
+
     // Actions
     loadSecurityData,
     changePassword,

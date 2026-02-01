@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "@/utils/logger";
 import {
   User,
   Bell,
@@ -256,9 +257,9 @@ const Settings = () => {
 
   useEffect(() => {
     if (currentCategory === 'team' && currentTenant?.id) {
-      console.log('Loading team members for tenant:', currentTenant.id);
-      team.listMembers().catch(err => console.error('Failed to load team members:', err));
-      team.getStats().catch(err => console.error('Failed to load team stats:', err));
+      logger.debug('Loading team members for tenant');
+      team.listMembers().catch(err => logger.warn('Failed to load team members'));
+      team.getStats().catch(err => logger.warn('Failed to load team stats'));
     }
   }, [currentCategory, currentTenant?.id, team]);
 

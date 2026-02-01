@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { logger } from "@/utils/logger";
 import {
   Plus,
   Check,
@@ -101,7 +102,7 @@ const SenderNames = () => {
       getStatusIcon
     } = defaultSenderHook);
   } catch (err) {
-    console.error('Error initializing useDefaultSender hook:', err);
+    logger.error('Error initializing useDefaultSender hook');
   }
 
   // Fallback functions in case the hook fails
@@ -201,13 +202,13 @@ const SenderNames = () => {
         setSelectedSender(result.data);
         setShowDetailsDialog(true);
       } else {
-        console.error('Failed to fetch sender details:', result.error);
+        logger.warn('Failed to fetch sender details');
         // Fallback to using existing data
         setSelectedSender(legacySender);
         setShowDetailsDialog(true);
       }
     } catch (error) {
-      console.error('Error fetching sender details:', error);
+      logger.warn('Error fetching sender details');
       // Fallback to using existing data
       setSelectedSender(sender as SenderNameRequest);
       setShowDetailsDialog(true);
@@ -250,10 +251,10 @@ const SenderNames = () => {
         setEditUseCase("");
         setEditSelectedFiles([]);
       } else {
-        console.error('Failed to update sender name:', result.error);
+        logger.warn('Failed to update sender name');
       }
     } catch (error) {
-      console.error('Error updating sender name:', error);
+      logger.warn('Error updating sender name');
     } finally {
       setSubmitting(false);
     }
@@ -424,7 +425,7 @@ const SenderNames = () => {
         await Promise.all([refreshData(), refreshDefaultSender()]);
       }
     } catch (error) {
-      console.error('Error requesting default sender:', error);
+      logger.warn('Error requesting default sender');
     }
   };
 

@@ -35,6 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { logger } from "@/utils/logger";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
@@ -122,7 +123,7 @@ const SendSMS = () => {
           filteredContacts = allContacts.filter(contact =>
             contact.tags && contact.tags.includes('vip')
           );
-          console.log('VIP contacts filtered:', filteredContacts);
+          logger.debug(`VIP contacts filtered: ${filteredContacts.length}`);
           break;
         case "2": // All Contacts
           filteredContacts = allContacts;
@@ -137,10 +138,10 @@ const SendSMS = () => {
       }
 
       setSegmentContacts(filteredContacts);
-      console.log(`Segment ${segmentId} contacts loaded:`, filteredContacts.length);
+      logger.debug(`Segment ${segmentId} contacts loaded: ${filteredContacts.length}`);
 
     } catch (error) {
-      console.error('Error fetching segment contacts:', error);
+      logger.error('Error fetching segment contacts');
       setSegmentContacts([]);
       toast({
         title: "Error loading contacts",
@@ -362,9 +363,7 @@ const SendSMS = () => {
       }
 
       // Debug: Log the data being sent
-      console.log('Sending SMS data:', smsData);
-      console.log('Recipients count:', apiRecipients.length);
-      console.log('Sender name:', senderName);
+      logger.debug('Sending SMS', { recipientCount: apiRecipients.length, senderName });
 
       // Call the SMS API
       const response = await apiClient.sendSMS(smsData as {
@@ -401,7 +400,7 @@ const SendSMS = () => {
         // Enhanced error handling with more details
         let errorMessage = "An error occurred while sending SMS";
 
-        console.error('SMS API Error:', response);
+        logger.error('SMS API Error', { status: response.status });
 
         if (response.status === 400) {
           // Try to get more specific error details
@@ -437,7 +436,7 @@ const SendSMS = () => {
       }
     } catch (error) {
       setSending(false);
-      console.error('SMS sending error:', error);
+      logger.error('SMS sending error');
       toast({
         title: "Error",
         description: "Failed to send SMS. Please try again.",

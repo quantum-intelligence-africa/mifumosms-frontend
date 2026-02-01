@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { apiClient, ApiKey, ApiSettings } from '@/lib/api';
 
 export function useApiKeys() {
@@ -15,9 +15,9 @@ export function useApiKeys() {
 			const response = await apiClient.getAPISettings();
 
 			if (response.success && response.data) {
-				setApiSettings(response.data);
-				// Extract API keys from response
-				const keys = response.data.api_keys || [];
+			setApiSettings(response.data);
+			// Extract API keys from response
+			const keys = response.data.api_keys || [];
 				setApiKeys(keys);
 			} else {
 				setError(response.error || 'Failed to fetch API settings');
@@ -31,18 +31,14 @@ export function useApiKeys() {
 		}
 	}, []);
 
-	const createApiKey = useCallback(async (keyData: { key_name: string; permissions: Record<string, string[]> | string[] }) => {
+	const createApiKey = useCallback(async (keyData: { key_name: string; permissions: string[] }) => {
 		try {
 			setError(null);
 
-			const normalizedPermissions: Record<string, string[]> = Array.isArray(keyData.permissions)
-				? { '*': keyData.permissions }
-				: keyData.permissions;
-
 			const response = await apiClient.createAPIKey({
 				key_name: keyData.key_name,
-				permissions: normalizedPermissions,
-			});
+			permissions: keyData.permissions,
+		});
 
 			if (response.success) {
 				// Refresh API keys list
@@ -86,3 +82,4 @@ export function useApiKeys() {
 		revokeApiKey,
 	};
 }
+
