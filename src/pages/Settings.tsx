@@ -1127,7 +1127,7 @@ const Settings = () => {
 
     setIsLoading(true);
     try {
-      const result = await verifyAccount({ verification_code: smsVerificationCode });
+      const result = await verifyAccount({ code: smsVerificationCode });
       if (result.success) {
         toast({
           title: "Account verified",

@@ -12,14 +12,14 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
-  sendAccountVerification: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
+  sendAccountVerification: (phoneNumber?: string) => Promise<{ success: boolean; error?: string }>;
   verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
   verifyEmail: (token: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
   verifySMS: (phoneNumber: string, code: string) => Promise<{ success: boolean; error?: string; tokens?: AuthTokens; user?: User }>;
   resendActivationEmail: (email?: string, phoneNumber?: string) => Promise<{ success: boolean; error?: string; method?: 'sms' | 'email'; phoneNumber?: string }>;
   // New API methods
-  sendPhoneVerification: (phone: string) => Promise<{ success: boolean; error?: string }>;
-  verifyPhoneCode: (phone: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  sendPhoneVerification: (phone?: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPhoneCode: (phone: string | undefined, code: string) => Promise<{ success: boolean; error?: string }>;
   generateApiKey: (keyData: { name: string; permissions?: string[] }) => Promise<{ success: boolean; error?: string; data?: any }>;
   listApiKeys: () => Promise<{ success: boolean; error?: string; data?: any[] }>;
   revokeApiKey: (keyId: string) => Promise<{ success: boolean; error?: string }>;
@@ -165,12 +165,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiClient.login(credentials);
 
-      if (response.data && response.data.tokens) {
-        const { user: userData, tokens } = response.data;
+      if (response.data && (response.data as any).user) {
+        const userData = (response.data as any).user as User;
+        const access = (response.data as any).access || (response.data as any).tokens?.access;
+        const refresh = (response.data as any).refresh || (response.data as any).tokens?.refresh;
 
         updateUserState(userData);
-        apiClient.setToken(tokens.access);
-        localStorage.setItem('refresh_token', tokens.refresh);
+        if (access) {
+          apiClient.setToken(access);
+        }
+        if (refresh) {
+          localStorage.setItem('refresh_token', refresh);
+        }
         localStorage.setItem('user_profile', JSON.stringify(userData));
 
         // Note: SMS verification is handled automatically by backend during registration
@@ -189,6 +195,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             errorMessage = nonFieldErrors[0];
           } else if (typeof response.errors === 'string') {
             errorMessage = response.errors;
+          } else if ((response.errors as any).detail) {
+            errorMessage = (response.errors as any).detail;
           }
         }
 
@@ -213,26 +221,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             phoneNumber = localStorage.getItem('pending_phone_activation') || undefined;
           }
 
-          // If still not available, try to fetch it from backend via resend-activation
-          if (!phoneNumber) {
-            try {
-              const resendResponse = await apiClient.resendActivationEmail(credentials.email);
-              // Check if response includes phone number
-              if (resendResponse.data) {
-                const responseData = resendResponse.data as any;
-                if (responseData.phone_number) {
-                  phoneNumber = responseData.phone_number;
-                } else if (responseData.user && responseData.user.phone_number) {
-                  phoneNumber = responseData.user.phone_number;
-                }
-              }
-              // Store phone number if found
-              if (phoneNumber) {
-                localStorage.setItem('pending_phone_activation', phoneNumber);
-              }
-            } catch (fetchError) {
-              // Silently fail - phone number fetch is optional
-              console.log('Could not fetch phone number:', fetchError);
+          // If still not available, try to parse it from the error message
+          if (!phoneNumber && errorMessage) {
+            const match = errorMessage.match(/\+\d{6,15}/);
+            if (match && match[0]) {
+              phoneNumber = match[0];
+              localStorage.setItem('pending_phone_activation', phoneNumber);
             }
           }
 
@@ -435,7 +429,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const sendAccountVerificationSMS = async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+  const sendAccountVerificationSMS = async (phoneNumber?: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const result = await sendAccountVerification({ phone_number: phoneNumber });
       return { success: result.success, error: result.error };
@@ -449,7 +443,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const verifyAccountCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const result = await verifyAccountSMS({ verification_code: code });
+      const result = await verifyAccountSMS({ code });
       if (result.success && user) {
         // Update user verification status
         const updatedUser = { ...user, phone_verified: true, is_verified: true };
@@ -522,7 +516,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Check if verification was successful
       if (response.success && response.data) {
-        const { tokens, user: userData } = response.data;
+        const access = (response.data as any).access || (response.data as any).tokens?.access;
+        const refresh = (response.data as any).refresh || (response.data as any).tokens?.refresh;
+        const tokens = access && refresh ? { access, refresh } : (response.data as any).tokens;
+        const userData = (response.data as any).user as User | undefined;
 
         if (tokens && userData) {
           // Account activated successfully with tokens - user is automatically logged in
@@ -584,7 +581,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // New API methods
-  const sendPhoneVerification = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+  const sendPhoneVerification = async (phone?: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.sendPhoneVerification(phone);
       if (response.success !== false) {
@@ -600,7 +597,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const verifyPhoneCode = async (phone: string, code: string): Promise<{ success: boolean; error?: string }> => {
+  const verifyPhoneCode = async (phone: string | undefined, code: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await apiClient.verifyPhoneCode(phone, code);
       if (response.success !== false) {

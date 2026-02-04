@@ -96,7 +96,7 @@ const ForgotPassword = () => {
       // First verify the code to ensure it's valid
       const verifyResult = await verifyCode({
         phone_number: phoneToUse,
-        verification_code: code
+        code
       });
 
       if (verifyResult.success) {

@@ -62,7 +62,9 @@ export interface RegisterRequest {
 export interface LoginResponse {
   message: string;
   user: User;
-  tokens: AuthTokens;
+  access?: string;
+  refresh?: string;
+  tokens?: AuthTokens;
 }
 
 export interface RegisterResponse {
@@ -1014,10 +1016,14 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        const detail = data?.detail;
+        const message = data?.message;
+        const error = data?.error;
+        const nonFieldErrors = Array.isArray(data?.non_field_errors) ? data.non_field_errors[0] : undefined;
         return {
           data: data,
-          message: data?.message,
-          error: data?.message || data?.error || 'An error occurred',
+          message: message || detail,
+          error: detail || message || error || nonFieldErrors || 'An error occurred',
           status: response.status,
           success: false,
           errors: data?.errors || data,
@@ -1096,17 +1102,28 @@ class ApiClient {
   }
 
   // Phone Verification
-  async sendPhoneVerification(phone: string): Promise<ApiResponse<{ message: string }>> {
-    return this.request<{ message: string }>(API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE, {
+  async sendPhoneVerification(phone?: string): Promise<ApiResponse<{ message: string; phone_number?: string }>> {
+    const body: { phone_number?: string } = {};
+    if (phone && phone.trim()) {
+      body.phone_number = phone.trim();
+    }
+    return this.request<{ message: string; phone_number?: string }>(API_CONFIG.ENDPOINTS.AUTH.SMS.SEND_CODE, {
       method: 'POST',
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify(body),
     });
   }
 
-  async verifyPhoneCode(phone: string, code: string): Promise<ApiResponse<{ message: string; tokens?: AuthTokens; user?: User }>> {
-    return this.request<{ message: string; tokens?: AuthTokens; user?: User }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
+  async verifyPhoneCode(phone: string | undefined, code: string): Promise<ApiResponse<{ message: string; access?: string; refresh?: string; user?: User }>> {
+    const body: { phone_number?: string; code: string; verification_code: string } = {
+      code,
+      verification_code: code,
+    };
+    if (phone && phone.trim()) {
+      body.phone_number = phone.trim();
+    }
+    return this.request<{ message: string; access?: string; refresh?: string; user?: User }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
       method: 'POST',
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -1452,34 +1469,38 @@ class ApiClient {
     });
   }
 
-  async verifySMSCode(phoneNumber: string, verificationCode: string): Promise<ApiResponse<{
+  async verifySMSCode(phoneNumber: string | undefined, code: string): Promise<ApiResponse<{
     success: boolean;
     message: string;
-    phone_verified: boolean;
-    account_activated: boolean;
-    is_verified: boolean;
-    is_active: boolean;
-    tokens: AuthTokens;
-    user: User;
+    phone_verified?: boolean;
+    account_activated?: boolean;
+    is_verified?: boolean;
+    is_active?: boolean;
+    access?: string;
+    refresh?: string;
+    tokens?: AuthTokens;
+    user?: User;
   }>> {
-    // Build request body - only include phone_number if provided
-    const body: Record<string, string> = {
-      verification_code: verificationCode,
+    const body: { phone_number?: string; code: string; verification_code: string } = {
+      code,
+      verification_code: code,
     };
 
     if (phoneNumber && phoneNumber.trim()) {
-      body.phone_number = phoneNumber;
+      body.phone_number = phoneNumber.trim();
     }
 
     return this.request<{
       success: boolean;
       message: string;
-      phone_verified: boolean;
-      account_activated: boolean;
-      is_verified: boolean;
-      is_active: boolean;
-      tokens: AuthTokens;
-      user: User;
+      phone_verified?: boolean;
+      account_activated?: boolean;
+      is_verified?: boolean;
+      is_active?: boolean;
+      access?: string;
+      refresh?: string;
+      tokens?: AuthTokens;
+      user?: User;
     }>(API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE, {
       method: 'POST',
       body: JSON.stringify(body),

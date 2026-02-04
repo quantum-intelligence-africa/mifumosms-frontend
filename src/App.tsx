@@ -11,7 +11,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import EmailActivation from "./pages/EmailActivation";
+import Smsactivation from "./pages/Smsactivation";
 import Dashboard from "./pages/Dashboard";
 import Conversations from "./pages/Conversations";
 import Contacts from "./pages/Contacts";
@@ -67,7 +67,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/activate-email" element={<EmailActivation />} />
+            <Route path="/smsactivation" element={<Smsactivation />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/developer" element={<Developer />} />

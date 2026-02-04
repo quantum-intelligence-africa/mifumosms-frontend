@@ -73,11 +73,8 @@ const Login = () => {
         navigate(from, { replace: true });
       } else {
         const errorMessage = result.error || "Please check your credentials and try again.";
-        const needsActivation = errorMessage.toLowerCase().includes('not been activated') ||
-                                errorMessage.toLowerCase().includes('activation') ||
-                                errorMessage.toLowerCase().includes('verification code');
 
-        if (needsActivation) {
+        if (result.requiresActivation) {
           const resultPhone = (result as any).phoneNumber;
           const storedPhone = localStorage.getItem('pending_phone_activation');
           const storedMethod = localStorage.getItem('pending_verification_method') as 'sms' | 'email' | null;
@@ -107,7 +104,7 @@ const Login = () => {
             duration: 10000
           });
 
-          navigate('/activate-email', {
+          navigate('/smsactivation', {
             state: {
               email: formData.email,
               phoneNumber: phoneNumber,
