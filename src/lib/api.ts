@@ -945,14 +945,17 @@ class ApiClient {
       const response = await fetch(url, config);
 
       // Log error responses for debugging (without exposing full URL)
-      if (!response.ok) {
+      // Skip logging for login 400 errors (expected for unverified accounts requiring SMS activation)
+      const isLoginActivationFlow = endpoint.includes('/auth/login/') && response.status === 400;
+      if (!response.ok && !isLoginActivationFlow) {
         logger.error('API request failed', { status: response.status, method: config.method || 'GET' });
       }
 
       const data = await response.json();
 
       // Log error response data for debugging
-      if (!response.ok) {
+      // Skip logging for login 400 errors (expected for unverified accounts requiring SMS activation)
+      if (!response.ok && !isLoginActivationFlow) {
         logger.error('API error response received');
       }
 
