@@ -399,9 +399,12 @@ const SenderNames = () => {
     }
   };
 
-  const handleDeleteRequest = async (id: string) => {
+  const handleDeleteRequest = async (sender: any) => {
     try {
-      const result = await deleteSenderName(id);
+      // Pass sender_id if available, otherwise pass id
+      const idToDelete = 'sender_id' in sender ? sender.sender_id : sender.id;
+
+      const result = await deleteSenderName(idToDelete);
 
       if (result.success) {
         toast({
@@ -1018,7 +1021,7 @@ const SenderNames = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleDeleteRequest(sender.id)}
+                                onClick={() => handleDeleteRequest(sender)}
                                 disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -1118,7 +1121,7 @@ const SenderNames = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => handleDeleteRequest(sender.id)}
+                                  onClick={() => handleDeleteRequest(sender)}
                                   disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />

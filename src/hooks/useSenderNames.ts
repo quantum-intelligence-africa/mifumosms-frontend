@@ -212,13 +212,29 @@ export function useSenderNames() {
 	const deleteSenderName = async (requestId: string) => {
 		try {
 			setError(null);
-			const response = await apiClient.deleteRequest(requestId);
+
+			// If requestId looks like a sender_id (not a UUID), fetch the actual request ID
+			let actualRequestId = requestId;
+			if (!requestId.includes('-') || requestId.length < 20) {
+				// Try to find the actual request ID from user requests
+				const requestsResponse = await apiClient.getUserRequests();
+				if (requestsResponse.success && requestsResponse.data?.results) {
+					const foundRequest = requestsResponse.data.results.find((req: any) =>
+						req.sender_name === requestId
+					);
+					if (foundRequest && foundRequest.id) {
+						actualRequestId = foundRequest.id;
+					}
+				}
+			}
+
+			const response = await apiClient.deleteRequest(actualRequestId);
 
 			if (response.success) {
 				// Remove the request from the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
-					return currentList.filter(req => req.id !== requestId);
+					return currentList.filter(req => req.id !== actualRequestId && req.sender_id !== requestId);
 				});
 
 				// Refresh data from server to ensure consistency
