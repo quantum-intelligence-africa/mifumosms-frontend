@@ -71,7 +71,8 @@ export function useTeam(tenantId: string | null, token?: string) {
     const err = body as ApiError;
 
     // Check for field-level errors (like "email" field errors)
-    let errorMessage = err.error || (body as any).detail || 'Request failed';
+    const bodyRecord = body as Record<string, unknown>;
+    let errorMessage = err.error || (bodyRecord.detail as string) || 'Request failed';
 
     // Check for field-specific errors first
     if (err.errors && typeof err.errors === 'object') {
@@ -87,8 +88,8 @@ export function useTeam(tenantId: string | null, token?: string) {
     }
 
     // Also check if body has email field directly (for validation errors)
-    if ((body as any).email && typeof (body as any).email === 'string') {
-      errorMessage = (body as any).email;
+    if (bodyRecord.email && typeof bodyRecord.email === 'string') {
+      errorMessage = bodyRecord.email;
     }
 
     return {

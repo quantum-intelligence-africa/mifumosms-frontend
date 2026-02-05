@@ -2,7 +2,7 @@ import { Send, MessageSquare, Users, FileText, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function QuickActions() {
   const navigate = useNavigate();

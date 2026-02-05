@@ -79,7 +79,7 @@ import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { normalizePhoneNumber, formatPhoneNumber, validatePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
 import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
 import { useClickOutside } from "@/hooks/useClickOutside";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Contacts = () => {
   const { toast } = useToast();

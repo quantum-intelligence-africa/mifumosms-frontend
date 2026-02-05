@@ -5,7 +5,7 @@ import { BarChart3, TrendingUp, Clock, BarChart, LineChart, PieChart } from "luc
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   BarChart as RechartsBarChart,
   Bar,

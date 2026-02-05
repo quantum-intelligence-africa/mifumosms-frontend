@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface Campaign {
   id: string;
@@ -95,8 +95,8 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
             </div>
             <h4 className="text-sm sm:text-base font-medium text-foreground mb-1">{t("dashboard.recent_campaigns.empty_title")}</h4>
             <p className="text-xs sm:text-sm text-text-subtle mb-4">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               size="sm"
               onClick={() => navigate('/campaigns?new=true')}
               className="text-xs sm:text-sm"

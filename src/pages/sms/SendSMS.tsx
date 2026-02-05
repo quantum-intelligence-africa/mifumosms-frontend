@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Send,
@@ -17,7 +17,7 @@ import {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +35,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient } from "@/lib/api";
+import { apiClient, Contact, SenderNameRequest, UnifiedSenderName } from "@/lib/api";
 import { logger } from "@/utils/logger";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
@@ -66,7 +66,7 @@ const SendSMS = () => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
-  const [segmentContacts, setSegmentContacts] = useState<any[]>([]);
+  const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
   const [isLoadingSegmentContacts, setIsLoadingSegmentContacts] = useState(false);
 
   // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
@@ -97,10 +97,10 @@ const SendSMS = () => {
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
   const approvedSenderRequests = useMemo(() => {
     return (senderNames || [])
-      .filter((req: any) => (req.status === "approved" || req.status === "active") && (req.sender_id || req.sender_name) && (req.sender_id || req.sender_name).trim() !== "")
-      .map((req: any) => ({
+      .filter((req: SenderNameRequest | UnifiedSenderName) => (req.status === "approved" || req.status === "active") && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null)) && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null))?.trim() !== "")
+      .map((req: SenderNameRequest | UnifiedSenderName) => ({
         id: req.id,
-        sender_id: req.sender_id || req.sender_name,
+        sender_id: ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '',
         status: req.status
       }));
   }, [senderNames]);
@@ -112,7 +112,7 @@ const SendSMS = () => {
   ], [segmentCounts]);
 
   // Function to fetch contacts by segment
-  const fetchContactsBySegment = async (segmentId: string) => {
+  const fetchContactsBySegment = useCallback(async (segmentId: string) => {
     setIsLoadingSegmentContacts(true);
     try {
       // Fetch all contacts first, then filter on frontend
@@ -159,7 +159,7 @@ const SendSMS = () => {
     } finally {
       setIsLoadingSegmentContacts(false);
     }
-  };
+  }, [toast]);
 
   // SMS segment calculation using proper formula
   const segmentInfo = getSegmentInfo(message);
@@ -184,7 +184,7 @@ const SendSMS = () => {
     if (selectedMode === "segment" && selectedSegment) {
       fetchContactsBySegment(selectedSegment);
     }
-  }, [selectedMode, selectedSegment]);
+  }, [selectedMode, selectedSegment, fetchContactsBySegment]);
 
   const location = useLocation();
 
@@ -222,13 +222,13 @@ const SendSMS = () => {
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
     // Prefer Taarifa-SMS if available and approved, otherwise first approved
-    const defaultPreferred = approvedSenderRequests.find((r: any) => r.sender_id === "Taarifa-SMS");
+    const defaultPreferred = approvedSenderRequests.find((r) => r.sender_id === "Taarifa-SMS");
     const firstApproved = defaultPreferred || approvedSenderRequests[0];
     if (firstApproved?.sender_id) setSelectedSender(firstApproved.sender_id);
   }, [selectedSender, approvedSenderRequests]);
 
   const getSelectedSenderName = () => {
-    const found = approvedSenderRequests.find((r: any) => r.sender_id === selectedSender);
+    const found = approvedSenderRequests.find((r) => r.sender_id === selectedSender);
     return found?.sender_id || "";
   };
 

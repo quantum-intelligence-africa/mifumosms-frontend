@@ -75,12 +75,13 @@ const Login = () => {
         const errorMessage = result.error || "Please check your credentials and try again.";
 
         if (result.requiresActivation) {
-          const resultPhone = (result as any).phoneNumber;
+          const resultData = result as Record<string, unknown>;
+          const resultPhone = resultData.phoneNumber as string | undefined;
           const storedPhone = localStorage.getItem('pending_phone_activation');
           const storedMethod = localStorage.getItem('pending_verification_method') as 'sms' | 'email' | null;
 
           let verificationMethod: 'sms' | 'email' = 'sms';
-          let phoneNumber: string | undefined = resultPhone || storedPhone || undefined;
+          const phoneNumber = resultPhone || storedPhone || undefined;
 
           if (storedMethod) {
             verificationMethod = storedMethod;

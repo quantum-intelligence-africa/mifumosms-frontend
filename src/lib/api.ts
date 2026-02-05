@@ -14,9 +14,24 @@ export interface ApiResponse<T = unknown> {
 }
 
 // Authentication Types
+// Role Types
+export type UserRole = 'owner' | 'admin' | 'agent';
+export type MembershipStatus = 'active' | 'pending' | 'suspended';
+
+export interface Membership {
+  id?: string;
+  tenant: string;
+  tenant_id?: string;
+  role: UserRole;
+  status: MembershipStatus;
+  joined_at?: string;
+  created_at?: string;
+}
+
 export interface User {
   id: string | number;
   email: string;
+  username?: string;
   first_name: string;
   last_name: string;
   full_name?: string;
@@ -34,8 +49,12 @@ export interface User {
   is_staff?: boolean;
   phone_verified?: boolean;
   created_at?: string;
-  is_owner?: boolean; // Account owner (can request to become partina)
-  is_partina?: boolean; // Partner role (approved by admin)
+  // Role and Partina fields
+  is_owner?: boolean; // Account owner (legacy field)
+  is_partina?: boolean; // Partina status (approved by admin)
+  partina_requested_at?: string | null; // When user requested Partina status
+  partina_approved_at?: string | null; // When user was approved as Partina
+  memberships?: Membership[]; // User's roles in different tenants
 }
 
 export interface AuthTokens {
@@ -44,7 +63,7 @@ export interface AuthTokens {
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string; // Changed from email to username
   password: string;
 }
 
@@ -3783,7 +3802,7 @@ class ApiClient {
       formData.append('requested_sender_id', data.requested_sender_id);
       formData.append('request_type', data.request_type);
       formData.append('sample_content', data.sample_content);
-      
+
       // Only append optional fields if they exist
       if (data.sender_name_purpose) {
         formData.append('sender_name_purpose', data.sender_name_purpose);

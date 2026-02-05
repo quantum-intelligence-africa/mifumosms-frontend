@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useRoles } from "@/hooks/useRoles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -320,6 +321,42 @@ print(response.json())`,
 ];
 
 const PertinaIntegration = () => {
+  const { isPartina } = useRoles();
+
+  // Check if user is Partina - show access restriction if not
+  if (!isPartina()) {
+    return (
+      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Partina Access Required</h2>
+          <p className="text-text-subtle mb-6">Partina Integration API documentation is exclusively available for approved Mifumo Connect Partners (Partina).</p>
+          <div className="bg-surface rounded-lg p-4 text-left mb-6">
+            <p className="text-sm text-text-subtle font-medium mb-2">To access Partina features:</p>
+            <ol className="text-sm text-text-subtle space-y-2 list-decimal list-inside">
+              <li>Go to <strong>Settings</strong></li>
+              <li>Find the <strong>Partina</strong> section</li>
+              <li>Submit your Partina application</li>
+              <li>Wait for admin approval</li>
+              <li>Once approved, return to access Partina Integration documentation</li>
+            </ol>
+          </div>
+          <a href="/settings" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+            Request Partina Status
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return <PertinaIntegrationContent />;
+};
+
+const PertinaIntegrationContent = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { language } = useLanguage();

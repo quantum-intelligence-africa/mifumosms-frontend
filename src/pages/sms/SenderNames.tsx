@@ -56,7 +56,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
@@ -404,7 +404,7 @@ const SenderNames = () => {
     }
   };
 
-  const handleDeleteRequest = async (sender: any) => {
+  const handleDeleteRequest = async (sender: SenderNameRequest | UnifiedSenderName) => {
     try {
       // Pass sender_id if available, otherwise pass id
       const idToDelete = 'sender_id' in sender ? sender.sender_id : sender.id;

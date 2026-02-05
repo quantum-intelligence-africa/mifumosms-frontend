@@ -23,7 +23,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
     );
   }
 
-  const { isAuthenticated, isLoading, user } = authContext;
+  const { isAuthenticated, isLoading } = authContext;
 
   if (isLoading) {
     return (
@@ -48,8 +48,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check partner role if required
-  if (requirePartner && !user?.is_partina) {
+  // Check partner role if required - use context method for proper validation
+  if (requirePartner && !authContext.isPartina()) {
     return (
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -59,19 +59,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Partner Access Required</h2>
-          <p className="text-text-subtle mb-6">This feature is exclusively for Mifumo Connect Partners.</p>
+          <p className="text-text-subtle mb-6">This feature is exclusively for Mifumo Connect Partners (Partina).</p>
           <div className="bg-surface rounded-lg p-4 text-left mb-6">
-            <p className="text-sm text-text-subtle font-medium mb-2">How to Get Partner Access:</p>
+            <p className="text-sm text-text-subtle font-medium mb-2">How to Get Partina Access:</p>
             <ol className="text-sm text-text-subtle space-y-2 list-decimal list-inside">
               <li>Go to <strong>Settings</strong></li>
-              <li>Find the <strong>Partner</strong> section</li>
-              <li>Submit your partner request</li>
+              <li>Find the <strong>Partina/Partner</strong> section</li>
+              <li>Submit your Partina request</li>
               <li>Wait for admin approval</li>
-              <li>Once approved, you'll see partner features</li>
+              <li>Once approved, you'll see Partina features</li>
             </ol>
           </div>
           <a href="/settings" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-            Request Partner Status
+            Request Partina Status
           </a>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/hooks/useLanguage';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 

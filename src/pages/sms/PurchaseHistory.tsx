@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useBillingHistory, BillingTransaction } from "@/hooks/useBillingHistory";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const PurchaseHistory = () => {
   const isMobile = useIsMobile();

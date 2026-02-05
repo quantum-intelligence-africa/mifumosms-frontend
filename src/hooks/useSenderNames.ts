@@ -40,45 +40,43 @@ export function useSenderNames() {
 			setLoading(true);
 			setError(null);
 
-			let response;
-			if (useUnified) {
-				// Use the new unified endpoint
-				response = await apiClient.getUnifiedSenderNames(tenantId);
-			} else {
-				// Use the legacy endpoint
-				response = await apiClient.getUserRequests();
-			}
+			const response = useUnified
+				? await apiClient.getUnifiedSenderNames(tenantId)
+				: await apiClient.getUserRequests();
 
 			if (response.success && response.data) {
-				let results = [];
+				let results: SenderNameRequest[] = [];
 				if (useUnified) {
 					// Handle unified response structure - just use data array directly
-					if ((response.data as any).data && Array.isArray((response.data as any).data)) {
-						results = (response.data as any).data;
+					const responseData = response.data as Record<string, unknown>;
+					if (responseData.data && Array.isArray(responseData.data)) {
+						results = responseData.data as SenderNameRequest[];
 					}
 				} else {
 					// Handle legacy response structures
-					if (Array.isArray(response.data)) {
+					const responseData = response.data as Record<string, unknown> | SenderNameRequest[];
+					if (Array.isArray(responseData)) {
 						// If data is directly an array
-						results = response.data;
-					} else if ((response.data as any).results && Array.isArray((response.data as any).results)) {
-						// If data has a results property
-						results = (response.data as any).results;
-					} else if ((response.data as any).data && Array.isArray((response.data as any).data)) {
-						// If data has a nested data property
-						results = (response.data as any).data;
+						results = responseData;
+					} else if (typeof responseData === 'object' && responseData !== null) {
+						const dataObj = responseData as Record<string, unknown>;
+						if (dataObj.results && Array.isArray(dataObj.results)) {
+							// If data has a results property
+							results = dataObj.results as SenderNameRequest[];
+						} else if (dataObj.data && Array.isArray(dataObj.data)) {
+							// If data has a nested data property
+							results = dataObj.data as SenderNameRequest[];
+						}
 					}
 
 					// Additional validation: Ensure we only show current user's requests (legacy only)
 					// Filter out any requests that might belong to other users
 					const currentUserId = authContext?.user?.id;
 
-					if (currentUserId) {
-						results = results.filter((request: any) => {
-							// Check if the request belongs to the current user
-							// Use the correct field extraction: user_id || user
-							const requestUserId = request.user_id || request.user;
-							return requestUserId === currentUserId;
+					if (currentUserId && typeof currentUserId === 'number') {
+						results = results.filter((request: SenderNameRequest) => {
+							// Check if the request belongs to the current user using created_by field
+							return request.created_by === currentUserId;
 						});
 					}
 				}
@@ -220,7 +218,7 @@ export function useSenderNames() {
 				// Try to find the actual request ID from user requests
 				const requestsResponse = await apiClient.getUserRequests();
 				if (requestsResponse.success && requestsResponse.data?.results) {
-					const foundRequest = requestsResponse.data.results.find((req: any) =>
+					const foundRequest = (requestsResponse.data.results as SenderNameRequest[]).find((req: SenderNameRequest) =>
 						req.sender_name === requestId
 					);
 					if (foundRequest && foundRequest.id) {
@@ -231,7 +229,7 @@ export function useSenderNames() {
 
 			const response = await apiClient.deleteRequest(actualRequestId);
 
-      if (response.success) {
+			if (response.success) {
 				// Remove the request from the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
@@ -307,7 +305,7 @@ export function useSenderNames() {
 			const calculatedStats = calculateStatsFromSenderNames(senderNames);
 			setStats(calculatedStats);
 		}
-	}, [senderNames]);
+	}, [senderNames, fetchSenderNames, fetchStats]);
 
 	const refreshData = async () => {
 		await fetchSenderNames(true); // Use unified endpoint

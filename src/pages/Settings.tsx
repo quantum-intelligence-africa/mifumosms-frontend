@@ -73,7 +73,7 @@ import { useSMSVerification } from "@/hooks/useSMSVerification";
 import { useTenants } from "@/hooks/useTenants";
 import { useTeam, TeamMember, TeamRole } from "@/hooks/useTeam";
 import { usePartinaRequest } from "@/hooks/usePartinaRequest";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useTheme } from "next-themes";
 

@@ -26,7 +26,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useRoles } from "@/hooks/useRoles";
 import {
   Collapsible,
   CollapsibleContent,
@@ -60,11 +61,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const { user, logout, isLoading } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useLanguage();
+  const { isPartina } = useRoles();
 
   // Navigation items
   // OWNER: Standard user (default role)
   // PARTINA: Partner role (requested + admin approved)
-  // Partner items only shown if user has is_partina=true
+  // Partner items only shown if user is approved Partina partner
   const navigation: NavItem[] = [
     { name: t("nav.dashboard"), href: "/dashboard", icon: Home, count: undefined },
     {
@@ -82,8 +84,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     { name: t("nav.campaigns"), href: "/campaigns", icon: Send },
     // { name: "Templates", href: "/templates", icon: FileText },
     // { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    // Partner items - only show if user has partner role
-    ...(user?.is_partina ? [
+    // Partner items - only show if user is approved Partina partner (both flag and approval timestamp)
+    ...(isPartina() ? [
       { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
       { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
     ] : []),

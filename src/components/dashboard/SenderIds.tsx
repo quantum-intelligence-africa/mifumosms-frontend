@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Hash, CheckCircle, Clock, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SenderId {
@@ -61,7 +61,7 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
 
   // Mobile card layout for each sender ID
   const MobileSenderCard = ({ senderId, index }: { senderId: SenderId; index: number }) => (
-    <div 
+    <div
       key={senderId.id || `sender-${index}`}
       className="p-3 rounded-xl glass-subtle border border-border-subtle hover:border-primary/30 transition-all"
     >
@@ -171,8 +171,8 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           </div>
           <h4 className="text-sm font-medium text-foreground mb-1">{t("dashboard.sender_ids.empty_title")}</h4>
           <p className="text-xs text-text-subtle mb-4">{t("dashboard.sender_ids.empty_subtitle")}</p>
-          <Button 
-            variant="default" 
+          <Button
+            variant="default"
             size="sm"
             onClick={handleManageSenderIds}
             className="text-xs"

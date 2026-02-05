@@ -2,6 +2,19 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { apiClient, User, AuthTokens, LoginRequest, RegisterRequest } from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
 import { useSMSVerification } from '@/hooks/useSMSVerification';
+import {
+  isPartina,
+  isOwnerInAnyTenant,
+  isAdminInAnyTenant,
+  isAgentInAnyTenant,
+  hasActiveMembership,
+  canManageUsers,
+  canAccessAdmin,
+  getPartinaStatus,
+  getHighestRole,
+  getRoleInTenant,
+  getActiveMemberships
+} from '@/utils/roleUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +38,18 @@ interface AuthContextType {
   revokeApiKey: (keyId: string) => Promise<{ success: boolean; error?: string }>;
   enableTwoFactor: (phone: string) => Promise<{ success: boolean; error?: string }>;
   disableTwoFactor: () => Promise<{ success: boolean; error?: string }>;
+  // Role checking methods
+  isPartina: () => boolean;
+  isOwnerInAnyTenant: () => boolean;
+  isAdminInAnyTenant: () => boolean;
+  isAgentInAnyTenant: () => boolean;
+  hasActiveMembership: () => boolean;
+  canManageUsers: () => boolean;
+  canAccessAdmin: () => boolean;
+  getPartinaStatus: () => { isPartina: boolean; isPending: boolean; approvedAt: string | null; requestedAt: string | null; status: 'approved' | 'pending' | 'none' };
+  getHighestRole: () => 'owner' | 'admin' | 'agent' | null;
+  getRoleInTenant: (tenantId: string) => 'owner' | 'admin' | 'agent' | null;
+  getActiveMemberships: () => any[];
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -715,6 +740,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     revokeApiKey,
     enableTwoFactor,
     disableTwoFactor,
+    // Role checking methods
+    isPartina: () => isPartina(user),
+    isOwnerInAnyTenant: () => isOwnerInAnyTenant(user),
+    isAdminInAnyTenant: () => isAdminInAnyTenant(user),
+    isAgentInAnyTenant: () => isAgentInAnyTenant(user),
+    hasActiveMembership: () => hasActiveMembership(user),
+    canManageUsers: () => canManageUsers(user),
+    canAccessAdmin: () => canAccessAdmin(user),
+    getPartinaStatus: () => getPartinaStatus(user),
+    getHighestRole: () => getHighestRole(user),
+    getRoleInTenant: (tenantId: string) => getRoleInTenant(user, tenantId),
+    getActiveMemberships: () => getActiveMemberships(user),
   };
 
   return (
