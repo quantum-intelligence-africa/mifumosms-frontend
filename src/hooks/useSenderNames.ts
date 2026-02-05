@@ -140,8 +140,9 @@ export function useSenderNames() {
 
 			// Use JSON API for better error handling and required fields
 			const response = await apiClient.submitSenderRequestJSON({
-				requested_sender_id: data.sender_name,
-				sample_content: data.use_case,
+				requested_sender_id: data.requested_sender_id || data.sender_name,
+				request_type: data.request_type || 'custom',
+				sample_content: data.sample_content || data.use_case,
 				sender_name_purpose: data.sender_name_purpose || data.use_case,
 				kyc_documents: data.supporting_documents
 			});

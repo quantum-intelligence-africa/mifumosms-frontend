@@ -162,6 +162,7 @@ const SenderNames = () => {
   const [requestedSenderId, setRequestedSenderId] = useState("");
   const [sampleContent, setSampleContent] = useState("");
   const [senderNamePurpose, setSenderNamePurpose] = useState("");
+  const [requestType, setRequestType] = useState("custom");
   const [submitting, setSubmitting] = useState(false);
   const [kycDocuments, setKycDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -348,8 +349,11 @@ const SenderNames = () => {
     try {
       const result = await createSenderName({
         sender_name: requestedSenderId,
+        requested_sender_id: requestedSenderId,
+        request_type: requestType,
+        sample_content: sampleContent,
         use_case: senderNamePurpose,
-        sender_name_purpose: senderNamePurpose,
+        sender_name_purpose: senderNamePurpose || undefined,
         supporting_documents: kycDocuments
       });
 
@@ -361,6 +365,7 @@ const SenderNames = () => {
         setRequestedSenderId("");
         setSampleContent("");
         setSenderNamePurpose("");
+        setRequestType("custom");
         setKycDocuments([]);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -1176,6 +1181,19 @@ const SenderNames = () => {
                     <p className="text-xs text-text-subtle">
                       {requestedSenderId.length}/11 characters (letters, numbers, spaces, _, -)
                     </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Request Type *</Label>
+                    <select
+                      value={requestType}
+                      onChange={(e) => setRequestType(e.target.value)}
+                      className="glass-subtle border border-border rounded-md px-2 py-1 text-xs sm:text-sm w-full h-8 bg-background"
+                    >
+                      <option value="custom">Custom</option>
+                      <option value="default">Default</option>
+                    </select>
+                    <p className="text-xs text-text-subtle">Choose whether this is a custom or default request type</p>
                   </div>
 
                   <div className="space-y-1">

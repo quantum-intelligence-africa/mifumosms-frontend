@@ -775,8 +775,11 @@ export interface UsageRecord {
 }
 
 export interface CreateSenderNameRequest {
-  sender_name: string;
-  use_case: string;
+  sender_name?: string;
+  requested_sender_id?: string;
+  request_type?: string;
+  sample_content?: string;
+  use_case?: string;
   sender_name_purpose?: string;
   supporting_documents?: File[];
 }
@@ -3770,15 +3773,21 @@ class ApiClient {
   // POST /api/messaging/sender-requests/submit/
   async submitSenderRequestJSON(data: {
     requested_sender_id: string;
+    request_type: string;
     sample_content: string;
-    sender_name_purpose: string;
+    sender_name_purpose?: string;
     kyc_documents?: File[];
   }): Promise<ApiResponse<SenderNameRequest>> {
     try {
       const formData = new FormData();
       formData.append('requested_sender_id', data.requested_sender_id);
+      formData.append('request_type', data.request_type);
       formData.append('sample_content', data.sample_content);
-      formData.append('sender_name_purpose', data.sender_name_purpose);
+      
+      // Only append optional fields if they exist
+      if (data.sender_name_purpose) {
+        formData.append('sender_name_purpose', data.sender_name_purpose);
+      }
 
       // Append each file to kyc_documents array
       if (data.kyc_documents && data.kyc_documents.length > 0) {
