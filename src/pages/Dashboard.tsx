@@ -106,31 +106,35 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {/* Metrics Grid - 4 Main Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            {/* Metrics Grid - Always 2 per row on mobile, 4 on desktop */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
               <MetricCard
                 title={t("dashboard.metric.total_messages")}
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}
                 icon={MessageSquare}
                 description={metrics?.total_messages?.description || t("dashboard.metric.last_30_days")}
+                emptyMessage={t("dashboard.empty.no_messages") || "No messages yet"}
               />
               <MetricCard
                 title={t("dashboard.metric.active_contacts")}
                 value={metrics?.active_contacts?.value?.toLocaleString() || "0"}
                 icon={Users}
                 description={metrics?.active_contacts?.description || t("dashboard.metric.engaged_this_month")}
+                emptyMessage={t("dashboard.empty.no_contacts") || "Add contacts to start"}
               />
               <MetricCard
                 title={t("dashboard.metric.campaign_success")}
                 value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || ""}`}
                 icon={Target}
                 description={metrics?.campaign_success?.description || t("dashboard.metric.delivery_rate")}
+                emptyMessage={t("dashboard.empty.no_campaigns") || "Create a campaign"}
               />
               <MetricCard
                 title={t("dashboard.metric.sender_id")}
                 value={senderIds?.filter(id => id.status?.toLowerCase() === 'active').length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
                 icon={Hash}
                 description={t("dashboard.metric.approved_sender_names")}
+                emptyMessage={t("dashboard.empty.no_sender_ids") || "Request a sender ID"}
               />
             </div>
 

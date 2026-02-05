@@ -87,11 +87,22 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {campaigns.length === 0 ? (
-          <div className="text-center py-8 text-text-subtle">
-            <p>{t("dashboard.recent_campaigns.empty_title")}</p>
-            <p className="text-sm">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
+          <div className="text-center py-10 sm:py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+              <Send className="w-7 h-7 text-muted-foreground/50" />
+            </div>
+            <h4 className="text-sm sm:text-base font-medium text-foreground mb-1">{t("dashboard.recent_campaigns.empty_title")}</h4>
+            <p className="text-xs sm:text-sm text-text-subtle mb-4">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={() => navigate('/campaigns?new=true')}
+              className="text-xs sm:text-sm"
+            >
+              {t("dashboard.quick_actions.add_campaign")}
+            </Button>
           </div>
         ) : (
           campaigns.slice(0, 3).map((campaign, index) => {

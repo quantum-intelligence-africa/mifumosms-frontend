@@ -231,11 +231,11 @@ export function useSenderNames() {
 
 			const response = await apiClient.deleteRequest(actualRequestId);
 
-			if (response.success) {
+      if (response.success) {
 				// Remove the request from the list immediately for better UX
 				setSenderNames(prev => {
 					const currentList = Array.isArray(prev) ? prev : [];
-					return currentList.filter(req => req.id !== actualRequestId && req.sender_id !== requestId);
+					return currentList.filter(req => req.id !== actualRequestId && req.sender_name !== requestId);
 				});
 
 				// Refresh data from server to ensure consistency

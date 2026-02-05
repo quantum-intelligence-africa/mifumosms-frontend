@@ -33,7 +33,6 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PertinaInsights from "./pages/PertinaInsights";
 import Developer from "./pages/Developer";
-import { MetadataRoute } from "next";
 
 const queryClient = new QueryClient();
 
