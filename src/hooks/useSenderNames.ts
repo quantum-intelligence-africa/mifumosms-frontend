@@ -141,7 +141,9 @@ export function useSenderNames() {
 			// Use JSON API for better error handling and required fields
 			const response = await apiClient.submitSenderRequestJSON({
 				requested_sender_id: data.sender_name,
-				sample_content: data.use_case
+				sample_content: data.use_case,
+				sender_name_purpose: data.sender_name_purpose || data.use_case,
+				kyc_documents: data.supporting_documents
 			});
 
 			if (response.success && response.data) {

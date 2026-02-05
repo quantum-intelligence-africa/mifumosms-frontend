@@ -56,12 +56,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
 const SenderNames = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const {
     senderNames,
     stats,
@@ -157,10 +159,11 @@ const SenderNames = () => {
   };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
-  const [newSenderName, setNewSenderName] = useState("");
-  const [useCase, setUseCase] = useState("");
+  const [requestedSenderId, setRequestedSenderId] = useState("");
+  const [sampleContent, setSampleContent] = useState("");
+  const [senderNamePurpose, setSenderNamePurpose] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [kycDocuments, setKycDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingSender, setEditingSender] = useState<SenderNameRequest | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -263,33 +266,33 @@ const SenderNames = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
-      // Validate file types
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      // Validate file types (PDF only)
+      const allowedTypes = ['application/pdf'];
       const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
 
       if (invalidFiles.length > 0) {
         toast({
           title: "Invalid file type",
-          description: "Please upload only PDF, JPEG, or PNG files",
+          description: "Please upload only PDF files",
           variant: "destructive"
         });
         return;
       }
 
-      // Validate file sizes (5MB limit per file)
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      // Validate file sizes (8MB limit per file per API spec)
+      const maxSize = 8 * 1024 * 1024; // 8MB
       const oversizedFiles = files.filter(file => file.size > maxSize);
 
       if (oversizedFiles.length > 0) {
         toast({
           title: "File too large",
-          description: "Please upload files smaller than 5MB each",
+          description: "Please upload files smaller than 8MB each",
           variant: "destructive"
         });
         return;
       }
 
-      setSelectedFiles(files);
+      setKycDocuments(files);
       toast({
         title: "Files selected",
         description: `${files.length} file(s) selected for upload`,
@@ -298,52 +301,56 @@ const SenderNames = () => {
   };
 
   const handleRemoveFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setKycDocuments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleRemoveAllFiles = () => {
-    setSelectedFiles([]);
+    setKycDocuments([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const handleRequestSenderName = async () => {
-    if (!newSenderName.trim()) {
+    if (!requestedSenderId.trim()) {
       toast({
-        title: "Sender name required",
-        description: "Please enter a sender name",
+        title: "Sender ID required",
+        description: "Please enter a sender ID",
         variant: "destructive"
       });
       return;
     }
 
-    if (!useCase.trim()) {
+    if (!sampleContent.trim()) {
       toast({
-        title: "Use case required",
-        description: "Please describe how you'll use this sender name",
+        title: "Sample content required",
+        description: "Please provide an example SMS message",
         variant: "destructive"
       });
       return;
     }
 
-    if (useCase.length < 10) {
+    // Purpose and KYC documents are now optional
+
+    if (senderNamePurpose.trim() && senderNamePurpose.trim() && senderNamePurpose.length < 10) {
       toast({
-        title: "Use case too short",
-        description: "Please provide at least 10 characters describing your use case",
+        title: "Purpose too short",
+        description: "Please provide at least 10 characters describing the purpose",
         variant: "destructive"
       });
       return;
     }
 
+    // KYC documents are now optional
 
     setSubmitting(true);
 
     try {
       const result = await createSenderName({
-        sender_name: newSenderName,
-        use_case: useCase,
-        supporting_documents: selectedFiles
+        sender_name: requestedSenderId,
+        use_case: senderNamePurpose,
+        sender_name_purpose: senderNamePurpose,
+        supporting_documents: kycDocuments
       });
 
       if (result.success) {
@@ -351,16 +358,17 @@ const SenderNames = () => {
         setShowRequestDialog(false);
 
         // Reset form
-        setNewSenderName("");
-        setUseCase("");
-        setSelectedFiles([]);
+        setRequestedSenderId("");
+        setSampleContent("");
+        setSenderNamePurpose("");
+        setKycDocuments([]);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
 
         toast({
           title: "Request submitted",
-          description: "Your sender name request is pending approval",
+          description: "Your sender ID request has been submitted and is pending approval. Our admin team will review within 2-3 business days.",
         });
       } else {
         setSubmitting(false);
@@ -457,10 +465,10 @@ const SenderNames = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
                   <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                    Sender Names
+                    {t('sender_names')}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                    Manage your registered sender IDs for SMS campaigns
+                    {t('manage_sender_ids')}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -487,7 +495,7 @@ const SenderNames = () => {
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin" />
-                    <span>Loading sender names...</span>
+                    <span>{t('loading_sender_names')}</span>
                   </div>
                 </div>
               </Card>
@@ -507,7 +515,7 @@ const SenderNames = () => {
           <div className="flex-1 flex items-center justify-center">
             <div className="flex items-center gap-2">
               <Loader2 className="w-6 h-6 animate-spin" />
-              <span>Loading sender names...</span>
+              <span>{t('loading_sender_names')}</span>
             </div>
           </div>
         </div>
@@ -527,10 +535,10 @@ const SenderNames = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
                   <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                    Sender Names
+                    {t('sender_names')}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                    Manage your registered sender IDs for SMS campaigns
+                    {t('manage_sender_ids')}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -640,7 +648,7 @@ const SenderNames = () => {
                 <div className="flex gap-3">
                   <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
                    <div>
-                     <h3 className="font-semibold text-destructive mb-2">Error loading sender names</h3>
+                     <h3 className="font-semibold text-destructive mb-2">{t('error_loading_sender_names')}</h3>
                      <p className="text-sm text-text-subtle mb-4">{error}</p>
                      {error?.includes('permission') && (
                        <p className="text-xs text-text-subtle mb-4">
@@ -668,10 +676,10 @@ const SenderNames = () => {
                     <Plus className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-lg font-semibold mb-2">
-                    No sender names available
+                    {t('no_sender_names')}
                   </h3>
                   <p className="text-text-subtle">
-                    Unable to load sender names. Please try again or contact support.
+                    {t('unable_load_sender_names')}
                   </p>
                 </div>
               </Card>
@@ -696,10 +704,10 @@ const SenderNames = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="min-w-0">
                   <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                    Sender Names
+                    {t('sender_names')}
                   </h1>
                   <p className="text-sm sm:text-base text-text-subtle">
-                    Manage your registered sender IDs for SMS campaigns
+                    {t('manage_sender_ids')}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
@@ -1010,7 +1018,7 @@ const SenderNames = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleDeleteRequest(isUnified ? unifiedSender.id : legacySender.id)}
+                                onClick={() => handleDeleteRequest(sender.id)}
                                 disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -1070,17 +1078,22 @@ const SenderNames = () => {
                       <div className="flex flex-col space-y-3">
                         {/* Header with Sender Name and Status */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="flex flex-col flex-1 min-w-0">
                             <span className="font-mono font-semibold text-sm sm:text-base truncate">
                               {isUnified ? unifiedSender.sender_id : sender.sender_name}
                             </span>
+                            {!isUnified && sender.sender_name && (
+                              <span className="text-xs text-text-subtle mt-1">
+                                Sender Name: {sender.sender_name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
                             {isUnified && unifiedSender.source === "SMSSenderID" && (
                               <Badge variant="outline" className="text-xs shrink-0">
                                 Active ID
                               </Badge>
                             )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
                             {getStatusBadge(sender.status as SenderStatus)}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1105,7 +1118,7 @@ const SenderNames = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => handleDeleteRequest(isUnified ? unifiedSender.id : legacySender.id)}
+                                  onClick={() => handleDeleteRequest(sender.id)}
                                   disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
@@ -1149,41 +1162,59 @@ const SenderNames = () => {
 
                 <div className="space-y-2">
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Sender Name *</Label>
+                    <Label className="text-xs sm:text-sm">Sender ID *</Label>
                     <Input
-                      placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
-                      value={newSenderName}
-                      onChange={(e) => setNewSenderName(e.target.value)}
+                      placeholder="e.g., YourBrand, YOUR_BRAND, Your-Brand"
+                      value={requestedSenderId}
+                      onChange={(e) => setRequestedSenderId(e.target.value)}
                       maxLength={11}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {newSenderName.length}/11 characters (letters, numbers, spaces, _, -)
+                      {requestedSenderId.length}/11 characters (letters, numbers, spaces, _, -)
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Use Case *</Label>
+                    <Label className="text-xs sm:text-sm">Sample Content *</Label>
                     <Textarea
-                      placeholder="Describe how you plan to use this sender name..."
-                      value={useCase}
-                      onChange={(e) => setUseCase(e.target.value)}
+                      placeholder="e.g., Your verification code is 123456."
+                      value={sampleContent}
+                      onChange={(e) => setSampleContent(e.target.value)}
                       className="glass-subtle border-0 text-xs sm:text-sm"
                       rows={2}
                     />
+                    <p className="text-xs text-text-subtle">Provide an example SMS message using this sender ID</p>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Supporting Documents (Optional)</Label>
+                    <Label className="text-xs sm:text-sm">Purpose</Label>
+                    <Textarea
+                      placeholder="e.g., User registration verification and account notifications"
+                      value={senderNamePurpose}
+                      onChange={(e) => setSenderNamePurpose(e.target.value)}
+                      className="glass-subtle border-0 text-xs sm:text-sm"
+                      rows={2}
+                    />
+                    <p className="text-xs text-text-subtle">Describe the business use case for this sender ID</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs sm:text-sm">KYC Documents</Label>
+                      <p className="text-xs text-text-subtle mt-1">
+                        Upload PDF documents to verify your organization. Maximum 8MB per file.
+                      </p>
+                    </div>
                     <div className="border-2 border-dashed border-border rounded-lg p-2 text-center">
-                      {selectedFiles.length > 0 ? (
+                      {kycDocuments.length > 0 ? (
                         <div className="space-y-1">
                           <Check className="w-4 h-4 mx-auto text-green-500" />
                           <p className="text-xs font-medium text-green-600">
-                            {selectedFiles.length} file(s) selected
+                            {kycDocuments.length} file(s) selected
                           </p>
                           <div className="space-y-1">
-                            {selectedFiles.map((file, index) => (
+                            {kycDocuments.map((file, index) => (
                               <div key={index} className="flex items-center justify-between text-xs">
                                 <span className="truncate flex-1 mr-1">{file.name}</span>
                                 <Button
@@ -1210,23 +1241,24 @@ const SenderNames = () => {
                       ) : (
                         <div className="space-y-1">
                           <Upload className="w-4 h-4 mx-auto mb-1 text-text-subtle" />
-                          <p className="text-xs text-text-subtle mb-1">
-                            Upload business license or registration
+                          <p className="text-xs font-medium text-text-subtle mb-1">
+                            Upload KYC Documents
                           </p>
                           <p className="text-xs text-text-subtle mb-1">
-                            PDF, JPEG, or PNG (max 5MB)
+                            PDF files only - Max 8MB per file
                           </p>
                           <input
                             ref={fileInputRef}
                             type="file"
                             className="hidden"
-                            id="doc-upload"
-                            accept=".pdf,.jpg,.jpeg,.png"
+                            id="kyc-upload"
+                            accept=".pdf"
+                            multiple
                             onChange={handleFileSelect}
                           />
-                          <label htmlFor="doc-upload">
+                          <label htmlFor="kyc-upload">
                             <Button variant="outline" size="sm" asChild className="text-xs h-7">
-                              <span>Choose File</span>
+                              <span>Choose PDF Files</span>
                             </Button>
                           </label>
                         </div>
@@ -1295,7 +1327,19 @@ const SenderNames = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">Additional Supporting Documents (Optional)</Label>
+                    <div>
+                      <Label className="text-sm">Verification Documents</Label>
+                      <p className="text-xs text-text-subtle mt-1">
+                        Upload or update your official documents. Acceptable documents include:
+                      </p>
+                      <ul className="text-xs text-text-subtle list-disc list-inside mt-2 space-y-1">
+                        <li>National ID card or passport</li>
+                        <li>Business registration certificate</li>
+                        <li>Business license</li>
+                        <li>Company incorporation document</li>
+                        <li>Tax identification number (TIN) certificate</li>
+                      </ul>
+                    </div>
                     <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-4 text-center">
                       {editSelectedFiles.length > 0 ? (
                         <div className="space-y-2">
@@ -1324,8 +1368,8 @@ const SenderNames = () => {
                         <div className="space-y-2">
                           <Upload className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-text-subtle" />
                           <div>
-                            <p className="text-xs sm:text-sm font-medium">Click to upload files</p>
-                            <p className="text-xs text-text-subtle">PDF, DOC, DOCX, JPG, PNG (max 5MB each)</p>
+                            <p className="text-xs sm:text-sm font-medium">Click to upload verification documents</p>
+                            <p className="text-xs text-text-subtle">PDF, Word documents (DOC, DOCX) - Max 5MB each</p>
                           </div>
                         </div>
                       )}
@@ -1333,7 +1377,7 @@ const SenderNames = () => {
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        accept=".pdf,.doc,.docx"
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
                           setEditSelectedFiles(prev => [...prev, ...files]);

@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Server, Code, Link as LinkIcon, Zap } from "lucide-react";
 
-const partnerEndpoints = [
+const partnerEndpointsEn = [
   {
     title: "Tenant Balance",
     path: "/integration/v1/pertina/tenants/{tenant_id}/balance/",
@@ -87,11 +88,98 @@ const partnerEndpoints = [
   },
 ];
 
-const implementationSteps = [
+const partnerEndpointsSw = [
+  {
+    title: "Salio la Tenant",
+    path: "/integration/v1/pertina/tenants/{tenant_id}/balance/",
+    method: "GET",
+    description: "Hurejesha salio la mkopo kwa tenant wa Pertina aliyechaguliwa.",
+    parameters: [
+      "tenant_id (path) – UUID ya kila tenant.",
+      "Inahitaji Authorization: Bearer YOUR_API_KEY",
+    ],
+    response: `{
+  "success": true,
+  "data": {
+    "tenant_id": "e35bb90d-d67b-4e97-aa00-d983c2d282d9",
+    "sms_balance": 1200,
+    "currency": "TZS"
+  }
+}`,
+  },
+  {
+    title: "Salio la Wateja Wote",
+    path: "/integration/v1/pertina/balance/",
+    method: "GET",
+    description: "Hurejesha salio kwa wateja wote chini ya akaunti ya mshirika.",
+    parameters: [
+      "Vichujio vya hiari: ?tenant_id={uuid}",
+      "Inahitaji kichwa cha Authorization",
+    ],
+    response: `{
+  "success": true,
+  "data": [
+    { "tenant_id": "...", "sms_balance": 500, "currency": "TZS" },
+    { "tenant_id": "...", "sms_balance": 1800, "currency": "TZS" }
+  ]
+}`,
+  },
+  {
+    title: "Matumizi ya Tenant",
+    path: "/integration/v1/pertina/tenants/{tenant_id}/usage/",
+    method: "GET",
+    description: "Hupata matumizi ya SMS kwa mtumiaji mmoja (mwezi au muda).",
+    parameters: [
+      "tenant_id (path) – UUID ya tenant.",
+      "Hiari: ?start_date=2025-01-01&end_date=2025-01-31",
+    ],
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "user_id": 123,
+      "name": "Jane Doe",
+      "sent_messages": 210,
+      "credits_used": 210
+    }
+  ]
+}`,
+  },
+  {
+    title: "Matumizi ya Jumla",
+    path: "/integration/v1/pertina/usage/",
+    method: "GET",
+    description: "Takwimu za matumizi ya SMS kwa tenants wote wa mshirika.",
+    parameters: [
+      "Vichujio vya hiari: tenant_id, start_date, end_date",
+      "Inahitaji kichwa cha Authorization",
+    ],
+    response: `{
+  "success": true,
+  "data": {
+    "total_messages": 987,
+    "total_credits": 987,
+    "by_tenant": [
+      { "tenant_id": "...", "credits_used": 340 },
+      { "tenant_id": "...", "credits_used": 647 }
+    ]
+  }
+}`,
+  },
+];
+
+const implementationStepsEn = [
   "Add a dedicated `PERTINA` section to `API_CONFIG.ENDPOINTS.INTEGRATION` and keep the helper functions listed above in sync.",
   "Expose helper methods in `src/lib/api.ts` (`pertinaGetTenantBalance`, `pertinaGetAllBalance`, etc.) so consumers can call `apiClient` directly.",
   "If you use `APIService`, wrap the helper methods there so UI components stay consistent with retry/error patterns.",
   "Document the endpoints in the new Partner reference page and link to it from navigation (this page).",
+];
+
+const implementationStepsSw = [
+  "Ongeza sehemu ya `PERTINA` kwenye `API_CONFIG.ENDPOINTS.INTEGRATION` na ulinganishe helper functions zote.",
+  "Ongeza helper methods kwenye `src/lib/api.ts` (`pertinaGetTenantBalance`, `pertinaGetAllBalance`, n.k.) ili `apiClient` itumike moja kwa moja.",
+  "Kama unatumia `APIService`, funga helper methods huko ili UI ibaki sawa na mifumo ya retry/makosa.",
+  "Andika endpoints kwenye ukurasa wa Partner reference na uunganishe kwenye navigation (ukurasa huu).",
 ];
 
 const configSnippet = String.raw`PERTINA: {
@@ -113,7 +201,7 @@ async pertinaGetAllBalance(): Promise<ApiResponse<any>> {
 // Repeat for usage endpoints
 `;
 
-const partnerExamples = [
+const partnerExamplesEn = [
   {
     title: "Get Credit Balance (Single Tenant)",
     description: "Point to /pertina/tenants/{tenant_id}/balance/ and swap in your API key.",
@@ -172,9 +260,82 @@ print(response.json())`,
   },
 ];
 
+const partnerExamplesSw = [
+  {
+    title: "Pata Salio (Tenant Mmoja)",
+    description: "Tumia /pertina/tenants/{tenant_id}/balance/ na weka API key yako.",
+    command: `import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/{tenant_id}/balance/"
+
+headers = {
+  "Authorization": "Bearer YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())`,
+  },
+  {
+    title: "Pata Salio (Wateja Wote)",
+    description: "Hakuna tenant_id, jibu linaonyesha salio la kila mteja.",
+    command: `import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/balance/"
+
+headers = {
+  "Authorization": "Bearer YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())`,
+  },
+  {
+    title: "Matumizi ya SMS (Tenant Mmoja)",
+    description: "Chuja kwa tenant mmoja na unaweza kuweka start/end date.",
+    command: `import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/tenants/{tenant_id}/usage/"
+
+headers = {
+  "Authorization": "Bearer YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())`,
+  },
+  {
+    title: "Matumizi ya SMS (Tenants Wote)",
+    description: "Tumia kwa matumizi ya jumla ya taasisi kwa ulinganisho wa bili.",
+    command: `import requests
+
+url = "https://mifumosms.mifumolabs.com/api/integration/v1/pertina/usage/"
+
+headers = {
+  "Authorization": "Bearer YOUR_API_KEY"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())`,
+  },
+];
+
 const PertinaIntegration = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { language } = useLanguage();
+
+  const partnerEndpoints = useMemo(
+    () => (language === "sw" ? partnerEndpointsSw : partnerEndpointsEn),
+    [language]
+  );
+  const implementationSteps = useMemo(
+    () => (language === "sw" ? implementationStepsSw : implementationStepsEn),
+    [language]
+  );
+  const partnerExamples = useMemo(
+    () => (language === "sw" ? partnerExamplesSw : partnerExamplesEn),
+    [language]
+  );
 
   return (
     <div className="flex h-screen bg-background">
@@ -186,30 +347,34 @@ const PertinaIntegration = () => {
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-5 text-sm text-foreground">
           <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5">
             <div>
-              <h1 className="font-heading text-xl sm:text-2xl font-bold">Partner Integration Reference</h1>
+              <h1 className="font-heading text-xl sm:text-2xl font-bold">
+                {language === "sw" ? "Rejea ya Ujumuishaji wa Mshirika" : "Partner Integration Reference"}
+              </h1>
               <p className="text-sm text-foreground/90 max-w-2xl">
-                Everything you need to wire the Partner integration endpoints into the dashboard, from API
-                configuration to example requests for credit balance and usage statistics.
+                {language === "sw"
+                  ? "Kila kitu unachohitaji kuunganisha endpoints za Mshirika kwenye dashibodi, kuanzia mipangilio ya API hadi mifano ya maombi ya salio na takwimu za matumizi."
+                  : "Everything you need to wire the Partner integration endpoints into the dashboard, from API configuration to example requests for credit balance and usage statistics."}
               </p>
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              {/* <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
                   <strong>Note:</strong> Partner integration endpoints are currently not implemented on the backend.
                   This documentation is for future reference when the feature becomes available.
                 </p>
-              </div>
+              </div> */}
             </div>
 
             <Card className="glass p-3 sm:p-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="w-4 h-4" />
-                  Endpoint Overview
+                  {language === "sw" ? "Muhtasari wa Endpoints" : "Endpoint Overview"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm text-foreground/90">
-                  Partner endpoints sit under `/integration/v1/pertina` and are protected with the same API key
-                  used for sending SMS. Each request expects the standard Authorization header.
+                  {language === "sw"
+                    ? "Endpoints za mshirika ziko chini ya `/integration/v1/pertina` na zinalindwa na API key ile ile inayotumika kutuma SMS. Kila ombi linahitaji kichwa cha Authorization."
+                    : "Partner endpoints sit under `/integration/v1/pertina` and are protected with the same API key used for sending SMS. Each request expects the standard Authorization header."}
                 </p>
                 <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
                   {partnerEndpoints.map((endpoint) => (
@@ -230,7 +395,9 @@ const PertinaIntegration = () => {
                         </ul>
                       )}
                       <div>
-                        <p className="text-[11px] font-semibold uppercase text-foreground/80 mb-1">Sample response</p>
+                        <p className="text-[11px] font-semibold uppercase text-foreground/80 mb-1">
+                          {language === "sw" ? "Jibu la Mfano" : "Sample response"}
+                        </p>
                         <pre className="text-[10px] font-mono whitespace-pre-wrap bg-background p-2 rounded-md border border-border-subtle overflow-auto">{endpoint.response}</pre>
                       </div>
                     </div>
@@ -244,17 +411,20 @@ const PertinaIntegration = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Server className="w-4 h-4" />
-                    Configuration Checklist
+                    {language === "sw" ? "Orodha ya Mipangilio" : "Configuration Checklist"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-sm text-foreground/90">
                   <p>
-                    Keep `src/config/api.ts` updated so the client can resolve the Partner routes referenced by `src/lib/api.ts`.
-                    When you add a new Partner endpoint, register it in the `PERTINA` block below.
+                    {language === "sw"
+                      ? "Hakikisha `src/config/api.ts` imesasishwa ili client iweze kupata routes za Mshirika zinazotumiwa na `src/lib/api.ts`. Unapoongeza endpoint mpya, isajili kwenye block ya `PERTINA` hapa chini."
+                      : "Keep `src/config/api.ts` updated so the client can resolve the Partner routes referenced by `src/lib/api.ts`. When you add a new Partner endpoint, register it in the `PERTINA` block below."}
                   </p>
                   <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{configSnippet}</pre>
                   <p>
-                    After the config entry exists, expose helper methods inside `src/lib/api.ts` so higher layers reuse the same configuration.
+                    {language === "sw"
+                      ? "Baada ya entry kuwepo, weka helper methods ndani ya `src/lib/api.ts` ili tabaka za juu zitumie mipangilio hiyo hiyo."
+                      : "After the config entry exists, expose helper methods inside `src/lib/api.ts` so higher layers reuse the same configuration."}
                   </p>
                   <pre className="text-[11px] font-mono whitespace-pre-wrap bg-background p-3 rounded-md border border-border-subtle overflow-auto">{apiSnippet}</pre>
                 </CardContent>
@@ -264,7 +434,7 @@ const PertinaIntegration = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <LinkIcon className="w-4 h-4" />
-                    Implementation Steps
+                    {language === "sw" ? "Hatua za Utekelezaji" : "Implementation Steps"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -281,7 +451,7 @@ const PertinaIntegration = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
-                  Partner Python Examples
+                  {language === "sw" ? "Mifano ya Python ya Mshirika" : "Partner Python Examples"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -301,13 +471,25 @@ const PertinaIntegration = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Zap className="w-4 h-4" />
-                  Notes
+                  {language === "sw" ? "Vidokezo" : "Notes"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-foreground/90 space-y-1">
-                <p>Persist the API key in a secure vault and rotate it regularly—Partner endpoints rely on the same credentials as your SMS sends.</p>
-                <p>Always inspect `response.success` before trusting the data, especially for usage summaries that drive billing.</p>
-                <p>Add pagination query parameters when tenant usage responses grow beyond a page.</p>
+                <p>
+                  {language === "sw"
+                    ? "Hifadhi API key kwenye sehemu salama na ibadilishe mara kwa mara—endpoints za mshirika hutumia kitambulisho sawa na SMS zako."
+                    : "Persist the API key in a secure vault and rotate it regularly—Partner endpoints rely on the same credentials as your SMS sends."}
+                </p>
+                <p>
+                  {language === "sw"
+                    ? "Kagua `response.success` kabla ya kuamini data, hasa kwenye muhtasari wa matumizi unaoathiri bili."
+                    : "Always inspect `response.success` before trusting the data, especially for usage summaries that drive billing."}
+                </p>
+                <p>
+                  {language === "sw"
+                    ? "Ongeza vigezo vya pagination pale majibu ya matumizi ya tenant yanapokuwa mengi zaidi ya ukurasa mmoja."
+                    : "Add pagination query parameters when tenant usage responses grow beyond a page."}
+                </p>
               </CardContent>
             </Card>
           </div>

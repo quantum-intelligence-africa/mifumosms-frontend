@@ -34,6 +34,8 @@ export interface User {
   is_staff?: boolean;
   phone_verified?: boolean;
   created_at?: string;
+  is_owner?: boolean; // Account owner (can request to become partina)
+  is_partina?: boolean; // Partner role (approved by admin)
 }
 
 export interface AuthTokens {
@@ -775,6 +777,7 @@ export interface UsageRecord {
 export interface CreateSenderNameRequest {
   sender_name: string;
   use_case: string;
+  sender_name_purpose?: string;
   supporting_documents?: File[];
 }
 
@@ -1164,6 +1167,7 @@ class ApiClient {
     timezone?: string;
     date_format?: string;
     time_format?: string;
+    theme?: string;
   }): Promise<ApiResponse<{
     language: string;
     timezone: string;
@@ -1523,6 +1527,20 @@ class ApiClient {
     this.setToken(null);
     localStorage.removeItem('refresh_token');
     return { status: 200, success: true };
+  }
+
+  // =============================================
+  // PARTINA PARTNER REQUEST ENDPOINTS
+  // =============================================
+
+  async requestPartina(reason: string): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+  }>> {
+    return this.request<{ success: boolean; message: string }>('/auth/request-partina/', {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
   }
 
   // =============================================
@@ -3748,20 +3766,34 @@ class ApiClient {
     }
   }
 
-  // 1. SUBMIT SENDER NAME REQUEST (JSON version)
+  // 1. SUBMIT SENDER NAME REQUEST (with file uploads)
   // POST /api/messaging/sender-requests/submit/
   async submitSenderRequestJSON(data: {
     requested_sender_id: string;
     sample_content: string;
+    sender_name_purpose: string;
+    kyc_documents?: File[];
   }): Promise<ApiResponse<SenderNameRequest>> {
     try {
+      const formData = new FormData();
+      formData.append('requested_sender_id', data.requested_sender_id);
+      formData.append('sample_content', data.sample_content);
+      formData.append('sender_name_purpose', data.sender_name_purpose);
+
+      // Append each file to kyc_documents array
+      if (data.kyc_documents && data.kyc_documents.length > 0) {
+        data.kyc_documents.forEach((file) => {
+          formData.append('kyc_documents', file);
+        });
+      }
+
       const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/submit/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.token}`
+          // Don't set Content-Type - browser will set it with boundary for FormData
         },
-        body: JSON.stringify(data)
+        body: formData
       });
 
       return await this.handleResponse<SenderNameRequest>(response);

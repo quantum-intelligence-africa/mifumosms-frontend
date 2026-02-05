@@ -51,10 +51,12 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useBillingHistory, BillingTransaction } from "@/hooks/useBillingHistory";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PurchaseHistory = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -145,10 +147,10 @@ const PurchaseHistory = () => {
             {/* Header */}
             <div>
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                Purchase History
+                {t('purchase_history')}
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                View all your SMS credit purchases and transactions
+                {t('view_all_credit_purchases')}
               </p>
             </div>
 
@@ -409,7 +411,7 @@ const PurchaseHistory = () => {
                     <FileText className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-lg font-semibold mb-2">
-                    No transactions found
+                    {t('no_transactions')}
                   </h3>
                   <p className="text-text-subtle text-sm">
                     No transactions match your current filters
@@ -487,7 +489,7 @@ const PurchaseHistory = () => {
             <Sheet open={showDetails} onOpenChange={setShowDetails}>
               <SheetContent className="glass w-full sm:max-w-lg">
                 <SheetHeader>
-                  <SheetTitle className="text-sm sm:text-base">Transaction Details</SheetTitle>
+                  <SheetTitle className="text-sm sm:text-base">{t('transaction_details')}</SheetTitle>
                   <SheetDescription className="text-xs sm:text-sm">
                     Complete transaction information and timeline
                   </SheetDescription>

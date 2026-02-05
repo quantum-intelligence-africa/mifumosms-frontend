@@ -17,6 +17,7 @@ import {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +53,7 @@ interface Segment {
 
 const SendSMS = () => {
   const isMobile = useIsMobile();
+  const { language } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const [selectedMode, setSelectedMode] = useState<"single" | "bulk" | "segment" | null>(null);
@@ -584,10 +586,10 @@ const SendSMS = () => {
             {/* Header */}
             <div>
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                Send SMS
+                {language === "sw" ? "Tuma SMS" : "Send SMS"}
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                Send single SMS, bulk messages, or target specific segments
+                {language === "sw" ? "Tuma SMS moja kwa moja, ujumbe wengi, au kusanidi sehemu maalum" : "Send single SMS, bulk messages, or target specific segments"}
               </p>
             </div>
 
@@ -601,9 +603,9 @@ const SendSMS = () => {
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl gradient-primary flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
                     <Zap className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary-foreground" />
                   </div>
-                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">Quick SMS</h3>
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">{language === "sw" ? "SMS ya Haraka" : "Quick SMS"}</h3>
                   <p className="text-xs sm:text-sm text-text-subtle">
-                    Send instant messages to individual recipients
+                    {language === "sw" ? "Tuma ujumbe wa haraka kwa wapokeaji binafsi" : "Send instant messages to individual recipients"}
                   </p>
                 </Card>
 
@@ -614,9 +616,9 @@ const SendSMS = () => {
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl gradient-secondary flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
                     <Upload className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-secondary-foreground" />
                   </div>
-                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">File SMS</h3>
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">{language === "sw" ? "Faili la SMS" : "File SMS"}</h3>
                   <p className="text-xs sm:text-sm text-text-subtle">
-                    Upload CSV file with multiple recipients
+                    {language === "sw" ? "Pakia faili la CSV na wapokeaji wengi" : "Upload CSV file with multiple recipients"}
                   </p>
                 </Card>
 
@@ -627,9 +629,9 @@ const SendSMS = () => {
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-success flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
                     <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-success-foreground" />
                   </div>
-                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">Group SMS</h3>
+                  <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">{language === "sw" ? "SMS ya Kikundi" : "Group SMS"}</h3>
                   <p className="text-xs sm:text-sm text-text-subtle">
-                    Target contacts from saved segments
+                    {language === "sw" ? "Kusanidi wasilianaji kutoka sehemu zilizohifadhiwa" : "Target contacts from saved segments"}
                   </p>
                 </Card>
               </div>
@@ -644,9 +646,9 @@ const SendSMS = () => {
                     {selectedMode === "bulk" && <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />}
                     {selectedMode === "segment" && <Users className="w-4 h-4 sm:w-5 sm:h-5 text-success" />}
                     <h2 className="font-heading text-lg sm:text-xl font-semibold">
-                      {selectedMode === "single" && "Quick SMS"}
-                      {selectedMode === "bulk" && "Bulk SMS from File"}
-                      {selectedMode === "segment" && "Segment SMS"}
+                    {selectedMode === "single" && (language === "sw" ? "SMS ya Haraka" : "Quick SMS")}
+                    {selectedMode === "bulk" && (language === "sw" ? "Bulk SMS kutoka Faili" : "Bulk SMS from File")}
+                    {selectedMode === "segment" && (language === "sw" ? "SMS ya Sehemu" : "Segment SMS")}
                     </h2>
                   </div>
                   <Button
@@ -655,18 +657,18 @@ const SendSMS = () => {
                     onClick={() => setSelectedMode(null)}
                     className="text-xs sm:text-sm h-7 sm:h-8"
                   >
-                    <span className="hidden sm:inline">Change method</span>
-                    <span className="sm:hidden">Change</span>
+                    <span className="hidden sm:inline">{language === "sw" ? "Badilisha njia" : "Change method"}</span>
+                    <span className="sm:hidden">{language === "sw" ? "Badilisha" : "Change"}</span>
                   </Button>
                 </div>
 
                 <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                   {/* Sender Name */}
                   <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Sender Name</Label>
+                    <Label className="text-xs sm:text-sm">{language === "sw" ? "Jina la Mtumaji" : "Sender Name"}</Label>
                     <Select value={selectedSender} onValueChange={setSelectedSender}>
                       <SelectTrigger className="glass-subtle border-0">
-                        <SelectValue placeholder={senderNamesLoading ? "Loading..." : (approvedSenderRequests.length === 0 ? "No approved sender names" : "Select sender name")} />
+                        <SelectValue placeholder={senderNamesLoading ? (language === "sw" ? "Inapakia..." : "Loading...") : (approvedSenderRequests.length === 0 ? (language === "sw" ? "Hakuna majina ya mtumaji yaliyoidhinisha" : "No approved sender names") : (language === "sw" ? "Chagua jina la mtumaji" : "Select sender name"))} />
                       </SelectTrigger>
                       <SelectContent className="glass">
                         {approvedSenderRequests.map((req) => (
@@ -680,7 +682,7 @@ const SendSMS = () => {
                       <Alert className="mt-2">
                         <AlertCircle className="w-4 h-4" />
                         <AlertDescription>
-                          Failed to load sender names. Please try again.
+                          {language === "sw" ? "Imeshindwa kupakia majina ya mtumaji. Tafadhali jaribu tena." : "Failed to load sender names. Please try again."}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -688,7 +690,7 @@ const SendSMS = () => {
                       <Alert className="mt-2">
                         <AlertCircle className="w-4 h-4" />
                         <AlertDescription>
-                          You have no approved sender IDs yet. Request one in Sender Names.
+                          {language === "sw" ? "Huna ID ya mtumaji iliyoidhinisha bado. Omba moja katika Majina ya Mtumaji." : "You have no approved sender IDs yet. Request one in Sender Names."}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -697,17 +699,17 @@ const SendSMS = () => {
                   {/* Recipients - Single Mode */}
                   {selectedMode === "single" && (
                     <div className="space-y-2">
-                      <Label>Recipients</Label>
+                      <Label>{language === "sw" ? "Wapokeaji" : "Recipients"}</Label>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Enter phone number (e.g., +255700000000)"
+                          placeholder={language === "sw" ? "Ingiza namba ya simu (k.m., +255700000000)" : "Enter phone number (e.g., +255700000000)"}
                           value={newRecipient}
                           onChange={(e) => setNewRecipient(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addRecipient()}
                           className="glass-subtle border-0"
                         />
                         <Button onClick={addRecipient} variant="outline">
-                          Add
+                          {language === "sw" ? "Ongeza" : "Add"}
                         </Button>
                       </div>
                       {recipients.length > 0 && (
@@ -731,11 +733,11 @@ const SendSMS = () => {
                   {/* Recipients - Bulk Mode */}
                   {selectedMode === "bulk" && (
                     <div className="space-y-4">
-                      <Label>Upload CSV File</Label>
+                      <Label>{language === "sw" ? "Pakia Faili la CSV" : "Upload CSV File"}</Label>
                       <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
                         <Upload className="w-8 h-8 mx-auto mb-2 text-text-subtle" />
                         <p className="text-sm text-text-subtle mb-2">
-                          Upload CSV file with phone numbers
+                          {language === "sw" ? "Pakia faili la CSV na namba za simu" : "Upload CSV file with phone numbers"}
                         </p>
                         <input
                           type="file"
@@ -746,7 +748,7 @@ const SendSMS = () => {
                         />
                         <label htmlFor="csv-upload">
                           <Button variant="outline" size="sm" asChild>
-                            <span>Choose File</span>
+                            <span>{language === "sw" ? "Chagua Faili" : "Choose File"}</span>
                           </Button>
                         </label>
                       </div>
@@ -755,7 +757,7 @@ const SendSMS = () => {
                       {recipients.length > 0 && (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <Label>Uploaded Recipients ({recipients.length})</Label>
+                            <Label>{language === "sw" ? "Wapokeaji Waliopakiwa" : "Uploaded Recipients"} ({recipients.length})</Label>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -763,7 +765,7 @@ const SendSMS = () => {
                               className="text-destructive hover:text-destructive"
                             >
                               <X className="w-4 h-4 mr-1" />
-                              Clear
+                              {language === "sw" ? "Futa" : "Clear"}
                             </Button>
                           </div>
                           <div className="max-h-32 overflow-y-auto border rounded-lg p-3 bg-muted/30">
@@ -799,7 +801,7 @@ const SendSMS = () => {
                   {selectedMode === "segment" && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                      <Label>Select Segment</Label>
+                      <Label>{language === "sw" ? "Chagua Sehemu" : "Select Segment"}</Label>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -812,7 +814,7 @@ const SendSMS = () => {
                       </div>
                       <Select value={selectedSegment} onValueChange={setSelectedSegment}>
                         <SelectTrigger className="glass-subtle border-0">
-                          <SelectValue placeholder="Choose a contact segment" />
+                          <SelectValue placeholder={language === "sw" ? "Chagua sehemu ya wasilianaji" : "Choose a contact segment"} />
                         </SelectTrigger>
                         <SelectContent className="glass">
                           {segments.map((segment) => (
@@ -823,18 +825,18 @@ const SendSMS = () => {
                         </SelectContent>
                       </Select>
                       {segmentCountsLoading && (
-                        <p className="text-sm text-muted-foreground">Loading contact counts...</p>
+                        <p className="text-sm text-muted-foreground">{language === "sw" ? "Inapakia idadi ya wasilianaji..." : "Loading contact counts..."}</p>
                       )}
                       {selectedSegment && (
                         <div className="space-y-2">
                           {isLoadingSegmentContacts ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <RefreshCw className="w-4 h-4 animate-spin" />
-                              Loading contacts...
+                              {language === "sw" ? "Inapakia wasilianaji..." : "Loading contacts..."}
                             </div>
                           ) : (
                             <div className="text-sm text-muted-foreground">
-                              {segmentContacts.length} contacts loaded
+                              {segmentContacts.length} {language === "sw" ? "wasilianaji waliopakiwa" : "contacts loaded"}
                             </div>
                           )}
                           {segmentContacts.length > 0 && (
@@ -847,7 +849,7 @@ const SendSMS = () => {
                                 ))}
                                 {segmentContacts.length > 20 && (
                                   <Badge variant="outline" className="text-xs">
-                                    +{segmentContacts.length - 20} more
+                                    +{segmentContacts.length - 20} {language === "sw" ? "zaidi" : "more"}
                                   </Badge>
                                 )}
                               </div>
@@ -861,27 +863,27 @@ const SendSMS = () => {
                   {/* Message */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>Message</Label>
+                      <Label>{language === "sw" ? "Ujumbe" : "Message"}</Label>
                       <div className="text-sm text-text-subtle">
                         {getCharacterCountDisplay(message)}
                       </div>
                     </div>
                     <Textarea
-                      placeholder="Type your message here..."
+                      placeholder={language === "sw" ? "Andika ujumbe wako hapa..." : "Type your message here..."}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       className={`min-h-[120px] glass-subtle border-0 ${
                         segmentInfo.isOverLimit ? 'border-red-500 focus:border-red-500' : ''
                       }`}
-                      maxLength={32000} // 200 segments * 160 characters = 32,000 max
+                      maxLength={4000} // 25 segments * 160 characters = 4,000 max
                     />
                     <div className="flex items-center justify-between text-xs">
                       <p className="text-text-subtle">
-                      {segmentCount > 1 && "Long messages are split into multiple segments"}
+                      {segmentCount > 1 && (language === "sw" ? "Ujumbe mrefu umegawanywa katika sehemu nyingi" : "Long messages are split into multiple segments")}
                     </p>
                       {segmentInfo.isOverLimit && (
                         <p className="text-red-500 font-medium">
-                          Message exceeds 200 segment limit
+                          {language === "sw" ? "Ujumbe unazidi kikomo cha sehemu 25" : "Message exceeds 25 segment limit"}
                         </p>
                       )}
                     </div>
@@ -889,11 +891,11 @@ const SendSMS = () => {
 
                   {/* Schedule */}
                   <div className="space-y-2">
-                    <Label>Schedule</Label>
+                    <Label>{language === "sw" ? "Ratiba" : "Schedule"}</Label>
                     <Tabs value={scheduleType} onValueChange={(v) => setScheduleType(v as "now" | "later")}>
                       <TabsList className="glass-subtle border-0 w-full">
-                        <TabsTrigger value="now" className="flex-1">Send Now</TabsTrigger>
-                        <TabsTrigger value="later" className="flex-1">Schedule</TabsTrigger>
+                        <TabsTrigger value="now" className="flex-1">{language === "sw" ? "Tuma Sasa" : "Send Now"}</TabsTrigger>
+                        <TabsTrigger value="later" className="flex-1">{language === "sw" ? "Ratiba" : "Schedule"}</TabsTrigger>
                       </TabsList>
                       <TabsContent value="later" className="mt-4">
                         <Input
@@ -911,14 +913,14 @@ const SendSMS = () => {
                     <Alert className={`glass-subtle border-0 ${segmentInfo.isOverLimit ? 'border-red-200 bg-red-50' : ''}`}>
                       <DollarSign className="w-4 h-4" />
                       <AlertDescription>
-                        <div className="font-medium">Cost Estimate</div>
+                        <div className="font-medium">{language === "sw" ? "Tathmini ya Gharama" : "Cost Estimate"}</div>
                         <div className="text-sm mt-1">
                           {getRecipientCount()} recipients × {formatSegmentCount(segmentCount)} × TZS {costPerSMS} =
                           <span className="font-semibold ml-1">TZS {estimatedCost.toLocaleString()}</span>
                         </div>
                         {segmentInfo.isOverLimit && (
                           <div className="text-red-600 text-xs mt-1 font-medium">
-                            ⚠️ Message exceeds segment limit and cannot be sent
+                            ⚠️ {language === "sw" ? "Ujumbe unazidi kikomo cha sehemu na hauwezi kutumwa" : "Message exceeds segment limit and cannot be sent"}
                           </div>
                         )}
                       </AlertDescription>
@@ -929,7 +931,7 @@ const SendSMS = () => {
                   {sending && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span>Sending messages...</span>
+                        <span>{language === "sw" ? "Inatuma ujumbe..." : "Sending messages..."}</span>
                         <span>{sendProgress}%</span>
                       </div>
                       <Progress value={sendProgress} className="h-2" />
@@ -945,10 +947,10 @@ const SendSMS = () => {
                     >
                       <Send className="w-4 h-4 mr-2" />
                       {segmentInfo.isOverLimit
-                        ? "Message Too Long"
+                        ? (language === "sw" ? "Ujumbe Ni Mrefu Mno" : "Message Too Long")
                         : scheduleType === "now"
-                          ? "Send SMS"
-                          : "Schedule SMS"
+                          ? (language === "sw" ? "Tuma SMS" : "Send SMS")
+                          : (language === "sw" ? "Ratiba SMS" : "Schedule SMS")
                       }
                     </Button>
                     <Button
@@ -956,7 +958,7 @@ const SendSMS = () => {
                       onClick={() => setSelectedMode(null)}
                       disabled={sending}
                     >
-                      Cancel
+                      {language === "sw" ? "Ghairi" : "Cancel"}
                     </Button>
                   </div>
                 </div>

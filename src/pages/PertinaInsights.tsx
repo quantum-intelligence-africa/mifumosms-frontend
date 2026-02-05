@@ -22,6 +22,7 @@ import {
 import { useTenants } from "@/hooks/useTenants";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PertinaInsights = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,6 +42,7 @@ const PertinaInsights = () => {
   const [allFilters, setAllFilters] = useState({ startDate: "", endDate: "" });
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { language } = useLanguage();
 
   useEffect(() => {
     if (currentTenant) {
@@ -93,16 +95,18 @@ const PertinaInsights = () => {
     // Check if it's a 404 error for pertina endpoints
     if (error?.status === 404 && message?.includes('pertina')) {
       toast({
-        title: "Feature not available",
-        description: "Partner integration endpoints are not yet implemented on the backend.",
+        title: language === "sw" ? "Huduma haipatikani" : "Feature not available",
+        description: language === "sw"
+          ? "Endpoints za ujumuishaji wa mshirika bado hazijatekelezwa kwenye backend."
+          : "Partner integration endpoints are not yet implemented on the backend.",
         variant: "default",
       });
       return;
     }
 
     toast({
-      title: "Request failed",
-      description: message || "Unable to load data at the moment.",
+      title: language === "sw" ? "Ombi limeshindwa" : "Request failed",
+      description: message || (language === "sw" ? "Imeshindwa kupakia data kwa sasa." : "Unable to load data at the moment."),
       variant: "destructive",
     });
   };
@@ -110,8 +114,10 @@ const PertinaInsights = () => {
   const handleFetchTenantBalance = async () => {
     if (!selectedTenantId) {
       return toast({
-        title: "Select a tenant",
-        description: "Choose a tenant before fetching the balance.",
+        title: language === "sw" ? "Chagua tenant" : "Select a tenant",
+        description: language === "sw"
+          ? "Chagua tenant kabla ya kuchukua salio."
+          : "Choose a tenant before fetching the balance.",
         variant: "default",
       });
     }
@@ -197,20 +203,26 @@ const PertinaInsights = () => {
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-6 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Partner Insights</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                  {language === "sw" ? "Maarifa ya Mshirika" : "Partner Insights"}
+                </p>
                 <h1 className="font-heading text-lg sm:text-xl font-bold text-foreground">
-                  Monitor your partners' credit health in one place.
+                  {language === "sw"
+                    ? "Fuatilia afya ya salio la washirika wako sehemu moja."
+                    : "Monitor your partners' credit health in one place."}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-                  Fetch the latest balances and usage stats per partner or across all partners with a single click.
+                  {language === "sw"
+                    ? "Pata salio za hivi karibuni na takwimu za matumizi kwa mshirika mmoja au wote kwa bonyezo moja."
+                    : "Fetch the latest balances and usage stats per partner or across all partners with a single click."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="text-xs font-semibold">
-                  API first
+                  {language === "sw" ? "API kwanza" : "API first"}
                 </Badge>
                 <Badge variant="outline" className="text-xs font-semibold">
-                  Updated in realtime
+                  {language === "sw" ? "Hufanywa upya kwa muda halisi" : "Updated in realtime"}
                 </Badge>
               </div>
             </div>
@@ -291,7 +303,9 @@ const PertinaInsights = () => {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-muted-foreground">All Tenants Balance</p>
-                  <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">Cross-tenant rollover</h2>
+                  <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">
+                    {language === "sw" ? "Muhtasari wa salio kwa tenants" : "Cross-tenant rollover"}
+                  </h2>
                 </div>
                 <Button
                   variant="secondary"
@@ -300,7 +314,7 @@ const PertinaInsights = () => {
                   disabled={loadingState.allBalance}
                 >
                   {loadingState.allBalance && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span>Refresh all balances</span>
+                  <span>{language === "sw" ? "Sasisha salio zote" : "Refresh all balances"}</span>
                 </Button>
               </div>
 
@@ -310,15 +324,21 @@ const PertinaInsights = () => {
                 <div className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total tenants</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {language === "sw" ? "Jumla ya tenants" : "Total tenants"}
+                      </p>
                       <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_tenants}</p>
                     </div>
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total credits</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {language === "sw" ? "Jumla ya salio" : "Total credits"}
+                      </p>
                       <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_credits.toLocaleString()}</p>
                     </div>
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total unused</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {language === "sw" ? "Salio lisilotumika" : "Total unused"}
+                      </p>
                       <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_unused.toLocaleString()}</p>
                     </div>
                   </div>
@@ -332,15 +352,17 @@ const PertinaInsights = () => {
                             #{tenant.tenant_id.slice(0, 8)}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Current balance</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {language === "sw" ? "Salio la sasa" : "Current balance"}
+                        </p>
                         <p className="text-2xl font-bold text-foreground">{tenant.current_balance.toLocaleString()}</p>
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>Used</span>
+                            <span>{language === "sw" ? "Imetumika" : "Used"}</span>
                             <span>{tenant.total_used.toLocaleString()}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>Unused</span>
+                            <span>{language === "sw" ? "Haijatumiwa" : "Unused"}</span>
                             <span>{tenant.unused_credits.toLocaleString()}</span>
                           </div>
                         </div>
@@ -350,7 +372,7 @@ const PertinaInsights = () => {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border/30 bg-background/60 p-6 text-center text-sm text-muted-foreground">
-                  Refresh to load all tenant balances.
+                  {language === "sw" ? "Sasisha ili kupakia salio za tenants wote." : "Refresh to load all tenant balances."}
                 </div>
               )}
             </section>
@@ -463,12 +485,18 @@ const PertinaInsights = () => {
             <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-muted-foreground">All Tenants Usage</p>
-                  <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">Holistic usage overview</h2>
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    {language === "sw" ? "Matumizi ya tenants wote" : "All Tenants Usage"}
+                  </p>
+                  <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">
+                    {language === "sw" ? "Muhtasari wa matumizi kwa ujumla" : "Holistic usage overview"}
+                  </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex gap-2">
-                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Start</label>
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {language === "sw" ? "Kuanzia" : "Start"}
+                    </label>
                     <input
                       type="date"
                       value={allFilters.startDate}
@@ -479,7 +507,9 @@ const PertinaInsights = () => {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <label className="text-xs uppercase tracking-wide text-muted-foreground">End</label>
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {language === "sw" ? "Mpaka" : "End"}
+                    </label>
                     <input
                       type="date"
                       value={allFilters.endDate}
@@ -496,7 +526,7 @@ const PertinaInsights = () => {
                     disabled={loadingState.allUsage}
                   >
                     {loadingState.allUsage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <span>Refresh overview</span>
+                    <span>{language === "sw" ? "Sasisha muhtasari" : "Refresh overview"}</span>
                   </Button>
                 </div>
               </div>
@@ -507,19 +537,25 @@ const PertinaInsights = () => {
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tenants reported</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {language === "sw" ? "Tenants waliorejesha" : "Tenants reported"}
+                      </p>
                       <p className="text-2xl font-bold text-foreground">{allUsage.total_tenants}</p>
                     </div>
                     {aggregatedUsageSummary ? (
                       <>
                         <div className="rounded-2xl bg-background/80 p-4 text-center">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Usage records</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {language === "sw" ? "Rekodi za matumizi" : "Usage records"}
+                          </p>
                           <p className="text-2xl font-bold text-foreground">
                             {aggregatedUsageSummary.totalUsageRecords.toLocaleString()}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-background/80 p-4 text-center">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Avg credits/user</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {language === "sw" ? "Wastani salio/mtumiaji" : "Avg credits/user"}
+                          </p>
                           <p className="text-2xl font-bold text-foreground">
                             {aggregatedUsageSummary.avgCreditsPerUser
                               ? aggregatedUsageSummary.avgCreditsPerUser.toLocaleString()
@@ -527,7 +563,9 @@ const PertinaInsights = () => {
                           </p>
                         </div>
                         <div className="rounded-2xl bg-background/80 p-4 text-center">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Users tracked</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {language === "sw" ? "Watumiaji waliorekodiwa" : "Users tracked"}
+                          </p>
                           <p className="text-2xl font-bold text-foreground">
                             {aggregatedUsageSummary.totalUsers.toLocaleString()}
                           </p>
@@ -546,12 +584,14 @@ const PertinaInsights = () => {
                           </Badge>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>Credits: {tenant.total_credits.toLocaleString()}</span>
-                          <span>Used: {tenant.used_credits.toLocaleString()}</span>
-                          <span>Unused: {tenant.unused_credits.toLocaleString()}</span>
+                          <span>{language === "sw" ? "Salio" : "Credits"}: {tenant.total_credits.toLocaleString()}</span>
+                          <span>{language === "sw" ? "Imetumika" : "Used"}: {tenant.used_credits.toLocaleString()}</span>
+                          <span>{language === "sw" ? "Haijatumiwa" : "Unused"}: {tenant.unused_credits.toLocaleString()}</span>
                         </div>
                         <p className="mt-3 text-xs text-muted-foreground">
-                          {tenant.summary?.total_users ? `${tenant.summary.total_users} users tracked` : "No user summary"}
+                          {tenant.summary?.total_users
+                            ? `${tenant.summary.total_users} ${language === "sw" ? "watumiaji waliorekodiwa" : "users tracked"}`
+                            : (language === "sw" ? "Hakuna muhtasari wa watumiaji" : "No user summary")}
                         </p>
                       </div>
                     ))}
@@ -559,7 +599,7 @@ const PertinaInsights = () => {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border/30 bg-background/60 p-6 text-center text-sm text-muted-foreground">
-                  Refresh to see usage insights for all tenants.
+                  {language === "sw" ? "Sasisha ili kuona muhtasari wa matumizi kwa tenants wote." : "Refresh to see usage insights for all tenants."}
                 </div>
               )}
             </section>

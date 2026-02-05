@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   CheckCircle2,
   Shield,
@@ -353,6 +354,7 @@ const quickReferenceEndpoints = [
 
 const IntegrationGuide = () => {
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -398,9 +400,9 @@ const IntegrationGuide = () => {
         <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6">
           <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             <div className="space-y-1">
-              <h1 className="font-heading text-xl sm:text-2xl font-bold">Mifumo SMS Integration Guide</h1>
+              <h1 className="font-heading text-xl sm:text-2xl font-bold">{t('app.name')} {t('integration_guide')}</h1>
               <p className="text-sm text-foreground/70">
-                Version 1.3 &middot; Last updated November 15, 2025 &middot; Production-ready.
+                {t('integration.version')}
               </p>
             </div>
 
@@ -409,7 +411,7 @@ const IntegrationGuide = () => {
                 <Card key={step.title} className="glass">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-foreground/70">
-                      <span>Step {index + 1}</span>
+                      <span>{t('integration.step', { step: index + 1 })}</span>
                       <Zap className="w-3 h-3" />
                     </div>
                     <CardTitle className="text-base">{step.title}</CardTitle>
@@ -432,7 +434,7 @@ const IntegrationGuide = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Zap className="w-4 h-4" />
-                  Quick Start Requests (cURL)
+                  {t('integration.quick_start_requests')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -452,7 +454,7 @@ const IntegrationGuide = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
-                  Python Examples - Partner Integration
+                  {t('integration.python_examples')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -817,20 +819,20 @@ print(response.text)`}</pre>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
-                  Quick Reference
+                  {t('integration.quick_reference')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 lg:grid-cols-3">
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-foreground/70">Base URL</p>
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">{t('integration.base_url')}</p>
                   <code className="text-xs font-mono break-all">https://mifumosms.mifumolabs.com/api/integration/v1/</code>
                 </div>
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-foreground/70">Authentication</p>
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">{t('integration.authentication')}</p>
                   <code className="text-xs font-mono break-all">Authorization: Bearer YOUR_API_KEY</code>
                 </div>
                 <div className="p-3 border border-border-subtle rounded-lg bg-muted/30 space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-foreground/70">Endpoints</p>
+                  <p className="text-xs uppercase tracking-wide text-foreground/70">{t('integration.endpoints_label')}</p>
                   <ul className="text-xs text-foreground/70 space-y-1">
                     {quickReferenceEndpoints.map((item) => (
                       <li key={item}>{item}</li>
@@ -844,16 +846,16 @@ print(response.text)`}</pre>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <LinkIcon className="w-4 h-4" />
-                  Support
+                  {t('integration.support')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-3 text-sm">
                 <div>
-                  <p className="font-medium">Email</p>
+                  <p className="font-medium">{t('integration.email')}</p>
                   <p className="text-foreground/70">support@mifumosms.com</p>
                 </div>
                 <div>
-                  <p className="font-medium">Dashboard</p>
+                  <p className="font-medium">{t('integration.dashboard_link')}</p>
                   <p className="text-foreground/70">https://sms.mifumolabs.com</p>
                 </div>
               </CardContent>

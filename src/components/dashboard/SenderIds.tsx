@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Hash, CheckCircle, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SenderId {
   id: string;
@@ -19,6 +20,7 @@ interface SenderIdsProps {
 
 export function SenderIds({ senderIds }: SenderIdsProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleManageSenderIds = () => {
     navigate('/sms/sender-names');
@@ -58,10 +60,10 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
     <Card className="p-5 sm:p-6 glass border border-border-subtle">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
-          Active Sender IDs
+          {t("dashboard.sender_ids.title")}
         </h3>
         <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5">
-          {senderIds?.length || 0} Active
+          {senderIds?.length || 0} {t("dashboard.sender_ids.active")}
         </Badge>
       </div>
 
@@ -70,10 +72,10 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs font-medium text-text-subtle py-2">Sender ID</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle py-2">Status</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle py-2">Sample Content</TableHead>
-                <TableHead className="text-xs font-medium text-text-subtle py-2">Created</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">{t("dashboard.sender_ids.table.sender_id")}</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">{t("dashboard.sender_ids.table.status")}</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">{t("dashboard.sender_ids.table.sample_content")}</TableHead>
+                <TableHead className="text-xs font-medium text-text-subtle py-2">{t("dashboard.sender_ids.table.created")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,7 +94,13 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                     >
                       <div className="flex items-center gap-1">
                         {getStatusIcon(senderId.status)}
-                        <span className="capitalize text-xs">{senderId.status}</span>
+                        <span className="capitalize text-xs">
+                          {senderId.status.toLowerCase() === 'active'
+                            ? t("status.active")
+                            : senderId.status.toLowerCase() === 'pending'
+                              ? t("status.pending")
+                              : senderId.status}
+                        </span>
                       </div>
                     </Badge>
                   </TableCell>
@@ -112,8 +120,8 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
             <Hash className="w-6 h-6 text-primary" />
           </div>
-          <p className="text-xs text-text-subtle mb-1">No sender IDs found</p>
-          <p className="text-xs text-text-subtle">Sender IDs will appear here once they are approved</p>
+          <p className="text-xs text-text-subtle mb-1">{t("dashboard.sender_ids.empty_title")}</p>
+          <p className="text-xs text-text-subtle">{t("dashboard.sender_ids.empty_subtitle")}</p>
         </div>
       )}
 
@@ -122,7 +130,7 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           onClick={handleManageSenderIds}
           className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"
         >
-          Manage sender IDs
+          {t("dashboard.sender_ids.manage")}
         </button>
       </div>
     </Card>

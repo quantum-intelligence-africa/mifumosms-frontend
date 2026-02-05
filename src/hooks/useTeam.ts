@@ -69,13 +69,10 @@ export function useTeam(tenantId: string | null, token?: string) {
       return { success: true, data: body as T, status: res.status };
     }
     const err = body as ApiError;
-    
+
     // Check for field-level errors (like "email" field errors)
     let errorMessage = err.error || (body as any).detail || 'Request failed';
-    
-    // Log the error body for debugging
-    console.log('Error response body:', body);
-    
+
     // Check for field-specific errors first
     if (err.errors && typeof err.errors === 'object') {
       for (const [field, messages] of Object.entries(err.errors)) {
@@ -88,12 +85,12 @@ export function useTeam(tenantId: string | null, token?: string) {
         }
       }
     }
-    
+
     // Also check if body has email field directly (for validation errors)
     if ((body as any).email && typeof (body as any).email === 'string') {
       errorMessage = (body as any).email;
     }
-    
+
     return {
       success: false,
       error: errorMessage,
@@ -105,7 +102,6 @@ export function useTeam(tenantId: string | null, token?: string) {
 
   const listMembers = useCallback(async (): Promise<ApiResult<TeamMember[]>> => {
     if (!tenantId) {
-      console.warn('listMembers: Missing tenantId');
       setMembers([]);
       return { success: false, error: 'Missing tenantId' };
     }
@@ -113,24 +109,21 @@ export function useTeam(tenantId: string | null, token?: string) {
     setError(null);
     try {
       const url = `${base}${API_CONFIG.ENDPOINTS.TENANTS.TEAM.LIST(tenantId)}`;
-      console.log('Fetching team members from:', url);
       const res = await fetch(url, {
         headers: jsonHeaders(token),
       });
-      console.log('Response status:', res.status);
       const result = await withResult<TeamMember[]>(res);
-      console.log('Team members result:', result);
       if (result.success && result.data) {
         setMembers(result.data);
-        console.log('Set members:', result.data);
       } else {
         setMembers([]);
-        console.warn('No members data, setting empty array');
       }
       if (!result.success) setError(result.error || null);
       return result;
     } catch (error) {
-      console.error('Error fetching team members:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching team members:', error);
+      }
       setMembers([]);
       setError('Failed to fetch team members');
       return { success: false, error: 'Failed to fetch team members' };
@@ -158,7 +151,7 @@ export function useTeam(tenantId: string | null, token?: string) {
         body: JSON.stringify({ email, role }),
       });
       const result = await withResult<TeamMember>(res);
-      
+
       // If error response, check for backend's email field error message
       if (!result.success && !result.error) {
         const body = await res.json().catch(() => ({}));
@@ -166,7 +159,7 @@ export function useTeam(tenantId: string | null, token?: string) {
           result.error = Array.isArray(body.email) ? body.email[0] : body.email;
         }
       }
-      
+
       // Refresh lists on success
       if (result.success) listMembers();
       return result;

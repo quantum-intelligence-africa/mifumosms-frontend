@@ -25,12 +25,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { metrics, overview, recentCampaigns, recentActivity, performanceOverview, senderIds, isLoading } = useDashboard();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { t } = useLanguage();
 
   if (isLoading) {
     return (
@@ -97,38 +99,38 @@ const Dashboard = () => {
             {/* Welcome Section */}
             <div className="mb-6 sm:mb-8">
               <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2 tracking-tight">
-                Welcome back 👋
+                {t("dashboard.welcome")}
               </h1>
               <p className="text-[13px] sm:text-sm text-text-subtle">
-                Monitor your communication platform performance in real-time.
+                {t("dashboard.subtitle")}
               </p>
             </div>
 
             {/* Metrics Grid - 4 Main Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <MetricCard
-                title="Total Messages"
+                title={t("dashboard.metric.total_messages")}
                 value={metrics?.total_messages?.value?.toLocaleString() || "0"}
                 icon={MessageSquare}
-                description={metrics?.total_messages?.description || "Last 30 days"}
+                description={metrics?.total_messages?.description || t("dashboard.metric.last_30_days")}
               />
               <MetricCard
-                title="Active Contacts"
+                title={t("dashboard.metric.active_contacts")}
                 value={metrics?.active_contacts?.value?.toLocaleString() || "0"}
                 icon={Users}
-                description={metrics?.active_contacts?.description || "Engaged this month"}
+                description={metrics?.active_contacts?.description || t("dashboard.metric.engaged_this_month")}
               />
               <MetricCard
-                title="Campaign Success"
+                title={t("dashboard.metric.campaign_success")}
                 value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || ""}`}
                 icon={Target}
-                description={metrics?.campaign_success?.description || "Delivery rate"}
+                description={metrics?.campaign_success?.description || t("dashboard.metric.delivery_rate")}
               />
               <MetricCard
-                title="Sender ID"
+                title={t("dashboard.metric.sender_id")}
                 value={senderIds?.filter(id => id.status?.toLowerCase() === 'active').length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
                 icon={Hash}
-                description="Approved sender names"
+                description={t("dashboard.metric.approved_sender_names")}
               />
             </div>
 
@@ -170,9 +172,9 @@ const Dashboard = () => {
           <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
             <div className="max-w-7xl mx-auto flex items-center justify-center min-h-full">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-red-600 mb-4">Dashboard Error</h2>
-                <p className="text-gray-600 mb-4">There was an error loading the dashboard.</p>
-                <p className="text-sm text-gray-500">Check the console for more details.</p>
+                <h2 className="text-2xl font-bold text-red-600 mb-4">{t("dashboard.error.title")}</h2>
+                <p className="text-gray-600 mb-4">{t("dashboard.error.description")}</p>
+                <p className="text-sm text-gray-500">{t("dashboard.error.hint")}</p>
                 <pre className="mt-4 text-xs text-left bg-gray-100 p-4 rounded">
                   {error instanceof Error ? error.message : 'Unknown error'}
                 </pre>

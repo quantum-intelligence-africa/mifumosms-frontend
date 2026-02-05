@@ -79,10 +79,12 @@ import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
 import { normalizePhoneNumber, formatPhoneNumber, validatePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
 import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Contacts = () => {
-const { toast } = useToast();
-const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const { t } = useLanguage();
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
 const [searchQuery, setSearchQuery] = useState("");
@@ -1274,10 +1276,10 @@ return (
 <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
 <div>
 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-Contacts
+{t('contacts')}
 </h1>
 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-Manage your customer database and relationships ({totalCount || 0} total)
+{t('manage_customer_database')} ({totalCount || 0} {t('total')})
 </p>
 </div>
 <div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:gap-3">

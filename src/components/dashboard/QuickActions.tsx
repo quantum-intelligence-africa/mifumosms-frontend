@@ -2,40 +2,41 @@ import { Send, MessageSquare, Users, FileText, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-
-const quickActions = [
-  {
-    name: "Send Message",
-    description: "Quick WhatsApp or SMS",
-    icon: MessageSquare,
-    variant: "default" as const,
-    to: "/sms/send?mode=single",
-  },
-  {
-    name: "Add New Campaign",
-    description: "Bulk messaging campaign",
-    icon: Send,
-    variant: "secondary" as const,
-    to: "/campaigns?new=true",
-  },
-  {
-    name: "Add Contacts",
-    description: "Import or add manually",
-    icon: Users,
-    variant: "outline" as const,
-    to: "/contacts?action=create",
-  },
-  {
-    name: "Create Template",
-    description: "Message template",
-    icon: FileText,
-    variant: "outline" as const,
-    to: "/templates?action=new",
-  },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function QuickActions() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const quickActions = [
+    {
+      name: t("dashboard.quick_actions.send_message"),
+      description: t("dashboard.quick_actions.send_message_desc"),
+      icon: MessageSquare,
+      variant: "default" as const,
+      to: "/sms/send?mode=single",
+    },
+    {
+      name: t("dashboard.quick_actions.add_campaign"),
+      description: t("dashboard.quick_actions.add_campaign_desc"),
+      icon: Send,
+      variant: "secondary" as const,
+      to: "/campaigns?new=true",
+    },
+    {
+      name: t("dashboard.quick_actions.add_contacts"),
+      description: t("dashboard.quick_actions.add_contacts_desc"),
+      icon: Users,
+      variant: "outline" as const,
+      to: "/contacts?action=create",
+    },
+    {
+      name: t("dashboard.quick_actions.create_template"),
+      description: t("dashboard.quick_actions.create_template_desc"),
+      icon: FileText,
+      variant: "outline" as const,
+      to: "/templates?action=new",
+    },
+  ];
   return (
     <Card className="p-5 sm:p-6 glass border border-border-subtle">
       <div className="flex items-center gap-2.5 mb-5">
@@ -43,7 +44,7 @@ export function QuickActions() {
           <Zap className="w-4 h-4 text-secondary" />
         </div>
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
-          Quick Actions
+          {t("dashboard.quick_actions.title")}
         </h3>
       </div>
 
@@ -73,14 +74,14 @@ export function QuickActions() {
 
       <div className="mt-5 pt-4 border-t border-border-subtle">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm">
-          <span className="text-text-subtle font-medium">Need help?</span>
+          <span className="text-text-subtle font-medium">{t("dashboard.quick_actions.need_help")}</span>
           <Button
             variant="link"
             size="sm"
             className="h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline"
             onClick={() => window.open("https://wa.me/255614459923", "_blank")}
           >
-            Contact Support →
+            {t("dashboard.quick_actions.contact_support")}
           </Button>
         </div>
       </div>

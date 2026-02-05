@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ActivityItem {
   id: string;
@@ -51,6 +52,7 @@ export function ActivityFeed() {
   const { recentActivity } = useDashboard();
   const navigate = useNavigate();
   const activities = recentActivity || [];
+  const { t } = useLanguage();
 
   const handleViewAllActivity = () => {
     navigate('/notifications');
@@ -60,12 +62,12 @@ export function ActivityFeed() {
     <Card className="p-5 sm:p-6 glass border border-border-subtle">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-heading text-base font-semibold text-foreground">
-          Recent Activity
+          {t("dashboard.activity.title")}
         </h3>
         <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5 bg-success/10 text-success border-success/20">
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            Live
+            {t("dashboard.activity.live")}
           </div>
         </Badge>
       </div>
@@ -113,7 +115,7 @@ export function ActivityFeed() {
         ) : (
           <div className="text-center py-6">
             <Activity className="w-6 h-6 text-text-subtle mx-auto mb-2" />
-            <p className="text-xs text-text-subtle">No recent activity</p>
+            <p className="text-xs text-text-subtle">{t("dashboard.activity.none")}</p>
           </div>
         )}
       </div>
@@ -123,7 +125,7 @@ export function ActivityFeed() {
           onClick={handleViewAllActivity}
           className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"
         >
-          View all activity
+          {t("dashboard.activity.view_all")}
         </button>
       </div>
     </Card>

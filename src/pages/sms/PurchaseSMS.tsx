@@ -36,6 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PaymentMethod {
   id: string;
@@ -69,6 +70,7 @@ interface CustomSMSState {
 
 const PurchaseSMS = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
@@ -629,10 +631,10 @@ const PurchaseSMS = () => {
             {/* Header */}
             <div>
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                Purchase SMS Credits
+                {t('purchase_sms_credits')}
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                Top up your account to send more messages
+                {t('top_up_account')}
               </p>
             </div>
 
@@ -640,7 +642,7 @@ const PurchaseSMS = () => {
             <Card className="p-4 sm:p-6 glass">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-text-subtle mb-1">Current Balance</p>
+                  <p className="text-sm text-text-subtle mb-1">{t('current_balance')}</p>
                   {balanceLoading ? (
                     <div className="space-y-2">
                       <Skeleton className="h-8 w-32" />
@@ -659,7 +661,7 @@ const PurchaseSMS = () => {
 
             {/* Package Selection */}
             <div>
-              <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">Choose a Package</h2>
+              <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {packagesLoading ? (
                   // Skeleton loaders for packages
@@ -735,7 +737,7 @@ const PurchaseSMS = () => {
             <Card className="p-4 sm:p-6 glass">
               <h3 className="font-heading text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
                 <Calculator className="w-4 h-4" />
-                Or Enter Custom Amount
+                {t('enter_custom_amount')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -768,7 +770,7 @@ const PurchaseSMS = () => {
                     min="100"
                   />
                   {selectedPackage && customCredits === "" ? (
-                    <p className="text-xs text-text-subtle">Base credits from selected package. Click to edit and customize.</p>
+                  <p className="text-xs text-text-subtle">{t('base_credits_from_package')}</p>
                   ) : customCreditsError ? (
                     <p className="text-xs text-red-500 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
@@ -777,12 +779,12 @@ const PurchaseSMS = () => {
                   ) : null}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-sm">Total Cost</Label>
+                  <Label className="text-sm">{t('total_cost')}</Label>
                   <div className="h-9 px-3 rounded-lg glass-subtle flex items-center text-base font-semibold">
                     {isCalculatingCustom ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Calculating...
+                        {t('calculating')}
                       </div>
                     ) : (
                       `TZS ${customPrice.toLocaleString()}`
@@ -827,14 +829,14 @@ const PurchaseSMS = () => {
                     ) : '—'}</>
                   )}
                 </span>
-                <span>Minimum 100 credits</span>
+                <span>Minimum 100 {t('credits')}</span>
               </div>
             </Card>
 
             {/* Payment Method - Only show when package or custom amount is selected */}
             {(selectedPackage || customCredits) && (
               <Card className="p-4 sm:p-6 glass">
-                <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">Select Payment Method</h3>
+                <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">{t('select_payment_method')}</h3>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {providersLoading ? (
@@ -914,7 +916,7 @@ const PurchaseSMS = () => {
                       className="glass-subtle border-0 h-9 text-sm"
                     />
                     <p className="text-xs text-text-subtle">
-                      Enter the phone number associated with your mobile money account
+                      {t('enter_phone_number_mobile_money')}
                     </p>
                   </div>
                 )}
@@ -922,7 +924,7 @@ const PurchaseSMS = () => {
                 {/* Email Field */}
                 <div className="space-y-1">
                   <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
-                    Email Address
+                    {t('email_address')}
                   </Label>
                   <Input
                     id="userEmail"
@@ -933,14 +935,14 @@ const PurchaseSMS = () => {
                     className="glass-subtle border-0 h-9 text-sm"
                   />
                   <p className="text-xs text-text-subtle">
-                    We'll send you a receipt and payment confirmation
+                    {t('receipt_and_confirmation')}
                   </p>
                 </div>
 
                 {/* Name Field */}
                 <div className="space-y-1">
                   <Label htmlFor="userName" className="text-sm font-medium text-foreground">
-                    Full Name
+                    {t('full_name')}
                   </Label>
                   <Input
                     id="userName"
@@ -951,7 +953,7 @@ const PurchaseSMS = () => {
                     className="glass-subtle border-0 h-9 text-sm"
                   />
                   <p className="text-xs text-text-subtle">
-                    Your full name as it appears on your mobile money account
+                    {t('full_name_account')}
                   </p>
                 </div>
               </Card>
@@ -966,7 +968,7 @@ const PurchaseSMS = () => {
                   className="w-full sm:w-auto"
                   disabled={customCreditsError !== ""}
                 >
-                  Proceed to Payment
+                  {t('proceed_to_payment')}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -977,12 +979,12 @@ const PurchaseSMS = () => {
               <DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="pb-2">
                   <DialogTitle className="text-base sm:text-lg">
-                    {paymentState.isActive ? "Payment in Progress" : "Confirm Purchase"}
+                    {paymentState.isActive ? t('payment_in_progress') : t('confirm_purchase')}
                   </DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm">
                     {paymentState.isActive
-                      ? "Please complete the payment on your mobile device"
-                      : "Review your order before proceeding"
+                      ? t('complete_payment_mobile')
+                      : t('review_order')
                     }
                   </DialogDescription>
                 </DialogHeader>
@@ -1030,25 +1032,25 @@ const PurchaseSMS = () => {
                   {/* Order Details */}
                   <div className="space-y-1">
                     <div className="flex justify-between py-1 border-b border-border-subtle">
-                      <span className="text-text-subtle text-xs sm:text-sm">Package</span>
+                      <span className="text-text-subtle text-xs sm:text-sm">{t('package')}</span>
                       <span className="font-medium text-xs sm:text-sm">
                         {selectedPkg?.name || "Custom"}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
-                      <span className="text-text-subtle text-xs sm:text-sm">SMS Credits</span>
+                      <span className="text-text-subtle text-xs sm:text-sm">{t('sms_credits')}</span>
                       <span className="font-medium text-xs sm:text-sm">
                         {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
-                      <span className="text-text-subtle text-xs sm:text-sm">Payment Method</span>
+                      <span className="text-text-subtle text-xs sm:text-sm">{t('payment_method')}</span>
                       <span className="font-medium text-xs sm:text-sm">
                         {paymentMethods.find(m => m.id === paymentMethod)?.name || 'Mobile Money'}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
-                      <span>Total Amount</span>
+                      <span>{t('total_amount')}</span>
                       <span className="text-primary">
                         TZS {(selectedPkg?.price || customPrice).toLocaleString()}
                       </span>
@@ -1060,19 +1062,19 @@ const PurchaseSMS = () => {
                     <div className="mt-2 p-2 bg-primary/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-1 flex items-center gap-2 text-xs sm:text-sm">
                         <Smartphone className="w-3 h-3" />
-                        Mobile Money Payment
+                        {t('mobile_money_payment')}
                       </h4>
                       <div className="space-y-1">
                         <div>
-                          <p className="text-xs text-text-subtle mb-1">Your Mobile Number:</p>
+                          <p className="text-xs text-text-subtle mb-1">{t('your_mobile_number')}:</p>
                           <p className="font-mono text-xs sm:text-sm font-semibold text-primary bg-background px-2 py-1 rounded border">
                             {userPaymentNumber}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-text-subtle mb-1">Instructions:</p>
+                          <p className="text-xs text-text-subtle mb-1">{t('instructions')}:</p>
                           <p className="text-xs text-foreground">
-                            After confirming payment, you'll receive a mobile money prompt on your phone. Complete the payment to add SMS credits to your account.
+                            {t('payment_instructions_text')}
                           </p>
                         </div>
                       </div>
@@ -1084,25 +1086,25 @@ const PurchaseSMS = () => {
                   {!paymentState.isActive ? (
                     <>
                       <Button variant="outline" onClick={() => setShowInvoice(false)} disabled={processing} className="h-8 text-xs sm:text-sm">
-                        Cancel
+                        {t('cancel')}
                       </Button>
                       <Button onClick={confirmPurchase} disabled={processing} className="h-8 text-xs sm:text-sm">
                         {processing ? (
                           <>
                             <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                            Processing...
+                            {t('processing')}
                           </>
                         ) : (
                           <>
                             <CreditCard className="w-3 h-3 mr-1" />
-                            Confirm Payment
+                            {t('confirm_payment')}
                           </>
                         )}
                       </Button>
                     </>
                   ) : (
                     <Button variant="outline" onClick={() => setShowInvoice(false)} className="h-8 text-xs sm:text-sm">
-                      Close
+                      {t('close')}
                     </Button>
                   )}
                 </DialogFooter>

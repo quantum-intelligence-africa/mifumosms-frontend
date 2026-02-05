@@ -72,6 +72,10 @@ import { SettingsAPI } from "./SettingsAPI";
 import { useSMSVerification } from "@/hooks/useSMSVerification";
 import { useTenants } from "@/hooks/useTenants";
 import { useTeam, TeamMember, TeamRole } from "@/hooks/useTeam";
+import { usePartinaRequest } from "@/hooks/usePartinaRequest";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { usePreferences } from "@/hooks/usePreferences";
+import { useTheme } from "next-themes";
 
 interface SettingsCategory {
   id: string;
@@ -177,14 +181,23 @@ const Settings = () => {
   const [showSecurityEvents, setShowSecurityEvents] = useState(false);
   const [fallbackQRCode, setFallbackQRCode] = useState<QRCodeData | null>(null);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
-  const [preferences, setPreferences] = useState({
-    theme: "light",
-    language: "en",
-    timezone: "Africa/Dar_es_Salaam",
-    email_notifications: true,
-    sms_notifications: false,
-    marketing_emails: true
-  });
+  const { toast } = useToast();
+  const { user, updateProfile } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const { theme: currentTheme, setTheme } = useTheme();
+
+  // Use the new preferences hook
+  const {
+    preferences,
+    isLoading: preferencesLoading,
+    isSaving: preferencesSaving,
+    updateTheme,
+    updateLanguage,
+    updateTimezone,
+    updateNotifications,
+    fetchPreferences,
+    updateAllPreferences,
+  } = usePreferences();
 
   // API Settings State
   const [apiSettings, setApiSettings] = useState<ApiSettings | null>(null);
@@ -197,14 +210,15 @@ const Settings = () => {
     secret_key: string;
   } | null>(null);
   const [showCreatedKeyDialog, setShowCreatedKeyDialog] = useState(false);
+
+  // Notification settings state (separate for backwards compatibility)
   const [notificationSettings, setNotificationSettings] = useState({
     email_notifications: true,
     sms_notifications: false,
     push_notifications: true,
     marketing_emails: false,
   });
-  const { toast } = useToast();
-  const { user, updateProfile } = useAuth();
+
   const {
     securitySummary,
     twoFactorStatus,
@@ -258,8 +272,12 @@ const Settings = () => {
   useEffect(() => {
     if (currentCategory === 'team' && currentTenant?.id) {
       logger.debug('Loading team members for tenant');
-      team.listMembers().catch(err => logger.warn('Failed to load team members'));
-      team.getStats().catch(err => logger.warn('Failed to load team stats'));
+      team.listMembers().catch(err => {
+        if (import.meta.env.DEV) logger.warn('Failed to load team members');
+      });
+      team.getStats().catch(err => {
+        if (import.meta.env.DEV) logger.warn('Failed to load team stats');
+      });
     }
   }, [currentCategory, currentTenant?.id, team]);
 
@@ -422,43 +440,45 @@ const Settings = () => {
   const settingsCategories: SettingsCategory[] = [
     {
       id: "profile",
-      title: "Profile",
-      description: "Manage your personal information",
+      title: language === "sw" ? "Wasifu" : "Profile",
+      description: language === "sw" ? "Dhibiti taarifa zako binafsi" : "Manage your personal information",
       icon: User,
       color: "bg-blue-500"
     },
     {
       id: "preferences",
-      title: "Preferences",
-      description: "Theme, language, timezone, and notification preferences",
+      title: language === "sw" ? "Mapendeleo" : "Preferences",
+      description: language === "sw"
+        ? "Mandhari, lugha, eneo la saa na mapendeleo ya arifa"
+        : "Theme, language, timezone, and notification preferences",
       icon: Globe,
       color: "bg-green-500"
     },
     {
       id: "notifications",
-      title: "Notifications",
-      description: "Email and push notification preferences",
+      title: language === "sw" ? "Arifa" : "Notifications",
+      description: language === "sw" ? "Mapendeleo ya barua pepe na arifa" : "Email and push notification preferences",
       icon: Bell,
       color: "bg-yellow-500"
     },
     {
       id: "security",
-      title: "Security",
-      description: "Password and account security settings",
+      title: language === "sw" ? "Usalama" : "Security",
+      description: language === "sw" ? "Mipangilio ya nenosiri na usalama wa akaunti" : "Password and account security settings",
       icon: Shield,
       color: "bg-red-500"
     },
     {
       id: "api",
-      title: "API & Webhooks",
-      description: "API keys and webhook configurations",
+      title: language === "sw" ? "API na Webhooks" : "API & Webhooks",
+      description: language === "sw" ? "API keys na mipangilio ya webhook" : "API keys and webhook configurations",
       icon: Key,
       color: "bg-purple-500"
     },
     {
       id: "team",
-      title: "Team",
-      description: "Manage team members and permissions",
+      title: language === "sw" ? "Timu" : "Team",
+      description: language === "sw" ? "Dhibiti wanatimu na ruhusa" : "Manage team members and permissions",
       icon: Users,
       color: "bg-indigo-500"
     },
@@ -468,6 +488,13 @@ const Settings = () => {
       description: "Subscription and payment information",
       icon: CreditCard,
       color: "bg-emerald-500"
+    },
+    {
+      id: "partina",
+      title: "Partina",
+      description: "Request to become a Partina partner",
+      icon: Users,
+      color: "bg-orange-500"
     }
   ];
 
@@ -492,26 +519,11 @@ const Settings = () => {
     }
   }, [user]);
 
-  // Load preferences and notification settings
+  // Load notification settings separately (preferences are loaded by usePreferences hook)
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadNotificationSettings = async () => {
       try {
-        const [prefsResponse, notifResponse] = await Promise.all([
-          apiClient.getPreferences(),
-          apiClient.getNotificationSettings()
-        ]);
-
-        if (prefsResponse.success && prefsResponse.data) {
-          const prefsData = prefsResponse.data as any;
-          setPreferences({
-            theme: prefsData.theme || 'light',
-            language: prefsData.language || 'en',
-            timezone: prefsData.timezone || 'Africa/Dar_es_Salaam',
-            email_notifications: prefsData.email_notifications ?? true,
-            sms_notifications: prefsData.sms_notifications ?? false,
-            marketing_emails: prefsData.marketing_emails ?? true,
-          });
-        }
+        const notifResponse = await apiClient.getNotificationSettings();
 
         if (notifResponse.success && notifResponse.data) {
           setNotificationSettings({
@@ -522,11 +534,11 @@ const Settings = () => {
           });
         }
       } catch (error) {
-        console.error('Failed to load settings:', error);
+        console.error('Failed to load notification settings:', error);
       }
     };
 
-    loadSettings();
+    loadNotificationSettings();
   }, []);
 
   // Ensure we stay on the settings page and profile category after successful updates
@@ -911,29 +923,20 @@ const Settings = () => {
   };
 
   const handlePreferencesUpdate = async () => {
-    setIsLoading(true);
+    if (!preferences) return;
     try {
-      const response = await apiClient.updatePreferences(preferences);
-      if (response.success) {
-        toast({
-          title: "Preferences updated successfully",
-          description: "Your preferences have been saved.",
-        });
-      } else {
-        toast({
-          title: "Update failed",
-          description: response.error || "Failed to update preferences. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Update failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive"
+      await updateAllPreferences({
+        theme: preferences.theme as 'light' | 'dark' | 'system',
+        language: preferences.language as 'en' | 'sw',
+        timezone: preferences.timezone,
+        date_format: preferences.date_format,
+        time_format: preferences.time_format,
+        email_notifications: preferences.email_notifications,
+        sms_notifications: preferences.sms_notifications,
+        marketing_emails: preferences.marketing_emails,
       });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to update preferences:', error);
     }
   };
 
@@ -1250,110 +1253,115 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0">
-                <div className="space-y-4">
-                  {/* Theme Selection */}
-                  <div className="space-y-2">
-                    <Label className="text-sm">Theme</Label>
-                    <Select
-                      value={preferences.theme}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, theme: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="light">☀️ Light</SelectItem>
-                        <SelectItem value="dark">🌙 Dark</SelectItem>
-                        <SelectItem value="system">💻 System</SelectItem>
-                      </SelectContent>
-                    </Select>
+                {preferencesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-sm text-text-subtle">Loading preferences...</p>
                   </div>
-
-                  {/* Language Selection */}
-                  <div className="space-y-2">
-                    <Label className="text-sm">Language</Label>
-                    <Select
-                      value={preferences.language}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="en">🇺🇸 English</SelectItem>
-                        <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
-                        <SelectItem value="fr">🇫🇷 Français</SelectItem>
-                        <SelectItem value="ar">🇸🇦 العربية</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Timezone Selection */}
-                  <div className="space-y-2">
-                    <Label className="text-sm">Timezone</Label>
-                    <Select
-                      value={preferences.timezone}
-                      onValueChange={(value) => setPreferences(prev => ({ ...prev, timezone: value }))}
-                    >
-                      <SelectTrigger className="glass-subtle border-0 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="glass">
-                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
-                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
-                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Notification Preferences */}
-                  <div className="space-y-3">
-                    <Label className="text-sm">Notification Preferences</Label>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm">Email Notifications</Label>
-                        <p className="text-xs text-text-subtle">Receive notifications via email</p>
-                      </div>
-                      <Switch
-                        checked={preferences.email_notifications}
-                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, email_notifications: checked }))}
-                      />
+                ) : preferences ? (
+                  <div className="space-y-4">
+                    {/* Theme Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Theme</Label>
+                      <Select
+                        value={currentTheme || 'light'}
+                        onValueChange={(value) => updateTheme(value as 'light' | 'dark' | 'system')}
+                        disabled={preferencesSaving}
+                      >
+                        <SelectTrigger className="glass-subtle border-0 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="glass">
+                          <SelectItem value="light">☀️ Light</SelectItem>
+                          <SelectItem value="dark">🌙 Dark</SelectItem>
+                          <SelectItem value="system">💻 System</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm">SMS Notifications</Label>
-                        <p className="text-xs text-text-subtle">Receive notifications via SMS</p>
-                      </div>
-                      <Switch
-                        checked={preferences.sms_notifications}
-                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, sms_notifications: checked }))}
-                      />
+                    {/* Language Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">{t("settings.language")}</Label>
+                      <Select
+                        value={preferences.language}
+                        onValueChange={(value) => updateLanguage(value as 'en' | 'sw')}
+                        disabled={preferencesSaving}
+                      >
+                        <SelectTrigger className="glass-subtle border-0 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="glass">
+                          <SelectItem value="en">🇺🇸 English</SelectItem>
+                          <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-sm">Marketing Emails</Label>
-                        <p className="text-xs text-text-subtle">Receive marketing and promotional emails</p>
+                    {/* Timezone Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Timezone</Label>
+                      <Select
+                        value={preferences.timezone}
+                        onValueChange={(value) => updateTimezone(value)}
+                        disabled={preferencesSaving}
+                      >
+                        <SelectTrigger className="glass-subtle border-0 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="glass">
+                          <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
+                          <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+                          <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
+                          <SelectItem value="UTC">UTC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Notification Preferences */}
+                    <div className="space-y-3">
+                      <Label className="text-sm">Notification Preferences</Label>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm">Email Notifications</Label>
+                          <p className="text-xs text-text-subtle">Receive notifications via email</p>
+                        </div>
+                        <Switch
+                          checked={preferences.email_notifications}
+                          onCheckedChange={(checked) => updateNotifications('email', checked)}
+                          disabled={preferencesSaving}
+                        />
                       </div>
-                      <Switch
-                        checked={preferences.marketing_emails}
-                        onCheckedChange={(checked) => setPreferences(prev => ({ ...prev, marketing_emails: checked }))}
-                      />
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm">SMS Notifications</Label>
+                          <p className="text-xs text-text-subtle">Receive notifications via SMS</p>
+                        </div>
+                        <Switch
+                          checked={preferences.sms_notifications}
+                          onCheckedChange={(checked) => updateNotifications('sms', checked)}
+                          disabled={preferencesSaving}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm">Marketing Emails</Label>
+                          <p className="text-xs text-text-subtle">Receive marketing and promotional emails</p>
+                        </div>
+                        <Switch
+                          checked={preferences.marketing_emails}
+                          onCheckedChange={(checked) => updateNotifications('marketing', checked)}
+                          disabled={preferencesSaving}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                <Button
-                  onClick={handlePreferencesUpdate}
-                  disabled={isLoading}
-                  className="w-full text-sm"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isLoading ? "Saving..." : "Save Preferences"}
-                </Button>
+                ) : (
+                  <div className="text-sm text-text-subtle">
+                    Failed to load preferences. Please try refreshing the page.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -2320,9 +2328,127 @@ const Settings = () => {
           </div>
         );
 
+      case "partina":
+        return <PartinaRequestSection />;
+
       default:
         return null;
     }
+  };
+
+  // Partina Request Section Component
+  const PartinaRequestSection = () => {
+    const { submitPartinaRequest, isLoading } = usePartinaRequest();
+    const [reason, setReason] = useState('');
+    const [submitted, setSubmitted] = useState(false);
+
+    const handleSubmit = async () => {
+      const result = await submitPartinaRequest(reason);
+      if (result.success) {
+        setSubmitted(true);
+        setReason('');
+        setTimeout(() => setSubmitted(false), 5000);
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <Card className="glass border-0">
+          <CardHeader className="p-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Users className="w-4 h-4" />
+              Become a Partina Partner
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4 pt-0">
+            {submitted ? (
+              <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-green-900 text-sm">Request Submitted</h4>
+                    <p className="text-sm text-green-800 mt-1">
+                      Your request to become a Partina has been submitted! Our admin team will review it and notify you once approved.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2 text-sm">Why Become a Partina?</h4>
+                    <ul className="space-y-2">
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Access to exclusive Partner Insights analytics</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Partner Reference resources and guides</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Priority support and onboarding</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Ability to earn commissions and rewards</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Early access to new features</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-sm text-text-subtle">
+                        <span className="text-blue-500 mt-1">✓</span>
+                        <span>Enhanced dashboard and reporting tools</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="partina-reason" className="text-sm font-medium">
+                        Tell us why you want to become a Partina Partner
+                      </Label>
+                      <p className="text-xs text-text-subtle mt-1 mb-3">
+                        Please provide details about your business, goals, and how you plan to use the Partina features.
+                      </p>
+                      <textarea
+                        id="partina-reason"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        disabled={isLoading}
+                        placeholder="I want to become a Partina to access partner features..."
+                        className="w-full min-h-[150px] p-3 rounded-lg border border-border-subtle bg-background text-foreground placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={isLoading || !reason.trim()}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Submitting...' : 'Submit Request'}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-0 bg-blue-50/50">
+          <CardContent className="p-4">
+            <p className="text-xs text-text-subtle">
+              <strong>Note:</strong> After submitting your request, our admin team will review your application and contact you within 2-3 business days with a decision.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   };
 
   return (

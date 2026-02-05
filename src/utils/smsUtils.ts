@@ -29,11 +29,11 @@ export function validateMessageLength(message: string): {
 } {
 	const segments = calculateSMSegments(message);
 
-	if (segments > 200) {
+	if (segments > 25) {
 		return {
 			isValid: false,
 			segments,
-			error: `Message too long. Requires ${segments} segments, maximum is 200.`
+			error: `Message too long. Requires ${segments} segments, maximum is 25.`
 		};
 	}
 
@@ -57,9 +57,9 @@ export function getSegmentInfo(message: string): {
 } {
 	const segments = calculateSMSegments(message);
 	const characters = message.length;
-	const maxCharacters = 200 * 160; // 32,000 characters maximum
+	const maxCharacters = 25 * 160; // 4,000 characters maximum (25 segments × 160 chars)
 	const charactersRemaining = Math.max(0, maxCharacters - characters);
-	const isOverLimit = segments > 200;
+	const isOverLimit = segments > 25;
 
 	return {
 		segments,

@@ -5,6 +5,7 @@ import { BarChart3, TrendingUp, Clock, BarChart, LineChart, PieChart } from "luc
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -74,6 +75,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   const [chartType, setChartType] = useState<ChartType>('bar');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
 
   const handleViewDetailedAnalytics = () => {
     navigate('/analytics');
@@ -118,8 +120,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
   })();
 
   // Get labels from API
-  const messageVolumeLabel = performance?.charts?.message_volume?.label || 'Message Volume';
-  const deliveryRateLabel = performance?.charts?.delivery_rates?.label || 'Delivery Rate';
+  const messageVolumeLabel = performance?.charts?.message_volume?.label || t("dashboard.performance.message_volume");
+  const deliveryRateLabel = performance?.charts?.delivery_rates?.label || t("dashboard.performance.delivery_rate");
 
   // Check if we have data to display
   const hasChartData = currentChartData.length > 0;
@@ -204,8 +206,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <BarChart3 className="w-6 h-6 text-primary animate-pulse" />
             </div>
-            <p className="text-xs text-text-subtle mb-1">Loading chart data...</p>
-            <p className="text-xs text-text-subtle">Fetching real-time data from database</p>
+            <p className="text-xs text-text-subtle mb-1">{t("dashboard.performance.chart.loading_title")}</p>
+            <p className="text-xs text-text-subtle">{t("dashboard.performance.chart.loading_subtitle")}</p>
           </div>
         </div>
       );
@@ -219,8 +221,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <BarChart3 className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
-            <p className="text-xs text-text-subtle">Start sending messages to see your performance data</p>
+            <p className="text-sm font-medium text-foreground mb-1">{t("dashboard.performance.chart.empty_title")}</p>
+            <p className="text-xs text-text-subtle">{t("dashboard.performance.chart.empty_subtitle")}</p>
           </div>
         </div>
       );
@@ -234,8 +236,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <PieChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
-            <p className="text-xs text-text-subtle">Try switching to bar or line chart, or start sending messages</p>
+            <p className="text-sm font-medium text-foreground mb-1">{t("dashboard.performance.chart.empty_title")}</p>
+            <p className="text-xs text-text-subtle">{t("dashboard.performance.chart.empty_pie_subtitle")}</p>
           </div>
         </div>
       );
@@ -248,8 +250,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
               <BarChart className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm font-medium text-foreground mb-1">No chart yet</p>
-            <p className="text-xs text-text-subtle">Start sending messages to see your performance trends</p>
+            <p className="text-sm font-medium text-foreground mb-1">{t("dashboard.performance.chart.empty_title")}</p>
+            <p className="text-xs text-text-subtle">{t("dashboard.performance.chart.empty_trend_subtitle")}</p>
           </div>
         </div>
       );
@@ -400,11 +402,11 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     <Card className="p-4 sm:p-5 glass border border-border-subtle">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-5 gap-2">
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
-          Performance Overview
+          {t("dashboard.performance.title")}
         </h3>
         <div className="flex items-center gap-2.5">
           <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5">
-            {hasData ? "Real Data" : "Loading..."}
+            {hasData ? t("dashboard.performance.data.real") : t("dashboard.performance.data.loading")}
           </Badge>
           <Select value={chartType} onValueChange={(value: ChartType) => setChartType(value)}>
             <SelectTrigger className="w-24 sm:w-28 h-7 text-xs">
@@ -414,19 +416,19 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
               <SelectItem value="bar">
                 <div className="flex items-center gap-1.5">
                   <BarChart className="w-3 h-3" />
-                  <span>Bar</span>
+                  <span>{t("dashboard.performance.chart.bar")}</span>
                 </div>
               </SelectItem>
               <SelectItem value="line">
                 <div className="flex items-center gap-1.5">
                   <LineChart className="w-3 h-3" />
-                  <span>Line</span>
+                  <span>{t("dashboard.performance.chart.line")}</span>
                 </div>
               </SelectItem>
               <SelectItem value="pie">
                 <div className="flex items-center gap-1.5">
                   <PieChart className="w-3 h-3" />
-                  <span>Pie</span>
+                  <span>{t("dashboard.performance.chart.pie")}</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -443,7 +445,12 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         {performance && (
           <div className="text-center py-1">
             <p className="text-xs text-text-subtle">
-              {hasData ? `Total Messages: ${performance.metrics.total_messages} | Delivery Rate: ${performance.metrics.delivery_rate}%` : "Loading performance data..."}
+              {hasData
+                ? t("dashboard.performance.summary", {
+                    total: performance.metrics.total_messages,
+                    rate: performance.metrics.delivery_rate,
+                  })
+                : t("dashboard.performance.summary_loading")}
             </p>
           </div>
         )}

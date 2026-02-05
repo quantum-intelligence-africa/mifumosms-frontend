@@ -411,23 +411,6 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       ))}
                     </div>
                   </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="opt_in_status" className="text-xs">Opt-in Status</Label>
-                    <Select
-                      value={formData.target_criteria.opt_in_status}
-                      onValueChange={(value) => handleInputChange('target_criteria', { ...formData.target_criteria, opt_in_status: value })}
-                    >
-                      <SelectTrigger className="h-7 text-xs sm:text-sm">
-                        <SelectValue placeholder="Select opt-in status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="opted_in">Opted In</SelectItem>
-                        <SelectItem value="opted_out">Opted Out</SelectItem>
-                        <SelectItem value="all">All Contacts</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </div>
             </div>

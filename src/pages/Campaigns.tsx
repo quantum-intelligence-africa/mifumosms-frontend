@@ -28,6 +28,7 @@ import {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +72,7 @@ const Campaigns = () => {
   const [selectedCampaignForDetails, setSelectedCampaignForDetails] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { language } = useLanguage();
 
   const searchParamsToObject = () => Object.fromEntries(searchParams.entries());
 
@@ -554,9 +556,11 @@ const Campaigns = () => {
               {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 lg:gap-4">
               <div>
-                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">Campaigns</h1>
+                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
+                  {language === "sw" ? "Kampeni" : "Campaigns"}
+                </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Manage and track your marketing campaigns
+                  {language === "sw" ? "Dhibiti na fuatilia kampeni zako za masoko" : "Manage and track your marketing campaigns"}
                 </p>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
@@ -568,7 +572,7 @@ const Campaigns = () => {
                   disabled={isRefreshing}
                 >
                   <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  Refresh
+                  {language === "sw" ? "Sasisha" : "Refresh"}
                 </Button>
                 <CreateCampaignDialog
                   open={isNewCampaignOpen}
@@ -577,8 +581,8 @@ const Campaigns = () => {
                 >
                   <Button className="gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Add New Campaign</span>
-                    <span className="sm:hidden">Add New</span>
+                    <span className="hidden sm:inline">{language === "sw" ? "Ongeza Kampeni Mpya" : "Add New Campaign"}</span>
+                    <span className="sm:hidden">{language === "sw" ? "Ongeza" : "Add New"}</span>
                   </Button>
                 </CreateCampaignDialog>
               </div>
@@ -591,7 +595,7 @@ const Campaigns = () => {
                   <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">Total Campaigns</p>
+                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Jumla ya kampeni" : "Total Campaigns"}</p>
                         <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
                       </div>
                       <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
@@ -605,7 +609,7 @@ const Campaigns = () => {
                   <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">Active Campaigns</p>
+                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Kampeni zinazoendelea" : "Active Campaigns"}</p>
                         <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
                       </div>
                       <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
@@ -619,7 +623,7 @@ const Campaigns = () => {
                   <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">Total Recipients</p>
+                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Jumla ya wapokeaji" : "Total Recipients"}</p>
                         <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
                       </div>
                       <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
@@ -639,7 +643,7 @@ const Campaigns = () => {
                     <div className="relative">
                       <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-3 h-3 sm:w-4 sm:h-4" />
                   <Input
-                    placeholder="Search campaigns..."
+                    placeholder={language === "sw" ? "Tafuta kampeni..." : "Search campaigns..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-8 sm:pl-10 text-xs sm:text-sm h-8 sm:h-9"
@@ -649,29 +653,29 @@ const Campaigns = () => {
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder={language === "sw" ? "Chuja kwa hali" : "Filter by status"} />
                   </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="running">Running</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="all">{language === "sw" ? "Hali zote" : "All Status"}</SelectItem>
+                    <SelectItem value="draft">{language === "sw" ? "Rasimu" : "Draft"}</SelectItem>
+                    <SelectItem value="scheduled">{language === "sw" ? "Imeratibiwa" : "Scheduled"}</SelectItem>
+                    <SelectItem value="running">{language === "sw" ? "Inaendelea" : "Running"}</SelectItem>
+                    <SelectItem value="paused">{language === "sw" ? "Imesitishwa" : "Paused"}</SelectItem>
+                    <SelectItem value="completed">{language === "sw" ? "Imekamilika" : "Completed"}</SelectItem>
+                      <SelectItem value="cancelled">{language === "sw" ? "Imeghairiwa" : "Cancelled"}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
-                    <SelectValue placeholder="Filter by type" />
+                    <SelectValue placeholder={language === "sw" ? "Chuja kwa aina" : "Filter by type"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="all">{language === "sw" ? "Aina zote" : "All Types"}</SelectItem>
                     <SelectItem value="sms">SMS</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="mixed">Mixed</SelectItem>
+                    <SelectItem value="mixed">{language === "sw" ? "Mchanganyiko" : "Mixed"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -684,15 +688,15 @@ const Campaigns = () => {
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Refreshing campaigns...
+                    {language === "sw" ? "Inasasisha kampeni..." : "Refreshing campaigns..."}
                   </div>
                 </div>
               )}
               <CardHeader className="p-3 lg:p-6">
                 <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-base lg:text-xl">Campaigns</span>
+                  <span className="text-base lg:text-xl">{language === "sw" ? "Kampeni" : "Campaigns"}</span>
                   <span className="text-xs lg:text-sm font-normal text-text-subtle">
-                    {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campaign' : 'campaigns'}
+                    {filteredCampaigns.length} {filteredCampaigns.length === 1 ? (language === "sw" ? "kampeni" : "campaign") : (language === "sw" ? "kampeni" : "campaigns")}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -700,11 +704,13 @@ const Campaigns = () => {
               {filteredCampaigns.length === 0 ? (
                   <div className="p-4 lg:p-12 text-center">
                     <MessageSquare className="w-6 h-6 lg:w-12 lg:h-12 text-text-subtle mx-auto mb-3" />
-                    <h3 className="text-sm lg:text-lg font-semibold text-foreground mb-2">No campaigns found</h3>
+                    <h3 className="text-sm lg:text-lg font-semibold text-foreground mb-2">
+                      {language === "sw" ? "Hakuna kampeni" : "No campaigns found"}
+                    </h3>
                     <p className="text-xs lg:text-base text-text-subtle">
                       {searchQuery || statusFilter !== "all" || typeFilter !== "all"
-                        ? "Try adjusting your filters to see more campaigns."
-                        : "No campaigns have been created yet."}
+                        ? (language === "sw" ? "Jaribu kubadilisha vichujio ili kuona kampeni zaidi." : "Try adjusting your filters to see more campaigns.")
+                        : (language === "sw" ? "Hakuna kampeni iliyoundwa bado." : "No campaigns have been created yet.")}
                     </p>
                   </div>
                 ) : (
@@ -712,12 +718,12 @@ const Campaigns = () => {
                     {/* Table Header */}
                     <div className="px-2 lg:px-6 py-2 bg-muted/50 border-b border-border-subtle">
                       <div className="grid grid-cols-12 gap-1 lg:gap-4 text-xs font-medium text-text-subtle">
-                        <div className="col-span-6 sm:col-span-4">Campaign</div>
-                        <div className="col-span-3 sm:col-span-2 hidden sm:block">Status</div>
-                        <div className="col-span-3 sm:col-span-2 hidden md:block">Type</div>
-                        <div className="col-span-0 sm:col-span-2 hidden lg:block">Recipients</div>
-                        <div className="col-span-0 sm:col-span-1 hidden lg:block">Progress</div>
-                        <div className="col-span-3 sm:col-span-1">Actions</div>
+                        <div className="col-span-6 sm:col-span-4">{language === "sw" ? "Kampeni" : "Campaign"}</div>
+                        <div className="col-span-3 sm:col-span-2 hidden sm:block">{language === "sw" ? "Hali" : "Status"}</div>
+                        <div className="col-span-3 sm:col-span-2 hidden md:block">{language === "sw" ? "Aina" : "Type"}</div>
+                        <div className="col-span-0 sm:col-span-2 hidden lg:block">{language === "sw" ? "Wapokeaji" : "Recipients"}</div>
+                        <div className="col-span-0 sm:col-span-1 hidden lg:block">{language === "sw" ? "Maendeleo" : "Progress"}</div>
+                        <div className="col-span-3 sm:col-span-1">{language === "sw" ? "Vitendo" : "Actions"}</div>
                       </div>
                     </div>
 
@@ -751,68 +757,68 @@ const Campaigns = () => {
                                   {campaign.can_start ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('start', campaign.id)}>
                                       <Play className="w-3 h-3 mr-2" />
-                                      Start Campaign
+                                      {language === "sw" ? "Endesha Kampeni" : "Start Campaign"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Play className="w-3 h-3 mr-2" />
-                                      Start Campaign
+                                      {language === "sw" ? "Endesha Kampeni" : "Start Campaign"}
                                     </DropdownMenuItem>
                                   )}
                                   {campaign.can_pause ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('pause', campaign.id)}>
                                       <Pause className="w-3 h-3 mr-2" />
-                                      Pause Campaign
+                                      {language === "sw" ? "Sitisha Kampeni" : "Pause Campaign"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Pause className="w-3 h-3 mr-2" />
-                                      Pause Campaign
+                                      {language === "sw" ? "Sitisha Kampeni" : "Pause Campaign"}
                                     </DropdownMenuItem>
                                   )}
                                   {campaign.can_cancel ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('cancel', campaign.id)}>
                                       <Square className="w-3 h-3 mr-2" />
-                                      Cancel Campaign
+                                      {language === "sw" ? "Ghairi Kampeni" : "Cancel Campaign"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Square className="w-3 h-3 mr-2" />
-                                      Cancel Campaign
+                                      {language === "sw" ? "Ghairi Kampeni" : "Cancel Campaign"}
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
                                   {campaign.can_view_analytics ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('view_analytics', campaign.id)}>
                                       <Eye className="w-3 h-3 mr-2" />
-                                      View Analytics
+                                      {language === "sw" ? "Tazama Uchambuzi" : "View Analytics"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Eye className="w-3 h-3 mr-2" />
-                                      View Analytics
+                                      {language === "sw" ? "Tazama Uchambuzi" : "View Analytics"}
                                     </DropdownMenuItem>
                                   )}
                                   {campaign.can_edit ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('edit', campaign.id)}>
                                       <Edit className="w-3 h-3 mr-2" />
-                                      Edit Campaign
+                                      {language === "sw" ? "Badilisha Kampeni" : "Edit Campaign"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Edit className="w-3 h-3 mr-2" />
-                                      Edit Campaign
+                                      {language === "sw" ? "Badilisha Kampeni" : "Edit Campaign"}
                                     </DropdownMenuItem>
                                   )}
                                   {campaign.can_duplicate ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('duplicate', campaign.id)}>
                                       <Copy className="w-3 h-3 mr-2" />
-                                      Duplicate
+                                      {language === "sw" ? "Kunakili" : "Duplicate"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Copy className="w-3 h-3 mr-2" />
-                                      Duplicate
+                                      {language === "sw" ? "Kunakili" : "Duplicate"}
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
@@ -822,12 +828,12 @@ const Campaigns = () => {
                                       className="text-destructive"
                                     >
                                       <Trash2 className="w-3 h-3 mr-2" />
-                                      Delete
+                                      {language === "sw" ? "Futa" : "Delete"}
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                       <Trash2 className="w-3 h-3 mr-2" />
-                                      Delete
+                                      {language === "sw" ? "Futa" : "Delete"}
                                     </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
@@ -861,7 +867,7 @@ const Campaigns = () => {
                              {campaign.status === 'running' && (
                                <div className="mb-2">
                                  <div className="flex items-center justify-between text-xs text-text-subtle mb-1">
-                                   <span>Progress</span>
+                                   <span>{language === "sw" ? "Maendeleo" : "Progress"}</span>
                                    <span>{campaign.progress_percentage}%</span>
                                  </div>
                                  <div className="w-full bg-muted rounded-full h-1.5">
@@ -877,18 +883,18 @@ const Campaigns = () => {
                              <div className="grid grid-cols-2 gap-1 text-xs text-text-subtle">
                                <div className="flex items-center gap-1">
                                  <CheckCircle className="w-3 h-3" />
-                                 <span>{campaign.delivered_count} delivered</span>
+                                 <span>{campaign.delivered_count} {language === "sw" ? "imewasilishwa" : "delivered"}</span>
                                </div>
                                <div className="flex items-center gap-1">
                                  <TrendingUp className="w-3 h-3" />
-                                 <span>{campaign.delivery_rate}% rate</span>
+                                 <span>{campaign.delivery_rate}% {language === "sw" ? "kiwango" : "rate"}</span>
                                </div>
                              </div>
 
                              {/* Date Row - Compact */}
                              <div className="flex items-center gap-1 text-xs text-text-subtle mt-2">
                                <Calendar className="w-3 h-3" />
-                               <span>Created {new Date(campaign.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</span>
+                               <span>{language === "sw" ? "Iliundwa" : "Created"} {new Date(campaign.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</span>
                              </div>
                            </div>
 

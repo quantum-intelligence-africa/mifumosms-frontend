@@ -26,6 +26,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Collapsible,
   CollapsibleContent,
@@ -58,29 +59,36 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const [smsOpen, setSmsOpen] = useState(true);
   const { user, logout, isLoading } = useAuth();
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
 
   // Navigation items
+  // OWNER: Standard user (default role)
+  // PARTINA: Partner role (requested + admin approved)
+  // Partner items only shown if user has is_partina=true
   const navigation: NavItem[] = [
-    { name: "Dashboard", href: "/dashboard", icon: Home, count: undefined },
+    { name: t("nav.dashboard"), href: "/dashboard", icon: Home, count: undefined },
     {
-      name: "SMS",
+      name: t("nav.sms"),
       href: "#",
       icon: Send,
       children: [
-        { name: "Send SMS", href: "/sms/send", icon: Zap },
-        { name: "Purchase SMS", href: "/sms/purchase", icon: CreditCard },
-        { name: "Sender Names", href: "/sms/sender-names", icon: Tag },
-        { name: "Purchase History", href: "/sms/purchase-history", icon: History },
+        { name: t("nav.send_sms"), href: "/sms/send", icon: Zap },
+        { name: t("nav.purchase_sms"), href: "/sms/purchase", icon: CreditCard },
+        { name: t("nav.sender_names"), href: "/sms/sender-names", icon: Tag },
+        { name: t("nav.purchase_history"), href: "/sms/purchase-history", icon: History },
       ]
     },
-    { name: "Contacts", href: "/contacts", icon: Users },
-    { name: "Campaigns", href: "/campaigns", icon: Send },
+    { name: t("nav.contacts"), href: "/contacts", icon: Users },
+    { name: t("nav.campaigns"), href: "/campaigns", icon: Send },
     // { name: "Templates", href: "/templates", icon: FileText },
     // { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Partner Insights", href: "/partner-insights", icon: BarChart3 },
-    { name: "Integration Guide", href: "/integration-guide", icon: BookOpen },
-    { name: "Partner Reference", href: "/partner-integration", icon: Server },
-    { name: "Settings", href: "/settings", icon: Settings },
+    // Partner items - only show if user has partner role
+    ...(user?.is_partina ? [
+      { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
+      { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
+    ] : []),
+    { name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen },
+    { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
   const getInitials = (name: string) => {
@@ -120,8 +128,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                 <MessageSquare className="w-5 h-5 text-primary-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="font-heading text-base font-semibold text-foreground truncate">Mifumo SMS</h1>
-                <p className="text-xs text-text-subtle truncate">Communication Hub</p>
+                <h1 className="font-heading text-base font-semibold text-foreground truncate">{t("app.name")}</h1>
+                <p className="text-xs text-text-subtle truncate">{t("app.tagline")}</p>
               </div>
             </div>
             {onClose && (
@@ -145,8 +153,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               <MessageSquare className="w-4 h-4 text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="font-heading text-[15px] font-semibold text-foreground truncate">Mifumo SMS</h1>
-              <p className="text-[11px] text-text-subtle truncate">Communication Hub</p>
+              <h1 className="font-heading text-[15px] font-semibold text-foreground truncate">{t("app.name")}</h1>
+              <p className="text-[11px] text-text-subtle truncate">{t("app.tagline")}</p>
             </div>
           </div>
         )}
@@ -158,7 +166,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             isMobile ? 'text-sm h-10' : 'text-[13px] h-9'
           }`}>
             <Plus className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-            <span>Buy SMS Credits</span>
+            <span>{t("action.buy_sms_credits")}</span>
           </Button>
         </Link>
       </div>

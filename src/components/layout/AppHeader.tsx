@@ -1,4 +1,4 @@
-import { Menu, User, Settings, LogOut, Moon, Sun } from "lucide-react";
+import { Menu, User, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { usePreferences } from "@/hooks/usePreferences";
 // import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface AppHeaderProps {
@@ -24,10 +26,34 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
+  const { updateTheme, preferences } = usePreferences();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleThemeToggle = async () => {
+    // Determine next theme: light → dark → light
+    let newTheme: 'light' | 'dark' | 'system' = 'light';
+    if (theme === 'light') {
+      newTheme = 'dark';
+    } else if (theme === 'dark') {
+      newTheme = 'light';
+    } else {
+      // System mode - toggle to light
+      newTheme = 'light';
+    }
+
+    // Update theme immediately for instant visual feedback
+    setTheme(newTheme);
+
+    // Save to API (don't await to keep UI responsive)
+    updateTheme(newTheme).catch((error) => {
+      console.error('Failed to save theme preference:', error);
+      // Revert on error would be handled by the hook
+    });
   };
 
   const getInitials = (name: string) => {
@@ -66,12 +92,12 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onClick={handleThemeToggle}
           className="h-9 w-9 rounded-lg hover:bg-accent transition-smooth"
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">{t("theme.toggle")}</span>
         </Button>
 
         {/* User Profile */}
@@ -89,7 +115,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               </Avatar>
               {!isMobile && (
                 <span className="text-[13px] font-medium">
-                  {isLoading ? 'Loading...' : (user?.first_name || 'User')}
+                  {isLoading ? t("user.loading") : (user?.first_name || t("user.user"))}
                 </span>
               )}
             </Button>
@@ -105,10 +131,10 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
                 </Avatar>
                 <div className="flex flex-col space-y-1 flex-1 min-w-0">
                   <p className="text-sm font-semibold leading-none truncate">
-                    {isLoading ? 'Loading...' : (user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User')}
+                    {isLoading ? t("user.loading") : (user?.full_name || `${user?.first_name} ${user?.last_name}` || t("user.user"))}
                   </p>
                   <p className="text-xs leading-none text-text-subtle truncate">
-                    {isLoading ? '...' : (user?.email || 'No email')}
+                    {isLoading ? '...' : (user?.email || t("user.no_email"))}
                   </p>
                 </div>
               </div>
@@ -119,14 +145,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               className="cursor-pointer hover:bg-accent transition-fast py-2.5"
             >
               <User className="mr-3 h-4 w-4" />
-              <span className="text-sm">Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigate('/settings')}
-              className="cursor-pointer hover:bg-accent transition-fast py-2.5"
-            >
-              <Settings className="mr-3 h-4 w-4" />
-              <span className="text-sm">Settings</span>
+              <span className="text-sm">{t("profile.profile")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border-subtle" />
             <DropdownMenuItem
@@ -134,7 +153,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               className="text-destructive cursor-pointer hover:bg-destructive/10 transition-fast py-2.5"
             >
               <LogOut className="mr-3 h-4 w-4" />
-              <span className="text-sm font-medium">Log out</span>
+              <span className="text-sm font-medium">{t("profile.logout")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -146,7 +165,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
             </div>
-            <span className="text-[11px] font-medium text-success">Online</span>
+            <span className="text-[11px] font-medium text-success">{t("status.online")}</span>
           </div>
         )}
       </div>

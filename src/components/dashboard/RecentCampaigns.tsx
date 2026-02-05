@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Campaign {
   id: string;
@@ -31,32 +32,33 @@ interface RecentCampaignsProps {
   campaigns?: Campaign[];
 }
 
-const statusConfig = {
-  completed: {
-    color: "success",
-    icon: CheckCircle,
-    label: "Completed",
-  },
-  sending: {
-    color: "warning",
-    icon: Send,
-    label: "Sending",
-  },
-  scheduled: {
-    color: "muted",
-    icon: Clock,
-    label: "Scheduled",
-  },
-  failed: {
-    color: "destructive",
-    icon: AlertCircle,
-    label: "Failed",
-  },
-};
-
 export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
+
+  const statusConfig = {
+    completed: {
+      color: "success",
+      icon: CheckCircle,
+      label: t("dashboard.recent_campaigns.status.completed"),
+    },
+    sending: {
+      color: "warning",
+      icon: Send,
+      label: t("dashboard.recent_campaigns.status.sending"),
+    },
+    scheduled: {
+      color: "muted",
+      icon: Clock,
+      label: t("dashboard.recent_campaigns.status.scheduled"),
+    },
+    failed: {
+      color: "destructive",
+      icon: AlertCircle,
+      label: t("dashboard.recent_campaigns.status.failed"),
+    },
+  };
 
   const handleViewAll = () => {
     navigate('/campaigns');
@@ -78,18 +80,18 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
     <Card className="p-6 glass border border-border-subtle">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
-          Recent Campaigns
+          {t("dashboard.recent_campaigns.title")}
         </h3>
         <Button variant="outline" size="sm" onClick={handleViewAll} className="text-[13px] font-medium">
-          View all →
+          {t("dashboard.recent_campaigns.view_all")}
         </Button>
       </div>
 
       <div className="space-y-4">
         {campaigns.length === 0 ? (
           <div className="text-center py-8 text-text-subtle">
-            <p>No campaigns yet</p>
-            <p className="text-sm">Create your first campaign to get started</p>
+            <p>{t("dashboard.recent_campaigns.empty_title")}</p>
+            <p className="text-sm">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
           </div>
         ) : (
           campaigns.slice(0, 3).map((campaign, index) => {
@@ -139,19 +141,19 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
                       e.stopPropagation();
                       handleViewDetails(campaign.id);
                     }}>
-                      View details
+                      {t("dashboard.recent_campaigns.menu.view_details")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
                       handleDuplicate(campaign.id);
                     }}>
-                      Duplicate
+                      {t("dashboard.recent_campaigns.menu.duplicate")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(campaign.id);
                     }}>
-                      Edit
+                      {t("dashboard.recent_campaigns.menu.edit")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -160,7 +162,7 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
               {campaign.status === "sending" && (
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-xs text-text-subtle mb-1">
-                    <span>Progress</span>
+                    <span>{t("dashboard.recent_campaigns.progress")}</span>
                     <span>{campaign.progress}%</span>
                   </div>
                   <Progress value={campaign.progress} className="h-2" />
@@ -170,14 +172,14 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <span className="text-text-subtle">
-                    Sent: <span className="text-foreground font-medium">{campaign.sent}</span>
+                    {t("dashboard.recent_campaigns.sent")}: <span className="text-foreground font-medium">{campaign.sent}</span>
                   </span>
                   <span className="text-text-subtle">
-                    Delivered: <span className="text-foreground font-medium">{campaign.delivered}</span>
+                    {t("dashboard.recent_campaigns.delivered")}: <span className="text-foreground font-medium">{campaign.delivered}</span>
                   </span>
                   {campaign.opened > 0 && (
                     <span className="text-text-subtle">
-                      Opened: <span className="text-foreground font-medium">{campaign.opened}</span>
+                      {t("dashboard.recent_campaigns.opened")}: <span className="text-foreground font-medium">{campaign.opened}</span>
                     </span>
                   )}
                 </div>
