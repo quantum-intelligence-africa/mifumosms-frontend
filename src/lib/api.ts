@@ -49,12 +49,8 @@ export interface User {
   is_staff?: boolean;
   phone_verified?: boolean;
   created_at?: string;
-  // Role and Partina fields
-  is_owner?: boolean; // Account owner (legacy field)
-  is_partina?: boolean; // Partina status (approved by admin)
-  partina_requested_at?: string | null; // When user requested Partina status
-  partina_approved_at?: string | null; // When user was approved as Partina
-  memberships?: Membership[]; // User's roles in different tenants
+  // Partina field - if true, user can access Partina features
+  is_partina?: boolean;
 }
 
 export interface AuthTokens {

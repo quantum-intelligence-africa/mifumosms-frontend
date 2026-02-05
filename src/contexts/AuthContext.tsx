@@ -46,7 +46,7 @@ interface AuthContextType {
   hasActiveMembership: () => boolean;
   canManageUsers: () => boolean;
   canAccessAdmin: () => boolean;
-  getPartinaStatus: () => { isPartina: boolean; isPending: boolean; approvedAt: string | null; requestedAt: string | null; status: 'approved' | 'pending' | 'none' };
+  getPartinaStatus: () => { isPartina: boolean; status: 'approved' | 'none' };
   getHighestRole: () => 'owner' | 'admin' | 'agent' | null;
   getRoleInTenant: (tenantId: string) => 'owner' | 'admin' | 'agent' | null;
   getActiveMemberships: () => any[];
@@ -195,19 +195,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const access = (response.data as any).access || (response.data as any).tokens?.access;
         const refresh = (response.data as any).refresh || (response.data as any).tokens?.refresh;
 
-        updateUserState(userData);
+        // Set token first so profile request is authenticated
         if (access) {
           apiClient.setToken(access);
         }
         if (refresh) {
           localStorage.setItem('refresh_token', refresh);
         }
-        localStorage.setItem('user_profile', JSON.stringify(userData));
 
-        // Note: SMS verification is handled automatically by backend during registration
-        // No need to send SMS here as backend manages verification code sending
-
-        return { success: true, user: userData };
+        // Fetch complete profile to get all role/Partina information
+        try {
+          const profileResponse = await apiClient.getProfile();
+          if (profileResponse.data) {
+            // Use the complete profile data which includes is_partina, partina_approved_at, etc.
+            updateUserState(profileResponse.data);
+            localStorage.setItem('user_profile', JSON.stringify(profileResponse.data));
+            return { success: true, user: profileResponse.data };
+          }
+        } catch (profileError) {
+          // Profile fetch failed, but login succeeded - use initial user data
+          console.warn('Failed to fetch complete profile after login:', profileError);
+          updateUserState(userData);
+          localStorage.setItem('user_profile', JSON.stringify(userData));
+          return { success: true, user: userData };
+        }
       } else {
         // Extract error message from response
         // API returns errors in non_field_errors array or error/message fields

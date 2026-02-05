@@ -6,23 +6,13 @@
 import { User, Membership, UserRole, MembershipStatus } from '@/lib/api';
 
 /**
- * Check if user is a Partina (approved partner/agent)
+ * Check if user is a Partina (partner with access to Partina features)
  * @param user - The user object
- * @returns True if user is an approved Partina
+ * @returns True if user has Partina access (is_partina === true)
  */
 export const isPartina = (user: User | null | undefined): boolean => {
 	if (!user) return false;
-	return user.is_partina === true && user.partina_approved_at !== null && user.partina_approved_at !== undefined;
-};
-
-/**
- * Check if user has requested Partina status
- * @param user - The user object
- * @returns True if user has requested Partina status
- */
-export const hasPartnaRequestPending = (user: User | null | undefined): boolean => {
-	if (!user) return false;
-	return user.is_partina === false && user.partina_requested_at !== null && user.partina_requested_at !== undefined;
+	return user.is_partina === true;
 };
 
 /**
@@ -177,27 +167,19 @@ export const canAccessAdmin = (user: User | null | undefined): boolean => {
  */
 export const getPartinaStatus = (user: User | null | undefined): {
 	isPartina: boolean;
-	isPending: boolean;
-	approvedAt: string | null;
-	requestedAt: string | null;
-	status: 'approved' | 'pending' | 'none';
+	status: 'approved' | 'none';
 } => {
 	if (!user) {
 		return {
 			isPartina: false,
-			isPending: false,
-			approvedAt: null,
-			requestedAt: null,
 			status: 'none'
 		};
 	}
 
+	const isPartinaUser = isPartina(user);
 	return {
-		isPartina: isPartina(user),
-		isPending: hasPartnaRequestPending(user),
-		approvedAt: user.partina_approved_at || null,
-		requestedAt: user.partina_requested_at || null,
-		status: isPartina(user) ? 'approved' : hasPartnaRequestPending(user) ? 'pending' : 'none'
+		isPartina: isPartinaUser,
+		status: isPartinaUser ? 'approved' : 'none'
 	};
 };
 
