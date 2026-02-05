@@ -94,9 +94,15 @@ const SendSMS = () => {
   const { fetchContacts } = useContacts();
 
   // Reduce to approved/active sender names only
+  // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
   const approvedSenderRequests = useMemo(() => {
     return (senderNames || [])
-      .filter((req) => (req.status === "approved" || req.status === "active") && req.sender_id && req.sender_id.trim() !== "");
+      .filter((req: any) => (req.status === "approved" || req.status === "active") && (req.sender_id || req.sender_name) && (req.sender_id || req.sender_name).trim() !== "")
+      .map((req: any) => ({
+        id: req.id,
+        sender_id: req.sender_id || req.sender_name,
+        status: req.status
+      }));
   }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
@@ -216,13 +222,13 @@ const SendSMS = () => {
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
     // Prefer Taarifa-SMS if available and approved, otherwise first approved
-    const defaultPreferred = approvedSenderRequests.find(r => r.sender_id === "Taarifa-SMS");
+    const defaultPreferred = approvedSenderRequests.find((r: any) => r.sender_id === "Taarifa-SMS");
     const firstApproved = defaultPreferred || approvedSenderRequests[0];
     if (firstApproved?.sender_id) setSelectedSender(firstApproved.sender_id);
   }, [selectedSender, approvedSenderRequests]);
 
   const getSelectedSenderName = () => {
-    const found = approvedSenderRequests.find(r => r.sender_id === selectedSender);
+    const found = approvedSenderRequests.find((r: any) => r.sender_id === selectedSender);
     return found?.sender_id || "";
   };
 

@@ -68,9 +68,9 @@ const Signup = () => {
       const result = await apiClient.verifyPhoneCode(registeredPhone, verificationCode);
 
       if (result.success && result.data) {
-        const { tokens, user: userData, message } = result.data;
+        const { access, refresh, user: userData, message } = result.data;
 
-        if (tokens && userData) {
+        if (access && refresh && userData) {
           const updatedUser = {
             ...userData,
             is_verified: true,
@@ -78,8 +78,8 @@ const Signup = () => {
             phone_verified: true
           };
 
-          localStorage.setItem('access_token', tokens.access);
-          localStorage.setItem('refresh_token', tokens.refresh);
+          localStorage.setItem('access_token', access);
+          localStorage.setItem('refresh_token', refresh);
           localStorage.setItem('user', JSON.stringify(updatedUser));
 
           toast({

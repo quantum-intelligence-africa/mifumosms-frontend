@@ -113,9 +113,12 @@ export function ActivityFeed() {
             );
           })
         ) : (
-          <div className="text-center py-6">
-            <Activity className="w-6 h-6 text-text-subtle mx-auto mb-2" />
-            <p className="text-xs text-text-subtle">{t("dashboard.activity.none")}</p>
+          <div className="text-center py-10">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
+              <Activity className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+            <h4 className="text-sm font-medium text-foreground mb-1">{t("dashboard.activity.none")}</h4>
+            <p className="text-xs text-text-subtle">Start sending messages to see activity here</p>
           </div>
         )}
       </div>
