@@ -1551,13 +1551,13 @@ class ApiClient {
   // PARTINA PARTNER REQUEST ENDPOINTS
   // =============================================
 
-  async requestPartina(reason: string): Promise<ApiResponse<{
+  async requestPartina(message: string): Promise<ApiResponse<{
     success: boolean;
     message: string;
   }>> {
     return this.request<{ success: boolean; message: string }>('/auth/request-partina/', {
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({ message }),
     });
   }
 

@@ -1,4 +1,4 @@
-import { Send, MessageSquare, Users, FileText, Zap } from "lucide-react";
+import { Send, MessageSquare, Users, FileText, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -40,8 +40,8 @@ export function QuickActions() {
   return (
     <Card className="p-5 sm:p-6 glass border border-border-subtle">
       <div className="flex items-center gap-2.5 mb-5">
-        <div className="p-2 rounded-lg bg-secondary/10">
-          <Zap className="w-4 h-4 text-secondary" />
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Rocket className="w-4 h-4 text-primary" />
         </div>
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           {t("dashboard.quick_actions.title")}
@@ -55,7 +55,7 @@ export function QuickActions() {
             <Button
               key={action.name}
               variant={action.variant}
-              className="h-auto p-3 sm:p-3.5 flex-col items-start text-left whitespace-normal min-h-[75px] sm:min-h-[80px] hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
+              className="h-[100px] sm:h-[105px] p-3 sm:p-4 flex-col items-start text-left whitespace-normal hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
               onClick={() => action.to && navigate(action.to)}
             >
               <div className="flex items-center gap-2 w-full mb-1.5">

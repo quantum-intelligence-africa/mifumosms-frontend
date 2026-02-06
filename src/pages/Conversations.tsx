@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -58,6 +58,10 @@ interface Conversation {
 }
 
 const Conversations = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);

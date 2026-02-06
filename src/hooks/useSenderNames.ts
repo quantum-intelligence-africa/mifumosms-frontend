@@ -20,7 +20,7 @@ const calculateStatsFromSenderNames = (senderNames: SenderNameRequest[]): Sender
 export function useSenderNames() {
 	const [senderNames, setSenderNames] = useState<SenderNameRequest[]>([]);
 	const [stats, setStats] = useState<SenderNameStats | null>(null);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(false); // Start as false to allow immediate render
 	const [error, setError] = useState<string | null>(null);
 	const requestsCompleted = useRef(false);
 	// Safe access to auth context

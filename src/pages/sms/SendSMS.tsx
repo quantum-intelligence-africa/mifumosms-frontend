@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Send,
@@ -12,7 +12,8 @@ import {
   X,
   AlertCircle,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  MessageSquare
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -68,6 +69,9 @@ const SendSMS = () => {
   const [sendProgress, setSendProgress] = useState(0);
   const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
   const [isLoadingSegmentContacts, setIsLoadingSegmentContacts] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef(new AbortController());
 
   // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
   const normalizeToApi = (input: string): string | null => {
@@ -111,13 +115,17 @@ const SendSMS = () => {
     { id: "3", name: "Active Users", contact_count: segmentCounts.activeContacts },
   ], [segmentCounts]);
 
-  // Function to fetch contacts by segment
-  const fetchContactsBySegment = useCallback(async (segmentId: string) => {
+  // Function to fetch contacts by segment with abort signal
+  const fetchContactsBySegment = useCallback(async (segmentId: string, abortSignal?: AbortSignal) => {
+    if (!isMountedRef.current) return;
     setIsLoadingSegmentContacts(true);
     try {
       // Fetch all contacts first, then filter on frontend
       // (Backend may not support advanced filtering yet)
       const response = await apiClient.getContacts();
+
+      if (!isMountedRef.current) return;
+      if (abortSignal?.aborted) return;
 
       if (!response.success || !response.data) {
         throw new Error('Failed to fetch contacts');
@@ -145,19 +153,25 @@ const SendSMS = () => {
           filteredContacts = allContacts;
       }
 
-      setSegmentContacts(filteredContacts);
-      logger.debug(`Segment ${segmentId} contacts loaded: ${filteredContacts.length}`);
+      if (isMountedRef.current) {
+        setSegmentContacts(filteredContacts);
+        logger.debug(`Segment ${segmentId} contacts loaded: ${filteredContacts.length}`);
+      }
 
     } catch (error) {
-      logger.error('Error fetching segment contacts');
-      setSegmentContacts([]);
-      toast({
-        title: "Error loading contacts",
-        description: "Failed to fetch contacts for the selected segment",
-        variant: "destructive"
-      });
+      if (isMountedRef.current && !abortSignal?.aborted) {
+        logger.error('Error fetching segment contacts');
+        setSegmentContacts([]);
+        toast({
+          title: "Error loading contacts",
+          description: "Failed to fetch contacts for the selected segment",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setIsLoadingSegmentContacts(false);
+      if (isMountedRef.current) {
+        setIsLoadingSegmentContacts(false);
+      }
     }
   }, [toast]);
 
@@ -181,12 +195,66 @@ const SendSMS = () => {
 
   // Fetch contacts when segment is selected
   useEffect(() => {
-    if (selectedMode === "segment" && selectedSegment) {
-      fetchContactsBySegment(selectedSegment);
+    const abortController = new AbortController();
+    if (selectedMode === "segment" && selectedSegment && isMountedRef.current) {
+      fetchContactsBySegment(selectedSegment, abortController.signal);
     }
+    return () => {
+      abortController.abort();
+    };
   }, [selectedMode, selectedSegment, fetchContactsBySegment]);
 
   const location = useLocation();
+
+  // Immediate cleanup when navigating away from this page
+  useEffect(() => {
+    // This runs whenever the pathname changes
+    const isLeavingPage = !location.pathname.includes('/sms/send');
+
+    if (isLeavingPage) {
+      // Abort ALL pending operations immediately
+      abortControllerRef.current.abort();
+      isMountedRef.current = false;
+      setSending(false);
+      setSendProgress(0);
+      setPageReady(false);
+      setIsLoadingSegmentContacts(false);
+      setSegmentContacts([]);
+      setRecipients([]);
+      setSelectedMode(null);
+    }
+  }, [location.pathname]);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    isMountedRef.current = true;
+    abortControllerRef.current = new AbortController();
+    setPageReady(true); // Make page ready immediately
+
+    // Listen for navigation events from sidebar
+    const handlePageNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.href && !customEvent.detail.href.includes('/sms/send')) {
+        // Abort ALL pending operations immediately
+        abortControllerRef.current.abort();
+        isMountedRef.current = false;
+        setSending(false);
+        setSendProgress(0);
+        setPageReady(false);
+        setIsLoadingSegmentContacts(false);
+        setSegmentContacts([]);
+      }
+    };
+
+    window.addEventListener('page-navigate', handlePageNavigate);
+
+    return () => {
+      window.removeEventListener('page-navigate', handlePageNavigate);
+      abortControllerRef.current.abort();
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -607,7 +675,7 @@ const SendSMS = () => {
                   onClick={() => setSelectedMode("single")}
                 >
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl gradient-primary flex items-center justify-center mb-2 sm:mb-3 lg:mb-4">
-                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary-foreground" />
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary-foreground" />
                   </div>
                   <h3 className="font-heading text-sm sm:text-base lg:text-lg font-semibold mb-1 sm:mb-2">{language === "sw" ? "SMS ya Haraka" : "Quick SMS"}</h3>
                   <p className="text-xs sm:text-sm text-text-subtle">
@@ -648,7 +716,7 @@ const SendSMS = () => {
               <Card className="p-3 sm:p-4 lg:p-6 glass">
                 <div className="flex items-center justify-between mb-4 sm:mb-5 lg:mb-6">
                   <div className="flex items-center gap-1 sm:gap-2">
-                    {selectedMode === "single" && <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />}
+                    {selectedMode === "single" && <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />}
                     {selectedMode === "bulk" && <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-secondary" />}
                     {selectedMode === "segment" && <Users className="w-4 h-4 sm:w-5 sm:h-5 text-success" />}
                     <h2 className="font-heading text-lg sm:text-xl font-semibold">

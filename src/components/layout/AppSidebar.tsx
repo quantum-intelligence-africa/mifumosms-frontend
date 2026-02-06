@@ -22,7 +22,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -57,11 +57,44 @@ interface AppSidebarProps {
 
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [smsOpen, setSmsOpen] = useState(true);
   const { user, logout, isLoading } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { isPartina } = useRoles();
+
+  // Handle navigation with page refresh
+  const handleNavigation = (href: string) => {
+    if (location.pathname !== href) {
+      // Check if we're leaving heavy pages (SendSMS or SenderNames)
+      const isLeavingHeavyPage = location.pathname.includes('/sms/send') || location.pathname.includes('/sms/sender-names');
+
+      if (isLeavingHeavyPage) {
+        // Do a full page refresh to completely clear state and memory
+        window.location.href = href;
+      } else {
+        // Dispatch a custom event to notify all pages to cancel operations
+        window.dispatchEvent(new CustomEvent('page-navigate', { detail: { href } }));
+
+        // Small delay to allow cleanup, then navigate
+        setTimeout(() => {
+          // Scroll to top first
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+
+          // Navigate to the page
+          navigate(href);
+
+          // Close mobile menu if open
+          if (isMobile && onClose) {
+            onClose();
+          }
+        }, 10);
+      }
+    }
+  };
 
   // Navigation items
   // OWNER: Standard user (default role)
@@ -74,7 +107,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       href: "#",
       icon: Send,
       children: [
-        { name: t("nav.send_sms"), href: "/sms/send", icon: Zap },
+        { name: t("nav.send_sms"), href: "/sms/send", icon: MessageSquare },
         { name: t("nav.purchase_sms"), href: "/sms/purchase", icon: CreditCard },
         { name: t("nav.sender_names"), href: "/sms/sender-names", icon: Tag },
         { name: t("nav.purchase_history"), href: "/sms/purchase-history", icon: History },
@@ -163,14 +196,17 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
       {/* Quick Actions */}
       <div className={`border-b border-border-subtle ${isMobile ? 'px-4 py-3.5' : 'px-4 py-3'}`}>
-        <Link to="/sms/purchase" onClick={isMobile ? onClose : undefined}>
-          <Button variant="default" size="sm" className={`w-full font-medium shadow-sm hover:shadow-md interactive-button ${
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => handleNavigation('/sms/purchase')}
+          className={`w-full font-medium shadow-sm hover:shadow-md interactive-button ${
             isMobile ? 'text-sm h-10' : 'text-[13px] h-9'
-          }`}>
-            <Plus className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-            <span>{t("action.buy_sms_credits")}</span>
-          </Button>
-        </Link>
+          }`}
+        >
+          <Plus className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+          <span>{t("action.buy_sms_credits")}</span>
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -208,22 +244,17 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                           const childActive = location.pathname === child.href;
                           return (
                             <li key={child.name}>
-                              <Link
-                                to={child.href}
-                                className="block"
-                                onClick={isMobile ? onClose : undefined}
+                              <Button
+                                onClick={() => handleNavigation(child.href)}
+                                variant={childActive ? "secondary" : "ghost"}
+                                size="sm"
+                                className={`w-full justify-start px-3 rounded-lg transition-fast ${
+                                  childActive ? 'font-medium shadow-sm' : 'font-normal'
+                                } ${isMobile ? 'h-9 text-sm' : 'h-8 text-[13px]'}`}
                               >
-                                <Button
-                                  variant={childActive ? "secondary" : "ghost"}
-                                  size="sm"
-                                  className={`w-full justify-start px-3 rounded-lg transition-fast ${
-                                    childActive ? 'font-medium shadow-sm' : 'font-normal'
-                                  } ${isMobile ? 'h-9 text-sm' : 'h-8 text-[13px]'}`}
-                                >
-                                  <ChildIcon className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-                                  <span className="truncate">{child.name}</span>
-                                </Button>
-                              </Link>
+                                <ChildIcon className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+                                <span className="truncate">{child.name}</span>
+                              </Button>
                             </li>
                           );
                         })}
@@ -236,28 +267,23 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
             return (
               <li key={item.name}>
-                <Link
-                  to={item.href}
-                  className="block"
-                  onClick={isMobile ? onClose : undefined}
+                <Button
+                  onClick={() => handleNavigation(item.href)}
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={`w-full justify-start px-3 rounded-lg transition-fast ${
+                    isActive ? 'font-medium shadow-sm' : 'font-normal'
+                  } ${isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'}`}
                 >
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className={`w-full justify-start px-3 rounded-lg transition-fast ${
-                      isActive ? 'font-medium shadow-sm' : 'font-normal'
-                    } ${isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'}`}
-                  >
-                    <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
-                    <span className="flex-1 text-left truncate">{item.name}</span>
-                    {item.count && (
-                      <Badge variant="secondary" className={`ml-auto px-1.5 py-0.5 flex-shrink-0 font-medium ${
-                        isMobile ? 'text-xs' : 'text-[11px]'
-                      }`}>
-                        {item.count}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
+                  <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
+                  <span className="flex-1 text-left truncate">{item.name}</span>
+                  {item.count && (
+                    <Badge variant="secondary" className={`ml-auto px-1.5 py-0.5 flex-shrink-0 font-medium ${
+                      isMobile ? 'text-xs' : 'text-[11px]'
+                    }`}>
+                      {item.count}
+                    </Badge>
+                  )}
+                </Button>
               </li>
             );
           })}

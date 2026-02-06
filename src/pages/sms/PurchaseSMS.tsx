@@ -69,6 +69,10 @@ interface CustomSMSState {
 }
 
 const PurchaseSMS = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const { toast } = useToast();
   const { t } = useLanguage();
   const isMobile = useIsMobile();

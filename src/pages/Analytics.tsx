@@ -66,6 +66,10 @@ interface AnalyticsCategory {
 }
 
 const Analytics = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);

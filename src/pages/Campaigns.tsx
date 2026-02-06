@@ -59,6 +59,10 @@ import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Campaigns = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -590,7 +594,7 @@ const Campaigns = () => {
 
             {/* Summary Cards */}
             {summary && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
                 <Card>
                   <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">

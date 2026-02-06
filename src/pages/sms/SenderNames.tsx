@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { logger } from "@/utils/logger";
 import {
   Plus,
@@ -61,6 +62,54 @@ import { useLanguage } from "@/hooks/useLanguage";
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
 const SenderNames = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    isMountedRef.current = true;
+    abortControllerRef.current = new AbortController();
+    setPageReady(true); // Make page ready immediately
+
+    // Listen for navigation events from sidebar
+    const handlePageNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.href && !customEvent.detail.href.includes('/sms/sender-names')) {
+        // Abort ALL pending operations immediately
+        abortControllerRef.current.abort();
+        isMountedRef.current = false;
+        setPageReady(false);
+        setShowRequestDialog(false);
+        setShowEditDialog(false);
+        setShowDetailsDialog(false);
+        setSubmitting(false);
+      }
+    };
+
+    window.addEventListener('page-navigate', handlePageNavigate);
+
+    return () => {
+      window.removeEventListener('page-navigate', handlePageNavigate);
+      abortControllerRef.current.abort();
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Immediate cleanup when navigating away from this page
+  useEffect(() => {
+    const isLeavingPage = !location.pathname.includes('/sms/sender-names');
+
+    if (isLeavingPage) {
+      // Abort ALL pending operations immediately
+      abortControllerRef.current.abort();
+      isMountedRef.current = false;
+      setPageReady(false);
+      setShowRequestDialog(false);
+      setShowEditDialog(false);
+      setShowDetailsDialog(false);
+      setSubmitting(false);
+    }
+  }, [location.pathname]);
+
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { t } = useLanguage();
@@ -166,6 +215,8 @@ const SenderNames = () => {
   const [submitting, setSubmitting] = useState(false);
   const [kycDocuments, setKycDocuments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef(new AbortController());
   const [editingSender, setEditingSender] = useState<SenderNameRequest | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editSenderName, setEditSenderName] = useState("");
@@ -175,6 +226,7 @@ const SenderNames = () => {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [tenantFilter, setTenantFilter] = useState<string>("");
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [pageReady, setPageReady] = useState(false);
 
 
   const handleViewDetails = async (sender: SenderNameRequest | UnifiedSenderName) => {
@@ -357,6 +409,8 @@ const SenderNames = () => {
         supporting_documents: kycDocuments
       });
 
+      if (!isMountedRef.current) return;
+
       if (result.success) {
         setSubmitting(false);
         setShowRequestDialog(false);
@@ -395,40 +449,48 @@ const SenderNames = () => {
         }
       }
     } catch (error) {
-      setSubmitting(false);
-      toast({
-        title: "Request failed",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
+      if (isMountedRef.current) {
+        setSubmitting(false);
+        toast({
+          title: "Request failed",
+          description: "An unexpected error occurred",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   const handleDeleteRequest = async (sender: SenderNameRequest | UnifiedSenderName) => {
     try {
-      // Pass sender_id if available, otherwise pass id
-      const idToDelete = 'sender_id' in sender ? sender.sender_id : sender.id;
+      // Always use the UUID from the id field for deletion
+      const idToDelete = sender.id;
 
       const result = await deleteSenderName(idToDelete);
 
-      if (result.success) {
-        toast({
-          title: "Request deleted",
-          description: "Sender name request has been deleted",
-        });
-      } else {
+      if (isMountedRef.current) {
+        if (result.success) {
+          toast({
+            title: "Request deleted",
+            description: "Sender name request has been deleted",
+          });
+          // Refresh the page data to show updated list
+          await refreshData();
+        } else {
+          toast({
+            title: "Delete failed",
+            description: result.error || "Failed to delete sender name request",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
         toast({
           title: "Delete failed",
-          description: result.error || "Failed to delete sender name request",
+          description: "An unexpected error occurred",
           variant: "destructive"
         });
       }
-    } catch (error) {
-      toast({
-        title: "Delete failed",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
     }
   };
 
@@ -436,17 +498,22 @@ const SenderNames = () => {
     try {
       const result = await requestDefaultSender();
 
-      if (result.success) {
+      if (isMountedRef.current && result.success) {
         // Refresh both sender names and default sender data
         await Promise.all([refreshData(), refreshDefaultSender()]);
       }
     } catch (error) {
-      logger.warn('Error requesting default sender');
+      if (isMountedRef.current) {
+        logger.warn('Error requesting default sender');
+      }
     }
   };
 
   const handleTenantFilter = async (tenantId: string | null) => {
     setSelectedTenantId(tenantId);
+    if (!tenantId) {
+      setTenantFilter(""); // Clear input when clearing filter
+    }
     if (tenantId && fetchSenderNamesByTenant) {
       // Use the new tenant filtering function from the hook
       await fetchSenderNamesByTenant(tenantId);
@@ -708,9 +775,9 @@ const SenderNames = () => {
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="min-w-0">
+                <div>
                   <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                     {t('sender_names')}
                   </h1>
@@ -718,65 +785,27 @@ const SenderNames = () => {
                     {t('manage_sender_ids')}
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
-                  <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto h-9 sm:h-10">
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    onClick={() => setShowRequestDialog(true)}
+                    className="h-9"
+                  >
                     <Plus className="w-4 h-4 mr-2" />
-                    <span className="hidden xs:inline">Request Sender Name</span>
-                    <span className="xs:hidden">Request</span>
+                    <span className="hidden sm:inline">Request</span>
+                    <span className="sm:hidden">Request</span>
                   </Button>
                   <Button
                     onClick={async () => {
                       await Promise.all([refreshData(), refreshDefaultSender()]);
                     }}
                     variant="outline"
-                    className="w-full sm:w-auto h-9 sm:h-10"
+                    className="h-9"
                     disabled={loading || isLoadingDefault}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">Refresh</span>
+                    <RefreshCw className={`w-4 h-4 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
               </div>
-            </div>
-
-            {/* Tenant Filter */}
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                <Label className="text-sm font-medium shrink-0">Filter by Tenant:</Label>
-                <div className="flex gap-2 w-full min-w-0">
-                  <Input
-                    placeholder="Enter tenant ID or name..."
-                    value={tenantFilter}
-                    onChange={(e) => setTenantFilter(e.target.value)}
-                    className="flex-1 sm:w-64"
-                  />
-                  <Button
-                    onClick={() => handleTenantFilter(tenantFilter.trim() || null)}
-                    variant="outline"
-                    disabled={loading}
-                    className="shrink-0"
-                  >
-                    <span className="hidden sm:inline">Filter</span>
-                    <span className="sm:hidden">Filter</span>
-                  </Button>
-                  {selectedTenantId && (
-                    <Button
-                      onClick={() => handleTenantFilter(null)}
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                    >
-                      <span className="hidden sm:inline">Clear</span>
-                      <span className="sm:hidden">Clear</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {selectedTenantId && (
-                <Badge variant="secondary" className="text-xs self-start">
-                  Filtered: {selectedTenantId}
-                </Badge>
-              )}
             </div>
 
             {/* Animated Stats Section */}
@@ -862,16 +891,22 @@ const SenderNames = () => {
                 </Card>
             </div>
 
-            {/* Default Sender Card */}
-            {overview && (
-              <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-blue-500">
+            {/* Default Sender Card - Hidden when Taarifa-SMS is Approved */}
+            {(() => {
+              const taarifaApproved = safeSenderNames.some(sender => sender.sender_id === 'Taarifa-SMS' && sender.status === 'approved');
+              return overview && !taarifaApproved && (
+              <Card className={`p-3 sm:p-4 lg:p-6 glass border-l-4 ${(canRequestDefaultSender?.() ? 'border-blue-500' : 'border-green-500')}`}>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start gap-3">
-                    <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    {canRequestDefaultSender?.() ? (
+                      <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-blue-600 mb-1">Default Sender ID</h3>
+                          <h3 className={`font-semibold ${canRequestDefaultSender?.() ? 'text-blue-600' : 'text-green-600'} mb-1`}>Default Sender ID</h3>
                           <p className="text-sm text-text-subtle">
                             Use the default sender ID "{getDefaultSenderName?.() || 'Taarifa-SMS'}" for instant SMS sending
                           </p>
@@ -899,9 +934,9 @@ const SenderNames = () => {
                             </Button>
                           ) : (
                             <div className="text-left sm:text-right w-full sm:w-auto">
-                              <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'} className="mb-2">
-                                {safeGetStatusIcon((overview.active_request?.status || 'approved') as SenderStatus)}
-                                <span className="ml-1">{overview.active_request?.status || 'Available'}</span>
+                              <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'} className="mb-2 bg-green-100 text-green-700 border-green-300">
+                                <Check className="w-4 h-4 mr-1" />
+                                <span>{overview.active_request?.status || 'Available'}</span>
                               </Badge>
                               {getCannotRequestReason?.() && (
                                 <p className="text-xs text-text-subtle">{getCannotRequestReason()}</p>
@@ -943,7 +978,8 @@ const SenderNames = () => {
                   </div>
                 </div>
               </Card>
-            )}
+              );
+            })()}
 
             {/* Info Card */}
             <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">

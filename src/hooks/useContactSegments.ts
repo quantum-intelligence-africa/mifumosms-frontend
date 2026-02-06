@@ -15,7 +15,7 @@ export const useContactSegments = () => {
 		vipContacts: 0,
 		activeContacts: 0,
 	});
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(false); // Start as false to allow immediate render
 	const [error, setError] = useState<string | null>(null);
 	const { toast } = useToast();
 

@@ -20,7 +20,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
 import { SenderIds } from "@/components/dashboard/SenderIds";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -33,6 +33,11 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   if (isLoading) {
     return (
@@ -96,7 +101,8 @@ const Dashboard = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6 relative z-0">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
-            {/* Welcome Section */}
+            {/* Welcome Section - Hidden */}
+            {/*
             <div className="mb-6 sm:mb-8">
               <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-2 tracking-tight">
                 {t("dashboard.welcome")}
@@ -105,6 +111,7 @@ const Dashboard = () => {
                 {t("dashboard.subtitle")}
               </p>
             </div>
+            */}
 
             {/* Metrics Grid - Always 2 per row on mobile, 4 on desktop */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
@@ -145,16 +152,16 @@ const Dashboard = () => {
                 <QuickActions />
               </div>
 
-              {/* Recent Campaigns */}
+              {/* Performance Overview */}
               <div className="lg:col-span-2 order-1 lg:order-2">
-                <RecentCampaigns campaigns={recentCampaigns || []} />
+                <PerformanceOverview performance={performanceOverview} />
               </div>
             </div>
 
-            {/* Activity Feed and Performance Overview */}
+            {/* Activity Feed and Recent Campaigns */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
               <ActivityFeed />
-              <PerformanceOverview performance={performanceOverview} />
+              <RecentCampaigns campaigns={recentCampaigns || []} />
             </div>
 
             {/* Sender IDs */}

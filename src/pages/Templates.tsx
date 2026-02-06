@@ -49,6 +49,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { Template, TemplateFilterParams, CreateTemplateRequest } from "@/lib/api";
 
 const Templates = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -262,19 +266,19 @@ const Templates = () => {
 
   // Filter templates based on search and filter values
   const filteredTemplates = templates.filter(template => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.body_text.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesChannel = channelFilter === "all" || 
+
+    const matchesChannel = channelFilter === "all" ||
       template.channel === channelFilter;
-    
-    const matchesCategory = categoryFilter === "all" || 
+
+    const matchesCategory = categoryFilter === "all" ||
       template.category === categoryFilter;
-    
-    const matchesLanguage = languageFilter === "all" || 
+
+    const matchesLanguage = languageFilter === "all" ||
       template.language === languageFilter;
-    
+
     return matchesSearch && matchesChannel && matchesCategory && matchesLanguage;
   });
 
@@ -332,7 +336,7 @@ const Templates = () => {
       last_used_at: null,
       last_used_display: "Never used"
     };
-    
+
     setTemplates(prev => [duplicatedTemplate, ...prev]);
     toast({
       title: "Template Duplicated",
@@ -341,12 +345,12 @@ const Templates = () => {
   };
 
   const handleToggleStar = async (template: Template) => {
-    setTemplates(prev => prev.map(t => 
-      t.id === template.id 
+    setTemplates(prev => prev.map(t =>
+      t.id === template.id
         ? { ...t, is_favorite: !t.is_favorite }
         : t
     ));
-    
+
     const action = template.is_favorite ? "removed from" : "added to";
     toast({
       title: "Template Starred",
@@ -355,12 +359,12 @@ const Templates = () => {
   };
 
   const handleApproveTemplate = async (template: Template) => {
-    setTemplates(prev => prev.map(t => 
-      t.id === template.id 
+    setTemplates(prev => prev.map(t =>
+      t.id === template.id
         ? { ...t, status: "approved", status_display: "Approved", approved: true, approval_status: "approved" }
         : t
     ));
-    
+
     toast({
       title: "Template Approved",
       description: `"${template.name}" has been approved`,
@@ -368,12 +372,12 @@ const Templates = () => {
   };
 
   const handleRejectTemplate = async (template: Template) => {
-    setTemplates(prev => prev.map(t => 
-      t.id === template.id 
+    setTemplates(prev => prev.map(t =>
+      t.id === template.id
         ? { ...t, status: "rejected", status_display: "Rejected", approved: false, approval_status: "rejected" }
         : t
     ));
-    
+
     toast({
       title: "Template Rejected",
       description: `"${template.name}" has been rejected`,
@@ -402,7 +406,7 @@ const Templates = () => {
     }
 
     setIsCreating(true);
-    
+
     // Simulate API call delay
     setTimeout(() => {
       const newTemplate: Template = {
@@ -443,7 +447,7 @@ const Templates = () => {
         description: ""
       });
       setIsCreating(false);
-      
+
       toast({
         title: "Template Created",
         description: `"${createFormData.name}" has been created successfully`,

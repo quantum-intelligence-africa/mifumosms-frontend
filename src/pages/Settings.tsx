@@ -145,6 +145,10 @@ interface ProfileUpdateData {
 }
 
 const Settings = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
@@ -491,8 +495,8 @@ const Settings = () => {
     },
     {
       id: "partina",
-      title: "Partina",
-      description: "Request to become a Partina partner",
+      title: "Partner",
+      description: "Request to become a Partner",
       icon: Users,
       color: "bg-orange-500"
     }
@@ -2357,7 +2361,7 @@ const Settings = () => {
           <CardHeader className="p-4">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="w-4 h-4" />
-              Become a Partina Partner
+              Become a Partner
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0">
@@ -2368,7 +2372,7 @@ const Settings = () => {
                   <div>
                     <h4 className="font-semibold text-green-900 text-sm">Request Submitted</h4>
                     <p className="text-sm text-green-800 mt-1">
-                      Your request to become a Partina has been submitted! Our admin team will review it and notify you once approved.
+                      Your request to become a Partner has been submitted! Our admin team will review it and notify you once approved.
                     </p>
                   </div>
                 </div>
@@ -2377,7 +2381,7 @@ const Settings = () => {
               <>
                 <div className="space-y-3">
                   <div>
-                    <h4 className="font-semibold text-foreground mb-2 text-sm">Why Become a Partina?</h4>
+                    <h4 className="font-semibold text-foreground mb-2 text-sm">Why Become a Partner?</h4>
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
@@ -2411,17 +2415,17 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="partina-reason" className="text-sm font-medium">
-                        Tell us why you want to become a Partina Partner
+                        Tell us why you want to become a Partner
                       </Label>
                       <p className="text-xs text-text-subtle mt-1 mb-3">
-                        Please provide details about your business, goals, and how you plan to use the Partina features.
+                        Please provide details about your business, goals, and how you plan to use the Partner features.
                       </p>
                       <textarea
                         id="partina-reason"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         disabled={isLoading}
-                        placeholder="I want to become a Partina to access partner features..."
+                        placeholder="I want to become a Partner to access partner features..."
                         className="w-full min-h-[150px] p-3 rounded-lg border border-border-subtle bg-background text-foreground placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       />
                     </div>

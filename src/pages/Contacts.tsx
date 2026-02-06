@@ -82,6 +82,10 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const Contacts = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { t } = useLanguage();

@@ -54,6 +54,10 @@ import { useBillingHistory, BillingTransaction } from "@/hooks/useBillingHistory
 import { useLanguage } from "@/hooks/useLanguage";
 
 const PurchaseHistory = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -155,7 +159,7 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-6 glass">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-text-subtle">Total Spent</p>
@@ -343,7 +347,7 @@ const PurchaseHistory = () => {
               </div>
 
               {/* Mobile Card View */}
-              <div className="md:hidden space-y-3 p-4">
+              <div className="md:hidden grid grid-cols-2 gap-3 p-4">
                 {filteredTransactions.map((transaction) => (
                   <Card key={transaction.id} className="p-4 glass-subtle">
                     <div className="space-y-3">
