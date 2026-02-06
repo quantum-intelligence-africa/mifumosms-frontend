@@ -77,8 +77,8 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   };
 
   return (
-    <Card className="p-6 glass border border-border-subtle">
-      <div className="flex items-center justify-between mb-6">
+    <Card className="p-3.5 sm:p-4 glass border border-border-subtle">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
           {t("dashboard.recent_campaigns.title")}
         </h3>
@@ -87,14 +87,14 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
         </Button>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-2">
         {campaigns.length === 0 ? (
-          <div className="text-center py-10 sm:py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-              <Send className="w-7 h-7 text-muted-foreground/50" />
+          <div className="text-center py-6">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-muted/50 flex items-center justify-center">
+              <Send className="w-5 h-5 text-muted-foreground/50" />
             </div>
-            <h4 className="text-sm sm:text-base font-medium text-foreground mb-1">{t("dashboard.recent_campaigns.empty_title")}</h4>
-            <p className="text-xs sm:text-sm text-text-subtle mb-4">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
+            <h4 className="text-xs font-medium text-foreground mb-0.5">{t("dashboard.recent_campaigns.empty_title")}</h4>
+            <p className="text-[11px] text-text-subtle mb-3">{t("dashboard.recent_campaigns.empty_subtitle")}</p>
             <Button
               variant="default"
               size="sm"
@@ -112,13 +112,13 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
           return (
             <div
               key={campaign.id || `campaign-${index}`}
-              className="p-3 rounded-xl glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
+              className="p-2.5 rounded-lg glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
               onClick={() => handleViewDetails(campaign.id)}
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-foreground text-xs sm:text-sm">{campaign.name}</h4>
+                    <h4 className="font-medium text-foreground text-[12px]">{campaign.name}</h4>
                     {campaign.type && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
                         {campaign.type}
@@ -128,11 +128,11 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
 
                   <div className="flex items-center gap-2">
                     <StatusIcon className={`w-3 h-3 text-${statusColor}`} />
-                    <span className={`text-xs text-${statusColor} capitalize`}>
+                    <span className={`text-[11px] text-${statusColor} capitalize`}>
                       {statusConfig[campaign.status as keyof typeof statusConfig]?.label}
                     </span>
-                    <span className="text-xs text-text-subtle">•</span>
-                    <span className="text-xs text-text-subtle">{campaign.created_at_human}</span>
+                    <span className="text-[11px] text-text-subtle">•</span>
+                    <span className="text-[11px] text-text-subtle">{campaign.created_at_human}</span>
                   </div>
                 </div>
 
@@ -171,17 +171,17 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
               </div>
 
               {campaign.status === "sending" && (
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-xs text-text-subtle mb-1">
+                <div className="mb-2">
+                  <div className="flex items-center justify-between text-[11px] text-text-subtle mb-1">
                     <span>{t("dashboard.recent_campaigns.progress")}</span>
                     <span>{campaign.progress}%</span>
                   </div>
-                  <Progress value={campaign.progress} className="h-2" />
+                  <Progress value={campaign.progress} className="h-1.5" />
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <span className="text-text-subtle">
                     {t("dashboard.recent_campaigns.sent")}: <span className="text-foreground font-medium">{campaign.sent}</span>
                   </span>

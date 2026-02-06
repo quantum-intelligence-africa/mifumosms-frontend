@@ -603,7 +603,7 @@ const Campaigns = () => {
                         <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
                       </div>
                       <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
-                        <MessageSquare className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-primary" />
+                        <Send className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-primary" />
                       </div>
                     </div>
                   </CardContent>

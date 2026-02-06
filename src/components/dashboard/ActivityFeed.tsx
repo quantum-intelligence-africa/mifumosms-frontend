@@ -59,8 +59,8 @@ export function ActivityFeed() {
   };
 
   return (
-    <Card className="p-5 sm:p-6 glass border border-border-subtle">
-      <div className="flex items-center justify-between mb-5">
+    <Card className="p-3.5 sm:p-4 glass border border-border-subtle">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="font-heading text-base font-semibold text-foreground">
           {t("dashboard.activity.title")}
         </h3>
@@ -72,35 +72,35 @@ export function ActivityFeed() {
         </Badge>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {activities.length > 0 ? (
-          activities.slice(0, 3).map((activity, index) => {
+          activities.slice(0, 4).map((activity, index) => {
             const Icon = getActivityIcon(activity.type);
             const status = getActivityStatus(activity.type, activity.is_live);
 
             return (
               <div
                 key={activity.id || `activity-${index}`}
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-accent transition-fast"
+                className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-accent transition-fast"
               >
-                <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                  <Icon className="w-3.5 h-3.5 text-primary" />
+                <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
+                  <Icon className="w-3 h-3 text-primary" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <p className="text-xs text-foreground font-medium leading-tight">
+                      <p className="text-[12px] text-foreground font-medium leading-tight">
                         {activity.title}
                       </p>
 
-                      <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
+                      <p className="text-[11px] text-text-subtle mt-0.5 line-clamp-1">
                         {activity.description}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 ml-2">
-                      <span className="text-xs text-text-subtle whitespace-nowrap">
+                    <div className="flex items-center gap-1 ml-1 flex-shrink-0">
+                      <span className="text-[11px] text-text-subtle whitespace-nowrap">
                         {activity.time_ago}
                       </span>
                       {activity.is_live && (
@@ -113,17 +113,17 @@ export function ActivityFeed() {
             );
           })
         ) : (
-          <div className="text-center py-10">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
-              <Activity className="w-6 h-6 text-muted-foreground/50" />
+          <div className="text-center py-6">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-muted/50 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-muted-foreground/50" />
             </div>
-            <h4 className="text-sm font-medium text-foreground mb-1">{t("dashboard.activity.none")}</h4>
-            <p className="text-xs text-text-subtle">Start sending messages to see activity here</p>
+            <h4 className="text-xs font-medium text-foreground mb-0.5">{t("dashboard.activity.none")}</h4>
+            <p className="text-[11px] text-text-subtle">Start sending messages to see activity here</p>
           </div>
         )}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-border-subtle">
+      <div className="mt-2 pt-2 border-t border-border-subtle -mx-3.5 -mb-3.5 sm:-mx-4 sm:-mb-4 px-3.5 sm:px-4 py-2">
         <button
           onClick={handleViewAllActivity}
           className="w-full text-xs text-primary hover:text-primary-dark transition-smooth"

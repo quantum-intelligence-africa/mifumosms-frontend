@@ -32,22 +32,22 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return <CheckCircle className="w-3.5 h-3.5 text-success" />;
+        return <CheckCircle className="w-4 h-4 text-success" />;
       case 'pending':
-        return <Clock className="w-3.5 h-3.5 text-warning" />;
+        return <Clock className="w-4 h-4 text-warning" />;
       default:
-        return <Hash className="w-3.5 h-3.5 text-muted-foreground" />;
+        return null;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return 'bg-success/10 text-success border-success/20';
+        return 'bg-success/15 text-success border border-success/30 shadow-sm';
       case 'pending':
-        return 'bg-warning/10 text-warning border-warning/20';
+        return 'bg-warning/15 text-warning border border-warning/30 shadow-sm';
       default:
-        return 'bg-muted text-muted-foreground border-border';
+        return 'bg-muted/15 text-muted-foreground border border-border/50';
     }
   };
 
@@ -63,22 +63,20 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   const MobileSenderCard = ({ senderId, index }: { senderId: SenderId; index: number }) => (
     <div
       key={senderId.id || `sender-${index}`}
-      className="p-3 rounded-xl glass-subtle border border-border-subtle hover:border-primary/30 transition-all"
+      className="p-3 rounded-xl glass-subtle border border-border-subtle/50 hover:border-primary/40 hover:shadow-md transition-all duration-300"
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Hash className="w-3.5 h-3.5 text-primary" />
-          </div>
-          <span className="font-medium text-sm text-foreground">{senderId.sender_id}</span>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-sm text-foreground block truncate">{senderId.sender_id}</span>
+          <p className="text-xs text-text-subtle mt-1 line-clamp-1">{senderId.sample_content}</p>
         </div>
         <Badge
           variant="outline"
-          className={`text-[10px] px-2 ${getStatusColor(senderId.status)}`}
+          className={`text-[11px] px-2.5 py-1 ml-2 flex-shrink-0 ${getStatusColor(senderId.status)}`}
         >
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {getStatusIcon(senderId.status)}
-            <span className="capitalize">
+            <span className="capitalize font-medium">
               {senderId.status.toLowerCase() === 'active'
                 ? t("status.active")
                 : senderId.status.toLowerCase() === 'pending'
@@ -88,7 +86,6 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
           </div>
         </Badge>
       </div>
-      <p className="text-xs text-text-subtle line-clamp-2 mb-2">{senderId.sample_content}</p>
       <p className="text-[10px] text-muted-foreground">{formatDate(senderId.created_at)}</p>
     </div>
   );
@@ -127,21 +124,18 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                 </TableHeader>
                 <TableBody>
                   {senderIds.slice(0, 3).map((senderId, index) => (
-                    <TableRow key={senderId.id || `sender-${index}`} className="hover:bg-accent/50 transition-smooth">
-                      <TableCell className="font-medium text-foreground py-2">
-                        <div className="flex items-center gap-1.5">
-                          <Hash className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-xs">{senderId.sender_id}</span>
-                        </div>
+                    <TableRow key={senderId.id || `sender-${index}`} className="hover:bg-accent/30 transition-smooth">
+                      <TableCell className="font-semibold text-foreground py-3">
+                        <span className="text-sm">{senderId.sender_id}</span>
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-3">
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${getStatusColor(senderId.status)}`}
+                          className={`text-[11px] px-2.5 py-1 ${getStatusColor(senderId.status)}`}
                         >
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             {getStatusIcon(senderId.status)}
-                            <span className="capitalize text-xs">
+                            <span className="capitalize font-medium">
                               {senderId.status.toLowerCase() === 'active'
                                 ? t("status.active")
                                 : senderId.status.toLowerCase() === 'pending'
@@ -151,10 +145,10 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                           </div>
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-text-subtle max-w-xs truncate py-2 hidden md:table-cell">
+                      <TableCell className="text-xs text-text-subtle max-w-xs truncate py-3 hidden md:table-cell">
                         {senderId.sample_content}
                       </TableCell>
-                      <TableCell className="text-xs text-text-subtle py-2">
+                      <TableCell className="text-xs text-text-subtle py-3">
                         {formatDate(senderId.created_at)}
                       </TableCell>
                     </TableRow>
