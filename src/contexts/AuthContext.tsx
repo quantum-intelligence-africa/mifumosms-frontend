@@ -270,7 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             success: false,
             error: errorMessage,
             requiresActivation: true,
-            email: credentials.email,
+            email: credentials.username,
             phoneNumber: phoneNumber
           };
         }

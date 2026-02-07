@@ -59,7 +59,7 @@ const Login = () => {
 
     try {
       const result = await login({
-        email: formData.email,
+        username: formData.email,
         password: formData.password,
       });
 

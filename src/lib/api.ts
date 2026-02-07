@@ -51,6 +51,10 @@ export interface User {
   created_at?: string;
   // Partina field - if true, user can access Partina features
   is_partina?: boolean;
+  // Owner field - if true, user is account owner
+  is_owner?: boolean;
+  // Memberships - user's tenant memberships with roles
+  memberships?: Membership[];
 }
 
 export interface AuthTokens {
