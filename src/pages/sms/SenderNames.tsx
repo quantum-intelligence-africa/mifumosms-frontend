@@ -228,7 +228,7 @@ const SenderNames = () => {
   const [tenantFilter, setTenantFilter] = useState<string>("");
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [pageReady, setPageReady] = useState(false);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -532,27 +532,48 @@ const SenderNames = () => {
 
   // Final safety check - ensure senderNames is always an array
   const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
-  
+
+  // Helper function to check if sender is approved/active
+  const isSenderApproved = (sender: SenderNameRequest | UnifiedSenderName, targetNames: string[]): boolean => {
+    const name = ((sender as unknown as Record<string, unknown>).sender_name as string) || ((sender as unknown as Record<string, unknown>).sender_id as string) || '';
+    const status = ((sender as unknown as Record<string, unknown>).status as string) || '';
+    const isApproved = status === 'approved' || status === 'active';
+    const hasTargetName = targetNames.some(targetName =>
+      name === targetName || name?.toLowerCase() === targetName.toLowerCase()
+    );
+    return isApproved && hasTargetName;
+  };
+
+  // Check if either Taarifa-SMS or Mifumosms is approved/active across entire dataset (pagination-independent)
+  const taarifaApproved = safeSenderNames.some(sender =>
+    isSenderApproved(sender, ['Taarifa-SMS'])
+  );
+  const mifumoApproved = safeSenderNames.some(sender =>
+    isSenderApproved(sender, ['Mifumosms'])
+  );
+  // Hide section if EITHER Taarifa-SMS or Mifumosms is approved/active
+  const shouldHideDefaultSenderCard = taarifaApproved || mifumoApproved;
+
   // Calculate paginated data
   const totalItems = safeSenderNames.length;
   const totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedSenderNames = safeSenderNames.slice(startIndex, endIndex);
-  
+
   // Reset to page 1 when data changes
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
   }, [totalItems, pageSize, currentPage, totalPages]);
-  
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setCurrentPage(1); // Reset to first page when changing page size
@@ -924,11 +945,8 @@ const SenderNames = () => {
                 </Card>
             </div>
 
-            {/* Default Sender Card - Hidden when both Taarifa-SMS AND Mifumosms are Approved */}
-            {(() => {
-              const taarifaApproved = safeSenderNames.some(sender => sender.sender_name === 'Taarifa-SMS' && sender.status === 'approved');
-              const mifumoApproved = safeSenderNames.some(sender => sender.sender_name?.toLowerCase() === 'mifumosms' && sender.status === 'approved');
-              return overview && (!taarifaApproved || !mifumoApproved) && (
+            {/* Default Sender Card - Hidden when BOTH Taarifa-SMS AND Mifumosms are Approved/Active across all pages */}
+            {overview && !shouldHideDefaultSenderCard && (
               <Card className={`p-3 sm:p-4 lg:p-6 glass border-l-4 ${(canRequestDefaultSender?.() ? 'border-blue-500' : 'border-green-500')}`}>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start gap-3">
@@ -1012,8 +1030,7 @@ const SenderNames = () => {
                   </div>
                 </div>
               </Card>
-              );
-            })()}
+            )}
 
             {/* Info Card */}
             <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">
@@ -1124,7 +1141,7 @@ const SenderNames = () => {
                   </p>
                 </div>
               )}
-              
+
               {/* Desktop Pagination */}
               {safeSenderNames.length > 0 && (
                 <DataTablePagination
@@ -1239,7 +1256,7 @@ const SenderNames = () => {
                     </Card>
                   );
                 })}
-                
+
                 {/* Mobile Pagination */}
                 {safeSenderNames.length > 0 && (
                   <DataTablePagination
