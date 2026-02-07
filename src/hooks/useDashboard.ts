@@ -435,10 +435,20 @@ export const useDashboard = () => {
     // Initial load with loading state
     fetchDashboardData(true);
 
-    // Set up polling for real-time updates every 60 seconds (silent refresh)
+    // Set up polling for real-time updates every 120 seconds (increased from 60s to reduce load)
+    // Use requestIdleCallback to avoid blocking main thread during heavy computations
     const interval = setInterval(() => {
-      fetchDashboardData(false); // Silent refresh without loading state
-    }, 60000);
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          fetchDashboardData(false); // Silent refresh without loading state
+        }, { timeout: 5000 }); // Timeout after 5 seconds to ensure it runs
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          fetchDashboardData(false);
+        }, 100); // Small delay to defer heavy work
+      }
+    }, 120000); // 120 seconds = 2 minutes (increased from 60s)
 
     return () => clearInterval(interval);
   }, [fetchDashboardData]);

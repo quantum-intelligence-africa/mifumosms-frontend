@@ -249,13 +249,23 @@ export const useNotifications = () => {
     }
   }, []);
 
-  // Auto-refresh notifications every 30 seconds
+  // Auto-refresh notifications every 60 seconds (increased from 30s to reduce load)
   useEffect(() => {
     fetchRecentNotifications();
 
     const interval = setInterval(() => {
-      fetchRecentNotifications();
-    }, 30000); // 30 seconds
+      // Use requestIdleCallback to avoid blocking main thread
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          fetchRecentNotifications();
+        }, { timeout: 5000 });
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          fetchRecentNotifications();
+        }, 100);
+      }
+    }, 60000); // 60 seconds (increased from 30s)
 
     return () => clearInterval(interval);
   }, [fetchRecentNotifications]);

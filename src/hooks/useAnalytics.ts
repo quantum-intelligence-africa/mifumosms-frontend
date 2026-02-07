@@ -13,7 +13,7 @@ export const useAnalytics = () => {
       setIsLoading(true);
       setError(null);
       const response = await apiClient.getAnalyticsOverview();
-      
+
       if (response.success && response.data) {
         setAnalytics(response.data);
       } else {
@@ -38,10 +38,21 @@ export const useAnalytics = () => {
 
   useEffect(() => {
     fetchAnalytics();
-    
-    // Set up polling for real-time updates every 30 seconds
-    const interval = setInterval(fetchAnalytics, 30000);
-    
+
+    // Set up polling for real-time updates every 60 seconds (increased from 30s to reduce load)
+    // Use requestIdleCallback to avoid blocking main thread during heavy computations
+    const interval = setInterval(() => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          fetchAnalytics();
+        }, { timeout: 5000 });
+      } else {
+        setTimeout(() => {
+          fetchAnalytics();
+        }, 100);
+      }
+    }, 60000); // 60 seconds
+
     return () => clearInterval(interval);
   }, []);
 

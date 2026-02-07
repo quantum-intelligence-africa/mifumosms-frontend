@@ -71,21 +71,34 @@ export function useSenderNames() {
 
 					// Additional validation: Ensure we only show current user's requests (legacy only)
 					// Filter out any requests that might belong to other users
+					// Use setTimeout to defer heavy filtering to avoid blocking
 					const currentUserId = authContext?.user?.id;
 
 					if (currentUserId && typeof currentUserId === 'number') {
-						results = results.filter((request: SenderNameRequest) => {
-							// Check if the request belongs to the current user using created_by field
-							return request.created_by === currentUserId;
+						// Break up the filtering work to avoid main thread blocking
+						await new Promise(resolve => {
+							setTimeout(() => {
+								results = results.filter((request: SenderNameRequest) => {
+									// Check if the request belongs to the current user using created_by field
+									return request.created_by === currentUserId;
+								});
+								resolve(null);
+							}, 0);
 						});
 					}
 				}
 
+				// Update state - break into smaller pieces for better performance
 				setSenderNames(results);
 
-				// Calculate stats from the fetched sender names as a fallback
-				const calculatedStats = calculateStatsFromSenderNames(results);
-				setStats(calculatedStats);
+				// Calculate stats asynchronously to avoid blocking
+				await new Promise(resolve => {
+					setTimeout(() => {
+						const calculatedStats = calculateStatsFromSenderNames(results);
+						setStats(calculatedStats);
+						resolve(null);
+					}, 0);
+				});
 			} else {
 				console.error('Failed to fetch sender names:', response.error, 'Status:', response.status);
 				if (response.status === 403) {
@@ -119,16 +132,33 @@ export function useSenderNames() {
 				// The stats should already be user-specific from the API
 				// but let's add some validation to ensure data integrity
 				const statsData = response.data;
-				setStats(statsData);
+
+				// Defer stats update to avoid blocking main thread
+				await new Promise(resolve => {
+					setTimeout(() => {
+						setStats(statsData);
+						resolve(null);
+					}, 0);
+				});
 			} else {
 				// If stats API fails, calculate stats from the sender names list
-				const calculatedStats = calculateStatsFromSenderNames(senderNames);
-				setStats(calculatedStats);
+				await new Promise(resolve => {
+					setTimeout(() => {
+						const calculatedStats = calculateStatsFromSenderNames(senderNames);
+						setStats(calculatedStats);
+						resolve(null);
+					}, 0);
+				});
 			}
 		} catch (err) {
 			// If stats API fails, calculate stats from the sender names list
-			const calculatedStats = calculateStatsFromSenderNames(senderNames);
-			setStats(calculatedStats);
+			await new Promise(resolve => {
+				setTimeout(() => {
+					const calculatedStats = calculateStatsFromSenderNames(senderNames);
+					setStats(calculatedStats);
+					resolve(null);
+				}, 0);
+			});
 		}
 	};
 

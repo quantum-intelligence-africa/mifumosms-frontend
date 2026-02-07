@@ -2346,6 +2346,27 @@ const Settings = () => {
     const [reason, setReason] = useState('');
     const [submitted, setSubmitted] = useState(false);
 
+    // Hide section if user is already a partner
+    if (user?.is_partina) {
+      return (
+        <div className="space-y-4">
+          <Card className="glass border-0 border-l-4 border-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-green-900 text-sm">Partner Status Active</h4>
+                  <p className="text-sm text-green-800 mt-1">
+                    You are already approved as a Mifumo Partner! You can now access all Partner features and integrations.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     const handleSubmit = async () => {
       const result = await submitPartinaRequest(reason);
       if (result.success) {

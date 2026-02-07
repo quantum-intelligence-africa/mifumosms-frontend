@@ -544,6 +544,15 @@ export interface UnifiedSenderNamesResponse {
   data: UnifiedSenderName[];
 }
 
+export interface PaginatedSenderNamesResponse {
+  success: boolean;
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  data: UnifiedSenderName[];
+}
+
 // Payment Types
 export interface PaymentProgress {
   step: number;
@@ -3902,6 +3911,26 @@ class ApiClient {
       });
 
       const result = await this.handleResponse<UnifiedSenderNamesResponse>(response);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 4B. GET PAGINATED SENDER NAMES
+  // GET /sms/sender-names?page=1&page_size=20
+  async getPaginatedSenderNames(page: number = 1, pageSize: number = 20): Promise<ApiResponse<PaginatedSenderNamesResponse>> {
+    try {
+      const url = `${API_BASE_URL}/sms/sender-names/?page=${page}&page_size=${pageSize}`;
+      const response = await fetch(url.trim(), {
+        headers: this.getHeaders()
+      });
+
+      const result = await this.handleResponse<PaginatedSenderNamesResponse>(response);
       return result;
     } catch (error) {
       return {

@@ -13,7 +13,6 @@ import {
   BookOpen,
   Layers,
   Target,
-  Zap,
   Code,
   Link as LinkIcon,
 } from "lucide-react";
@@ -412,7 +411,6 @@ const IntegrationGuide = () => {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-foreground/70">
                       <span>{t('integration.step', { step: index + 1 })}</span>
-                      <Zap className="w-3 h-3" />
                     </div>
                     <CardTitle className="text-base">{step.title}</CardTitle>
                   </CardHeader>
@@ -433,7 +431,6 @@ const IntegrationGuide = () => {
             <Card className="glass">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Zap className="w-4 h-4" />
                   {t('integration.quick_start_requests')}
                 </CardTitle>
               </CardHeader>
@@ -801,7 +798,6 @@ print(response.text)`}</pre>
               <Card className="glass">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Zap className="w-4 h-4" />
                     Credit Management
                   </CardTitle>
                 </CardHeader>
