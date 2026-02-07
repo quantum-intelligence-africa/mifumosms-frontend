@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
@@ -227,6 +228,12 @@ const SenderNames = () => {
   const [tenantFilter, setTenantFilter] = useState<string>("");
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [pageReady, setPageReady] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+
 
 
   const handleViewDetails = async (sender: SenderNameRequest | UnifiedSenderName) => {
@@ -525,6 +532,32 @@ const SenderNames = () => {
 
   // Final safety check - ensure senderNames is always an array
   const safeSenderNames = Array.isArray(senderNames) ? senderNames : [];
+  
+  // Calculate paginated data
+  const totalItems = safeSenderNames.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedSenderNames = safeSenderNames.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when data changes
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalItems, pageSize, currentPage, totalPages]);
+  
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
 
   // Show a fallback UI if we're stuck in loading state for too long
   if (loading && safeSenderNames.length === 0 && !error) {
@@ -893,8 +926,8 @@ const SenderNames = () => {
 
             {/* Default Sender Card - Hidden when Taarifa-SMS or Mifumosms is Approved */}
             {(() => {
-              const taarifaApproved = safeSenderNames.some(sender => sender.sender_id === 'Taarifa-SMS' && sender.status === 'approved');
-              const mifumoApproved = safeSenderNames.some(sender => sender.sender_id?.toLowerCase() === 'mifumosms' && (sender.status === 'approved' || sender.status === 'active'));
+              const taarifaApproved = safeSenderNames.some(sender => sender.sender_name === 'Taarifa-SMS' && sender.status === 'approved');
+              const mifumoApproved = safeSenderNames.some(sender => sender.sender_name?.toLowerCase() === 'mifumosms' && sender.status === 'approved');
               return overview && !taarifaApproved && !mifumoApproved && (
               <Card className={`p-3 sm:p-4 lg:p-6 glass border-l-4 ${(canRequestDefaultSender?.() ? 'border-blue-500' : 'border-green-500')}`}>
                 <div className="flex flex-col gap-3">
@@ -1011,7 +1044,7 @@ const SenderNames = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {safeSenderNames.map((sender, index) => {
+                  {paginatedSenderNames.map((sender, index) => {
                     // Handle both UnifiedSenderName and SenderNameRequest types
                     const isUnified = 'tenant_name' in sender;
                     const unifiedSender = sender as unknown as UnifiedSenderName;
@@ -1091,6 +1124,20 @@ const SenderNames = () => {
                   </p>
                 </div>
               )}
+              
+              {/* Desktop Pagination */}
+              {safeSenderNames.length > 0 && (
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                  isLoading={loading}
+                  pageSizeOptions={[10, 20, 30, 50]}
+                />
+              )}
             </Card>
 
             {/* Mobile Card Layout */}
@@ -1108,8 +1155,8 @@ const SenderNames = () => {
                   </p>
                 </Card>
               ) : (
-                safeSenderNames.map((sender, index) => {
-                  // Handle both UnifiedSenderName and SenderNameRequest types
+                <>
+                {paginatedSenderNames.map((sender, index) => {
                   const isUnified = 'tenant_name' in sender;
                   const unifiedSender = sender as unknown as UnifiedSenderName;
                   const legacySender = sender as SenderNameRequest;
@@ -1191,7 +1238,22 @@ const SenderNames = () => {
                       </div>
                     </Card>
                   );
-                })
+                })}
+                
+                {/* Mobile Pagination */}
+                {safeSenderNames.length > 0 && (
+                  <DataTablePagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    isLoading={loading}
+                    pageSizeOptions={[10, 20, 30, 50]}
+                  />
+                )}
+                </>
               )}
             </div>
 

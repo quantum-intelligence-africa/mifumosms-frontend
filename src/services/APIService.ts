@@ -71,13 +71,13 @@ export class APIService {
 		}
 	}
 
-	// Authentication methods
-	async login(credentials: { email: string; password: string }) {
-		return this.withRetry(
-			() => apiClient.login(credentials),
-			'User login'
-		);
-	}
+  // Authentication methods
+  async login(credentials: { username: string; password: string }) {
+    return this.withRetry(
+      () => apiClient.login(credentials),
+      'User login'
+    );
+  }
 
 	async register(userData: {
 		email: string;
