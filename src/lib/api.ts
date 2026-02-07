@@ -63,7 +63,7 @@ export interface AuthTokens {
 }
 
 export interface LoginRequest {
-  username: string; // Changed from email to username
+  email: string;
   password: string;
 }
 
@@ -952,7 +952,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeoutMs: number = 30000 // Default 30 second timeout
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -976,7 +977,27 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(url, config);
+      // Create abort controller for timeout
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+
+      config.signal = abortController.signal;
+
+      let response: Response;
+      try {
+        response = await fetch(url, config);
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          return {
+            error: `Request timeout - please check your connection`,
+            status: 0,
+            success: false,
+          };
+        }
+        throw fetchError;
+      }
 
       // Log error responses for debugging (without exposing full URL)
       // Skip logging for login 400 errors (expected for unverified accounts requiring SMS activation)
@@ -1008,7 +1029,27 @@ class ApiClient {
                 'Authorization': `Bearer ${refreshResponse.data.access}`,
               };
 
-              const retryResponse = await fetch(url, config);
+              // Create abort controller for retry timeout
+              const retryAbortController = new AbortController();
+              const retryTimeoutId = setTimeout(() => retryAbortController.abort(), timeoutMs);
+              config.signal = retryAbortController.signal;
+
+              let retryResponse: Response;
+              try {
+                retryResponse = await fetch(url, config);
+                clearTimeout(retryTimeoutId);
+              } catch (retryFetchError) {
+                clearTimeout(retryTimeoutId);
+                if (retryFetchError instanceof Error && retryFetchError.name === 'AbortError') {
+                  return {
+                    error: `Request timeout - please check your connection`,
+                    status: 0,
+                    success: false,
+                  };
+                }
+                throw retryFetchError;
+              }
+
               const retryData = await retryResponse.json();
 
               if (!retryResponse.ok) {

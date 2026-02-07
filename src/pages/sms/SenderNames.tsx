@@ -924,11 +924,11 @@ const SenderNames = () => {
                 </Card>
             </div>
 
-            {/* Default Sender Card - Hidden when Taarifa-SMS or Mifumosms is Approved */}
+            {/* Default Sender Card - Hidden when both Taarifa-SMS AND Mifumosms are Approved */}
             {(() => {
               const taarifaApproved = safeSenderNames.some(sender => sender.sender_name === 'Taarifa-SMS' && sender.status === 'approved');
               const mifumoApproved = safeSenderNames.some(sender => sender.sender_name?.toLowerCase() === 'mifumosms' && sender.status === 'approved');
-              return overview && !taarifaApproved && !mifumoApproved && (
+              return overview && (!taarifaApproved || !mifumoApproved) && (
               <Card className={`p-3 sm:p-4 lg:p-6 glass border-l-4 ${(canRequestDefaultSender?.() ? 'border-blue-500' : 'border-green-500')}`}>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start gap-3">

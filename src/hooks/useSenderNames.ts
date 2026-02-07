@@ -47,10 +47,16 @@ export function useSenderNames() {
 			if (response.success && response.data) {
 				let results: SenderNameRequest[] = [];
 				if (useUnified) {
-					// Handle unified response structure - just use data array directly
+					// Handle unified response structure
 					const responseData = response.data as Record<string, unknown>;
+					// The API returns { success, count, data: [...] }
+					// After handleResponse, response.data contains the entire response object
+					// So we need to check responseData.data for the array
 					if (responseData.data && Array.isArray(responseData.data)) {
 						results = responseData.data as SenderNameRequest[];
+					} else if (Array.isArray(responseData)) {
+						// If responseData itself is an array
+						results = responseData as SenderNameRequest[];
 					}
 				} else {
 					// Handle legacy response structures
@@ -317,14 +323,15 @@ export function useSenderNames() {
 
 		fetchData();
 
-		// Add a timeout to prevent infinite loading
+		// Add a timeout to prevent infinite loading (must be longer than API timeout)
 		const timeout = setTimeout(() => {
 			if (!requestsCompleted.current) {
+				console.warn('Sender names fetch timeout - request did not complete in time');
 				setLoading(false);
 				setError('Request timeout - please check your connection');
 				setSenderNames([]); // Ensure it's always an array
 			}
-		}, 10000); // 10 second timeout
+		}, 35000); // 35 second timeout (longer than API 30s timeout)
 
 		return () => clearTimeout(timeout);
 	}, []);
