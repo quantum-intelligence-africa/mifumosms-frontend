@@ -100,13 +100,23 @@ const SendSMS = () => {
   // Reduce to approved/active sender names only
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
   const approvedSenderRequests = useMemo(() => {
-    return (senderNames || [])
+    const mapped = (senderNames || [])
       .filter((req: SenderNameRequest | UnifiedSenderName) => (req.status === "approved" || req.status === "active") && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null)) && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null))?.trim() !== "")
       .map((req: SenderNameRequest | UnifiedSenderName) => ({
         id: req.id,
         sender_id: ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '',
         status: req.status
       }));
+
+    // Deduplicate by sender_id - keep first occurrence
+    const seen = new Set<string>();
+    return mapped.filter((req) => {
+      if (seen.has(req.sender_id)) {
+        return false;
+      }
+      seen.add(req.sender_id);
+      return true;
+    });
   }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
@@ -745,8 +755,8 @@ const SendSMS = () => {
                         <SelectValue placeholder={senderNamesLoading ? (language === "sw" ? "Inapakia..." : "Loading...") : (approvedSenderRequests.length === 0 ? (language === "sw" ? "Hakuna majina ya mtumaji yaliyoidhinisha" : "No approved sender names") : (language === "sw" ? "Chagua jina la mtumaji" : "Select sender name"))} />
                       </SelectTrigger>
                       <SelectContent className="glass">
-                        {approvedSenderRequests.map((req) => (
-                          <SelectItem key={req.sender_id} value={req.sender_id || req.id}>
+                        {approvedSenderRequests.map((req, index) => (
+                          <SelectItem key={req.id || `sender-${index}`} value={req.sender_id || req.id}>
                             {req.sender_id}
                           </SelectItem>
                         ))}
