@@ -41,6 +41,7 @@ import { logger } from "@/utils/logger";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
+import { useSMSBilling } from "@/hooks/useSMSBilling";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, formatSegmentCount, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
@@ -96,6 +97,9 @@ const SendSMS = () => {
   // Load real-time contact segment counts
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
   const { fetchContacts } = useContacts();
+
+  // Load user's SMS billing info to get current pricing tier
+  const { purchases } = useSMSBilling();
 
   // Reduce to approved/active sender names only
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
@@ -185,10 +189,25 @@ const SendSMS = () => {
     }
   }, [toast]);
 
+  // Get cost per SMS from user's current package pricing tier
+  const costPerSMS = useMemo(() => {
+    if (purchases && purchases.length > 0) {
+      // Sort purchases by created_at in descending order and get the most recent one
+      const mostRecentPurchase = [...purchases].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+
+      if (mostRecentPurchase && mostRecentPurchase.unit_price) {
+        return mostRecentPurchase.unit_price;
+      }
+    }
+    // Fallback to 25 TZS if no purchase history available
+    return 25;
+  }, [purchases]);
+
   // SMS segment calculation using proper formula
   const segmentInfo = getSegmentInfo(message);
   const segmentCount = segmentInfo.segments;
-  const costPerSMS = 25; // TZS
 
   // Calculate cost based on current mode
   const getRecipientCount = () => {
