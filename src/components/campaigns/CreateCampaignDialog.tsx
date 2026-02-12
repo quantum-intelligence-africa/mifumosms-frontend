@@ -150,6 +150,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
         // Call success callback to refresh parent component after campaign is created
         onSuccess?.();
+
+        // Refresh the entire page to show new data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       }
     } catch (error) {
       console.error('Campaign creation error:', error);

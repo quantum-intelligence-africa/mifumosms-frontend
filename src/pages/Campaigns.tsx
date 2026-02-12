@@ -384,6 +384,11 @@ const Campaigns = () => {
         closeCampaignDialog();
         // Refresh campaigns list
         await fetchCampaigns();
+
+        // Refresh the entire page to show updated data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       }
     } catch (error) {
       console.error('Failed to save campaign:', error);

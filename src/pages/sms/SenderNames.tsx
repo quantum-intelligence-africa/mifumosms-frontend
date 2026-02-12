@@ -436,6 +436,11 @@ const SenderNames = () => {
           title: "Request submitted",
           description: "Your sender ID request has been submitted and is pending approval. Our admin team will review within 2-3 business days.",
         });
+
+        // Refresh the entire page to show new data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         setSubmitting(false);
 
