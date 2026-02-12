@@ -1281,92 +1281,87 @@ const SenderNames = () => {
 
             {/* Request Dialog */}
             <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader className="pb-2">
-                  <DialogTitle className="text-base sm:text-lg">Request New Sender Name</DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm">
-                    Submit a request to register a new sender ID for your SMS campaigns
+              <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
+                <DialogHeader className="pb-2 sm:pb-2.5">
+                  <DialogTitle className="text-sm sm:text-base md:text-lg">Request New Sender Name</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-xs md:text-sm">
+                    Submit a request to register a new sender ID
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Sender ID *</Label>
-                    <Input
-                      placeholder="e.g., YourBrand, YOUR_BRAND, Your-Brand"
-                      value={requestedSenderId}
-                      onChange={(e) => setRequestedSenderId(e.target.value)}
-                      maxLength={11}
-                      className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
-                    />
-                    <p className="text-xs text-text-subtle">
-                      {requestedSenderId.length}/11 characters (letters, numbers, spaces, _, -)
-                    </p>
+                <div className="space-y-2 sm:space-y-2.5">
+                  {/* ID and Type Row - Stack on mobile, 2-col on larger screens */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium">Sender ID *</Label>
+                      <Input
+                        placeholder="e.g., YourBrand"
+                        value={requestedSenderId}
+                        onChange={(e) => setRequestedSenderId(e.target.value)}
+                        maxLength={11}
+                        className="glass-subtle border-0 font-mono text-xs sm:text-sm h-9 sm:h-8"
+                      />
+                      <p className="text-xs text-text-subtle">
+                        {requestedSenderId.length}/11 characters
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 hidden">
+                      <Label className="text-xs sm:text-sm font-medium">Type *</Label>
+                      <select
+                        value={requestType}
+                        onChange={(e) => setRequestType(e.target.value)}
+                        className="glass-subtle border border-border rounded-md px-2 py-2 sm:py-1.5 text-xs sm:text-sm w-full h-9 sm:h-8 bg-background"
+                      >
+                        <option value="custom">Custom</option>
+                        <option value="default">Default</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Request Type *</Label>
-                    <select
-                      value={requestType}
-                      onChange={(e) => setRequestType(e.target.value)}
-                      className="glass-subtle border border-border rounded-md px-2 py-1 text-xs sm:text-sm w-full h-8 bg-background"
-                    >
-                      <option value="custom">Custom</option>
-                      <option value="default">Default</option>
-                    </select>
-                    <p className="text-xs text-text-subtle">Choose whether this is a custom or default request type</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Sample Content *</Label>
+                    <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
                     <Textarea
                       placeholder="e.g., Your verification code is 123456."
                       value={sampleContent}
                       onChange={(e) => setSampleContent(e.target.value)}
-                      className="glass-subtle border-0 text-xs sm:text-sm"
+                      className="glass-subtle border-0 text-xs sm:text-sm min-h-16 sm:min-h-14"
                       rows={2}
                     />
-                    <p className="text-xs text-text-subtle">Provide an example SMS message using this sender ID</p>
+                    <p className="text-xs text-text-subtle">Example SMS message</p>
+                  </div>
+
+                  <div className="space-y-1 hidden">
+                    <Label className="text-xs sm:text-sm font-medium">Purpose (Optional)</Label>
+                    <Textarea
+                      placeholder="e.g., User registration verification"
+                      value={senderNamePurpose}
+                      onChange={(e) => setSenderNamePurpose(e.target.value)}
+                      className="glass-subtle border-0 text-xs sm:text-sm min-h-16 sm:min-h-14"
+                      rows={2}
+                    />
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Purpose</Label>
-                    <Textarea
-                      placeholder="e.g., User registration verification and account notifications"
-                      value={senderNamePurpose}
-                      onChange={(e) => setSenderNamePurpose(e.target.value)}
-                      className="glass-subtle border-0 text-xs sm:text-sm"
-                      rows={2}
-                    />
-                    <p className="text-xs text-text-subtle">Describe the business use case for this sender ID</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs sm:text-sm">KYC Documents</Label>
-                      <p className="text-xs text-text-subtle mt-1">
-                        Upload PDF documents to verify your organization. Maximum 8MB per file.
-                      </p>
-                    </div>
-                    <div className="border-2 border-dashed border-border rounded-lg p-2 text-center">
+                    <Label className="text-xs sm:text-sm font-medium">KYC Documents (Optional)</Label>
+                    <p className="text-xs text-text-subtle">PDF files - Max 8MB</p>
+                    <div className="border border-dashed border-border rounded-lg p-2 sm:p-2 text-center">
                       {kycDocuments.length > 0 ? (
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <Check className="w-4 h-4 mx-auto text-green-500" />
                           <p className="text-xs font-medium text-green-600">
-                            {kycDocuments.length} file(s) selected
+                            {kycDocuments.length} file(s)
                           </p>
-                          <div className="space-y-1">
+                          <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto text-left">
                             {kycDocuments.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between text-xs">
+                              <div key={index} className="flex items-center justify-between text-xs px-1 py-0.5">
                                 <span className="truncate flex-1 mr-1">{file.name}</span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
+                                <button
                                   onClick={() => handleRemoveFile(index)}
-                                  className="text-red-600 hover:text-red-700 h-4 w-4 p-0"
+                                  className="text-red-600 hover:text-red-700 flex-shrink-0 p-1"
                                 >
                                   <X className="w-3 h-3" />
-                                </Button>
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -1374,21 +1369,16 @@ const SenderNames = () => {
                             variant="outline"
                             size="sm"
                             onClick={handleRemoveAllFiles}
-                            className="text-red-600 hover:text-red-700 text-xs w-full h-7"
+                            className="text-red-600 hover:text-red-700 text-xs w-full h-8 sm:h-7"
                           >
                             <X className="w-3 h-3 mr-1" />
-                            Remove All Files
+                            Clear Files
                           </Button>
                         </div>
                       ) : (
-                        <div className="space-y-1">
-                          <Upload className="w-4 h-4 mx-auto mb-1 text-text-subtle" />
-                          <p className="text-xs font-medium text-text-subtle mb-1">
-                            Upload KYC Documents
-                          </p>
-                          <p className="text-xs text-text-subtle mb-1">
-                            PDF files only - Max 8MB per file
-                          </p>
+                        <div className="space-y-1 py-2 sm:py-1.5">
+                          <Upload className="w-4 h-4 mx-auto text-text-subtle" />
+                          <p className="text-xs font-medium text-text-subtle">Upload KYC Documents</p>
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -1399,8 +1389,8 @@ const SenderNames = () => {
                             onChange={handleFileSelect}
                           />
                           <label htmlFor="kyc-upload">
-                            <Button variant="outline" size="sm" asChild className="text-xs h-7">
-                              <span>Choose PDF Files</span>
+                            <Button variant="outline" size="sm" asChild className="text-xs h-8 sm:h-7">
+                              <span>Choose Files</span>
                             </Button>
                           </label>
                         </div>
@@ -1409,16 +1399,20 @@ const SenderNames = () => {
                   </div>
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-1 pt-1">
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-2.5">
                   <Button
                     variant="outline"
                     onClick={() => setShowRequestDialog(false)}
                     disabled={submitting}
-                    className="w-full sm:w-auto h-8 text-xs sm:text-sm"
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleRequestSenderName} disabled={submitting} className="w-full sm:w-auto h-8 text-xs sm:text-sm">
+                  <Button
+                    onClick={handleRequestSenderName}
+                    disabled={submitting}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-1 sm:order-2"
+                  >
                     {submitting ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />

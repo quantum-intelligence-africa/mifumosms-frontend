@@ -1415,8 +1415,8 @@ className="glass-subtle border-0 text-xs sm:text-sm h-8"
 />
 </div>
 
-{/* Attributes Section */}
-<div className="space-y-1">
+{/* Attributes Section - Hidden */}
+<div className="space-y-1 hidden">
 <h4 className="text-xs sm:text-sm font-medium text-foreground">Additional Info</h4>
 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
 <div className="space-y-1">
@@ -2470,8 +2470,8 @@ className="text-sm font-normal cursor-pointer"
 )}
 </div>
 
-{/* Attributes Section */}
-<div className="space-y-2">
+{/* Attributes Section - Hidden */}
+<div className="space-y-2 hidden">
 <h4 className="text-sm font-medium text-foreground">Additional Info</h4>
 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 <div className="space-y-1">
