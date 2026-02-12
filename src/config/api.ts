@@ -161,7 +161,7 @@ export const API_CONFIG = {
 				PROVIDERS: '/billing/payments/providers/',
 				INITIATE: '/billing/payments/initiate/',
 				VERIFY: (orderId: string) => `/billing/payments/verify/${orderId}/`,
-				STATUS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/status/`,
+				STATUS: '/billing/payment-status/',
 				PROGRESS: (transactionId: string) => `/billing/payments/transactions/${transactionId}/progress/`,
 				ACTIVE: (transactionId: string) => `/billing/payments/transactions/${transactionId}/active/`,
 				CANCEL: (transactionId: string) => `/billing/payments/transactions/${transactionId}/cancel/`,

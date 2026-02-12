@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Download,
   FileText,
@@ -50,7 +50,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { useBillingHistory, BillingTransaction } from "@/hooks/useBillingHistory";
+import { useSMSBilling } from "@/hooks/useSMSBilling";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const PurchaseHistory = () => {
@@ -64,43 +64,30 @@ const PurchaseHistory = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [selectedTransaction, setSelectedTransaction] = useState<BillingTransaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
 
-  // Use the new comprehensive billing history hook
+  // Use SMS Billing hook to fetch purchases from /api/billing/sms/purchases/
   const {
-    transactions,
-    summary,
-    pagination,
+    purchases,
     isLoading,
     error,
-    refreshing,
-    fetchBillingHistory,
-    refreshBillingHistory,
-    getTransactionTypeIcon,
-    getTransactionTypeColor,
-    getStatusBadgeVariant,
-    formatCurrency,
-    formatDate,
-    getFilteredTransactions,
-    getTotalSpent,
-    getTotalCredits,
-    getTransactionStats,
-  } = useBillingHistory();
+    refetchPurchases
+  } = useSMSBilling();
 
-  // Load data when filters change
+  // Load data on component mount
   useEffect(() => {
-    const filters = {
-      page: currentPage,
-      page_size: pageSize,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      transaction_type: typeFilter !== 'all' ? typeFilter : undefined,
-    };
-    fetchBillingHistory(filters);
-  }, [statusFilter, typeFilter, currentPage]);
+    refetchPurchases();
+  }, []);
+
+  // Filter purchases based on search and status
+  const filteredPurchases = (purchases || []).filter(purchase => {
+    const matchesSearch = searchQuery === "" ||
+      purchase.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      purchase.package_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -126,17 +113,53 @@ const PurchaseHistory = () => {
     );
   };
 
-  const filteredTransactions = getFilteredTransactions(searchQuery).filter(transaction => {
-    const matchesStatus = statusFilter === "all" || transaction.status === statusFilter;
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-    return matchesStatus && matchesType;
-  });
-
-  const transactionStats = getTransactionStats();
-
-  const viewDetails = (transaction: BillingTransaction) => {
-    setSelectedTransaction(transaction);
+  const viewDetails = (purchase: any) => {
+    setSelectedTransaction(purchase);
     setShowDetails(true);
+  };
+
+  // Calculate purchase statistics
+  const purchaseStats = useMemo(() => {
+    const stats = {
+      totalPurchases: filteredPurchases.length,
+      totalAmount: 0,
+      totalCredits: 0,
+      completedPurchases: 0,
+    };
+
+    filteredPurchases.forEach(purchase => {
+      stats.totalAmount += purchase.amount || 0;
+      stats.totalCredits += purchase.credits || 0;
+      if (purchase.status === 'completed') {
+        stats.completedPurchases += 1;
+      }
+    });
+
+    return stats;
+  }, [filteredPurchases]);
+
+  const getStatusBadgeVariant = (status: string): "default" | "secondary" | "outline" | "destructive" => {
+    const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+      'completed': 'default',
+      'pending': 'secondary',
+      'failed': 'destructive',
+      'cancelled': 'outline',
+    };
+    return variants[status] || 'outline';
+  };
+
+  const formatDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return dateString;
+    }
   };
 
   return (
@@ -159,76 +182,76 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="p-6 glass">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+              <Card className="p-3 sm:p-4 lg:p-6 glass">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-text-subtle">Total Spent</p>
-                  <DollarSign className="w-5 h-5 text-primary" />
+                  <p className="text-xs sm:text-sm text-text-subtle">Total Spent</p>
+                  <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
                 </div>
-                <p className="text-2xl font-bold">{formatCurrency(getTotalSpent())}</p>
+                <p className="text-xl sm:text-2xl font-bold">TZS {purchaseStats.totalAmount.toLocaleString()}</p>
                 <p className="text-xs text-text-subtle mt-1">
-                  {summary?.currency || 'TZS'} across all transactions
+                  all purchases
                 </p>
               </Card>
 
-              <Card className="p-6 glass">
+              <Card className="p-3 sm:p-4 lg:p-6 glass">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-text-subtle">Total Credits</p>
-                  <Package className="w-5 h-5 text-success" />
+                  <p className="text-xs sm:text-sm text-text-subtle">Total Credits</p>
+                  <Package className="w-4 sm:w-5 h-4 sm:h-5 text-success" />
                 </div>
-                <p className="text-2xl font-bold">{getTotalCredits().toLocaleString()}</p>
+                <p className="text-xl sm:text-2xl font-bold">{purchaseStats.totalCredits.toLocaleString()}</p>
                 <p className="text-xs text-text-subtle mt-1">
-                  SMS credits purchased
+                  credits bought
                 </p>
               </Card>
 
-              <Card className="p-6 glass">
+              <Card className="p-3 sm:p-4 lg:p-6 glass">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-text-subtle">Total Transactions</p>
-                  <TrendingUp className="w-5 h-5 text-warning" />
+                  <p className="text-xs sm:text-sm text-text-subtle">Purchases</p>
+                  <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-warning" />
                 </div>
-                <p className="text-2xl font-bold">{transactionStats.total}</p>
+                <p className="text-xl sm:text-2xl font-bold">{purchaseStats.totalPurchases}</p>
                 <p className="text-xs text-text-subtle mt-1">
-                  {transactionStats.completed} completed, {transactionStats.pending} pending
+                  {purchaseStats.completedPurchases} done
                 </p>
               </Card>
 
-              <Card className="p-6 glass">
+              <Card className="p-3 sm:p-4 lg:p-6 glass">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-text-subtle">Success Rate</p>
-                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <p className="text-xs sm:text-sm text-text-subtle">Success</p>
+                  <CheckCircle2 className="w-4 sm:w-5 h-4 sm:h-5 text-success" />
                 </div>
-                <p className="text-2xl font-bold">
-                  {transactionStats.total > 0
-                    ? Math.round((transactionStats.completed / transactionStats.total) * 100)
+                <p className="text-xl sm:text-2xl font-bold">
+                  {purchaseStats.totalPurchases > 0
+                    ? Math.round((purchaseStats.completedPurchases / purchaseStats.totalPurchases) * 100)
                     : 0}%
                 </p>
                 <p className="text-xs text-text-subtle mt-1">
-                  Transaction success rate
+                  success rate
                 </p>
               </Card>
             </div>
 
             {/* Filters */}
-            <Card className="p-4 glass">
-              <div className="grid md:grid-cols-4 gap-4">
+            <Card className="p-3 sm:p-4 glass">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>Search</Label>
+                  <Label className="text-sm">Search</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                     <Input
                       placeholder="Invoice or package..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 glass-subtle border-0"
+                      className="pl-10 glass-subtle border-0 text-sm"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label className="text-sm">Status</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="glass-subtle border-0">
+                    <SelectTrigger className="glass-subtle border-0 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -236,22 +259,7 @@ const PurchaseHistory = () => {
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="refunded">Refunded</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Transaction Type</Label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="glass-subtle border-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="glass">
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="purchase">📦 Purchases</SelectItem>
-                      <SelectItem value="payment">💳 Payments</SelectItem>
-                      <SelectItem value="custom">⚙️ Custom SMS</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -259,25 +267,21 @@ const PurchaseHistory = () => {
                 <div className="flex items-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => refreshBillingHistory({
-                      page: currentPage,
-                      page_size: pageSize,
-                      status: statusFilter !== 'all' ? statusFilter : undefined,
-                      transaction_type: typeFilter !== 'all' ? typeFilter : undefined,
-                    })}
-                    disabled={refreshing}
-                    className="flex-1"
+                    onClick={() => refetchPurchases()}
+                    disabled={isLoading}
+                    className="flex-1 text-sm"
+                    size="sm"
                   >
-                    {refreshing ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                     ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
+                      <RefreshCw className="w-4 h-4 mr-1" />
                     )}
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
+                  <Button variant="outline" className="flex-1 text-sm" size="sm">
+                    <Download className="w-4 h-4 mr-1" />
+                    <span className="hidden sm:inline">Export</span>
                   </Button>
                 </div>
               </div>
@@ -300,40 +304,40 @@ const PurchaseHistory = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredTransactions.map((transaction) => (
-                      <TableRow key={transaction.id} className="border-border-subtle">
+                    {filteredPurchases.map((purchase) => (
+                      <TableRow key={purchase.id} className="border-border-subtle">
                         <TableCell>
-                          <span className="font-mono font-medium text-sm">{transaction.invoice_number}</span>
+                          <span className="font-mono font-medium text-sm">{purchase.invoice_number}</span>
                         </TableCell>
                         <TableCell className="text-text-subtle text-sm">
-                          {formatDate(transaction.created_at)}
+                          {formatDate(purchase.created_at)}
                         </TableCell>
                         <TableCell className="text-sm">
-                          <div className="max-w-xs truncate" title={transaction.description}>
-                            {transaction.description}
+                          <div className="max-w-xs truncate" title={purchase.package_name}>
+                            {purchase.package_name}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {transaction.credits > 0 && (
+                          {purchase.credits > 0 && (
                             <Badge variant="outline" className="text-xs">
-                              {transaction.credits.toLocaleString()} SMS
+                              {purchase.credits.toLocaleString()} SMS
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {formatCurrency(transaction.amount, transaction.currency)}
+                          TZS {parseFloat(purchase.amount).toLocaleString()}
                         </TableCell>
-                        <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                        <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => viewDetails(transaction)}
+                              onClick={() => viewDetails(purchase)}
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            {transaction.status === "completed" && (
+                            {purchase.status === "completed" && (
                               <Button variant="ghost" size="icon" title="Download Receipt">
                                 <Download className="w-4 h-4" />
                               </Button>
@@ -347,61 +351,62 @@ const PurchaseHistory = () => {
               </div>
 
               {/* Mobile Card View */}
-              <div className="md:hidden grid grid-cols-2 gap-3 p-4">
-                {filteredTransactions.map((transaction) => (
-                  <Card key={transaction.id} className="p-4 glass-subtle">
+              <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4">
+                {filteredPurchases.map((purchase) => (
+                  <Card key={purchase.id} className="p-3 sm:p-4 glass-subtle">
                     <div className="space-y-3">
                       {/* Header Row */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-mono font-medium text-sm mb-1 truncate">
-                            {transaction.invoice_number}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-mono font-medium text-xs sm:text-sm mb-1 truncate" title={purchase.invoice_number}>
+                              {purchase.invoice_number}
+                            </div>
+                            <div className="text-xs text-text-subtle line-clamp-1">
+                              {formatDate(purchase.created_at)}
+                            </div>
                           </div>
-                          <div className="text-xs text-text-subtle">
-                            {formatDate(transaction.created_at)}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(transaction.status)}
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => viewDetails(transaction)}
-                            className="h-8 w-8"
+                            onClick={() => viewDetails(purchase)}
+                            className="h-7 w-7 flex-shrink-0"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
                         </div>
+                        <div>{getStatusBadge(purchase.status)}</div>
                       </div>
 
-                      {/* Description */}
-                      <div className="text-sm text-foreground">
-                        {transaction.description}
+                      {/* Package Name */}
+                      <div className="text-xs sm:text-sm text-foreground line-clamp-2">
+                        {purchase.package_name}
                       </div>
 
                       {/* Credits and Amount Row */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
+                      <div className="flex items-center justify-between pt-2 border-t border-border-subtle gap-2">
                         <div>
-                          {transaction.credits > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              {transaction.credits.toLocaleString()} SMS
+                          {purchase.credits > 0 && (
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">
+                              {purchase.credits.toLocaleString()} SMS
                             </Badge>
                           )}
                         </div>
-                        <div className="font-semibold text-base">
-                          {formatCurrency(transaction.amount, transaction.currency)}
+                        <div className="font-semibold text-sm sm:text-base text-right">
+                          TZS {parseFloat(purchase.amount).toLocaleString()}
                         </div>
                       </div>
 
                       {/* Download Receipt Button for Completed */}
-                      {transaction.status === "completed" && (
+                      {purchase.status === "completed" && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="w-full text-xs"
                         >
-                          <Download className="w-3 h-3 mr-2" />
-                          Download Receipt
+                          <Download className="w-3 h-3 mr-1" />
+                          <span className="hidden xs:inline">Download Receipt</span>
+                          <span className="inline xs:hidden">Receipt</span>
                         </Button>
                       )}
                     </div>
@@ -409,7 +414,7 @@ const PurchaseHistory = () => {
                 ))}
               </div>
 
-              {filteredTransactions.length === 0 && !isLoading && (
+              {filteredPurchases.length === 0 && !isLoading && (
                 <div className="p-8 md:p-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                     <FileText className="w-8 h-8 text-primary" />
@@ -418,7 +423,7 @@ const PurchaseHistory = () => {
                     {t('no_transactions')}
                   </h3>
                   <p className="text-text-subtle text-sm">
-                    No transactions match your current filters
+                    No purchases found. Start by purchasing SMS credits.
                   </p>
                 </div>
               )}
@@ -426,93 +431,23 @@ const PurchaseHistory = () => {
               {isLoading && (
                 <div className="p-8 md:p-12 text-center">
                   <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
-                  <p className="text-text-subtle text-sm">Loading transactions...</p>
+                  <p className="text-text-subtle text-sm">Loading purchases...</p>
                 </div>
               )}
             </Card>
 
-            {/* Pagination */}
-            {pagination && pagination.total_pages > 1 && (
-              <Card className="p-4 glass">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-text-subtle">
-                    Showing {(pagination.page - 1) * pagination.page_size + 1} to {Math.min(pagination.page * pagination.page_size, pagination.count)} of {pagination.count} transactions
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={pagination.page === 1 || isLoading}
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-1" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
-                        let pageNum;
-                        if (pagination.total_pages <= 5) {
-                          pageNum = i + 1;
-                        } else if (pagination.page <= 3) {
-                          pageNum = i + 1;
-                        } else if (pagination.page >= pagination.total_pages - 2) {
-                          pageNum = pagination.total_pages - 4 + i;
-                        } else {
-                          pageNum = pagination.page - 2 + i;
-                        }
-
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pagination.page === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(pageNum)}
-                            disabled={isLoading}
-                            className="w-10"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(pagination.total_pages, prev + 1))}
-                      disabled={pagination.page === pagination.total_pages || isLoading}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Transaction Details Sheet */}
+            {/* Purchase Details Sheet */}
             <Sheet open={showDetails} onOpenChange={setShowDetails}>
               <SheetContent className="glass w-full sm:max-w-lg">
                 <SheetHeader>
-                  <SheetTitle className="text-sm sm:text-base">{t('transaction_details')}</SheetTitle>
+                  <SheetTitle className="text-sm sm:text-base">Purchase Details</SheetTitle>
                   <SheetDescription className="text-xs sm:text-sm">
-                    Complete transaction information and timeline
+                    Complete purchase information
                   </SheetDescription>
                 </SheetHeader>
 
                 {selectedTransaction && (
                   <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                    {/* Transaction Type */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base">Transaction Type</h3>
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <span className="text-2xl">{selectedTransaction.icon}</span>
-                        <div>
-                          <p className="font-medium">{selectedTransaction.type_display}</p>
-                          <p className="text-sm text-text-subtle">{selectedTransaction.description}</p>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Invoice Info */}
                     <div className="space-y-3">
                       <h3 className="font-semibold text-sm sm:text-base">Invoice Information</h3>
@@ -520,6 +455,10 @@ const PurchaseHistory = () => {
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Invoice No.</span>
                           <span className="font-mono font-medium">{selectedTransaction.invoice_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Package</span>
+                          <span className="font-medium">{selectedTransaction.package_name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Date</span>
@@ -538,22 +477,18 @@ const PurchaseHistory = () => {
                       </div>
                     </div>
 
-                    {/* Package/Credits Info */}
+                    {/* Credits Info */}
                     {selectedTransaction.credits > 0 && (
                       <div className="space-y-3">
                         <h3 className="font-semibold text-sm sm:text-base">Credits Information</h3>
                         <div className="space-y-2 text-xs sm:text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-text-subtle">Package</span>
-                            <span className="font-medium">{selectedTransaction.package_name}</span>
-                          </div>
                           <div className="flex justify-between">
                             <span className="text-text-subtle">SMS Credits</span>
                             <span className="font-medium">{selectedTransaction.credits.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-text-subtle">Unit Price</span>
-                            <span>{formatCurrency(selectedTransaction.unit_price, selectedTransaction.currency)}/SMS</span>
+                            <span>TZS {parseFloat(selectedTransaction.unit_price).toLocaleString()}/SMS</span>
                           </div>
                         </div>
                       </div>
@@ -570,7 +505,7 @@ const PurchaseHistory = () => {
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            {formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
+                            TZS {parseFloat(selectedTransaction.amount).toLocaleString()}
                           </span>
                         </div>
                       </div>

@@ -77,19 +77,10 @@ export const useSMSBilling = () => {
           savings_percentage: pkg.savings_percentage || 0
         }));
         setPackages(formattedPackages);
-      } else {
-        toast({
-          title: "Failed to load SMS packages",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
       }
+      // Silently ignore errors (expected when user not authenticated)
     } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to load SMS packages",
-        variant: "destructive"
-      });
+      // Silently handle errors
     }
   };
 
@@ -98,19 +89,10 @@ export const useSMSBilling = () => {
       const response = await apiClient.getSMSBalance();
       if (response.success && response.data) {
         setBalance(response.data);
-      } else {
-        toast({
-          title: "Failed to load SMS balance",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
       }
+      // Silently ignore errors (expected when user not authenticated)
     } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to load SMS balance",
-        variant: "destructive"
-      });
+      // Silently handle errors
     }
   };
 
@@ -134,19 +116,10 @@ export const useSMSBilling = () => {
           completed_at: purchase.completed_at
         }));
         setPurchases(formattedPurchases);
-      } else {
-        toast({
-          title: "Failed to load purchases",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
       }
+      // Silently ignore errors (expected when user not authenticated)
     } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to load purchases",
-        variant: "destructive"
-      });
+      // Silently handle errors
     }
   };
 
@@ -168,19 +141,10 @@ export const useSMSBilling = () => {
           }
         };
         setUsageStats(formattedStats);
-      } else {
-        toast({
-          title: "Failed to load usage statistics",
-          description: response.error || 'Please try again',
-          variant: "destructive"
-        });
       }
+      // Silently ignore errors (expected when user not authenticated)
     } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to load usage statistics",
-        variant: "destructive"
-      });
+      // Silently handle errors
     }
   };
 

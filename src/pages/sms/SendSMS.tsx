@@ -99,7 +99,7 @@ const SendSMS = () => {
   const { fetchContacts } = useContacts();
 
   // Load user's SMS billing info to get current pricing tier
-  const { purchases } = useSMSBilling();
+  const { purchases, isLoading: billingLoading, error: billingError } = useSMSBilling();
 
   // Reduce to approved/active sender names only
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
@@ -191,19 +191,29 @@ const SendSMS = () => {
 
   // Get cost per SMS from user's current package pricing tier
   const costPerSMS = useMemo(() => {
-    if (purchases && purchases.length > 0) {
-      // Sort purchases by created_at in descending order and get the most recent one
-      const mostRecentPurchase = [...purchases].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0];
+    // If still loading or there's an error, use default price
+    if (billingLoading || billingError) {
+      return 18;
+    }
 
-      if (mostRecentPurchase && mostRecentPurchase.unit_price) {
-        return mostRecentPurchase.unit_price;
+    if (purchases && purchases.length > 0) {
+      // Filter for only completed purchases, then sort by created_at in descending order
+      const completedPurchases = purchases.filter(purchase => purchase.status === 'completed');
+
+      if (completedPurchases.length > 0) {
+        // Get the most recent completed purchase
+        const mostRecentPurchase = completedPurchases.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+
+        if (mostRecentPurchase && mostRecentPurchase.unit_price && !isNaN(mostRecentPurchase.unit_price)) {
+          return mostRecentPurchase.unit_price;
+        }
       }
     }
-    // Fallback to 25 TZS if no purchase history available
-    return 25;
-  }, [purchases]);
+    // Fallback to 18 TZS if no completed purchase history available or API fails
+    return 18;
+  }, [purchases, billingLoading, billingError]);
 
   // SMS segment calculation using proper formula
   const segmentInfo = getSegmentInfo(message);

@@ -563,12 +563,20 @@ const PurchaseSMS = () => {
           isActive: true
         });
 
-        // Start polling for payment status
-        const pollingInterval = setInterval(() => {
-          pollPaymentStatus(transaction_id);
-        }, 5000); // Poll every 5 seconds
+        // Start polling for payment status only if transaction_id exists
+        if (transaction_id) {
+          const pollingInterval = setInterval(() => {
+            pollPaymentStatus(transaction_id);
+          }, 5000); // Poll every 5 seconds
 
-        setPaymentPolling(pollingInterval);
+          setPaymentPolling(pollingInterval);
+        } else {
+          // If no transaction_id, just mark as processing without polling
+          toast({
+            title: "Payment processing",
+            description: "Please check your phone for mobile money prompt",
+          });
+        }
 
         toast({
           title: "Payment initiated",

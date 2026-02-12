@@ -2813,7 +2813,7 @@ class ApiClient {
   // 2. Check Payment Status
   async checkPaymentStatus(transactionId: string): Promise<ApiResponse<PaymentStatusResponse>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.STATUS(transactionId)}`, {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.STATUS}`, {
         headers: this.getHeaders()
       });
 

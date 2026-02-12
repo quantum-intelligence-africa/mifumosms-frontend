@@ -87,9 +87,9 @@ export const useContactSegments = () => {
 		}
 	}, [isAuthenticated, toast]);
 
-	// useEffect(() => {
-	// 	fetchSegmentCounts();
-	// }, [fetchSegmentCounts]);
+	useEffect(() => {
+		fetchSegmentCounts();
+	}, [fetchSegmentCounts]);
 
 	const refreshSegmentCounts = useCallback(async () => {
 		await fetchSegmentCounts();
