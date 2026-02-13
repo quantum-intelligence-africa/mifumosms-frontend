@@ -32,6 +32,13 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
 import { useStaggeredReveal, useScrollReveal } from "@/hooks/useScrollReveal";
 import { useScroll, useTransform, motion, MotionValue } from "motion/react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Landing = () => {
   // Force light theme on marketing surfaces
@@ -40,7 +47,7 @@ const Landing = () => {
     document.body.classList.remove('dark');
     document.documentElement.setAttribute('data-theme', 'light');
   }, []);
-
+const [showVideoModal, setShowVideoModal] = useState(false);
   // Preload critical images to ensure they're available
   useEffect(() => {
     const imageUrls = [
@@ -831,25 +838,25 @@ const Landing = () => {
               </p>
             </div>
 
-              <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center lg:justify-start pt-2">
-                <a href="#pricing">
-                  <Button
-                variant="outline"
-                    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
-              >
-                    View pricing
-                  </Button>
+            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center lg:justify-start pt-2">
+  <a href="#pricing">
+    <Button
+      variant="outline"
+      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+    >
+      View pricing
+    </Button>
+  </a>
 
-                </a>
-                 {/* View Tutorial Button - Blue */}
+  {/* View Tutorial Button - Blue */}
   <Button
-    onClick={() => window.open('/tutorial/mfumosms video tutorial.mp4', '_blank')}
+    onClick={() => setShowVideoModal(true)}
     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
     View Tutorial
   </Button>
-            </div>
+</div>
 
             {/* Stats - Below buttons in the left column */}
             <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12">
@@ -1472,6 +1479,37 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+      {/* Video Tutorial Modal */}
+<Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+  <DialogContent className="glass max-w-2xl max-h-[90vh] flex flex-col p-4 rounded-lg">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2 text-lg">
+        <Play className="w-5 h-5 text-blue-600" />
+        Video Tutorial
+      </DialogTitle>
+      <DialogDescription>
+        Learn how to use Mifumo SMS platform effectively
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="flex-1 flex items-center justify-center bg-black/5 rounded-lg overflow-hidden min-h-[400px]">
+      <video
+        key={showVideoModal ? "visible" : "hidden"}
+        controls
+        autoPlay
+        className="w-full h-full max-h-[500px] object-contain"
+        style={{ maxWidth: "100%", maxHeight: "500px" }}
+      >
+        <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
+        <p className="text-center text-gray-600 p-4">
+          Your browser does not support the video tag. Please download the video to watch it.
+        </p>
+      </video>
+    </div>
+
+  
+  </DialogContent>
+</Dialog>
     </div>
   );
 };
