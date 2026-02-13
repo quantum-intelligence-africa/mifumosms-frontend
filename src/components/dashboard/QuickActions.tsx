@@ -131,7 +131,7 @@ export function QuickActions() {
             </video>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          {/* <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
               onClick={() => setShowVideoModal(false)}
@@ -139,7 +139,7 @@ export function QuickActions() {
             >
               Close
             </Button>
-            {/* <Button
+            <Button
               variant="default"
               onClick={() => {
                 const link = document.createElement("a");
@@ -152,8 +152,8 @@ export function QuickActions() {
               className="flex-1 text-sm h-9"
             >
               Download Video
-            </Button> */}
-          </div>
+            </Button>
+          </div> */}
         </DialogContent>
       </Dialog>
     </Card>
