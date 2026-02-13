@@ -3056,6 +3056,35 @@ class ApiClient {
     }
   }
 
+  // 7. Get Purchase Statistics (Completed Purchases Only)
+  async getPurchaseStats(): Promise<ApiResponse<{
+    total_spent: number;
+    total_credits: number;
+    total_purchases: number;
+    completed_purchases: number;
+    success_rate: number;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASE_STATS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        total_spent: number;
+        total_credits: number;
+        total_purchases: number;
+        completed_purchases: number;
+        success_rate: number;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
   // =============================================
   // BILLING HISTORY ENDPOINTS
   // =============================================

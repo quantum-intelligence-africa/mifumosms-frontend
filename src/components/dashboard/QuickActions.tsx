@@ -1,12 +1,21 @@
-import { Send, MessageSquare, Users, FileText, Rocket } from "lucide-react";
+import { Send, MessageSquare, Users, FileText, Rocket, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function QuickActions() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const quickActions = [
     {
       name: t("dashboard.quick_actions.send_message"),
@@ -73,18 +82,80 @@ export function QuickActions() {
       </div>
 
       <div className="mt-5 pt-4 border-t border-border-subtle">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm">
-          <span className="text-text-subtle font-medium">{t("dashboard.quick_actions.need_help")}</span>
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline"
-            onClick={() => window.open("https://wa.me/255614459923", "_blank")}
-          >
-            {t("dashboard.quick_actions.contact_support")}
-          </Button>
-        </div>
-      </div>
+  <div className="flex flex-row gap-2">
+    <Button
+      variant="link"
+      size="sm"
+      className="flex-1 h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline justify-center"
+      onClick={() => setShowVideoModal(true)}
+    >
+      <Play className="w-3 h-3 mr-1" />
+      {t("dashboard.quick_actions.view_tutorial")}
+    </Button>
+    <Button
+      variant="link"
+      size="sm"
+      className="flex-1 h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline justify-center"
+      onClick={() => window.open("https://wa.me/255614459923", "_blank")}
+    >
+      {t("dashboard.quick_actions.contact_support")}
+    </Button>
+  </div>
+</div>
+
+      {/* Video Tutorial Modal */}
+      <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+        <DialogContent className="glass max-w-2xl max-h-[90vh] flex flex-col p-4 rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Play className="w-5 h-5 text-primary" />
+              {t("dashboard.quick_actions.view_tutorial")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("dashboard.quick_actions.tutorial_description")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 flex items-center justify-center bg-black/5 rounded-lg overflow-hidden min-h-[400px]">
+            <video
+              key={showVideoModal ? "visible" : "hidden"}
+              controls
+              autoPlay
+              className="w-full h-full max-h-[500px] object-contain"
+              style={{ maxWidth: "100%", maxHeight: "500px" }}
+            >
+              <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
+              <p className="text-center text-text-subtle p-4">
+                Your browser does not support the video tag. Please download the video to watch it.
+              </p>
+            </video>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowVideoModal(false)}
+              className="flex-1 text-sm h-9"
+            >
+              Close
+            </Button>
+            {/* <Button
+              variant="default"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = "/tutorial/mfumosms video tutorial.mp4";
+                link.download = "mfumosms-tutorial.mp4";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="flex-1 text-sm h-9"
+            >
+              Download Video
+            </Button> */}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

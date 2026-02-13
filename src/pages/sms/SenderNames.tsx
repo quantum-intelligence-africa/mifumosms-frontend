@@ -1322,13 +1322,13 @@ const SenderNames = () => {
                   <div className="space-y-1">
                     <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
                     <Textarea
-                      placeholder="e.g., Your verification code is 123456."
+                      placeholder="e.g., Ndugu Florence,&#10;&#10;Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.&#10;&#10;Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
                       value={sampleContent}
                       onChange={(e) => setSampleContent(e.target.value)}
-                      className="glass-subtle border-0 text-xs sm:text-sm min-h-16 sm:min-h-14"
-                      rows={2}
+                      className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
+                      rows={3}
                     />
-                    <p className="text-xs text-text-subtle">Example SMS message</p>
+                    <p className="text-xs text-text-subtle">Example SMS message users will receive from this sender ID</p>
                   </div>
 
                   <div className="space-y-1 hidden">
@@ -1343,14 +1343,21 @@ const SenderNames = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm font-medium">KYC Documents (Optional)</Label>
-                    <p className="text-xs text-text-subtle">PDF files - Max 8MB</p>
+                    <Label className="text-xs font-medium">KYC Documents (Optional)</Label>
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-1.5 sm:p-2 mb-2">
+                      <p className="text-[10px] text-blue-700 font-medium mb-0.5">Required:</p>
+                      <ul className="text-[10px] text-blue-600 space-y-0 ml-3">
+                        <li>• Business License • BRELA Registration</li>
+                        <li>• TIN Certificate • Company Registration</li>
+                      </ul>
+                    </div>
+                    <p className="text-[10px] text-text-subtle mb-2">PDF - Max 8MB</p>
                     <div className="border border-dashed border-border rounded-lg p-2 sm:p-2 text-center">
                       {kycDocuments.length > 0 ? (
                         <div className="space-y-1.5">
                           <Check className="w-4 h-4 mx-auto text-green-500" />
-                          <p className="text-xs font-medium text-green-600">
-                            {kycDocuments.length} file(s)
+                          <p className="text-[10px] font-medium text-green-600">
+                            {kycDocuments.length} file(s) uploaded
                           </p>
                           <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto text-left">
                             {kycDocuments.map((file, index) => (
@@ -1369,7 +1376,7 @@ const SenderNames = () => {
                             variant="outline"
                             size="sm"
                             onClick={handleRemoveAllFiles}
-                            className="text-red-600 hover:text-red-700 text-xs w-full h-8 sm:h-7"
+                            className="text-red-600 hover:text-red-700 text-[10px] w-full h-8 sm:h-7"
                           >
                             <X className="w-3 h-3 mr-1" />
                             Clear Files
@@ -1378,7 +1385,7 @@ const SenderNames = () => {
                       ) : (
                         <div className="space-y-1 py-2 sm:py-1.5">
                           <Upload className="w-4 h-4 mx-auto text-text-subtle" />
-                          <p className="text-xs font-medium text-text-subtle">Upload KYC Documents</p>
+                          <p className="text-[10px] font-medium text-text-subtle">Upload KYC Documents</p>
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -1389,7 +1396,7 @@ const SenderNames = () => {
                             onChange={handleFileSelect}
                           />
                           <label htmlFor="kyc-upload">
-                            <Button variant="outline" size="sm" asChild className="text-xs h-8 sm:h-7">
+                            <Button variant="outline" size="sm" asChild className="text-[10px] h-8 sm:h-7">
                               <span>Choose Files</span>
                             </Button>
                           </label>

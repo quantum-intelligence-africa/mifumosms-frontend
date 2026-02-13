@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   FileText,
@@ -64,20 +64,35 @@ const PurchaseHistory = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<{
+    id: string;
+    invoice_number: string;
+    package_name: string;
+    credits: number;
+    amount: number;
+    unit_price?: number;
+    payment_method?: string;
+    payment_method_display?: string;
+    status: string;
+    created_at: string;
+    completed_at?: string | null;
+  } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   // Use SMS Billing hook to fetch purchases from /api/billing/sms/purchases/
+  // and purchase stats from /api/billing/purchase-stats/
   const {
     purchases,
+    purchaseStats,
     isLoading,
     error,
     refetchPurchases
   } = useSMSBilling();
 
   // Load data on component mount
+  // The hook already fetches data on mount via fetchAllData
   useEffect(() => {
-    refetchPurchases();
+    // No need to refetch here as hook handles initial load
   }, []);
 
   // Filter purchases based on search and status
@@ -113,30 +128,19 @@ const PurchaseHistory = () => {
     );
   };
 
-  const viewDetails = (purchase: any) => {
+  const viewDetails = (purchase: {
+    id: string;
+    invoice_number: string;
+    package_name: string;
+    credits: number;
+    amount: number;
+    status: string;
+    created_at: string;
+    completed_at?: string | null;
+  }) => {
     setSelectedTransaction(purchase);
     setShowDetails(true);
   };
-
-  // Calculate purchase statistics
-  const purchaseStats = useMemo(() => {
-    const stats = {
-      totalPurchases: filteredPurchases.length,
-      totalAmount: 0,
-      totalCredits: 0,
-      completedPurchases: 0,
-    };
-
-    filteredPurchases.forEach(purchase => {
-      stats.totalAmount += purchase.amount || 0;
-      stats.totalCredits += purchase.credits || 0;
-      if (purchase.status === 'completed') {
-        stats.completedPurchases += 1;
-      }
-    });
-
-    return stats;
-  }, [filteredPurchases]);
 
   const getStatusBadgeVariant = (status: string): "default" | "secondary" | "outline" | "destructive" => {
     const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -162,6 +166,17 @@ const PurchaseHistory = () => {
     }
   };
 
+  // Format large numbers to K, M, B format
+  const formatCompactNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return num.toString();
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -182,52 +197,61 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-              <Card className="p-3 sm:p-4 lg:p-6 glass">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs sm:text-sm text-text-subtle">Total Spent</p>
-                  <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-3">
+              <Card className="p-2 sm:p-3 lg:p-4 glass">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-text-subtle font-medium">Total Spent</p>
+                  <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-primary flex-shrink-0" />
                 </div>
-                <p className="text-xl sm:text-2xl font-bold">TZS {purchaseStats.totalAmount.toLocaleString()}</p>
-                <p className="text-xs text-text-subtle mt-1">
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">TZS {formatCompactNumber(Number(purchaseStats.total_spent))}</p>
+                <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
                   all purchases
                 </p>
               </Card>
 
-              <Card className="p-3 sm:p-4 lg:p-6 glass">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs sm:text-sm text-text-subtle">Total Credits</p>
-                  <Package className="w-4 sm:w-5 h-4 sm:h-5 text-success" />
+              <Card className="p-2 sm:p-3 lg:p-4 glass">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-text-subtle font-medium">Total Credits</p>
+                  <Package className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
-                <p className="text-xl sm:text-2xl font-bold">{purchaseStats.totalCredits.toLocaleString()}</p>
-                <p className="text-xs text-text-subtle mt-1">
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.total_credits))}</p>
+                <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
                   credits bought
                 </p>
               </Card>
 
-              <Card className="p-3 sm:p-4 lg:p-6 glass">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs sm:text-sm text-text-subtle">Purchases</p>
-                  <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-warning" />
+              <Card className="p-2 sm:p-3 lg:p-4 glass">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-text-subtle font-medium">Total Purchases</p>
+                  <TrendingUp className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-warning flex-shrink-0" />
                 </div>
-                <p className="text-xl sm:text-2xl font-bold">{purchaseStats.totalPurchases}</p>
-                <p className="text-xs text-text-subtle mt-1">
-                  {purchaseStats.completedPurchases} done
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.total_purchases))}</p>
+                <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
+                  purchases
                 </p>
               </Card>
 
-              <Card className="p-3 sm:p-4 lg:p-6 glass">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs sm:text-sm text-text-subtle">Success</p>
-                  <CheckCircle2 className="w-4 sm:w-5 h-4 sm:h-5 text-success" />
+              <Card className="p-2 sm:p-3 lg:p-4 glass">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-text-subtle font-medium">Completed</p>
+                  <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-600 flex-shrink-0" />
                 </div>
-                <p className="text-xl sm:text-2xl font-bold">
-                  {purchaseStats.totalPurchases > 0
-                    ? Math.round((purchaseStats.completedPurchases / purchaseStats.totalPurchases) * 100)
-                    : 0}%
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.completed_purchases))}</p>
+                <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
+                  completed
                 </p>
-                <p className="text-xs text-text-subtle mt-1">
-                  success rate
+              </Card>
+
+              <Card className="p-2 sm:p-3 lg:p-4 glass">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-xs text-text-subtle font-medium">Success Rate</p>
+                  <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
+                </div>
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">
+                  {Number(purchaseStats.success_rate).toFixed(1)}%
+                </p>
+                <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
+                  success
                 </p>
               </Card>
             </div>
@@ -320,12 +344,12 @@ const PurchaseHistory = () => {
                         <TableCell>
                           {purchase.credits > 0 && (
                             <Badge variant="outline" className="text-xs">
-                              {purchase.credits.toLocaleString()} SMS
+                              {String(purchase.credits).toLocaleString()} SMS
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          TZS {parseFloat(purchase.amount).toLocaleString()}
+                          TZS {Number(purchase.amount).toLocaleString()}
                         </TableCell>
                         <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
@@ -388,12 +412,12 @@ const PurchaseHistory = () => {
                         <div>
                           {purchase.credits > 0 && (
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
-                              {purchase.credits.toLocaleString()} SMS
+                              {String(purchase.credits).toLocaleString()} SMS
                             </Badge>
                           )}
                         </div>
                         <div className="font-semibold text-sm sm:text-base text-right">
-                          TZS {parseFloat(purchase.amount).toLocaleString()}
+                          TZS {Number(purchase.amount).toLocaleString()}
                         </div>
                       </div>
 
@@ -488,7 +512,7 @@ const PurchaseHistory = () => {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-text-subtle">Unit Price</span>
-                            <span>TZS {parseFloat(selectedTransaction.unit_price).toLocaleString()}/SMS</span>
+                            <span>TZS {Number(selectedTransaction.unit_price || 0).toLocaleString()}/SMS</span>
                           </div>
                         </div>
                       </div>
@@ -500,12 +524,12 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-text-subtle">Method</span>
-                          <span className="font-medium">{selectedTransaction.payment_method_display}</span>
+                          <span className="font-medium">{selectedTransaction.payment_method_display || selectedTransaction.payment_method}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            TZS {parseFloat(selectedTransaction.amount).toLocaleString()}
+                            TZS {Number(selectedTransaction.amount).toLocaleString()}
                           </span>
                         </div>
                       </div>

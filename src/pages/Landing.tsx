@@ -839,7 +839,16 @@ const Landing = () => {
               >
                     View pricing
                   </Button>
+
                 </a>
+                 {/* View Tutorial Button - Blue */}
+  <Button
+    onClick={() => window.open('/tutorial/mfumosms video tutorial.mp4', '_blank')}
+    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
+  >
+    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+    View Tutorial
+  </Button>
             </div>
 
             {/* Stats - Below buttons in the left column */}

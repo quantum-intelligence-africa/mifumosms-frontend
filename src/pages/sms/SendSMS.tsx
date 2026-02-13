@@ -462,7 +462,7 @@ const SendSMS = () => {
       }
 
       // Use sender ID (UUID) if available, otherwise fallback to sender_id string
-      let senderIdentifier = senderObj.id && senderObj.id.trim() ? senderObj.id : senderObj.sender_id;
+      const senderIdentifier = senderObj.id && senderObj.id.trim() ? senderObj.id : senderObj.sender_id;
 
       // Validate that we have a non-empty identifier
       if (!senderIdentifier || !senderIdentifier.trim()) {

@@ -175,6 +175,7 @@ export const API_CONFIG = {
 				PURCHASE: '/billing/sms/purchase/',
 				PURCHASES: '/billing/sms/purchases/',
 				PURCHASE_HISTORY: '/billing/sms/purchases/history/',
+				PURCHASE_STATS: '/billing/purchase-stats/',
 				USAGE_STATISTICS: '/billing/sms/usage/statistics/',
 			},
 			HISTORY_DETAILED: {

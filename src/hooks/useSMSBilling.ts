@@ -55,6 +55,20 @@ export const useSMSBilling = () => {
     };
   } | null>(null);
 
+  const [purchaseStats, setPurchaseStats] = useState<{
+    total_spent: number;
+    total_credits: number;
+    total_purchases: number;
+    completed_purchases: number;
+    success_rate: number;
+  }>({
+    total_spent: 0,
+    total_credits: 0,
+    total_purchases: 0,
+    completed_purchases: 0,
+    success_rate: 0
+  });
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -64,14 +78,25 @@ export const useSMSBilling = () => {
       const response = await apiClient.getSMSPackages();
       if (response.success && response.data) {
         // Convert API response to expected format
-        const packagesArray = Array.isArray(response.data) ? response.data : (response.data.results || []);
-        const formattedPackages = packagesArray.map((pkg: any) => ({
+        interface PackageData {
+          id: string;
+          name: string;
+          package_type?: string;
+          credits: number;
+          price: number | string;
+          unit_price: number | string;
+          is_popular?: boolean;
+          features?: string[];
+          savings_percentage?: number;
+        }
+        const packagesArray: PackageData[] = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        const formattedPackages = packagesArray.map((pkg: PackageData) => ({
           id: pkg.id,
           name: pkg.name,
           package_type: pkg.package_type || 'standard',
           credits: pkg.credits,
-          price: parseFloat(pkg.price),
-          unit_price: parseFloat(pkg.unit_price),
+          price: parseFloat(String(pkg.price)),
+          unit_price: parseFloat(String(pkg.unit_price)),
           is_popular: pkg.is_popular || false,
           features: pkg.features || [],
           savings_percentage: pkg.savings_percentage || 0
@@ -101,13 +126,27 @@ export const useSMSBilling = () => {
       const response = await apiClient.getPurchases();
       if (response.success && response.data) {
         // Convert API response to expected format
-        const formattedPurchases = response.data.results.map((purchase: any) => ({
+        interface PurchaseData {
+          id: string;
+          invoice_number: string;
+          package_name?: string;
+          credits: number;
+          amount: number | string;
+          unit_price: number | string;
+          payment_method: string;
+          payment_method_display?: string;
+          status: string;
+          status_display?: string;
+          created_at: string;
+          completed_at?: string | null;
+        }
+        const formattedPurchases = response.data.results.map((purchase: PurchaseData) => ({
           id: purchase.id,
           invoice_number: purchase.invoice_number,
           package_name: purchase.package_name || 'Unknown Package',
           credits: purchase.credits,
-          amount: parseFloat(purchase.amount),
-          unit_price: parseFloat(purchase.unit_price),
+          amount: parseFloat(String(purchase.amount)),
+          unit_price: parseFloat(String(purchase.unit_price)),
           payment_method: purchase.payment_method,
           payment_method_display: purchase.payment_method_display || purchase.payment_method,
           status: purchase.status,
@@ -128,16 +167,23 @@ export const useSMSBilling = () => {
       const response = await apiClient.getUsageStatistics();
       if (response.success && response.data) {
         // Convert API response to expected format
+        interface UsageStatsData {
+          current_balance: number;
+          total_usage: { credits: number; cost: number };
+          monthly_usage?: { credits: number; cost: number };
+          weekly_usage?: { credits: number; cost: number };
+        }
+        const statsData = response.data as UsageStatsData;
         const formattedStats = {
-          current_balance: response.data.current_balance,
-          total_usage: response.data.total_usage,
+          current_balance: statsData.current_balance,
+          total_usage: statsData.total_usage,
           monthly_usage: {
-            credits: (response.data as any).monthly_usage?.credits || response.data.total_usage.credits,
-            cost: (response.data as any).monthly_usage?.cost || response.data.total_usage.cost
+            credits: statsData.monthly_usage?.credits || statsData.total_usage.credits,
+            cost: statsData.monthly_usage?.cost || statsData.total_usage.cost
           },
           weekly_usage: {
-            credits: (response.data as any).weekly_usage?.credits || response.data.total_usage.credits,
-            cost: (response.data as any).weekly_usage?.cost || response.data.total_usage.cost
+            credits: statsData.weekly_usage?.credits || statsData.total_usage.credits,
+            cost: statsData.weekly_usage?.cost || statsData.total_usage.cost
           }
         };
         setUsageStats(formattedStats);
@@ -145,6 +191,46 @@ export const useSMSBilling = () => {
       // Silently ignore errors (expected when user not authenticated)
     } catch (error) {
       // Silently handle errors
+    }
+  };
+
+  const fetchPurchaseStats = async () => {
+    try {
+      const response = await apiClient.getPurchaseStats();
+      console.log('📊 Full API Response:', JSON.stringify(response, null, 2));
+      console.log('📊 Response Status:', response.status);
+      console.log('📊 Response Success:', response.success);
+      console.log('📊 Response Data Type:', typeof response.data);
+      console.log('📊 Response Data:', response.data);
+
+      // Handle backend response - check if data is nested in response.data.data
+      let statsData = response.data;
+
+      // If response.data is an object with nested data property, use that
+      if (statsData && typeof statsData === 'object' && 'data' in statsData && statsData.data) {
+        statsData = statsData.data;
+        console.log('📊 Found nested data structure, using:', statsData);
+      }
+
+      if (response.status === 200 && statsData) {
+        console.log('✅ Setting Purchase Stats with data:', statsData);
+        setPurchaseStats({
+          total_spent: Number(statsData.total_spent) || 0,
+          total_credits: Number(statsData.total_credits) || 0,
+          total_purchases: Number(statsData.total_purchases) || 0,
+          completed_purchases: Number(statsData.completed_purchases) || 0,
+          success_rate: Number(statsData.success_rate) || 0
+        });
+      } else {
+        console.warn('⚠️ API returned but could not extract data:', {
+          status: response.status,
+          data: response.data,
+          error: response.error,
+          message: response.message
+        });
+      }
+    } catch (error) {
+      console.error('❌ Purchase Stats Error:', error);
     }
   };
 
@@ -332,22 +418,30 @@ export const useSMSBilling = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔄 Starting fetchAllData...');
 
       await Promise.all([
         fetchPackages(),
         fetchBalance(),
         fetchPurchases(),
-        fetchUsageStats()
+        fetchUsageStats(),
+        fetchPurchaseStats()
       ]);
+
+      console.log('✅ All data loaded successfully');
     } catch (error) {
       setError('Failed to load SMS billing data');
+      console.error('❌ fetchAllData error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Only run once on mount
   useEffect(() => {
+    console.log('🎯 useSMSBilling hook mounted - calling fetchAllData');
     fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
@@ -355,6 +449,7 @@ export const useSMSBilling = () => {
     balance,
     purchases,
     usageStats,
+    purchaseStats,
     isLoading,
     error,
     createPurchase,
@@ -367,5 +462,6 @@ export const useSMSBilling = () => {
     refetchBalance: fetchBalance,
     refetchPurchases: fetchPurchases,
     refetchUsageStats: fetchUsageStats,
+    refetchPurchaseStats: fetchPurchaseStats,
   };
 };
