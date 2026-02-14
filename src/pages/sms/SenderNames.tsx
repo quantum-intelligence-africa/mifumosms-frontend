@@ -26,7 +26,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useDefaultSender } from "@/hooks/useDefaultSender";
-import { SenderNameRequest, UnifiedSenderName } from "@/lib/api";
+import { SenderNameRequest, UnifiedSenderName, apiClient, SenderRequestPaymentResponse } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +62,13 @@ import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
 
+interface PaymentData {
+  requested_sender_id: string;
+  phone_number: string;
+  sample_content: string;
+  purpose: string;
+}
+
 const SenderNames = () => {
   const location = useLocation();
 
@@ -82,7 +89,13 @@ const SenderNames = () => {
         setShowRequestDialog(false);
         setShowEditDialog(false);
         setShowDetailsDialog(false);
+        setShowPaymentDialog(false);
         setSubmitting(false);
+        // Clear payment polling
+        setPaymentPolling(prev => {
+          if (prev) clearInterval(prev);
+          return null;
+        });
       }
     };
 
@@ -92,6 +105,11 @@ const SenderNames = () => {
       window.removeEventListener('page-navigate', handlePageNavigate);
       abortControllerRef.current.abort();
       isMountedRef.current = false;
+      // Cleanup payment polling
+      setPaymentPolling(prev => {
+        if (prev) clearInterval(prev);
+        return null;
+      });
     };
   }, []);
 
@@ -210,6 +228,7 @@ const SenderNames = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [requestedSenderId, setRequestedSenderId] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [sampleContent, setSampleContent] = useState("");
   const [senderNamePurpose, setSenderNamePurpose] = useState("");
   const [requestType, setRequestType] = useState("custom");
@@ -218,6 +237,8 @@ const SenderNames = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(new AbortController());
+  const pollAttemptsRef = useRef(0);
+  const paymentPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [editingSender, setEditingSender] = useState<SenderNameRequest | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editSenderName, setEditSenderName] = useState("");
@@ -229,9 +250,131 @@ const SenderNames = () => {
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [pageReady, setPageReady] = useState(false);
 
+  // Payment dialog state
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
+  const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
+
+  // Payment status dialog (after redirect from payment gateway)
+  const [showPaymentStatusDialog, setShowPaymentStatusDialog] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'checking' | 'success' | 'failed'>('checking');
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState<string>("");
+  const [pollAttempts, setPollAttempts] = useState(0);
+  const maxPollAttempts = 24; // 2 minutes with 5-second intervals
+
+  // Payment pending state (when payment_url is null)
+  const [showPaymentPendingDialog, setShowPaymentPendingDialog] = useState(false);
+  const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string>("");
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState<string>("");
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Check for payment return from payment gateway
+  useEffect(() => {
+    const orderId = localStorage.getItem('sender_request_order_id');
+
+    if (orderId && paymentStatus === 'checking' && paymentStatusMessage) {
+      // Start polling for payment status
+      if (paymentPollIntervalRef.current) {
+        clearInterval(paymentPollIntervalRef.current);
+      }
+
+      paymentPollIntervalRef.current = setInterval(async () => {
+        if (!isMountedRef.current) {
+          if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
+          return;
+        }
+
+        pollAttemptsRef.current += 1;
+        setPollAttempts(pollAttemptsRef.current);
+
+        const response = await apiClient.checkSenderPaymentStatus(orderId);
+
+        if (response.success && response.data) {
+          const remoteStatus = response.data.remote?.payment_status?.toUpperCase();
+
+          if (remoteStatus === 'COMPLETED' || remoteStatus === 'SUCCESS') {
+            // Payment successful
+            if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
+            setPaymentStatus('success');
+            setPaymentStatusMessage('Payment successful! Your sender ID request is being processed.');
+
+            // Clear stored data
+            localStorage.removeItem('sender_request_order_id');
+            localStorage.removeItem('sender_request_id');
+
+            // Reset poll attempts
+            pollAttemptsRef.current = 0;
+
+            // Show success notification
+            toast({
+              title: "Payment Successful",
+              description: "Your sender ID request is being processed",
+            });
+
+            // Refresh sender names after successful payment
+            setTimeout(() => {
+              refreshData();
+            }, 2000);
+          } else if (remoteStatus === 'FAILED' || remoteStatus === 'CANCELLED') {
+            // Payment failed
+            if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
+            setPaymentStatus('failed');
+            setPaymentStatusMessage('Payment failed. Your request has been cancelled. Please try again.');
+
+            // Clear stored data
+            localStorage.removeItem('sender_request_order_id');
+            localStorage.removeItem('sender_request_id');
+
+            // Reset poll attempts
+            pollAttemptsRef.current = 0;
+
+            // Show error notification
+            toast({
+              title: "Payment Failed",
+              description: "Your payment was not completed. Please try again.",
+              variant: "destructive"
+            });
+          }
+        }
+
+        // Stop polling after max attempts
+        if (pollAttemptsRef.current >= maxPollAttempts) {
+          if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
+          setPaymentStatus('success');
+          setPaymentStatusMessage('Payment request submitted. Your request will be processed shortly.');
+          pollAttemptsRef.current = 0;
+
+          // Show notification
+          toast({
+            title: "Payment Processing",
+            description: "Your payment is being processed. Your request will be reviewed shortly.",
+          });
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+
+    return () => {
+      if (paymentPollIntervalRef.current && paymentStatus === 'checking') {
+        clearInterval(paymentPollIntervalRef.current);
+        paymentPollIntervalRef.current = null;
+      }
+    };
+  }, [paymentStatus, paymentStatusMessage, refreshData, toast]);
+
+  // Initialize payment status check on mount if returning from payment
+  useEffect(() => {
+    const orderId = localStorage.getItem('sender_request_order_id');
+    if (orderId && paymentStatus === 'checking' && !paymentStatusMessage) {
+      // Start polling silently in the background (don't show dialog yet)
+      pollAttemptsRef.current = 0;
+      setPollAttempts(0);
+      setPaymentStatusMessage('Checking payment status...');
+    }
+  }, [paymentStatus, paymentStatusMessage]);
 
 
 
@@ -381,6 +524,26 @@ const SenderNames = () => {
       return;
     }
 
+    if (!phoneNumber.trim()) {
+      toast({
+        title: "Phone number required",
+        description: "Please enter your phone number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate phone number format
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+      toast({
+        title: "Invalid phone number",
+        description: "Please enter a valid phone number (10-15 digits)",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!sampleContent.trim()) {
       toast({
         title: "Sample content required",
@@ -392,7 +555,7 @@ const SenderNames = () => {
 
     // Purpose and KYC documents are now optional
 
-    if (senderNamePurpose.trim() && senderNamePurpose.trim() && senderNamePurpose.length < 10) {
+    if (senderNamePurpose.trim() && senderNamePurpose.length < 10) {
       toast({
         title: "Purpose too short",
         description: "Please provide at least 10 characters describing the purpose",
@@ -401,71 +564,78 @@ const SenderNames = () => {
       return;
     }
 
-    // KYC documents are now optional
+    // Show payment confirmation dialog
+    setPaymentData({
+      requested_sender_id: requestedSenderId,
+      phone_number: phoneNumber,
+      sample_content: sampleContent,
+      purpose: senderNamePurpose
+    });
+    setShowPaymentDialog(true);
+  };
 
-    setSubmitting(true);
+  const confirmSenderPayment = async () => {
+    if (!paymentData) return;
+
+    setPaymentProcessing(true);
 
     try {
-      const result = await createSenderName({
-        sender_name: requestedSenderId,
-        requested_sender_id: requestedSenderId,
-        request_type: requestType,
-        sample_content: sampleContent,
-        use_case: senderNamePurpose,
-        sender_name_purpose: senderNamePurpose || undefined,
-        supporting_documents: kycDocuments
+      const response = await apiClient.submitSenderRequestWithPayment({
+        requested_sender_id: paymentData.requested_sender_id,
+        phone_number: paymentData.phone_number,
+        sample_content: paymentData.sample_content,
+        reason: paymentData.purpose || "Sender ID request"
       });
 
       if (!isMountedRef.current) return;
 
-      if (result.success) {
-        setSubmitting(false);
-        setShowRequestDialog(false);
+      if (response.success && response.data) {
+        const paymentResponse = response.data as SenderRequestPaymentResponse;
 
-        // Reset form
-        setRequestedSenderId("");
-        setSampleContent("");
-        setSenderNamePurpose("");
-        setRequestType("custom");
-        setKycDocuments([]);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+        if (paymentResponse.payment_required) {
+          const orderId = paymentResponse.payment.order_id;
+          const amount = paymentResponse.payment.amount;
 
-        toast({
-          title: "Request submitted",
-          description: "Your sender ID request has been submitted and is pending approval. Our admin team will review within 2-3 business days.",
-        });
+          // Store the order ID for status checking
+          localStorage.setItem('sender_request_order_id', orderId);
+          localStorage.setItem('sender_request_id', paymentResponse.sender_id_request?.id || '');
 
-        // Refresh the entire page to show new data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        setSubmitting(false);
+          if (paymentResponse.payment?.payment_url) {
+            // Redirect to payment page
+            toast({
+              title: "Redirecting to payment",
+              description: "You will be redirected to complete the payment of TSH " + amount,
+            });
 
-        if (result.errors) {
-          // Handle validation errors
-          const errorMessages = Object.values(result.errors).flat();
-          toast({
-            title: "Validation failed",
-            description: errorMessages.join(", "),
-            variant: "destructive"
-          });
+            // Redirect to payment URL
+            setTimeout(() => {
+              window.location.href = paymentResponse.payment!.payment_url || '';
+            }, 1500);
+          } else {
+            // Payment URL is null - show pending dialog with order details
+            setPaymentProcessing(false);
+            setShowPaymentDialog(false);
+            setPendingPaymentOrderId(orderId);
+            setPendingPaymentAmount(amount);
+            setShowPaymentPendingDialog(true);
+          }
         } else {
-          toast({
-            title: "Request failed",
-            description: result.error || "Failed to submit sender name request",
-            variant: "destructive"
-          });
+          throw new Error('Payment not required but no clear response');
         }
+      } else {
+        toast({
+          title: "Payment initiation failed",
+          description: response.error || "Failed to initiate payment",
+          variant: "destructive"
+        });
+        setPaymentProcessing(false);
       }
     } catch (error) {
       if (isMountedRef.current) {
-        setSubmitting(false);
+        setPaymentProcessing(false);
         toast({
-          title: "Request failed",
-          description: "An unexpected error occurred",
+          title: "Error",
+          description: error instanceof Error ? error.message : "An error occurred",
           variant: "destructive"
         });
       }
@@ -1280,7 +1450,21 @@ const SenderNames = () => {
             </div>
 
             {/* Request Dialog */}
-            <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+            <Dialog open={showRequestDialog} onOpenChange={(open) => {
+              if (!open) {
+                // Reset form when closing
+                setRequestedSenderId("");
+                setPhoneNumber("");
+                setSampleContent("");
+                setSenderNamePurpose("");
+                setRequestType("custom");
+                setKycDocuments([]);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }
+              setShowRequestDialog(open);
+            }}>
               <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
                 <DialogHeader className="pb-2 sm:pb-2.5">
                   <DialogTitle className="text-sm sm:text-base md:text-lg">Request New Sender Name</DialogTitle>
@@ -1306,17 +1490,31 @@ const SenderNames = () => {
                       </p>
                     </div>
 
-                    <div className="space-y-1 hidden">
-                      <Label className="text-xs sm:text-sm font-medium">Type *</Label>
-                      <select
-                        value={requestType}
-                        onChange={(e) => setRequestType(e.target.value)}
-                        className="glass-subtle border border-border rounded-md px-2 py-2 sm:py-1.5 text-xs sm:text-sm w-full h-9 sm:h-8 bg-background"
-                      >
-                        <option value="custom">Custom</option>
-                        <option value="default">Default</option>
-                      </select>
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium">Phone Number *</Label>
+                      <Input
+                        placeholder="+255 762 781 427"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        type="tel"
+                        className="glass-subtle border-0 text-xs sm:text-sm h-9 sm:h-8"
+                      />
+                      <p className="text-xs text-text-subtle">
+                        Enter your phone number for payment
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="space-y-1 hidden">
+                    <Label className="text-xs sm:text-sm font-medium">Type *</Label>
+                    <select
+                      value={requestType}
+                      onChange={(e) => setRequestType(e.target.value)}
+                      className="glass-subtle border border-border rounded-md px-2 py-2 sm:py-1.5 text-xs sm:text-sm w-full h-9 sm:h-8 bg-background"
+                    >
+                      <option value="custom">Custom</option>
+                      <option value="default">Default</option>
+                    </select>
                   </div>
 
                   <div className="space-y-1">
@@ -1328,7 +1526,6 @@ const SenderNames = () => {
                       className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
                       rows={3}
                     />
-                    <p className="text-xs text-text-subtle">Example SMS message users will receive from this sender ID</p>
                   </div>
 
                   <div className="space-y-1 hidden">
@@ -1426,10 +1623,292 @@ const SenderNames = () => {
                         Submitting...
                       </>
                     ) : (
-                      "Submit Request"
+                      "Pay & Submit Request"
                     )}
                   </Button>
                 </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Payment Confirmation Dialog */}
+            <Dialog open={showPaymentDialog} onOpenChange={(open) => {
+              if (!open) {
+                setPaymentProcessing(false);
+                setPaymentData(null);
+              }
+              setShowPaymentDialog(open);
+            }}>
+              <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
+                <DialogHeader className="pb-2 sm:pb-2.5">
+                  <DialogTitle className="text-sm sm:text-base md:text-lg">Payment Required</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-xs md:text-sm">
+                    Complete payment to submit your sender ID request
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Payment Details Card */}
+                  <Card className="p-3 sm:p-4 bg-primary/5 border-primary/20">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm sm:text-base text-foreground">Request Summary</h4>
+                      <div className="space-y-1.5 text-xs sm:text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Sender ID:</span>
+                          <span className="font-mono font-semibold">{paymentData?.requested_sender_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-text-subtle">Phone Number:</span>
+                          <span className="font-mono">{paymentData?.phone_number}</span>
+                        </div>
+                        <div className="pt-2 border-t border-primary/10">
+                          <div className="flex justify-between items-center">
+                            <span className="text-text-subtle font-medium">Total Amount:</span>
+                            <span className="text-lg sm:text-xl font-bold text-primary">TSH 12,000</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Payment Methods */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Payment Methods</h4>
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2 sm:p-3">
+                      <p className="text-[10px] sm:text-xs text-blue-700">
+                        ✓ Mobile Money (M-Pesa, Tigo Pesa, Airtel Money)
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
+                        You will be redirected to a secure payment gateway to complete the transaction.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Important Notice */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-xs text-amber-700">
+                      <span className="font-medium">Note:</span> After payment, your request will be reviewed by our admin team within 2-3 business days.
+                    </p>
+                  </div>
+                </div>
+
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPaymentDialog(false)}
+                    disabled={paymentProcessing}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmSenderPayment}
+                    disabled={paymentProcessing}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-1 sm:order-2 bg-primary hover:bg-primary/90"
+                  >
+                    {paymentProcessing ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-3 h-3 mr-1" />
+                        Pay TSH 12,000
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Payment Status Dialog (After redirect from payment gateway) */}
+            <Dialog open={showPaymentStatusDialog} onOpenChange={(open) => {
+              if (!open && paymentStatus !== 'checking') {
+                setShowPaymentStatusDialog(false);
+                setPaymentStatus('checking');
+                setPaymentStatusMessage("");
+                setPollAttempts(0);
+              }
+            }}>
+              <DialogContent className="glass max-w-md max-h-[95vh] overflow-y-auto p-4 sm:p-6 rounded-lg">
+                <DialogHeader className="pb-4">
+                  <DialogTitle className="text-lg sm:text-xl">
+                    {paymentStatus === 'checking' && 'Processing Payment'}
+                    {paymentStatus === 'success' && 'Payment Successful'}
+                    {paymentStatus === 'failed' && 'Payment Failed'}
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  {/* Status Visual */}
+                  <div className="flex justify-center py-4">
+                    {paymentStatus === 'checking' && (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-text-subtle">Please wait...</p>
+                      </div>
+                    )}
+                    {paymentStatus === 'success' && (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center animate-in scale-in">
+                          <Check className="w-8 h-8 text-green-600" />
+                        </div>
+                      </div>
+                    )}
+                    {paymentStatus === 'failed' && (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center animate-in scale-in">
+                          <X className="w-8 h-8 text-red-600" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status Message */}
+                  <Card className={`p-3 sm:p-4 ${
+                    paymentStatus === 'checking' ? 'bg-blue-50 border-blue-200' :
+                    paymentStatus === 'success' ? 'bg-green-50 border-green-200' :
+                    'bg-red-50 border-red-200'
+                  }`}>
+                    <p className={`text-sm text-center ${
+                      paymentStatus === 'checking' ? 'text-blue-700' :
+                      paymentStatus === 'success' ? 'text-green-700' :
+                      'text-red-700'
+                    }`}>
+                      {paymentStatusMessage}
+                    </p>
+                  </Card>
+
+                  {/* Polling Progress */}
+                  {paymentStatus === 'checking' && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs text-text-subtle">
+                        <span>Checking payment...</span>
+                        <span>{pollAttempts}/{maxPollAttempts}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div
+                          className="bg-primary h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${(pollAttempts / maxPollAttempts) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Info */}
+                  {paymentStatus === 'success' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <p className="text-xs sm:text-sm text-blue-700">
+                        <span className="font-medium">Next Steps:</span> Your request is now pending admin review. You'll receive a notification when it's approved or if we need more information.
+                      </p>
+                    </div>
+                  )}
+
+                  {paymentStatus === 'failed' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                      <p className="text-xs sm:text-sm text-amber-700">
+                        Your payment was not completed. You can submit the request again.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {paymentStatus !== 'checking' && (
+                  <DialogFooter className="pt-4">
+                    <Button
+                      onClick={() => {
+                        setShowPaymentStatusDialog(false);
+                        setPaymentStatus('checking');
+                        setPaymentStatusMessage("");
+                        setPollAttempts(0);
+                      }}
+                      className="w-full"
+                    >
+                      {paymentStatus === 'success' ? 'Close' : 'Try Again'}
+                    </Button>
+                  </DialogFooter>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            {/* Payment Pending Dialog - Shown when payment URL is not yet available */}
+            <Dialog open={showPaymentPendingDialog} onOpenChange={setShowPaymentPendingDialog}>
+              <DialogContent className="glass max-w-sm w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-5 rounded-lg">
+                <DialogHeader className="pb-2 sm:pb-3 space-y-1">
+                  <DialogTitle className="text-base sm:text-lg text-amber-900 flex items-center gap-2">
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+                    Payment Processing
+                  </DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm text-amber-700">
+                    Your request is registered
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Status Visual - Compact */}
+                  <div className="flex justify-center py-2 sm:py-3">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center animate-pulse shadow-sm">
+                      <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-amber-600" />
+                    </div>
+                  </div>
+
+                  {/* Status Message Card */}
+                  <Card className="bg-gradient-to-br from-amber-50 to-amber-25 border border-amber-200 p-3 sm:p-4 space-y-3">
+                    <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
+                      Your sender ID request has been registered. The payment gateway is being prepared.
+                    </p>
+
+                    {/* Order Details - Compact */}
+                    <div className="bg-white/60 backdrop-blur-sm rounded-md p-2.5 sm:p-3 space-y-2 border border-amber-100">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">Order ID:</span>
+                          <span className="font-mono text-[10px] sm:text-xs text-amber-900 break-all text-right line-clamp-2">
+                            {pendingPaymentOrderId}
+                          </span>
+                        </div>
+                        <div className="h-px bg-gradient-to-r from-amber-100 to-transparent" />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">Amount:</span>
+                          <span className="text-base sm:text-lg font-bold text-amber-600">TSH {pendingPaymentAmount}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-100/50 border border-amber-200/50 rounded-md p-2 text-[10px] sm:text-xs text-amber-800 leading-relaxed">
+                      <p>
+                        <span className="font-semibold">↳ Payment link</span> will be sent to your email or phone within moments.
+                      </p>
+                    </div>
+                  </Card>
+
+                  {/* Actions - Stack on mobile */}
+                  <div className="flex flex-col-reverse sm:flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pendingPaymentOrderId);
+                        toast({
+                          title: "Copied",
+                          description: "Order ID copied",
+                        });
+                      }}
+                      className="h-8 sm:h-9 text-xs sm:text-sm w-full text-amber-700 border-amber-200 hover:bg-amber-50"
+                    >
+                      📋 Copy Order ID
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowPaymentPendingDialog(false);
+                        setPendingPaymentOrderId("");
+                        setPendingPaymentAmount("");
+                      }}
+                      className="h-8 sm:h-9 text-xs sm:text-sm w-full bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Got It
+                    </Button>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
 

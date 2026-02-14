@@ -809,6 +809,7 @@ export interface CreateSenderNameRequest {
   sample_content?: string;
   use_case?: string;
   sender_name_purpose?: string;
+  phone_number?: string;
   supporting_documents?: File[];
 }
 
@@ -855,6 +856,20 @@ export interface CustomSMSCalculation {
     unit_price: number;
     description: string;
   }>;
+}
+
+export interface SenderRequestPayment {
+  order_id: string;
+  amount: string;
+  status: string;
+  payment_url?: string;
+}
+
+export interface SenderRequestPaymentResponse {
+  payment_required: boolean;
+  sender_id_request?: SenderNameRequest;
+  payment?: SenderRequestPayment;
+  message?: string;
 }
 
 // Legacy Billing Types (deprecated - use new comprehensive types above)
@@ -3874,6 +3889,7 @@ class ApiClient {
     request_type: string;
     sample_content: string;
     sender_name_purpose?: string;
+    phone_number?: string;
     kyc_documents?: File[];
   }): Promise<ApiResponse<SenderNameRequest>> {
     try {
@@ -3885,6 +3901,10 @@ class ApiClient {
       // Only append optional fields if they exist
       if (data.sender_name_purpose) {
         formData.append('sender_name_purpose', data.sender_name_purpose);
+      }
+
+      if (data.phone_number) {
+        formData.append('phone_number', data.phone_number);
       }
 
       // Append each file to kyc_documents array
@@ -3904,6 +3924,89 @@ class ApiClient {
       });
 
       return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Submit sender request for payment (creates request + initiates payment)
+  // POST /api/messaging/sender-requests/
+  async submitSenderRequestWithPayment(data: {
+    requested_sender_id: string;
+    phone_number: string;
+    sample_content: string;
+    reason?: string;
+    additional_info?: string;
+  }): Promise<ApiResponse<SenderRequestPaymentResponse>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      // Special handling for 402 Payment Required - this is a success response
+      if (response.status === 402) {
+        const data = await response.json();
+        return {
+          success: true,
+          data: data as SenderRequestPaymentResponse,
+          message: data.message,
+          status: response.status
+        };
+      }
+
+      return await this.handleResponse<SenderRequestPaymentResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Check payment status for a sender ID request
+  // GET /api/v1/zenopay-status/?order_id=<ORDER_ID>
+  async checkSenderPaymentStatus(orderId: string): Promise<ApiResponse<{
+    status: string;
+    order_id: string;
+    remote?: {
+      order_id: string;
+      amount: string;
+      payment_status: string;
+      transid: string;
+      channel: string;
+      msisdn: string;
+      timestamp: string;
+    };
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/zenopay-status/?order_id=${encodeURIComponent(orderId)}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        status: string;
+        order_id: string;
+        remote?: {
+          order_id: string;
+          amount: string;
+          payment_status: string;
+          transid: string;
+          channel: string;
+          msisdn: string;
+          timestamp: string;
+        };
+      }>(response);
     } catch (error) {
       return {
         success: false,
