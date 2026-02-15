@@ -839,14 +839,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             </div>
 
             <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center lg:justify-start pt-2">
-  <a href="#pricing">
+  <Link
+    to="/signup">
     <Button
       variant="outline"
       className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
     >
-      View pricing
+      Start Free
     </Button>
-  </a>
+  </Link>
 
   {/* View Tutorial Button - Blue */}
   <Button
@@ -854,7 +855,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-    View Tutorial
+    How to Use.
   </Button>
 </div>
 
@@ -1462,9 +1463,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
             {/* Contact */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-white/90">+255 614 459 923</span>
+              <span className="text-xs sm:text-sm text-white/90">+255 615 229 007</span>
               <a
-                href="https://wa.me/255614459923"
+                href="https://wa.me/255615229007"
                 target="_blank"
                 rel="noreferrer"
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm transition-colors duration-300"
@@ -1507,7 +1508,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       </video>
     </div>
 
-  
+
   </DialogContent>
 </Dialog>
     </div>

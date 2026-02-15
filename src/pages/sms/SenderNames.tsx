@@ -1877,7 +1877,7 @@ const SenderNames = () => {
 
                     <div className="bg-amber-100/50 border border-amber-200/50 rounded-md p-2 text-[10px] sm:text-xs text-amber-800 leading-relaxed">
                       <p>
-                        <span className="font-semibold">↳ Payment link</span> will be sent to your email or phone within moments.
+                        <span className="font-semibold">↳ Payment link </span> will be sent to your phone within moments.
                       </p>
                     </div>
                   </Card>
@@ -1899,13 +1899,19 @@ const SenderNames = () => {
                     </Button>
                     <Button
                       onClick={() => {
+                        // Close pending dialog and start checking payment status
                         setShowPaymentPendingDialog(false);
-                        setPendingPaymentOrderId("");
-                        setPendingPaymentAmount("");
+
+                        // Initialize payment status checking
+                        setPaymentStatus('checking');
+                        setPaymentStatusMessage('Checking payment status...');
+                        setShowPaymentStatusDialog(true);
+                        pollAttemptsRef.current = 0;
+                        setPollAttempts(0);
                       }}
                       className="h-8 sm:h-9 text-xs sm:text-sm w-full bg-amber-600 hover:bg-amber-700 text-white"
                     >
-                      Got It
+                      ✓ Payment Complete
                     </Button>
                   </div>
                 </div>

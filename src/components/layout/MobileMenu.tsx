@@ -118,7 +118,7 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
 
               {/* Secondary CTA - WhatsApp Chat */}
               <a
-                href="https://wa.me/255614459923"
+                href="https://wa.me/255615229007"
                 target="_blank"
                 rel="noreferrer"
                 onClick={onClose}

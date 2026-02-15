@@ -96,7 +96,7 @@ export function QuickActions() {
       variant="link"
       size="sm"
       className="flex-1 h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline justify-center"
-      onClick={() => window.open("https://wa.me/255614459923", "_blank")}
+      onClick={() => window.open("https://wa.me/255615229007", "_blank")}
     >
       {t("dashboard.quick_actions.contact_support")}
     </Button>

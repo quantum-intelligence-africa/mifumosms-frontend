@@ -350,9 +350,9 @@ const Developer = () => {
 
             {/* Contact */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-white/90">+255 614 459 923</span>
+              <span className="text-xs sm:text-sm text-white/90">+255 615 229 007</span>
               <a
-                href="https://wa.me/255614459923"
+                href="https://wa.me/255615229007"
                 target="_blank"
                 rel="noreferrer"
                 className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm transition-colors duration-300"
