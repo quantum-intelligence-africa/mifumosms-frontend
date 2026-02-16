@@ -734,10 +734,10 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
       {/* Header */}
       <header className="fixed top-0 left-0 z-[50] w-full bg-transparent py-4 backdrop-blur-xl">
-        <section className="px-6 sm:px-7 md:px-8 lg:px-12 flex items-center justify-between max-w-full">
+        <section className="px-0 pl-6 sm:pl-8 md:pl-12 lg:pl-20 flex items-center justify-between max-w-full pr-4 sm:pr-6 md:pr-8 lg:pr-12">
 
           {/* Logo */}
-          <div onClick={() => scrollToSection('about')} className="w-28 flex items-center justify-center cursor-pointer">
+          <div onClick={() => scrollToSection('about')} className="flex items-center justify-start cursor-pointer">
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 h-8">
               <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg flex-shrink-0">
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
@@ -776,7 +776,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           </div>
 
           {/* Action Buttons */}
-          <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
+          <div className="hidden lg:flex items-center gap-4 justify-end">
               <Link to="/login">
                 <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center ${
                   isScrolled
@@ -821,12 +821,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       />
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center px-3 sm:px-4 md:px-5 lg:px-6 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-6 lg:pt-32 lg:pb-8 z-10">
-        <div className="w-full relative max-w-full">
+      <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-6 lg:pt-32 lg:pb-8 z-10">
+        <div className="w-full relative max-w-full pl-6 sm:pl-8 md:pl-12 lg:pl-20">
           {/* Content - Two column layout on desktop */}
           <div className="relative z-10 w-full flex flex-col lg:flex-row items-center lg:items-start lg:justify-between gap-8 lg:gap-12">
             {/* Text Content - Left side on desktop, centered on mobile */}
-            <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left">
+            <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left pr-4 sm:pr-6 md:pr-8 lg:pr-12">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-left">
                   Getting customers is cheap.
@@ -838,7 +838,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               </p>
             </div>
 
-            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:justify-start pt-2 w-full lg:w-auto justify-start">
+            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:justify-start pt-2 w-full lg:w-auto justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
   <Link
     to="/signup">
     <Button
@@ -860,7 +860,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 </div>
 
             {/* Stats - Below buttons in the left column */}
-            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12 w-full justify-start">
+            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12 w-full justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Active Businesses</div>
