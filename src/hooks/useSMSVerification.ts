@@ -12,7 +12,7 @@ interface SMSVerificationResponse {
 	attempts_remaining?: number;
 	locked_until?: string;
 	tokens?: { access: string; refresh: string }; // Tokens returned after account activation
-	user?: any; // User data returned after account activation
+	user?: Record<string, unknown>; // User data returned after account activation
 }
 
 interface PasswordResetResponse {
@@ -162,6 +162,18 @@ export const useSMSVerification = () => {
 		setIsVerifying(true);
 		try {
 			const formattedNumber = data.phone_number.trim();
+			const trimmedCode = (data.code || '').trim();
+
+			// Validate code is not empty
+			if (!trimmedCode) {
+				setIsVerifying(false);
+				return {
+					success: false,
+					error: 'Verification code is required.',
+					phone_number: formattedNumber,
+				};
+			}
+
 			const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.SMS.VERIFY_CODE}`, {
 				method: 'POST',
 				headers: {
@@ -169,7 +181,8 @@ export const useSMSVerification = () => {
 				},
 				body: JSON.stringify({
 					phone_number: formattedNumber,
-					code: data.code
+					code: trimmedCode,
+					verification_code: trimmedCode
 				}),
 			});
 

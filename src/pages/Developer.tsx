@@ -228,7 +228,7 @@ const Developer = () => {
                 <p className="text-gray-600 leading-relaxed">
                   Mifumo SMS API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.
                 </p>
-                <div className="mt-4 flex items-center text-blue-600 font-medium hidden">
+                <div className="mt-4 items-center text-blue-600 font-medium hidden">
                   <span>Learn more</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
@@ -246,7 +246,7 @@ const Developer = () => {
                 <p className="text-gray-600 leading-relaxed">
                   Mifumo SMS API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.
                 </p>
-                <div className="mt-4 flex items-center text-green-600 font-medium hidden">
+                <div className="mt-4 items-center text-green-600 font-medium hidden">
                   <span>Learn more</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
@@ -264,7 +264,7 @@ const Developer = () => {
                 <p className="text-gray-600 leading-relaxed">
                   Mifumo SMS API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.
                 </p>
-                <div className="mt-4 flex items-center text-purple-600 font-medium hidden">
+                <div className="mt-4 items-center text-purple-600 font-medium hidden">
                   <span>Learn more</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>

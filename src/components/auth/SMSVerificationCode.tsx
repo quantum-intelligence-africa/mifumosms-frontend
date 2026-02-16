@@ -46,8 +46,10 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
   // Handle code submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length >= 4 && !isLoading) {
-      onVerify(code);
+    const trimmedCode = code.trim();
+    console.log('Submitting verification code:', trimmedCode, 'length:', trimmedCode.length);
+    if (trimmedCode && trimmedCode.length >= 4 && !isLoading) {
+      onVerify(trimmedCode);
     }
   };
 

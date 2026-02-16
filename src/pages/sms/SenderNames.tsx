@@ -1500,7 +1500,7 @@ const SenderNames = () => {
                         className="glass-subtle border-0 text-xs sm:text-sm h-9 sm:h-8"
                       />
                       <p className="text-xs text-text-subtle">
-                        Enter your phone number for payment
+                        Enter your  payment phone number
                       </p>
                     </div>
                   </div>
