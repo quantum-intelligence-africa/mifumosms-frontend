@@ -10,8 +10,16 @@ import {
   Building2,
   Plus,
   Hash,
-  Activity
+  Activity,
+  Play
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -32,12 +40,30 @@ const Dashboard = () => {
   const { metrics, overview, recentCampaigns, recentActivity, performanceOverview, senderIds, isLoading } = useDashboard();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const { t } = useLanguage();
 
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Show video tutorial for first-time users
+  useEffect(() => {
+    if (user?.id) {
+      const tutorialSeenKey = `mifumo_tutorial_seen_${user.id}`;
+      const hasSeenTutorial = localStorage.getItem(tutorialSeenKey);
+
+      if (!hasSeenTutorial) {
+        // Delay slightly for better UX after dashboard loads
+        const timer = setTimeout(() => {
+          setShowVideoModal(true);
+          localStorage.setItem(tutorialSeenKey, "true");
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user?.id]);
 
   if (isLoading) {
     return (
@@ -170,6 +196,36 @@ const Dashboard = () => {
             </div>
           </div>
         </main>
+
+        {/* Video Tutorial Modal - Shows for first time users */}
+        <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-4 rounded-xl border-none shadow-2xl bg-white">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                <Play className="w-5 h-5 text-blue-600" />
+                {t("tutorial.title") || "Karibu Mifumo SMS"}
+              </DialogTitle>
+              <DialogDescription className="text-gray-500 font-medium">
+                {t("tutorial.description") || "Jifunze jinsi ya kutumia mfumo wetu kwa ufanisi zaidi."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 flex items-center justify-center bg-gray-900 rounded-lg overflow-hidden min-h-[300px] sm:min-h-[400px] shadow-inner relative group">
+              <video
+                key={showVideoModal ? "visible" : "hidden"}
+                controls
+                autoPlay
+                className="w-full h-full max-h-[500px] object-contain"
+                style={{ maxWidth: "100%", maxHeight: "500px" }}
+              >
+                <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
+                <p className="text-center text-white p-4">
+                  Your browser does not support the video tag. Please download the video to watch it.
+                </p>
+              </video>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
     );

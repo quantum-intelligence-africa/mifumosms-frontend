@@ -4,6 +4,8 @@ const translations = {
   en: {
     "app.name": "Mifumo SMS",
     "app.tagline": "Communication Hub",
+    "tutorial.title": "Welcome to Mifumo SMS",
+    "tutorial.description": "Watch this quick tutorial to get started with our system.",
     "nav.dashboard": "Dashboard",
     "nav.sms": "SMS",
     "nav.send_sms": "Send SMS",
@@ -213,6 +215,8 @@ const translations = {
   sw: {
     "app.name": "Mifumo SMS",
     "app.tagline": "Kituo cha Mawasiliano",
+    "tutorial.title": "Karibu Mifumo SMS",
+    "tutorial.description": "Tazama video hii fupi ya mafunzo ili kuanza kutumia mfumo wetu.",
     "nav.dashboard": "Dashibodi",
     "nav.sms": "SMS",
     "nav.send_sms": "Tuma SMS",
