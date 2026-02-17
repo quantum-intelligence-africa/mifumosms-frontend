@@ -625,7 +625,7 @@ const PurchaseSMS = () => {
       logger.error('Payment error occurred');
       toast({
         title: "Payment error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
     }

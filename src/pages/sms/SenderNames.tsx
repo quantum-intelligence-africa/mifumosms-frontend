@@ -1831,16 +1831,15 @@ const SenderNames = () => {
               </DialogContent>
             </Dialog>
 
-            {/* Payment Pending Dialog - Shown when payment URL is not yet available */}
             <Dialog open={showPaymentPendingDialog} onOpenChange={setShowPaymentPendingDialog}>
               <DialogContent className="glass max-w-sm w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-5 rounded-lg">
                 <DialogHeader className="pb-2 sm:pb-3 space-y-1">
                   <DialogTitle className="text-base sm:text-lg text-amber-900 flex items-center gap-2">
                     <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
-                    Payment Processing
+                    {t('sender_names.payment.title')}
                   </DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm text-amber-700">
-                    Your request is registered
+                    ⏱ {t('sender_names.payment.waiting')}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -1855,21 +1854,21 @@ const SenderNames = () => {
                   {/* Status Message Card */}
                   <Card className="bg-gradient-to-br from-amber-50 to-amber-25 border border-amber-200 p-3 sm:p-4 space-y-3">
                     <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
-                      Your sender ID request has been registered. The payment gateway is being prepared.
+                      {t('sender_names.payment.instruction')}
                     </p>
 
                     {/* Order Details - Compact */}
                     <div className="bg-white/60 backdrop-blur-sm rounded-md p-2.5 sm:p-3 space-y-2 border border-amber-100">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">Order ID:</span>
+                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">{t('sender_names.payment.order_id')}:</span>
                           <span className="font-mono text-[10px] sm:text-xs text-amber-900 break-all text-right line-clamp-2">
                             {pendingPaymentOrderId}
                           </span>
                         </div>
                         <div className="h-px bg-gradient-to-r from-amber-100 to-transparent" />
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">Amount:</span>
+                          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 flex-shrink-0">{t('sender_names.payment.amount')}:</span>
                           <span className="text-base sm:text-lg font-bold text-amber-600">TSH {pendingPaymentAmount}</span>
                         </div>
                       </div>
@@ -1877,7 +1876,7 @@ const SenderNames = () => {
 
                     <div className="bg-amber-100/50 border border-amber-200/50 rounded-md p-2 text-[10px] sm:text-xs text-amber-800 leading-relaxed">
                       <p>
-                        <span className="font-semibold">↳ Payment link </span> will be sent to your phone within moments.
+                        <span className="font-semibold">↳ {t('sender_names.payment.after_approval')} </span> , {t('sender_names.payment.finalize_click')}
                       </p>
                     </div>
                   </Card>
@@ -1889,13 +1888,13 @@ const SenderNames = () => {
                       onClick={() => {
                         navigator.clipboard.writeText(pendingPaymentOrderId);
                         toast({
-                          title: "Copied",
-                          description: "Order ID copied",
+                          title: t('common.copied'),
+                          description: t('common.order_id_copied'),
                         });
                       }}
                       className="h-8 sm:h-9 text-xs sm:text-sm w-full text-amber-700 border-amber-200 hover:bg-amber-50"
                     >
-                      📋 Copy Order ID
+                      📋 {t('sender_names.payment.copy_order_id')}
                     </Button>
                     <Button
                       onClick={() => {
@@ -1904,14 +1903,14 @@ const SenderNames = () => {
 
                         // Initialize payment status checking
                         setPaymentStatus('checking');
-                        setPaymentStatusMessage('Checking payment status...');
+                        setPaymentStatusMessage(t('sender_names.payment.checking_status'));
                         setShowPaymentStatusDialog(true);
                         pollAttemptsRef.current = 0;
                         setPollAttempts(0);
                       }}
                       className="h-8 sm:h-9 text-xs sm:text-sm w-full bg-amber-600 hover:bg-amber-700 text-white"
                     >
-                      ✓ Payment Complete
+                      ✓ {t('sender_names.payment.complete')}
                     </Button>
                   </div>
                 </div>

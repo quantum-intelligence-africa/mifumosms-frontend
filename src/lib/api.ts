@@ -913,6 +913,37 @@ class ApiClient {
     return headers;
   }
 
+  private extractErrorMessage(data: unknown): string {
+    if (!data) return 'An error occurred';
+    if (typeof data === 'string') return data;
+
+    // Check common DRF error fields
+    const dataObj = data as Record<string, unknown>;
+    if (dataObj.message && typeof dataObj.message === 'string') return dataObj.message;
+    if (dataObj.detail && typeof dataObj.detail === 'string') return dataObj.detail;
+    if (dataObj.error && typeof dataObj.error === 'string') return dataObj.error;
+
+    // Handle non_field_errors which is common in Django
+    if (Array.isArray(dataObj.non_field_errors) && dataObj.non_field_errors.length > 0) {
+      return String(dataObj.non_field_errors[0]);
+    }
+
+    // Handle general field errors: { "field_name": ["error message"] }
+    if (typeof data === 'object') {
+      const errorValues = Object.values(data as Record<string, unknown>);
+      if (errorValues.length > 0) {
+        const firstError = errorValues[0];
+        if (Array.isArray(firstError) && firstError.length > 0) {
+          return String(firstError[0]);
+        } else if (typeof firstError === 'string') {
+          return firstError;
+        }
+      }
+    }
+
+    return 'An error occurred';
+  }
+
   async handleResponse<T = unknown>(response: Response): Promise<ApiResponse<T>> {
     // Handle empty responses (common for DELETE operations)
     if (response.status === 204 || response.headers.get('content-length') === '0') {
@@ -941,11 +972,13 @@ class ApiClient {
       if (response.ok) {
         return { success: true, data: data, message: data.message, status: response.status };
       } else {
+        const errorMsg = this.extractErrorMessage(data);
+
         return {
           success: false,
-          message: data.message || data.detail || 'An error occurred',
-          error: data.message || data.detail || 'An error occurred',
-          errors: data.errors || null,
+          message: errorMsg,
+          error: errorMsg,
+          errors: data.errors || (typeof data === 'object' ? data : null),
           status: response.status
         };
       }
@@ -1068,9 +1101,10 @@ class ApiClient {
               const retryData = await retryResponse.json();
 
               if (!retryResponse.ok) {
+                const errorMsg = this.extractErrorMessage(retryData);
                 return {
                   data: retryData,
-                  error: retryData?.message || retryData?.error || 'An error occurred',
+                  error: errorMsg,
                   status: retryResponse.status,
                   success: false,
                   errors: retryData?.errors || retryData,
@@ -1109,14 +1143,11 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const detail = data?.detail;
-        const message = data?.message;
-        const error = data?.error;
-        const nonFieldErrors = Array.isArray(data?.non_field_errors) ? data.non_field_errors[0] : undefined;
+        const errorMsg = this.extractErrorMessage(data);
         return {
           data: data,
-          message: message || detail,
-          error: detail || message || error || nonFieldErrors || 'An error occurred',
+          message: errorMsg,
+          error: errorMsg,
           status: response.status,
           success: false,
           errors: data?.errors || data,

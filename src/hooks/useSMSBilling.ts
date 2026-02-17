@@ -204,7 +204,7 @@ export const useSMSBilling = () => {
       console.log('📊 Response Data:', response.data);
 
       // Handle backend response - check if data is nested in response.data.data
-      let statsData = response.data;
+      let statsData: any = response.data;
 
       // If response.data is an object with nested data property, use that
       if (statsData && typeof statsData === 'object' && 'data' in statsData && statsData.data) {
@@ -285,7 +285,7 @@ export const useSMSBilling = () => {
     } catch (error) {
       toast({
         title: "Payment initiation failed",
-        description: "Network error occurred",
+        description: error instanceof Error ? error.message : "Network error occurred",
         variant: "destructive"
       });
       return null;
@@ -342,7 +342,7 @@ export const useSMSBilling = () => {
     } catch (error) {
       toast({
         title: "Payment initiation failed",
-        description: "Network error occurred",
+        description: error instanceof Error ? error.message : "Network error occurred",
         variant: "destructive"
       });
       return null;
