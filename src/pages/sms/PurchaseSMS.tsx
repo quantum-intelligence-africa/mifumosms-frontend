@@ -344,7 +344,7 @@ const PurchaseSMS = () => {
 
   // Calculate custom SMS pricing using API
   const calculateCustomSMSPrice = async (credits: number) => {
-    if (credits < 100) return;
+    if (credits < 1000) return;
 
     try {
       setIsCalculatingCustom(true);
@@ -371,11 +371,11 @@ const PurchaseSMS = () => {
   useEffect(() => {
     if (customCredits && !selectedPackage) {
       const credits = parseInt(customCredits);
-      if (credits >= 100) {
+      if (credits >= 1000) {
         setCustomCreditsError("");
         calculateCustomSMSPrice(credits);
       } else if (credits > 0) {
-        setCustomCreditsError("Minimum 100 credits required");
+        setCustomCreditsError("Minimum 1000 credits required");
         setCustomSMSState(null);
       } else {
         setCustomCreditsError("");
@@ -779,7 +779,7 @@ const PurchaseSMS = () => {
                     className={`glass-subtle border-0 h-9 text-sm ${
                       customCreditsError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                     }`}
-                    min="100"
+                    min="1000"
                   />
                   {selectedPackage && customCredits === "" ? (
                   <p className="text-xs text-text-subtle">{t('base_credits_from_package')}</p>
@@ -841,7 +841,7 @@ const PurchaseSMS = () => {
                     ) : '—'}</>
                   )}
                 </span>
-                <span>Minimum 100 {t('credits')}</span>
+                <span>Minimum 1000 {t('credits')}</span>
               </div>
             </Card>
 
