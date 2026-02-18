@@ -187,6 +187,55 @@ const PurchaseHistory = () => {
     return num.toString();
   };
 
+  // Format amount with commas and M suffix for millions
+  const formatAmount = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    return Math.floor(num).toLocaleString();
+  };
+
+  // Handle receipt download
+  const downloadReceipt = (purchase: any) => {
+    try {
+      if (!purchase || !purchase.invoice_number) {
+        toast({
+          title: 'Error',
+          description: 'Invoice number not found',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Create a formatted receipt text
+      const receiptContent = `RECEIPT\n${'='.repeat(50)}\n\nInvoice Number: ${purchase.invoice_number}\nDate: ${formatDate(purchase.created_at)}\nStatus: ${purchase.status}\n\nPackage: ${purchase.package_name || 'N/A'}\nCredits: ${(purchase.credits || 0).toLocaleString()}\nUnit Price: TZS ${(purchase.unit_price || 0).toLocaleString()}\nPayment Method: ${purchase.payment_method || 'N/A'}\n\n${'='.repeat(50)}\nTOTAL AMOUNT: TZS ${Number(purchase.amount || 0).toLocaleString()}\n${'='.repeat(50)}\n\nThank you for your purchase!`;
+
+      // Create blob and download
+      const blob = new Blob([receiptContent], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Receipt_${purchase.invoice_number.replace(/\//g, '-')}.txt`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Success',
+        description: 'Receipt downloaded successfully'
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to download receipt',
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -213,7 +262,7 @@ const PurchaseHistory = () => {
                   <p className="text-xs text-text-subtle font-medium">Total Spent</p>
                   <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-primary flex-shrink-0" />
                 </div>
-                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">TZS {formatCompactNumber(Number(purchaseStats.total_spent))}</p>
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">TZS {formatAmount(Number(purchaseStats.total_spent))}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
                   all purchases
                 </p>
@@ -224,7 +273,7 @@ const PurchaseHistory = () => {
                   <p className="text-xs text-text-subtle font-medium">Total Credits</p>
                   <Package className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
-                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.total_credits))}</p>
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{Number(purchaseStats.total_credits).toLocaleString()}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
                   credits bought
                 </p>
@@ -377,7 +426,13 @@ const PurchaseHistory = () => {
                               <Eye className="w-4 h-4" />
                             </Button>
                             {purchase.status === "completed" && (
-                              <Button variant="ghost" size="icon" title="Download Receipt" className="h-8 w-8">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Download Receipt"
+                                className="h-8 w-8"
+                                onClick={() => downloadReceipt(purchase)}
+                              >
                                 <Download className="w-4 h-4" />
                               </Button>
                             )}
@@ -498,6 +553,7 @@ const PurchaseHistory = () => {
                           variant="outline"
                           size="sm"
                           className="w-full text-xs"
+                          onClick={() => downloadReceipt(purchase)}
                         >
                           <Download className="w-3 h-3 mr-1" />
                           <span className="hidden xs:inline">Download Receipt</span>
@@ -679,7 +735,11 @@ const PurchaseHistory = () => {
                     {/* Actions */}
                     <div className="space-y-2">
                       {selectedTransaction.status === "completed" && (
-                        <Button variant="outline" className="w-full text-sm">
+                        <Button
+                          variant="outline"
+                          className="w-full text-sm"
+                          onClick={() => downloadReceipt(selectedTransaction)}
+                        >
                           <Download className="w-4 h-4 mr-2" />
                           Download Receipt
                         </Button>
