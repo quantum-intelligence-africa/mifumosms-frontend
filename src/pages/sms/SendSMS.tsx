@@ -593,10 +593,13 @@ const SendSMS = () => {
         let successMessage = `Sent to ${apiRecipients.length} recipient(s)`;
 
         // Try to get the provider's actual success message (Beem Africa format)
-        const providerMsg = response.data?.provider_response?.response?.message;
-        if (providerMsg) {
+        const providerResponse = response.data?.provider_response?.response;
+        const providerMsg = (providerResponse && typeof providerResponse === 'object' && 'message' in providerResponse)
+          ? (providerResponse as Record<string, unknown>).message
+          : null;
+        if (providerMsg && typeof providerMsg === 'string') {
           successMessage = providerMsg; // "Message Submitted Successfully"
-        } else if (typeof response.message === 'string' && response.message.trim()) {
+        } else if ('message' in response && typeof response.message === 'string' && response.message.trim()) {
           successMessage = response.message; // Fallback to API message
         }
 
