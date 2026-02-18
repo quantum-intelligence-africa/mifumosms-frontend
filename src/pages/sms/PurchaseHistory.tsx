@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useSMSBilling } from "@/hooks/useSMSBilling";
+import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const PurchaseHistory = () => {
@@ -78,30 +79,39 @@ const PurchaseHistory = () => {
     completed_at?: string | null;
   } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
-  // Use SMS Billing hook to fetch purchases from /api/billing/sms/purchases/
-  // and purchase stats from /api/billing/purchase-stats/
+  // Use unified purchase history hook - fetches from /api/billing/sms/purchases/history/
   const {
     purchases,
-    purchaseStats,
+    pagination,
     isLoading,
     error,
-    refetchPurchases
+    fetchPurchaseHistory,
+    goToPage,
+    refresh
+  } = usePurchaseHistory();
+
+  // Use SMS Billing hook for purchase stats only
+  const {
+    purchaseStats
   } = useSMSBilling();
 
-  // Load data on component mount
-  // The hook already fetches data on mount via fetchAllData
+  // Load purchase history on component mount
   useEffect(() => {
-    // No need to refetch here as hook handles initial load
-  }, []);
+    fetchPurchaseHistory({
+      page: currentPage,
+      page_size: pageSize,
+      status: statusFilter === "all" ? undefined : statusFilter
+    });
+  }, [currentPage, pageSize, statusFilter, fetchPurchaseHistory]);
 
-  // Filter purchases based on search and status
+  // Filter purchases based on search (client-side filtering for invoice number)
   const filteredPurchases = (purchases || []).filter(purchase => {
-    const matchesSearch = searchQuery === "" ||
+    return searchQuery === "" ||
       purchase.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       purchase.package_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
-    return matchesSearch && matchesStatus;
   });
 
   const getStatusIcon = (status: string) => {
@@ -291,7 +301,11 @@ const PurchaseHistory = () => {
                 <div className="flex items-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => refetchPurchases()}
+                    onClick={() => refresh({
+                      page: currentPage,
+                      page_size: pageSize,
+                      status: statusFilter === "all" ? undefined : statusFilter
+                    })}
                     disabled={isLoading}
                     className="flex-1 text-sm"
                     size="sm"
@@ -313,56 +327,57 @@ const PurchaseHistory = () => {
 
             {/* Transactions Table */}
             <Card className="glass">
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
+              {/* Desktop Table View (lg and above) */}
+              <div className="hidden lg:block overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border-subtle">
-                      <TableHead className="min-w-[150px]">Invoice No.</TableHead>
-                      <TableHead className="min-w-[150px]">Date</TableHead>
-                      <TableHead className="min-w-[200px]">Description</TableHead>
-                      <TableHead className="min-w-[120px]">Credits</TableHead>
-                      <TableHead className="min-w-[120px]">Amount</TableHead>
-                      <TableHead className="min-w-[100px]">Status</TableHead>
-                      <TableHead className="text-right min-w-[100px]">Actions</TableHead>
+                    <TableRow className="border-border-subtle bg-muted/50">
+                      <TableHead className="min-w-[140px] font-semibold">Invoice No.</TableHead>
+                      <TableHead className="min-w-[130px] font-semibold">Date</TableHead>
+                      <TableHead className="min-w-[160px] font-semibold">Payment Method</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold">Credits</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">Amount</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold">Status</TableHead>
+                      <TableHead className="text-right min-w-[80px] font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPurchases.map((purchase) => (
-                      <TableRow key={purchase.id} className="border-border-subtle">
+                      <TableRow key={purchase.id} className="border-border-subtle hover:bg-muted/30 transition-colors">
                         <TableCell>
                           <span className="font-mono font-medium text-sm">{purchase.invoice_number}</span>
                         </TableCell>
-                        <TableCell className="text-text-subtle text-sm">
+                        <TableCell className="text-text-subtle text-sm whitespace-nowrap">
                           {formatDate(purchase.created_at)}
                         </TableCell>
                         <TableCell className="text-sm">
-                          <div className="max-w-xs truncate" title={purchase.package_name}>
-                            {purchase.package_name}
+                          <div className="max-w-xs truncate" title={purchase.payment_method}>
+                            {purchase.payment_method}
                           </div>
                         </TableCell>
                         <TableCell>
                           {purchase.credits > 0 && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">
                               {String(purchase.credits).toLocaleString()} SMS
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="font-semibold">
+                        <TableCell className="font-semibold text-sm whitespace-nowrap">
                           TZS {Number(purchase.amount).toLocaleString()}
                         </TableCell>
                         <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => viewDetails(purchase)}
+                              className="h-8 w-8"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
                             {purchase.status === "completed" && (
-                              <Button variant="ghost" size="icon" title="Download Receipt">
+                              <Button variant="ghost" size="icon" title="Download Receipt" className="h-8 w-8">
                                 <Download className="w-4 h-4" />
                               </Button>
                             )}
@@ -374,10 +389,59 @@ const PurchaseHistory = () => {
                 </Table>
               </div>
 
+              {/* Tablet View (md to lg) */}
+              <div className="hidden md:block lg:hidden overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border-subtle bg-muted/50">
+                      <TableHead className="min-w-[120px] font-semibold text-xs">Invoice</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold text-xs">Date</TableHead>
+                      <TableHead className="min-w-[110px] font-semibold text-xs">Payment</TableHead>
+                      <TableHead className="min-w-[80px] font-semibold text-xs">Amount</TableHead>
+                      <TableHead className="min-w-[80px] font-semibold text-xs">Status</TableHead>
+                      <TableHead className="text-right min-w-[70px] font-semibold text-xs">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPurchases.map((purchase) => (
+                      <TableRow key={purchase.id} className="border-border-subtle hover:bg-muted/30 transition-colors">
+                        <TableCell>
+                          <span className="font-mono font-medium text-xs">{purchase.invoice_number}</span>
+                        </TableCell>
+                        <TableCell className="text-text-subtle text-xs whitespace-nowrap">
+                          {formatDate(purchase.created_at).split(',')[0]}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="max-w-xs truncate" title={purchase.payment_method}>
+                            {purchase.payment_method}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-xs whitespace-nowrap">
+                          TZS {(Number(purchase.amount) / 1000).toFixed(0)}K
+                        </TableCell>
+                        <TableCell className="text-xs">{getStatusBadge(purchase.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => viewDetails(purchase)}
+                            className="h-7 w-7"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile View (below md) */}
+
               {/* Mobile Card View */}
               <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4">
                 {filteredPurchases.map((purchase) => (
-                  <Card key={purchase.id} className="p-3 sm:p-4 glass-subtle">
+                  <Card key={purchase.id} className="p-3 sm:p-4 glass-subtle hover:shadow-md transition-all">
                     <div className="space-y-3">
                       {/* Header Row */}
                       <div className="flex flex-col gap-2">
@@ -387,7 +451,7 @@ const PurchaseHistory = () => {
                               {purchase.invoice_number}
                             </div>
                             <div className="text-xs text-text-subtle line-clamp-1">
-                              {formatDate(purchase.created_at)}
+                              {formatDate(purchase.created_at).split(',')[0]}
                             </div>
                           </div>
                           <Button
@@ -402,22 +466,29 @@ const PurchaseHistory = () => {
                         <div>{getStatusBadge(purchase.status)}</div>
                       </div>
 
-                      {/* Package Name */}
-                      <div className="text-xs sm:text-sm text-foreground line-clamp-2">
-                        {purchase.package_name}
+                      {/* Payment Method */}
+                      <div className="space-y-1">
+                        <div className="text-xs text-text-subtle font-medium">Payment</div>
+                        <div className="text-xs sm:text-sm text-foreground line-clamp-2">
+                          {purchase.payment_method}
+                        </div>
                       </div>
 
                       {/* Credits and Amount Row */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border-subtle gap-2">
-                        <div>
-                          {purchase.credits > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-border-subtle">
+                        {purchase.credits > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-text-subtle">Credits</span>
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
                               {String(purchase.credits).toLocaleString()} SMS
                             </Badge>
-                          )}
-                        </div>
-                        <div className="font-semibold text-sm sm:text-base text-right">
-                          TZS {Number(purchase.amount).toLocaleString()}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-text-subtle font-medium">Total</span>
+                          <div className="font-semibold text-sm sm:text-base text-right text-primary">
+                            TZS {Number(purchase.amount).toLocaleString()}
+                          </div>
                         </div>
                       </div>
 
@@ -456,6 +527,76 @@ const PurchaseHistory = () => {
                 <div className="p-8 md:p-12 text-center">
                   <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
                   <p className="text-text-subtle text-sm">Loading purchases...</p>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {pagination && filteredPurchases.length > 0 && (
+                <div className="p-4 border-t border-border-subtle flex items-center justify-between flex-wrap gap-4">
+                  <div className="text-xs sm:text-sm text-text-subtle">
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, pagination.total_count)} of {pagination.total_count} purchases
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage - 1, {
+                        page_size: pageSize,
+                        status: statusFilter === "all" ? undefined : statusFilter
+                      })}
+                      disabled={!pagination.has_previous || isLoading}
+                      className="h-8"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs sm:text-sm text-text-subtle">Page</span>
+                      <Input
+                        type="number"
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value) || 1;
+                          if (page > 0 && page <= pagination.total_pages) {
+                            setCurrentPage(page);
+                          }
+                        }}
+                        className="w-12 h-8 text-xs text-center glass-subtle border-0"
+                        min="1"
+                        max={pagination.total_pages}
+                      />
+                      <span className="text-xs sm:text-sm text-text-subtle">of {pagination.total_pages}</span>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage + 1, {
+                        page_size: pageSize,
+                        status: statusFilter === "all" ? undefined : statusFilter
+                      })}
+                      disabled={!pagination.has_next || isLoading}
+                      className="h-8"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <Select value={pageSize.toString()} onValueChange={(value) => {
+                    setPageSize(parseInt(value));
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-24 h-8 text-xs glass-subtle border-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="glass">
+                      <SelectItem value="10" className="text-xs">10/page</SelectItem>
+                      <SelectItem value="20" className="text-xs">20/page</SelectItem>
+                      <SelectItem value="50" className="text-xs">50/page</SelectItem>
+                      <SelectItem value="100" className="text-xs">100/page</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </Card>

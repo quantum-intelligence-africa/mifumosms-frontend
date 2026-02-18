@@ -399,6 +399,26 @@ export const useSMSBilling = () => {
     }
   };
 
+  // Fetch unified purchase/payment history with pagination
+  const fetchPurchaseHistory = async (params?: {
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
+    try {
+      const response = await apiClient.getSMSPurchaseHistory(params);
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
+  };
+
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
@@ -438,6 +458,7 @@ export const useSMSBilling = () => {
     calculateCustomSMSPrice,
     initiateCustomSMSPayment,
     verifyPayment,
+    fetchPurchaseHistory,
     refetch: fetchAllData,
     refetchBalance: fetchBalance,
     refetchPurchases: fetchPurchases,
