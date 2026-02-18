@@ -197,11 +197,6 @@ export const useSMSBilling = () => {
   const fetchPurchaseStats = async () => {
     try {
       const response = await apiClient.getPurchaseStats();
-      console.log('📊 Full API Response:', JSON.stringify(response, null, 2));
-      console.log('📊 Response Status:', response.status);
-      console.log('📊 Response Success:', response.success);
-      console.log('📊 Response Data Type:', typeof response.data);
-      console.log('📊 Response Data:', response.data);
 
       // Handle backend response - check if data is nested in response.data.data
       let statsData: any = response.data;
@@ -209,11 +204,9 @@ export const useSMSBilling = () => {
       // If response.data is an object with nested data property, use that
       if (statsData && typeof statsData === 'object' && 'data' in statsData && statsData.data) {
         statsData = statsData.data;
-        console.log('📊 Found nested data structure, using:', statsData);
       }
 
       if (response.status === 200 && statsData) {
-        console.log('✅ Setting Purchase Stats with data:', statsData);
         setPurchaseStats({
           total_spent: Number(statsData.total_spent) || 0,
           total_credits: Number(statsData.total_credits) || 0,
@@ -221,16 +214,8 @@ export const useSMSBilling = () => {
           completed_purchases: Number(statsData.completed_purchases) || 0,
           success_rate: Number(statsData.success_rate) || 0
         });
-      } else {
-        console.warn('⚠️ API returned but could not extract data:', {
-          status: response.status,
-          data: response.data,
-          error: response.error,
-          message: response.message
-        });
       }
     } catch (error) {
-      console.error('❌ Purchase Stats Error:', error);
     }
   };
 
@@ -418,7 +403,6 @@ export const useSMSBilling = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔄 Starting fetchAllData...');
 
       await Promise.all([
         fetchPackages(),
@@ -427,11 +411,8 @@ export const useSMSBilling = () => {
         fetchUsageStats(),
         fetchPurchaseStats()
       ]);
-
-      console.log('✅ All data loaded successfully');
     } catch (error) {
       setError('Failed to load SMS billing data');
-      console.error('❌ fetchAllData error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -439,7 +420,6 @@ export const useSMSBilling = () => {
 
   // Only run once on mount
   useEffect(() => {
-    console.log('🎯 useSMSBilling hook mounted - calling fetchAllData');
     fetchAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

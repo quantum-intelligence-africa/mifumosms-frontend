@@ -77,17 +77,23 @@ const SendSMS = () => {
   // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
   const normalizeToApi = (input: string): string | null => {
     const digitsOnly = input.replace(/\D/g, "");
+
+    // Tanzania country code is 255, standard format should be 12 digits total
+    // Return in E.164 format with + prefix for external gateway
     if (digitsOnly.startsWith("255") && digitsOnly.length === 12) {
-      return digitsOnly;
+      return `+${digitsOnly}`;
     }
-    // Convert local TZ format 0XXXXXXXXX (10 digits) to 255XXXXXXXXX
+
+    // Convert local TZ format 0XXXXXXXXX (10 digits) to +255XXXXXXXXX
     if (digitsOnly.startsWith("0") && digitsOnly.length === 10) {
-      return `255${digitsOnly.slice(1)}`;
+      return `+255${digitsOnly.slice(1)}`;
     }
-    // Convert E.164 +255XXXXXXXXX to 255XXXXXXXXX
+
+    // Handle E.164 format that already has + prefix
     if (input.startsWith("+") && digitsOnly.startsWith("255") && digitsOnly.length === 12) {
-      return digitsOnly;
+      return `+${digitsOnly}`;
     }
+
     return null;
   };
 
@@ -101,26 +107,75 @@ const SendSMS = () => {
   // Load user's SMS billing info to get current pricing tier
   const { purchases, isLoading: billingLoading, error: billingError } = useSMSBilling();
 
-  // Reduce to approved/active sender names only
+  // Reduce to approved sender names only
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
   const approvedSenderRequests = useMemo(() => {
-    const mapped = (senderNames || [])
-      .filter((req: SenderNameRequest | UnifiedSenderName) => (req.status === "approved" || req.status === "active") && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null)) && (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null))?.trim() !== "")
-      .map((req: SenderNameRequest | UnifiedSenderName) => ({
-        id: req.id,
-        sender_id: ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '',
-        status: req.status
-      }));
+    if (!senderNames || senderNames.length === 0) {
+      logger.debug('No sender names available', { senderNames });
+      return [];
+    }
 
-    // Deduplicate by sender_id - keep first occurrence
-    const seen = new Set<string>();
-    return mapped.filter((req) => {
-      if (seen.has(req.sender_id)) {
-        return false;
-      }
-      seen.add(req.sender_id);
-      return true;
+    logger.debug('Filtering sender names', {
+      totalCount: senderNames.length,
+      senders: senderNames.map((s: SenderNameRequest | UnifiedSenderName) => ({
+        id: s.id,
+        name: ('sender_id' in s ? s.sender_id : s.sender_name) || 'Unknown',
+        status: s.status,
+        source: ('source' in s ? s.source : 'unknown')
+      }))
     });
+
+    const mapped = (senderNames || [])
+      .filter((req: SenderNameRequest | UnifiedSenderName) => {
+        const status = (req.status || '').toLowerCase();
+        const senderName = ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null);
+
+        // Include only approved status - these are fully verified and ready to use
+        // Exclude: active, cancelled, pending, rejected, requires_changes, verifying
+        const isApproved = status === "approved";
+        const hasValidName = senderName && senderName.trim() !== "";
+
+        logger.debug('Evaluating sender', {
+          name: senderName,
+          status,
+          isApproved,
+          hasValidName,
+          included: isApproved && hasValidName
+        });
+
+        return isApproved && hasValidName;
+      })
+      .map((req: SenderNameRequest | UnifiedSenderName) => {
+        const name = (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '').trim();
+        return {
+          id: req.id, // Database UUID
+          sender_id: name, // Alphanumeric branding name
+          status: (req.status || '').toLowerCase(),
+          source: 'source' in req ? req.source : 'unknown'
+        };
+      });
+
+    // Deduplicate by sender_id to remove duplicates - keep first occurrence
+    const seen = new Map<string, typeof mapped[0]>();
+    mapped.forEach((req) => {
+      if (!seen.has(req.sender_id)) {
+        seen.set(req.sender_id, req);
+      }
+    });
+
+    const finalResult = Array.from(seen.values());
+    logger.debug('Final approved sender names', {
+      count: finalResult.length,
+      senders: finalResult.map(r => ({
+        id: r.id,
+        name: r.sender_id,
+        status: r.status,
+        source: r.source
+      })),
+      totalProcessed: senderNames?.length,
+      filtered: senderNames?.length ? (senderNames.length - finalResult.length) : 0
+    });
+    return finalResult;
   }, [senderNames]);
 
   const segments: Segment[] = useMemo(() => [
@@ -328,14 +383,19 @@ const SendSMS = () => {
     if (selectedSender) return;
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
-    // Prefer Taarifa-SMS if available and approved, otherwise first approved
-    const defaultPreferred = approvedSenderRequests.find((r) => r.sender_id === "Taarifa-SMS");
-    const firstApproved = defaultPreferred || approvedSenderRequests[0];
-    if (firstApproved?.sender_id) setSelectedSender(firstApproved.sender_id);
+    // Prefer "Mifumosms" if available (it's the primary active sender), otherwise use first
+    const mifumosms = approvedSenderRequests.find(r => r.sender_id === "Mifumosms" && r.status === "active");
+    const defaultSender = mifumosms || approvedSenderRequests[0];
+
+    if (defaultSender?.id) {
+      setSelectedSender(defaultSender.id);
+      logger.debug('Default sender selected', { sender_id: defaultSender.sender_id, status: defaultSender.status });
+    }
   }, [selectedSender, approvedSenderRequests]);
 
   const getSelectedSenderName = () => {
-    const found = approvedSenderRequests.find((r) => r.sender_id === selectedSender);
+    // Find absolute match by Database ID (UUID)
+    const found = approvedSenderRequests.find((r) => r.id === selectedSender);
     // Return the object so we can access both id and sender_id
     return found || null;
   };
@@ -461,8 +521,9 @@ const SendSMS = () => {
         return;
       }
 
-      // Use sender ID (UUID) if available, otherwise fallback to sender_id string
-      const senderIdentifier = senderObj.id && senderObj.id.trim() ? senderObj.id : senderObj.sender_id;
+      // Use the alphanumeric sender ID (max 11 chars) as required by the SMS gateway.
+      // This must be the provisioned branding name (e.g., "Mifumosms").
+      const senderIdentifier = senderObj.sender_id;
 
       // Validate that we have a non-empty identifier
       if (!senderIdentifier || !senderIdentifier.trim()) {
@@ -475,17 +536,33 @@ const SendSMS = () => {
         return;
       }
 
+      // Log sender details for debugging backend issues
+      logger.debug('Using approved sender', {
+        senderName: senderIdentifier,
+        source: senderObj.source,
+        status: senderObj.status,
+        id: senderObj.id
+      });
+
+      const cleanSenderId = senderIdentifier.trim();
+
       // Ensure all recipients are normalized for the API
       const apiRecipients = targetRecipients
         .map(r => normalizeToApi(r))
         .filter((r): r is string => Boolean(r));
 
-      // Prepare the data for the Beem SMS API
+      // Prepare the data for the SMS API - send sender_id name and record id for backend lookup
       const smsData: Record<string, unknown> = {
         message: message.trim(),
         recipients: apiRecipients,
-        sender_id: senderIdentifier
+        sender_id: cleanSenderId // Alphanumeric branding name (e.g., "Mifumosms")
       };
+
+      // Add sender_id_record_id to help backend identify the correct SenderIDRequest record
+      // This helps avoid provider attribute errors by giving the backend a direct reference
+      if (senderObj?.id) {
+        smsData.sender_id_record_id = senderObj.id;
+      }
 
       // Only add optional fields if they have values
       if (scheduleType === "later" && scheduledDate) {
@@ -493,7 +570,14 @@ const SendSMS = () => {
       }
 
       // Debug: Log the data being sent
-      logger.debug('Sending SMS', { recipientCount: apiRecipients.length, senderIdentifier });
+      logger.debug('Sending SMS', {
+        recipientCount: apiRecipients.length,
+        senderIdentifier: cleanSenderId,
+        senderRecordId: senderObj?.id,
+        senderSource: senderObj.source,
+        senderStatus: senderObj.status,
+        payloadKeys: Object.keys(smsData)
+      });
 
       // Call the SMS API
       const response = await apiClient.sendSMS(smsData as {
@@ -505,57 +589,53 @@ const SendSMS = () => {
       });
 
       if (response.success) {
-        // Simulate progress for better UX
-    const interval = setInterval(() => {
-      setSendProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setSending(false);
-          toast({
-            title: "SMS sent successfully",
-                description: `Sent to ${apiRecipients.length} recipient(s)`,
-          });
-          // Reset form
-          setRecipients([]);
-          setMessage("");
-          setSelectedMode(null);
-              setSelectedSegment("");
-          return 100;
+        // Extract provider message from nested response, prefer it over generic API message
+        let successMessage = `Sent to ${apiRecipients.length} recipient(s)`;
+
+        // Try to get the provider's actual success message (Beem Africa format)
+        const providerMsg = response.data?.provider_response?.response?.message;
+        if (providerMsg) {
+          successMessage = providerMsg; // "Message Submitted Successfully"
+        } else if (typeof response.message === 'string' && response.message.trim()) {
+          successMessage = response.message; // Fallback to API message
         }
-        return prev + 10;
-      });
-    }, 300);
+
+        // Simulate progress for better UX
+        const interval = setInterval(() => {
+          setSendProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(interval);
+              setSending(false);
+              toast({
+                title: "SMS sent successfully",
+                description: successMessage,
+              });
+              // Reset form
+              setRecipients([]);
+              setMessage("");
+              setSelectedMode(null);
+              setSelectedSegment("");
+              return 100;
+            }
+            return prev + 10;
+          });
+        }, 200);
       } else {
         setSending(false);
         // Enhanced error handling with more details
-        let errorMessage = "An error occurred while sending SMS";
+        let errorMessage = response.error || response.message || "An error occurred while sending SMS";
 
         logger.error('SMS API Error', { status: response.status });
 
-        if (response.status === 400) {
-          // Try to get more specific error details
-          if (response.data && typeof response.data === 'object') {
-            const errorData = response.data as Record<string, unknown>;
-            if ('errors' in errorData && errorData.errors) {
-              errorMessage = `Validation errors: ${JSON.stringify(errorData.errors)}`;
-            } else if ('message' in errorData && typeof errorData.message === 'string') {
-              errorMessage = errorData.message as string;
-            } else if ('error' in errorData && typeof errorData.error === 'string') {
-              errorMessage = errorData.error as string;
-            } else {
-              errorMessage = "Invalid data. Please check your input.";
-            }
-          } else {
-            errorMessage = "Invalid data. Please check your input.";
-          }
-        } else if (response.status === 401) {
+        if (response.status === 401) {
           errorMessage = "Session expired. Please log in again.";
         } else if (response.status === 403) {
           errorMessage = "Insufficient credits. Please purchase more SMS credits.";
         } else if (response.status === 429) {
           errorMessage = "Rate limit exceeded. Please try again later.";
-        } else if (response.error) {
-          errorMessage = response.error;
+        } else if (response.status === 400 && errorMessage.includes("object has no attribute")) {
+          // Technical backend error, prefer a cleaner message
+          errorMessage = "There is a technical issue with this sender ID. Please try another one or contact support.";
         }
 
         toast({
@@ -799,8 +879,13 @@ const SendSMS = () => {
                       </SelectTrigger>
                       <SelectContent className="glass">
                         {approvedSenderRequests.map((req, index) => (
-                          <SelectItem key={req.id || `sender-${index}`} value={req.sender_id || req.id}>
-                            {req.sender_id}
+                          <SelectItem key={req.id || `sender-${index}`} value={req.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{req.sender_id}</span>
+                              {(req.source === 'SMSSenderID' || req.source === 'provider' || req.source === 'sender_id') && (
+                                <Badge variant="outline" className="text-[10px] h-4 py-0 px-1 border-primary/30 text-primary">Active</Badge>
+                              )}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>

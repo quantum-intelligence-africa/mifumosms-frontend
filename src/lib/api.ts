@@ -919,27 +919,58 @@ class ApiClient {
 
     // Check common DRF error fields
     const dataObj = data as Record<string, unknown>;
-    if (dataObj.message && typeof dataObj.message === 'string') return dataObj.message;
-    if (dataObj.detail && typeof dataObj.detail === 'string') return dataObj.detail;
+
+    // 1. Check if there's an 'errors' object (often contains field-specific details)
+    // We check this FIRST because it has the most specific information
+    if (dataObj.errors && typeof dataObj.errors === 'object' && !Array.isArray(dataObj.errors)) {
+      const fieldErrors = dataObj.errors as Record<string, unknown>;
+      const firstField = Object.values(fieldErrors)[0];
+      if (Array.isArray(firstField) && firstField.length > 0) {
+        return String(firstField[0]);
+      } else if (typeof firstField === 'string') {
+        return firstField;
+      }
+    }
+
+    // 2. Check for message/detail/error at top level
+    // We skip generic validation messages if possible
+    const genericMessages = [
+      'Some information is missing or invalid.',
+      'Validation failed',
+      'One or more validation errors occurred.',
+      'Your message could not be sent due to provider issues.'
+    ];
+
+    // Priority: Specific detail > Specific message > Specific error
+    if (dataObj.detail && typeof dataObj.detail === 'string' && !dataObj.detail.includes('object has no attribute')) return dataObj.detail;
+    if (dataObj.message && typeof dataObj.message === 'string' && !genericMessages.includes(dataObj.message)) return dataObj.message;
     if (dataObj.error && typeof dataObj.error === 'string') return dataObj.error;
 
-    // Handle non_field_errors which is common in Django
+    // Special case for provider issues - if we have a generic message but a technical detail,
+    // we might want the user hint instead for better UX, or the message itself
+    if (dataObj.user_hint && typeof dataObj.user_hint === 'string') return dataObj.user_hint;
+    if (dataObj.message && typeof dataObj.message === 'string') return dataObj.message;
+
+    // 3. Handle non_field_errors which is common in Django
     if (Array.isArray(dataObj.non_field_errors) && dataObj.non_field_errors.length > 0) {
       return String(dataObj.non_field_errors[0]);
     }
 
-    // Handle general field errors: { "field_name": ["error message"] }
+    // 4. Handle general field errors: { "field_name": ["error message"] }
+    // This is common for DRF when errors are at the root level
     if (typeof data === 'object') {
       const errorValues = Object.values(data as Record<string, unknown>);
       if (errorValues.length > 0) {
-        const firstError = errorValues[0];
-        if (Array.isArray(firstError) && firstError.length > 0) {
-          return String(firstError[0]);
-        } else if (typeof firstError === 'string') {
-          return firstError;
+        // Find the first string or array of strings
+        for (const value of errorValues) {
+          if (Array.isArray(value) && value.length > 0) return String(value[0]);
+          if (typeof value === 'string') return value;
         }
       }
     }
+
+    // Fallback to generic message if it was the only thing available
+    if (dataObj.message && typeof dataObj.message === 'string') return dataObj.message;
 
     return 'An error occurred';
   }
@@ -2450,7 +2481,14 @@ class ApiClient {
     sender_id?: string;
     template_id?: string;
     scheduled_at?: string;
-  }): Promise<ApiResponse> {
+  }): Promise<ApiResponse<{
+    message_id: string;
+    base_message_id: string;
+    recipient_count: number;
+    cost_estimate: number;
+    status: string;
+    provider_response: Record<string, unknown>;
+  }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.SEND, {
       method: 'POST',
       body: JSON.stringify(data),

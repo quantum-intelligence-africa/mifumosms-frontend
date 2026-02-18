@@ -375,7 +375,7 @@ const PurchaseSMS = () => {
         setCustomCreditsError("");
         calculateCustomSMSPrice(credits);
       } else if (credits > 0) {
-        setCustomCreditsError("Minimum 1000 credits required");
+        setCustomCreditsError(t('min_purchase_required'));
         setCustomSMSState(null);
       } else {
         setCustomCreditsError("");
@@ -385,7 +385,7 @@ const PurchaseSMS = () => {
       setCustomCreditsError("");
       setCustomSMSState(null);
     }
-  }, [customCredits, selectedPackage]);
+  }, [customCredits, selectedPackage, t]);
 
   // Payment polling function
   const pollPaymentStatus = async (transactionId: string) => {
@@ -841,7 +841,7 @@ const PurchaseSMS = () => {
                     ) : '—'}</>
                   )}
                 </span>
-                <span>Minimum 1000 {t('credits')}</span>
+                <span>{t('min_purchase_required')}</span>
               </div>
             </Card>
 
