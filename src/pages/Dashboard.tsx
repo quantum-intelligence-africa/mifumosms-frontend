@@ -156,15 +156,16 @@ const Dashboard = () => {
                 emptyMessage={t("dashboard.empty.no_contacts") || "Add contacts to start"}
               />
               <MetricCard
-                title={t("dashboard.metric.campaign_success")}
-                value={`${metrics?.campaign_success?.value || 0}${metrics?.campaign_success?.unit || ""}`}
-                icon={Target}
-                description={metrics?.campaign_success?.description || t("dashboard.metric.delivery_rate")}
-                emptyMessage={t("dashboard.empty.no_campaigns") || "Create a campaign"}
+                title={t("dashboard.metric.current_credits")}
+                value={metrics?.current_credits?.value?.toLocaleString() || "0"}
+                icon={DollarSign}
+                description={metrics?.current_credits?.description || t("dashboard.metric.available_credits")}
+                isEmpty={false}
+                emptyMessage={t("dashboard.empty.no_credits") || "Purchase credits"}
               />
               <MetricCard
                 title={t("dashboard.metric.sender_id")}
-                value={senderIds?.filter(id => id.status?.toLowerCase() === 'active').length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
+                value={senderIds?.filter(id => id.status?.toLowerCase() === 'approved').length?.toLocaleString() || metrics?.senderId?.value?.toLocaleString() || "0"}
                 icon={Hash}
                 description={t("dashboard.metric.approved_sender_names")}
                 emptyMessage={t("dashboard.empty.no_sender_ids") || "Request a sender ID"}

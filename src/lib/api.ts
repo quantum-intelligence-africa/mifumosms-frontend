@@ -2461,6 +2461,12 @@ class ApiClient {
       change_type: 'positive' | 'negative' | 'neutral';
       description: string;
     };
+    current_credits: {
+      value: number;
+      change: string;
+      change_type: 'positive' | 'negative' | 'neutral';
+      description: string;
+    };
     sender_id: {
       value: number;
       change: string;

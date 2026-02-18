@@ -23,7 +23,7 @@ export function MetricCard({
   emptyMessage = "No data yet",
 }: MetricCardProps) {
   const [displayValue, setDisplayValue] = useState<string | number>("0");
-  
+
   // Animate number counting effect
   useEffect(() => {
     if (typeof value === "number") {
@@ -46,8 +46,8 @@ export function MetricCard({
     }
   }, [value]);
 
-  // Empty state rendering
-  if (isEmpty || (value === "0" || value === 0)) {
+  // Empty state rendering - only show if explicitly set to true
+  if (isEmpty) {
     return (
       <Card className="p-3 sm:p-4 lg:p-5 glass hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border-subtle group min-h-[100px] sm:min-h-[110px]">
         <div className="flex items-center gap-3 h-full">
@@ -89,7 +89,7 @@ export function MetricCard({
             {description && (
               <p className="text-[10px] sm:text-[11px] lg:text-xs text-text-subtle leading-relaxed truncate">{description}</p>
             )}
-            
+
             {trend !== undefined && (
               <div className={`flex items-center gap-1 text-[10px] sm:text-xs ${trend >= 0 ? 'text-success' : 'text-destructive'}`}>
                 <span>{trend >= 0 ? '↑' : '↓'}</span>

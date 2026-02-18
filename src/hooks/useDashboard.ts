@@ -20,6 +20,10 @@ interface DashboardMetricsResponse {
       unit: string;
       description: string;
     };
+    current_credits: {
+      value: number;
+      description: string;
+    };
     senderId: {
       value: number;
       description: string;
@@ -247,6 +251,10 @@ export const useDashboard = () => {
               value: parseFloat(metricsData.campaign_success?.value?.toString() || '0'),
               unit: '%',
               description: metricsData.campaign_success?.description || ''
+            },
+            current_credits: {
+              value: metricsData.current_credits?.value || 0,
+              description: metricsData.current_credits?.description || ''
             },
             senderId: {
               value: metricsData.sender_id?.value || 0,
