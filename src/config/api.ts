@@ -173,7 +173,6 @@ export const API_CONFIG = {
 				BALANCE: '/billing/sms/balance/',
 				PACKAGES: '/billing/sms/packages/',
 				PURCHASE: '/billing/sms/purchase/',
-				PURCHASES: '/billing/sms/purchases/',
 				PURCHASE_HISTORY: '/billing/sms/purchases/history/',
 				PURCHASE_STATS: '/billing/purchase-stats/',
 				USAGE_STATISTICS: '/billing/sms/usage/statistics/',

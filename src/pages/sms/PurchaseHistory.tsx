@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import jsPDF from 'jspdf';
 import {
   Download,
   FileText,
@@ -195,7 +196,7 @@ const PurchaseHistory = () => {
     return Math.floor(num).toLocaleString();
   };
 
-  // Handle receipt download
+  // Handle receipt download - generates secure PDF
   const downloadReceipt = (purchase: any) => {
     try {
       if (!purchase || !purchase.invoice_number) {
@@ -207,20 +208,134 @@ const PurchaseHistory = () => {
         return;
       }
 
-      // Create a formatted receipt text
-      const receiptContent = `RECEIPT\n${'='.repeat(50)}\n\nInvoice Number: ${purchase.invoice_number}\nDate: ${formatDate(purchase.created_at)}\nStatus: ${purchase.status}\n\nPackage: ${purchase.package_name || 'N/A'}\nCredits: ${(purchase.credits || 0).toLocaleString()}\nUnit Price: TZS ${(purchase.unit_price || 0).toLocaleString()}\nPayment Method: ${purchase.payment_method || 'N/A'}\n\n${'='.repeat(50)}\nTOTAL AMOUNT: TZS ${Number(purchase.amount || 0).toLocaleString()}\n${'='.repeat(50)}\n\nThank you for your purchase!`;
+      // Create PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-      // Create blob and download
-      const blob = new Blob([receiptContent], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Receipt_${purchase.invoice_number.replace(/\//g, '-')}.txt`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Set colors and fonts
+      const primaryColor = [59, 130, 246]; // blue-500
+      const textColor = [0, 0, 0];
+      const subtleColor = [107, 114, 128]; // gray-500
+
+      // Header
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, 210, 40, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RECEIPT', 20, 25);
+
+      // Reset text color
+      doc.setTextColor(...textColor);
+
+      // Company info section
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Mifumo SMS Service', 20, 50);
+      doc.setTextColor(...subtleColor);
+      doc.setFontSize(9);
+      doc.text('SMS Billing & Purchase Records', 20, 56);
+      doc.text('Generated on: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 20, 62);
+
+      // Divider line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 68, 190, 68);
+
+      // Transaction details
+      let yPosition = 78;
+      doc.setTextColor(...textColor);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Transaction Details', 20, yPosition);
+
+      yPosition += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+
+      // Details in rows
+      const detailsData = [
+        { label: 'Invoice Number:', value: purchase.invoice_number },
+        { label: 'Transaction Date:', value: formatDate(purchase.created_at) },
+        { label: 'Status:', value: purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1) },
+        { label: 'Package:', value: purchase.package_name || 'N/A' }
+      ];
+
+      detailsData.forEach((detail) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(detail.label, 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(detail.value, 80, yPosition);
+        yPosition += 6;
+      });
+
+      // Divider
+      yPosition += 2;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPosition, 190, yPosition);
+
+      // Purchase details
+      yPosition += 8;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Purchase Details', 20, yPosition);
+
+      yPosition += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+
+      const purchaseData = [
+        { label: 'SMS Credits:', value: (purchase.credits || 0).toLocaleString() + ' SMS' },
+        { label: 'Unit Price:', value: 'TZS ' + (purchase.unit_price || 0).toLocaleString() + '/SMS' },
+        { label: 'Payment Method:', value: purchase.payment_method || 'N/A' }
+      ];
+
+      purchaseData.forEach((detail) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(detail.label, 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(detail.value, 80, yPosition);
+        yPosition += 6;
+      });
+
+      // Total amount section
+      yPosition += 4;
+      doc.setDrawColor(...primaryColor);
+      doc.setLineWidth(0.8);
+      doc.line(20, yPosition, 190, yPosition);
+
+      yPosition += 10;
+      doc.setFillColor(245, 247, 250); // light blue background
+      doc.rect(20, yPosition - 5, 170, 15, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...primaryColor);
+      doc.text('TOTAL AMOUNT', 20, yPosition + 2);
+
+      doc.setFontSize(14);
+      doc.text('TZS ' + Number(purchase.amount || 0).toLocaleString(), 150, yPosition + 2, { align: 'right' });
+
+      // Footer
+      yPosition = 250;
+      doc.setTextColor(...subtleColor);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('This is an official receipt from Mifumo SMS Service.', 105, yPosition, { align: 'center' });
+      doc.text('For support, visit our website or contact our customer service.', 105, yPosition + 5, { align: 'center' });
+      doc.text('This document is read-only and cannot be modified.', 105, yPosition + 12, { align: 'center', textColor: [220, 38, 38] });
+
+      // Add timestamp for authenticity
+      doc.setFontSize(7);
+      doc.setTextColor(180, 180, 180);
+      doc.text('Receipt ID: ' + purchase.invoice_number.replace(/\//g, '-') + ' | Generated: ' + new Date().toISOString(), 105, 283, { align: 'center' });
+
+      // Save PDF
+      const fileName = `Receipt_${purchase.invoice_number.replace(/\//g, '-')}.pdf`;
+      doc.save(fileName);
 
       toast({
         title: 'Success',

@@ -3065,10 +3065,11 @@ class ApiClient {
     }
   }
 
-  // 4. List Purchases
+  // 4. List Purchases (Deprecated - use getSMSPurchaseHistory instead)
   async getPurchases(): Promise<ApiResponse<{ results: Purchase[] }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASES}`, {
+      // Redirect to new purchase history endpoint with pagination
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PURCHASE_HISTORY}`, {
         headers: this.getHeaders()
       });
 
@@ -4456,23 +4457,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-  }
-
-  async getSMSPurchases(): Promise<ApiResponse<Array<{
-    id: string;
-    invoice_number: string;
-    package_name: string;
-    credits: number;
-    amount: number;
-    unit_price: number;
-    payment_method: string;
-    payment_method_display: string;
-    status: string;
-    status_display: string;
-    created_at: string;
-    completed_at: string | null;
-  }>>> {
-    return this.request('/billing/sms/purchases/');
   }
 
   async getSMSPurchaseHistory(params?: {

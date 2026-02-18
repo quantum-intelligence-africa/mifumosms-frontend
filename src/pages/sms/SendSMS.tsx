@@ -41,7 +41,7 @@ import { logger } from "@/utils/logger";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
-import { useSMSBilling } from "@/hooks/useSMSBilling";
+import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, formatSegmentCount, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
@@ -104,8 +104,8 @@ const SendSMS = () => {
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
   const { fetchContacts } = useContacts();
 
-  // Load user's SMS billing info to get current pricing tier
-  const { purchases, isLoading: billingLoading, error: billingError } = useSMSBilling();
+  // Load purchase history to get unit pricing for cost calculation
+  const { purchases, isLoading: billingLoading, error: billingError, fetchPurchaseHistory } = usePurchaseHistory();
 
   // Reduce to approved sender names only
   // Note: senderNames can be either SenderNameRequest or UnifiedSenderName type
@@ -244,7 +244,7 @@ const SendSMS = () => {
     }
   }, [toast]);
 
-  // Get cost per SMS from user's current package pricing tier
+  // Get cost per SMS from purchase history - fetch from completed purchases
   const costPerSMS = useMemo(() => {
     // If still loading or there's an error, use default price
     if (billingLoading || billingError) {
@@ -252,17 +252,18 @@ const SendSMS = () => {
     }
 
     if (purchases && purchases.length > 0) {
-      // Filter for only completed purchases, then sort by created_at in descending order
-      const completedPurchases = purchases.filter(purchase => purchase.status === 'completed');
+      // Filter for only completed purchases
+      const completedPurchases = purchases.filter((purchase: any) => purchase.status === 'completed');
 
       if (completedPurchases.length > 0) {
-        // Get the most recent completed purchase
-        const mostRecentPurchase = completedPurchases.sort((a, b) =>
+        // Get the most recent completed purchase by creation date
+        const mostRecentPurchase = completedPurchases.sort((a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
 
+        // Extract unit price from the most recent purchase
         if (mostRecentPurchase && mostRecentPurchase.unit_price && !isNaN(mostRecentPurchase.unit_price)) {
-          return mostRecentPurchase.unit_price;
+          return Number(mostRecentPurchase.unit_price);
         }
       }
     }
@@ -392,6 +393,17 @@ const SendSMS = () => {
       logger.debug('Default sender selected', { sender_id: defaultSender.sender_id, status: defaultSender.status });
     }
   }, [selectedSender, approvedSenderRequests]);
+
+  // Fetch purchase history on component mount to get pricing
+  useEffect(() => {
+    if (isMountedRef.current) {
+      fetchPurchaseHistory({
+        page: 1,
+        page_size: 100,
+        status: 'completed'
+      });
+    }
+  }, []);
 
   const getSelectedSenderName = () => {
     // Find absolute match by Database ID (UUID)
