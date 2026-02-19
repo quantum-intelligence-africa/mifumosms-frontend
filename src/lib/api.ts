@@ -4017,15 +4017,37 @@ class ApiClient {
     sample_content: string;
     reason?: string;
     additional_info?: string;
+    kyc_documents?: File[];
   }): Promise<ApiResponse<SenderRequestPaymentResponse>> {
     try {
+      const formData = new FormData();
+      formData.append('requested_sender_id', data.requested_sender_id);
+      formData.append('phone_number', data.phone_number);
+      formData.append('sample_content', data.sample_content);
+
+      // Only append optional fields if they exist
+      if (data.reason) {
+        formData.append('reason', data.reason);
+      }
+
+      if (data.additional_info) {
+        formData.append('additional_info', data.additional_info);
+      }
+
+      // Append each KYC document file
+      if (data.kyc_documents && data.kyc_documents.length > 0) {
+        data.kyc_documents.forEach((file) => {
+          formData.append('kyc_documents', file);
+        });
+      }
+
       const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${this.token}`
+          // Don't set Content-Type - browser will set it with boundary for FormData
         },
-        body: JSON.stringify(data)
+        body: formData
       });
 
       // Special handling for 402 Payment Required - this is a success response

@@ -67,6 +67,7 @@ interface PaymentData {
   phone_number: string;
   sample_content: string;
   purpose: string;
+  kyc_documents?: File[];
 }
 
 const SenderNames = () => {
@@ -299,8 +300,6 @@ const SenderNames = () => {
           if (remoteStatus === 'COMPLETED' || remoteStatus === 'SUCCESS') {
             // Payment successful
             if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
-            setPaymentStatus('success');
-            setPaymentStatusMessage('Payment successful! Your sender ID request is being processed.');
 
             // Clear stored data
             localStorage.removeItem('sender_request_order_id');
@@ -315,10 +314,14 @@ const SenderNames = () => {
               description: "Your sender ID request is being processed",
             });
 
-            // Refresh sender names after successful payment
-            setTimeout(() => {
-              refreshData();
-            }, 2000);
+            // Hide the payment status dialog immediately
+            setShowPaymentStatusDialog(false);
+            setPaymentStatus('checking');
+            setPaymentStatusMessage("");
+            setPollAttempts(0);
+
+            // Refresh sender names and data immediately
+            await refreshData();
           } else if (remoteStatus === 'FAILED' || remoteStatus === 'CANCELLED') {
             // Payment failed
             if (paymentPollIntervalRef.current) clearInterval(paymentPollIntervalRef.current);
@@ -569,7 +572,8 @@ const SenderNames = () => {
       requested_sender_id: requestedSenderId,
       phone_number: phoneNumber,
       sample_content: sampleContent,
-      purpose: senderNamePurpose
+      purpose: senderNamePurpose,
+      kyc_documents: kycDocuments.length > 0 ? kycDocuments : undefined
     });
     setShowPaymentDialog(true);
   };
@@ -584,7 +588,8 @@ const SenderNames = () => {
         requested_sender_id: paymentData.requested_sender_id,
         phone_number: paymentData.phone_number,
         sample_content: paymentData.sample_content,
-        reason: paymentData.purpose || "Sender ID request"
+        reason: paymentData.purpose || "Sender ID request",
+        kyc_documents: paymentData.kyc_documents
       });
 
       if (!isMountedRef.current) return;
@@ -1898,15 +1903,16 @@ const SenderNames = () => {
                     </Button>
                     <Button
                       onClick={() => {
-                        // Close pending dialog and start checking payment status
-                        setShowPaymentPendingDialog(false);
+                        // Show success message
+                        toast({
+                          title: "We are confirming your payment.",
+                          description: "If the transaction was successful, your request will be updated automatically.",
+                        });
 
-                        // Initialize payment status checking
-                        setPaymentStatus('checking');
-                        setPaymentStatusMessage(t('sender_names.payment.checking_status'));
-                        setShowPaymentStatusDialog(true);
-                        pollAttemptsRef.current = 0;
-                        setPollAttempts(0);
+                        // Hard refresh the entire system after a brief delay
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1000);
                       }}
                       className="h-8 sm:h-9 text-xs sm:text-sm w-full bg-amber-600 hover:bg-amber-700 text-white"
                     >
