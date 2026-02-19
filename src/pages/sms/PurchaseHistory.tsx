@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useSMSBilling } from "@/hooks/useSMSBilling";
-import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
+import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const PurchaseHistory = () => {
@@ -197,7 +197,7 @@ const PurchaseHistory = () => {
   };
 
   // Handle receipt download - generates secure PDF
-  const downloadReceipt = (purchase: any) => {
+  const downloadReceipt = (purchase: Omit<PurchaseRecord, 'unit_price' | 'payment_method' | 'completed_at'> & { unit_price?: number; payment_method?: string; completed_at?: string | null }) => {
     try {
       if (!purchase || !purchase.invoice_number) {
         toast({
@@ -221,7 +221,7 @@ const PurchaseHistory = () => {
       const subtleColor = [107, 114, 128]; // gray-500
 
       // Header
-      doc.setFillColor(...primaryColor);
+      doc.setFillColor(...(primaryColor as [number, number, number]));
       doc.rect(0, 0, 210, 40, 'F');
 
       doc.setTextColor(255, 255, 255);
@@ -230,13 +230,13 @@ const PurchaseHistory = () => {
       doc.text('RECEIPT', 20, 25);
 
       // Reset text color
-      doc.setTextColor(...textColor);
+      doc.setTextColor(...(textColor as [number, number, number]));
 
       // Company info section
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text('Mifumo SMS Service', 20, 50);
-      doc.setTextColor(...subtleColor);
+      doc.setTextColor(...(subtleColor as [number, number, number]));
       doc.setFontSize(9);
       doc.text('SMS Billing & Purchase Records', 20, 56);
       doc.text('Generated on: ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 20, 62);
@@ -247,7 +247,7 @@ const PurchaseHistory = () => {
 
       // Transaction details
       let yPosition = 78;
-      doc.setTextColor(...textColor);
+      doc.setTextColor(...(textColor as [number, number, number]));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.text('Transaction Details', 20, yPosition);
@@ -255,6 +255,7 @@ const PurchaseHistory = () => {
       yPosition += 8;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
+      doc.setTextColor(...(textColor as [number, number, number]));
 
       // Details in rows
       const detailsData = [
@@ -303,7 +304,7 @@ const PurchaseHistory = () => {
 
       // Total amount section
       yPosition += 4;
-      doc.setDrawColor(...primaryColor);
+      doc.setDrawColor(...(primaryColor as [number, number, number]));
       doc.setLineWidth(0.8);
       doc.line(20, yPosition, 190, yPosition);
 
@@ -313,7 +314,7 @@ const PurchaseHistory = () => {
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.setTextColor(...primaryColor);
+      doc.setTextColor(...(primaryColor as [number, number, number]));
       doc.text('TOTAL AMOUNT', 20, yPosition + 2);
 
       doc.setFontSize(14);
@@ -321,12 +322,13 @@ const PurchaseHistory = () => {
 
       // Footer
       yPosition = 250;
-      doc.setTextColor(...subtleColor);
+      doc.setTextColor(...(subtleColor as [number, number, number]));
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('This is an official receipt from Mifumo SMS Service.', 105, yPosition, { align: 'center' });
       doc.text('For support, visit our website or contact our customer service.', 105, yPosition + 5, { align: 'center' });
-      doc.text('This document is read-only and cannot be modified.', 105, yPosition + 12, { align: 'center', textColor: [220, 38, 38] });
+      doc.setTextColor(220, 38, 38);
+      doc.text('This document is read-only and cannot be modified.', 105, yPosition + 12, { align: 'center' });
 
       // Add timestamp for authenticity
       doc.setFontSize(7);

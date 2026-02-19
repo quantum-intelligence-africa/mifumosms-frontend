@@ -41,7 +41,7 @@ import { logger } from "@/utils/logger";
 import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
-import { usePurchaseHistory } from "@/hooks/usePurchaseHistory";
+import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, formatSegmentCount, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
@@ -253,11 +253,11 @@ const SendSMS = () => {
 
     if (purchases && purchases.length > 0) {
       // Filter for only completed purchases
-      const completedPurchases = purchases.filter((purchase: any) => purchase.status === 'completed');
+      const completedPurchases = purchases.filter((purchase: PurchaseRecord) => purchase.status === 'completed');
 
       if (completedPurchases.length > 0) {
         // Get the most recent completed purchase by creation date
-        const mostRecentPurchase = completedPurchases.sort((a: any, b: any) =>
+        const mostRecentPurchase = completedPurchases.sort((a: PurchaseRecord, b: PurchaseRecord) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
 
@@ -403,7 +403,7 @@ const SendSMS = () => {
         status: 'completed'
       });
     }
-  }, []);
+  }, [fetchPurchaseHistory]);
 
   const getSelectedSenderName = () => {
     // Find absolute match by Database ID (UUID)
