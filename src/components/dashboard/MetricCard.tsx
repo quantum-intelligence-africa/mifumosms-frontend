@@ -58,8 +58,8 @@ export function MetricCard({
 
           {/* Content */}
           <div className="flex-1 flex flex-col min-w-0">
-            <p className="text-[10px] sm:text-[11px] lg:text-xs font-medium text-text-subtle uppercase tracking-wide mb-1 truncate">{title}</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">{emptyMessage}</p>
+            <p className="text-[10px] sm:text-[11px] lg:text-xs font-medium text-text-subtle uppercase tracking-wide mb-1 line-clamp-2">{title}</p>
+            <p className="text-[9px] sm:text-xs text-muted-foreground line-clamp-2">{emptyMessage}</p>
           </div>
         </div>
       </Card>
@@ -81,13 +81,13 @@ export function MetricCard({
 
           {/* Main content on the right */}
           <div className="flex-1 flex flex-col min-w-0">
-            <p className="text-[10px] sm:text-[11px] lg:text-xs font-medium text-text-subtle uppercase tracking-wide mb-0.5 sm:mb-1 truncate">{title}</p>
+            <p className="text-[10px] sm:text-[11px] lg:text-xs font-medium text-text-subtle uppercase tracking-wide mb-0.5 sm:mb-1 line-clamp-2">{title}</p>
             <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-0.5 sm:mb-1 tracking-tight font-mono">
               {displayValue}
             </h3>
 
             {description && (
-              <p className="text-[10px] sm:text-[11px] lg:text-xs text-text-subtle leading-relaxed truncate">{description}</p>
+              <p className="text-[9px] sm:text-[10px] lg:text-xs text-text-subtle leading-tight line-clamp-2">{description}</p>
             )}
 
             {trend !== undefined && (

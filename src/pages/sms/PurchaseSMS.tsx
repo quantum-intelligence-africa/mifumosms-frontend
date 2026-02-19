@@ -674,7 +674,8 @@ const PurchaseSMS = () => {
             {/* Package Selection */}
             <div>
               <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="flex justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-6xl w-full">
                 {packagesLoading ? (
                   // Skeleton loaders for packages
                   Array.from({ length: 3 }).map((_, index) => (
@@ -693,7 +694,7 @@ const PurchaseSMS = () => {
                   (packages.length > 0 ? packages : defaultPackages).slice(0, 3).map((pkg) => (
                   <Card
                     key={pkg.id}
-                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative h-full flex flex-col ${
+                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
                       selectedPackage === pkg.id
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:shadow-lg"
@@ -706,9 +707,11 @@ const PurchaseSMS = () => {
                     }}
                   >
                     {pkg.is_popular && (
-                      <Badge className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-1">
-                        Most Popular
-                      </Badge>
+                      <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
+                        <Badge className="bg-primary text-primary-foreground text-xs px-3 py-1 font-semibold whitespace-nowrap">
+                          Most Popular
+                        </Badge>
+                      </div>
                     )}
                     <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
                     <div className="mb-3">
@@ -742,6 +745,7 @@ const PurchaseSMS = () => {
                   </Card>
                   ))
                 )}
+              </div>
               </div>
             </div>
 

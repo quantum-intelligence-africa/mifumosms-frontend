@@ -371,7 +371,7 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-3">
               <Card className="p-2 sm:p-3 lg:p-4 glass">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <p className="text-xs text-text-subtle font-medium">Total Spent</p>
@@ -416,7 +416,7 @@ const PurchaseHistory = () => {
                 </p>
               </Card>
 
-              <Card className="p-2 sm:p-3 lg:p-4 glass">
+              <Card className="p-2 sm:p-3 lg:p-4 glass hidden md:block">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <p className="text-xs text-text-subtle font-medium">Success Rate</p>
                   <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />

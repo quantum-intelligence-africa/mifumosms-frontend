@@ -1639,19 +1639,19 @@ Delete
 <div className="overflow-x-auto">
 <Table>
 <TableHeader>
-<TableRow className="border-border-subtle">
-<TableHead className="w-6 sm:w-8 lg:w-12">
+<TableRow className="border-b border-border hover:bg-transparent bg-muted/30 sticky top-0">
+<TableHead className="w-6 sm:w-8 lg:w-12 py-3 sm:py-4">
 <Checkbox
 checked={filteredContacts.length > 0 && filteredContacts.every(contact => selectedContacts.includes(contact.id))}
 onCheckedChange={handleSelectAll}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
 </TableHead>
-<TableHead className="text-xs sm:text-sm">Contact</TableHead>
-<TableHead className="text-xs sm:text-sm hidden sm:table-cell">Tags</TableHead>
-<TableHead className="text-xs sm:text-sm hidden md:table-cell">Status</TableHead>
-<TableHead className="text-xs sm:text-sm hidden lg:table-cell">Created</TableHead>
-<TableHead className="w-6 sm:w-8 lg:w-12"></TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground py-3 sm:py-4">Contact</TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden sm:table-cell py-3 sm:py-4">Tags & Groups</TableHead>
+<TableHead className="text-xs sm:text-sm hidden">Status</TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden lg:table-cell py-3 sm:py-4">Created</TableHead>
+<TableHead className="w-6 sm:w-8 lg:w-12 py-3 sm:py-4"></TableHead>
 </TableRow>
 </TableHeader>
 <TableBody>
@@ -1660,47 +1660,45 @@ const StatusIcon = getStatusIcon(contact.is_active, contact.is_opted_in);
 return (
 <TableRow
 key={contact.id}
-className="border-border-subtle cursor-pointer hover:bg-accent/50"
+className="border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors duration-150"
 onClick={() => setSelectedContact(contact)}
 >
-<TableCell onClick={(e) => e.stopPropagation()}>
+<TableCell onClick={(e) => e.stopPropagation()} className="py-3 sm:py-4">
 <Checkbox
 checked={selectedContacts.includes(contact.id)}
 onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
 </TableCell>
-<TableCell>
+<TableCell className="py-3 sm:py-4">
 <div className="flex items-center gap-2 sm:gap-3">
 <Avatar className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10">
-<AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+<AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm font-semibold">
 {contact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
 </AvatarFallback>
 </Avatar>
 <div className="min-w-0 flex-1">
-<p className="font-medium text-foreground text-xs sm:text-sm lg:text-base truncate">{contact.name}</p>
-<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 lg:gap-3 text-xs text-text-subtle">
-<span className="flex items-center gap-1 truncate">
+<p className="font-semibold text-foreground text-xs sm:text-sm lg:text-base truncate">{contact.name}</p>
+<div className="flex items-center gap-1 text-xs text-text-subtle mt-0.5">
 <Phone className="w-3 h-3 flex-shrink-0" />
 <span className="truncate">{contact.phone_e164}</span>
-</span>
+</div>
 {contact.email && (
-<span className="flex items-center gap-1 truncate">
+<div className="flex items-center gap-1 text-xs text-text-subtle mt-0.5">
 <Mail className="w-3 h-3 flex-shrink-0" />
 <span className="truncate">{contact.email}</span>
-</span>
-)}
 </div>
+)}
 {/* Tags for mobile view */}
 {contact.tags.length > 0 && (
-<div className="flex gap-1 flex-wrap mt-1 sm:hidden">
+<div className="flex gap-1 flex-wrap mt-2 sm:hidden">
 {contact.tags.slice(0, 3).map((tag) => (
-<Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
+<Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
 {tag}
 </Badge>
 ))}
 {contact.tags.length > 3 && (
-<Badge variant="outline" className="text-xs px-1 py-0">
+<Badge variant="outline" className="text-xs px-2 py-0.5">
 +{contact.tags.length - 3}
 </Badge>
 )}
@@ -1709,21 +1707,21 @@ className="h-3 w-3 sm:h-4 sm:w-4"
 </div>
 </div>
 </TableCell>
-<TableCell className="hidden sm:table-cell">
+<TableCell className="hidden sm:table-cell py-3 sm:py-4">
 <div className="flex gap-1 flex-wrap">
 {contact.tags.slice(0, 2).map((tag) => (
-<Badge key={tag} variant="secondary" className="text-xs">
+<Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
 {tag}
 </Badge>
 ))}
 {contact.tags.length > 2 && (
-<Badge variant="outline" className="text-xs">
+<Badge variant="outline" className="text-xs px-2 py-0.5">
 +{contact.tags.length - 2}
 </Badge>
 )}
 </div>
 </TableCell>
-<TableCell className="hidden md:table-cell">
+<TableCell className="hidden">
 <div className="flex items-center gap-2">
 <StatusIcon className={`w-3 h-3 lg:w-4 lg:h-4 ${getStatusColor(contact.is_active, contact.is_opted_in)}`} />
 <span className={`text-xs lg:text-sm ${getStatusColor(contact.is_active, contact.is_opted_in)}`}>
@@ -1731,10 +1729,10 @@ className="h-3 w-3 sm:h-4 sm:w-4"
 </span>
 </div>
 </TableCell>
-<TableCell className="hidden lg:table-cell">
+<TableCell className="hidden lg:table-cell py-3 sm:py-4">
 <span className="text-xs lg:text-sm text-text-subtle">{formatDate(contact.created_at)}</span>
 </TableCell>
-<TableCell onClick={(e) => e.stopPropagation()}>
+<TableCell onClick={(e) => e.stopPropagation()} className="py-3 sm:py-4">
 <DropdownMenu>
 <DropdownMenuTrigger asChild>
 <Button variant="ghost" size="icon">

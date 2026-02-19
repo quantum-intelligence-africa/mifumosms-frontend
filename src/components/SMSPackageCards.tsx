@@ -71,14 +71,14 @@ export const SMSPackageCards: React.FC = () => {
         {smsPackages.map((pkg, index) => (
           <Card
             key={pkg.id || `package-${index}`}
-            className={`relative bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow border ${
+            className={`relative overflow-visible bg-card rounded-lg shadow-sm hover:shadow-md transition-shadow border ${
               pkg.isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
             }`}
           >
             {/* Most Popular Badge */}
             {pkg.isPopular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-full flex justify-center px-2">
+                <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap">
                   Most Popular
                 </Badge>
               </div>

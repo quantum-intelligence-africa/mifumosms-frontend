@@ -618,7 +618,7 @@ const Campaigns = () => {
                   <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Kampeni zinazoendelea" : "Active Campaigns"}</p>
+                        <p className="text-xs font-medium text-text-subtle mb-1 whitespace-nowrap">{language === "sw" ? "Kampeni zinazoendelea" : "Active Campaigns"}</p>
                         <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
                       </div>
                       <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">

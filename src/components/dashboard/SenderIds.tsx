@@ -32,9 +32,13 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return <CheckCircle className="w-4 h-4 text-success" />;
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'pending':
-        return <Clock className="w-4 h-4 text-warning" />;
+        return <Clock className="w-4 h-4 text-amber-600" />;
+      case 'rejected':
+      case 'suspended':
+        return <CheckCircle className="w-4 h-4 text-red-600" />;
       default:
         return null;
     }
@@ -43,9 +47,13 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return 'bg-success/15 text-success border border-success/30 shadow-sm';
+      case 'approved':
+        return 'bg-green-500/15 text-green-700 border border-green-500/30 shadow-sm';
       case 'pending':
-        return 'bg-warning/15 text-warning border border-warning/30 shadow-sm';
+        return 'bg-amber-500/15 text-amber-700 border border-amber-500/30 shadow-sm';
+      case 'rejected':
+      case 'suspended':
+        return 'bg-red-500/15 text-red-700 border border-red-500/30 shadow-sm';
       default:
         return 'bg-muted/15 text-muted-foreground border border-border/50';
     }
@@ -67,26 +75,28 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm text-foreground block truncate">{senderId.sender_id}</span>
-          <p className="text-xs text-text-subtle mt-1 line-clamp-1">{senderId.sample_content}</p>
+          <span className="font-semibold text-xs text-foreground block truncate">{senderId.sender_id}</span>
+          <p className="text-[11px] text-text-subtle mt-1 line-clamp-1">{senderId.sample_content}</p>
         </div>
         <Badge
           variant="outline"
-          className={`text-[11px] px-2.5 py-1 ml-2 flex-shrink-0 ${getStatusColor(senderId.status)}`}
+          className={`text-[10px] px-2 py-0.5 ml-2 flex-shrink-0 ${getStatusColor(senderId.status)}`}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {getStatusIcon(senderId.status)}
-            <span className="capitalize font-medium">
-              {senderId.status.toLowerCase() === 'active'
-                ? t("status.active")
-                : senderId.status.toLowerCase() === 'pending'
-                  ? t("status.pending")
-                  : senderId.status}
+            <span className="capitalize font-medium text-[10px]">
+              {senderId.status.toLowerCase() === 'approved'
+                ? 'Approved'
+                : senderId.status.toLowerCase() === 'active'
+                  ? 'Active'
+                  : senderId.status.toLowerCase() === 'pending'
+                    ? t("status.pending")
+                    : senderId.status}
             </span>
           </div>
         </Badge>
       </div>
-      <p className="text-[10px] text-muted-foreground">{formatDate(senderId.created_at)}</p>
+      <p className="text-[9px] text-muted-foreground">{formatDate(senderId.created_at)}</p>
     </div>
   );
 
@@ -136,11 +146,13 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                           <div className="flex items-center gap-1.5">
                             {getStatusIcon(senderId.status)}
                             <span className="capitalize font-medium">
-                              {senderId.status.toLowerCase() === 'active'
-                                ? t("status.active")
-                                : senderId.status.toLowerCase() === 'pending'
-                                  ? t("status.pending")
-                                  : senderId.status}
+                              {senderId.status.toLowerCase() === 'approved'
+                                ? 'Approved'
+                                : senderId.status.toLowerCase() === 'active'
+                                  ? 'Active'
+                                  : senderId.status.toLowerCase() === 'pending'
+                                    ? t("status.pending")
+                                    : senderId.status}
                             </span>
                           </div>
                         </Badge>
