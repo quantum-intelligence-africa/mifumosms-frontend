@@ -3957,8 +3957,172 @@ class ApiClient {
       };
     }
   }
+  // NEW FLOW - Step 1: Create Sender Request (JSON only)
+  // POST /api/messaging/sender-requests/submit/
+  async createSenderRequest(data: {
+    requested_sender_id: string;
+    phone_number: string;
+    sample_content: string;
+  }): Promise<ApiResponse<SenderNameRequest>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/submit/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
 
-  // 1. SUBMIT SENDER NAME REQUEST (with file uploads)
+      return await this.handleResponse<SenderNameRequest>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // NEW FLOW - Step 2: Upload KYC Documents
+  // POST /api/messaging/sender-requests/{sender_request_id}/kyc-documents/
+  async uploadKycDocuments(
+    senderRequestId: string,
+    files: File[],
+    documentType: string = "ID"
+  ): Promise<ApiResponse<{ kyc_documents: Array<{ id: number; file: string }>; message: string }>> {
+    try {
+      // Use FormData for file upload (multipart/form-data)
+      const formData = new FormData();
+      formData.append('document_type', documentType);
+
+      // Append each file to the form data
+      files.forEach((file) => {
+        formData.append('kyc_documents', file);
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/messaging/sender-requests/${senderRequestId}/kyc-documents/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.token}`
+            // Don't set Content-Type - browser will set it with boundary for FormData
+          },
+          body: formData
+        }
+      );
+
+      return await this.handleResponse<{ kyc_documents: Array<{ id: number; file: string }>; message: string }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // NEW FLOW - Step 3: Initiate Payment
+  // POST /api/messaging/sender-requests/{sender_request_id}/initiate-payment/
+  async initiatePaymentForSenderRequest(
+    senderRequestId: string,
+    phoneNumber: string
+  ): Promise<ApiResponse<SenderRequestPaymentResponse>> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/messaging/sender-requests/${senderRequestId}/initiate-payment/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phone_number: phoneNumber
+          })
+        }
+      );
+
+      // Special handling for 402 Payment Required - this is a success response
+      if (response.status === 402) {
+        const data = await response.json();
+        return {
+          success: true,
+          data: data as SenderRequestPaymentResponse,
+          message: data.message,
+          status: response.status
+        };
+      }
+
+      return await this.handleResponse<SenderRequestPaymentResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // NEW - Repay for unpaid sender request
+  // POST /api/messaging/sender-requests/{id}/repay/
+  async repayForSenderRequest(
+    senderRequestId: string,
+    phoneNumber: string
+  ): Promise<ApiResponse<SenderRequestPaymentResponse>> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/messaging/sender-requests/${senderRequestId}/repay/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phone_number: phoneNumber
+          })
+        }
+      );
+
+      // Special handling for 402 Payment Required - this is a success response
+      if (response.status === 402) {
+        const data = await response.json();
+        return {
+          success: true,
+          data: data as SenderRequestPaymentResponse,
+          message: data.message,
+          status: response.status
+        };
+      }
+
+      return await this.handleResponse<SenderRequestPaymentResponse>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Helper method to convert File to base64
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Extract base64 part after the comma
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  }
+
+  // DEPRECATED - Old combined method (keeping for backward compatibility)
   // POST /api/messaging/sender-requests/submit/
   async submitSenderRequestJSON(data: {
     requested_sender_id: string;
@@ -4009,7 +4173,7 @@ class ApiClient {
     }
   }
 
-  // Submit sender request for payment (creates request + initiates payment)
+  // DEPRECATED - Old combined method (keeping for backward compatibility)
   // POST /api/messaging/sender-requests/
   async submitSenderRequestWithPayment(data: {
     requested_sender_id: string;
@@ -4048,6 +4212,7 @@ class ApiClient {
           // Don't set Content-Type - browser will set it with boundary for FormData
         },
         body: formData
+
       });
 
       // Special handling for 402 Payment Required - this is a success response

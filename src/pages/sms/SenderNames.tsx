@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
-type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active";
+type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment";
 
 interface PaymentData {
   requested_sender_id: string;
@@ -187,43 +187,86 @@ const SenderNames = () => {
 
   const safeGetStatusIcon = getStatusIcon || ((status: SenderStatus) => {
     switch (status) {
-      case "approved": return <Check className="w-4 h-4 text-success" />;
-      case "pending": return <Clock className="w-4 h-4 text-warning" />;
-      case "verifying": return <Clock className="w-4 h-4 text-primary" />;
-      case "rejected": return <X className="w-4 h-4 text-destructive" />;
-      case "suspended": return <Ban className="w-4 h-4 text-destructive" />;
-      case "requires_changes": return <AlertTriangle className="w-4 h-4 text-warning" />;
-      default: return <Clock className="w-4 h-4 text-warning" />;
+      case "approved": return <Check className="w-4 h-4 text-green-600" />;
+      case "active": return <Check className="w-4 h-4 text-green-600" />;
+      case "pending": return <Clock className="w-4 h-4 text-blue-600" />;
+      case "verifying": return <Clock className="w-4 h-4 text-purple-600" />;
+      case "rejected": return <X className="w-4 h-4 text-red-600" />;
+      case "suspended": return <Ban className="w-4 h-4 text-red-600" />;
+      case "requires_changes": return <AlertTriangle className="w-4 h-4 text-amber-600" />;
+      case "awaiting_payment": return <CreditCard className="w-4 h-4 text-orange-600" />;
+      default: return <Clock className="w-4 h-4 text-blue-600" />;
     }
   });
 
   // Add back the getStatusBadge function that was accidentally removed
   const getStatusBadge = (status: SenderStatus) => {
-    const variants: Record<SenderStatus, "default" | "secondary" | "outline" | "destructive"> = {
-      approved: "default",
-      active: "default",
-      pending: "secondary",
-      verifying: "secondary",
-      rejected: "destructive",
-      suspended: "destructive",
-      requires_changes: "outline",
+    const statusConfig: Record<string, { label: string; bgColor: string; textColor: string; borderColor: string }> = {
+      approved: {
+        label: "Approved",
+        bgColor: "bg-green-50",
+        textColor: "text-green-700",
+        borderColor: "border-green-200"
+      },
+      active: {
+        label: "Active",
+        bgColor: "bg-green-50",
+        textColor: "text-green-700",
+        borderColor: "border-green-200"
+      },
+      pending: {
+        label: "Pending",
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-700",
+        borderColor: "border-blue-200"
+      },
+      verifying: {
+        label: "Verifying",
+        bgColor: "bg-purple-50",
+        textColor: "text-purple-700",
+        borderColor: "border-purple-200"
+      },
+      rejected: {
+        label: "Rejected",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        borderColor: "border-red-200"
+      },
+      suspended: {
+        label: "Suspended",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        borderColor: "border-red-200"
+      },
+      requires_changes: {
+        label: "Requires Changes",
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        borderColor: "border-amber-200"
+      },
+      awaiting_payment: {
+        label: "Awaiting Payment",
+        bgColor: "bg-orange-50",
+        textColor: "text-orange-700",
+        borderColor: "border-orange-200"
+      }
     };
 
-    const statusLabels: Record<SenderStatus, string> = {
-      approved: "Approved",
-      pending: "Pending",
-      verifying: "Verifying",
-      rejected: "Rejected",
-      suspended: "Suspended",
-      requires_changes: "Requires Changes",
-      active: "Active",
+    // Default fallback config
+    const defaultConfig = {
+      label: status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : 'Unknown',
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-700",
+      borderColor: "border-gray-200"
     };
+
+    const config = statusConfig[status] || defaultConfig;
 
     return (
-      <Badge variant={variants[status]} className="capitalize">
-        {safeGetStatusIcon(status)}
-        <span className="ml-1">{statusLabels[status]}</span>
-      </Badge>
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${config.bgColor} ${config.borderColor} text-sm font-medium`}>
+        {safeGetStatusIcon(status as SenderStatus)}
+        <span className={config.textColor}>{config.label}</span>
+      </div>
     );
   };
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -268,6 +311,12 @@ const SenderNames = () => {
   const [showPaymentPendingDialog, setShowPaymentPendingDialog] = useState(false);
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string>("");
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState<string>("");
+
+  // Repay dialog state
+  const [showRepayDialog, setShowRepayDialog] = useState(false);
+  const [repayRequestId, setRepayRequestId] = useState<string>("");
+  const [repayPhoneNumber, setRepayPhoneNumber] = useState("");
+  const [repayProcessing, setRepayProcessing] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -584,28 +633,104 @@ const SenderNames = () => {
     setPaymentProcessing(true);
 
     try {
-      const response = await apiClient.submitSenderRequestWithPayment({
+      // STEP 1: Create Sender Request
+      const createResponse = await apiClient.createSenderRequest({
         requested_sender_id: paymentData.requested_sender_id,
         phone_number: paymentData.phone_number,
-        sample_content: paymentData.sample_content,
-        reason: paymentData.purpose || "Sender ID request",
-        kyc_documents: paymentData.kyc_documents
+        sample_content: paymentData.sample_content
       });
 
       if (!isMountedRef.current) return;
 
-      if (response.success && response.data) {
-        const paymentResponse = response.data as SenderRequestPaymentResponse;
+      if (!createResponse.success || !createResponse.data) {
+        toast({
+          title: "Failed to create request",
+          description: createResponse.error || "Failed to create sender name request",
+          variant: "destructive"
+        });
+        setPaymentProcessing(false);
+        return;
+      }
 
-        if (paymentResponse.payment_required) {
-          const orderId = paymentResponse.payment.order_id;
-          const amount = paymentResponse.payment.amount;
+      // Extract sender request ID - handle nested data structure
+      // API returns: { success: true, data: { id: "...", ... } }
+      // handleResponse wraps it as: { success: true, data: { success: true, data: { id: "...", ... } } }
+      let senderRequestId = (createResponse.data as any)?.data?.id;
+
+      // Fallback: try direct access in case structure is different
+      if (!senderRequestId) {
+        senderRequestId = (createResponse.data as any)?.id;
+      }
+
+      if (!senderRequestId) {
+        // Try alternative field names
+        senderRequestId = (createResponse.data as any)?.sender_request_id;
+      }
+
+      if (!senderRequestId) {
+        // Try nested structure from old endpoint
+        senderRequestId = (createResponse.data as any)?.sender_id_request?.id;
+      }
+
+      if (!senderRequestId) {
+        toast({
+          title: "Cannot extract request ID",
+          description: "Server response missing required ID field. Check console for details.",
+          variant: "destructive"
+        });
+        setPaymentProcessing(false);
+        return;
+      }
+
+      // STEP 2: Upload KYC Documents (if any)
+      if (paymentData.kyc_documents && paymentData.kyc_documents.length > 0) {
+        const uploadResponse = await apiClient.uploadKycDocuments(
+          senderRequestId,
+          paymentData.kyc_documents,
+          "ID"
+        );
+
+        if (!isMountedRef.current) return;
+
+        if (!uploadResponse.success) {
+          toast({
+            title: "Document upload failed",
+            description: uploadResponse.error || "Failed to upload KYC documents",
+            variant: "destructive"
+          });
+          setPaymentProcessing(false);
+          return;
+        }
+      } else {
+      }
+
+      // STEP 3: Initiate Payment
+      const paymentResponse = await apiClient.initiatePaymentForSenderRequest(
+        senderRequestId,
+        paymentData.phone_number
+      );
+
+      if (!isMountedRef.current) return;
+
+      if (paymentResponse.success && paymentResponse.data) {
+        // Handle nested data structure - could be from handleResponse wrapping
+        let paymentResponseData = paymentResponse.data as SenderRequestPaymentResponse;
+
+        // If the data has a nested 'data' property, unwrap it
+        if ((paymentResponseData as any)?.data && !(paymentResponseData as any)?.payment) {
+          paymentResponseData = (paymentResponseData as any).data as SenderRequestPaymentResponse;
+        }
+
+        // The response should have payment object and either payment_required flag or payment exists
+        if (paymentResponseData.payment_required || paymentResponseData.payment) {
+          const orderId = paymentResponseData.payment?.order_id;
+          const amount = paymentResponseData.payment?.amount;
 
           // Store the order ID for status checking
           localStorage.setItem('sender_request_order_id', orderId);
-          localStorage.setItem('sender_request_id', paymentResponse.sender_id_request?.id || '');
+          localStorage.setItem('sender_request_id', senderRequestId);
 
-          if (paymentResponse.payment?.payment_url) {
+          if (paymentResponseData.payment?.payment_url) {
             // Redirect to payment page
             toast({
               title: "Redirecting to payment",
@@ -614,7 +739,7 @@ const SenderNames = () => {
 
             // Redirect to payment URL
             setTimeout(() => {
-              window.location.href = paymentResponse.payment!.payment_url || '';
+              window.location.href = paymentResponseData.payment!.payment_url || '';
             }, 1500);
           } else {
             // Payment URL is null - show pending dialog with order details
@@ -625,12 +750,12 @@ const SenderNames = () => {
             setShowPaymentPendingDialog(true);
           }
         } else {
-          throw new Error('Payment not required but no clear response');
+          throw new Error('Payment data missing required properties');
         }
       } else {
         toast({
           title: "Payment initiation failed",
-          description: response.error || "Failed to initiate payment",
+          description: paymentResponse.error || "Failed to initiate payment",
           variant: "destructive"
         });
         setPaymentProcessing(false);
@@ -645,6 +770,93 @@ const SenderNames = () => {
         });
       }
     }
+  };
+
+  // Handle repay for unpaid sender request
+  const handleRepay = async () => {
+    if (!repayRequestId || !repayPhoneNumber.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a phone number",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setRepayProcessing(true);
+
+    try {
+      const repayResponse = await apiClient.repayForSenderRequest(
+        repayRequestId,
+        repayPhoneNumber
+      );
+
+      if (!isMountedRef.current) return;
+
+      if (repayResponse.success && repayResponse.data) {
+        // Handle nested data structure
+        let repayResponseData = repayResponse.data as SenderRequestPaymentResponse;
+
+        // If the data has a nested 'data' property, unwrap it
+        if ((repayResponseData as any)?.data && !(repayResponseData as any)?.payment) {
+          repayResponseData = (repayResponseData as any).data as SenderRequestPaymentResponse;
+        }
+
+        // The response should have payment object
+        if (repayResponseData.payment_required || repayResponseData.payment) {
+          const orderId = repayResponseData.payment?.order_id;
+          const amount = repayResponseData.payment?.amount;
+
+          // Store the order ID for status checking
+          localStorage.setItem('sender_request_order_id', orderId);
+          localStorage.setItem('sender_request_id', repayRequestId);
+
+          if (repayResponseData.payment?.payment_url) {
+            // Redirect to payment page
+            toast({
+              title: "Redirecting to payment",
+              description: "You will be redirected to complete the payment of TSH " + amount,
+            });
+
+            // Redirect to payment URL
+            setTimeout(() => {
+              window.location.href = repayResponseData.payment!.payment_url || '';
+            }, 1500);
+          } else {
+            // Payment URL is null - show pending dialog with order details
+            setRepayProcessing(false);
+            setShowRepayDialog(false);
+            setPendingPaymentOrderId(orderId);
+            setPendingPaymentAmount(amount);
+            setShowPaymentPendingDialog(true);
+          }
+        } else {
+          throw new Error('Payment data missing required properties');
+        }
+      } else {
+        toast({
+          title: "Repayment initiation failed",
+          description: repayResponse.error || "Failed to initiate repayment",
+          variant: "destructive"
+        });
+        setRepayProcessing(false);
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
+        setRepayProcessing(false);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "An error occurred",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleOpenRepayDialog = (sender: any) => {
+    setRepayRequestId(sender.id);
+    setRepayPhoneNumber("");
+    setShowRepayDialog(true);
   };
 
   const handleDeleteRequest = async (sender: SenderNameRequest | UnifiedSenderName) => {
@@ -1166,10 +1378,10 @@ const SenderNames = () => {
                             </Button>
                           ) : (
                             <div className="text-left sm:text-right w-full sm:w-auto">
-                              <Badge variant={getStatusBadgeVariant?.(overview.active_request?.status || 'approved') || 'default'} className="mb-2 bg-green-100 text-green-700 border-green-300">
-                                <Check className="w-4 h-4 mr-1" />
-                                <span>{overview.active_request?.status || 'Available'}</span>
-                              </Badge>
+                              <div className="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-green-50 border-green-200">
+                                <Check className="w-4 h-4 text-green-600" />
+                                <span className="text-green-700 text-sm font-medium">{overview.active_request?.status || 'Available'}</span>
+                              </div>
                               {getCannotRequestReason?.() && (
                                 <p className="text-xs text-text-subtle">{getCannotRequestReason()}</p>
                               )}
@@ -1285,6 +1497,13 @@ const SenderNames = () => {
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                onClick={() => handleOpenRepayDialog(sender)}
+                                disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 onClick={() => handleEditRequest(sender)}
                                 disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                               >
@@ -1394,6 +1613,13 @@ const SenderNames = () => {
                                 <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenRepayDialog(sender)}
+                                  disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
+                                >
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleEditRequest(sender)}
@@ -1647,7 +1873,7 @@ const SenderNames = () => {
                 <DialogHeader className="pb-2 sm:pb-2.5">
                   <DialogTitle className="text-sm sm:text-base md:text-lg">Payment Required</DialogTitle>
                   <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    Complete payment to submit your sender ID request
+                    Complete the 3-step process to submit your sender ID request
                   </DialogDescription>
                 </DialogHeader>
 
@@ -1665,6 +1891,12 @@ const SenderNames = () => {
                           <span className="text-text-subtle">Phone Number:</span>
                           <span className="font-mono">{paymentData?.phone_number}</span>
                         </div>
+                        {paymentData?.kyc_documents && paymentData.kyc_documents.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-text-subtle">KYC Documents:</span>
+                            <span className="font-semibold text-green-600">{paymentData.kyc_documents.length} file(s)</span>
+                          </div>
+                        )}
                         <div className="pt-2 border-t border-primary/10">
                           <div className="flex justify-between items-center">
                             <span className="text-text-subtle font-medium">Total Amount:</span>
@@ -1678,11 +1910,11 @@ const SenderNames = () => {
                   {/* Payment Methods */}
                   <div className="space-y-2">
                     <h4 className="font-semibold text-xs sm:text-sm text-foreground">Payment Methods</h4>
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2 sm:p-3">
-                      <p className="text-[10px] sm:text-xs text-blue-700">
+                    <div className="bg-green-50 border border-green-200 rounded-md p-2 sm:p-3">
+                      <p className="text-[10px] sm:text-xs text-green-700 font-medium">
                         ✓ Mobile Money (M-Pesa, Tigo Pesa, Airtel Money)
                       </p>
-                      <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
+                      <p className="text-[10px] sm:text-xs text-green-600 mt-1">
                         You will be redirected to a secure payment gateway to complete the transaction.
                       </p>
                     </div>
@@ -1713,7 +1945,7 @@ const SenderNames = () => {
                     {paymentProcessing ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Processing...
+                        Processing Steps...
                       </>
                     ) : (
                       <>
@@ -1923,6 +2155,79 @@ const SenderNames = () => {
               </DialogContent>
             </Dialog>
 
+            {/* Repay Dialog */}
+            <Dialog open={showRepayDialog} onOpenChange={setShowRepayDialog}>
+              <DialogContent className="glass max-w-md w-[95vw] max-h-[90vh] overflow-y-auto p-3 sm:p-6 rounded-lg">
+                <DialogHeader className="pb-3 sm:pb-4 space-y-1">
+                  <DialogTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-primary" />
+                    Retry Payment
+                  </DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
+                    Complete the payment for your sender request
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Phone Number Input */}
+                  <div className="space-y-2">
+                    <Label className="text-xs sm:text-sm">Phone Number</Label>
+                    <Input
+                      type="tel"
+                      placeholder="+255 712 345 678"
+                      value={repayPhoneNumber}
+                      onChange={(e) => setRepayPhoneNumber(e.target.value)}
+                      disabled={repayProcessing}
+                      className="glass-subtle border-0 text-xs sm:text-sm h-9"
+                    />
+                    <p className="text-xs text-text-subtle">
+                      The phone number associated with your account
+                    </p>
+                  </div>
+
+                  {/* Info Card */}
+                  <Card className="p-3 sm:p-4 bg-blue-50 border-blue-200">
+                    <div className="space-y-2 text-xs sm:text-sm text-blue-900">
+                      <p className="font-semibold">⚠️ Important:</p>
+                      <ul className="space-y-1 ml-2 list-disc">
+                        <li>Complete the payment to activate your sender request</li>
+                        <li>You'll receive payment confirmation via SMS</li>
+                        <li>Payment status updates automatically</li>
+                      </ul>
+                    </div>
+                  </Card>
+                </div>
+
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRepayDialog(false)}
+                    disabled={repayProcessing}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRepay}
+                    disabled={repayProcessing || !repayPhoneNumber.trim()}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-1 sm:order-2 bg-primary hover:bg-primary/90"
+                  >
+                    {repayProcessing ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Processing Payment...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-3 h-3 mr-1" />
+                        Proceed to Payment
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {/* Edit Dialog */}
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
               <DialogContent className="glass max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -2070,6 +2375,41 @@ const SenderNames = () => {
                         {getStatusBadge(selectedSender.status)}
                       </div>
                     </div>
+
+                    {/* Auto-Cancel Warning for Awaiting Payment */}
+                    {selectedSender.status === "awaiting_payment" && (
+                      <Card className="p-3 sm:p-4 bg-gradient-to-br from-orange-50 to-orange-25 border border-orange-200">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-orange-900 text-sm sm:text-base mb-1">
+                                Payment Required
+                              </h4>
+                              <p className="text-xs sm:text-sm text-orange-800 leading-relaxed">
+                                This sender request is awaiting payment. Complete payment within <span className="font-bold">3 days</span> from creation date, otherwise it will be automatically cancelled.
+                              </p>
+                              <p className="text-xs sm:text-sm text-orange-700 mt-2">
+                                <span className="font-semibold">Created:</span> {safeFormatDate(selectedSender.created_at)}
+                              </p>
+                              <p className="text-xs sm:text-sm text-orange-700">
+                                <span className="font-semibold">Auto-cancel after:</span> {safeFormatDate(new Date(new Date(selectedSender.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toString())}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              setShowDetailsDialog(false);
+                              handleOpenRepayDialog(selectedSender);
+                            }}
+                            className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-orange-600 hover:bg-orange-700 text-white"
+                          >
+                            <CreditCard className="w-3 h-3 mr-2" />
+                            Complete Payment Now
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
 
                     {/* Basic Information */}
                     <div className="space-y-3 sm:space-y-4">
