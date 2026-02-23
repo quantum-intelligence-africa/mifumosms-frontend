@@ -27,8 +27,10 @@ import {
   X
 } from "lucide-react";
 import MobileMenu from "@/components/layout/MobileMenu";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useContext } from "react";
+import { LanguageContext } from "@/contexts/LanguageContext";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
 import { useStaggeredReveal, useScrollReveal } from "@/hooks/useScrollReveal";
 import { useScroll, useTransform, motion, MotionValue } from "motion/react";
@@ -41,6 +43,9 @@ import {
 } from "@/components/ui/dialog";
 
 const Landing = () => {
+  const context = useContext(LanguageContext);
+  const { language, t } = context || { language: 'en', t: (s: string) => s };
+
   // Force light theme on marketing surfaces
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -461,66 +466,66 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   const features = [
     {
       icon: MessageSquare,
-      title: "WhatsApp Business",
-      description: "Send messages and manage conversations through WhatsApp Business API."
+      title: language === 'sw' ? 'Biashara ya WhatsApp' : 'WhatsApp Business',
+      description: language === 'sw' ? 'Tuma ujumbe na simamia mazungumzo kupitia API ya WhatsApp Business.' : 'Send messages and manage conversations through WhatsApp Business API.'
     },
     {
       icon: Send,
-      title: "SMS Campaigns",
-      description: "Create, schedule, and track bulk SMS campaigns with real-time delivery reports."
+      title: language === 'sw' ? 'Kampeni za SMS' : 'SMS Campaigns',
+      description: language === 'sw' ? 'Unda, panga, na fuatilia kampeni za SMS kwa ripoti za uwasilishaji papo hapo.' : 'Create, schedule, and track bulk SMS campaigns with real-time delivery reports.'
     },
     {
       icon: Users,
-      title: "Contact Management",
-      description: "Import, segment, and organize contacts with advanced filtering and CSV support."
+      title: language === 'sw' ? 'Usimamizi wa Mawasiliano' : 'Contact Management',
+      description: language === 'sw' ? 'Ingiza, gawa, na panga mawasiliano kwa kuchuja na kusaidia CSV.' : 'Import, segment, and organize contacts with advanced filtering and CSV support.'
     },
     {
       icon: BarChart3,
-      title: "Analytics & Reports",
-      description: "Monitor delivery rates, engagement metrics, and campaign performance with detailed charts."
+      title: language === 'sw' ? 'Takwimu & Ripoti' : 'Analytics & Reports',
+      description: language === 'sw' ? 'Fuatilia viwango vya uwasilishaji, ushiriki, na utendaji wa kampeni kwa chati za kina.' : 'Monitor delivery rates, engagement metrics, and campaign performance with detailed charts.'
     },
     {
       icon: Zap,
-      title: "Templates & Automation",
-      description: "Create message templates and set up automated workflows for customer engagement."
+      title: language === 'sw' ? 'Violezo & Uratibu' : 'Templates & Automation',
+      description: language === 'sw' ? 'Unda violezo vya ujumbe na weka uratibu wa kiotomatiki kwa ushiriki wa wateja.' : 'Create message templates and set up automated workflows for customer engagement.'
     },
     {
       icon: Globe,
-      title: "Multi-language",
-      description: "Communicate in English, Kiswahili, French, and Arabic for businesses across Africa."
+      title: language === 'sw' ? 'Lugha Nyingi' : 'Multi-language',
+      description: language === 'sw' ? 'Wasiliana kwa Kiingereza, Kiswahili, Kifaransa, na Kiarabu kwa biashara barani Afrika.' : 'Communicate in English, Kiswahili, French, and Arabic for businesses across Africa.'
     }
   ];
 
   const pricing = [
     {
-      name: "Lite",
+      name: language === 'sw' ? 'Rahisi' : 'Lite',
       rate: "TZS 18/SMS",
-      credits: "1 to 49,999 SMS",
+      credits: language === 'sw' ? '1 hadi 49,999 SMS' : '1 to 49,999 SMS',
       features: [
-        "Instant top-up",
-        "Basic delivery reports",
-        "Email receipt",
+        language === 'sw' ? 'Ujazo wa haraka' : 'Instant top-up',
+        language === 'sw' ? 'Ripoti za uwasilishaji za msingi' : 'Basic delivery reports',
+        language === 'sw' ? 'Risiti ya barua pepe' : 'Email receipt',
       ],
     },
     {
-      name: "Standard",
+      name: language === 'sw' ? 'Kawaida' : 'Standard',
       rate: "TZS 14/SMS",
-      credits: "50,000 to 149,999 SMS",
+      credits: language === 'sw' ? '50,000 hadi 149,999 SMS' : '50,000 to 149,999 SMS',
       features: [
-        "Priority top-up & support",
-        "Advanced delivery analytics",
-        "Campaign scheduling",
+        language === 'sw' ? 'Ujazo wa kipaumbele & usaidizi' : 'Priority top-up & support',
+        language === 'sw' ? 'Takwimu za uwasilishaji za hali ya juu' : 'Advanced delivery analytics',
+        language === 'sw' ? 'Upangaji wa kampeni' : 'Campaign scheduling',
       ],
       popular: true,
     },
     {
-      name: "Pro",
+      name: language === 'sw' ? 'Bora' : 'Pro',
       rate: "TZS 12/SMS",
-      credits: "250,000 SMS and above",
+      credits: language === 'sw' ? '250,000 SMS na zaidi' : '250,000 SMS and above',
       features: [
-        "Bulk campaign tools",
-        "Advanced analytics",
-        "API access",
+        language === 'sw' ? 'Zana za kampeni nyingi' : 'Bulk campaign tools',
+        language === 'sw' ? 'Takwimu za hali ya juu' : 'Advanced analytics',
+        language === 'sw' ? 'API ya kufikia' : 'API access',
       ],
     }
   ];
@@ -757,33 +762,34 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Features
+              {language === 'sw' ? 'Vipengele' : 'Features'}
             </button>
             <button onClick={() => scrollToSection('pricing')} className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Pricing
+              {language === 'sw' ? 'Bei' : 'Pricing'}
             </button>
             <Link to="/developer" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Developer
+              {language === 'sw' ? 'Developa' : 'Developer'}
             </Link>
           </div>
 
           {/* Action Buttons */}
-          <div className="hidden lg:flex items-center gap-4 justify-end">
+          <div className="hidden lg:flex items-center gap-3 justify-end">
+              <LanguageToggle isDark={isScrolled} />
               <Link to="/login">
                 <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center ${
                   isScrolled
                     ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                     : 'border border-white text-white hover:bg-white hover:text-gray-900'
                 }`}>
-                  Login
+                  {language === 'sw' ? 'Ingia' : 'Login'}
                 </button>
               </Link>
               <Link to="/signup">
@@ -792,24 +798,27 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                     ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                     : 'border border-white text-white hover:bg-blue-600 hover:text-white hover:border-blue-600'
                 }`}>
-                  Get started
+                  {language === 'sw' ? 'Jiunge' : 'Get started'}
                 </button>
               </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className={`lg:hidden relative p-2 cursor-pointer transition-colors duration-300 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-gray-700'
-                : 'text-white hover:text-gray-200'
-            }`}
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            aria-expanded={isMobileMenuOpen}
-            aria-label="Toggle mobile menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {/* Language Toggle and Mobile Menu Button (Mobile) */}
+          <div className="flex lg:hidden items-center gap-2">
+            <LanguageToggle isDark={isScrolled} />
+            <button
+              className={`relative p-2 cursor-pointer transition-colors duration-300 ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white hover:text-gray-200'
+              }`}
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Toggle mobile menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </section>
       </header>
 
@@ -829,12 +838,14 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left pr-4 sm:pr-6 md:pr-8 lg:pr-12">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-left">
-                  Getting customers is cheap.
+                  {language === 'sw' ? 'Usipoteze wateja.' : 'Don’t lose customers.'}
                   <br />
-                  <span className="text-blue-200">Churn isn&apos;t</span>
+                  <span className="text-blue-200">{language === 'sw' ? 'Geuza Kila Ujumbe Kuwa Mauzo' : "Turn every message into sales"}</span>
               </h1>
                 <p className="lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal text-left">
-                Customer communications platform that combines the best of AI and human support, so you can treat every customer like a VIP. Drives replies, repeat purchases, and tracks every conversation back to revenue.
+                {language === 'sw'
+                  ? 'Mfumo wa SMS na AI unaokusaidia kufuatilia wateja, kutuma kampeni kwa pamoja, na kuongeza mauzo bila kuajiri staff wa ziada. Tuma SMS kwa maelfu ya wateja, pima delivery rate, na fuatilia mchango wake sehemu moja.'
+                  : 'An SMS and AI system that helps you track customers, send bulk campaigns, and increase sales without hiring extra staff. Send SMS to thousands of customers, measure delivery rates, and monitor its impact all in one place.'}
               </p>
             </div>
 
@@ -845,7 +856,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       variant="outline"
       className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
     >
-      Start Free
+      {language === 'sw' ? 'Anza Bure' : 'Start Free'}
     </Button>
   </Link>
 
@@ -855,7 +866,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-    How to Use.
+    {language === 'sw' ? 'Jinsi ya Kutumia.' : 'How to Use.'}
   </Button>
 </div>
 
@@ -863,15 +874,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12 w-full justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Active Businesses</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Biashara' : 'Active Businesses'}</div>
                 </div>
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1M+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Messages Sent</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Ujumbe' : 'Messages Sent'}</div>
                 </div>
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">98%</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">Delivery Rate</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Ufanisi' : 'Delivery Rate'}</div>
                 </div>
               </div>
 
@@ -1071,15 +1082,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         {/* Mobile block (unchanged) */}
         <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-yellow-50 shadow-sm px-4 py-5 sm:hidden">
           <div className="text-left mb-8">
-            <h2 className="font-heading text-xl font-bold text-gray-900 mb-2 leading-tight">
-              Everything you need to
-              <span className="block text-blue-500">
-                manage customer communications
-              </span>
-            </h2>
-            <p className="text-xs text-gray-600 leading-relaxed max-w-3xl">
-              Powerful features designed for African businesses to scale their customer communication
-            </p>
+                <h2 className="font-heading text-xl font-bold text-gray-900 mb-2 leading-tight">
+                  {language === 'sw' ? 'Kila kitu unachohitaji' : 'Everything you need to'}
+                  <span className="block text-blue-500">
+                    {language === 'sw' ? 'kusimamia mawasiliano ya wateja' : 'manage customer communications'}
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-600 leading-relaxed max-w-3xl">
+                  {language === 'sw' ? 'Vipengele vyenye nguvu vimeundwa kwa ajili ya biashara za Afrika kuongeza mawasiliano na wateja.' : 'Powerful features designed for African businesses to scale their customer communication'}
+                </p>
           </div>
           <div className="space-y-8">
             {features.map((feature, index) => {
@@ -1123,13 +1134,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 }`}
               >
                 <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
-                  Everything you need to
+                  {language === 'sw' ? 'Kila kitu unachohitaji' : 'Everything you need to'}
                   <span className="block text-blue-500">
-                    manage customer communications
+                    {language === 'sw' ? 'kusimamia mawasiliano ya wateja' : 'manage customer communications'}
                   </span>
                 </h2>
                 <p className="mt-4 text-base md:text-lg text-gray-600 leading-relaxed">
-                  Powerful features designed for African businesses to scale their customer communication
+                  {language === 'sw' ? 'Vipengele vyenye nguvu vimeundwa kwa ajili ya biashara za Afrika kuongeza mawasiliano na wateja.' : 'Powerful features designed for African businesses to scale their customer communication'}
                 </p>
               </div>
 
@@ -1177,13 +1188,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           <div className="text-center mb-8 sm:mb-12 lg:mb-16">
 
             <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              {/* Simple, transparent */}
               <span className="block text-blue-600">
-                Pricing packages
+                {language === 'sw' ? 'Vifurushi vya Bei' : 'Pricing packages'}
               </span>
             </h2>
             <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              Choose the plan that fits your business needs
+              {language === 'sw' ? 'Chagua mpango unaofaa mahitaji ya biashara yako' : 'Choose the plan that fits your business needs'}
             </p>
           </div>
 
@@ -1272,13 +1282,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           <div className="text-center mb-8">
 
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-              {/* Calculate Your */}
               <span className="block text-blue-600">
-                Pricing Calculator
+                {language === 'sw' ? 'Kikokotoo cha Bei' : 'Pricing Calculator'}
               </span>
             </h3>
             <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
-              Enter your desired SMS credits to see the exact pricing based on our tiered structure
+              {language === 'sw' ? 'Ingiza idadi ya SMS unayotaka ili kuona bei halisi kulingana na muundo wa viwango vyetu.' : 'Enter your desired SMS credits to see the exact pricing based on our tiered structure'}
             </p>
           </div>
 
@@ -1286,10 +1295,10 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-blue-500" />
-                    Number of SMS Credits
-                  </Label>
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-blue-500" />
+                      {language === 'sw' ? 'Idadi ya SMS' : 'Number of SMS Credits'}
+                    </Label>
                 <Input
                   type="number"
                   placeholder="e.g., 5000"
@@ -1301,14 +1310,14 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    Total Cost
-                  </Label>
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-500" />
+                      {language === 'sw' ? 'Gharama Jumla' : 'Total Cost'}
+                    </Label>
                   <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-blue-100 to-blue-50 border-2 border-blue-300 flex items-center justify-between">
                     <span className="text-lg font-bold text-blue-900">TZS {customPrice.toLocaleString()}</span>
                     <div className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
-                      {activeTier?.name || 'Select amount'}
+                      {activeTier ? (language === 'sw' ? 'Kiwango cha Bei' : activeTier.name) : (language === 'sw' ? 'Chagua kiasi' : 'Select amount')}
                     </div>
                   </div>
                 </div>
@@ -1318,23 +1327,23 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
                   <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
-                    Pricing Details
+                    {language === 'sw' ? 'Maelezo ya Bei' : 'Pricing Details'}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-700">Active Tier:</span>
+                      <span className="text-blue-700">{language === 'sw' ? 'Kiwango Kinachotumika:' : 'Active Tier:'}</span>
                       <span className="font-semibold text-blue-900">
-                        {activeTier ? activeTier.name : '—'}
+                        {activeTier ? (language === 'sw' ? 'Kiwango cha Bei' : activeTier.name) : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-700">Rate per SMS:</span>
+                      <span className="text-blue-700">{language === 'sw' ? 'Bei kwa SMS:' : 'Rate per SMS:'}</span>
                       <span className="font-semibold text-blue-900">
                         {activeTier ? `TZS ${activeTier.rate}/SMS` : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-700">SMS Range:</span>
+                      <span className="text-blue-700">{language === 'sw' ? 'Wigo wa SMS:' : 'SMS Range:'}</span>
                       <span className="font-semibold text-blue-900">
                         {activeTier ? activeTier.rangeLabel : '—'}
                       </span>
@@ -1346,8 +1355,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   <div className="flex items-start gap-2">
                     <Shield className="w-4 h-4 text-red-600 mt-0.5" />
                     <div>
-                      <p className="text-xs font-semibold text-red-800">Minimum Purchase</p>
-                      <p className="text-xs text-red-700">100 SMS credits required</p>
+                      <p className="text-xs font-semibold text-red-800">{language === 'sw' ? 'Ununuzi wa Chini' : 'Minimum Purchase'}</p>
+                      <p className="text-xs text-red-700">{language === 'sw' ? 'Unahitaji kununua SMS 1000 au zaidi' : '1000 SMS credits required'}</p>
                     </div>
                   </div>
                 </div>
@@ -1358,12 +1367,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-center sm:text-left">
-                    <p className="text-sm text-gray-600">Ready to get started?</p>
-                    <p className="text-xs text-gray-500">Purchase {parsedCredits.toLocaleString()} SMS credits</p>
+                    <p className="text-sm text-gray-600">{language === 'sw' ? 'Uko tayari kuanza?' : 'Ready to get started?'}</p>
+                    <p className="text-xs text-gray-500">{language === 'sw' ? `Nunua SMS ${parsedCredits.toLocaleString()}` : `Purchase ${parsedCredits.toLocaleString()} SMS credits`}</p>
                   </div>
                   <Link to="/signup">
                     <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-2 h-10 transition-all duration-300 hover:scale-105">
-                      Buy Now
+                      {language === 'sw' ? 'Nunua Sasa' : 'Buy Now'}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </Link>
@@ -1385,23 +1394,23 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
         <div ref={ctaReveal.elementRef} className="max-w-3xl mx-auto text-center relative z-10">
 
-          <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
-            ctaReveal.isVisible
-              ? 'animate-fade-in-up'
-              : 'opacity-0 translate-y-4'
-          }`}>
-            Ready to transform your
-            <span className="block text-blue-600">
-              customer communication?
-            </span>
-          </h2>
-          <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
-            ctaReveal.isVisible
-              ? 'animate-fade-in-up'
-              : 'opacity-0 translate-y-4'
-          }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
-            Join thousands of African businesses already using Mifumo SMS
-          </p>
+            <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
+              ctaReveal.isVisible
+                ? 'animate-fade-in-up'
+                : 'opacity-0 translate-y-4'
+            }`}>
+              {language === 'sw' ? 'Uko tayari kubadilisha' : 'Ready to transform your'}
+              <span className="block text-blue-600">
+                {language === 'sw' ? 'mawasiliano ya wateja?' : 'customer communication?'}
+              </span>
+            </h2>
+            <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
+              ctaReveal.isVisible
+                ? 'animate-fade-in-up'
+                : 'opacity-0 translate-y-4'
+            }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
+              {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia Mifumo SMS' : 'Join thousands of African businesses already using Mifumo SMS'}
+            </p>
 
           <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-800 delay-400 ${
             ctaReveal.isVisible
@@ -1413,7 +1422,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 size="lg"
                 className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group"
               >
-              Get Started
+              {language === 'sw' ? 'Anza' : 'Get Started'}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
             </Link>
@@ -1455,10 +1464,10 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
             {/* Nav */}
             <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <a className="hover:underline hover:text-white" href="#about">About</a>
-              <a className="hover:underline hover:text-white" href="#features">Features</a>
-              <a className="hover:underline hover:text-white" href="#pricing">Pricing</a>
-              <a href="/developer" className="hover:underline hover:text-white">Developer</a>
+              <a className="hover:underline hover:text-white" href="#about">{language === 'sw' ? 'Kuhusu' : 'About'}</a>
+              <a className="hover:underline hover:text-white" href="#features">{language === 'sw' ? 'Vipengele' : 'Features'}</a>
+              <a className="hover:underline hover:text-white" href="#pricing">{language === 'sw' ? 'Bei' : 'Pricing'}</a>
+              <a href="/developer" className="hover:underline hover:text-white">{language === 'sw' ? 'Developa' : 'Developer'}</a>
             </nav>
 
             {/* Contact */}
@@ -1476,7 +1485,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
           </div>
         </div>
       </footer>

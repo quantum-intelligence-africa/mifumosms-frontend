@@ -14,6 +14,22 @@ interface ContactAddDialogProps {
   onContactAdded?: () => void;
 }
 
+// Predefined common tags
+const PRESET_TAGS = [
+  'vip',
+  'marketing',
+  'sales',
+  'support',
+  'premium',
+  'basic',
+  'new',
+  'returning',
+  'inactive',
+  'active',
+  'lead',
+  'customer'
+];
+
 export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +61,22 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
         newTag: ''
       }));
     }
+  };
+
+  const handleTogglePresetTag = (tag: string) => {
+    setFormData(prev => {
+      if (prev.tags.includes(tag)) {
+        return {
+          ...prev,
+          tags: prev.tags.filter(t => t !== tag)
+        };
+      } else {
+        return {
+          ...prev,
+          tags: [...prev.tags, tag]
+        };
+      }
+    });
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -226,46 +258,75 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
           {/* Tags Field */}
           <div className="space-y-2">
             <Label>Tags (Optional)</Label>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
-                  <Input
-                    placeholder="Add a tag"
-                    value={formData.newTag}
-                    onChange={(e) => handleInputChange('newTag', e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
+            <div className="space-y-3">
+              {/* Preset Tags - Hidden */}
+              <div className="hidden">
+                <p className="text-sm font-medium text-gray-900 mb-2">Quick Select:</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleTogglePresetTag(tag)}
+                      disabled={isLoading}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        formData.tags.includes(tag)
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      } disabled:opacity-50`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddTag}
-                  disabled={!formData.newTag.trim() || isLoading}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
               </div>
 
-              {/* Display Tags */}
+              {/* Custom Tag Input */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-2">Tags Names:</p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
+                    <Input
+                      placeholder="Type a tag name (e.g., 'wholesale', 'partner')"
+                      value={formData.newTag}
+                      onChange={(e) => handleInputChange('newTag', e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="pl-10"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddTag}
+                    disabled={!formData.newTag.trim() || isLoading}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Display All Selected Tags */}
               {formData.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formData.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-1 hover:text-red-600"
-                        disabled={isLoading}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Selected Tags:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 hover:text-red-600"
+                          disabled={isLoading}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

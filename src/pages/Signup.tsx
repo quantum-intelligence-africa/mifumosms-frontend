@@ -386,7 +386,7 @@ const Signup = () => {
                 Mifumo SMS
               </span>
             </Link>
-            
+
             {/* Hamburger Menu Button */}
             <button
               className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
@@ -399,8 +399,8 @@ const Signup = () => {
         </header>
 
         {/* Mobile Menu */}
-        <MobileMenu 
-          isOpen={isMobileMenuOpen} 
+        <MobileMenu
+          isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
         />
 
@@ -500,7 +500,7 @@ const Signup = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="relative">
+                <div className="relative hidden">
                   <Input
                     placeholder="Company"
                     value={formData.company}
@@ -847,7 +847,7 @@ const Signup = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 hidden">
                   <Label htmlFor="company" className="text-xs font-medium text-gray-700">Company name</Label>
                   <Input
                     id="company"

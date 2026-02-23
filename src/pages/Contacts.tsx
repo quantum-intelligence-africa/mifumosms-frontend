@@ -139,6 +139,7 @@ company: "",
 department: ""
 } as Record<string, unknown>
 });
+const [newTag, setNewTag] = useState("");
 
 // Contact action handlers
 const handleSendMessage = (contact: Contact) => {
@@ -155,6 +156,7 @@ email: contact.email || "",
 tags: contact.tags || [],
 attributes: contact.attributes || {}
 });
+setNewTag("");
 setIsCreateDialogOpen(true);
 };
 
@@ -447,6 +449,30 @@ attributes: {
 }));
 };
 
+const handleAddCustomTag = () => {
+if (newTag.trim() && !createFormData.tags.includes(newTag.trim())) {
+setCreateFormData(prev => ({
+...prev,
+tags: [...prev.tags, newTag.trim()]
+}));
+setNewTag("");
+}
+};
+
+const handleRemoveCustomTag = (tagToRemove: string) => {
+setCreateFormData(prev => ({
+...prev,
+tags: prev.tags.filter(tag => tag !== tagToRemove)
+}));
+};
+
+const handleKeyPressForCustomTag = (e: React.KeyboardEvent) => {
+if (e.key === 'Enter') {
+e.preventDefault();
+handleAddCustomTag();
+}
+};
+
 const handleCreateContact = async () => {
 if (!createFormData.name || !createFormData.phone_e164) return;
 
@@ -485,6 +511,7 @@ company: "",
 department: ""
 } as Record<string, unknown>
 });
+setNewTag("");
 setSelectedContact(null);
 toast({
 title: "Contact created",
@@ -1443,10 +1470,12 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
 </div>
 
 {/* Tags Section */}
-<div className="space-y-1">
+<div className="space-y-2">
 <h4 className="text-xs sm:text-sm font-medium text-foreground">Tags</h4>
-<div className="space-y-1">
-<Label className="text-xs">Select Tags</Label>
+<div className="space-y-2">
+{/* Predefined Tags - Hidden */}
+<div className="hidden">
+<Label className="text-xs">Quick Select:</Label>
 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
 {predefinedTags.map((tag) => (
 <div key={tag} className="flex items-center space-x-1">
@@ -1465,11 +1494,46 @@ className="text-xs font-normal cursor-pointer"
 </div>
 ))}
 </div>
+</div>
+
+{/* Custom Tag Input */}
+<div>
+<Label className="text-xs font-medium"> Enter Tags Names:</Label>
+<div className="flex gap-1 mt-1">
+<Input
+type="text"
+placeholder="Type tag name"
+value={newTag}
+onChange={(e) => setNewTag(e.target.value)}
+onKeyPress={handleKeyPressForCustomTag}
+className="glass-subtle border-0 text-xs h-7"
+/>
+<Button
+type="button"
+variant="outline"
+size="sm"
+onClick={handleAddCustomTag}
+disabled={!newTag.trim()}
+className="h-7 px-2 text-xs"
+>
+<Plus className="w-3 h-3" />
+</Button>
+</div>
+</div>
+
+{/* Selected Tags */}
 {createFormData.tags.length > 0 && (
-<div className="flex flex-wrap gap-1 mt-1">
+<div className="flex flex-wrap gap-1 mt-2">
 {createFormData.tags.map((tag) => (
-<Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
+<Badge key={tag} variant="secondary" className="text-xs px-1 py-0 flex items-center gap-1">
 {tag}
+<button
+type="button"
+onClick={() => handleRemoveCustomTag(tag)}
+className="ml-0.5 hover:text-red-600"
+>
+<X className="w-2.5 h-2.5" />
+</button>
 </Badge>
 ))}
 </div>
@@ -1494,7 +1558,10 @@ selectedContact ? "Update Contact" : "Add Contact"
                 </Button>
 <Button
 variant="outline"
-onClick={() => setIsCreateDialogOpen(false)}
+onClick={() => {
+setIsCreateDialogOpen(false);
+setNewTag("");
+}}
 className="flex-1 h-8 text-xs sm:text-sm"
 >
 Cancel

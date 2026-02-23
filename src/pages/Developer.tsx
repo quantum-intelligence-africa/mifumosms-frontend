@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Code,
   Zap,
@@ -16,14 +17,15 @@ import {
   Server,
   Target,
   Clock,
-  Menu,
-  X
+  Menu
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
-import MobileMenu from "@/components/layout/MobileMenu";
-
+import { Link } from "react-router-dom";
+import { LanguageToggle } from "../components/LanguageToggle";
+import { LanguageContext } from "../contexts/LanguageContext";
+import MobileMenu from "../components/layout/MobileMenu";
 const Developer = () => {
+  const context = useContext(LanguageContext);
+  const { language, t } = context || { language: 'en', t: (s: string) => s };
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -107,33 +109,34 @@ const Developer = () => {
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Features
+              {language === 'sw' ? 'Vipengele' : 'Features'}
             </Link>
             <Link to="/#pricing" className={`transition-colors duration-300 flex items-center gap-2 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Pricing
+              {language === 'sw' ? 'Bei' : 'Pricing'}
             </Link>
             <Link to="/developer" className={`transition-colors duration-300 ${
               isScrolled
                 ? 'text-gray-900 hover:text-gray-700'
                 : 'text-white hover:text-gray-200'
             }`}>
-              Developer
+              {language === 'sw' ? 'Developa' : 'Developer'}
             </Link>
           </div>
 
           {/* Action Buttons */}
-          <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
+          <div className="hidden lg:flex items-center gap-3 justify-end">
+              <LanguageToggle isDark={isScrolled} />
               <Link to="/login">
                 <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center ${
                   isScrolled
                     ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                     : 'border border-white text-white hover:bg-white hover:text-gray-900'
                 }`}>
-                  Login
+                  {language === 'sw' ? 'Ingia' : 'Login'}
                 </button>
               </Link>
               <Link to="/signup">
@@ -142,24 +145,27 @@ const Developer = () => {
                     ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                     : 'border border-white text-white hover:bg-blue-600 hover:text-white hover:border-blue-600'
                 }`}>
-                  Get started
+                  {language === 'sw' ? 'Jiunge' : 'Get started'}
                 </button>
               </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className={`lg:hidden relative p-2 cursor-pointer transition-colors duration-300 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-gray-700'
-                : 'text-white hover:text-gray-200'
-            }`}
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            aria-expanded={isMobileMenuOpen}
-            aria-label="Toggle mobile menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {/* Language Toggle and Mobile Menu Button (Mobile) */}
+          <div className="flex lg:hidden items-center gap-2">
+            <LanguageToggle isDark={isScrolled} />
+            <button
+              className={`relative p-2 cursor-pointer transition-colors duration-300 ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white hover:text-gray-200'
+              }`}
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Toggle mobile menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </section>
       </header>
 
@@ -182,19 +188,19 @@ const Developer = () => {
             <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
-                  Mifumo SMS API
+                  {language === 'sw' ? 'API ya Mifumo SMS' : 'Mifumo SMS API'}
                   <br />
-                  <span className="text-blue-200">Documentation</span>
+                  <span className="text-blue-200">{language === 'sw' ? 'Nyaraka' : 'Documentation'}</span>
                 </h1>
                 <p className="text-center text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl mx-auto leading-relaxed font-normal">
-                  Simplify your communication with the Mifumo SMS API. Our comprehensive documentation and developer guides provide everything you need to seamlessly integrate SMS services into your applications.
+                  {language === 'sw' ? 'Rahisisha mawasiliano yako kwa kutumia API ya Mifumo SMS. Nyaraka na mwongozo wa msanidi programu vinakupa kila kitu unachohitaji kuunganisha huduma za SMS kwenye programu zako.' : 'Simplify your communication with the Mifumo SMS API. Our comprehensive documentation and developer guides provide everything you need to seamlessly integrate SMS services into your applications.'}
                 </p>
               </div>
 
               <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center pt-2">
                 <a href="https://docs-sms.mifumolabs.com/" target="_blank" rel="noopener noreferrer">
                   <Button className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    Get started
+                    {language === 'sw' ? 'Anza' : 'Get started'}
                   </Button>
                 </a>
               </div>
@@ -209,10 +215,10 @@ const Developer = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Build powerful communication experiences
+              {language === 'sw' ? 'Jenga uzoefu wa mawasiliano wenye nguvu' : 'Build powerful communication experiences'}
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              with our comprehensive APIs, SDKs and developer tools.
+              {language === 'sw' ? 'kwa API zetu kamili, SDKs na zana za msanidi programu.' : 'with our comprehensive APIs, SDKs and developer tools.'}
             </p>
           </div>
 
@@ -224,9 +230,9 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 shadow-md">
                   <Server className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">High Availability</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Upatikanaji wa Juu' : 'High Availability'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Mifumo SMS API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.
+                  {language === 'sw' ? 'API ya Mifumo SMS imeundwa kuwa na upatikanaji wa juu na kupanuka. Inaboresha uaminifu wa programu zako kwa kutumia mifumo iliyosambazwa.' : 'Mifumo SMS API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.'}
                 </p>
                 <div className="mt-4 items-center text-blue-600 font-medium hidden">
                   <span>Learn more</span>
@@ -242,12 +248,12 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center mb-4 shadow-md">
                   <Target className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Focus on What Matters</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Lenga Kinachohusika' : 'Focus on What Matters'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Mifumo SMS API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.
+                  {language === 'sw' ? 'API ya Mifumo SMS inakuwezesha kuzingatia mantiki ya biashara yako kwa kutoa huduma ya arifa inayotegemewa na inayopanuka. Unahitaji tu kuunganisha na API yetu na tutashughulikia yote mengine.' : 'Mifumo SMS API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.'}
                 </p>
                 <div className="mt-4 items-center text-green-600 font-medium hidden">
-                  <span>Learn more</span>
+                  <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </CardContent>
@@ -260,12 +266,12 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center mb-4 shadow-md">
                   <CheckCircle className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Reliable Message Delivery</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Uwasilishaji wa Ujumbe wa Kuaminika' : 'Reliable Message Delivery'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Mifumo SMS API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.
+                  {language === 'sw' ? 'API ya Mifumo SMS inahakikisha ujumbe wako unawafikia watumiaji wako kwa wakati. Tunatoa kumbukumbu na ripoti za kina ili kukusaidia kufuatilia hali ya ujumbe wako.' : 'Mifumo SMS API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.'}
                 </p>
                 <div className="mt-4 items-center text-purple-600 font-medium hidden">
-                  <span>Learn more</span>
+                  <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </CardContent>
@@ -279,36 +285,36 @@ const Developer = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Powerful SMS API Features
+              {language === 'sw' ? 'Vipengele vya API ya SMS' : 'Powerful SMS API Features'}
             </h2>
             <p className="text-lg text-gray-600">
-              Everything you need to integrate SMS functionality into your applications
+              {language === 'sw' ? 'Kila kitu unachohitaji kuunganisha SMS kwenye programu zako' : 'Everything you need to integrate SMS functionality into your applications'}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Send className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Send SMS</h3>
-              <p className="text-sm text-gray-600">Send SMS messages to individuals or groups</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Tuma SMS' : 'Send SMS'}</h3>
+              <p className="text-sm text-gray-600">{language === 'sw' ? 'Tuma ujumbe wa SMS kwa watu binafsi au makundi' : 'Send SMS messages to individuals or groups'}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Users className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Contact Management</h3>
-              <p className="text-sm text-gray-600">Manage contacts and groups efficiently</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Usimamizi wa Mawasiliano' : 'Contact Management'}</h3>
+              <p className="text-sm text-gray-600">{language === 'sw' ? 'Simamia mawasiliano na makundi kwa ufanisi' : 'Manage contacts and groups efficiently'}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Analytics</h3>
-              <p className="text-sm text-gray-600">Track delivery rates and campaign performance</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Takwimu' : 'Analytics'}</h3>
+              <p className="text-sm text-gray-600">{language === 'sw' ? 'Fuatilia viwango vya uwasilishaji na utendaji wa kampeni' : 'Track delivery rates and campaign performance'}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Globe className="w-8 h-8 text-orange-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Multi-language</h3>
-              <p className="text-sm text-gray-600">Support for multiple languages and regions</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Lugha Nyingi' : 'Multi-language'}</h3>
+              <p className="text-sm text-gray-600">{language === 'sw' ? 'Msaada kwa lugha na kanda mbalimbali' : 'Support for multiple languages and regions'}</p>
             </div>
           </div>
         </div>
@@ -342,15 +348,15 @@ const Developer = () => {
 
             {/* Nav */}
             <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <Link to="/?scroll=about" className="hover:underline hover:text-white">About</Link>
-              <Link to="/?scroll=features" className="hover:underline hover:text-white">Features</Link>
-              <Link to="/?scroll=pricing" className="hover:underline hover:text-white">Pricing</Link>
-              <a href="#developer-hero" className="text-blue-200 hover:underline hover:text-white">Developer</a>
+              <Link to="/?scroll=about" className="hover:underline hover:text-white">{language === 'sw' ? 'Kuhusu' : 'About'}</Link>
+              <Link to="/?scroll=features" className="hover:underline hover:text-white">{language === 'sw' ? 'Vipengele' : 'Features'}</Link>
+              <Link to="/?scroll=pricing" className="hover:underline hover:text-white">{language === 'sw' ? 'Bei' : 'Pricing'}</Link>
+              <a href="#developer-hero" className="text-blue-200 hover:underline hover:text-white">{language === 'sw' ? 'Developa' : 'Developer'}</a>
             </nav>
 
             {/* Contact */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-white/90">+255 615 229 007</span>
+              <span className="text-xs sm:text-sm text-white/90">{language === 'sw' ? 'Wasiliana nasi:' : 'Contact us:'} +255 615 229 007</span>
               <a
                 href="https://wa.me/255615229007"
                 target="_blank"
@@ -363,7 +369,7 @@ const Developer = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
           </div>
         </div>
       </footer>
