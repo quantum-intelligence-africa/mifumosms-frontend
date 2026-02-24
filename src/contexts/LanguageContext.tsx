@@ -489,7 +489,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (stored === "sw" || stored === "en") {
       return stored;
     }
-    return "en";
+    // Default to Kiswahili if no preference
+    return "sw";
   });
 
   const setLanguage = (nextLanguage: LanguageCode) => {

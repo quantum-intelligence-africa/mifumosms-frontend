@@ -500,8 +500,9 @@ const Signup = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="relative hidden">
+                <div className="relative">
                   <Input
+                    name="company"
                     placeholder="Company"
                     value={formData.company}
                     onChange={(e) => handleInputChange("company", e.target.value)}
@@ -847,7 +848,7 @@ const Signup = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1 hidden">
+                <div className="space-y-1">
                   <Label htmlFor="company" className="text-xs font-medium text-gray-700">Company name</Label>
                   <Input
                     id="company"
