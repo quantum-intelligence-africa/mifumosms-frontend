@@ -1756,7 +1756,11 @@ const SenderNames = () => {
                       onChange={(e) => setSampleContent(e.target.value)}
                       className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
                       rows={3}
+                      maxLength={1500}
                     />
+                    <p className="text-[10px] text-text-subtle">
+                      {sampleContent.length}/1500 characters
+                    </p>
                   </div>
 
                   <div className="space-y-1 hidden">

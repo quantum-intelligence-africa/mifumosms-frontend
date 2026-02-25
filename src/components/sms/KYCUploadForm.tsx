@@ -118,13 +118,13 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             placeholder="Example: 'Hello! This is a test message from MyBrand.'"
             value={sampleContent}
             onChange={(e) => setSampleContent(e.target.value)}
-            maxLength={300}
+            maxLength={1500}
             rows={3}
             className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm placeholder-text-subtle resize-none glass-subtle border-0"
             disabled={isLoading || isSubmitting}
           />
           <p className="text-xs text-text-subtle">
-            {sampleContent.length}/300 characters
+            {sampleContent.length}/1500 characters
           </p>
         </div>
 
