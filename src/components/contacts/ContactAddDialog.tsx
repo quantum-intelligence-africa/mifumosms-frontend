@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, User, Phone, Mail, Tag } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
+import { useToast } from '@/hooks/use-toast';
 import { normalizePhoneNumber } from '@/utils/phoneUtils';
 
 interface ContactAddDialogProps {
@@ -43,6 +44,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { createContact } = useContacts();
+  const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
     // For name field, allow any case - no restrictions
@@ -116,6 +118,11 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
       }
     }
 
+    if (formData.tags.length === 0) {
+      newErrors.tags = 'At least one tag is required';
+    } else if (formData.newTag.trim()) {
+      newErrors.tags = 'Press + to add the tag or clear the input.';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -156,6 +163,14 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
         tags: tagsToSend
       });
 
+      // Show success notification with tags
+      const tagsList = tagsToSend.length > 0 ? tagsToSend.join(', ') : 'No tags';
+      toast({
+        title: 'Contact Added Successfully',
+        description: `${formData.name} has been added. Tags: ${tagsList}`,
+        variant: 'default'
+      });
+
       // Reset form
       setFormData({
         name: '',
@@ -188,6 +203,16 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
     setErrors({});
     setIsOpen(false);
   };
+
+  // Determine if the Add Contact button should be disabled
+  const isAddContactDisabled =
+    isLoading ||
+    !formData.name.trim() ||
+    !formData.phone.trim() ||
+    (formData.email && formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) ||
+    formData.tags.length === 0 ||
+    !!formData.newTag.trim() ||
+    (formData.phone.trim() && !normalizePhoneNumber(formData.phone).isValid);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -270,7 +295,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
           {/* Tags Field */}
           <div className="space-y-2">
-            <Label>Tags (Optional)</Label>
+            <Label htmlFor="tags">Tags *</Label>
             <div className="space-y-3">
               {/* Preset Tags - Hidden */}
               <div className="hidden">
@@ -296,7 +321,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
               {/* Custom Tag Input */}
               <div>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Tags Names:</p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">Tags Names: <span className="text-red-600">*</span></p>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
@@ -307,6 +332,8 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
                       onKeyPress={handleKeyPress}
                       className="pl-10"
                       disabled={isLoading}
+                      aria-required="true"
+                      required={formData.tags.length === 0}
                     />
                   </div>
                   <Button
@@ -322,26 +349,27 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
               </div>
 
               {/* Display All Selected Tags */}
-              {formData.tags.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Selected Tags:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="ml-1 hover:text-red-600"
-                          disabled={isLoading}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Selected Tags:</p>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-red-600"
+                        disabled={isLoading}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
-              )}
+                {errors.tags && (
+                  <p className="text-sm text-red-600 mt-1">{errors.tags}</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -357,8 +385,12 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
-              className="bg-primary hover:bg-primary-dark"
+              disabled={isAddContactDisabled}
+              className={
+                isAddContactDisabled
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed border border-gray-300'
+                  : 'bg-primary hover:bg-primary-dark text-white'
+              }
             >
               {isLoading ? 'Adding...' : 'Add Contact'}
             </Button>

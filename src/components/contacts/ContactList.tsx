@@ -338,14 +338,16 @@ export function ContactList({
               <div>
                 <Label>Attributes</Label>
                 <div className="mt-2">
-                  {Object.keys(selectedContact.attributes).length > 0 ? (
+                  {Object.keys(selectedContact.attributes).filter(key => !key.toLowerCase().includes('opt')).length > 0 ? (
                     <div className="space-y-2">
-                      {Object.entries(selectedContact.attributes).map(([key, value]) => (
-                        <div key={key} className="flex justify-between text-sm">
-                          <span className="text-text-subtle">{key}:</span>
-                          <span className="font-medium">{String(value)}</span>
-                        </div>
-                      ))}
+                      {Object.entries(selectedContact.attributes)
+                        .filter(([key]) => !key.toLowerCase().includes('opt'))
+                        .map(([key, value]) => (
+                          <div key={key} className="flex justify-between text-sm">
+                            <span className="text-text-subtle">{key}:</span>
+                            <span className="font-medium">{String(value)}</span>
+                          </div>
+                        ))}
                     </div>
                   ) : (
                     <span className="text-text-subtle text-sm">No attributes</span>

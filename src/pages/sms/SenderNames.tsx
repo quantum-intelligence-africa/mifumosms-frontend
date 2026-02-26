@@ -1693,7 +1693,7 @@ const SenderNames = () => {
                 <DialogHeader className="pb-2 sm:pb-2.5">
                   <DialogTitle className="text-sm sm:text-base md:text-lg">Request New Sender Name</DialogTitle>
                   <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    We charge 12,000Tsh for registration of Sender ID, which includes 500 SMS credits.
+                    We charge 12,000Tsh for registration of Sender ID, which includes 300 SMS credits.
                   </DialogDescription>
                 </DialogHeader>
 

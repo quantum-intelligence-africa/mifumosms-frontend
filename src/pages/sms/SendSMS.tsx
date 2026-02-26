@@ -64,6 +64,7 @@ const SendSMS = () => {
   const [message, setMessage] = useState("");
   const [selectedSender, setSelectedSender] = useState("");
   const [selectedSegment, setSelectedSegment] = useState("");
+  const [selectedTagGroup, setSelectedTagGroup] = useState("");
   const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
   const [scheduledDate, setScheduledDate] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,7 +103,7 @@ const SendSMS = () => {
 
   // Load real-time contact segment counts
   const { segmentCounts, isLoading: segmentCountsLoading, refreshSegmentCounts } = useContactSegments();
-  const { fetchContacts } = useContacts();
+  const { contacts, fetchContacts } = useContacts();
 
   // Load purchase history to get unit pricing for cost calculation
   const { purchases, isLoading: billingLoading, error: billingError, fetchPurchaseHistory } = usePurchaseHistory();
@@ -178,62 +179,44 @@ const SendSMS = () => {
     return finalResult;
   }, [senderNames]);
 
-  const segments: Segment[] = useMemo(() => [
-    { id: "1", name: "VIP Customers", contact_count: segmentCounts.vipContacts },
-    { id: "2", name: "All Contacts", contact_count: segmentCounts.allContacts },
-    { id: "3", name: "Active Users", contact_count: segmentCounts.activeContacts },
-  ], [segmentCounts]);
+  // Build unique tag names for group dropdown
+  const uniqueTagNames = useMemo(() => {
+    const tagSet = new Set<string>();
+    contacts.forEach(contact => {
+      (contact.tags || []).forEach(tag => {
+        const tagLower = tag.trim().toLowerCase();
+        if (tagLower) tagSet.add(tagLower);
+      });
+    });
+    return Array.from(tagSet).sort();
+  }, [contacts]);
 
-  // Function to fetch contacts by segment with abort signal
-  const fetchContactsBySegment = useCallback(async (segmentId: string, abortSignal?: AbortSignal) => {
+  // Function to fetch contacts by group or tag
+  const fetchContactsByGroup = useCallback(async (groupId: string, abortSignal?: AbortSignal) => {
     if (!isMountedRef.current) return;
     setIsLoadingSegmentContacts(true);
     try {
-      // Fetch all contacts first, then filter on frontend
-      // (Backend may not support advanced filtering yet)
-      const response = await apiClient.getContacts();
-
-      if (!isMountedRef.current) return;
-      if (abortSignal?.aborted) return;
-
-      if (!response.success || !response.data) {
-        throw new Error('Failed to fetch contacts');
+      let filteredContacts: Contact[] = [];
+      if (groupId === "all") {
+        filteredContacts = contacts;
+      } else if (groupId === "choose-group" && selectedTagGroup) {
+        filteredContacts = contacts.filter(contact =>
+          (contact.tags || []).map(t => t.trim().toLowerCase()).includes(selectedTagGroup)
+        );
+      } else {
+        filteredContacts = contacts;
       }
-
-      const allContacts = response.data.results || [];
-      let filteredContacts = [];
-
-      switch (segmentId) {
-        case "1": // VIP Customers
-          filteredContacts = allContacts.filter(contact =>
-            contact.tags && contact.tags.includes('vip')
-          );
-          logger.debug(`VIP contacts filtered: ${filteredContacts.length}`);
-          break;
-        case "2": // All Contacts
-          filteredContacts = allContacts;
-          break;
-        case "3": // Active Users
-          filteredContacts = allContacts.filter(contact =>
-            contact.is_active === true
-          );
-          break;
-        default:
-          filteredContacts = allContacts;
-      }
-
       if (isMountedRef.current) {
         setSegmentContacts(filteredContacts);
-        logger.debug(`Segment ${segmentId} contacts loaded: ${filteredContacts.length}`);
+        logger.debug(`Group ${groupId} contacts loaded: ${filteredContacts.length}`);
       }
-
     } catch (error) {
       if (isMountedRef.current && !abortSignal?.aborted) {
-        logger.error('Error fetching segment contacts');
+        logger.error('Error filtering group contacts');
         setSegmentContacts([]);
         toast({
           title: "Error loading contacts",
-          description: "Failed to fetch contacts for the selected segment",
+          description: "Failed to filter contacts for the selected group",
           variant: "destructive"
         });
       }
@@ -242,7 +225,7 @@ const SendSMS = () => {
         setIsLoadingSegmentContacts(false);
       }
     }
-  }, [toast]);
+  }, [contacts, toast, selectedTagGroup]);
 
   // Get cost per SMS from purchase history - fetch from completed purchases
   const costPerSMS = useMemo(() => {
@@ -292,12 +275,12 @@ const SendSMS = () => {
   useEffect(() => {
     const abortController = new AbortController();
     if (selectedMode === "segment" && selectedSegment && isMountedRef.current) {
-      fetchContactsBySegment(selectedSegment, abortController.signal);
+      fetchContactsByGroup(selectedSegment, abortController.signal);
     }
     return () => {
       abortController.abort();
     };
-  }, [selectedMode, selectedSegment, fetchContactsBySegment]);
+  }, [selectedMode, selectedSegment, fetchContactsByGroup]);
 
   const location = useLocation();
 
@@ -1027,33 +1010,43 @@ const SendSMS = () => {
                   {selectedMode === "segment" && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                      <Label className="text-xs sm:text-sm font-medium">{language === "sw" ? "Segment" : "Segment"}</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={refreshSegmentCounts}
-                          disabled={segmentCountsLoading}
-                          className="h-8 px-2"
-                        >
-                          <RefreshCw className={`w-4 h-4 ${segmentCountsLoading ? 'animate-spin' : ''}`} />
-                        </Button>
+                        <Label className="text-xs sm:text-sm font-medium">{language === "sw" ? "Kundi" : "Group"}</Label>
                       </div>
-                      <Select value={selectedSegment} onValueChange={setSelectedSegment}>
+                      <Select value={selectedSegment} onValueChange={value => { setSelectedSegment(value); setSelectedTagGroup(""); }}>
                         <SelectTrigger className="glass-subtle border-0">
-                          <SelectValue placeholder={language === "sw" ? "Chagua sehemu ya wasilianaji" : "Choose a contact segment"} />
+                          <SelectValue placeholder={language === "sw" ? "Chagua kundi la wasilianaji" : "Choose contact Group"} />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          {segments.map((segment) => (
-                            <SelectItem key={segment.id} value={segment.id}>
-                              {segment.name} ({segment.contact_count} contacts)
-                            </SelectItem>
-                          ))}
+                          <SelectItem key="all" value="all">
+                            {language === "sw" ? "Wote" : "All Contacts"}
+                          </SelectItem>
+                          <SelectItem key="choose-group" value="choose-group">
+                            {language === "sw" ? "Chagua Kundi" : "Choose Group Name"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
-                      {segmentCountsLoading && (
-                        <p className="text-sm text-muted-foreground">{language === "sw" ? "Inapakia idadi ya wasilianaji..." : "Loading contact counts..."}</p>
+                      {/* If 'Choose Group Name' is selected, show a secondary dropdown for tags */}
+                      {selectedSegment === 'choose-group' && (
+                        <div className="mt-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {uniqueTagNames.map((tag) => {
+                              const formatted = tag.charAt(0).toUpperCase() + tag.slice(1).replace(/_/g, ' ');
+                              const isSelected = selectedTagGroup === tag;
+                              return (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none ${isSelected ? 'bg-primary text-white border-primary' : 'bg-muted text-foreground border-border hover:bg-primary/10'}`}
+                                  onClick={() => setSelectedTagGroup(tag)}
+                                >
+                                  {formatted}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       )}
-                      {selectedSegment && (
+                      {(selectedSegment === 'all' || (selectedSegment === 'choose-group' && selectedTagGroup)) && (
                         <div className="space-y-2">
                           {isLoadingSegmentContacts ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">

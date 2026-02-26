@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -140,6 +140,7 @@ department: ""
 } as Record<string, unknown>
 });
 const [newTag, setNewTag] = useState("");
+const tagInputRef = useRef<HTMLInputElement>(null);
 
 // Contact action handlers
 const handleSendMessage = (contact: Contact) => {
@@ -450,13 +451,16 @@ attributes: {
 };
 
 const handleAddCustomTag = () => {
-if (newTag.trim() && !createFormData.tags.includes(newTag.trim())) {
-setCreateFormData(prev => ({
-...prev,
-tags: [...prev.tags, newTag.trim()]
-}));
-setNewTag("");
-}
+  if (newTag.trim() && !createFormData.tags.includes(newTag.trim())) {
+    setCreateFormData(prev => ({
+      ...prev,
+      tags: [...prev.tags, newTag.trim()]
+    }));
+    setNewTag("");
+    setTimeout(() => {
+      if (tagInputRef && tagInputRef.current) tagInputRef.current.focus();
+    }, 0);
+  }
 };
 
 const handleRemoveCustomTag = (tagToRemove: string) => {
@@ -467,10 +471,10 @@ tags: prev.tags.filter(tag => tag !== tagToRemove)
 };
 
 const handleKeyPressForCustomTag = (e: React.KeyboardEvent) => {
-if (e.key === 'Enter') {
-e.preventDefault();
-handleAddCustomTag();
-}
+  if (e.key === 'Enter' && newTag.trim()) {
+    e.preventDefault();
+    handleAddCustomTag();
+  }
 };
 
 const handleCreateContact = async () => {
@@ -1420,9 +1424,7 @@ value={createFormData.phone_e164}
   }}
 className="glass-subtle border-0 text-xs sm:text-sm h-8"
 />
-<p className="text-xs text-text-subtle">
-Enter Tanzanian number (06XX or 07XX) or international format (+255...)
-</p>
+
 {createFormData.phone_e164 && createFormData.phone_e164.startsWith('+255') && (
 <p className="text-xs text-green-600">
 ✓ Will be saved as: {createFormData.phone_e164}
@@ -1470,102 +1472,88 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
 </div>
 
 {/* Tags Section */}
-<div className="space-y-2">
-<h4 className="text-xs sm:text-sm font-medium text-foreground">Tags</h4>
-<div className="space-y-2">
-{/* Predefined Tags - Hidden */}
-<div className="hidden">
-<Label className="text-xs">Quick Select:</Label>
-<div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-{predefinedTags.map((tag) => (
-<div key={tag} className="flex items-center space-x-1">
-<Checkbox
-id={`tag-${tag}`}
-checked={createFormData.tags.includes(tag)}
-onCheckedChange={() => handleTagToggle(tag)}
-className="h-3 w-3"
-/>
-<Label
-htmlFor={`tag-${tag}`}
-className="text-xs font-normal cursor-pointer"
->
-{tag}
-</Label>
-</div>
-))}
-</div>
-</div>
 
-{/* Custom Tag Input */}
-<div>
-<Label className="text-xs font-medium"> Enter Tags Names:</Label>
-<div className="flex gap-1 mt-1">
-<Input
-type="text"
-placeholder="Type tag name"
-value={newTag}
-onChange={(e) => setNewTag(e.target.value)}
-onKeyPress={handleKeyPressForCustomTag}
-className="glass-subtle border-0 text-xs h-7"
-/>
-<Button
-type="button"
-variant="outline"
-size="sm"
-onClick={handleAddCustomTag}
-disabled={!newTag.trim()}
-className="h-7 px-2 text-xs"
->
-<Plus className="w-3 h-3" />
-</Button>
-</div>
-</div>
-
-{/* Selected Tags */}
-{createFormData.tags.length > 0 && (
-<div className="flex flex-wrap gap-1 mt-2">
-{createFormData.tags.map((tag) => (
-<Badge key={tag} variant="secondary" className="text-xs px-1 py-0 flex items-center gap-1">
-{tag}
-<button
-type="button"
-onClick={() => handleRemoveCustomTag(tag)}
-className="ml-0.5 hover:text-red-600"
->
-<X className="w-2.5 h-2.5" />
-</button>
-</Badge>
-))}
-</div>
-)}
-</div>
+<div className="space-y-2">
+  <Label className="text-xs font-medium">
+    Enter Tags Names: <span className="text-red-600">*</span>
+  </Label>
+  <div className="flex gap-1 mt-1">
+    <Input
+      type="text"
+      placeholder="Type tag name and press Enter or Add"
+      value={newTag}
+      onChange={(e) => setNewTag(e.target.value)}
+      onKeyDown={handleKeyPressForCustomTag}
+      className="glass-subtle border-0 text-xs h-7"
+      aria-required="true"
+      required={createFormData.tags.length === 0}
+      ref={tagInputRef}
+      autoComplete="off"
+    />
+    <Button
+      type="button"
+      variant="default"
+      size="sm"
+      onClick={() => {
+        handleAddCustomTag();
+        setTimeout(() => {
+          if (tagInputRef && tagInputRef.current) tagInputRef.current.focus();
+        }, 0);
+      }}
+      disabled={!newTag.trim()}
+      className="h-7 px-4 text-xs font-semibold"
+      tabIndex={0}
+      aria-label="Add tag"
+    >
+      Add
+    </Button>
+  </div>
+  {createFormData.tags.length === 0 && (
+    <p className="text-xs text-red-600 mt-1">At least one tag is required.</p>
+  )}
+  {createFormData.tags.length > 0 && (
+    <div className="flex flex-wrap gap-1 mt-2">
+      {createFormData.tags.map((tag) => (
+        <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 flex items-center gap-1">
+          {tag}
+          <button
+            type="button"
+            onClick={() => handleRemoveCustomTag(tag)}
+            className="ml-0.5 hover:text-red-600"
+          >
+            <X className="w-2.5 h-2.5" />
+          </button>
+        </Badge>
+      ))}
+    </div>
+  )}
 </div>
 
 <div className="flex gap-1 pt-1">
-                <Button
-onClick={handleCreateContact}
-disabled={!createFormData.name || !createFormData.phone_e164 || isCreating}
-className="flex-1 h-8 text-xs sm:text-sm"
->
-{isCreating ? (
-<>
-<Loader2 className="w-3 h-3 mr-1 animate-spin" />
-{selectedContact ? 'Updating...' : 'Creating...'}
-</>
-) : (
-selectedContact ? "Update Contact" : "Add Contact"
-)}
-                </Button>
-<Button
-variant="outline"
-onClick={() => {
-setIsCreateDialogOpen(false);
-setNewTag("");
-}}
-className="flex-1 h-8 text-xs sm:text-sm"
->
-Cancel
-</Button>
+  <Button
+    onClick={handleCreateContact}
+    disabled={!createFormData.name || !createFormData.phone_e164 || createFormData.tags.length === 0 || isCreating}
+    className="flex-1 h-8 text-xs sm:text-sm"
+  >
+    {isCreating ? (
+      <>
+        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+        {selectedContact ? 'Updating...' : 'Creating...'}
+      </>
+    ) : (
+      selectedContact ? "Update Contact" : "Add Contact"
+    )}
+  </Button>
+  <Button
+    variant="outline"
+    onClick={() => {
+      setIsCreateDialogOpen(false);
+      setNewTag("");
+    }}
+    className="flex-1 h-8 text-xs sm:text-sm"
+  >
+    Cancel
+  </Button>
 </div>
 </div>
 </DialogContent>
@@ -1999,28 +1987,27 @@ Delete Contact
     }`}
   >
 <div className="p-6 border-b border-border-subtle">
+
 <div className="flex items-center justify-between mb-4">
-<h3 className="font-heading text-lg font-semibold">Contact Details</h3>
-<Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
-<X className="w-4 h-4" />
-</Button>
+  <h3 className="font-heading text-lg font-semibold">Contact Details</h3>
+  <Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
+    <X className="w-4 h-4" />
+  </Button>
 </div>
 
 <div className="text-center mb-6">
-<Avatar className="w-16 h-16 mx-auto mb-3">
-<AvatarFallback className="bg-primary/10 text-primary text-lg">
-{selectedContact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
-</AvatarFallback>
-</Avatar>
-<h4 className="font-semibold text-foreground mb-1">{selectedContact.name}</h4>
-<div className="flex items-center justify-center gap-2 mb-2">
-<Badge variant={selectedContact.is_active ? "default" : "secondary"}>
-{selectedContact.is_active ? "Active" : "Inactive"}
-</Badge>
-<Badge variant={selectedContact.is_opted_in ? "default" : "outline"}>
-{selectedContact.is_opted_in ? "Opted In" : "Not Opted In"}
-</Badge>
-</div>
+  <Avatar className="w-16 h-16 mx-auto mb-3">
+    <AvatarFallback className="bg-primary/10 text-primary text-lg">
+      {selectedContact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+    </AvatarFallback>
+  </Avatar>
+  <h4 className="font-semibold text-foreground mb-1">{selectedContact.name}</h4>
+  <div className="flex items-center justify-center gap-2 mb-2">
+    <Badge variant={selectedContact.is_active ? "default" : "secondary"}>
+      {selectedContact.is_active ? "Active" : "Inactive"}
+    </Badge>
+    {/* Removed Opted In/Not Opted In badge */}
+  </div>
 </div>
 
 <div className="space-y-4">
@@ -2037,18 +2024,20 @@ Delete Contact
 )}
 
 {/* Display attributes if they exist */}
-{selectedContact.attributes && Object.keys(selectedContact.attributes).length > 0 && (
-<div>
-<p className="text-sm text-text-subtle mb-1">Additional Information</p>
-<div className="space-y-1">
-{Object.entries(selectedContact.attributes).map(([key, value]) => (
-<div key={key} className="flex justify-between">
-<span className="text-sm text-text-subtle capitalize">{key}:</span>
-<span className="text-sm text-foreground">{String(value)}</span>
-</div>
-))}
-</div>
-</div>
+{selectedContact.attributes && Object.keys(selectedContact.attributes).filter(key => !['company', 'department'].includes(key.toLowerCase())).length > 0 && (
+  <div>
+    <p className="text-sm text-text-subtle mb-1">Additional Information</p>
+    <div className="space-y-1">
+      {Object.entries(selectedContact.attributes)
+        .filter(([key]) => !['company', 'department'].includes(key.toLowerCase()))
+        .map(([key, value]) => (
+          <div key={key} className="flex justify-between">
+            <span className="text-sm text-text-subtle capitalize">{key}:</span>
+            <span className="text-sm text-foreground">{String(value)}</span>
+          </div>
+        ))}
+    </div>
+  </div>
 )}
 
 <div>
@@ -2071,19 +2060,7 @@ selectedContact.tags.map((tag) => (
 <p className="text-foreground">{formatDate(selectedContact.created_at)}</p>
 </div>
 
-{selectedContact.opt_in_at && (
-<div>
-<p className="text-sm text-text-subtle mb-1">Opted In</p>
-<p className="text-foreground">{formatDate(selectedContact.opt_in_at)}</p>
-</div>
-)}
 
-{selectedContact.last_contacted_at && (
-<div>
-<p className="text-sm text-text-subtle mb-1">Last Contacted</p>
-<p className="text-foreground">{formatDate(selectedContact.last_contacted_at)}</p>
-</div>
-)}
 </div>
 
 <div className="flex gap-2 mt-6">
