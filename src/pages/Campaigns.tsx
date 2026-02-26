@@ -1128,8 +1128,12 @@ const Campaigns = () => {
                           onChange={(e) => handleFormChange('description', e.target.value)}
                           placeholder="Enter campaign description"
                           rows={2}
+                          maxLength={160}
                           className="text-xs sm:text-sm"
                         />
+                        <p className="text-[10px] text-text-subtle mt-1">
+                          {editForm.description.length}/160 characters
+                        </p>
                       </div>
                     </CardContent>
                   </Card>
@@ -1148,8 +1152,12 @@ const Campaigns = () => {
                           onChange={(e) => handleFormChange('message_text', e.target.value)}
                           placeholder="Enter your message content"
                           rows={4}
+                          maxLength={160}
                           className="text-xs sm:text-sm"
                         />
+                        <p className="text-[10px] text-text-subtle mt-1">
+                          {editForm.message_text.length}/160 characters
+                        </p>
                       </div>
                     </CardContent>
                   </Card>

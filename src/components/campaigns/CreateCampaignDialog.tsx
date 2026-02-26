@@ -5,6 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import {
   Dialog,
@@ -14,13 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useContacts } from '@/hooks/useContacts';
@@ -68,6 +68,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const showContactsEmptyState = !contactsLoading && contacts.length === 0;
 
   const handleInputChange = (field: string, value: any) => {
+    if (field === 'description' || field === 'message_text') {
+      value = typeof value === 'string' ? value.slice(0, 160) : value;
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -191,8 +195,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           {/* Step 1: Basic Information */}
           {step === 1 && (
             <div className="space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
+              <div className="grid w-full grid-cols-[1fr_auto] gap-3">
+                <div className="min-w-0 space-y-1">
                   <Label htmlFor="name" className="text-xs sm:text-sm">Campaign Name *</Label>
                   <Input
                     id="name"
@@ -203,22 +207,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="campaign_type" className="text-xs sm:text-sm">Campaign Type *</Label>
-                  <Select
-                    value={formData.campaign_type}
-                    onValueChange={(value) => handleInputChange('campaign_type', value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs sm:text-sm">
-                      <SelectValue placeholder="Select campaign type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-1 min-w-[140px]">
+                  <Label className="text-xs sm:text-sm">Campaign Type</Label>
+                  <div className="relative flex items-center justify-center rounded-[100px] border border-border-subtle bg-background/60 px-4 py-2 shadow-sm shadow-primary/10">
+                    <span className="pointer-events-none text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">
+                      SMS
+                    </span>
+                    <span className="absolute inset-0 rounded-[100px] border border-transparent bg-gradient-to-r from-primary/5 via-white/30 to-primary/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></span>
+                  </div>
                 </div>
               </div>
 
@@ -231,7 +227,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={2}
                   className="text-xs sm:text-sm"
+                  maxLength={160}
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.description.length}/160 characters
+                </p>
               </div>
 
               <div className="space-y-1">
@@ -243,9 +243,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   onChange={(e) => handleInputChange('message_text', e.target.value)}
                   rows={2}
                   className="text-xs sm:text-sm"
+                  maxLength={160}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {formData.message_text.length} characters
+                  {formData.message_text.length}/160 characters
                 </p>
               </div>
 

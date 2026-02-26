@@ -516,7 +516,7 @@ export interface SenderNameRequest {
   use_case: string;
   supporting_documents: string[];
   supporting_documents_count: number;
-  status: "pending" | "approved" | "rejected" | "requires_changes" | "verifying";
+  status: "pending" | "approved" | "rejected" | "requires_changes" | "verifying" | "awaiting_payment";
   admin_notes: string;
   reviewed_by: number | null;
   reviewed_by_name: string;
@@ -528,6 +528,9 @@ export interface SenderNameRequest {
   created_by: number;
   created_by_name: string;
   tenant?: string;
+  sender_request_id?: string;
+  sender_id_request?: { id?: string };
+  data?: SenderNameRequest;
 }
 
 // Unified Sender Names Response (from /api/messaging/sender-ids/)
@@ -870,6 +873,7 @@ export interface SenderRequestPaymentResponse {
   sender_id_request?: SenderNameRequest;
   payment?: SenderRequestPayment;
   message?: string;
+  data?: SenderRequestPaymentResponse;
 }
 
 // Legacy Billing Types (deprecated - use new comprehensive types above)

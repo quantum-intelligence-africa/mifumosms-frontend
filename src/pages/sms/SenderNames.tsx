@@ -70,6 +70,29 @@ interface PaymentData {
   kyc_documents?: File[];
 }
 
+const extractSenderRequestId = (payload?: SenderNameRequest): string | undefined => {
+  if (!payload) return undefined;
+
+  if (payload.data) {
+    const nestedId = extractSenderRequestId(payload.data);
+    if (nestedId) return nestedId;
+  }
+
+  if (payload.id) return payload.id;
+  if (payload.sender_request_id) return payload.sender_request_id;
+  if (payload.sender_id_request?.id) return payload.sender_id_request.id;
+
+  return undefined;
+};
+
+const flattenPaymentResponse = (payload?: SenderRequestPaymentResponse): SenderRequestPaymentResponse | undefined => {
+  if (!payload) return undefined;
+  if (payload.data && !payload.payment) {
+    return flattenPaymentResponse(payload.data);
+  }
+  return payload;
+};
+
 const SenderNames = () => {
   const location = useLocation();
 
@@ -652,25 +675,8 @@ const SenderNames = () => {
         return;
       }
 
-      // Extract sender request ID - handle nested data structure
-      // API returns: { success: true, data: { id: "...", ... } }
-      // handleResponse wraps it as: { success: true, data: { success: true, data: { id: "...", ... } } }
-      let senderRequestId = (createResponse.data as any)?.data?.id;
-
-      // Fallback: try direct access in case structure is different
-      if (!senderRequestId) {
-        senderRequestId = (createResponse.data as any)?.id;
-      }
-
-      if (!senderRequestId) {
-        // Try alternative field names
-        senderRequestId = (createResponse.data as any)?.sender_request_id;
-      }
-
-      if (!senderRequestId) {
-        // Try nested structure from old endpoint
-        senderRequestId = (createResponse.data as any)?.sender_id_request?.id;
-      }
+      // Extract sender request ID from any nested response wrappers
+      const senderRequestId = extractSenderRequestId(createResponse.data);
 
       if (!senderRequestId) {
         toast({
@@ -701,7 +707,6 @@ const SenderNames = () => {
           setPaymentProcessing(false);
           return;
         }
-      } else {
       }
 
       // STEP 3: Initiate Payment
@@ -713,16 +718,10 @@ const SenderNames = () => {
       if (!isMountedRef.current) return;
 
       if (paymentResponse.success && paymentResponse.data) {
-        // Handle nested data structure - could be from handleResponse wrapping
-        let paymentResponseData = paymentResponse.data as SenderRequestPaymentResponse;
-
-        // If the data has a nested 'data' property, unwrap it
-        if ((paymentResponseData as any)?.data && !(paymentResponseData as any)?.payment) {
-          paymentResponseData = (paymentResponseData as any).data as SenderRequestPaymentResponse;
-        }
+        const paymentResponseData = flattenPaymentResponse(paymentResponse.data);
 
         // The response should have payment object and either payment_required flag or payment exists
-        if (paymentResponseData.payment_required || paymentResponseData.payment) {
+        if (paymentResponseData && (paymentResponseData.payment_required || paymentResponseData.payment)) {
           const orderId = paymentResponseData.payment?.order_id;
           const amount = paymentResponseData.payment?.amount;
 
@@ -794,16 +793,10 @@ const SenderNames = () => {
       if (!isMountedRef.current) return;
 
       if (repayResponse.success && repayResponse.data) {
-        // Handle nested data structure
-        let repayResponseData = repayResponse.data as SenderRequestPaymentResponse;
-
-        // If the data has a nested 'data' property, unwrap it
-        if ((repayResponseData as any)?.data && !(repayResponseData as any)?.payment) {
-          repayResponseData = (repayResponseData as any).data as SenderRequestPaymentResponse;
-        }
+        const repayResponseData = flattenPaymentResponse(repayResponse.data);
 
         // The response should have payment object
-        if (repayResponseData.payment_required || repayResponseData.payment) {
+        if (repayResponseData && (repayResponseData.payment_required || repayResponseData.payment)) {
           const orderId = repayResponseData.payment?.order_id;
           const amount = repayResponseData.payment?.amount;
 
@@ -853,7 +846,7 @@ const SenderNames = () => {
     }
   };
 
-  const handleOpenRepayDialog = (sender: any) => {
+  const handleOpenRepayDialog = (sender: SenderNameRequest | UnifiedSenderName) => {
     setRepayRequestId(sender.id);
     setRepayPhoneNumber("");
     setShowRepayDialog(true);
@@ -1756,10 +1749,10 @@ const SenderNames = () => {
                       onChange={(e) => setSampleContent(e.target.value)}
                       className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
                       rows={3}
-                      maxLength={1500}
+                      maxLength={160}
                     />
                     <p className="text-[10px] text-text-subtle">
-                      {sampleContent.length}/1500 characters
+                      {sampleContent.length}/160 characters
                     </p>
                   </div>
 

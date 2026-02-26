@@ -123,6 +123,19 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // If there's a tag typed but not added, treat it as part of the submission
+    const pendingTag = formData.newTag.trim();
+    const shouldAddPendingTag = pendingTag && !formData.tags.includes(pendingTag);
+    const tagsToSend = shouldAddPendingTag ? [...formData.tags, pendingTag] : formData.tags;
+
+    if (shouldAddPendingTag) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, pendingTag],
+        newTag: ''
+      }));
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -140,7 +153,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
         name: formData.name.trim(),
         phone_e164: phoneInfo.normalized,
         email: formData.email.trim() || undefined,
-        tags: formData.tags
+        tags: tagsToSend
       });
 
       // Reset form
