@@ -1744,7 +1744,7 @@ const SenderNames = () => {
                   <div className="space-y-1">
                     <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
                     <Textarea
-                      placeholder="e.g., Ndugu Florence,&#10;&#10;Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.&#10;&#10;Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
+                      placeholder="e.g., Ndugu Florence,Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
                       value={sampleContent}
                       onChange={(e) => setSampleContent(e.target.value)}
                       className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
