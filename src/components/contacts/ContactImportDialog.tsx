@@ -12,6 +12,8 @@ import { Upload, FileText, Users, CheckCircle, AlertCircle, X, Smartphone } from
 import { useContacts } from '@/hooks/useContacts';
 import { useToast } from '@/hooks/use-toast';
 import { isContactPickerSupported, isMobileDevice } from '@/utils/mobileContactPicker';
+import { parseCSVFile } from '@/utils/csvParser';
+import { parseExcelFile } from '@/utils/excelParser';
 
 interface ContactImportDialogProps {
   children: React.ReactNode;
@@ -43,26 +45,41 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
   const { bulkImportContacts } = useContacts();
   const { toast } = useToast();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    if (!selectedFile) return;
+    setFile(selectedFile);
 
-      // Auto-detect file type
-      const extension = selectedFile.name.split('.').pop()?.toLowerCase();
-      if (extension === 'csv') {
-        setImportType('csv');
-      } else if (extension === 'xlsx' || extension === 'xls') {
-        setImportType('excel');
-      }
-
-      // Read file content
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setCsvData(content);
-      };
-      reader.readAsText(selectedFile);
+    // Auto-detect file type
+    const extension = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (extension === 'csv') {
+      setImportType('csv');
+      // Parse CSV and show preview/analysis
+      const result = await parseCSVFile(selectedFile);
+      setCsvData(''); // Optionally keep raw text if needed
+      setImportResult({
+        success: result.errors.length === 0,
+        imported: result.contacts.length,
+        updated: 0,
+        skipped: 0,
+        total_processed: result.contacts.length,
+        errors: result.errors,
+        message: result.warnings.join('\n')
+      });
+    } else if (extension === 'xlsx' || extension === 'xls') {
+      setImportType('excel');
+      // Parse Excel and show preview/analysis
+      const result = await parseExcelFile(selectedFile);
+      setCsvData('');
+      setImportResult({
+        success: result.errors.length === 0,
+        imported: result.contacts.length,
+        updated: 0,
+        skipped: 0,
+        total_processed: result.contacts.length,
+        errors: result.errors,
+        message: result.warnings.join('\n')
+      });
     }
   };
 
@@ -86,7 +103,6 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
       setImportResult(null);
 
       if (importType === 'mobile_contacts') {
-        // Mobile contacts import not yet implemented in hook
         toast({
           title: "Not Implemented",
           description: "Mobile contacts import is not yet available",
@@ -94,7 +110,6 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         });
         return;
       } else {
-        // Use bulk import for other types
         let importData: any = {
           import_type: importType,
           skip_duplicates: skipDuplicates,
@@ -102,16 +117,21 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         };
 
         if (importType === 'phone_contacts') {
-          // Filter out empty contacts
           const validContacts = phoneContacts.filter(contact =>
             contact.full_name.trim() && contact.phone.trim()
           );
-
           if (validContacts.length === 0) {
             throw new Error('Please add at least one contact');
           }
-
           importData.contacts = validContacts;
+        } else if (importType === 'csv' && file) {
+          // Parse CSV again for import
+          const result = await parseCSVFile(file);
+          importData.contacts = result.contacts;
+        } else if (importType === 'excel' && file) {
+          // Parse Excel again for import
+          const result = await parseExcelFile(file);
+          importData.contacts = result.contacts;
         } else {
           if (!csvData.trim()) {
             throw new Error('Please provide CSV data or upload a file');
@@ -136,6 +156,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
     setImportResult(null);
     setSkipDuplicates(true);
     setUpdateExisting(false);
+    setImportType('csv');
   };
 
   const handleClose = () => {

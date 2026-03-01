@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { parseCSVFile, generateSampleCSV, CSVContact, CSVParseResult } from '@/utils/csvParser';
+import { parseExcelFile } from '@/utils/excelParser';
 import { CreateContactRequest } from '@/lib/api';
 
 interface CSVImportDialogProps {
@@ -61,13 +62,10 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
 
     try {
       if (importType === 'excel') {
-        // For Excel files, we'll let the backend handle parsing
-        setParseResult({
-          contacts: [],
-          errors: [],
-          warnings: []
-        });
-        setSelectedContacts([]);
+        // For Excel files, parse locally like CSV
+        const result = await parseExcelFile(file);
+        setParseResult(result);
+        setSelectedContacts(result.contacts);
       } else {
         // For CSV files, parse locally
         const result = await parseCSVFile(file);
@@ -93,53 +91,31 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
   };
 
   const handleImport = async () => {
-    if (importType === 'excel' && !fileInputRef.current?.files?.[0]) return;
+    if (importType === 'excel' && selectedContacts.length === 0) return;
     if (importType === 'csv' && selectedContacts.length === 0) return;
 
     try {
       setImportProgress(0);
       setImportResult(null);
 
-      let importData: {
-        import_type: 'csv' | 'excel' | 'phone_contacts';
-        csv_data?: string;
-        file?: File;
-        contacts?: CreateContactRequest[];
-        skip_duplicates?: boolean;
-        update_existing?: boolean;
+      // Convert selected contacts to CreateContactRequest format
+      const contactsToImport: CreateContactRequest[] = selectedContacts.map(contact => ({
+        name: contact.name,
+        phone_e164: contact.phone,
+        email: contact.email,
+        tags: contact.tags || [],
+        attributes: {
+          company: contact.company || '',
+          department: contact.department || ''
+        }
+      }));
+
+      const importData = {
+        import_type: importType as 'csv' | 'excel',
+        contacts: contactsToImport,
+        skip_duplicates: skipDuplicates,
+        update_existing: updateExisting
       };
-
-      if (importType === 'excel') {
-        // Excel file import
-        const file = fileInputRef.current?.files?.[0];
-        if (!file) return;
-
-        importData = {
-          import_type: 'excel',
-          file: file,
-          skip_duplicates: skipDuplicates,
-          update_existing: updateExisting
-        };
-      } else {
-        // CSV data import
-        const contactsToImport: CreateContactRequest[] = selectedContacts.map(contact => ({
-          name: contact.name,
-          phone_e164: contact.phone,
-          email: contact.email,
-          tags: contact.tags || [],
-          attributes: {
-            company: contact.company || '',
-            department: contact.department || ''
-          }
-        }));
-
-        importData = {
-          import_type: 'csv',
-          contacts: contactsToImport,
-          skip_duplicates: skipDuplicates,
-          update_existing: updateExisting
-        };
-      }
 
       // Show loading state during import
       setImportProgress(50);
@@ -190,8 +166,21 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
     setSelectedContacts([]);
   };
 
+  // Reset form state when dialog closes
+  const handleDialogOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setParseResult(null);
+      setSelectedContacts([]);
+      setImportProgress(0);
+      setImportResult(null);
+      setImportType('csv');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-4 sm:p-6">
         <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg">
@@ -233,7 +222,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   Upload {importType === 'excel' ? 'Excel' : 'CSV'} File
                 </h3>
                 <p className="text-sm text-text-subtle mb-4">
-                  Select a file with name, phone, and email columns
+                  Select a file with a phone column (name and email are optional)
                 </p>
                 <input
                   ref={fileInputRef}
@@ -418,12 +407,12 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                 </Alert>
               )}
 
-              {/* Contact Selection - Only for CSV files */}
-              {importType === 'csv' && parseResult.contacts.length > 0 && (
+              {/* Contact Selection - For both CSV and Excel files */}
+              {parseResult.contacts.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2 sm:pb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <CardTitle className="text-xs sm:text-sm">Select Contacts to Import</CardTitle>
+                      <CardTitle className="text-xs sm:text-sm">Select Contacts to Import ({parseResult.contacts.length} found)</CardTitle>
                       <div className="flex gap-1 sm:gap-2">
                         <Button variant="outline" size="sm" onClick={selectAllContacts} className="text-xs px-2 sm:px-3">
                           Select All
@@ -474,30 +463,6 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                 </Card>
               )}
 
-              {/* Excel file ready for import */}
-              {importType === 'excel' && parseResult && (
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-blue-600" />
-                    <h3 className="text-lg font-semibold mb-2">Excel File Ready for Import</h3>
-                    <p className="text-sm text-text-subtle mb-4">
-                      Your Excel file has been selected and is ready to be imported.
-                      The backend will automatically parse the file and process all valid contacts.
-                    </p>
-                    <div className="flex items-center justify-center gap-4 text-sm text-text-subtle">
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span>Skip Duplicates: {skipDuplicates ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span>Update Existing: {updateExisting ? 'Yes' : 'No'}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Import Progress */}
               {isImporting && (
                 <Card>
@@ -519,9 +484,9 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
         <DialogFooter className="flex items-center justify-between pt-4 border-t">
           {parseResult && (
             <div className="text-sm text-text-subtle">
-              {importType === 'excel'
-                ? 'Ready to import'
-                : `${selectedContacts.length} selected`
+              {selectedContacts.length > 0
+                ? `${selectedContacts.length} contact(s) selected`
+                : 'No contacts selected'
               }
             </div>
           )}
@@ -532,17 +497,11 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
             {parseResult && (
               <Button
                 onClick={handleImport}
-                disabled={
-                  (importType === 'csv' && selectedContacts.length === 0) ||
-                  (importType === 'excel' && !fileInputRef.current?.files?.[0]) ||
-                  isImporting
-                }
+                disabled={selectedContacts.length === 0 || isImporting}
               >
                 {isImporting
                   ? 'Importing...'
-                  : importType === 'excel'
-                    ? 'Import File'
-                    : `Import (${selectedContacts.length})`
+                  : `Import (${selectedContacts.length})`
                 }
               </Button>
             )}

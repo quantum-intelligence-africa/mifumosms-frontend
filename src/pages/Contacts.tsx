@@ -2271,10 +2271,15 @@ Import {importedContacts.length} Contact{importedContacts.length !== 1 ? 's' : '
 
 {/* CSV Import Dialog */}
 <CSVImportDialog
-open={isCSVImportDialogOpen}
-onOpenChange={setIsCSVImportDialogOpen}
-onImport={handleCSVImport}
-isImporting={isCreating}
+  open={isCSVImportDialogOpen}
+  onOpenChange={(open) => {
+    setIsCSVImportDialogOpen(open);
+    if (!open) {
+      setImportedContacts([]);
+    }
+  }}
+  onImport={handleCSVImport}
+  isImporting={isCreating}
 />
 
 {/* Mobile Import Help Dialog */}

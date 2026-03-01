@@ -66,10 +66,7 @@ export function parseCSVText(text: string): CSVParseResult {
 	const companyIndex = findColumnIndex(headers, ['company', 'organization', 'org']);
 	const departmentIndex = findColumnIndex(headers, ['department', 'dept', 'division']);
 
-	// Validate required columns
-	if (nameIndex === -1) {
-		errors.push('Required column "name" not found. Please ensure your CSV has a column with name, full_name, fullname, or contact_name');
-	}
+	// Validate required columns - only phone is required
 	if (phoneIndex === -1) {
 		errors.push('Required column "phone" not found. Please ensure your CSV has a column with phone, phone_number, mobile, mobile_number, tel, or telephone');
 	}
@@ -140,10 +137,16 @@ function parseCSVLine(line: string): string[] {
 	return result;
 }
 
+// Normalize header for robust matching (case, spaces, underscores, non-alphanumeric)
+function normalizeHeader(header: string): string {
+	return header.toLowerCase().replace(/\s|_/g, '').replace(/[^a-z0-9]/g, '');
+}
+
 function findColumnIndex(headers: string[], possibleNames: string[]): number {
-	for (let i = 0; i < headers.length; i++) {
-		const header = headers[i].toLowerCase().trim();
-		if (possibleNames.some(name => header === name || header.includes(name))) {
+	const normalizedHeaders = headers.map(normalizeHeader);
+	const normalizedNames = possibleNames.map(normalizeHeader);
+	for (let i = 0; i < normalizedHeaders.length; i++) {
+		if (normalizedNames.some(name => normalizedHeaders[i] === name || normalizedHeaders[i].includes(name))) {
 			return i;
 		}
 	}
@@ -163,18 +166,23 @@ function parseContactFromValues(
 	rowNumber: number
 ): CSVContact | null {
 	const name = values[indices.nameIndex]?.trim();
-	const phone = values[indices.phoneIndex]?.trim();
+	let phone = values[indices.phoneIndex]?.trim();
 	const email = indices.emailIndex !== -1 ? values[indices.emailIndex]?.trim() : undefined;
 	const tags = indices.tagsIndex !== -1 ? values[indices.tagsIndex]?.trim().split(',').map(t => t.trim()).filter(t => t) : undefined;
 	const company = indices.companyIndex !== -1 ? values[indices.companyIndex]?.trim() : undefined;
 	const department = indices.departmentIndex !== -1 ? values[indices.departmentIndex]?.trim() : undefined;
 
-	// Validate required fields
-	if (!name) {
-		throw new Error('Name is required');
-	}
+	// Validate required field: phone number only
 	if (!phone) {
 		throw new Error('Phone number is required');
+	}
+
+	// Handle scientific notation for phone numbers (e.g., 2.55700000001e+11)
+	if (typeof phone === 'string' && /e\+/.test(phone)) {
+		const num = Number(phone);
+		if (!isNaN(num)) {
+			phone = num.toLocaleString('fullwide', { useGrouping: false });
+		}
 	}
 
 	// Validate and normalize phone number
@@ -189,7 +197,7 @@ function parseContactFromValues(
 	}
 
 	return {
-		name,
+		name: name || 'Unknown Contact',
 		email: email || undefined,
 		phone: normalizedPhone,
 		tags: tags || undefined,
@@ -203,24 +211,29 @@ function normalizePhoneNumber(phone: string): string | null {
 	const digitsOnly = phone.replace(/\D/g, '');
 
 	// Handle different formats
+	// Format 1: International with country code: 255XXXXXXXXX (12 digits)
 	if (digitsOnly.startsWith('255') && digitsOnly.length === 12) {
-		// Already in correct format: 255XXXXXXXXX
 		return digitsOnly;
 	}
 
+	// Format 2: Local format with leading 0: 0XXXXXXXXX (10 digits) -> convert to 255XXXXXXXXX
 	if (digitsOnly.startsWith('0') && digitsOnly.length === 10) {
-		// Local format: 0XXXXXXXXX -> 255XXXXXXXXX
 		return `255${digitsOnly.slice(1)}`;
 	}
 
-	if (digitsOnly.startsWith('255') && digitsOnly.length === 12) {
-		// E.164 without +: 255XXXXXXXXX
-		return digitsOnly;
+	// Format 3: 9-digit number without leading 0 (assume Tanzanian): XXXXXXXXX -> 255XXXXXXXXX
+	if (digitsOnly.length === 9 && !digitsOnly.startsWith('0')) {
+		return `255${digitsOnly}`;
 	}
 
-	// Check if it's a valid 12-digit number starting with 255
-	if (digitsOnly.length === 12 && digitsOnly.startsWith('255')) {
-		return digitsOnly;
+	// Format 4: Local format variations with leading 7: 7XXXXXXXXX (9 digits starting with 7) -> 2557XXXXXXXXX
+	if (digitsOnly.startsWith('7') && digitsOnly.length === 9) {
+		return `255${digitsOnly}`;
+	}
+
+	// Format 5: Local format variations with leading 6: 6XXXXXXXXX (9 digits starting with 6) -> 2556XXXXXXXXX
+	if (digitsOnly.startsWith('6') && digitsOnly.length === 9) {
+		return `255${digitsOnly}`;
 	}
 
 	return null;

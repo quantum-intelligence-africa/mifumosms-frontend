@@ -819,6 +819,7 @@ export interface CreateSenderNameRequest {
 export interface UpdateSenderNameRequest {
   sender_name?: string;
   use_case?: string;
+  sample_content?: string;
   supporting_documents?: File[];
   status?: string;
   admin_notes?: string;

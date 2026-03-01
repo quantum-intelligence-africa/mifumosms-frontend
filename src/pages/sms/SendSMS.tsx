@@ -1094,15 +1094,15 @@ const SendSMS = () => {
                       className={`min-h-[100px] sm:min-h-[90px] md:min-h-[110px] lg:min-h-[120px] glass-subtle border-0 text-xs sm:text-sm md:text-base ${
                         segmentInfo.isOverLimit ? 'border-red-500 focus:border-red-500' : ''
                       }`}
-                      maxLength={4000} // 25 segments * 160 characters = 4,000 max
+                      maxLength={160}
                     />
                     <div className="flex items-center justify-between text-xs">
                       <p className="text-text-subtle">
-                      {segmentCount > 1 && (language === "sw" ? "Ujumbe mrefu umegawanywa katika sehemu nyingi" : "Long messages are split into multiple segments")}
+                      {segmentCount > 1 && (language === "sw" ? "Ujumbe umezidi kikomo cha maksimum" : "Message exceeds maximum character limit")}
                     </p>
                       {segmentInfo.isOverLimit && (
                         <p className="text-red-500 font-medium">
-                          {language === "sw" ? "Ujumbe unazidi kikomo cha sehemu 25" : "Message exceeds 25 segment limit"}
+                          {language === "sw" ? "Ujumbe unazidi kikomo cha 160 herufi" : "Message exceeds 160 character limit"}
                         </p>
                       )}
                     </div>
@@ -1139,7 +1139,7 @@ const SendSMS = () => {
                         </div>
                         {segmentInfo.isOverLimit && (
                           <div className="text-red-600 text-xs mt-1 font-medium">
-                            ⚠️ {language === "sw" ? "Ujumbe unazidi kikomo cha sehemu na hauwezi kutumwa" : "Message exceeds segment limit and cannot be sent"}
+                            ⚠️ {language === "sw" ? "Ujumbe unazidi kikomo cha 160 herufi na hauwezi kutumwa" : "Message exceeds 160 character limit and cannot be sent"}
                           </div>
                         )}
                       </AlertDescription>

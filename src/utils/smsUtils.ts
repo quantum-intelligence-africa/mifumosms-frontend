@@ -3,7 +3,7 @@
  *
  * SMS segments are calculated based on the following rules:
  * - Plain text only: 160 characters per segment
- * - Maximum segments: 200 per message
+ * - Maximum characters: 160 (single segment only)
  * - Formula: (message_length + 159) // 160
  */
 
@@ -29,11 +29,11 @@ export function validateMessageLength(message: string): {
 } {
 	const segments = calculateSMSegments(message);
 
-	if (segments > 25) {
+	if (message.length > 160) {
 		return {
 			isValid: false,
 			segments,
-			error: `Message too long. Requires ${segments} segments, maximum is 25.`
+			error: `Message too long. Maximum is 160 characters.`
 		};
 	}
 
@@ -57,9 +57,9 @@ export function getSegmentInfo(message: string): {
 } {
 	const segments = calculateSMSegments(message);
 	const characters = message.length;
-	const maxCharacters = 25 * 160; // 4,000 characters maximum (25 segments × 160 chars)
+	const maxCharacters = 160; // 160 characters maximum (1 segment)
 	const charactersRemaining = Math.max(0, maxCharacters - characters);
-	const isOverLimit = segments > 25;
+	const isOverLimit = characters > 160;
 
 	return {
 		segments,

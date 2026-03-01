@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
-type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment";
+type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment" | "cancelled";
 
 interface PaymentData {
   requested_sender_id: string;
@@ -218,6 +218,7 @@ const SenderNames = () => {
       case "suspended": return <Ban className="w-4 h-4 text-red-600" />;
       case "requires_changes": return <AlertTriangle className="w-4 h-4 text-amber-600" />;
       case "awaiting_payment": return <CreditCard className="w-4 h-4 text-orange-600" />;
+      case "cancelled": return <Ban className="w-4 h-4 text-gray-600" />;
       default: return <Clock className="w-4 h-4 text-blue-600" />;
     }
   });
@@ -272,6 +273,12 @@ const SenderNames = () => {
         bgColor: "bg-orange-50",
         textColor: "text-orange-700",
         borderColor: "border-orange-200"
+      },
+      cancelled: {
+        label: "Cancelled",
+        bgColor: "bg-gray-50",
+        textColor: "text-gray-700",
+        borderColor: "border-gray-200"
       }
     };
 
@@ -310,6 +317,7 @@ const SenderNames = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editSenderName, setEditSenderName] = useState("");
   const [editUseCase, setEditUseCase] = useState("");
+  const [editSampleContent, setEditSampleContent] = useState("");
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
   const [selectedSender, setSelectedSender] = useState<SenderNameRequest | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -504,11 +512,15 @@ const SenderNames = () => {
       setEditingSender(unifiedSender as unknown as SenderNameRequest);
       setEditSenderName(unifiedSender.sender_id);
       setEditUseCase(unifiedSender.tenant_name || '');
+      const sampleContent = (unifiedSender as unknown as Record<string, unknown>)?.sample_content as string | undefined;
+      setEditSampleContent(sampleContent || '');
     } else {
       const legacySender = sender as SenderNameRequest;
       setEditingSender(legacySender);
       setEditSenderName(legacySender.sender_name);
       setEditUseCase(legacySender.use_case);
+      const sampleContent = (legacySender as unknown as Record<string, unknown>)?.sample_content as string | undefined;
+      setEditSampleContent(sampleContent || '');
     }
     setEditSelectedFiles([]);
     setShowEditDialog(true);
@@ -519,23 +531,41 @@ const SenderNames = () => {
 
     setSubmitting(true);
     try {
-      const result = await updateSenderName(editingSender.id, {
+      const updateData = {
         sender_name: editSenderName,
         use_case: editUseCase,
+        sample_content: editSampleContent.trim() || undefined,
         supporting_documents: editSelectedFiles.length > 0 ? editSelectedFiles : undefined
-      });
+      };
+
+      const result = await updateSenderName(editingSender.id, updateData);
 
       if (result.success) {
         setShowEditDialog(false);
         setEditingSender(null);
         setEditSenderName("");
         setEditUseCase("");
+        setEditSampleContent("");
         setEditSelectedFiles([]);
+        toast({
+          title: "Updated successfully",
+          description: "Sender name request has been updated",
+        });
       } else {
         logger.warn('Failed to update sender name');
+        toast({
+          title: "Update failed",
+          description: result.error || "Failed to update sender name request",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       logger.warn('Error updating sender name');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -1506,10 +1536,16 @@ const SenderNames = () => {
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleDeleteRequest(sender)}
-                                disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                                disabled={
+                                  !["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
+                                }
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                {sender.status === "pending" || sender.status === "requires_changes" ? "Delete Request" : "Delete (Not Available)"}
+                                {
+                                  ["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
+                                    ? "Delete Request"
+                                    : "Delete (Not Available)"
+                                }
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1627,12 +1663,15 @@ const SenderNames = () => {
                                 <DropdownMenuItem
                                   className="text-destructive"
                                   onClick={() => handleDeleteRequest(sender)}
-                                  disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                                  disabled={
+                                    !["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
+                                  }
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
-                                  {isUnified ?
-                                    (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Delete Request" : "Delete (Not Available)") :
-                                    (sender.status === "pending" || sender.status === "requires_changes" ? "Delete Request" : "Delete (Not Available)")
+                                  {
+                                    ["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
+                                      ? "Delete Request"
+                                      : "Delete (Not Available)"
                                   }
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -2226,116 +2265,142 @@ const SenderNames = () => {
             </Dialog>
 
             {/* Edit Dialog */}
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-              <DialogContent className="glass max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader className="pb-2">
-                  <DialogTitle className="text-base sm:text-lg">Edit Sender Name Request</DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm">
+            <Dialog
+              open={showEditDialog}
+              onOpenChange={(open) => {
+                if (!open) {
+                  // Reset form when closing
+                  setEditingSender(null);
+                  setEditSenderName("");
+                  setEditUseCase("");
+                  setEditSampleContent("");
+                  setEditSelectedFiles([]);
+                }
+                setShowEditDialog(open);
+              }}
+            >
+              <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
+                <DialogHeader className="pb-2 sm:pb-2.5">
+                  <DialogTitle className="text-sm sm:text-base md:text-lg">Edit Sender Name Request</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-xs md:text-sm">
                     Update your sender name request details
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-2">
+                <div className="space-y-2 sm:space-y-2.5">
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Sender Name *</Label>
+                    <Label className="text-xs sm:text-sm font-medium">Sender Name *</Label>
                     <Input
-                      placeholder="e.g., MyCompany, MY_COMPANY, My-Company"
+                      placeholder="e.g., YourBrand"
                       value={editSenderName}
                       onChange={(e) => setEditSenderName(e.target.value)}
                       maxLength={11}
-                      className="glass-subtle border-0 font-mono text-xs sm:text-sm h-8"
+                      className="glass-subtle border-0 font-mono text-xs sm:text-sm h-9 sm:h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {editSenderName.length}/11 characters (letters, numbers, spaces, _, -)
+                      {editSenderName.length}/11 characters
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm">Use Case *</Label>
+                    <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
                     <Textarea
-                      placeholder="Describe how you plan to use this sender name..."
-                      value={editUseCase}
-                      onChange={(e) => setEditUseCase(e.target.value)}
-                      className="glass-subtle border-0 text-xs sm:text-sm"
-                      rows={2}
+                      placeholder="e.g., Ndugu Florence,Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
+                      value={editSampleContent}
+                      onChange={(e) => setEditSampleContent(e.target.value)}
+                      className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
+                      rows={3}
+                      maxLength={160}
                     />
+                    <p className="text-[10px] text-text-subtle">
+                      {editSampleContent.length}/160 characters
+                    </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-sm">Verification Documents</Label>
-                      <p className="text-xs text-text-subtle mt-1">
-                        Upload or update your official documents. Acceptable documents include:
-                      </p>
-                      <ul className="text-xs text-text-subtle list-disc list-inside mt-2 space-y-1">
-                        <li>National ID card or passport</li>
-                        <li>Business registration certificate</li>
-                        <li>Business license</li>
-                        <li>Company incorporation document</li>
-                        <li>Tax identification number (TIN) certificate</li>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">KYC Documents (Optional)</Label>
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-1.5 sm:p-2 mb-2">
+                      <p className="text-[10px] text-blue-700 font-medium mb-0.5">Required:</p>
+                      <ul className="text-[10px] text-blue-600 space-y-0 ml-3">
+                        <li>• Business License • BRELA Registration</li>
+                        <li>• TIN Certificate • Company Registration</li>
                       </ul>
                     </div>
-                    <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-4 text-center">
+                    <p className="text-[10px] text-text-subtle mb-2">PDF - Max 8MB</p>
+                    <div className="border border-dashed border-border rounded-lg p-2 sm:p-2 text-center">
                       {editSelectedFiles.length > 0 ? (
-                        <div className="space-y-2">
-                          <Check className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-green-500" />
-                          <p className="text-xs sm:text-sm font-medium text-green-600">
-                            {editSelectedFiles.length} file(s) selected
+                        <div className="space-y-1.5">
+                          <Check className="w-4 h-4 mx-auto text-green-500" />
+                          <p className="text-[10px] font-medium text-green-600">
+                            {editSelectedFiles.length} file(s) uploaded
                           </p>
-                          <div className="space-y-1">
+                          <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto text-left">
                             {editSelectedFiles.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between text-xs bg-muted/50 rounded px-2 py-1">
-                                <span className="truncate">{file.name}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                              <div key={index} className="flex items-center justify-between text-xs px-1 py-0.5">
+                                <span className="truncate flex-1 mr-1">{file.name}</span>
+                                <button
                                   onClick={() => setEditSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                  className="text-red-600 hover:text-red-700 flex-shrink-0 p-1"
                                 >
                                   <X className="w-3 h-3" />
-                                </Button>
+                                </button>
                               </div>
                             ))}
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditSelectedFiles([])}
+                            className="text-red-600 hover:text-red-700 text-[10px] w-full h-8 sm:h-7"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            Clear Files
+                          </Button>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <Upload className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-text-subtle" />
-                          <div>
-                            <p className="text-xs sm:text-sm font-medium">Click to upload verification documents</p>
-                            <p className="text-xs text-text-subtle">PDF, Word documents (DOC, DOCX) - Max 5MB each</p>
-                          </div>
+                        <div className="space-y-1 py-2 sm:py-1.5">
+                          <Upload className="w-4 h-4 mx-auto text-text-subtle" />
+                          <p className="text-[10px] font-medium text-text-subtle">Upload KYC Documents</p>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            id="edit-kyc-upload"
+                            accept=".pdf"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              setEditSelectedFiles(prev => [...prev, ...files]);
+                            }}
+                          />
+                          <label htmlFor="edit-kyc-upload">
+                            <Button variant="outline" size="sm" asChild className="text-[10px] h-8 sm:h-7">
+                              <span>Choose Files</span>
+                            </Button>
+                          </label>
                         </div>
                       )}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          setEditSelectedFiles(prev => [...prev, ...files]);
-                        }}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
                     </div>
                   </div>
                 </div>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2">
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-2.5">
                   <Button
                     variant="outline"
                     onClick={() => setShowEditDialog(false)}
                     disabled={submitting}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleEditSubmit} disabled={submitting} className="w-full sm:w-auto">
+                  <Button
+                    onClick={handleEditSubmit}
+                    disabled={submitting}
+                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-1 sm:order-2"
+                  >
                     {submitting ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                         Updating...
                       </>
                     ) : (
