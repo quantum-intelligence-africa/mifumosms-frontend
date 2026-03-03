@@ -543,6 +543,7 @@ export interface UnifiedSenderName {
   updated_at?: string;
   tenant_id?: string;
   tenant_name?: string;
+  sample_content?: string;
 }
 
 export interface UnifiedSenderNamesResponse {

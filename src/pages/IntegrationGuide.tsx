@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -357,6 +357,19 @@ const IntegrationGuide = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    // Handle hash-based navigation
+    const hash = window.location.hash.slice(1); // Remove the '#'
+    if (hash) {
+      const element = document.getElementById(hash);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, []);
+
   const copyToClipboard = async (text: string) => {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -714,6 +727,87 @@ print(response.text)`}</pre>
                     )}
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card className="glass" id="campaign-management">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="w-4 h-4" />
+                  Campaign Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3 text-sm text-foreground/70">
+                  <p>
+                    <span className="font-semibold text-foreground">Campaign Management</span> allows you to create and manage SMS campaigns with advanced scheduling options. All campaigns execute on the dashboard and are tracked for delivery and engagement.
+                  </p>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">Campaign Types</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li><span className="font-semibold">Single Campaign:</span> Send SMS immediately to selected contacts</li>
+                      <li><span className="font-semibold">Recurring Campaign:</span> Schedule SMS to send on a recurring basis (daily, weekly, or monthly)</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">SMS Segmentation & Costs</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>Each SMS segment is <span className="font-semibold">160 characters</span> maximum</li>
+                      <li>Cost per segment: <span className="font-semibold">18 TZS</span></li>
+                      <li>Total cost = Number of segments × Number of recipients × 18 TZS</li>
+                      <li>Message exceeding 160 characters will be automatically split into multiple segments</li>
+                      <li>Cost is deducted once for single campaigns, and for each execution of recurring campaigns</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">Recurring Campaign Scheduling</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li><span className="font-semibold">Daily:</span> Execute at the same time every day until the end date</li>
+                      <li><span className="font-semibold">Weekly:</span> Execute on selected days (e.g., Monday, Wednesday, Friday) at a specific time</li>
+                      <li><span className="font-semibold">Monthly:</span> Execute on a specific day of the month (1-31) at a specified time</li>
+                      <li>Optional end date: Campaign runs until the specified date</li>
+                      <li>All times are in 24-hour format (HH:MM)</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">Campaign Statuses</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li><span className="font-semibold">Draft:</span> Campaign is being prepared, not active yet</li>
+                      <li><span className="font-semibold">Scheduled:</span> Campaign is scheduled for a future execution</li>
+                      <li><span className="font-semibold">Running:</span> Campaign is currently executing or in progress</li>
+                      <li><span className="font-semibold">Paused:</span> Campaign execution has been paused</li>
+                      <li><span className="font-semibold">Completed:</span> Single campaign has finished sending, or recurring campaign has reached end date</li>
+                      <li><span className="font-semibold">Cancelled:</span> Campaign execution has been cancelled</li>
+                      <li><span className="font-semibold">Failed:</span> Campaign encountered an error during execution</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">SMS Balance Requirements</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>Always verify sufficient SMS balance before creating a campaign</li>
+                      <li>System shows warning if balance is below 100 TZS</li>
+                      <li>For recurring campaigns, ensure sufficient balance for multiple executions</li>
+                      <li>Check <span className="font-semibold">/sms/balance/</span> endpoint to verify current balance</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-border-subtle bg-muted/30 space-y-2">
+                    <p className="font-semibold text-foreground">Best Practices</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>Test with a small recipient group before sending to large audiences</li>
+                      <li>Schedule recurring campaigns during optimal engagement times</li>
+                      <li>Monitor campaign delivery status regularly</li>
+                      <li>Keep messages concise and clear (aim for under 160 characters for single segment)</li>
+                      <li>Review cost estimation before creating high-volume campaigns</li>
+                      <li>Set appropriate end dates for recurring campaigns to prevent unnecessary charges</li>
+                    </ul>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

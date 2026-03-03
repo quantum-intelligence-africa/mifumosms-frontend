@@ -342,7 +342,7 @@ export function useSenderNames() {
 			const calculatedStats = calculateStatsFromSenderNames(senderNames);
 			setStats(calculatedStats);
 		}
-	}, [senderNames, fetchSenderNames, fetchStats]);
+	}, [senderNames]);
 
 	const refreshData = async () => {
 		await fetchSenderNames(true); // Use unified endpoint

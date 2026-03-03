@@ -196,6 +196,7 @@ export const useCampaigns = () => {
     name: string;
     description?: string;
     campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
+    sender_id?: string;
     message_text: string;
     template?: string | null;
     scheduled_at?: string | null;

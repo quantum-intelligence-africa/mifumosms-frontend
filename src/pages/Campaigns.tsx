@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -23,7 +23,9 @@ import {
   Eye,
   RefreshCw,
   X,
-  Target
+  Target,
+  DollarSign,
+  Info
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -38,6 +40,7 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +59,71 @@ import { CreateCampaignDialog } from "@/components/campaigns/CreateCampaignDialo
 import CampaignDetailsModal from "@/components/campaigns/CampaignDetailsModal";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useContacts } from "@/hooks/useContacts";
+import { Contact } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  getStatusColorClass,
+  formatCampaignCost,
+  formatScheduleDescription
+} from "@/utils/campaignUtils";
+
+// Type definitions
+interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  campaign_type: string;
+  campaign_type_display: string;
+  message_text: string;
+  template: string | null;
+  status: string;
+  status_display: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  total_recipients: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  failed_count: number;
+  estimated_cost: number;
+  actual_cost: number;
+  progress_percentage: number;
+  delivery_rate: number;
+  read_rate: number;
+  is_active: boolean;
+  can_edit: boolean;
+  can_start: boolean;
+  can_pause: boolean;
+  can_cancel: boolean;
+  can_view_analytics: boolean;
+  can_duplicate: boolean;
+  can_delete: boolean;
+  is_recurring: boolean;
+  recurring_schedule: Record<string, unknown>;
+  settings: Record<string, unknown>;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  created_at_human?: string;
+  updated_at: string;
+  target_contact_count: number;
+  target_contact_ids: string[];
+  target_segment_ids: string[];
+  target_segment_names: string[];
+  target_criteria: {
+    tags?: string[];
+    groups?: string[];
+    custom_fields?: Record<string, unknown>;
+  };
+}
+
+interface Segment {
+  id: string;
+  name?: string;
+  contact_count?: number;
+  [key: string]: unknown;
+}
 
 const Campaigns = () => {
   useEffect(() => {
@@ -69,30 +136,31 @@ const Campaigns = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [isCampaignDetailsOpen, setIsCampaignDetailsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedCampaignForDetails, setSelectedCampaignForDetails] = useState<any>(null);
+  const [selectedCampaignForDetails, setSelectedCampaignForDetails] = useState<Campaign | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const { language } = useLanguage();
+  const navigate = useNavigate();
 
-  const searchParamsToObject = () => Object.fromEntries(searchParams.entries());
+  const searchParamsToObject = useCallback(() => Object.fromEntries(searchParams.entries()), [searchParams]);
 
-  const setSearchParam = (key: string, value: string) => {
+  const setSearchParam = useCallback((key: string, value: string): void => {
     const params = searchParamsToObject();
     params[key] = value;
     setSearchParams(params);
-  };
+  }, [searchParamsToObject, setSearchParams]);
 
-  const removeSearchParam = (key: string) => {
+  const removeSearchParamMemoized = useCallback((key: string): void => {
     const params = searchParamsToObject();
     if (params[key] !== undefined) {
       delete params[key];
       setSearchParams(params);
     }
-  };
+  }, [searchParamsToObject, setSearchParams]);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -106,39 +174,17 @@ const Campaigns = () => {
     target_contact_ids: [],
     target_segment_ids: [],
     target_criteria: {
-      tags: [],
-      groups: [],
-      custom_fields: {}
+      tags: [] as string[],
+      groups: [] as string[],
+      custom_fields: {} as Record<string, unknown>
     },
     settings: {}
   });
 
   // Target audience state
-  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
-  const [selectedSegments, setSelectedSegments] = useState<any[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
+  const [selectedSegments, setSelectedSegments] = useState<Segment[]>([]);
   const [audienceMode, setAudienceMode] = useState<'contacts' | 'segments' | 'criteria'>('contacts');
-
-  const performWithRefreshing = async (callback: () => Promise<void>) => {
-    setIsRefreshing(true);
-    try {
-      await callback();
-    } catch (err) {
-      console.error('Campaign refresh error:', err);
-    }
-  };
-
-  const refreshCampaignData = async () => {
-    await performWithRefreshing(async () => {
-      await Promise.all([fetchCampaigns(), refetch()]);
-    });
-  };
-
-  const runActionWithRefresh = async (actionFn: () => Promise<any>) => {
-    await performWithRefreshing(async () => {
-      await actionFn();
-      await Promise.all([fetchCampaigns(), refetch()]);
-    });
-  };
 
   // Use smart campaign hook
   const {
@@ -163,15 +209,39 @@ const Campaigns = () => {
     isLoading: contactsLoading,
   } = useContacts();
 
-  const handleCampaignClick = (campaign: any) => {
+  const performWithRefreshing = useCallback(async (callback: () => Promise<void>): Promise<void> => {
+    setIsRefreshing(true);
+    try {
+      await callback();
+    } catch (err) {
+      console.error('Campaign refresh error:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  const runActionWithRefresh = useCallback(async (actionFn: () => Promise<unknown>): Promise<void> => {
+    await performWithRefreshing(async () => {
+      await actionFn();
+      await Promise.all([fetchCampaigns(), refetch()]);
+    });
+  }, [performWithRefreshing, fetchCampaigns, refetch]);
+
+  const refreshCampaignData = useCallback(async (): Promise<void> => {
+    await performWithRefreshing(async () => {
+      await Promise.all([fetchCampaigns(), refetch()]);
+    });
+  }, [performWithRefreshing, fetchCampaigns, refetch]);
+
+  const handleCampaignClick = useCallback((campaign: Campaign) => {
     setSelectedCampaignForDetails(campaign);
     setIsDetailsModalOpen(true);
     setSearchParam("campaign", campaign.id);
-    removeSearchParam("mode");
-    removeSearchParam("action");
-  };
+    removeSearchParamMemoized("mode");
+    removeSearchParamMemoized("action");
+  }, [removeSearchParamMemoized, setSearchParam]);
 
-  const populateEditForm = (campaign: any) => {
+  const populateEditForm = (campaign: Campaign): void => {
     setEditForm({
       name: campaign.name || '',
       description: campaign.description || '',
@@ -182,7 +252,11 @@ const Campaigns = () => {
       target_contact_count: campaign.target_contact_count || 0,
       target_contact_ids: campaign.target_contact_ids || [],
       target_segment_ids: campaign.target_segment_ids || [],
-      target_criteria: campaign.target_criteria || {
+      target_criteria: campaign.target_criteria ? {
+        tags: campaign.target_criteria.tags || [],
+        groups: campaign.target_criteria.groups || [],
+        custom_fields: campaign.target_criteria.custom_fields || {}
+      } : {
         tags: [],
         groups: [],
         custom_fields: {}
@@ -191,7 +265,7 @@ const Campaigns = () => {
     });
   };
 
-  const openEditDialog = (campaign: any) => {
+  const openEditDialog = useCallback((campaign: Campaign): void => {
     setSelectedCampaign(campaign);
     populateEditForm(campaign);
     setIsEditMode(true);
@@ -199,16 +273,16 @@ const Campaigns = () => {
     setIsDetailsModalOpen(false);
     setSearchParam("campaign", campaign.id);
     setSearchParam("mode", "edit");
-    removeSearchParam("action");
-  };
+    removeSearchParamMemoized("action");
+  }, [removeSearchParamMemoized, setSearchParam]);
 
-  const closeCampaignDialog = () => {
+  const closeCampaignDialog = useCallback((): void => {
     setIsCampaignDetailsOpen(false);
     setIsEditMode(false);
     setSelectedCampaign(null);
-    removeSearchParam("mode");
-    removeSearchParam("campaign");
-  };
+    removeSearchParamMemoized("mode");
+    removeSearchParamMemoized("campaign");
+  }, [removeSearchParamMemoized]);
 
   const handleCampaignDialogOpenChange = (open: boolean) => {
     if (open) {
@@ -218,7 +292,7 @@ const Campaigns = () => {
     }
   };
 
-  const handleCampaignAction = async (action: string, campaignId: string) => {
+  const handleCampaignAction = useCallback(async (action: string, campaignId: string): Promise<void> => {
     try {
       // Find the campaign to check permissions
       const campaign = campaigns.find(c => c.id === campaignId);
@@ -282,15 +356,15 @@ const Campaigns = () => {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [campaigns, startCampaign, pauseCampaign, cancelCampaign, duplicateCampaign, deleteCampaign, openEditDialog, runActionWithRefresh]);
 
   // Check if we should open the new campaign dialog
   useEffect(() => {
     if (searchParams.get("new") === "true") {
       setIsNewCampaignOpen(true);
-      removeSearchParam("new");
+      removeSearchParamMemoized("new");
     }
-  }, [searchParams]);
+  }, [searchParams, removeSearchParamMemoized]);
 
   useEffect(() => {
     const campaignParam = searchParams.get("campaign");
@@ -303,9 +377,9 @@ const Campaigns = () => {
 
     const campaign = campaigns.find((c) => c.id === campaignParam);
     if (!campaign) {
-      removeSearchParam("campaign");
-      removeSearchParam("mode");
-      removeSearchParam("action");
+      removeSearchParamMemoized("campaign");
+      removeSearchParamMemoized("mode");
+      removeSearchParamMemoized("action");
       return;
     }
 
@@ -320,7 +394,7 @@ const Campaigns = () => {
       setSelectedCampaignForDetails(campaign);
       setIsDetailsModalOpen(true);
     }
-  }, [searchParams, campaigns]);
+  }, [searchParams, campaigns, openEditDialog, removeSearchParamMemoized]);
 
   useEffect(() => {
     const actionParam = searchParams.get("action");
@@ -332,8 +406,8 @@ const Campaigns = () => {
 
     const campaign = campaigns.find((c) => c.id === campaignParam);
     if (!campaign) {
-      removeSearchParam("campaign");
-      removeSearchParam("action");
+      removeSearchParamMemoized("campaign");
+      removeSearchParamMemoized("action");
       return;
     }
 
@@ -341,17 +415,17 @@ const Campaigns = () => {
       try {
         await handleCampaignAction("duplicate", campaign.id);
       } finally {
-        removeSearchParam("action");
-        removeSearchParam("campaign");
+        removeSearchParamMemoized("action");
+        removeSearchParamMemoized("campaign");
       }
     })();
-  }, [searchParams, campaigns]);
+  }, [searchParams, campaigns, handleCampaignAction, removeSearchParamMemoized]);
 
   // Reset dialog state when it closes
   const handleDialogClose = (open: boolean) => {
     setIsNewCampaignOpen(open);
     if (!open) {
-      removeSearchParam("new");
+      removeSearchParamMemoized("new");
     }
   };
 
@@ -366,7 +440,7 @@ const Campaigns = () => {
   }) : [];
 
   // Handle form input changes
-  const handleFormChange = (field: string, value: any) => {
+  const handleFormChange = (field: string, value: unknown): void => {
     setEditForm(prev => ({
       ...prev,
       [field]: value
@@ -422,7 +496,7 @@ const Campaigns = () => {
   };
 
   // Handle contact selection
-  const handleContactToggle = (contact: any) => {
+  const handleContactToggle = (contact: Contact): void => {
     setSelectedContacts(prev => {
       const isSelected = prev.some(c => c.id === contact.id);
       if (isSelected) {
@@ -434,7 +508,7 @@ const Campaigns = () => {
   };
 
   // Handle segment selection
-  const handleSegmentToggle = (segment: any) => {
+  const handleSegmentToggle = (segment: Segment): void => {
     setSelectedSegments(prev => {
       const isSelected = prev.some(s => s.id === segment.id);
       if (isSelected) {
@@ -446,12 +520,15 @@ const Campaigns = () => {
   };
 
   // Update form with selected audience
-  const updateAudienceInForm = () => {
+  const updateAudienceInForm = (): void => {
     setEditForm(prev => ({
       ...prev,
       target_contact_ids: selectedContacts.map(c => c.id),
       target_segment_ids: selectedSegments.map(s => s.id),
-      target_contact_count: selectedContacts.length + selectedSegments.reduce((total, segment) => total + (segment.contact_count || 0), 0)
+      target_contact_count: selectedContacts.length + selectedSegments.reduce((total, segment) => {
+        const contactCount = typeof segment.contact_count === 'number' ? segment.contact_count : 0;
+        return total + contactCount;
+      }, 0)
     }));
   };
 
@@ -644,6 +721,23 @@ const Campaigns = () => {
               </div>
             )}
 
+            {/* Campaign Management Info */}
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-xs sm:text-sm text-blue-900">
+                <span className="font-semibold">Campaign Management:</span> Create single or recurring campaigns. SMS costs 18 TZS per segment (160 characters).
+                <span className="ml-2 font-semibold">Recurring campaigns</span> execute on your schedule and deduct credits each time.
+                <span className="ml-2">
+                  <button
+                    onClick={() => navigate('/integration-guide#campaign-management')}
+                    className="font-semibold text-blue-700 hover:text-blue-800 underline cursor-pointer"
+                  >
+                    View guide
+                  </button>
+                </span>
+              </AlertDescription>
+            </Alert>
+
               {/* Filters */}
             <Card>
               <CardContent className="p-2 sm:p-3 lg:p-6">
@@ -797,17 +891,10 @@ const Campaigns = () => {
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  {campaign.can_view_analytics ? (
-                                    <DropdownMenuItem onClick={() => handleCampaignAction('view_analytics', campaign.id)}>
-                                      <Eye className="w-3 h-3 mr-2" />
-                                      {language === "sw" ? "Tazama Uchambuzi" : "View Analytics"}
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem disabled className="text-muted-foreground">
-                                      <Eye className="w-3 h-3 mr-2" />
-                                      {language === "sw" ? "Tazama Uchambuzi" : "View Analytics"}
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem onClick={() => handleCampaignClick(campaign)}>
+                                    <Eye className="w-3 h-3 mr-2" />
+                                    {language === "sw" ? "Tazama Maelezo" : "View Campaign Details"}
+                                  </DropdownMenuItem>
                                   {campaign.can_edit ? (
                                     <DropdownMenuItem onClick={() => handleCampaignAction('edit', campaign.id)}>
                                       <Edit className="w-3 h-3 mr-2" />
@@ -870,6 +957,22 @@ const Campaigns = () => {
                                  <Send className="w-3 h-3" />
                                  <span>{campaign.sent_count}</span>
                                </div>
+                             </div>
+
+                             {/* Cost and Recurring Row */}
+                             <div className="grid grid-cols-2 gap-1 text-xs text-text-subtle mb-2">
+                               {campaign.actual_cost && (
+                                 <div className="flex items-center gap-1">
+                                   <DollarSign className="w-3 h-3" />
+                                   <span>{Math.round(campaign.actual_cost).toLocaleString()} TZS</span>
+                                 </div>
+                               )}
+                               {campaign.is_recurring && (
+                                 <div className="flex items-center gap-1 text-blue-600 font-semibold">
+                                   <Clock className="w-3 h-3" />
+                                   <span>Recurring</span>
+                                 </div>
+                               )}
                              </div>
 
                              {/* Progress Row - Only show if running */}
@@ -1002,17 +1105,10 @@ const Campaigns = () => {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                            {campaign.can_view_analytics ? (
-                              <DropdownMenuItem onClick={() => handleCampaignAction('view_analytics', campaign.id)}>
-                                <Eye className="w-3 h-3 mr-2" />
-                                View Analytics
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem disabled className="text-muted-foreground">
+                            <DropdownMenuItem onClick={() => handleCampaignClick(campaign)}>
                               <Eye className="w-3 h-3 mr-2" />
-                              View Analytics
+                              View Campaign Details
                             </DropdownMenuItem>
-                            )}
                             {campaign.can_edit ? (
                               <DropdownMenuItem onClick={() => handleCampaignAction('edit', campaign.id)}>
                                 <Edit className="w-3 h-3 mr-2" />
@@ -1495,7 +1591,7 @@ const Campaigns = () => {
         onClose={() => {
           setIsDetailsModalOpen(false);
           setSelectedCampaignForDetails(null);
-          removeSearchParam("campaign");
+          removeSearchParamMemoized("campaign");
         }}
         onAction={handleCampaignAction}
       />

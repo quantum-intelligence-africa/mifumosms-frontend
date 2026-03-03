@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
-type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment" | "cancelled";
+type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment" | "cancelled" | "inactive";
 
 interface PaymentData {
   requested_sender_id: string;
@@ -319,8 +319,10 @@ const SenderNames = () => {
   const [editUseCase, setEditUseCase] = useState("");
   const [editSampleContent, setEditSampleContent] = useState("");
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
-  const [selectedSender, setSelectedSender] = useState<SenderNameRequest | null>(null);
+  const [selectedSender, setSelectedSender] = useState<SenderNameRequest | UnifiedSenderName | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [senderIdDetails, setSenderIdDetails] = useState<UnifiedSenderName | null>(null);
+  const [loadingSenderIdDetails, setLoadingSenderIdDetails] = useState(false);
   const [tenantFilter, setTenantFilter] = useState<string>("");
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [pageReady, setPageReady] = useState(false);
@@ -458,6 +460,46 @@ const SenderNames = () => {
       setPaymentStatusMessage('Checking payment status...');
     }
   }, [paymentStatus, paymentStatusMessage]);
+
+  // Fetch sender ID details when details dialog opens
+  useEffect(() => {
+    const fetchSenderIdDetails = async () => {
+      if (!showDetailsDialog || !selectedSender) {
+        setSenderIdDetails(null);
+        return;
+      }
+
+      setLoadingSenderIdDetails(true);
+      try {
+        // Get the sender name to search for
+        const senderName = 'sender_name' in selectedSender
+          ? selectedSender.sender_name
+          : selectedSender.sender_id;
+
+        // Get the sender ID for matching
+        const senderId = 'id' in selectedSender ? selectedSender.id : undefined;
+
+        // Fetch unified sender names
+        const response = await apiClient.getUnifiedSenderNames();
+
+        if (response.success && response.data && response.data.data && Array.isArray(response.data.data)) {
+          // Find matching sender by sender_id or id
+          const details = response.data.data.find((item: UnifiedSenderName) =>
+            item.sender_id === senderName || (senderId && item.id === senderId)
+          );
+          if (details) {
+            setSenderIdDetails(details);
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch sender ID details:', error);
+      } finally {
+        setLoadingSenderIdDetails(false);
+      }
+    };
+
+    fetchSenderIdDetails();
+  }, [showDetailsDialog, selectedSender]);
 
 
 
@@ -2427,14 +2469,14 @@ const SenderNames = () => {
                     <div className="text-center mb-4 sm:mb-6">
                       <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full mb-3">
                         <span className="text-lg sm:text-xl font-bold text-primary">
-                          {selectedSender.sender_name.charAt(0).toUpperCase()}
+                          {('sender_name' in selectedSender ? selectedSender.sender_name : selectedSender.sender_id).charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <h3 className="font-semibold text-foreground text-sm sm:text-base mb-2">
-                        {selectedSender.sender_name}
+                        {'sender_name' in selectedSender ? selectedSender.sender_name : selectedSender.sender_id}
                       </h3>
                       <div className="flex items-center justify-center">
-                        {getStatusBadge(selectedSender.status)}
+                        {getStatusBadge(selectedSender.status as SenderStatus)}
                       </div>
                     </div>
 
@@ -2476,41 +2518,46 @@ const SenderNames = () => {
                     {/* Basic Information */}
                     <div className="space-y-3 sm:space-y-4">
                       <h4 className="font-medium text-sm sm:text-base text-foreground">Basic Information</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sender Name</Label>
-                          <div className="p-2 sm:p-3 bg-muted/30 rounded-lg font-mono text-xs sm:text-sm break-all">
-                          {selectedSender.sender_name}
+                      {loadingSenderIdDetails ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          <p className="text-xs sm:text-sm text-muted-foreground ml-2">Loading details...</p>
                         </div>
-                      </div>
+                      ) : senderIdDetails ? (
                         <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Status</Label>
-                          <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
-                          {getStatusBadge(selectedSender.status)}
+                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sender ID</Label>
+                          <div className="p-2 sm:p-3 bg-muted/30 rounded-lg font-mono text-xs sm:text-sm break-all">
+                            {senderIdDetails.sender_id}
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-3 sm:p-4 bg-muted/20 rounded-lg text-xs sm:text-sm text-muted-foreground">
+                          Unable to load sender ID details
+                        </div>
+                      )}
                     </div>
 
-                    {/* Use Case */}
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm font-medium text-text-subtle">Use Case</Label>
-                      <div className="p-2 sm:p-3 bg-muted/30 rounded-lg text-xs sm:text-sm">
-                        {selectedSender.use_case}
+                    {/* Sample Content */}
+                    {senderIdDetails?.sample_content && (
+                      <div className="space-y-1">
+                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sample Content</Label>
+                        <div className="p-2 sm:p-3 bg-muted/30 rounded-lg text-xs sm:text-sm whitespace-pre-wrap break-words">
+                          {senderIdDetails.sample_content}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Supporting Documents */}
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm font-medium text-text-subtle">Supporting Documents</Label>
-                      <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
-                        {selectedSender.supporting_documents_count > 0 ? (
+                    {selectedSender && 'supporting_documents_count' in selectedSender && selectedSender.supporting_documents_count > 0 && (
+                      <div className="space-y-1">
+                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">Supporting Documents</Label>
+                        <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
                           <div className="space-y-2">
                             <p className="text-xs sm:text-sm text-text-subtle">
                               {selectedSender.supporting_documents_count} file(s) uploaded
                             </p>
                             <div className="space-y-1">
-                              {selectedSender.supporting_documents.map((doc, index) => (
+                              {selectedSender.supporting_documents && selectedSender.supporting_documents.map((doc, index) => (
                                 <div key={index} className="flex items-center gap-2 text-xs">
                                   <Upload className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">{doc.split('/').pop()}</span>
@@ -2518,14 +2565,12 @@ const SenderNames = () => {
                               ))}
                             </div>
                           </div>
-                        ) : (
-                          <p className="text-xs sm:text-sm text-text-subtle">No supporting documents</p>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Admin Information */}
-                    {(selectedSender.reviewed_by || selectedSender.admin_notes) && (
+                    {selectedSender && 'reviewed_by' in selectedSender && (selectedSender.reviewed_by || selectedSender.admin_notes) && (
                       <div className="space-y-3 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
                         <h4 className="font-medium text-primary text-sm sm:text-base">Review Information</h4>
                         {selectedSender.reviewed_by && (
@@ -2554,12 +2599,12 @@ const SenderNames = () => {
                       <h4 className="font-medium text-sm sm:text-base text-foreground">Timestamps</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-text-subtle">
                       <div>
-                        <Label className="text-xs">Created</Label>
-                          <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.created_at)}</p>
+                        <Label className="text-[9px]">Created</Label>
+                          <p className="text-[9px] sm:text-xs">{senderIdDetails ? safeFormatDate(senderIdDetails.created_at) : safeFormatDate(selectedSender?.created_at || '')}</p>
                       </div>
                       <div>
-                        <Label className="text-xs">Last Updated</Label>
-                          <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.updated_at)}</p>
+                        <Label className="text-[9px]">Last Updated</Label>
+                          <p className="text-[9px] sm:text-xs">{senderIdDetails ? safeFormatDate(senderIdDetails.updated_at) : safeFormatDate(selectedSender?.updated_at || '')}</p>
                         </div>
                       </div>
                     </div>

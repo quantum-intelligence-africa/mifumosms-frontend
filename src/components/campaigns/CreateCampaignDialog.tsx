@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Plus, MessageSquare, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, MessageSquare, AlertCircle, DollarSign, Info, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -24,6 +25,15 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useContacts } from '@/hooks/useContacts';
+import { useSenderNames } from '@/hooks/useSenderNames';
+import {
+  calculateCampaignCost,
+  calculateRecurringWeeklyCost,
+  validateRecurringSchedule,
+  formatScheduleDescription,
+  estimateCampaignSummary
+} from '@/utils/campaignUtils';
+import { apiClient, SenderNameRequest, UnifiedSenderName } from '@/lib/api';
 
 interface CreateCampaignDialogProps {
   children?: React.ReactNode;
@@ -36,6 +46,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  const [smsBalance, setSmsBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
 
   // Use external open state if provided, otherwise use internal state
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -46,6 +59,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     name: '',
     description: '',
     campaign_type: 'sms' as 'sms' | 'whatsapp' | 'email' | 'mixed',
+    sender_id: '' as string,
     message_text: '',
     template: null as string | null,
     scheduled_at: null as string | null,
@@ -60,22 +74,123 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       timezone: 'Africa/Dar_es_Salaam'
     },
     is_recurring: false,
-    recurring_schedule: {},
+    recurring_schedule: {
+      type: 'daily' as 'daily' | 'weekly' | 'monthly',
+      time: '09:00',
+      days: [] as string[],
+      day_of_month: 1,
+      end_date: null as string | null
+    },
   });
 
   const { createCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
+  const { senderNames, loading: sendersLoading } = useSenderNames();
   const showContactsEmptyState = !contactsLoading && contacts.length === 0;
 
-  const handleInputChange = (field: string, value: any) => {
+  // Filter approved sender names - handle both SenderNameRequest and UnifiedSenderName response types
+  const approvedSenders = useMemo(() => {
+    if (!senderNames || senderNames.length === 0) {
+      return [];
+    }
+
+    return (senderNames || [])
+      .filter((req: SenderNameRequest | UnifiedSenderName) => {
+        const status = (req.status || '').toLowerCase();
+        const senderName = ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null);
+
+        // Only include approved status with valid name
+        const isApproved = status === "approved";
+        const hasValidName = senderName && senderName.trim() !== "";
+
+        return isApproved && hasValidName;
+      })
+      .map((req: SenderNameRequest | UnifiedSenderName) => {
+        const name = (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '').trim();
+        return {
+          id: req.id,
+          sender_name: name,
+          status: (req.status || '').toLowerCase(),
+        };
+      });
+  }, [senderNames]);
+
+  // Fetch SMS balance when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchSmsBalance();
+    }
+  }, [open]);
+
+  const fetchSmsBalance = async () => {
+    setLoadingBalance(true);
+    try {
+      const response = await apiClient.getSMSBalance();
+      if (response.success && response.data) {
+        setSmsBalance(response.data.credits || 0);
+      } else {
+        setSmsBalance(0);
+      }
+    } catch (error) {
+      console.error('Error fetching SMS balance:', error);
+      setSmsBalance(0);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const estimatedCost = calculateCampaignCost(
+    formData.message_text,
+    formData.target_contact_ids.length,
+    25
+  );
+
+  const weeklyCost = formData.is_recurring
+    ? calculateRecurringWeeklyCost(
+        formData.message_text,
+        formData.target_contact_ids.length,
+        formData.recurring_schedule.type as 'daily' | 'weekly' | 'monthly',
+        formData.recurring_schedule.days?.length || 1,
+        25
+      )
+    : 0;
+
+  const handleInputChange = (field: string, value: unknown): void => {
+    let finalValue = value;
     if (field === 'description' || field === 'message_text') {
-      value = typeof value === 'string' ? value.slice(0, 160) : value;
+      finalValue = typeof value === 'string' ? value.slice(0, 160) : value;
     }
 
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: finalValue
     }));
+  };
+
+  const handleRecurringScheduleChange = (field: string, value: unknown): void => {
+    const newSchedule = {
+      ...formData.recurring_schedule,
+      [field]: value
+    };
+
+    // Validate schedule whenever it changes
+    if (formData.is_recurring) {
+      const validation = validateRecurringSchedule(newSchedule);
+      setScheduleErrors(validation.errors);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      recurring_schedule: newSchedule
+    }));
+  };
+
+  const handleDayToggle = (day: string) => {
+    const newDays = formData.recurring_schedule.days?.includes(day)
+      ? formData.recurring_schedule.days.filter(d => d !== day)
+      : [...(formData.recurring_schedule.days || []), day];
+
+    handleRecurringScheduleChange('days', newDays);
   };
 
   const handleContactToggle = (contactId: string) => {
@@ -102,14 +217,42 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       return;
     }
 
+    // Validate recurring schedule if enabled
+    if (formData.is_recurring) {
+      const validation = validateRecurringSchedule(formData.recurring_schedule);
+      if (!validation.isValid) {
+        setScheduleErrors(validation.errors);
+        return;
+      }
+    }
+
+    // Check if user has enough credits
+    if (smsBalance !== null && estimatedCost > smsBalance) {
+      console.warn('Insufficient SMS credits');
+      // Show warning but allow submission (backend will handle)
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Prepare recurring schedule for API
+      let recurringScheduleData: Record<string, unknown> | null = null;
+      if (formData.is_recurring) {
+        recurringScheduleData = {
+          type: formData.recurring_schedule.type,
+          time: formData.recurring_schedule.time,
+          ...(formData.recurring_schedule.type === 'weekly' && { days: formData.recurring_schedule.days }),
+          ...(formData.recurring_schedule.type === 'monthly' && { day_of_month: formData.recurring_schedule.day_of_month }),
+          ...(formData.recurring_schedule.end_date && { end_date: formData.recurring_schedule.end_date })
+        };
+      }
+
       // Create campaign first and wait for completion
       const success = await createCampaign({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         campaign_type: formData.campaign_type,
+        sender_id: formData.sender_id || undefined,
         message_text: formData.message_text.trim(),
         template: formData.template || null,
         scheduled_at: formData.scheduled_at || null,
@@ -124,17 +267,19 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           timezone: formData.settings.timezone
         },
         is_recurring: formData.is_recurring,
-        recurring_schedule: formData.recurring_schedule,
+        recurring_schedule: recurringScheduleData,
       });
 
       if (success) {
         // Close dialog and reset form after successful creation
         setOpen(false);
         setStep(1);
+        setScheduleErrors([]);
         setFormData({
           name: '',
           description: '',
           campaign_type: 'sms',
+          sender_id: '',
           message_text: '',
           template: null,
           scheduled_at: null,
@@ -149,7 +294,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             timezone: 'Africa/Dar_es_Salaam'
           },
           is_recurring: false,
-          recurring_schedule: {},
+          recurring_schedule: {
+            type: 'daily',
+            time: '09:00',
+            days: [],
+            day_of_month: 1,
+            end_date: null
+          },
         });
 
         // Call success callback to refresh parent component after campaign is created
@@ -167,7 +318,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     }
   };
 
-  const canProceedToStep2 = formData.name.trim() && formData.message_text.trim();
+  const canProceedToStep2 = formData.name.trim() && formData.message_text.trim() && formData.sender_id;
   const canSubmit = canProceedToStep2 && formData.target_contact_ids.length > 0;
 
   return (
@@ -181,14 +332,29 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         )}
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <MessageSquare className="w-4 h-4" />
-            Create New Campaign
-          </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
-            Create a smart campaign to reach your audience effectively.
-          </DialogDescription>
+        <DialogHeader className="pb-1">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-3 h-3" />
+              <DialogTitle className="text-sm sm:text-base">Create New Campaign</DialogTitle>
+            </div>
+            <DialogDescription className="text-[10px] sm:text-xs">
+              Create a smart campaign to reach your audience effectively.
+            </DialogDescription>
+          </div>
+
+          {/* SMS Balance Display */}
+          {loadingBalance ? (
+            <div className="mt-3 animate-pulse h-8 bg-muted rounded" />
+          ) : smsBalance !== null && (
+            <Alert className={`mt-3 ${smsBalance < 100 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'}`}>
+              <DollarSign className="h-4 w-4" />
+              <AlertDescription className={`text-xs ${smsBalance < 100 ? 'text-orange-800' : 'text-green-800'}`}>
+                SMS Balance: <span className="font-semibold">TZS {smsBalance.toLocaleString()}</span>
+                {smsBalance < 100 && <span className="ml-2 font-semibold">⚠️ Low balance - purchase more credits</span>}
+              </AlertDescription>
+            </Alert>
+          )}
         </DialogHeader>
 
         <div className="space-y-3">
@@ -197,13 +363,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <div className="space-y-2">
               <div className="grid w-full grid-cols-[1fr_auto] gap-3">
                 <div className="min-w-0 space-y-1">
-                  <Label htmlFor="name" className="text-xs sm:text-sm">Campaign Name *</Label>
+                  <Label htmlFor="name" className="text-[10px] sm:text-xs">Campaign Name *</Label>
                   <Input
                     id="name"
                     placeholder="Enter campaign name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-7 text-[10px] sm:text-xs"
                   />
                 </div>
 
@@ -219,81 +385,227 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="description" className="text-xs sm:text-sm">Description</Label>
+                <Label htmlFor="sender_id" className="text-[10px] sm:text-xs">Sender ID (Approved) *</Label>
+                {approvedSenders.length > 0 ? (
+                  <Select value={formData.sender_id} onValueChange={(value) => handleInputChange('sender_id', value)}>
+                    <SelectTrigger id="sender_id" className="h-7 text-[10px] sm:text-xs">
+                      <SelectValue placeholder="Select approved sender name" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approvedSenders.map((sender) => (
+                        <SelectItem key={sender.id} value={sender.sender_name}>
+                          <span>{sender.sender_name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : sendersLoading ? (
+                  <div className="h-8 bg-muted rounded animate-pulse" />
+                ) : (
+                  <div className="flex items-center gap-2 p-2 rounded-md border border-orange-200 bg-orange-50">
+                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                    <p className="text-xs text-orange-700">
+                      No approved senders. <Link to="/dashboard/sms/sender-names" className="underline font-semibold">Request sender approval</Link>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="description" className="text-[10px] sm:text-xs">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="Enter campaign description (optional)"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={2}
-                  className="text-xs sm:text-sm"
+                  className="text-[10px] sm:text-xs"
                   maxLength={160}
                 />
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[9px] text-muted-foreground">
                   {formData.description.length}/160 characters
                 </p>
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="message_text" className="text-xs sm:text-sm">Message Text *</Label>
+                <Label htmlFor="message_text" className="text-[10px] sm:text-xs">Message Text *</Label>
                 <Textarea
                   id="message_text"
                   placeholder="Enter your message content"
                   value={formData.message_text}
                   onChange={(e) => handleInputChange('message_text', e.target.value)}
                   rows={2}
-                  className="text-xs sm:text-sm"
+                  className="text-[10px] sm:text-xs"
                   maxLength={160}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[9px] text-muted-foreground">
                   {formData.message_text.length}/160 characters
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="scheduled_at" className="text-xs sm:text-sm">Schedule (Optional)</Label>
+                  <Label htmlFor="scheduled_at" className="text-[10px] sm:text-xs">Schedule (Optional)</Label>
                   <Input
                     id="scheduled_at"
                     type="datetime-local"
                     value={formData.scheduled_at || ''}
                     onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-7 text-[10px] sm:text-xs"
                   />
+                  <p className="text-[9px] text-muted-foreground">For single campaigns at a specific time</p>
                 </div>
 
-                <div className="flex items-center space-x-2 pt-5">
+                <div className="flex items-center space-x-2 pt-3">
                   <Checkbox
                     id="is_recurring"
                     checked={formData.is_recurring}
-                    onCheckedChange={(checked) => handleInputChange('is_recurring', checked)}
+                    onCheckedChange={(checked) => {
+                      handleInputChange('is_recurring', checked);
+                      if (checked) {
+                        setScheduleErrors([]);
+                      }
+                    }}
                     className="h-3 w-3"
                   />
-                  <Label htmlFor="is_recurring" className="text-xs sm:text-sm">Recurring Campaign</Label>
+                  <Label htmlFor="is_recurring" className="text-[10px] sm:text-xs">Recurring Campaign</Label>
                 </div>
               </div>
 
+              {/* Recurring Schedule Configuration */}
+              {formData.is_recurring && (
+                <div className="border border-dashed border-blue-300 rounded-lg p-2 bg-blue-50 space-y-2">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold text-blue-900">
+                    <Info className="w-3 h-3" />
+                    Configure Recurring Schedule
+                  </div>
+
+                  {/* Schedule Type */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] sm:text-xs">Schedule Type *</Label>
+                    <Select
+                      value={formData.recurring_schedule.type}
+                      onValueChange={(value) => handleRecurringScheduleChange('type', value as 'daily' | 'weekly' | 'monthly')}
+                    >
+                      <SelectTrigger className="h-7 text-[10px] sm:text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily - Every day at a specific time</SelectItem>
+                        <SelectItem value="weekly">Weekly - Specific days each week</SelectItem>
+                        <SelectItem value="monthly">Monthly - Specific day each month</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Execution Time */}
+                  <div className="space-y-1">
+                    <Label htmlFor="recurring_time" className="text-[10px] sm:text-xs">Execution Time *</Label>
+                    <Input
+                      id="recurring_time"
+                      type="time"
+                      value={formData.recurring_schedule.time}
+                      onChange={(e) => handleRecurringScheduleChange('time', e.target.value)}
+                      className="h-7 text-[10px] sm:text-xs"
+                    />
+                  </div>
+
+                  {/* Days Selection for Weekly */}
+                  {formData.recurring_schedule.type === 'weekly' && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] sm:text-xs">Select Days *</Label>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
+                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                          <div key={day} className="flex items-center space-x-1">
+                            <Checkbox
+                              id={`day-${day}`}
+                              checked={formData.recurring_schedule.days?.includes(day) || false}
+                              onCheckedChange={() => handleDayToggle(day)}
+                              className="h-3 w-3"
+                            />
+                            <Label htmlFor={`day-${day}`} className="text-[9px] font-normal cursor-pointer capitalize">
+                              {day.slice(0, 3)}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Day of Month for Monthly */}
+                  {formData.recurring_schedule.type === 'monthly' && (
+                    <div className="space-y-1">
+                      <Label htmlFor="day_of_month" className="text-[10px] sm:text-xs">Day of Month</Label>
+                      <Input
+                        id="day_of_month"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={formData.recurring_schedule.day_of_month || 1}
+                        onChange={(e) => handleRecurringScheduleChange('day_of_month', parseInt(e.target.value))}
+                        className="h-7 text-[10px] sm:text-xs"
+                      />
+                      <p className="text-[9px] text-muted-foreground">Runs on this day each month (1-31)</p>
+                    </div>
+                  )}
+
+                  {/* End Date */}
+                  <div className="space-y-1">
+                    <Label htmlFor="end_date" className="text-[10px] sm:text-xs">End Date (Optional)</Label>
+                    <Input
+                      id="end_date"
+                      type="date"
+                      value={formData.recurring_schedule.end_date?.split('T')[0] || ''}
+                      onChange={(e) => handleRecurringScheduleChange('end_date', e.target.value ? `${e.target.value}T23:59:59Z` : null)}
+                      className="h-7 text-[10px] sm:text-xs"
+                    />
+                    <p className="text-[9px] text-muted-foreground">Leave empty to continue indefinitely</p>
+                  </div>
+
+                  {/* Schedule Preview */}
+                  {!scheduleErrors.length && (
+                    <div className="bg-white rounded p-2 border border-blue-200">
+                      <p className="text-[9px] text-blue-900 font-medium">
+                        📅 {formatScheduleDescription(formData.recurring_schedule)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Errors */}
+                  {scheduleErrors.length > 0 && (
+                    <Alert className="border-red-200 bg-red-50">
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                      <AlertDescription className="text-[9px] text-red-700">
+                        {scheduleErrors.map((error, i) => (
+                          <div key={i}>• {error}</div>
+                        ))}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
               {/* Settings Section */}
               <div className="space-y-1">
-                <h4 className="text-xs sm:text-sm font-medium text-foreground">Campaign Settings</h4>
+                <h4 className="text-[10px] sm:text-xs font-medium text-foreground">Campaign Settings</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label htmlFor="send_time" className="text-xs">Send Time</Label>
+                    <Label htmlFor="send_time" className="text-[9px]">Send Time</Label>
                     <Input
                       id="send_time"
                       type="time"
                       value={formData.settings.send_time}
                       onChange={(e) => handleInputChange('settings', { ...formData.settings, send_time: e.target.value })}
-                      className="h-7 text-xs sm:text-sm"
+                      className="h-7 text-[10px] sm:text-xs"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="timezone" className="text-xs">Timezone</Label>
+                    <Label htmlFor="timezone" className="text-[9px]">Timezone</Label>
                     <Select
                       value={formData.settings.timezone}
                       onValueChange={(value) => handleInputChange('settings', { ...formData.settings, timezone: value })}
                     >
-                      <SelectTrigger className="h-7 text-xs sm:text-sm">
+                      <SelectTrigger className="h-7 text-[10px] sm:text-xs">
                         <SelectValue placeholder="Select timezone" />
                       </SelectTrigger>
                       <SelectContent>
@@ -306,6 +618,31 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </div>
                 </div>
               </div>
+
+              {/* Cost Estimation */}
+              {formData.message_text && formData.target_contact_ids.length > 0 && (
+                <Alert className="border-blue-200 bg-blue-50">
+                  <DollarSign className="h-3 w-3 text-blue-600" />
+                  <AlertDescription className="text-[9px] text-blue-900">
+                    <div className="font-semibold mb-1">Estimated Cost</div>
+                    <div className="space-y-1 text-[9px]">
+                      <div>Message: {formData.message_text.length} chars ({Math.ceil(formData.message_text.length / 160)} seg)</div>
+                      <div>Recipients: {formData.target_contact_ids.length}</div>
+                      <div className="font-semibold text-blue-700 mt-1">
+                        💳 Cost: TZS {estimatedCost.toLocaleString()}
+                      </div>
+                      {formData.is_recurring && (
+                        <div className="font-semibold text-blue-700">
+                          📊 Weekly: TZS {weeklyCost.toLocaleString()}
+                        </div>
+                      )}
+                      {smsBalance !== null && estimatedCost > smsBalance && (
+                        <div className="text-orange-700 font-semibold mt-1">⚠️ Insufficient! Need TZS {(estimatedCost - smsBalance).toLocaleString()} more</div>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
 
@@ -313,8 +650,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           {step === 2 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-semibold">Select Target Audience</h3>
-                <Badge variant="outline" className="text-xs">
+                <h3 className="text-xs sm:text-sm font-semibold">Select Target Audience</h3>
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0.5">
                   {formData.target_contact_ids.length} contacts selected
                 </Badge>
               </div>
@@ -322,21 +659,21 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               {contactsLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-xs text-muted-foreground mt-1">Loading contacts...</p>
+                  <p className="text-[9px] text-muted-foreground mt-1">Loading contacts...</p>
                 </div>
               ) : showContactsEmptyState ? (
                 <div className="text-center py-6 px-4 border border-dashed border-border-subtle rounded-lg bg-muted/30 space-y-3">
                   <AlertCircle className="w-8 h-8 mx-auto text-primary" />
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold">No contacts available</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs font-semibold">No contacts available</p>
+                    <p className="text-[9px] text-muted-foreground">
                       Add at least one contact before creating a campaign.
                     </p>
                   </div>
                   <Button
                     asChild
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-6 text-[9px]"
                     onClick={() => {
                       setStep(1);
                       setOpen(false);
@@ -352,20 +689,20 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       variant="outline"
                       size="sm"
                       onClick={handleSelectAllContacts}
-                      className="h-7 text-xs"
+                      className="h-6 text-[9px]"
                     >
                       {formData.target_contact_ids.length === contacts.length ? 'Deselect All' : 'Select All'}
                     </Button>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[9px] text-muted-foreground">
                       {contacts.length} total contacts
                     </p>
                   </div>
 
-                  <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
+                  <div className="max-h-32 overflow-y-auto space-y-1 border rounded-lg p-2">
                     {contacts.map((contact, index) => (
                       <div
                         key={contact.id || `contact-${index}`}
-                        className="flex items-center space-x-2 p-1 hover:bg-muted rounded-lg"
+                        className="flex items-center space-x-2 p-0.5 hover:bg-muted rounded-lg"
                       >
                         <Checkbox
                           id={`contact-${contact.id}`}
@@ -376,11 +713,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                         <div className="flex-1 min-w-0">
                           <Label
                             htmlFor={`contact-${contact.id}`}
-                            className="font-medium cursor-pointer text-xs sm:text-sm"
+                            className="font-medium cursor-pointer text-[9px] sm:text-xs"
                           >
                             {contact.name}
                           </Label>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-[8px] text-muted-foreground truncate">
                             {contact.phone_e164}
                           </p>
                         </div>
@@ -392,11 +729,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
               {/* Target Criteria Section */}
               <div className="space-y-1">
-                <h4 className="text-xs sm:text-sm font-medium text-foreground">Target Criteria</h4>
+                <h4 className="text-[10px] sm:text-xs font-medium text-foreground">Target Criteria</h4>
                 <div className="space-y-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Tags Filter</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                    <Label className="text-[9px]">Tags Filter</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
                       {['vip', 'premium', 'basic', 'new', 'returning', 'active', 'inactive'].map((tag) => (
                         <div key={tag} className="flex items-center space-x-1">
                           <Checkbox
@@ -410,7 +747,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                             }}
                             className="h-3 w-3"
                           />
-                          <Label htmlFor={`tag-${tag}`} className="text-xs font-normal cursor-pointer">
+                          <Label htmlFor={`tag-${tag}`} className="text-[9px] font-normal cursor-pointer">
                             {tag}
                           </Label>
                         </div>
@@ -434,7 +771,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   variant="outline"
                   onClick={() => setStep(step - 1)}
-                  className="h-7 text-xs sm:text-sm"
+                  className="h-6 text-[9px] sm:text-xs"
                 >
                   Previous
                 </Button>
@@ -444,7 +781,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={() => setStep(2)}
                   disabled={!canProceedToStep2}
-                  className="h-7 text-xs sm:text-sm"
+                  className="h-6 text-[9px] sm:text-xs"
                 >
                   Next
                 </Button>
@@ -452,12 +789,12 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || isSubmitting}
-                  className="h-7 text-xs sm:text-sm"
+                  className="h-6 text-[9px] sm:text-xs"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Creating Campaign...
+                      <div className="animate-spin rounded-full h-2 w-2 border-b-2 border-white mr-1"></div>
+                      Creating...
                     </>
                   ) : (
                     'Create Campaign'
