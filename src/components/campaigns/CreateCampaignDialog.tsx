@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, MessageSquare, AlertCircle, DollarSign, Info, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, AlertCircle, DollarSign, Info, Trash2, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,6 +69,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       tags: [] as string[],
       opt_in_status: 'opted_in' as string
     },
+    newTag: '' as string,
     settings: {
       send_time: '09:00',
       timezone: 'Africa/Dar_es_Salaam'
@@ -301,6 +302,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             day_of_month: 1,
             end_date: null
           },
+          newTag: '',
         });
 
         // Call success callback to refresh parent component after campaign is created
@@ -585,40 +587,6 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 </div>
               )}
 
-              {/* Settings Section */}
-              <div className="space-y-1">
-                <h4 className="text-[10px] sm:text-xs font-medium text-foreground">Campaign Settings</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="send_time" className="text-[9px]">Send Time</Label>
-                    <Input
-                      id="send_time"
-                      type="time"
-                      value={formData.settings.send_time}
-                      onChange={(e) => handleInputChange('settings', { ...formData.settings, send_time: e.target.value })}
-                      className="h-7 text-[10px] sm:text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="timezone" className="text-[9px]">Timezone</Label>
-                    <Select
-                      value={formData.settings.timezone}
-                      onValueChange={(value) => handleInputChange('settings', { ...formData.settings, timezone: value })}
-                    >
-                      <SelectTrigger className="h-7 text-[10px] sm:text-xs">
-                        <SelectValue placeholder="Select timezone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar_es_Salaam</SelectItem>
-                        <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
-                        <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
               {/* Cost Estimation */}
               {formData.message_text && formData.target_contact_ids.length > 0 && (
                 <Alert className="border-blue-200 bg-blue-50">
@@ -731,27 +699,61 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               <div className="space-y-1">
                 <h4 className="text-[10px] sm:text-xs font-medium text-foreground">Target Criteria</h4>
                 <div className="space-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-[9px]">Tags Filter</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
-                      {['vip', 'premium', 'basic', 'new', 'returning', 'active', 'inactive'].map((tag) => (
-                        <div key={tag} className="flex items-center space-x-1">
-                          <Checkbox
-                            id={`tag-${tag}`}
-                            checked={formData.target_criteria.tags.includes(tag)}
-                            onCheckedChange={(checked) => {
-                              const newTags = checked
-                                ? [...formData.target_criteria.tags, tag]
-                                : formData.target_criteria.tags.filter(t => t !== tag);
-                              handleInputChange('target_criteria', { ...formData.target_criteria, tags: newTags });
+                  {/* Tags Input */}
+                  <div className="space-y-2">
+                    <Label className="text-[9px]">Enter Tags (Optional)</Label>
+                    <div className="space-y-2">
+                      {/* Tag Input Field */}
+                      <div className="flex gap-1.5">
+                        <div className="relative flex-1">
+                          <Tag className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-text-subtle w-3 h-3" />
+                          <Input
+                            placeholder="Type tag name"
+                            value={formData.newTag}
+                            onChange={(e) => handleInputChange('newTag', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
+                                handleInputChange('target_criteria', { ...formData.target_criteria, tags: [...formData.target_criteria.tags, formData.newTag.trim()] });
+                                handleInputChange('newTag', '');
+                              }
                             }}
-                            className="h-3 w-3"
+                            className="pl-8 h-7 text-[10px] sm:text-xs"
                           />
-                          <Label htmlFor={`tag-${tag}`} className="text-[9px] font-normal cursor-pointer">
-                            {tag}
-                          </Label>
                         </div>
-                      ))}
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            if (formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
+                              handleInputChange('target_criteria', { ...formData.target_criteria, tags: [...formData.target_criteria.tags, formData.newTag.trim()] });
+                              handleInputChange('newTag', '');
+                            }
+                          }}
+                          disabled={!formData.newTag.trim() || formData.target_criteria.tags.includes(formData.newTag.trim())}
+                          className="h-7 text-[10px] px-3"
+                        >
+                          Add
+                        </Button>
+                      </div>
+
+                      {/* Display Selected Tags */}
+                      {formData.target_criteria.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {formData.target_criteria.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-[9px] py-0.5 flex items-center gap-1">
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() => handleInputChange('target_criteria', { ...formData.target_criteria, tags: formData.target_criteria.tags.filter(t => t !== tag) })}
+                                className="ml-0.5 hover:text-red-600 font-bold"
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
