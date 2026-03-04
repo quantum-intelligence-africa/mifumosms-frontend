@@ -521,6 +521,9 @@ export interface SenderNameRequest {
   reviewed_by: number | null;
   reviewed_by_name: string;
   reviewed_at: string | null;
+  rejection_reason?: string;
+  requires_changes?: boolean;
+  change_details?: ChangeDetails;
   provider_request_id?: string;
   provider_response?: Record<string, unknown>;
   created_at: string;
@@ -534,6 +537,15 @@ export interface SenderNameRequest {
 }
 
 // Unified Sender Names Response (from /api/messaging/sender-ids/)
+export interface ChangeDetails {
+  reason: string;
+  reviewed_by?: number | null;
+  reviewed_at?: string | null;
+  can_update?: boolean;
+  update_url?: string;
+  fields_to_update?: string[];
+}
+
 export interface UnifiedSenderName {
   id: string;
   sender_id: string;
@@ -544,6 +556,9 @@ export interface UnifiedSenderName {
   tenant_id?: string;
   tenant_name?: string;
   sample_content?: string;
+  rejection_reason?: string;
+  requires_changes?: boolean;
+  change_details?: ChangeDetails;
 }
 
 export interface UnifiedSenderNamesResponse {

@@ -25,11 +25,11 @@ export function QuickActions() {
       to: "/sms/send?mode=single",
     },
     {
-      name: t("dashboard.quick_actions.add_campaign"),
-      description: t("dashboard.quick_actions.add_campaign_desc"),
+      name: t("dashboard.quick_actions.add_sender_id"),
+      description: t("dashboard.quick_actions.add_sender_id_desc"),
       icon: Send,
       variant: "secondary" as const,
-      to: "/campaigns?new=true",
+      to: "/sms/sender-names?action=request",
     },
     {
       name: t("dashboard.quick_actions.add_contacts"),
@@ -39,12 +39,12 @@ export function QuickActions() {
       to: "/contacts?action=create",
     },
     {
-      name: t("dashboard.quick_actions.create_template"),
-      description: t("dashboard.quick_actions.create_template_desc"),
+      name: t("dashboard.quick_actions.add_campaign"),
+      description: t("dashboard.quick_actions.add_campaign_desc"),
       icon: FileText,
       variant: "outline" as const,
-      to: "/templates?action=new",
-    },
+      to: "/campaigns?new=true",
+    }
   ];
   return (
     <Card className="p-5 sm:p-6 glass border border-border-subtle">

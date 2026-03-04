@@ -153,6 +153,14 @@ const SenderNames = () => {
     }
   }, [location.pathname]);
 
+  // Auto-open request dialog when action=request query parameter is present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'request') {
+      setShowRequestDialog(true);
+    }
+  }, [location.search]);
+
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { t } = useLanguage();
@@ -519,9 +527,19 @@ const SenderNames = () => {
           created_at: unifiedSender.created_at,
           updated_at: unifiedSender.updated_at,
           supporting_documents: [],
-          supporting_documents_count: 0
+          supporting_documents_count: 0,
+          rejection_reason: unifiedSender.rejection_reason,
+          requires_changes: unifiedSender.requires_changes,
+          change_details: unifiedSender.change_details,
+          sample_content: unifiedSender.sample_content,
+          admin_notes: '',
+          reviewed_by: null,
+          reviewed_by_name: '',
+          reviewed_at: null,
+          created_by: 0,
+          created_by_name: ''
         };
-        setSelectedSender(compatibleSender as SenderNameRequest);
+        setSelectedSender(compatibleSender as unknown as SenderNameRequest);
         setShowDetailsDialog(true);
         return;
       }
@@ -541,7 +559,7 @@ const SenderNames = () => {
     } catch (error) {
       logger.warn('Error fetching sender details');
       // Fallback to using existing data
-      setSelectedSender(sender as SenderNameRequest);
+      setSelectedSender(sender as unknown as SenderNameRequest);
       setShowDetailsDialog(true);
     }
   };
@@ -2510,6 +2528,58 @@ const SenderNames = () => {
                           >
                             <CreditCard className="w-3 h-3 mr-2" />
                             Complete Payment Now
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Changes Required Alert */}
+                    {selectedSender.status === "requires_changes" && selectedSender.change_details && (
+                      <Card className="p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-amber-25 border border-amber-200">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-amber-900 text-sm sm:text-base mb-2">
+                                Changes Required
+                              </h4>
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1">Reason for Changes:</p>
+                                  <p className="text-xs sm:text-sm text-amber-700 leading-relaxed">
+                                    {selectedSender.change_details.reason || selectedSender.rejection_reason || "Your request needs improvements"}
+                                  </p>
+                                </div>
+                                {selectedSender.change_details.fields_to_update && selectedSender.change_details.fields_to_update.length > 0 && (
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1.5">Fields to Update:</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {selectedSender.change_details.fields_to_update.map((field) => (
+                                        <Badge key={field} variant="outline" className="bg-amber-100 border-amber-300 text-amber-800 text-xs font-medium">
+                                          {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              setShowDetailsDialog(false);
+                              if (selectedSender) {
+                                const sender = selectedSender as unknown as SenderNameRequest & UnifiedSenderName;
+                                setEditingSender(selectedSender as SenderNameRequest);
+                                setEditSenderName('sender_name' in selectedSender ? selectedSender.sender_name : '');
+                                setEditSampleContent(senderIdDetails?.sample_content || '');
+                                setShowEditDialog(true);
+                              }
+                            }}
+                            className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            <Edit className="w-3 h-3 mr-2" />
+                            Update Request
                           </Button>
                         </div>
                       </Card>
