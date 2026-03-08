@@ -236,17 +236,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     setIsSubmitting(true);
 
     try {
-      // Prepare recurring schedule for API
-      let recurringScheduleData: Record<string, unknown> | null = null;
-      if (formData.is_recurring) {
-        recurringScheduleData = {
-          type: formData.recurring_schedule.type,
-          time: formData.recurring_schedule.time,
-          ...(formData.recurring_schedule.type === 'weekly' && { days: formData.recurring_schedule.days }),
-          ...(formData.recurring_schedule.type === 'monthly' && { day_of_month: formData.recurring_schedule.day_of_month }),
-          ...(formData.recurring_schedule.end_date && { end_date: formData.recurring_schedule.end_date })
-        };
-      }
+      // recurring_schedule is required by API - always send non-null
+      const recurringScheduleData: Record<string, unknown> = {
+        type: formData.recurring_schedule.type,
+        time: formData.recurring_schedule.time,
+        ...(formData.recurring_schedule.type === 'weekly' && { days: formData.recurring_schedule.days || [] }),
+        ...(formData.recurring_schedule.type === 'monthly' && { day_of_month: formData.recurring_schedule.day_of_month ?? 1 }),
+        ...(formData.recurring_schedule.end_date && { end_date: formData.recurring_schedule.end_date })
+      };
 
       // Create campaign first and wait for completion
       const success = await createCampaign({
@@ -404,10 +401,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 ) : sendersLoading ? (
                   <div className="h-8 bg-muted rounded animate-pulse" />
                 ) : (
-                  <div className="flex items-center gap-2 p-2 rounded-md border border-orange-200 bg-orange-50">
-                    <AlertCircle className="w-4 h-4 text-orange-600" />
-                    <p className="text-xs text-orange-700">
-                      No approved senders. <Link to="/dashboard/sms/sender-names" className="underline font-semibold">Request sender approval</Link>
+                  <div className="flex items-center gap-2 p-2 rounded-md border border-destructive/30 bg-destructive/10">
+                    <AlertCircle className="w-4 h-4 text-destructive" />
+                    <p className="text-xs text-foreground">
+                      No approved senders. <Link to="/dashboard/sms/sender-names" className="underline font-semibold text-primary">Request sender approval</Link>
                     </p>
                   </div>
                 )}
@@ -445,40 +442,77 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="scheduled_at" className="text-[10px] sm:text-xs">Schedule (Optional)</Label>
-                  <Input
-                    id="scheduled_at"
-                    type="datetime-local"
-                    value={formData.scheduled_at || ''}
-                    onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
-                    className="h-7 text-[10px] sm:text-xs"
-                  />
-                  <p className="text-[9px] text-muted-foreground">For single campaigns at a specific time</p>
-                </div>
+              {/* Schedule - Required (API requires recurring_schedule) */}
+              <div className="space-y-2">
+                <Label className="text-[10px] sm:text-xs font-medium">Schedule *</Label>
+                <p className="text-[9px] text-muted-foreground">When and how often the campaign runs</p>
 
-                <div className="flex items-center space-x-2 pt-3">
+                {/* Recurring toggle - prominent card style */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    handleInputChange('is_recurring', !formData.is_recurring);
+                    if (!formData.is_recurring) setScheduleErrors([]);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && (handleInputChange('is_recurring', !formData.is_recurring), !formData.is_recurring && setScheduleErrors([]))}
+                  className={`
+                    flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors cursor-pointer
+                    ${formData.is_recurring
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-border-hover'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`
+                      flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                      ${formData.is_recurring ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
+                    `}>
+                      <Info className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] sm:text-xs font-semibold text-foreground block">
+                        Recurring Campaign
+                      </span>
+                      <span className="text-[9px] text-muted-foreground">
+                        {formData.is_recurring ? 'Runs on a schedule (daily/weekly/monthly)' : 'Run once or repeat automatically'}
+                      </span>
+                    </div>
+                  </div>
                   <Checkbox
                     id="is_recurring"
                     checked={formData.is_recurring}
                     onCheckedChange={(checked) => {
                       handleInputChange('is_recurring', checked);
-                      if (checked) {
-                        setScheduleErrors([]);
-                      }
+                      if (checked) setScheduleErrors([]);
                     }}
-                    className="h-3 w-3"
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 shrink-0"
                   />
-                  <Label htmlFor="is_recurring" className="text-[10px] sm:text-xs">Recurring Campaign</Label>
                 </div>
+
+                {/* One-time schedule (when not recurring) */}
+                {!formData.is_recurring && (
+                  <div className="space-y-1">
+                    <Label htmlFor="scheduled_at" className="text-[10px] sm:text-xs">Run at (Optional)</Label>
+                    <Input
+                      id="scheduled_at"
+                      type="datetime-local"
+                      value={formData.scheduled_at || ''}
+                      onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
+                      className="h-8 text-[10px] sm:text-xs bg-background border-border"
+                    />
+                    <p className="text-[9px] text-muted-foreground">Leave empty to run immediately</p>
+                  </div>
+                )}
               </div>
 
-              {/* Recurring Schedule Configuration */}
+              {/* Recurring Schedule Configuration - always visible when recurring */}
               {formData.is_recurring && (
-                <div className="border border-dashed border-blue-300 rounded-lg p-2 bg-blue-50 space-y-2">
-                  <div className="flex items-center gap-2 text-[10px] font-semibold text-blue-900">
-                    <Info className="w-3 h-3" />
+                <div className="rounded-lg border border-border bg-card p-3 space-y-3 shadow-sm">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold text-foreground">
+                    <Info className="w-3.5 h-3.5 text-primary" />
                     Configure Recurring Schedule
                   </div>
 
@@ -566,8 +600,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
                   {/* Schedule Preview */}
                   {!scheduleErrors.length && (
-                    <div className="bg-white rounded p-2 border border-blue-200">
-                      <p className="text-[9px] text-blue-900 font-medium">
+                    <div className="rounded-md border border-border bg-muted/40 p-2.5">
+                      <p className="text-[9px] sm:text-[10px] font-medium text-foreground">
                         📅 {formatScheduleDescription(formData.recurring_schedule)}
                       </p>
                     </div>
@@ -575,9 +609,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
                   {/* Errors */}
                   {scheduleErrors.length > 0 && (
-                    <Alert className="border-red-200 bg-red-50">
-                      <AlertCircle className="h-3 w-3 text-red-600" />
-                      <AlertDescription className="text-[9px] text-red-700">
+                    <Alert variant="destructive" className="border-destructive/50">
+                      <AlertCircle className="h-3 w-3" />
+                      <AlertDescription className="text-[9px]">
                         {scheduleErrors.map((error, i) => (
                           <div key={i}>• {error}</div>
                         ))}
@@ -589,23 +623,23 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
               {/* Cost Estimation */}
               {formData.message_text && formData.target_contact_ids.length > 0 && (
-                <Alert className="border-blue-200 bg-blue-50">
-                  <DollarSign className="h-3 w-3 text-blue-600" />
-                  <AlertDescription className="text-[9px] text-blue-900">
+                <Alert className="border-border bg-muted/40">
+                  <DollarSign className="h-3 w-3 text-primary" />
+                  <AlertDescription className="text-[9px] text-foreground">
                     <div className="font-semibold mb-1">Estimated Cost</div>
-                    <div className="space-y-1 text-[9px]">
+                    <div className="space-y-1 text-[9px] text-muted-foreground">
                       <div>Message: {formData.message_text.length} chars ({Math.ceil(formData.message_text.length / 160)} seg)</div>
                       <div>Recipients: {formData.target_contact_ids.length}</div>
-                      <div className="font-semibold text-blue-700 mt-1">
+                      <div className="font-semibold text-foreground mt-1">
                         💳 Cost: TZS {estimatedCost.toLocaleString()}
                       </div>
                       {formData.is_recurring && (
-                        <div className="font-semibold text-blue-700">
+                        <div className="font-semibold text-foreground">
                           📊 Weekly: TZS {weeklyCost.toLocaleString()}
                         </div>
                       )}
                       {smsBalance !== null && estimatedCost > smsBalance && (
-                        <div className="text-orange-700 font-semibold mt-1">⚠️ Insufficient! Need TZS {(estimatedCost - smsBalance).toLocaleString()} more</div>
+                        <div className="text-destructive font-semibold mt-1">⚠️ Insufficient! Need TZS {(estimatedCost - smsBalance).toLocaleString()} more</div>
                       )}
                     </div>
                   </AlertDescription>

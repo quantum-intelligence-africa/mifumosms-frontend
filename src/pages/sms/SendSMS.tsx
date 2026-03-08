@@ -43,6 +43,7 @@ import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
 import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, formatSegmentCount, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
+import { parseExcelFile } from "@/utils/excelParser";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -71,6 +72,10 @@ const SendSMS = () => {
   const [sendProgress, setSendProgress] = useState(0);
   const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
   const [isLoadingSegmentContacts, setIsLoadingSegmentContacts] = useState(false);
+  // Cached full contact list for group/tag operations (all pages)
+  const [allGroupContacts, setAllGroupContacts] = useState<Contact[]>([]);
+  const [isLoadingAllGroupContacts, setIsLoadingAllGroupContacts] = useState(false);
+  const [allGroupContactsLoaded, setAllGroupContactsLoaded] = useState(false);
   const [pageReady, setPageReady] = useState(false);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(new AbortController());
@@ -88,6 +93,11 @@ const SendSMS = () => {
     // Convert local TZ format 0XXXXXXXXX (10 digits) to +255XXXXXXXXX
     if (digitsOnly.startsWith("0") && digitsOnly.length === 10) {
       return `+255${digitsOnly.slice(1)}`;
+    }
+
+    // Handle numbers without 0 but clearly local (9 digits) e.g. 7444..., 6xxxx..., 7xxxx...
+    if (!digitsOnly.startsWith("0") && digitsOnly.length === 9) {
+      return `+255${digitsOnly}`;
     }
 
     // Handle E.164 format that already has + prefix
@@ -179,49 +189,166 @@ const SendSMS = () => {
     return finalResult;
   }, [senderNames]);
 
-  // Build unique tag names for group dropdown
-  const uniqueTagNames = useMemo(() => {
-    const tagSet = new Set<string>();
-    contacts.forEach(contact => {
-      (contact.tags || []).forEach(tag => {
-        const tagLower = tag.trim().toLowerCase();
-        if (tagLower) tagSet.add(tagLower);
+  // Build tag list (group names) with counts from the full cached contact list
+  const groupTags = useMemo(() => {
+    const tagMap = new Map<string, { label: string; count: number }>();
+
+    allGroupContacts.forEach((contact) => {
+      (contact.tags || []).forEach((tag) => {
+        const trimmed = tag.trim();
+        if (!trimmed) return;
+        const lower = trimmed.toLowerCase();
+        const existing = tagMap.get(lower);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          tagMap.set(lower, { label: trimmed, count: 1 });
+        }
       });
     });
-    return Array.from(tagSet).sort();
-  }, [contacts]);
 
-  // Function to fetch contacts by group or tag
+    return Array.from(tagMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+  }, [allGroupContacts]);
+
+  // Convenience list of tag labels only (for quick checks)
+  const uniqueTagNames = useMemo(
+    () => groupTags.map((t) => t.label),
+    [groupTags]
+  );
+
+  // Load ALL contacts across all pages once for group/tag operations
+  const loadAllGroupContacts = useCallback(
+    async (abortSignal?: AbortSignal): Promise<Contact[]> => {
+      if (!isMountedRef.current) return [];
+
+      // If already loaded, reuse
+      if (allGroupContactsLoaded && allGroupContacts.length > 0) {
+        return allGroupContacts;
+      }
+
+      if (isLoadingAllGroupContacts) {
+        // If already loading in another call, just return what we have
+        return allGroupContacts;
+      }
+
+      setIsLoadingAllGroupContacts(true);
+
+      const PAGE_SIZE = 100;
+      let all: Contact[] = [];
+
+      try {
+        let page = 1;
+        let hasNext = true;
+
+        while (hasNext) {
+          if (abortSignal?.aborted || !isMountedRef.current) {
+            return all;
+          }
+
+          const response = await apiClient.getContacts({
+            page,
+            page_size: PAGE_SIZE,
+          });
+
+          if (!response.success || !response.data) {
+            logger.error("Error fetching contacts for groups", {
+              page,
+              status: response.status,
+              error: response.error,
+            });
+            toast({
+              title: "Error loading contacts",
+              description:
+                response.error || "Failed to load contacts for groups",
+              variant: "destructive",
+            });
+            break;
+          }
+
+          const { results, next } = response.data;
+          all = all.concat(results || []);
+          hasNext = Boolean(next);
+          page += 1;
+        }
+
+        if (!abortSignal?.aborted && isMountedRef.current) {
+          setAllGroupContacts(all);
+          setAllGroupContactsLoaded(true);
+        }
+
+        return all;
+      } catch (error) {
+        if (!abortSignal?.aborted && isMountedRef.current) {
+          logger.error("Error loading all group contacts");
+          toast({
+            title: "Error loading contacts",
+            description: "Failed to load contacts for groups",
+            variant: "destructive",
+          });
+        }
+        return all;
+      } finally {
+        if (!abortSignal?.aborted && isMountedRef.current) {
+          setIsLoadingAllGroupContacts(false);
+        }
+      }
+    },
+    [allGroupContacts, allGroupContactsLoaded, isLoadingAllGroupContacts, toast]
+  );
+
+  // Function to fetch contacts by group or tag using the cached full list
   const fetchContactsByGroup = useCallback(async (groupId: string, abortSignal?: AbortSignal) => {
     if (!isMountedRef.current) return;
     setIsLoadingSegmentContacts(true);
+
     try {
-      let filteredContacts: Contact[] = [];
+      // Ensure we have the full contact list cached
+      const baseContacts = await loadAllGroupContacts(abortSignal);
+      let loadedContacts: Contact[] = [];
+
       if (groupId === "all") {
-        filteredContacts = contacts;
-      } else if (groupId === "choose-group" && selectedTagGroup) {
-        filteredContacts = contacts.filter(contact =>
-          (contact.tags || []).map(t => t.trim().toLowerCase()).includes(selectedTagGroup)
-        );
+        // Use ALL contacts across all pages
+        loadedContacts = baseContacts;
+      } else if (groupId === "choose-group") {
+        if (selectedTagGroup) {
+          // Filter locally: contacts that contain the selected tag (case-insensitive)
+          const tagLower = selectedTagGroup.trim().toLowerCase();
+          loadedContacts = baseContacts.filter((contact) =>
+            (contact.tags || []).some(
+              (t) => t.trim().toLowerCase() === tagLower
+            )
+          );
+        } else {
+          // When user first chooses "Choose Group Name", show ALL contacts
+          loadedContacts = baseContacts;
+        }
       } else {
-        filteredContacts = contacts;
+        // Fallback: use whatever is already loaded by the contacts hook
+        loadedContacts = contacts;
       }
-      if (isMountedRef.current) {
-        setSegmentContacts(filteredContacts);
-        logger.debug(`Group ${groupId} contacts loaded: ${filteredContacts.length}`);
+
+      if (isMountedRef.current && !abortSignal?.aborted) {
+        setSegmentContacts(loadedContacts);
+        logger.debug(`Group ${groupId} contacts loaded: ${loadedContacts.length}`, {
+          groupId,
+          selectedTagGroup,
+          contactCount: loadedContacts.length,
+        });
       }
     } catch (error) {
       if (isMountedRef.current && !abortSignal?.aborted) {
-        logger.error('Error filtering group contacts');
+        logger.error('Error loading group contacts');
         setSegmentContacts([]);
         toast({
           title: "Error loading contacts",
-          description: "Failed to filter contacts for the selected group",
-          variant: "destructive"
+          description: "Failed to load contacts for the selected group",
+          variant: "destructive",
         });
       }
     } finally {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !abortSignal?.aborted) {
         setIsLoadingSegmentContacts(false);
       }
     }
@@ -271,7 +398,7 @@ const SendSMS = () => {
 
   const estimatedCost = calculateSMSCost(segmentCount, getRecipientCount(), costPerSMS);
 
-  // Fetch contacts when segment is selected
+  // Fetch contacts when segment or tag selection changes
   useEffect(() => {
     const abortController = new AbortController();
     if (selectedMode === "segment" && selectedSegment && isMountedRef.current) {
@@ -280,7 +407,7 @@ const SendSMS = () => {
     return () => {
       abortController.abort();
     };
-  }, [selectedMode, selectedSegment, fetchContactsByGroup]);
+  }, [selectedMode, selectedSegment, selectedTagGroup, fetchContactsByGroup]);
 
   const location = useLocation();
 
@@ -653,16 +780,20 @@ const SendSMS = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const lowerName = file.name.toLowerCase();
+    const isCSV = lowerName.endsWith(".csv");
+    const isExcel = lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls");
+
     // Validate file type
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    if (!isCSV && !isExcel) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a CSV file",
-        variant: "destructive"
+        description: "Please upload a CSV or Excel file",
+        variant: "destructive",
       });
       return;
     }
@@ -672,89 +803,128 @@ const SendSMS = () => {
       toast({
         title: "File too large",
         description: "Please upload a file smaller than 5MB",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const csv = event.target?.result as string;
-        const lines = csv.split('\n').filter(line => line.trim());
+    try {
+      const phoneNumbers: string[] = [];
+      const invalidNumbers: string[] = [];
 
-        if (lines.length < 2) {
+      if (isExcel) {
+        // Use shared Excel parser used by Contacts import
+        const result = await parseExcelFile(file);
+
+        result.contacts.forEach((c) => {
+          // excelParser normalizes to 255XXXXXXXXX; convert to +255 format
+          const normalized = normalizeToApi(c.phone.startsWith("255") ? `+${c.phone}` : c.phone);
+          if (normalized) {
+            if (!phoneNumbers.includes(normalized)) {
+              phoneNumbers.push(normalized);
+            }
+          } else {
+            invalidNumbers.push(c.phone);
+          }
+        });
+
+        if (result.errors.length > 0) {
+          // Show first error as hint, but still use numbers we got
           toast({
-            title: "Invalid CSV",
-            description: "CSV file must contain at least a header and one data row",
-            variant: "destructive"
+            title: "Some rows were skipped",
+            description: result.errors[0],
+            variant: "destructive",
+          });
+        }
+      } else if (isCSV) {
+        const reader = new FileReader();
+        const csvText: string = await new Promise((resolve, reject) => {
+          reader.onload = (event) => resolve((event.target?.result as string) || "");
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.readAsText(file);
+        });
+
+        const lines = csvText.split("\n").map((l) => l.trim()).filter((l) => l);
+        if (lines.length === 0) {
+          toast({
+            title: "Empty file",
+            description: "The CSV file is empty",
+            variant: "destructive",
           });
           return;
         }
 
-        // Parse CSV header to find phone column
-        const header = lines[0].split(',').map(col => col.trim().toLowerCase());
-        const phoneColumnIndex = header.findIndex(col =>
-          col.includes('phone') || col.includes('number') || col.includes('mobile')
-        );
+        // Try to detect header; if first line contains any letters, treat as header.
+        const firstLine = lines[0];
+        const hasLetters = /[A-Za-z]/.test(firstLine);
 
-        if (phoneColumnIndex === -1) {
-          toast({
-            title: "Phone column not found",
-            description: "CSV must contain a column with 'phone', 'number', or 'mobile' in the header",
-            variant: "destructive"
-          });
-          return;
+        let startIndex = 0;
+        let phoneColumnIndex = 0;
+
+        if (hasLetters) {
+          const header = parseCSVLine(firstLine).map((col) => col.trim().toLowerCase());
+          const foundIndex = header.findIndex(
+            (col) => col.includes("phone") || col.includes("number") || col.includes("mobile")
+          );
+          if (foundIndex === -1) {
+            // Fallback: assume first column is phone
+            phoneColumnIndex = 0;
+          } else {
+            phoneColumnIndex = foundIndex;
+          }
+          startIndex = 1;
+        } else {
+          // No header; every line is data, first column is phone
+          phoneColumnIndex = 0;
+          startIndex = 0;
         }
 
-        const phoneNumbers: string[] = [];
-        const invalidNumbers: string[] = [];
-
-        // Process each data row
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
+        for (let i = startIndex; i < lines.length; i++) {
+          const line = lines[i];
           if (!line) continue;
 
-          // Handle CSV parsing with proper quote handling
           const columns = parseCSVLine(line);
-          const phone = columns[phoneColumnIndex]?.trim().replace(/['"]/g, '');
+          const rawPhone = (columns[phoneColumnIndex] || "").trim().replace(/['"]/g, "");
+          if (!rawPhone) continue;
 
-          if (phone) {
-            // Normalize phone number to API format
-            const normalizedPhone = normalizeToApi(phone);
-            if (normalizedPhone) {
-              if (!phoneNumbers.includes(normalizedPhone)) {
-                phoneNumbers.push(normalizedPhone);
-              }
-            } else {
-              invalidNumbers.push(phone);
+          const normalizedPhone = normalizeToApi(rawPhone);
+          if (normalizedPhone) {
+            if (!phoneNumbers.includes(normalizedPhone)) {
+              phoneNumbers.push(normalizedPhone);
             }
+          } else {
+            invalidNumbers.push(rawPhone);
           }
         }
+      }
 
-        if (phoneNumbers.length > 0) {
-          setRecipients(phoneNumbers);
-          toast({
-            title: "File processed successfully",
-            description: `Found ${phoneNumbers.length} valid phone numbers${invalidNumbers.length > 0 ? ` (${invalidNumbers.length} invalid numbers skipped)` : ''}`,
-          });
-        } else {
-          toast({
-            title: "No valid numbers found",
-            description: "Please check your CSV format and ensure phone numbers are in E.164 format (+255XXXXXXXXX)",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error('CSV parsing error:', error);
+      if (phoneNumbers.length > 0) {
+        setRecipients(phoneNumbers);
         toast({
-          title: "Error processing file",
-          description: "Failed to parse CSV file. Please check the format.",
-          variant: "destructive"
+          title: "File processed successfully",
+          description: `Found ${phoneNumbers.length} valid phone numbers${
+            invalidNumbers.length > 0 ? ` (${invalidNumbers.length} invalid numbers skipped)` : ""
+          }`,
+        });
+      } else {
+        toast({
+          title: "No valid numbers found",
+          description:
+            "Please check your file and ensure it contains valid Tanzanian phone numbers (255XXXXXXXXX, 0XXXXXXXXX, or 9-digit local numbers).",
+          variant: "destructive",
         });
       }
-    };
-    reader.readAsText(file);
+    } catch (error) {
+      console.error("File parsing error:", error);
+      toast({
+        title: "Error processing file",
+        description: "Failed to parse file. Please check the format.",
+        variant: "destructive",
+      });
+    } finally {
+      // Reset input so the same file can be selected again if needed
+      e.target.value = "";
+    }
   };
 
   // Helper function to parse CSV line with proper quote handling
@@ -822,9 +992,13 @@ const SendSMS = () => {
                   <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-lg gradient-secondary flex items-center justify-center mb-1.5 sm:mb-2">
                     <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-secondary-foreground" />
                   </div>
-                  <h3 className="font-heading text-xs sm:text-sm md:text-base font-semibold mb-0.5">{language === "sw" ? "File" : "File SMS"}</h3>
+                  <h3 className="font-heading text-xs sm:text-sm md:text-base font-semibold mb-0.5">
+                    {language === "sw" ? "Bulk SMS" : "Bulk SMS"}
+                  </h3>
                   <p className="text-xs text-text-subtle line-clamp-2">
-                    {language === "sw" ? "CSV upload" : "CSV Upload"}
+                    {language === "sw"
+                      ? "CSV, Excel au anwani za simu"
+                      : "CSV, Excel or phone contacts"}
                   </p>
                 </Card>
 
@@ -942,32 +1116,106 @@ const SendSMS = () => {
 
                   {/* Recipients - Bulk Mode */}
                   {selectedMode === "bulk" && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs sm:text-sm font-medium">{language === "sw" ? "CSV File" : "CSV File"}</Label>
+                    <div className="space-y-2">
+                      <Label className="text-xs sm:text-sm font-medium">
+                        {language === "sw" ? "Wapokeaji kutoka faili / simu" : "Recipients from file / phone"}
+                      </Label>
+
+                      {/* File upload (CSV / Excel) */}
                       <div className="border border-dashed border-border rounded-lg p-3 sm:p-4 text-center hover:border-primary/50 transition-colors">
                         <Upload className="w-6 h-6 mx-auto mb-1.5 text-text-subtle" />
                         <p className="text-xs sm:text-sm text-text-subtle mb-1.5">
-                          {language === "sw" ? "Upload CSV" : "Upload CSV"}
+                          {language === "sw"
+                            ? "Pakia faili ya CSV au Excel yenye namba za simu"
+                            : "Upload CSV or Excel file with phone numbers"}
                         </p>
                         <input
                           type="file"
-                          accept=".csv"
+                          accept=".csv,.xlsx,.xls"
                           onChange={handleFileUpload}
                           className="hidden"
-                          id="csv-upload"
+                          id="recipients-file-upload"
                         />
-                        <label htmlFor="csv-upload">
+                        <label htmlFor="recipients-file-upload">
                           <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-                            <span>{language === "sw" ? "Choose" : "Choose"}</span>
+                            <span>{language === "sw" ? "Chagua faili" : "Choose file"}</span>
                           </Button>
                         </label>
                       </div>
 
-                      {/* Uploaded File Preview */}
+                      {/* Optional: Import from phone contacts (where supported) */}
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-9 text-xs sm:text-sm flex-1 justify-center"
+                          onClick={async () => {
+                            const navAny = navigator as any;
+                            if (!navAny.contacts || !navAny.contacts.select) {
+                              toast({
+                                title: language === "sw" ? "Haiwezekani moja kwa moja" : "Direct phone import not available",
+                                description:
+                                  language === "sw"
+                                    ? "Kivinjari chako hakiruhusu kusoma anwani za simu moja kwa moja. Tafadhali toa CSV/Excel kutoka simu yako na ipakie hapa."
+                                    : "Your browser cannot read phone contacts directly. Please export contacts to CSV/Excel on your phone and upload the file here.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
+                            try {
+                              const selected = await navAny.contacts.select(['name', 'tel'], { multiple: true });
+                              const numbers: string[] = [];
+
+                              (selected || []).forEach((c: any) => {
+                                (c.tel || []).forEach((raw: string) => {
+                                  const normalized = normalizeToApi(raw);
+                                  if (normalized && !numbers.includes(normalized)) {
+                                    numbers.push(normalized);
+                                  }
+                                });
+                              });
+
+                              if (numbers.length === 0) {
+                                toast({
+                                  title: language === "sw" ? "Hakuna namba zilizopatikana" : "No phone numbers found",
+                                  description:
+                                    language === "sw"
+                                      ? "Hakuna namba halali za simu zilizochaguliwa kutoka kwenye anwani za simu."
+                                      : "No valid phone numbers were selected from your phone contacts.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              setRecipients(numbers);
+                              toast({
+                                title: language === "sw" ? "Namba zimeongezwa" : "Contacts imported",
+                                description:
+                                  language === "sw"
+                                    ? `Namba ${numbers.length} zimechaguliwa kutoka kwenye anwani za simu.`
+                                    : `Imported ${numbers.length} phone numbers from your phone contacts.`,
+                              });
+                            } catch (error) {
+                              // User may cancel; just ignore silently
+                            }
+                          }}
+                        >
+                          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <span className="truncate">
+                            {language === "sw" ? "Chukua kutoka anwani za simu" : "Import from phone contacts"}
+                          </span>
+                        </Button>
+                      </div>
+
+                      {/* Uploaded/Imported Preview */}
                       {recipients.length > 0 && (
                         <div className="space-y-1.5 pt-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium">{recipients.length} recipient(s)</Label>
+                            <Label className="text-xs font-medium">
+                              {recipients.length} {language === "sw" ? "wapokeaji" : "recipient(s)"}
+                            </Label>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -986,7 +1234,7 @@ const SendSMS = () => {
                               ))}
                               {recipients.length > 20 && (
                                 <Badge variant="outline" className="text-xs">
-                                  +{recipients.length - 20} more
+                                  +{recipients.length - 20} {language === "sw" ? "zaidi" : "more"}
                                 </Badge>
                               )}
                             </div>
@@ -997,9 +1245,17 @@ const SendSMS = () => {
                       <Alert>
                         <AlertCircle className="w-4 h-4" />
                         <AlertDescription>
-                          <div className="space-y-1">
-                            <div>CSV must contain a column with 'phone', 'number', or 'mobile' in the header</div>
-                            <div className="text-xs">Supported formats: +255XXXXXXXXX, 255XXXXXXXXX, 0XXXXXXXXX</div>
+                          <div className="space-y-1 text-xs">
+                            <div>
+                              {language === "sw"
+                                ? "Faili inaweza kuwa na safu moja tu ya namba au jedwali lenye safu ya namba (jina/email ni hiari)."
+                                : "File can be a single column of numbers or a table with a phone column (name/email are optional)."}
+                            </div>
+                            <div>
+                              {language === "sw"
+                                ? "Muundo wa namba unaokubalika: 255XXXXXXXXX, 0XXXXXXXXX, au 9 tarakimu kama 7444XXXXXX / 6XXXXXXX / 7XXXXXXX (zitabadilishwa kiotomatiki kuwa +255...)."
+                                : "Supported number formats: 255XXXXXXXXX, 0XXXXXXXXX, or 9 digits like 7444XXXXXX / 6XXXXXXX / 7XXXXXXX (auto-converted to +255...)."}
+                            </div>
                           </div>
                         </AlertDescription>
                       </Alert>
@@ -1028,22 +1284,36 @@ const SendSMS = () => {
                       {/* If 'Choose Group Name' is selected, show a secondary dropdown for tags */}
                       {selectedSegment === 'choose-group' && (
                         <div className="mt-2">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {uniqueTagNames.map((tag) => {
-                              const formatted = tag.charAt(0).toUpperCase() + tag.slice(1).replace(/_/g, ' ');
-                              const isSelected = selectedTagGroup === tag;
-                              return (
-                                <button
-                                  key={tag}
-                                  type="button"
-                                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none ${isSelected ? 'bg-primary text-white border-primary' : 'bg-muted text-foreground border-border hover:bg-primary/10'}`}
-                                  onClick={() => setSelectedTagGroup(tag)}
-                                >
-                                  {formatted}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          {isLoadingAllGroupContacts && uniqueTagNames.length === 0 ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              {language === "sw" ? "Inapakua makundi..." : "Loading groups..."}
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {groupTags.map(({ label, count }) => {
+                                const formatted = label.replace(/_/g, ' ');
+                                const isSelected = selectedTagGroup === label;
+                                return (
+                                  <button
+                                    key={label}
+                                    type="button"
+                                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none ${isSelected ? 'bg-primary text-white border-primary' : 'bg-muted text-foreground border-border hover:bg-primary/10'}`}
+                                    onClick={() => setSelectedTagGroup(label)}
+                                  >
+                                    <span className="flex flex-col items-start">
+                                      <span>{formatted}</span>
+                                      {typeof count === "number" && (
+                                        <span className="text-[11px] text-muted-foreground">
+                                          {count} {language === "sw" ? "wasilianaji" : "contacts"}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                       {(selectedSegment === 'all' || (selectedSegment === 'choose-group' && selectedTagGroup)) && (
