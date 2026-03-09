@@ -755,30 +755,17 @@ const Campaigns = () => {
                   </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
+                  <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
                     <SelectValue placeholder={language === "sw" ? "Chuja kwa hali" : "Filter by status"} />
                   </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{language === "sw" ? "Hali zote" : "All Status"}</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="all">{language === "sw" ? "Hali zote" : "All Status"}</SelectItem>
                     <SelectItem value="draft">{language === "sw" ? "Rasimu" : "Draft"}</SelectItem>
                     <SelectItem value="scheduled">{language === "sw" ? "Imeratibiwa" : "Scheduled"}</SelectItem>
                     <SelectItem value="running">{language === "sw" ? "Inaendelea" : "Running"}</SelectItem>
                     <SelectItem value="paused">{language === "sw" ? "Imesitishwa" : "Paused"}</SelectItem>
                     <SelectItem value="completed">{language === "sw" ? "Imekamilika" : "Completed"}</SelectItem>
-                      <SelectItem value="cancelled">{language === "sw" ? "Imeghairiwa" : "Cancelled"}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-40 lg:w-48 text-xs sm:text-sm h-8 sm:h-9">
-                    <SelectValue placeholder={language === "sw" ? "Chuja kwa aina" : "Filter by type"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{language === "sw" ? "Aina zote" : "All Types"}</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="mixed">{language === "sw" ? "Mchanganyiko" : "Mixed"}</SelectItem>
+                    <SelectItem value="cancelled">{language === "sw" ? "Imeghairiwa" : "Cancelled"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -76,7 +76,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     },
     is_recurring: false,
     recurring_schedule: {
-      type: 'daily' as 'daily' | 'weekly' | 'monthly',
+      // default to daily, user can choose single/weekly/monthly
+      type: 'daily' as 'single' | 'daily' | 'weekly' | 'monthly',
       time: '09:00',
       days: [] as string[],
       day_of_month: 1,
@@ -150,7 +151,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     ? calculateRecurringWeeklyCost(
         formData.message_text,
         formData.target_contact_ids.length,
-        formData.recurring_schedule.type as 'daily' | 'weekly' | 'monthly',
+        formData.recurring_schedule.type as 'single' | 'daily' | 'weekly' | 'monthly',
         formData.recurring_schedule.days?.length || 1,
         25
       )
@@ -521,12 +522,15 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     <Label className="text-[10px] sm:text-xs">Schedule Type *</Label>
                     <Select
                       value={formData.recurring_schedule.type}
-                      onValueChange={(value) => handleRecurringScheduleChange('type', value as 'daily' | 'weekly' | 'monthly')}
+                      onValueChange={(value) =>
+                        handleRecurringScheduleChange('type', value as 'single' | 'daily' | 'weekly' | 'monthly')
+                      }
                     >
                       <SelectTrigger className="h-7 text-[10px] sm:text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="single">Single day - One-time at a specific time</SelectItem>
                         <SelectItem value="daily">Daily - Every day at a specific time</SelectItem>
                         <SelectItem value="weekly">Weekly - Specific days each week</SelectItem>
                         <SelectItem value="monthly">Monthly - Specific day each month</SelectItem>

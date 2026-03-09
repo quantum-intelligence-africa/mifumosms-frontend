@@ -35,7 +35,7 @@ export function calculateCampaignCost(
  * Calculate weekly credit deduction for recurring campaigns
  * @param messageText - Campaign message content
  * @param recipientCount - Number of recipients
- * @param scheduleType - 'daily', 'weekly', or 'monthly'
+ * @param scheduleType - 'single', 'daily', 'weekly', or 'monthly'
  * @param daysPerWeek - Number of days per week (for weekly schedules)
  * @param costPerSegment - Cost per segment (default: 25)
  * @returns Weekly credit cost
@@ -43,7 +43,7 @@ export function calculateCampaignCost(
 export function calculateRecurringWeeklyCost(
 	messageText: string,
 	recipientCount: number,
-	scheduleType: 'daily' | 'weekly' | 'monthly',
+	scheduleType: 'single' | 'daily' | 'weekly' | 'monthly',
 	daysPerWeek: number = 1,
 	costPerSegment: number = 25
 ): number {
@@ -51,6 +51,9 @@ export function calculateRecurringWeeklyCost(
 	const costsPerExecution = segments * recipientCount * costPerSegment;
 
 	switch (scheduleType) {
+		case 'single':
+			// One-time in a week
+			return costsPerExecution;
 		case 'daily':
 			return costsPerExecution * 7; // 7 days per week
 		case 'weekly':
@@ -81,8 +84,8 @@ export function validateRecurringSchedule(schedule: {
 
 	if (!schedule.type) {
 		errors.push('Schedule type is required');
-	} else if (!['daily', 'weekly', 'monthly'].includes(schedule.type)) {
-		errors.push('Schedule type must be daily, weekly, or monthly');
+	} else if (!['single', 'daily', 'weekly', 'monthly'].includes(schedule.type)) {
+		errors.push('Schedule type must be single, daily, weekly, or monthly');
 	}
 
 	if (!schedule.time) {
@@ -143,6 +146,13 @@ export function formatScheduleDescription(schedule: {
 	let description = '';
 
 	switch (schedule.type) {
+		case 'single':
+			description = `One-time at ${schedule.time || '09:00'}`;
+			if (schedule.end_date) {
+				description += ` on ${new Date(schedule.end_date).toLocaleDateString()}`;
+			}
+			break;
+
 		case 'daily':
 			description = `Daily at ${schedule.time || '09:00'}`;
 			if (schedule.end_date) {
@@ -217,7 +227,7 @@ export function estimateCampaignSummary(
 	messageText: string,
 	recipientCount: number,
 	isRecurring: boolean = false,
-	scheduleType: 'daily' | 'weekly' | 'monthly' = 'daily',
+	scheduleType: 'single' | 'daily' | 'weekly' | 'monthly' = 'daily',
 	daysPerWeek: number = 1
 ): {
 	segments: number;

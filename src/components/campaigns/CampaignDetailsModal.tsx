@@ -373,44 +373,6 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             </Card>
           </div>
 
-          {/* Settings */}
-          <Card>
-            <CardHeader className="pb-1">
-              <CardTitle className="text-[9px] sm:text-xs flex items-center gap-1">
-                <Settings className="w-2.5 h-2.5" />
-                Campaign Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 sm:gap-1.5">
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Send Time</span>
-                  <span className="text-[8px] font-medium">{campaign.settings?.send_time || 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Timezone</span>
-                  <span className="text-[8px] font-medium">{campaign.settings?.timezone || 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Recurring</span>
-                  <span className="text-[8px] font-medium">{campaign.is_recurring ? 'Yes' : 'No'}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Created By</span>
-                  <span className="text-[8px] font-medium">{campaign.created_by_name || campaign.created_by}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Template</span>
-                  <span className="text-[8px] font-medium">{campaign.template || 'None'}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-text-subtle block">Opt-in Status</span>
-                  <span className="text-[8px] font-medium">{campaign.target_criteria?.opt_in_status || 'Not set'}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Actions */}
           <div className="flex flex-wrap gap-0.5 sm:gap-1 justify-center sm:justify-end">
             <Button
