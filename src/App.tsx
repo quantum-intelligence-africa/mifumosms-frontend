@@ -87,6 +87,9 @@ const App = () => (
             <RouteAnimator>
             <Routes>
               <Route path="/" element={<Landing />} />
+              {/* SEO-friendly landing aliases */}
+              <Route path="/pricing" element={<Landing />} />
+              <Route path="/features" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />

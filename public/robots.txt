@@ -12,3 +12,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://sms.mifumolabs.com/sitemap.xml
+Sitemap: https://sms.mifumolabs.com/sitemap-pages.xml
+Sitemap: https://sms.mifumolabs.com/sitemap-developer.xml
+Sitemap: https://sms.mifumolabs.com/sitemap-products.xml
