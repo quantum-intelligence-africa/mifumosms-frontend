@@ -26,7 +26,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { updateTheme, preferences } = usePreferences();
 
   const handleLogout = async () => {
@@ -54,6 +54,11 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       console.error('Failed to save theme preference:', error);
       // Revert on error would be handled by the hook
     });
+  };
+
+  const handleLanguageToggle = () => {
+    const next = language === "sw" ? "en" : "sw";
+    setLanguage(next);
   };
 
   const getInitials = (name: string) => {
@@ -98,6 +103,19 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">{t("theme.toggle")}</span>
+        </Button>
+
+        {/* Language Toggle */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleLanguageToggle}
+          className="h-8 px-2 text-[10px] sm:text-xs rounded-lg border-border-subtle bg-background/80 hover:bg-accent"
+        >
+          <span className="font-semibold tracking-wide">
+            {language === "sw" ? "SW" : "EN"}
+          </span>
         </Button>
 
         {/* User Profile */}

@@ -1026,8 +1026,15 @@ const SenderNames = () => {
   const mifumoApproved = safeSenderNames.some(sender =>
     isSenderApproved(sender, ['Mifumosms'])
   );
-  // Hide section if EITHER Taarifa-SMS or Mifumosms is approved/active
-  const shouldHideDefaultSenderCard = taarifaApproved || mifumoApproved;
+
+  // Global flag: any sender ID with status "approved"
+  const hasAnyApprovedSender = safeSenderNames.some(sender => {
+    const status = ((sender as unknown as Record<string, unknown>).status as string) || '';
+    return status.toLowerCase() === 'approved';
+  });
+
+  // Hide the default sender/help section as soon as ANY sender ID is approved
+  const shouldHideDefaultSenderCard = taarifaApproved || mifumoApproved || hasAnyApprovedSender;
 
   // Calculate paginated data
   const totalItems = safeSenderNames.length;
@@ -1507,21 +1514,23 @@ const SenderNames = () => {
               </Card>
             )}
 
-            {/* Info Card */}
-            <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">
-              <div className="flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium mb-2">Sender Name Requirements</p>
-                  <ul className="text-text-subtle space-y-1.5 list-disc list-inside leading-relaxed">
-                    <li>Maximum 11 characters (letters, numbers, spaces, _, -)</li>
-                    <li>Must be relevant to your business or brand</li>
-                    <li>Approval typically takes 1-3 business days</li>
-                    <li>Provide valid use case and sample messages</li>
-                  </ul>
+            {/* Info Card - hide once any sender is approved */}
+            {!hasAnyApprovedSender && (
+              <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">
+                <div className="flex gap-3">
+                  <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium mb-2">Sender Name Requirements</p>
+                    <ul className="text-text-subtle space-y-1.5 list-disc list-inside leading-relaxed">
+                      <li>Maximum 11 characters (letters, numbers, spaces, _, -)</li>
+                      <li>Must be relevant to your business or brand</li>
+                      <li>Approval typically takes 1-3 business days</li>
+                      <li>Provide valid use case and sample messages</li>
+                    </ul>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
             {/* Sender Names Table - Desktop */}
             <Card className="glass overflow-x-auto hidden lg:block">
@@ -1630,8 +1639,8 @@ const SenderNames = () => {
                 </div>
               )}
 
-              {/* Desktop Pagination */}
-              {safeSenderNames.length > 0 && (
+              {/* Desktop Pagination - show only when more than 10 items for cleaner UI */}
+              {totalItems > 10 && (
                 <DataTablePagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -1755,8 +1764,8 @@ const SenderNames = () => {
                   );
                 })}
 
-                {/* Mobile Pagination */}
-                {safeSenderNames.length > 0 && (
+                {/* Mobile Pagination - show only when more than 10 items */}
+                {totalItems > 10 && (
                   <DataTablePagination
                     currentPage={currentPage}
                     totalPages={totalPages}
