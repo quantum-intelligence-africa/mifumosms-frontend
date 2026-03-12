@@ -37,7 +37,9 @@ import Developer from "./pages/Developer";
 
 const queryClient = new QueryClient();
 
-// Component to handle route-based key for forcing remounts
+const CANONICAL_BASE_URL = "https://sms.mifumolabs.com";
+
+// Component to handle route-based key for forcing remounts and SEO canonicals
 const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
@@ -47,6 +49,35 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
     // Reset document scrollbar
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+
+    // Update canonical URL per route for better SEO
+    const path = location.pathname || "/";
+
+    // Explicit canonicals for key marketing routes
+    const canonicalPath =
+      path === "/"
+        ? "/"
+        : path === "/pricing"
+        ? "/pricing"
+        : path === "/features"
+        ? "/features"
+        : path === "/developer"
+        ? "/developer"
+        : path;
+
+    const canonicalUrl = `${CANONICAL_BASE_URL}${canonicalPath}`;
+
+    let link: HTMLLinkElement | null = document.querySelector(
+      "link[rel='canonical']"
+    );
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("rel", "canonical");
+      document.head.appendChild(link);
+    }
+    if (link.href !== canonicalUrl) {
+      link.href = canonicalUrl;
+    }
   }, [location.pathname]);
 
   return <div key={location.pathname}>{children}</div>;
