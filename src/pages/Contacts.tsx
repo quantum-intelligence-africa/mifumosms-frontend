@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -142,6 +142,8 @@ department: ""
 });
 const [newTag, setNewTag] = useState("");
 const tagInputRef = useRef<HTMLInputElement>(null);
+const [mobileAllContacts, setMobileAllContacts] = useState<Contact[]>([]);
+const [isLoadingMobileAllContacts, setIsLoadingMobileAllContacts] = useState(false);
 
 // Contact action handlers
 const handleSendMessage = (contact: Contact) => {
@@ -279,6 +281,42 @@ const predefinedTags = [
 
 const location = useLocation();
 
+// Mobile: fetch and cache all contacts across all pages (single list, no pagination UX)
+const fetchAllContactsForMobile = useCallback(async () => {
+  try {
+    setIsLoadingMobileAllContacts(true);
+
+    let page = 1;
+    let hasMore = true;
+    const pageSizeForFetch = 100;
+    const all: Contact[] = [];
+
+    while (hasMore) {
+      const response = await apiClient.getContacts({
+        page,
+        page_size: pageSizeForFetch,
+      });
+
+      if (response.success && response.data) {
+        all.push(...(response.data.results || []));
+        hasMore = !!response.data.next;
+        page += 1;
+
+        if (page > 1000) break; // safety guard
+      } else {
+        hasMore = false;
+      }
+    }
+
+    setMobileAllContacts(all);
+  } catch (error) {
+    console.error("Failed to fetch all mobile contacts:", error);
+    setMobileAllContacts([]);
+  } finally {
+    setIsLoadingMobileAllContacts(false);
+  }
+}, []);
+
 useEffect(() => {
 const params = new URLSearchParams(location.search);
 if (params.get("action") === "create") {
@@ -288,15 +326,22 @@ setIsCreateDialogOpen(true);
 
 // Fetch contacts on component mount
 useEffect(() => {
+    if (isMobile) {
+      fetchAllContactsForMobile();
+      return;
+    }
     fetchContacts();
-}, [fetchContacts]);
+}, [fetchContacts, isMobile, fetchAllContactsForMobile]);
 
 
-// Get all unique tags from contacts
-const allTags = Array.from(new Set((contacts || []).flatMap(c => c.tags).filter(tag => tag && tag.trim() !== "")));
+// Use full list on mobile for better UX
+const contactsForView = isMobile ? mobileAllContacts : contacts;
+
+// Get all unique tags from displayed contacts source
+const allTags = Array.from(new Set((contactsForView || []).flatMap(c => c.tags).filter(tag => tag && tag.trim() !== "")));
 
 // For client-side filtering (when not using server-side search)
-const filteredContacts = (contacts || []).filter(contact => {
+const filteredContacts = (contactsForView || []).filter(contact => {
 const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 contact.phone_e164.includes(searchQuery) ||
 (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -308,6 +353,10 @@ return matchesSearch && matchesTag;
 
 // Handle search with debouncing for better performance
 useEffect(() => {
+if (isMobile) {
+  // Mobile uses local filtering over full loaded list
+  return;
+}
 const timeoutId = setTimeout(() => {
   if (searchQuery.trim()) {
     // Use server-side search for better performance with large datasets
@@ -320,7 +369,7 @@ const timeoutId = setTimeout(() => {
 
 return () => clearTimeout(timeoutId);
 // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [searchQuery]);
+}, [searchQuery, isMobile]);
 
 const handleSelectContact = (contactId: string, checked?: boolean) => {
 setSelectedContacts(prev => {
@@ -1284,7 +1333,7 @@ if (error) {
                   <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
                   <p className="text-destructive mb-4">Failed to load contacts</p>
                   <p className="text-text-subtle mb-4">{error}</p>
-                  <Button onClick={() => fetchContacts()} variant="outline">
+                  <Button onClick={() => (isMobile ? fetchAllContactsForMobile() : fetchContacts())} variant="outline">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Try Again
                   </Button>
@@ -1305,9 +1354,9 @@ return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-<div className="flex-1 overflow-hidden">
+<div className="flex-1 overflow-y-auto sm:overflow-hidden scrollbar-premium">
 <div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
-<div className="max-w-7xl mx-auto h-full flex flex-col">
+<div className={`max-w-7xl mx-auto ${isMobile ? "min-h-full" : "h-full"} flex flex-col`}>
 {/* Header */}
 <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
 <div>
@@ -1318,42 +1367,46 @@ return (
 {t('manage_customer_database')} ({totalCount || 0} {t('total')})
 </p>
 </div>
-<div className="flex flex-wrap items-center gap-1 sm:gap-2 lg:gap-3">
+<div className="flex flex-wrap items-center gap-1.5 sm:gap-2 lg:gap-3 w-full lg:w-auto">
 
 {/* Mobile Contact Import Button */}
 {isMobile && (
-<Button
-variant={isContactPickerSupported() ? "default" : "outline"}
-size="sm"
-onClick={handleMobileContactImport}
-disabled={isImporting}
-className={`text-xs h-7 sm:h-8 shadow-sm ${
-                       isContactPickerSupported()
-                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                         : "glass-subtle border-0"
-                     }`}
-title={getContactPickerSupportMessage()}
->
-{isImporting ? (
-<Loader2 className="w-3 h-3 mr-1 animate-spin" />
-) : (
-<Smartphone className="w-3 h-3 mr-1" />
-)}
-<span className="hidden sm:inline">
-Import Multiple Contacts
-</span>
-<span className="sm:hidden">Phone</span>
-</Button>
+<div className="w-full sm:w-auto space-y-1">
+  <Button
+    variant={isContactPickerSupported() ? "default" : "outline"}
+    size="sm"
+    onClick={handleMobileContactImport}
+    disabled={isImporting}
+    className={`text-xs h-9 px-3 rounded-lg shadow-sm w-full sm:w-auto font-medium ${
+                           isContactPickerSupported()
+                             ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                             : "glass-subtle border border-dashed border-border"
+                         }`}
+    title={getContactPickerSupportMessage()}
+  >
+    {isImporting ? (
+      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+    ) : (
+      <Smartphone className="w-3.5 h-3.5 mr-1.5" />
+    )}
+    <span>Import Contacts from Phone </span>
+  </Button>
+  <p className="text-[10px] text-text-subtle px-1">
+    {isContactPickerSupported()
+      ? "Pick contacts directly from your phone."
+      : "If phone import is not supported, use CSV Import."}
+  </p>
+</div>
 )}
 
 <Button
 variant="outline"
-className="glass-subtle border-0 text-xs h-7 sm:h-8"
-onClick={() => fetchContacts()}
+className="glass-subtle border-0 text-xs h-8 sm:h-8"
+onClick={() => (isMobile ? fetchAllContactsForMobile() : fetchContacts())}
 disabled={isLoading}
 size="sm"
 >
-{isLoading ? (
+{(isLoading || (isMobile && isLoadingMobileAllContacts)) ? (
 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
 ) : (
 <RefreshCw className="w-3 h-3 mr-1" />
@@ -1363,7 +1416,7 @@ size="sm"
 </Button>
 <Button
 variant="outline"
-className="glass-subtle border-0 text-xs h-7 sm:h-8"
+className="glass-subtle border-0 text-xs h-8 sm:h-8"
 onClick={() => setIsCSVImportDialogOpen(true)}
 disabled={isCreating}
 size="sm"
@@ -1374,17 +1427,17 @@ size="sm"
 </Button>
 <Button
 variant="outline"
-className="glass-subtle border-0 text-xs h-7 sm:h-8"
+className="glass-subtle border-0 text-xs h-8 sm:h-8"
 onClick={handleExportAll}
 size="sm"
 >
 <Download className="w-3 h-3 mr-1" />
 <span className="hidden sm:inline">Export All</span>
-<span className="sm:hidden">📥</span>
+<span className="sm:hidden">Export</span>
 </Button>
 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 <DialogTrigger asChild>
-<Button size="sm" className="text-xs h-7 sm:h-8" disabled={isCreating}>
+<Button size="sm" className="text-xs h-8 sm:h-8" disabled={isCreating}>
 {isCreating ? (
 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
 ) : (
@@ -1683,16 +1736,16 @@ Delete
           )}
 
 {/* Contacts Table */}
-<Card className="flex-1 glass border-0 overflow-hidden">
-<div className="overflow-auto h-full">
-{isLoading ? (
+<Card className={`${isMobile ? "glass border-0 overflow-visible" : "flex-1 glass border-0 overflow-hidden"}`}>
+<div className={isMobile ? "overflow-visible" : "overflow-auto h-full scrollbar-premium"}>
+{(isLoading || (isMobile && isLoadingMobileAllContacts)) ? (
 <div className="p-4 lg:p-6 space-y-4">
 {Array.from({ length: pageSize }).map((_, i) => (
 <Skeleton key={i} className="h-12 lg:h-16 w-full" />
 ))}
       </div>
 ) : (
-<div className="overflow-x-auto">
+<div className="overflow-x-auto scrollbar-premium">
 <Table>
 <TableHeader>
 <TableRow className="border-b border-border hover:bg-transparent bg-muted/30 sticky top-0">
@@ -1843,17 +1896,24 @@ Delete Contact
 
 {/* Pagination Controls */}
 {totalCount > pageSize && (
-  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div className="text-xs sm:text-sm text-text-subtle text-center sm:text-left">
-      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
-    </div>
-    <div className="flex items-center justify-center gap-1 sm:gap-2">
+  <div className="hidden sm:block mt-4 rounded-lg border border-border-subtle bg-muted/20 p-2.5 sm:p-0 sm:border-0 sm:bg-transparent sm:rounded-none">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+      <div className="text-xs sm:text-sm text-text-subtle text-center sm:text-left">
+        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
+      </div>
+
+      {/* Mobile page indicator */}
+      <div className="sm:hidden text-[11px] text-center text-text-subtle">
+        Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+      </div>
+
+      <div className="flex items-center justify-center gap-1 sm:gap-2">
       <Button
         variant="outline"
         size="sm"
         onClick={goToPreviousPage}
         disabled={!hasPreviousPage || isLoading}
-        className="text-xs h-8 px-2 sm:px-3"
+        className="text-xs h-8 px-3 sm:px-3 min-w-[82px]"
       >
         {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
         <span className="hidden sm:inline">Previous</span>
@@ -1861,7 +1921,7 @@ Delete Contact
       </Button>
 
       {/* Page numbers */}
-      <div className="flex items-center gap-1">
+      <div className="hidden sm:flex items-center gap-1">
         {(() => {
           const totalPages = Math.ceil(totalCount / pageSize);
           const maxVisiblePages = 5;
@@ -1956,12 +2016,13 @@ Delete Contact
         size="sm"
         onClick={goToNextPage}
         disabled={!hasNextPage || isLoading}
-        className="text-xs h-8 px-2 sm:px-3"
+        className="text-xs h-8 px-3 sm:px-3 min-w-[82px]"
       >
         <span className="hidden sm:inline">Next</span>
         <span className="sm:hidden">Next</span>
         {isLoading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : null}
       </Button>
+      </div>
     </div>
   </div>
 )}
