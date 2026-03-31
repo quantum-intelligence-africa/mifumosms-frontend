@@ -139,6 +139,21 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     }
   }, [location.search, location.hash, location.pathname]);
 
+  // Open tutorial video directly from shareable links
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const shouldOpenTutorial =
+      location.pathname === "/watch-tutorial" ||
+      location.pathname === "/tutorial" ||
+      searchParams.get("tutorial") === "1" ||
+      searchParams.get("video") === "tutorial" ||
+      location.hash === "#tutorial";
+
+    if (shouldOpenTutorial) {
+      setShowVideoModal(true);
+    }
+  }, [location.pathname, location.search, location.hash]);
+
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -862,7 +877,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
   {/* View Tutorial Button - Blue */}
   <Button
-    onClick={() => setShowVideoModal(true)}
+    onClick={() => navigate("/watch-tutorial")}
     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1490,7 +1505,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         </div>
       </footer>
       {/* Video Tutorial Modal */}
-<Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+<Dialog
+  open={showVideoModal}
+  onOpenChange={(open) => {
+    setShowVideoModal(open);
+    if (!open && (location.pathname === "/watch-tutorial" || location.pathname === "/tutorial")) {
+      navigate("/");
+    }
+  }}
+>
   <DialogContent className="glass max-w-2xl max-h-[90vh] flex flex-col p-4 rounded-lg">
     <DialogHeader>
       <DialogTitle className="flex items-center gap-2 text-lg">
