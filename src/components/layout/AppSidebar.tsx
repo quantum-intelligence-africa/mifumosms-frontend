@@ -2,14 +2,11 @@ import {
   MessageSquare,
   Users,
   Send,
-  FileText,
   BarChart3,
   Settings,
   Home,
   Plus,
   ChevronDown,
-  ChevronRight,
-  Zap,
   CreditCard,
   Tag,
   History,
@@ -21,7 +18,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,11 +40,8 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
-  count?: number;
   children?: NavItem[];
 }
-
-// Navigation will be created dynamically using translations
 
 interface AppSidebarProps {
   isOpen?: boolean;
@@ -64,44 +57,27 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const { t } = useLanguage();
   const { isPartina } = useRoles();
 
-  // Handle navigation with page refresh
   const handleNavigation = (href: string) => {
     if (location.pathname !== href) {
-      // Check if we're leaving heavy pages (SendSMS or SenderNames)
-      const isLeavingHeavyPage = location.pathname.includes('/sms/send') || location.pathname.includes('/sms/sender-names');
+      const isLeavingHeavyPage =
+        location.pathname.includes("/sms/send") ||
+        location.pathname.includes("/sms/sender-names");
 
       if (isLeavingHeavyPage) {
-        // Do a full page refresh to completely clear state and memory
         window.location.href = href;
       } else {
-        // Dispatch a custom event to notify all pages to cancel operations
-        window.dispatchEvent(new CustomEvent('page-navigate', { detail: { href } }));
-
-        // Small delay to allow cleanup, then navigate
+        window.dispatchEvent(new CustomEvent("page-navigate", { detail: { href } }));
         setTimeout(() => {
-          // Scroll to top first
           window.scrollTo(0, 0);
-          document.documentElement.scrollTop = 0;
-          document.body.scrollTop = 0;
-
-          // Navigate to the page
           navigate(href);
-
-          // Close mobile menu if open
-          if (isMobile && onClose) {
-            onClose();
-          }
+          if (isMobile && onClose) onClose();
         }, 10);
       }
     }
   };
 
-  // Navigation items
-  // OWNER: Standard user (default role)
-  // PARTINA: Partner role (requested + admin approved)
-  // Partner items only shown if user is approved Partina partner
   const navigation: NavItem[] = [
-    { name: t("nav.dashboard"), href: "/dashboard", icon: Home, count: undefined },
+    { name: t("nav.dashboard"), href: "/dashboard", icon: Home },
     {
       name: t("nav.sms"),
       href: "#",
@@ -111,230 +87,223 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         { name: t("nav.purchase_sms"), href: "/sms/purchase", icon: CreditCard },
         { name: t("nav.sender_names"), href: "/sms/sender-names", icon: Tag },
         { name: t("nav.purchase_history"), href: "/sms/purchase-history", icon: History },
-      ]
+      ],
     },
     { name: t("nav.contacts"), href: "/contacts", icon: Users },
     { name: t("nav.campaigns"), href: "/campaigns", icon: Send },
-    // { name: "Templates", href: "/templates", icon: FileText },
-    // { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    // Partner items - only show if user is approved Partina partner (both flag and approval timestamp)
-    ...(isPartina() ? [
-      { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
-      { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
-    ] : []),
+    ...(isPartina()
+      ? [
+          { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
+          { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
+        ]
+      : []),
     { name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen },
     { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((w) => w.charAt(0))
+      .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
+
+  const userName = isLoading
+    ? "…"
+    : user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "User";
+  const userEmail = isLoading ? "…" : user?.email || "";
 
   return (
-    <TooltipProvider>
-      {/* Mobile Overlay - Higher z-index to appear above header */}
+    <TooltipProvider delayDuration={300}>
+      {/* Mobile overlay */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100]"
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`
-        flex h-screen flex-col glass-subtle border-r border-border backdrop-blur-xl
-        ${isMobile
-          ? `fixed left-0 top-0 z-[110] w-64 sm:w-72 transform transition-all duration-300 ease-out shadow-2xl ${
-              isOpen ? 'translate-x-0' : '-translate-x-full'
-            }`
-          : 'w-64 relative'
-        }
-      `}>
-        {/* Mobile Header with Close Button - Prominent Design */}
-        {isMobile && (
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-background/95 backdrop-blur-xl">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-md flex-shrink-0">
-                <MessageSquare className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="font-heading text-base font-semibold text-foreground truncate">{t("app.name")}</h1>
-                <p className="text-xs text-text-subtle truncate">{t("app.tagline")}</p>
-              </div>
+      {/* Sidebar shell */}
+      <aside
+        className={[
+          /* base */
+          "flex flex-col h-screen bg-[hsl(var(--background))] border-r border-border/50 select-none",
+          /* sizing */
+          "w-[220px]",
+          /* mobile positioning */
+          isMobile
+            ? `fixed left-0 top-0 z-[110] shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.32,.72,0,1)] ${
+                isOpen ? "translate-x-0" : "-translate-x-full"
+              }`
+            : "relative",
+        ].join(" ")}
+      >
+        {/* ── Logo ─────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-4 pt-5 pb-4">
+          <div className="flex items-center gap-2.5">
+            {/* App icon */}
+            <div className="w-7 h-7 rounded-[8px] bg-primary flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-[14px] h-[14px] text-primary-foreground" strokeWidth={2.2} />
             </div>
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-10 w-10 flex-shrink-0 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-fast ml-2"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            )}
+            <span className="text-[13px] font-semibold text-gray-950 tracking-[-0.01em] leading-none">
+              {t("app.name")}
+            </span>
           </div>
-        )}
 
-        {/* Desktop Header */}
-        {!isMobile && (
-          <div className="flex items-center gap-3 p-4 border-b border-border-subtle">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
-              <MessageSquare className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="font-heading text-[15px] font-semibold text-foreground truncate">{t("app.name")}</h1>
-              <p className="text-[11px] text-text-subtle truncate">{t("app.tagline")}</p>
-            </div>
-          </div>
-        )}
+          {/* Mobile close */}
+          {isMobile && onClose && (
+            <button
+              onClick={onClose}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-700 hover:text-gray-950 hover:bg-accent transition-colors"
+            >
+              <X className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
+          )}
+        </div>
 
-      {/* Quick Actions */}
-      <div className={`border-b border-border-subtle ${isMobile ? 'px-4 py-3.5' : 'px-4 py-3'}`}>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => handleNavigation('/sms/purchase')}
-          className={`w-full font-medium shadow-sm hover:shadow-md interactive-button ${
-            isMobile ? 'text-sm h-10' : 'text-[13px] h-9'
-          }`}
-        >
-          <Plus className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-          <span>{t("action.buy_sms_credits")}</span>
-        </Button>
-      </div>
+        {/* ── Buy credits CTA ──────────────────────────── */}
+        <div className="px-3 pb-3">
+          <button
+            onClick={() => handleNavigation("/sms/purchase")}
+            className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium tracking-[-0.01em] hover:opacity-90 active:scale-[0.98] transition-all duration-100"
+          >
+            <Plus className="w-3 h-3" strokeWidth={2.5} />
+            Buy SMS Credits
+          </button>
+        </div>
 
-      {/* Navigation */}
-      <nav className={`flex-1 custom-scrollbar overflow-y-auto ${isMobile ? 'px-3 py-4' : 'px-3 py-3'}`}>
-        <ul className={`${isMobile ? 'space-y-1.5' : 'space-y-1'}`}>
+        {/* ── Divider ──────────────────────────────────── */}
+        <div className="mx-3 h-px bg-border/50 mb-2" />
+
+        {/* ── Navigation ───────────────────────────────── */}
+        <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 scrollbar-none">
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
-            const hasChildren = item.children && item.children.length > 0;
+            const hasChildren = !!item.children?.length;
 
+            /* Group with children */
             if (hasChildren) {
+              const anyChildActive = item.children!.some(
+                (c) => location.pathname === c.href
+              );
+
               return (
-                <li key={item.name}>
-                  <Collapsible open={smsOpen} onOpenChange={setSmsOpen}>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className={`w-full justify-start px-3 font-medium hover:bg-accent rounded-lg transition-fast ${
-                          isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'
+                <Collapsible
+                  key={item.name}
+                  open={smsOpen}
+                  onOpenChange={setSmsOpen}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className={[
+                        "w-full flex items-center gap-2.5 px-2.5 h-8 rounded-lg text-left",
+                        "text-[12px] font-medium tracking-[-0.01em]",
+                        "transition-colors duration-100",
+                        anyChildActive
+                          ? "text-gray-950 font-semibold"
+                          : "text-gray-800 hover:text-gray-950 hover:bg-accent/60",
+                      ].join(" ")}
+                    >
+                      <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
+                      <span className="flex-1 truncate">{item.name}</span>
+                      <ChevronDown
+                        className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${
+                          smsOpen ? "" : "-rotate-90"
                         }`}
-                      >
-                        <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
-                        <span className="flex-1 text-left truncate">{item.name}</span>
-                        {smsOpen ? (
-                          <ChevronDown className={`ml-auto flex-shrink-0 transition-transform ${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
-                        ) : (
-                          <ChevronRight className={`ml-auto flex-shrink-0 transition-transform ${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-1">
-                      <ul className={`${isMobile ? 'space-y-1.5 ml-4 pl-4' : 'space-y-1 ml-3 pl-3'} border-l-2 border-border-subtle`}>
-                        {item.children!.map((child) => {
-                          const ChildIcon = child.icon;
-                          const childActive = location.pathname === child.href;
-                          return (
-                            <li key={child.name}>
-                              <Button
-                                onClick={() => handleNavigation(child.href)}
-                                variant={childActive ? "secondary" : "ghost"}
-                                size="sm"
-                                className={`w-full justify-start px-3 rounded-lg transition-fast ${
-                                  childActive ? 'font-medium shadow-sm' : 'font-normal'
-                                } ${isMobile ? 'h-9 text-sm' : 'h-8 text-[13px]'}`}
-                              >
-                                <ChildIcon className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-                                <span className="truncate">{child.name}</span>
-                              </Button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </li>
+                        strokeWidth={2}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className="ml-[22px] mt-0.5 mb-1 pl-3 border-l border-border/60 space-y-0.5">
+                      {item.children!.map((child) => {
+                        const ChildIcon = child.icon;
+                        const childActive = location.pathname === child.href;
+
+                        return (
+                          <button
+                            key={child.name}
+                            onClick={() => handleNavigation(child.href)}
+                            className={[
+                              "w-full flex items-center gap-2 px-2 h-7 rounded-md text-left",
+                              "text-[11.5px] tracking-[-0.01em] transition-colors duration-100",
+                              childActive
+                                ? "bg-accent text-gray-950 font-semibold"
+                                : "text-gray-800 hover:text-gray-950 hover:bg-accent/50 font-normal",
+                            ].join(" ")}
+                          >
+                            <ChildIcon className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+                            <span className="truncate">{child.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               );
             }
 
+            /* Leaf item */
             return (
-              <li key={item.name}>
-                <Button
-                  onClick={() => handleNavigation(item.href)}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={`w-full justify-start px-3 rounded-lg transition-fast ${
-                    isActive ? 'font-medium shadow-sm' : 'font-normal'
-                  } ${isMobile ? 'h-10 text-sm' : 'h-9 text-[13px]'}`}
-                >
-                  <Icon className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
-                  <span className="flex-1 text-left truncate">{item.name}</span>
-                  {item.count && (
-                    <Badge variant="secondary" className={`ml-auto px-1.5 py-0.5 flex-shrink-0 font-medium ${
-                      isMobile ? 'text-xs' : 'text-[11px]'
-                    }`}>
-                      {item.count}
-                    </Badge>
-                  )}
-                </Button>
-              </li>
+              <button
+                key={item.name}
+                onClick={() => handleNavigation(item.href)}
+                className={[
+                  "w-full flex items-center gap-2.5 px-2.5 h-8 rounded-lg text-left",
+                  "text-[12px] tracking-[-0.01em] transition-colors duration-100",
+                  isActive
+                    ? "bg-accent text-gray-950 font-semibold"
+                    : "text-gray-800 hover:text-gray-950 hover:bg-accent/60 font-normal",
+                ].join(" ")}
+              >
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
+                <span className="truncate">{item.name}</span>
+              </button>
             );
           })}
-        </ul>
-      </nav>
+        </nav>
 
-      {/* User Profile */}
-      <div className={`border-t border-border-subtle ${isMobile ? 'p-4' : 'p-3'}`}>
-        <div className={`flex items-center gap-3 rounded-xl glass-subtle hover:bg-accent transition-fast ${
-          isMobile ? 'p-3.5' : 'p-3'
-        }`}>
-          <Avatar className={`flex-shrink-0 ring-2 ring-border ${isMobile ? 'h-10 w-10' : 'h-9 w-9'}`}>
-            <AvatarImage src="" alt={user?.full_name || user?.first_name} />
-            <AvatarFallback className={`bg-gradient-to-br from-primary to-primary-light text-primary-foreground font-semibold ${
-              isMobile ? 'text-sm' : 'text-xs'
-            }`}>
-              {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className={`font-semibold text-foreground truncate leading-tight ${
-              isMobile ? 'text-sm' : 'text-[13px]'
-            }`}>
-              {isLoading ? 'Loading...' : (user?.full_name || `${user?.first_name} ${user?.last_name}` || 'User')}
-            </p>
-            <p className={`text-text-subtle truncate leading-tight mt-0.5 ${
-              isMobile ? 'text-xs' : 'text-[11px]'
-            }`}>
-              {isLoading ? '...' : (user?.email || 'No email')}
-            </p>
+        {/* ── Divider ──────────────────────────────────── */}
+        <div className="mx-3 h-px bg-border/50 mt-2" />
+
+        {/* ── User row ─────────────────────────────────── */}
+        <div className="px-2 py-3">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent/50 transition-colors duration-100 group">
+            <Avatar className="h-6 w-6 flex-shrink-0">
+              <AvatarImage src="" alt={userName} />
+              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                {getInitials(userName)}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-[11.5px] font-semibold text-gray-900 truncate leading-tight">
+                {userName}
+              </p>
+              <p className="text-[10.5px] text-gray-600 truncate leading-tight">
+                {userEmail}
+              </p>
+            </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={logout}
+                  className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md text-gray-500 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all duration-100"
+                >
+                  <LogOut className="w-3 h-3" strokeWidth={2} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-[11px]">
+                Sign out
+              </TooltipContent>
+            </Tooltip>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`flex-shrink-0 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-fast ${
-                  isMobile ? 'h-9 w-9' : 'h-8 w-8'
-                }`}
-                onClick={logout}
-              >
-                <LogOut className={isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <p>Log out</p>
-            </TooltipContent>
-          </Tooltip>
         </div>
-      </div>
-      </div>
+      </aside>
     </TooltipProvider>
   );
 }
