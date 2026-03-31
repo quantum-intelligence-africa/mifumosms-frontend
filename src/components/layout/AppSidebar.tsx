@@ -14,6 +14,8 @@ import {
   LogOut,
   BookOpen,
   Server,
+  Bot,
+  Mic,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +53,7 @@ interface AppSidebarProps {
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [smsOpen, setSmsOpen] = useState(true);
+  const [messagingOpen, setMessagingOpen] = useState(true);
   const { user, logout, isLoading } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useLanguage();
@@ -61,7 +63,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     if (location.pathname !== href) {
       const isLeavingHeavyPage =
         location.pathname.includes("/sms/send") ||
-        location.pathname.includes("/sms/sender-names");
+        location.pathname.includes("/messaging/send") ||
+        location.pathname.includes("/sms/sender-names") ||
+        location.pathname.includes("/messaging/sender-names");
 
       if (isLeavingHeavyPage) {
         window.location.href = href;
@@ -79,18 +83,20 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const navigation: NavItem[] = [
     { name: t("nav.dashboard"), href: "/dashboard", icon: Home },
     {
-      name: t("nav.sms"),
+      name: "Messaging",
       href: "#",
-      icon: Send,
+      icon: MessageSquare,
       children: [
-        { name: t("nav.send_sms"), href: "/sms/send", icon: MessageSquare },
-        { name: t("nav.purchase_sms"), href: "/sms/purchase", icon: CreditCard },
-        { name: t("nav.sender_names"), href: "/sms/sender-names", icon: Tag },
-        { name: t("nav.purchase_history"), href: "/sms/purchase-history", icon: History },
+        { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
+        { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
+        { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
+        { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
+        { name: t("nav.purchase_sms"), href: "/messaging/purchase", icon: CreditCard },
+        { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
       ],
     },
-    { name: t("nav.contacts"), href: "/contacts", icon: Users },
-    { name: t("nav.campaigns"), href: "/campaigns", icon: Send },
+    { name: "AI Agents", href: "/ai-agents", icon: Bot },
+    { name: "Voice Agents", href: "/voice-agents", icon: Mic },
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
@@ -165,7 +171,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         {/* ── Buy credits CTA ──────────────────────────── */}
         <div className="px-3 pb-3">
           <button
-            onClick={() => handleNavigation("/sms/purchase")}
+            onClick={() => handleNavigation("/messaging/purchase")}
             className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium tracking-[-0.01em] hover:opacity-90 active:scale-[0.98] transition-all duration-100"
           >
             <Plus className="w-3 h-3" strokeWidth={2.5} />
@@ -192,8 +198,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               return (
                 <Collapsible
                   key={item.name}
-                  open={smsOpen}
-                  onOpenChange={setSmsOpen}
+                  open={messagingOpen}
+                  onOpenChange={setMessagingOpen}
                 >
                   <CollapsibleTrigger asChild>
                     <button
@@ -210,7 +216,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                       <span className="flex-1 truncate">{item.name}</span>
                       <ChevronDown
                         className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${
-                          smsOpen ? "" : "-rotate-90"
+                          messagingOpen ? "" : "-rotate-90"
                         }`}
                         strokeWidth={2}
                       />

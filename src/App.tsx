@@ -34,6 +34,8 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PertinaInsights from "./pages/PertinaInsights";
 import Developer from "./pages/Developer";
+import AIAgents from "./pages/AIAgents";
+import VoiceAgents from "./pages/VoiceAgents";
 
 const queryClient = new QueryClient();
 
@@ -213,6 +215,48 @@ const App = () => (
               <Route path="/sms/purchase-history" element={
                 <ProtectedRoute>
                   <PurchaseHistory />
+                </ProtectedRoute>
+              } />
+              {/* ── Messaging module routes (map to existing SMS components) ── */}
+              <Route path="/messaging/send" element={
+                <ProtectedRoute>
+                  <SendSMS />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/campaigns" element={
+                <ProtectedRoute>
+                  <Campaigns />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/contacts" element={
+                <ProtectedRoute>
+                  <Contacts />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/sender-names" element={
+                <ProtectedRoute>
+                  <SenderNames />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/purchase" element={
+                <ProtectedRoute>
+                  <PurchaseSMS />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/history" element={
+                <ProtectedRoute>
+                  <PurchaseHistory />
+                </ProtectedRoute>
+              } />
+              {/* ── New channel modules ── */}
+              <Route path="/ai-agents" element={
+                <ProtectedRoute>
+                  <AIAgents />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice-agents" element={
+                <ProtectedRoute>
+                  <VoiceAgents />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

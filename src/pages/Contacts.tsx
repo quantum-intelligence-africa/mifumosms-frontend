@@ -536,7 +536,7 @@ const phoneInfo = normalizePhoneNumber(createFormData.phone_e164.trim());
 if (!phoneInfo.isValid) {
 toast({
 title: "Invalid phone number",
-description: "Please enter a valid phone number (e.g., 06XX XXX XXX or +255 XXX XXX XXX)",
+description: "Please enter a valid phone number (e.g., 0689726060 or +255689726060)",
 variant: "destructive"
 });
 return;
