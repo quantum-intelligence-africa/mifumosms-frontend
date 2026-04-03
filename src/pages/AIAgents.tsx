@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
@@ -67,7 +67,7 @@ type BuilderTemplate = {
   flow: FlowStep[];
 };
 
-const features = [
+const defaultFeatures = [
   {
     icon: Bot,
     title: "Agent Dashboard",
@@ -118,7 +118,7 @@ const features = [
   },
 ];
 
-const perks = [
+const defaultPerks = [
   "Free access during private beta",
   "Direct line to the product team",
   "Shape the feature before launch",
@@ -389,9 +389,15 @@ export default function AIAgents() {
   const initialBuilder = createTemplateCopy(initialTemplate);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [features, setFeatures] = useState(defaultFeatures);
+  const [perks, setPerks] = useState(defaultPerks);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [kycFile, setKycFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState(initialTemplate.key);
   const [agentSetup, setAgentSetup] = useState<AgentSetup>(initialBuilder.setup);
@@ -403,6 +409,10 @@ export default function AIAgents() {
   const previewStep = flowSteps.find((step) => step.id === previewStepId) ?? flowSteps[0];
   const validation = validateFlow(flowSteps);
   const flowJson = buildFlowJson(flowSteps);
+  const [chatbotId, setChatbotId] = useState<string | null>(null);
+  const [backendBusy, setBackendBusy] = useState(false);
+  const [backendError, setBackendError] = useState<string | null>(null);
+  const [backendResult, setBackendResult] = useState<unknown>(null);
 
   const createPayload = {
     name: agentSetup.name,
@@ -415,14 +425,186 @@ export default function AIAgents() {
   };
 
   const deployPayload = {
-    chatbot_id: "uuid-from-backend",
+    chatbot_id: chatbotId ?? "uuid-from-backend",
     flow: flowJson,
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/early-access/ai-agents/status/", {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (!data || cancelled) return;
+
+        if (Array.isArray(data.perks) && data.perks.every((x: unknown) => typeof x === "string")) {
+          setPerks(data.perks);
+        }
+
+        // Backend can optionally return features as [{ title, desc }]
+        if (Array.isArray(data.features)) {
+          const incoming = data.features as Array<{ title?: string; desc?: string }>;
+          const next = defaultFeatures.map((f) => {
+            const match = incoming.find((i) => i?.title === f.title);
+            return match?.desc ? { ...f, desc: match.desc } : f;
+          });
+          setFeatures(next);
+        }
+      } catch {
+        // Keep defaults if backend is unavailable
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("access_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const postJson = async (endpoint: string, payload: unknown) => {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message =
+        (data && (data.message || data.error)) ||
+        `Request failed (HTTP ${res.status})`;
+      throw new Error(message);
+    }
+    return data;
+  };
+
+  const createChatbotInBackend = async () => {
+    setBackendError(null);
+    setBackendResult(null);
+    try {
+      setBackendBusy(true);
+      const data = await postJson("/api/chatbots", createPayload);
+      const id = data?.data?.chatbot_id || data?.chatbot_id;
+      if (typeof id === "string" && id.trim()) setChatbotId(id);
+      setBackendResult(data);
+      setActiveTab("flow");
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : "Failed to create agent");
+    } finally {
+      setBackendBusy(false);
+    }
+  };
+
+  const saveFlowToBackend = async () => {
+    setBackendError(null);
+    setBackendResult(null);
+    if (!chatbotId) {
+      setBackendError("Create the agent first to get a chatbot_id.");
+      return;
+    }
+    try {
+      setBackendBusy(true);
+      const data = await postJson(`/api/chatbots/${chatbotId}/flow`, { flow: flowJson });
+      setBackendResult(data);
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : "Failed to save flow");
+    } finally {
+      setBackendBusy(false);
+    }
+  };
+
+  const simulateOnBackend = async () => {
+    setBackendError(null);
+    setBackendResult(null);
+    if (!chatbotId) {
+      setBackendError("Create the agent first to get a chatbot_id.");
+      return;
+    }
+    try {
+      setBackendBusy(true);
+      const data = await postJson(`/api/chatbots/${chatbotId}/simulate`, {
+        flow: flowJson,
+        start_state: "START",
+      });
+      setBackendResult(data);
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : "Failed to simulate");
+    } finally {
+      setBackendBusy(false);
+    }
+  };
+
+  const deployToBackend = async () => {
+    setBackendError(null);
+    setBackendResult(null);
+    if (!chatbotId) {
+      setBackendError("Create the agent first to get a chatbot_id.");
+      return;
+    }
+    if (!validation.isValid) {
+      setBackendError("Fix flow validation errors before deploy.");
+      return;
+    }
+    try {
+      setBackendBusy(true);
+      const data = await postJson(`/api/chatbots/${chatbotId}/deploy`, { flow: flowJson });
+      setBackendResult(data);
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : "Failed to deploy");
+    } finally {
+      setBackendBusy(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitted(true);
+    setSubmitError(null);
+    if (!name.trim() || !email.trim() || !kycFile) return;
+
+    const formData = new FormData();
+    formData.append("full_name", name.trim());
+    formData.append("email", email.trim());
+    if (phone.trim()) formData.append("phone", phone.trim());
+    formData.append("kyc_file", kycFile);
+
+    const token = localStorage.getItem("access_token");
+
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/early-access/ai-agents/waitlist/", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message =
+          (data && (data.message || data.error)) ||
+          `Failed to submit (HTTP ${res.status})`;
+        throw new Error(message);
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const loadTemplate = (templateKey: string) => {
@@ -598,16 +780,11 @@ export default function AIAgents() {
                       <p className="text-[12px] text-slate-400 mb-1">
                         Be among the first to test AI Agents on Mifumo.
                       </p>
-                      <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mb-4">
-                        <span className="text-blue-500 mt-px text-[11px]">i</span>
-                        <p className="text-[11px] text-blue-700 leading-relaxed">
-                          Open to <strong>registered companies only.</strong> A valid business registration and KYC verification are required before access is granted.
-                        </p>
-                      </div>
 
                       <form onSubmit={handleSubmit} className="space-y-2.5">
                         <Input
                           placeholder="Full name"
+                          required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white placeholder:text-slate-400"
@@ -623,11 +800,25 @@ export default function AIAgents() {
                         <Input
                           type="tel"
                           placeholder="Phone number (e.g. +255 689 726 060)"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
                           className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white placeholder:text-slate-400"
                         />
-                        <Button type="submit" className="w-full h-9 text-[13px] font-medium gap-2">
+                        <Input
+                          type="file"
+                          required
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          onChange={(e) => setKycFile(e.target.files?.[0] ?? null)}
+                          className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-slate-700"
+                        />
+                        {submitError ? (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                            {submitError}
+                          </div>
+                        ) : null}
+                        <Button type="submit" disabled={isSubmitting} className="w-full h-9 text-[13px] font-medium gap-2">
                           <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
-                          Request Early Access
+                          {isSubmitting ? "Submitting..." : "Request Early Access"}
                           <ArrowRight className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />
                         </Button>
                       </form>
@@ -917,6 +1108,26 @@ export default function AIAgents() {
                             <pre className="mt-3 rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100 overflow-x-auto">
                               {formatJson(createPayload)}
                             </pre>
+                            <Button
+                              className="mt-4 w-full gap-2"
+                              onClick={createChatbotInBackend}
+                              disabled={backendBusy}
+                            >
+                              <Sparkles className="w-4 h-4" />
+                              {backendBusy ? "Creating..." : "Create agent in backend"}
+                              <ArrowRight className="w-4 h-4 ml-auto" />
+                            </Button>
+                            <div className="mt-3 space-y-2">
+                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+                                Chatbot ID:{" "}
+                                <span className="font-semibold text-slate-900">{chatbotId ?? "—"}</span>
+                              </div>
+                              {backendError ? (
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                                  {backendError}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
 
                           <div className="rounded-2xl border border-slate-200 p-4">
@@ -947,6 +1158,14 @@ export default function AIAgents() {
                               <Button variant="outline" onClick={addStep}>
                                 <Plus className="w-4 h-4" />
                                 Add step
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={saveFlowToBackend}
+                                disabled={backendBusy || !chatbotId}
+                              >
+                                <Database className="w-4 h-4" />
+                                {backendBusy ? "Saving..." : "Save flow"}
                               </Button>
                               <Button onClick={() => setActiveTab("preview")}>
                                 Preview agent
@@ -1214,9 +1433,19 @@ export default function AIAgents() {
                                 Test the flow like a real conversation before sending it to the backend.
                               </p>
                             </div>
-                            <Button variant="outline" onClick={resetPreview}>
-                              Reset
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" onClick={resetPreview}>
+                                Reset
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={simulateOnBackend}
+                                disabled={backendBusy || !chatbotId}
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                {backendBusy ? "Simulating..." : "Simulate (backend)"}
+                              </Button>
+                            </div>
                           </div>
 
                           {previewStep ? (
@@ -1309,6 +1538,30 @@ export default function AIAgents() {
                                 Business context: {agentSetup.business || "Missing business name"}
                               </div>
                             </div>
+                            <Button
+                              className="mt-4 w-full gap-2"
+                              onClick={deployToBackend}
+                              disabled={backendBusy || !chatbotId || !validation.isValid}
+                            >
+                              <Zap className="w-4 h-4" />
+                              {backendBusy ? "Deploying..." : "Deploy (backend)"}
+                              <ArrowRight className="w-4 h-4 ml-auto" />
+                            </Button>
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 p-4">
+                            <p className="text-[13px] font-semibold text-slate-900">Backend response</p>
+                            <p className="mt-1 text-[12px] text-slate-500">
+                              Latest response from create/save/simulate/deploy calls.
+                            </p>
+                            <pre className="mt-3 max-h-[260px] overflow-auto rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100">
+                              {formatJson(backendResult ?? { chatbot_id: chatbotId, note: "No backend calls yet." })}
+                            </pre>
+                            {backendError ? (
+                              <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                                {backendError}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -1345,6 +1598,54 @@ export default function AIAgents() {
                         </div>
 
                         <div className="space-y-4">
+                          <div className="rounded-2xl border border-slate-200 p-4">
+                            <p className="text-[13px] font-semibold text-slate-900">Connect to backend</p>
+                            <p className="mt-1 text-[12px] text-slate-500">
+                              These buttons call the required endpoints so you don’t need extra frontend work after backend implementation.
+                            </p>
+                            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                              <Button onClick={createChatbotInBackend} disabled={backendBusy} className="gap-2">
+                                <Plus className="w-4 h-4" />
+                                Create agent
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={saveFlowToBackend}
+                                disabled={backendBusy || !chatbotId}
+                                className="gap-2"
+                              >
+                                <Database className="w-4 h-4" />
+                                Save flow
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={simulateOnBackend}
+                                disabled={backendBusy || !chatbotId}
+                                className="gap-2"
+                              >
+                                <Sparkles className="w-4 h-4" />
+                                Simulate
+                              </Button>
+                              <Button
+                                onClick={deployToBackend}
+                                disabled={backendBusy || !chatbotId || !validation.isValid}
+                                className="gap-2"
+                              >
+                                <Zap className="w-4 h-4" />
+                                Deploy
+                              </Button>
+                            </div>
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+                              Current chatbot_id:{" "}
+                              <span className="font-semibold text-slate-900">{chatbotId ?? "—"}</span>
+                            </div>
+                            {backendError ? (
+                              <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                                {backendError}
+                              </div>
+                            ) : null}
+                          </div>
+
                           <div className="rounded-2xl border border-slate-200 p-4">
                             <div className="flex items-center gap-2 mb-2">
                               <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={1.8} />

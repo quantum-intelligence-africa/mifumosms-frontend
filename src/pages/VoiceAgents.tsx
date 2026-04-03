@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-const features = [
+const defaultFeatures = [
   {
     icon: Phone,
     title: "Voice Dashboard",
@@ -60,7 +60,7 @@ const features = [
   },
 ];
 
-const perks = [
+const defaultPerks = [
   "Free access during private beta",
   "Direct line to the product team",
   "Shape the feature before launch",
@@ -70,13 +70,89 @@ export default function VoiceAgents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [kycFile, setKycFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [features, setFeatures] = useState(defaultFeatures);
+  const [perks, setPerks] = useState(defaultPerks);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/early-access/voice-agents/status/", {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) return;
+
+        const json = await res.json().catch(() => null);
+        const data = json?.data;
+        if (!data || cancelled) return;
+
+        if (Array.isArray(data.perks) && data.perks.every((x: unknown) => typeof x === "string")) {
+          setPerks(data.perks);
+        }
+
+        // Backend can optionally return features as [{ title, desc }]
+        if (Array.isArray(data.features)) {
+          const incoming = data.features as Array<{ title?: string; desc?: string }>;
+          const next = defaultFeatures.map((f) => {
+            const match = incoming.find((i) => i?.title === f.title);
+            return match?.desc ? { ...f, desc: match.desc } : f;
+          });
+          setFeatures(next);
+        }
+      } catch {
+        // Keep defaults if backend is unavailable
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    // TODO: wire to backend POST /api/waitlist
-    setSubmitted(true);
+    setSubmitError(null);
+
+    if (!name.trim() || !email.trim() || !kycFile) return;
+
+    const formData = new FormData();
+    formData.append("full_name", name.trim());
+    formData.append("email", email.trim());
+    if (phone.trim()) formData.append("phone", phone.trim());
+    formData.append("kyc_file", kycFile);
+
+    const token = localStorage.getItem("access_token");
+
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/early-access/voice-agents/waitlist/", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const message =
+          (data && (data.message || data.error)) ||
+          `Failed to submit (HTTP ${res.status})`;
+        throw new Error(message);
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -158,16 +234,11 @@ export default function VoiceAgents() {
                       <p className="text-[12px] text-slate-400 mb-1">
                         Be among the first to test Voice Agents on Mifumo.
                       </p>
-                      <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mb-4">
-                        <span className="text-blue-500 mt-px text-[11px]">ℹ</span>
-                        <p className="text-[11px] text-blue-700 leading-relaxed">
-                          Open to <strong>registered companies only.</strong> A valid business registration and KYC verification are required before access is granted.
-                        </p>
-                      </div>
 
                       <form onSubmit={handleSubmit} className="space-y-2.5">
                         <Input
                           placeholder="Full name"
+                          required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white placeholder:text-slate-400"
@@ -183,14 +254,29 @@ export default function VoiceAgents() {
                         <Input
                           type="tel"
                           placeholder="Phone number (e.g. +255689726060)"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
                           className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white placeholder:text-slate-400"
                         />
+                        <Input
+                          type="file"
+                          required
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          onChange={(e) => setKycFile(e.target.files?.[0] ?? null)}
+                          className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-slate-700"
+                        />
+                        {submitError ? (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                            {submitError}
+                          </div>
+                        ) : null}
                         <Button
                           type="submit"
+                          disabled={isSubmitting}
                           className="w-full h-9 text-[13px] font-medium gap-2"
                         >
                           <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
-                          Request Early Access
+                          {isSubmitting ? "Submitting..." : "Request Early Access"}
                           <ArrowRight className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />
                         </Button>
                       </form>
