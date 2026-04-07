@@ -136,7 +136,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           "flex flex-col h-screen bg-[hsl(var(--background))] border-r border-border/50 select-none",
           "w-[240px]",
           isMobile
-            ? `fixed left-0 top-0 z-[110] shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.32,.72,0,1)] ${
+            ? `fixed left-0 top-0 z-[110] shadow-2xl transition-transform duration-300 ease-smooth-out ${
                 isOpen ? "translate-x-0" : "-translate-x-full"
               }`
             : "relative",

@@ -153,6 +153,9 @@ export default {
       backdropBlur: {
         'xs': '2px',
       },
+      transitionTimingFunction: {
+        'smooth-out': 'cubic-bezier(.32,.72,0,1)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
