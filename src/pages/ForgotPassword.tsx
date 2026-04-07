@@ -459,7 +459,7 @@ const ForgotPassword = () => {
                 <MessageSquare className="w-4 h-4 text-white" />
               </div>
               <span className="font-heading text-lg font-bold text-white">
-                Mifumo SMS
+                SENDA
               </span>
             </Link>
 
@@ -535,7 +535,7 @@ const ForgotPassword = () => {
                 </div>
                 <div>
                   <span className="font-heading text-2xl font-bold text-gray-900">
-                    Mifumo SMS
+                    SENDA
                   </span>
                   <p className="text-base text-black mt-1">
                     Reliable SMS solutions for businesses
@@ -641,7 +641,7 @@ const ForgotPassword = () => {
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <span className="font-heading text-lg font-bold text-gray-900">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">

@@ -477,12 +477,12 @@ const Templates = () => {
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="text-sm">
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button size="sm" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       <span className="hidden sm:inline">New Template</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="glass max-w-md">
+                  <DialogContent className="glass w-full max-w-[95vw] sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Create New Template</DialogTitle>
                       <DialogDescription>
@@ -590,7 +590,7 @@ const Templates = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 mb-4 lg:mb-6">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
@@ -650,7 +650,7 @@ const Templates = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 h-full overflow-y-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 h-full overflow-y-auto">
                     {filteredTemplates && filteredTemplates.length > 0 ? filteredTemplates.map((template) => (
                       <Card
                         key={template.id}

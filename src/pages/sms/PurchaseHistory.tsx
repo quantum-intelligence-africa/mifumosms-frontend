@@ -235,7 +235,7 @@ const PurchaseHistory = () => {
       // Company info section
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Mifumo SMS Service', 20, 50);
+      doc.text('SENDA Service', 20, 50);
       doc.setTextColor(...(subtleColor as [number, number, number]));
       doc.setFontSize(9);
       doc.text('SMS Billing & Purchase Records', 20, 56);
@@ -325,7 +325,7 @@ const PurchaseHistory = () => {
       doc.setTextColor(...(subtleColor as [number, number, number]));
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text('This is an official receipt from Mifumo SMS Service.', 105, yPosition, { align: 'center' });
+      doc.text('This is an official receipt from SENDA Service.', 105, yPosition, { align: 'center' });
       doc.text('For support, visit our website or contact our customer service.', 105, yPosition + 5, { align: 'center' });
       doc.setTextColor(220, 38, 38);
       doc.text('This document is read-only and cannot be modified.', 105, yPosition + 12, { align: 'center' });

@@ -8,11 +8,13 @@ import {
   BrainCircuit,
   CheckCircle2,
   ChevronRight,
+  Code,
   Database,
   GitBranch,
   Globe,
   MessageCircle,
   Plus,
+  Send,
   Sparkles,
   Wand2,
   Zap,
@@ -29,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { API_CONFIG, buildApiUrl } from "@/config/api";
 
 type AgentSetup = {
   name: string;
@@ -434,7 +437,7 @@ export default function AIAgents() {
 
     const load = async () => {
       try {
-        const res = await fetch("/api/early-access/ai-agents/status/", {
+        const res = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.STATUS), {
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;
@@ -576,6 +579,7 @@ export default function AIAgents() {
     if (!name.trim() || !email.trim() || !kycFile) return;
 
     const formData = new FormData();
+    formData.append("product", "ai_agents");
     formData.append("full_name", name.trim());
     formData.append("email", email.trim());
     if (phone.trim()) formData.append("phone", phone.trim());
@@ -585,7 +589,7 @@ export default function AIAgents() {
 
     try {
       setIsSubmitting(true);
-      const res = await fetch("/api/early-access/ai-agents/waitlist/", {
+      const res = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WAITLIST), {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: formData,
@@ -717,21 +721,21 @@ export default function AIAgents() {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-            <div className="mb-8">
-              <h1 className="text-[26px] font-semibold text-slate-900 tracking-[-0.02em] leading-tight">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+            <div className="mb-5 sm:mb-6 md:mb-8">
+              <h1 className="text-lg sm:text-[22px] md:text-[26px] font-semibold text-slate-900 tracking-[-0.02em] leading-tight">
                 AI Agents
               </h1>
-              <p className="mt-1 text-[14px] text-slate-500">
+              <p className="mt-1 text-xs sm:text-[13px] md:text-[14px] text-slate-500">
                 Build and deploy intelligent agents for automated customer engagement
               </p>
             </div>
 
-            <div className="relative bg-white rounded-2xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden mb-8">
+            <div className="relative bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden mb-5 sm:mb-6 md:mb-8">
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-500 via-violet-500 to-indigo-500" />
 
               <div className="flex flex-col lg:flex-row">
-                <div className="flex-1 px-6 pt-8 pb-6 lg:py-8 lg:pr-0">
+                <div className="flex-1 px-3.5 sm:px-6 pt-4 sm:pt-8 pb-4 sm:pb-6 lg:py-8 lg:pr-0">
                   <div className="flex items-center gap-2.5 mb-5">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 flex items-center justify-center">
                       <Bot className="w-[18px] h-[18px] text-blue-600" strokeWidth={1.8} />
@@ -761,7 +765,7 @@ export default function AIAgents() {
 
                 <div className="hidden lg:block w-px bg-slate-100 my-6" />
 
-                <div className="lg:w-[340px] px-6 py-6 lg:py-8">
+                <div className="lg:w-[340px] px-3.5 sm:px-6 py-4 sm:py-6 lg:py-8">
                   {submitted ? (
                     <div className="h-full flex flex-col items-center justify-center text-center py-4">
                       <div className="w-11 h-11 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-3">
@@ -835,7 +839,7 @@ export default function AIAgents() {
               <div className="flex-1 h-px bg-slate-200" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5 md:gap-3">
               {features.map((feature) => {
                 const Icon = feature.icon;
                 const isCreateAgent = feature.title === "Create Agent";
@@ -846,7 +850,7 @@ export default function AIAgents() {
                       key={feature.title}
                       type="button"
                       onClick={() => setBuilderOpen((current) => !current)}
-                      className={`bg-white rounded-xl border border-slate-200 border-t-[3px] ${feature.borderAccent} shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.07)] transition-all duration-200 p-4 text-left cursor-pointer ${
+                      className={`bg-white rounded-lg sm:rounded-xl border border-slate-200 border-t-[3px] ${feature.borderAccent} shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.07)] transition-all duration-200 p-3 sm:p-4 text-left cursor-pointer ${
                         builderOpen ? "ring-2 ring-emerald-100 border-emerald-200" : ""
                       }`}
                     >
@@ -888,67 +892,63 @@ export default function AIAgents() {
             </div>
 
             {builderOpen ? (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-hidden">
-                <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_40%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-5 py-5 sm:px-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                          <BrainCircuit className="w-5 h-5 text-emerald-600" strokeWidth={1.8} />
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.05)] overflow-hidden">
+                <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.10),_transparent_40%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] px-3 sm:px-4 py-2.5 sm:py-3">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                        <div className="w-7 h-7 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <BrainCircuit className="w-3.5 h-3.5 text-emerald-600" strokeWidth={1.8} />
                         </div>
-                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-50 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
-                          Rapid AI Agent Builder
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-50 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
+                          Rapid AI Builder
                         </Badge>
-                        <Badge className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+                        <Badge className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
                           SMS-ready
                         </Badge>
                       </div>
-                      <h3 className="text-[20px] font-semibold text-slate-900 tracking-tight">
-                        Create a fast, structured AI agent in one focused flow
+                      <h3 className="text-sm font-semibold text-slate-900 tracking-tight leading-snug">
+                        Create a fast, structured AI agent
                       </h3>
-                      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-slate-600">
-                        This builder is designed for rapid AI agents, not basic chatbots. Every screen maps directly to a structured state so your backend can save, validate, simulate, and deploy it without extra coding.
+                      <p className="mt-0.5 text-[9px] sm:text-[10px] leading-relaxed text-slate-500 max-w-xl">
+                        Every screen maps to a backend-ready flow state. Save, validate, simulate, deploy.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[440px]">
-                      <div className="rounded-xl border border-slate-200 bg-white/90 px-3 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Speed</p>
-                        <p className="mt-1 text-[15px] font-semibold text-slate-900">&lt; 5 min</p>
+                    <div className="grid grid-cols-4 gap-1 sm:gap-1.5 lg:w-[260px] flex-shrink-0">
+                      <div className="rounded-lg border border-slate-200 bg-white/90 px-1.5 py-1.5 text-center">
+                        <p className="text-[7px] uppercase tracking-wider text-slate-400 leading-none">Speed</p>
+                        <p className="mt-0.5 text-[10px] sm:text-[11px] font-bold text-slate-900">&lt;5m</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white/90 px-3 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Start step</p>
-                        <p className="mt-1 text-[15px] font-semibold text-slate-900">Auto-ready</p>
+                      <div className="rounded-lg border border-slate-200 bg-white/90 px-1.5 py-1.5 text-center">
+                        <p className="text-[7px] uppercase tracking-wider text-slate-400 leading-none">Start</p>
+                        <p className="mt-0.5 text-[10px] sm:text-[11px] font-bold text-slate-900">Auto</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white/90 px-3 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Output</p>
-                        <p className="mt-1 text-[15px] font-semibold text-slate-900">Live JSON</p>
+                      <div className="rounded-lg border border-slate-200 bg-white/90 px-1.5 py-1.5 text-center">
+                        <p className="text-[7px] uppercase tracking-wider text-slate-400 leading-none">Output</p>
+                        <p className="mt-0.5 text-[10px] sm:text-[11px] font-bold text-slate-900">JSON</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white/90 px-3 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Deploy</p>
-                        <p className="mt-1 text-[15px] font-semibold text-slate-900">API-ready</p>
+                      <div className="rounded-lg border border-slate-200 bg-white/90 px-1.5 py-1.5 text-center">
+                        <p className="text-[7px] uppercase tracking-wider text-slate-400 leading-none">Deploy</p>
+                        <p className="mt-0.5 text-[10px] sm:text-[11px] font-bold text-slate-900">API</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="px-5 py-5 sm:px-6">
-                  <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="px-3 sm:px-4 py-3">
+                  <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                        Quick Templates
-                      </p>
-                      <p className="mt-1 text-[13px] text-slate-500">
-                        Start from a proven use case, then fine-tune the flow for your business.
-                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Quick Templates</p>
+                      <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500">Start from a proven use case, then fine-tune.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {builderTemplates.map((template) => (
                         <button
                           key={template.key}
                           type="button"
                           onClick={() => loadTemplate(template.key)}
-                          className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                          className={`rounded-full border px-2.5 py-1 text-[10px] sm:text-[11px] font-medium transition-colors ${
                             selectedTemplateKey === template.key
                               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -961,334 +961,337 @@ export default function AIAgents() {
                   </div>
 
                   <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-4 rounded-xl bg-slate-100 p-1 h-auto">
-                      <TabsTrigger value="setup" className="rounded-lg py-2 text-[12px] font-medium">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 rounded-lg sm:rounded-xl bg-slate-100 p-0.5 sm:p-1 h-auto gap-0.5">
+                      <TabsTrigger value="setup" className="rounded-lg py-1.5 sm:py-2 text-[10px] sm:text-xs md:text-[12px] font-medium">
                         Setup
                       </TabsTrigger>
-                      <TabsTrigger value="flow" className="rounded-lg py-2 text-[12px] font-medium">
-                        Flow Builder
+                      <TabsTrigger value="flow" className="rounded-lg py-1.5 sm:py-2 text-[10px] sm:text-xs md:text-[12px] font-medium">
+                        Flow Build
                       </TabsTrigger>
-                      <TabsTrigger value="preview" className="rounded-lg py-2 text-[12px] font-medium">
-                        Live Preview
+                      <TabsTrigger value="preview" className="rounded-lg py-1.5 sm:py-2 text-[10px] sm:text-xs md:text-[12px] font-medium">
+                        Preview
                       </TabsTrigger>
-                      <TabsTrigger value="api" className="rounded-lg py-2 text-[12px] font-medium">
-                        API Contract
+                      <TabsTrigger value="api" className="rounded-lg py-1.5 sm:py-2 text-[10px] sm:text-xs md:text-[12px] font-medium">
+                        API
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="setup" className="mt-4">
-                      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">
-                        <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-                          <div className="mb-4 flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="text-[15px] font-semibold text-slate-900">Agent onboarding</h4>
-                              <p className="mt-1 text-[13px] text-slate-500">
-                                Define the business context and the core job your AI agent should handle.
+                    <TabsContent value="setup" className="mt-3">
+                      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1.3fr_0.9fr]">
+                        {/* Left: config form */}
+                        <div className="rounded-2xl border border-slate-200 p-3 sm:p-4">
+                          <div className="mb-3 flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">Agent Configuration</h4>
+                              <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 leading-relaxed">
+                                Define context, intent, and the core job your AI agent handles.
                               </p>
                             </div>
-                            <Badge className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                              Step 1
+                            <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 text-[9px] font-semibold px-2 py-0.5 rounded-md shrink-0">
+                              Step 1 of 4
                             </Badge>
                           </div>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Chatbot name</label>
-                              <Input
-                                value={agentSetup.name}
-                                onChange={(e) => updateSetup("name", e.target.value)}
-                                placeholder="Mifumo SMS Bot"
-                                className="h-10 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Business name</label>
-                              <Input
-                                value={agentSetup.business}
-                                onChange={(e) => updateSetup("business", e.target.value)}
-                                placeholder="Mifumo Labs"
-                                className="h-10 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                              />
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Industry</label>
-                              <Select value={agentSetup.industry} onValueChange={(value) => updateSetup("industry", value)}>
-                                <SelectTrigger className="h-10 text-[13px] border-slate-200 bg-slate-50">
-                                  <SelectValue placeholder="Select industry" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {industries.map((industry) => (
-                                    <SelectItem key={industry} value={industry}>
-                                      {industry}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Language</label>
-                              <Select value={agentSetup.language} onValueChange={(value) => updateSetup("language", value)}>
-                                <SelectTrigger className="h-10 text-[13px] border-slate-200 bg-slate-50">
-                                  <SelectValue placeholder="Select language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {languages.map((language) => (
-                                    <SelectItem key={language.value} value={language.value}>
-                                      {language.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Tone</label>
-                              <Select value={agentSetup.tone} onValueChange={(value) => updateSetup("tone", value)}>
-                                <SelectTrigger className="h-10 text-[13px] border-slate-200 bg-slate-50">
-                                  <SelectValue placeholder="Select tone" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {tones.map((tone) => (
-                                    <SelectItem key={tone} value={tone}>
-                                      {tone}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <label className="text-[12px] font-medium text-slate-700">Channel</label>
-                              <Select value={agentSetup.channel} onValueChange={(value) => updateSetup("channel", value)}>
-                                <SelectTrigger className="h-10 text-[13px] border-slate-200 bg-slate-50">
-                                  <SelectValue placeholder="Select channel" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {channels.map((channel) => (
-                                    <SelectItem key={channel} value={channel}>
-                                      {channel}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                          <div className="mb-3 pb-3 border-b border-slate-100">
+                            <h5 className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Essential Information</h5>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Agent Name</label>
+                                <Input
+                                  value={agentSetup.name}
+                                  onChange={(e) => updateSetup("name", e.target.value)}
+                                  placeholder="e.g., Kuza Sales Agent"
+                                  className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50 focus:bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Business Name</label>
+                                <Input
+                                  value={agentSetup.business}
+                                  onChange={(e) => updateSetup("business", e.target.value)}
+                                  placeholder="e.g., Mifumo Labs"
+                                  className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50 focus:bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Industry</label>
+                                <Select value={agentSetup.industry} onValueChange={(value) => updateSetup("industry", value)}>
+                                  <SelectTrigger className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50">
+                                    <SelectValue placeholder="Select industry" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {industries.map((industry) => (
+                                      <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Language</label>
+                                <Select value={agentSetup.language} onValueChange={(value) => updateSetup("language", value)}>
+                                  <SelectTrigger className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50">
+                                    <SelectValue placeholder="Select language" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {languages.map((language) => (
+                                      <SelectItem key={language.value} value={language.value}>{language.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Tone</label>
+                                <Select value={agentSetup.tone} onValueChange={(value) => updateSetup("tone", value)}>
+                                  <SelectTrigger className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50">
+                                    <SelectValue placeholder="Select tone" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {tones.map((tone) => (
+                                      <SelectItem key={tone} value={tone}>{tone}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Channel</label>
+                                <Select value={agentSetup.channel} onValueChange={(value) => updateSetup("channel", value)}>
+                                  <SelectTrigger className="h-8 text-[11px] sm:text-xs border-slate-200 bg-slate-50">
+                                    <SelectValue placeholder="Select channel" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {channels.map((channel) => (
+                                      <SelectItem key={channel} value={channel}>{channel}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="mt-3 space-y-1.5">
-                            <label className="text-[12px] font-medium text-slate-700">Agent intent</label>
+                          <div className="space-y-1">
+                            <label className="text-[10px] sm:text-[11px] font-semibold text-slate-700">Agent Intent & Purpose</label>
                             <Textarea
                               value={agentSetup.intent}
                               onChange={(e) => updateSetup("intent", e.target.value)}
-                              placeholder="Describe the business goal and what the agent should help users accomplish."
-                              className="min-h-[120px] text-[13px] border-slate-200 bg-slate-50 focus-visible:bg-white resize-none"
+                              placeholder="e.g., Qualify leads, guide users through purchasing, collect contact information..."
+                              className="min-h-[80px] sm:min-h-[100px] text-[11px] sm:text-xs border-slate-200 bg-slate-50 focus-visible:bg-white resize-none"
                             />
                           </div>
                         </div>
 
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                        {/* Right: sidebar cards */}
+                        <div className="space-y-2">
+                          {/* Design Principles */}
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3">
                             <div className="flex items-center gap-2 mb-2">
-                              <Wand2 className="w-4 h-4 text-emerald-600" strokeWidth={1.8} />
-                              <p className="text-[13px] font-semibold text-emerald-800">Rapid agent principles</p>
+                              <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                <Wand2 className="w-3.5 h-3.5 text-emerald-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-widest">Design Principles</p>
+                                <p className="text-[8px] sm:text-[9px] text-emerald-700">Guide every decision</p>
+                              </div>
                             </div>
-                            <ul className="space-y-2 text-[12px] leading-5 text-emerald-900/80">
-                              <li>Use simple business language so non-technical users can build fast.</li>
-                              <li>Map every screen directly to a backend-ready flow state.</li>
-                              <li>Keep SMS deployment in mind from the very first onboarding step.</li>
+                            <ul className="space-y-1.5 text-[9px] sm:text-[10px] leading-relaxed text-emerald-900/90">
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>Simple, conversational language for non-technical users.</li>
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>Maps every screen to backend-ready flow states.</li>
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>SMS deployment in mind from step one.</li>
                             </ul>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <p className="text-[13px] font-semibold text-slate-900">Live create payload</p>
-                            <p className="mt-1 text-[12px] text-slate-500">
-                              This payload is ready for agent creation before the flow is saved.
-                            </p>
-                            <pre className="mt-3 rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100 overflow-x-auto">
-                              {formatJson(createPayload)}
-                            </pre>
+                          {/* Agent Creation */}
+                          <div className="rounded-2xl border border-slate-200 p-3 bg-gradient-to-br from-slate-50 to-white">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <Sparkles className="w-3.5 h-3.5 text-blue-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-900 uppercase tracking-widest">Agent Creation</p>
+                                <p className="text-[8px] sm:text-[9px] text-slate-500">Ready to deploy</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-900 rounded-xl p-2 mb-2 border border-slate-800">
+                              <pre className="text-[7px] sm:text-[8px] leading-4 text-slate-100 overflow-x-auto max-h-[140px]">
+                                {formatJson(createPayload)}
+                              </pre>
+                            </div>
                             <Button
-                              className="mt-4 w-full gap-2"
+                              className="w-full gap-2 h-8 text-[10px] sm:text-xs font-semibold bg-blue-600 hover:bg-blue-700"
                               onClick={createChatbotInBackend}
                               disabled={backendBusy}
                             >
-                              <Sparkles className="w-4 h-4" />
-                              {backendBusy ? "Creating..." : "Create agent in backend"}
-                              <ArrowRight className="w-4 h-4 ml-auto" />
+                              <Sparkles className="w-3 h-3" />
+                              {backendBusy ? "Creating..." : "Create Agent Now"}
+                              <ArrowRight className="w-3 h-3 ml-auto" />
                             </Button>
-                            <div className="mt-3 space-y-2">
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
-                                Chatbot ID:{" "}
-                                <span className="font-semibold text-slate-900">{chatbotId ?? "—"}</span>
+                            <div className="mt-2 space-y-1.5">
+                              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                                <p className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Chatbot ID</p>
+                                <p className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-slate-900 break-all">{chatbotId ?? "Pending creation"}</p>
                               </div>
                               {backendError ? (
-                                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
-                                  {backendError}
+                                <div className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-2">
+                                  <p className="text-[8px] font-semibold text-rose-700 uppercase tracking-widest">Error</p>
+                                  <p className="mt-0.5 text-[9px] text-rose-600">{backendError}</p>
                                 </div>
                               ) : null}
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <p className="text-[13px] font-semibold text-slate-900">Current template</p>
-                            <p className="mt-1 text-[12px] text-slate-500">
-                              {builderTemplates.find((template) => template.key === selectedTemplateKey)?.summary}
-                            </p>
-                            <Button variant="outline" className="mt-4 w-full" onClick={() => setActiveTab("flow")}>
-                              Continue to flow builder
-                              <ChevronRight className="w-4 h-4" />
+                          {/* Template Overview */}
+                          <div className="rounded-2xl border border-slate-200 p-3 bg-gradient-to-br from-indigo-50/50 to-white">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                <ChevronRight className="w-3.5 h-3.5 text-indigo-700" strokeWidth={2} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-900 uppercase tracking-widest">Template Overview</p>
+                                <p className="text-[8px] sm:text-[9px] text-slate-500">Ready to build your flow</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 rounded-lg border border-slate-200 p-2.5 mb-2">
+                              <p className="text-[9px] sm:text-[10px] text-slate-700 leading-relaxed">
+                                {builderTemplates.find((template) => template.key === selectedTemplateKey)?.summary}
+                              </p>
+                            </div>
+                            <Button className="w-full gap-2 h-8 text-[10px] sm:text-xs font-semibold bg-indigo-600 hover:bg-indigo-700" onClick={() => setActiveTab("flow")}>
+                              Proceed to Flow Builder
+                              <ChevronRight className="w-3 h-3 ml-auto" />
                             </Button>
                           </div>
                         </div>
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="flow" className="mt-4">
-                      <div className="space-y-4">
-                        <div className="rounded-2xl border border-slate-200 p-4">
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                              <p className="text-[15px] font-semibold text-slate-900">Visual step map</p>
-                              <p className="mt-1 text-[13px] text-slate-500">
-                                Keep the flow easy to understand. Each step below becomes one state in your final JSON.
-                              </p>
+                    <TabsContent value="flow" className="mt-3">
+                      <div className="space-y-2.5">
+                        <div className="rounded-2xl border border-slate-200 p-3 sm:p-4 bg-gradient-to-br from-slate-50 to-white">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <Zap className="w-3.5 h-3.5 text-blue-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] sm:text-xs font-bold text-slate-900 uppercase tracking-widest">Flow Management</p>
+                                <p className="text-[8px] sm:text-[9px] text-slate-500">Design each step of your agent's conversation</p>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button variant="outline" onClick={addStep}>
-                                <Plus className="w-4 h-4" />
-                                Add step
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <Button variant="outline" onClick={addStep} className="h-7 text-[9px] sm:text-[10px] px-2 gap-1">
+                                <Plus className="w-3 h-3" />
+                                Add
                               </Button>
                               <Button
                                 variant="outline"
                                 onClick={saveFlowToBackend}
                                 disabled={backendBusy || !chatbotId}
+                                className="h-7 text-[9px] sm:text-[10px] px-2 gap-1"
                               >
-                                <Database className="w-4 h-4" />
-                                {backendBusy ? "Saving..." : "Save flow"}
+                                <Database className="w-3 h-3" />
+                                {backendBusy ? "Saving…" : "Save"}
                               </Button>
-                              <Button onClick={() => setActiveTab("preview")}>
-                                Preview agent
-                                <ArrowRight className="w-4 h-4" />
+                              <Button onClick={() => setActiveTab("preview")} className="h-7 text-[9px] sm:text-[10px] px-2 gap-1">
+                                Preview
+                                <ArrowRight className="w-3 h-3" />
                               </Button>
                             </div>
                           </div>
 
-                          <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+                          <div className="mt-4 sm:mt-5 md:mt-6 flex gap-2.5 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none -mx-1 px-1">
                             {flowSteps.map((step, index) => (
                               <button
                                 key={step.id}
                                 type="button"
                                 onClick={() => setSelectedStepId(step.id)}
-                                className={`min-w-[220px] rounded-2xl border p-4 text-left transition-colors ${
+                                className={`min-w-[160px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-[280px] max-w-[160px] sm:max-w-[200px] md:max-w-[250px] lg:max-w-[280px] rounded-xl border p-3 sm:p-4 text-left transition-colors shrink-0 snap-start flex flex-col ${
                                   selectedStep?.id === step.id
                                     ? "border-emerald-200 bg-emerald-50/70"
                                     : "border-slate-200 bg-slate-50 hover:bg-white"
                                 }`}
                               >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[12px] font-semibold text-slate-700">
+                                <div className="flex items-center justify-between gap-1.5 flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 flex-shrink-0">
                                     {index + 1}
                                   </div>
-                                  <Badge className="bg-white text-slate-600 border border-slate-200 hover:bg-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                                  <Badge className="bg-white text-slate-500 border border-slate-200 hover:bg-white text-[8px] sm:text-[9px] font-semibold px-2 py-0.5 rounded-sm flex-shrink-0">
                                     {toStateKey(step.name)}
                                   </Badge>
                                 </div>
-                                <p className="mt-3 text-[13px] font-semibold text-slate-900">{step.name}</p>
-                                <p className="mt-1 line-clamp-3 text-[12px] leading-5 text-slate-500">
+                                <p className="mt-2 text-[10px] sm:text-[11px] md:text-[12px] font-semibold text-slate-900 break-words word-break">{step.name}</p>
+                                <p className="mt-1.5 text-[9px] sm:text-[10px] md:text-[11px] leading-4 text-slate-600 break-words word-break flex-grow">
                                   {step.message}
                                 </p>
-                                <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
-                                  <GitBranch className="w-3.5 h-3.5" />
-                                  {step.options.length} transition{step.options.length === 1 ? "" : "s"}
+                                <div className="mt-2 flex items-center gap-1 text-[8px] sm:text-[9px] md:text-[10px] text-slate-500 flex-shrink-0">
+                                  <GitBranch className="w-3 h-3 flex-shrink-0" />
+                                  <span>{step.options.length} path{step.options.length === 1 ? "" : "s"}</span>
                                 </div>
                               </button>
                             ))}
                           </div>
                         </div>
 
-                        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
-                          <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-                            <div className="mb-4 flex items-start justify-between gap-3">
-                              <div>
-                                <h4 className="text-[15px] font-semibold text-slate-900">Step editor</h4>
-                                <p className="mt-1 text-[13px] text-slate-500">
-                                  Edit the message, buttons, and optional advanced actions for this step.
-                                </p>
-                              </div>
-                              <Badge className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                                Step 2
-                              </Badge>
-                            </div>
-
+                        <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1.2fr_0.9fr]">
+                          <div className="rounded-2xl border border-slate-200 p-3 sm:p-4 bg-white">
                             {selectedStep ? (
                               <>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <div className="space-y-1.5">
-                                    <label className="text-[12px] font-medium text-slate-700">Step name</label>
+                                <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] sm:text-[10px] font-medium text-slate-600">Step name</label>
                                     <Input
                                       value={selectedStep.name}
                                       onChange={(e) => updateSelectedStep("name", e.target.value)}
-                                      className="h-10 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
+                                      className="h-7 sm:h-8 text-[10px] sm:text-[11px] border-slate-200 bg-slate-50 focus:bg-white"
                                     />
                                   </div>
-                                  <div className="space-y-1.5">
-                                    <label className="text-[12px] font-medium text-slate-700">Generated state key</label>
-                                    <div className="h-10 rounded-md border border-slate-200 bg-slate-50 px-3 flex items-center text-[13px] font-medium text-slate-600">
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] sm:text-[10px] font-medium text-slate-600">State key</label>
+                                    <div className="h-7 sm:h-8 rounded-md border border-slate-200 bg-slate-50 px-2 flex items-center text-[9px] sm:text-[10px] font-medium text-slate-500">
                                       {toStateKey(selectedStep.name)}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="mt-3 space-y-1.5">
-                                  <label className="text-[12px] font-medium text-slate-700">Message</label>
+                                <div className="mt-2 space-y-1">
+                                  <label className="text-[9px] sm:text-[10px] font-medium text-slate-600">Message</label>
                                   <Textarea
                                     value={selectedStep.message}
                                     onChange={(e) => updateSelectedStep("message", e.target.value)}
-                                    className="min-h-[120px] text-[13px] border-slate-200 bg-slate-50 focus-visible:bg-white resize-none"
+                                    className="min-h-[70px] sm:min-h-[90px] text-[10px] sm:text-[11px] border-slate-200 bg-slate-50 focus-visible:bg-white resize-none"
                                   />
                                 </div>
 
-                                <div className="mt-4">
-                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                <div className="mt-2.5">
+                                  <div className="mb-2 flex items-center justify-between gap-2">
                                     <div>
-                                      <p className="text-[13px] font-semibold text-slate-900">Options builder</p>
-                                      <p className="mt-1 text-[12px] text-slate-500">
-                                        Add buttons and map each one to the next step.
-                                      </p>
+                                      <p className="text-[10px] sm:text-[11px] font-semibold text-slate-800">Options builder</p>
+                                      <p className="text-[8px] sm:text-[9px] text-slate-400">Map each button to the next step.</p>
                                     </div>
-                                    <Button variant="outline" size="sm" onClick={addOption}>
-                                      <Plus className="w-4 h-4" />
-                                      Add option
+                                    <Button variant="outline" size="sm" onClick={addOption} className="h-6 text-[8px] sm:text-[9px] px-2 gap-1">
+                                      <Plus className="w-2.5 h-2.5" />Add
                                     </Button>
                                   </div>
 
-                                  <div className="space-y-3">
+                                  <div className="space-y-1.5">
                                     {selectedStep.options.map((option) => (
-                                      <div key={option.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                        <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
-                                          <div className="space-y-1.5">
-                                            <label className="text-[11px] font-medium text-slate-600">Button label</label>
+                                      <div key={option.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                        <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+                                          <div className="space-y-1">
+                                            <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">Button label</label>
                                             <Input
                                               value={option.label}
                                               onChange={(e) => updateOption(option.id, "label", e.target.value)}
-                                              className="h-9 text-[13px] border-slate-200 bg-white"
+                                              className="h-7 text-[10px] border-slate-200 bg-white"
                                             />
                                           </div>
-                                          <div className="space-y-1.5">
-                                            <label className="text-[11px] font-medium text-slate-600">Goes to</label>
-                                            <Select
-                                              value={option.nextStateId}
-                                              onValueChange={(value) => updateOption(option.id, "nextStateId", value)}
-                                            >
-                                              <SelectTrigger className="h-9 text-[13px] border-slate-200 bg-white">
+                                          <div className="space-y-1">
+                                            <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">Goes to</label>
+                                            <Select value={option.nextStateId} onValueChange={(value) => updateOption(option.id, "nextStateId", value)}>
+                                              <SelectTrigger className="h-7 text-[10px] border-slate-200 bg-white">
                                                 <SelectValue placeholder="Choose next step" />
                                               </SelectTrigger>
                                               <SelectContent>
                                                 {flowSteps.map((step) => (
-                                                  <SelectItem key={step.id} value={step.id}>
-                                                    {step.name}
-                                                  </SelectItem>
+                                                  <SelectItem key={step.id} value={step.id}>{step.name}</SelectItem>
                                                 ))}
                                               </SelectContent>
                                             </Select>
@@ -1296,125 +1299,102 @@ export default function AIAgents() {
                                         </div>
                                       </div>
                                     ))}
-
                                     {selectedStep.options.length === 0 ? (
-                                      <div className="rounded-xl border border-dashed border-slate-300 px-4 py-5 text-[12px] text-slate-500">
-                                        No options yet. Add one or more transitions to keep the flow moving.
+                                      <div className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-[9px] sm:text-[10px] text-slate-400">
+                                        No options yet. Add transitions to keep the flow moving.
                                       </div>
                                     ) : null}
                                   </div>
                                 </div>
 
-                                <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                                  <div className="mb-3 flex items-center gap-2">
-                                    <Globe className="w-4 h-4 text-blue-600" strokeWidth={1.8} />
-                                    <p className="text-[13px] font-semibold text-slate-900">Advanced actions</p>
+                                <div className="mt-2.5 rounded-xl border border-slate-200 p-2.5 sm:p-3">
+                                  <div className="mb-2 flex items-center gap-1.5">
+                                    <Globe className="w-3 h-3 text-blue-600 flex-shrink-0" strokeWidth={1.8} />
+                                    <p className="text-[10px] sm:text-[11px] font-semibold text-slate-800">Advanced actions</p>
                                   </div>
 
-                                  <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="space-y-1.5">
-                                      <label className="text-[11px] font-medium text-slate-600">List header</label>
-                                      <Input
-                                        value={selectedStep.listHeader ?? ""}
-                                        onChange={(e) => updateSelectedStep("listHeader", e.target.value)}
-                                        className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                                      />
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">List header</label>
+                                      <Input value={selectedStep.listHeader ?? ""} onChange={(e) => updateSelectedStep("listHeader", e.target.value)} className="h-7 text-[10px] border-slate-200 bg-slate-50 focus:bg-white" />
                                     </div>
-                                    <div className="space-y-1.5">
-                                      <label className="text-[11px] font-medium text-slate-600">List button</label>
-                                      <Input
-                                        value={selectedStep.listButton ?? ""}
-                                        onChange={(e) => updateSelectedStep("listButton", e.target.value)}
-                                        className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                                      />
+                                    <div className="space-y-1">
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">List button</label>
+                                      <Input value={selectedStep.listButton ?? ""} onChange={(e) => updateSelectedStep("listButton", e.target.value)} className="h-7 text-[10px] border-slate-200 bg-slate-50 focus:bg-white" />
                                     </div>
                                   </div>
 
-                                  <div className="mt-3 space-y-1.5">
-                                    <label className="text-[11px] font-medium text-slate-600">List body</label>
-                                    <Textarea
-                                      value={selectedStep.listBody ?? ""}
-                                      onChange={(e) => updateSelectedStep("listBody", e.target.value)}
-                                      className="min-h-[84px] text-[13px] border-slate-200 bg-slate-50 focus-visible:bg-white resize-none"
-                                    />
+                                  <div className="mt-2 space-y-1">
+                                    <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">List body</label>
+                                    <Textarea value={selectedStep.listBody ?? ""} onChange={(e) => updateSelectedStep("listBody", e.target.value)} className="min-h-[60px] text-[10px] border-slate-200 bg-slate-50 focus-visible:bg-white resize-none" />
                                   </div>
 
-                                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                    <div className="space-y-1.5">
-                                      <label className="text-[11px] font-medium text-slate-600">URL button label</label>
-                                      <Input
-                                        value={selectedStep.urlLabel ?? ""}
-                                        onChange={(e) => updateSelectedStep("urlLabel", e.target.value)}
-                                        className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                                      />
+                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">URL button label</label>
+                                      <Input value={selectedStep.urlLabel ?? ""} onChange={(e) => updateSelectedStep("urlLabel", e.target.value)} className="h-7 text-[10px] border-slate-200 bg-slate-50 focus:bg-white" />
                                     </div>
-                                    <div className="space-y-1.5">
-                                      <label className="text-[11px] font-medium text-slate-600">URL</label>
-                                      <Input
-                                        value={selectedStep.url ?? ""}
-                                        onChange={(e) => updateSelectedStep("url", e.target.value)}
-                                        className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                                      />
+                                    <div className="space-y-1">
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">URL</label>
+                                      <Input value={selectedStep.url ?? ""} onChange={(e) => updateSelectedStep("url", e.target.value)} className="h-7 text-[10px] border-slate-200 bg-slate-50 focus:bg-white" />
                                     </div>
                                   </div>
 
-                                  <div className="mt-3 space-y-1.5">
-                                    <label className="text-[11px] font-medium text-slate-600">API endpoint</label>
-                                    <Input
-                                      value={selectedStep.apiEndpoint ?? ""}
-                                      onChange={(e) => updateSelectedStep("apiEndpoint", e.target.value)}
-                                      placeholder="/api/chatbots/{chatbot_id}/webhooks/action"
-                                      className="h-9 text-[13px] border-slate-200 bg-slate-50 focus:bg-white"
-                                    />
+                                  <div className="mt-2 space-y-1">
+                                    <label className="text-[8px] sm:text-[9px] font-medium text-slate-500">API endpoint</label>
+                                    <Input value={selectedStep.apiEndpoint ?? ""} onChange={(e) => updateSelectedStep("apiEndpoint", e.target.value)} placeholder="/api/chatbots/{chatbot_id}/webhooks/action" className="h-7 text-[10px] border-slate-200 bg-slate-50 focus:bg-white" />
                                   </div>
                                 </div>
                               </>
                             ) : null}
                           </div>
 
-                          <div className="space-y-4">
-                            <div className="rounded-2xl border border-slate-200 p-4">
-                              <p className="text-[13px] font-semibold text-slate-900">Flow contract</p>
-                              <p className="mt-1 text-[12px] text-slate-500">
-                                Every step is transformed into the backend contract below.
-                              </p>
-                              <pre className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100">
-                                {formatJson(flowJson)}
-                              </pre>
+                          <div className="space-y-2">
+                            {/* Flow Contract */}
+                            <div className="rounded-2xl border border-slate-200 p-3 bg-gradient-to-br from-slate-50 to-white">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                  <Code className="w-3.5 h-3.5 text-violet-700" strokeWidth={1.8} />
+                                </div>
+                                <div>
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-900 uppercase tracking-widest">Flow Contract</p>
+                                  <p className="text-[8px] sm:text-[9px] text-slate-500">Final JSON sent to backend</p>
+                                </div>
+                              </div>
+                              <div className="bg-slate-900 rounded-xl p-2 border border-slate-800">
+                                <pre className="max-h-[200px] sm:max-h-[280px] overflow-auto text-[7px] sm:text-[8px] leading-4 text-slate-100">
+                                  {formatJson(flowJson)}
+                                </pre>
+                              </div>
                             </div>
 
-                            <div className="rounded-2xl border border-slate-200 p-4">
-                              <p className="text-[13px] font-semibold text-slate-900">Validation engine</p>
-                              <p className="mt-1 text-[12px] text-slate-500">
-                                Broken links and missing START steps are caught before deploy.
-                              </p>
-                              <div className="mt-3 space-y-2">
-                                <div className={`rounded-xl border px-3 py-2 text-[12px] ${
+                            {/* Validation */}
+                            <div className="rounded-2xl border border-slate-200 p-3 bg-gradient-to-br from-emerald-50/50 to-white">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" strokeWidth={2} />
+                                </div>
+                                <div>
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-900 uppercase tracking-widest">Validation</p>
+                                  <p className="text-[8px] sm:text-[9px] text-slate-500">Check before deploying</p>
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <div className={`rounded-lg border px-2.5 py-2 text-[9px] sm:text-[10px] font-medium ${
                                   validation.isValid
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                     : "border-rose-200 bg-rose-50 text-rose-700"
                                 }`}>
-                                  {validation.isValid
-                                    ? "Flow is valid and ready for save/deploy."
-                                    : "Flow needs attention before save/deploy."}
+                                  {validation.isValid ? "✓ Flow valid — ready to save/deploy" : "✗ Flow needs attention"}
                                 </div>
-
                                 {validation.errors.map((error) => (
-                                  <div key={error} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
-                                    {error}
-                                  </div>
+                                  <div key={error} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[9px] text-rose-700 font-medium">✗ {error}</div>
                                 ))}
-
                                 {validation.warnings.map((warning) => (
-                                  <div key={warning} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
-                                    {warning}
-                                  </div>
+                                  <div key={warning} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[9px] text-amber-700 font-medium">⚠️ {warning}</div>
                                 ))}
-
                                 {validation.errors.length === 0 && validation.warnings.length === 0 ? (
-                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-500">
-                                    No issues detected.
-                                  </div>
+                                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] text-emerald-700 font-medium">No issues. All systems ready.</div>
                                 ) : null}
                               </div>
                             </div>
@@ -1423,60 +1403,62 @@ export default function AIAgents() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="preview" className="mt-4">
-                      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                        <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-                          <div className="mb-4 flex items-center justify-between gap-3">
-                            <div>
-                              <h4 className="text-[15px] font-semibold text-slate-900">Live simulator</h4>
-                              <p className="mt-1 text-[13px] text-slate-500">
-                                Test the flow like a real conversation before sending it to the backend.
-                              </p>
-                            </div>
+                    <TabsContent value="preview" className="mt-3">
+                      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[0.95fr_1.05fr]">
+                        <div className="rounded-2xl border border-slate-200 p-3 sm:p-4">
+                          <div className="mb-2.5 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" onClick={resetPreview}>
-                                Reset
-                              </Button>
+                              <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                <Bot className="w-3.5 h-3.5 text-purple-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-900 uppercase tracking-widest">Live Simulator</p>
+                                <p className="text-[8px] sm:text-[9px] text-slate-500">Test flow before deploying</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1.5">
+                              <Button variant="outline" onClick={resetPreview} className="h-7 text-[9px] sm:text-[10px] px-2">↻ Reset</Button>
                               <Button
                                 variant="outline"
                                 onClick={simulateOnBackend}
                                 disabled={backendBusy || !chatbotId}
+                                className="h-7 text-[9px] sm:text-[10px] px-2 gap-1"
                               >
-                                <Sparkles className="w-4 h-4" />
-                                {backendBusy ? "Simulating..." : "Simulate (backend)"}
+                                <Sparkles className="w-3 h-3" />
+                                {backendBusy ? "..." : "Simulate"}
                               </Button>
                             </div>
                           </div>
 
                           {previewStep ? (
-                            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4">
-                              <div className="mb-4 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                                  <Bot className="w-5 h-5 text-emerald-700" strokeWidth={1.8} />
+                            <div className="rounded-2xl sm:rounded-[28px] border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-3 sm:p-4 md:p-5 lg:p-6">
+                              <div className="mb-3.5 sm:mb-4 md:mb-5 flex items-center gap-2.5 sm:gap-3">
+                                <div className="w-9 sm:w-10 md:w-11 h-9 sm:h-10 md:h-11 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center flex-shrink-0 border border-emerald-200">
+                                  <Bot className="w-5 sm:w-5.5 md:w-6 h-5 sm:h-5.5 md:h-6 text-emerald-700" strokeWidth={1.8} />
                                 </div>
-                                <div>
-                                  <p className="text-[13px] font-semibold text-slate-900">{agentSetup.name || "AI Agent"}</p>
-                                  <p className="text-[11px] text-slate-400">{toStateKey(previewStep.name)}</p>
+                                <div className="min-w-0">
+                                  <p className="text-xs sm:text-sm md:text-[14px] font-bold text-slate-900 truncate">{agentSetup.name || "AI Agent"}</p>
+                                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{toStateKey(previewStep.name)}</p>
                                 </div>
                               </div>
 
-                              <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3 text-[13px] leading-6 text-slate-700 shadow-sm">
+                              <div className="rounded-xl sm:rounded-2xl bg-white border border-slate-200 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-4 text-xs sm:text-sm md:text-[14px] leading-relaxed text-slate-700 shadow-md">
                                 {previewStep.message}
                               </div>
 
                               {previewStep.url ? (
-                                <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-700">
-                                  URL action: {previewStep.urlLabel || "Open link"} -&gt; {previewStep.url}
+                                <div className="mt-3 sm:mt-4 rounded-lg sm:rounded-xl border border-blue-200 bg-blue-50 px-3 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-[11px] md:text-xs text-blue-700 font-medium">
+                                  🔗 {previewStep.urlLabel || "Open link"}
                                 </div>
                               ) : null}
 
                               {previewStep.apiEndpoint ? (
-                                <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[12px] text-violet-700">
-                                  API action: {previewStep.apiEndpoint}
+                                <div className="mt-2 sm:mt-3 rounded-lg sm:rounded-xl border border-violet-200 bg-violet-50 px-3 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-[11px] md:text-xs text-violet-700 font-medium">
+                                  ⚙️ API: {previewStep.apiEndpoint}
                                 </div>
                               ) : null}
 
-                              <div className="mt-4 space-y-2">
+                              <div className="mt-4 sm:mt-5 md:mt-6 space-y-2">
                                 {previewStep.options.map((option) => {
                                   const nextStep = flowSteps.find((step) => step.id === option.nextStateId);
 
@@ -1485,7 +1467,7 @@ export default function AIAgents() {
                                       key={option.id}
                                       type="button"
                                       onClick={() => nextStep && setPreviewStepId(nextStep.id)}
-                                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-[13px] font-medium text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50/60"
+                                      className="w-full rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs sm:text-sm md:text-[14px] font-semibold text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50/80 active:scale-97"
                                     >
                                       <div className="flex items-center justify-between gap-3">
                                         <span>{option.label}</span>
@@ -1496,8 +1478,8 @@ export default function AIAgents() {
                                 })}
 
                                 {previewStep.options.length === 0 ? (
-                                  <div className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-[12px] text-slate-500">
-                                    This step ends the current preview path.
+                                  <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-4 text-xs sm:text-sm text-amber-700 font-medium text-center">
+                                    End of flow path
                                   </div>
                                 ) : null}
                               </div>
@@ -1505,60 +1487,79 @@ export default function AIAgents() {
                           ) : null}
                         </div>
 
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <MessageCircle className="w-4 h-4 text-blue-600" strokeWidth={1.8} />
-                              <p className="text-[13px] font-semibold text-slate-900">Deploy payload</p>
+                        <div className="space-y-4 sm:space-y-5 md:space-y-6">
+                          <div className="rounded-3xl border border-slate-200 p-4 sm:p-5 md:p-6 bg-gradient-to-br from-slate-50 to-white">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-blue-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-widest">Deployment Payload</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-slate-600">Ready for backend</p>
+                              </div>
                             </div>
-                            <p className="text-[12px] text-slate-500">
-                              Use this payload when saving the full flow to the backend runtime.
-                            </p>
-                            <pre className="mt-3 rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100 overflow-x-auto">
-                              {formatJson(deployPayload)}
-                            </pre>
+                            <div className="bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-800">
+                              <pre className="max-h-[280px] overflow-auto text-[9px] sm:text-[10px] md:text-[11px] leading-5 sm:leading-6 text-slate-100">
+                                {formatJson(deployPayload)}
+                              </pre>
+                            </div>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={1.8} />
-                              <p className="text-[13px] font-semibold text-slate-900">Ready-to-deploy checks</p>
+                          <div className="rounded-3xl border border-slate-200 p-4 sm:p-5 md:p-6 bg-gradient-to-br from-emerald-50/50 to-white">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-700" strokeWidth={2} />
+                              </div>
+                              <div>
+                                <p className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-widest">Pre-Deploy Checks</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-slate-600">Everything ready?</p>
+                              </div>
                             </div>
-                            <div className="space-y-2 text-[12px] text-slate-600">
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                START step present: {validation.errors.some((error) => error.includes("START")) ? "No" : "Yes"}
+                            <div className="space-y-2.5 sm:space-y-3">
+                              <div className="rounded-lg sm:rounded-xl border border-slate-200 bg-slate-50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-700">
+                                <span className={validation.errors.some((error) => error.includes("START")) ? "text-rose-700" : "text-emerald-700"}>
+                                  {validation.errors.some((error) => error.includes("START")) ? "✗" : "✓"} START Step
+                                </span>
                               </div>
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                State links valid: {validation.errors.some((error) => error.includes("missing next step")) ? "No" : "Yes"}
+                              <div className="rounded-lg sm:rounded-xl border border-slate-200 bg-slate-50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-700">
+                                <span className={validation.errors.some((error) => error.includes("missing next step")) ? "text-rose-700" : "text-emerald-700"}>
+                                  {validation.errors.some((error) => error.includes("missing next step")) ? "✗" : "✓"} State Links
+                                </span>
                               </div>
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                Agent channel: {agentSetup.channel || "Not selected"}
-                              </div>
-                              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                Business context: {agentSetup.business || "Missing business name"}
+                              <div className="rounded-lg sm:rounded-xl border border-slate-200 bg-slate-50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-slate-700">
+                                <span className={!agentSetup.channel ? "text-amber-700" : "text-emerald-700"}>
+                                  {agentSetup.channel ? "✓" : "⚠"} Channel: {agentSetup.channel || "Need to select"}
+                                </span>
                               </div>
                             </div>
                             <Button
-                              className="mt-4 w-full gap-2"
+                              className="mt-5 sm:mt-6 w-full gap-3 h-10 sm:h-11 md:h-12 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700"
                               onClick={deployToBackend}
                               disabled={backendBusy || !chatbotId || !validation.isValid}
                             >
-                              <Zap className="w-4 h-4" />
-                              {backendBusy ? "Deploying..." : "Deploy (backend)"}
-                              <ArrowRight className="w-4 h-4 ml-auto" />
+                              <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+                              {backendBusy ? "Deploying..." : "Deploy to Production"}
+                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-auto" />
                             </Button>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <p className="text-[13px] font-semibold text-slate-900">Backend response</p>
-                            <p className="mt-1 text-[12px] text-slate-500">
-                              Latest response from create/save/simulate/deploy calls.
-                            </p>
-                            <pre className="mt-3 max-h-[260px] overflow-auto rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100">
-                              {formatJson(backendResult ?? { chatbot_id: chatbotId, note: "No backend calls yet." })}
-                            </pre>
+                          <div className="rounded-3xl border border-slate-200 p-4 sm:p-5 md:p-6 bg-gradient-to-br from-slate-50 to-white">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                                <Code className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700" strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <p className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-widest">Backend Response</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-slate-600">Latest API result</p>
+                              </div>
+                            </div>
+                            <div className="bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-800">
+                              <pre className="max-h-[320px] overflow-auto text-[9px] sm:text-[10px] md:text-[11px] leading-5 sm:leading-6 text-slate-100">
+                                {formatJson(backendResult ?? { chatbot_id: chatbotId, note: "No backend calls yet." })}
+                              </pre>
+                            </div>
                             {backendError ? (
-                              <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                              <div className="mt-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs sm:text-sm text-rose-700 font-medium">
                                 {backendError}
                               </div>
                             ) : null}
@@ -1567,124 +1568,151 @@ export default function AIAgents() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="api" className="mt-4">
-                      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-                        <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-                          <div className="mb-4 flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="text-[15px] font-semibold text-slate-900">Ready API endpoints</h4>
-                              <p className="mt-1 text-[13px] text-slate-500">
-                                These endpoints cover the rapid creation, save, test, and deploy path for SMS-ready AI agents.
-                              </p>
+                    <TabsContent value="api" className="mt-2">
+                      {/* Single column on mobile, two columns on xl+ */}
+                      <div className="flex flex-col xl:grid xl:grid-cols-[1.1fr_0.9fr] gap-2 w-full min-w-0">
+
+                        {/* ── Left: API Endpoints ── */}
+                        <div className="rounded-xl border border-slate-200 p-2.5 bg-gradient-to-br from-indigo-50/50 to-white min-w-0 w-full">
+                          <div className="mb-2 flex items-center justify-between gap-1.5">
+                            <div className="min-w-0">
+                              <h4 className="text-[10px] font-bold text-slate-900 uppercase tracking-wide truncate">API Endpoints</h4>
+                              <p className="text-[8px] text-slate-400 mt-0.5">Full lifecycle: create → save → simulate → deploy</p>
                             </div>
-                            <Badge className="bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            <Badge className="bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-[7px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                               Step 4
                             </Badge>
                           </div>
-
-                          <div className="space-y-3">
+                          <div className="space-y-1">
                             {apiEndpoints.map((endpoint) => (
-                              <div key={endpoint.path} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge className="bg-slate-900 text-white hover:bg-slate-900 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                              <div key={endpoint.path} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 min-w-0">
+                                <div className="flex items-start gap-1.5 min-w-0">
+                                  <span className="inline-flex items-center bg-slate-900 text-white text-[7px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap flex-shrink-0 mt-0.5">
                                     {endpoint.method}
-                                  </Badge>
-                                  <code className="text-[12px] font-medium text-slate-700">{endpoint.path}</code>
+                                  </span>
+                                  <code className="text-[8px] font-semibold text-slate-700 font-mono break-all leading-tight min-w-0">{endpoint.path}</code>
                                 </div>
-                                <p className="mt-2 text-[12px] leading-5 text-slate-500">{endpoint.description}</p>
+                                <p className="mt-1 text-[7px] leading-snug text-slate-400 pl-0">{endpoint.description}</p>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <p className="text-[13px] font-semibold text-slate-900">Connect to backend</p>
-                            <p className="mt-1 text-[12px] text-slate-500">
-                              These buttons call the required endpoints so you don’t need extra frontend work after backend implementation.
-                            </p>
-                            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                              <Button onClick={createChatbotInBackend} disabled={backendBusy} className="gap-2">
-                                <Plus className="w-4 h-4" />
-                                Create agent
-                              </Button>
-                              <Button
-                                variant="outline"
+                        {/* ── Right: Actions + Schema + Notes (all stacked) ── */}
+                        <div className="flex flex-col gap-2 min-w-0 w-full">
+
+                          {/* Connect to Backend — 4 action buttons in a 2x2 grid */}
+                          <div className="rounded-xl border border-slate-200 p-2.5 bg-gradient-to-br from-violet-50/40 to-white min-w-0">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <div className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                <Zap className="w-3 h-3 text-violet-700" strokeWidth={2} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold text-slate-900 uppercase tracking-wider leading-none truncate">Connect to Backend</p>
+                                <p className="text-[7px] text-slate-400 mt-0.5">One tap per action</p>
+                              </div>
+                            </div>
+                            {/* 2×2 button grid — each button constrained to half width */}
+                            <div className="grid grid-cols-2 gap-1 w-full">
+                              <button
+                                type="button"
+                                onClick={createChatbotInBackend}
+                                disabled={backendBusy}
+                                className="flex items-center justify-center gap-1 h-7 w-full rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
+                              >
+                                <Plus className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Create</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={saveFlowToBackend}
                                 disabled={backendBusy || !chatbotId}
-                                className="gap-2"
+                                className="flex items-center justify-center gap-1 h-7 w-full rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
-                                <Database className="w-4 h-4" />
-                                Save flow
-                              </Button>
-                              <Button
-                                variant="outline"
+                                <Database className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Save</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={simulateOnBackend}
                                 disabled={backendBusy || !chatbotId}
-                                className="gap-2"
+                                className="flex items-center justify-center gap-1 h-7 w-full rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
-                                <Sparkles className="w-4 h-4" />
-                                Simulate
-                              </Button>
-                              <Button
+                                <Sparkles className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Simulate</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={deployToBackend}
                                 disabled={backendBusy || !chatbotId || !validation.isValid}
-                                className="gap-2"
+                                className="flex items-center justify-center gap-1 h-7 w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
-                                <Zap className="w-4 h-4" />
-                                Deploy
-                              </Button>
+                                <Zap className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Deploy</span>
+                              </button>
                             </div>
-                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
-                              Current chatbot_id:{" "}
-                              <span className="font-semibold text-slate-900">{chatbotId ?? "—"}</span>
+                            <div className="mt-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[7px] text-slate-600 font-medium flex items-center gap-1 min-w-0">
+                              <span className="flex-shrink-0 text-slate-400">ID:</span>
+                              <span className="font-bold text-slate-900 font-mono truncate">{chatbotId ?? "—"}</span>
                             </div>
                             {backendError ? (
-                              <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                              <div className="mt-1 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1 text-[7px] text-rose-700 font-medium">
                                 {backendError}
                               </div>
                             ) : null}
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Sparkles className="w-4 h-4 text-violet-600" strokeWidth={1.8} />
-                              <p className="text-[13px] font-semibold text-slate-900">Frontend to backend contract</p>
+                          {/* Frontend → Backend schema */}
+                          <div className="rounded-xl border border-slate-200 p-2.5 bg-gradient-to-br from-slate-50 to-white min-w-0">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <Code className="w-3 h-3 text-slate-700" strokeWidth={2} />
+                              </div>
+                              <p className="text-[9px] font-bold text-slate-900 uppercase tracking-wider">Frontend → Backend</p>
                             </div>
-                            <p className="text-[12px] text-slate-500">
-                              The frontend builder should always send the full flow contract exactly like this.
-                            </p>
-                            <pre className="mt-3 rounded-xl bg-slate-950 p-4 text-[11px] leading-5 text-slate-100 overflow-x-auto">
-                              {formatJson(deployPayload)}
-                            </pre>
+                            <p className="text-[7px] text-slate-400 mb-1.5">Contract schema on each request.</p>
+                            <div className="bg-slate-900 rounded-lg p-1.5 border border-slate-800 w-full min-w-0 overflow-hidden">
+                              <pre className="max-h-[140px] overflow-auto text-[6.5px] sm:text-[7px] leading-[1.4] text-slate-100 font-mono w-full whitespace-pre-wrap break-all">
+                                {formatJson(deployPayload)}
+                              </pre>
+                            </div>
                           </div>
 
-                          <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Zap className="w-4 h-4 text-blue-600" strokeWidth={1.8} />
-                              <p className="text-[13px] font-semibold text-blue-900">
-                                Why this is stronger than a normal chatbot
-                              </p>
+                          {/* Why It Works + Save Sequence — side by side on mobile */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <div className="w-5 h-5 rounded-md bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                  <Zap className="w-2.5 h-2.5 text-emerald-700" strokeWidth={2} />
+                                </div>
+                                <p className="text-[8px] font-bold text-emerald-900 uppercase tracking-wider">Why It Works</p>
+                              </div>
+                              <ul className="space-y-1 text-[7px] leading-snug text-emerald-900/80">
+                                <li className="flex gap-1"><span className="font-bold text-emerald-600 flex-shrink-0">→</span><span>Business intent, not canned replies</span></li>
+                                <li className="flex gap-1"><span className="font-bold text-emerald-600 flex-shrink-0">→</span><span>Executable flow states instantly</span></li>
+                                <li className="flex gap-1"><span className="font-bold text-emerald-600 flex-shrink-0">→</span><span>SMS, actions, links in one flow</span></li>
+                              </ul>
                             </div>
-                            <ul className="space-y-2 text-[12px] leading-5 text-blue-900/80">
-                              <li>It starts with business intent, not just canned replies.</li>
-                              <li>It generates structured flow states that your runtime engine can execute immediately.</li>
-                              <li>It keeps SMS, actions, links, and webhooks inside the same fast creation flow.</li>
-                            </ul>
+
+                            <div className="rounded-xl border border-slate-200 p-2.5 bg-slate-50 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <div className="w-5 h-5 rounded-md bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                  <ChevronRight className="w-2.5 h-2.5 text-slate-600" strokeWidth={2} />
+                                </div>
+                                <p className="text-[8px] font-bold text-slate-900 uppercase tracking-wider">Save Sequence</p>
+                              </div>
+                              <div className="flex items-center flex-wrap gap-1 text-[7px]">
+                                <span className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-semibold text-slate-700">Create</span>
+                                <ChevronRight className="w-2 h-2 text-slate-300 flex-shrink-0" />
+                                <span className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-semibold text-slate-700">Save</span>
+                                <ChevronRight className="w-2 h-2 text-slate-300 flex-shrink-0" />
+                                <span className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-semibold text-slate-700">Simulate</span>
+                                <ChevronRight className="w-2 h-2 text-slate-300 flex-shrink-0" />
+                                <span className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-semibold text-slate-700">Deploy</span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 p-4">
-                            <p className="text-[13px] font-semibold text-slate-900">Suggested save sequence</p>
-                            <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
-                              <span className="rounded-full bg-slate-100 px-3 py-1">Create agent</span>
-                              <ChevronRight className="w-4 h-4 text-slate-300" />
-                              <span className="rounded-full bg-slate-100 px-3 py-1">Save flow</span>
-                              <ChevronRight className="w-4 h-4 text-slate-300" />
-                              <span className="rounded-full bg-slate-100 px-3 py-1">Simulate</span>
-                              <ChevronRight className="w-4 h-4 text-slate-300" />
-                              <span className="rounded-full bg-slate-100 px-3 py-1">Deploy to SMS</span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </TabsContent>

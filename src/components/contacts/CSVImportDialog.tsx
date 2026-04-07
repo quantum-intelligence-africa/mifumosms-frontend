@@ -181,7 +181,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-4 sm:p-6">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[85vh] flex flex-col p-3 sm:p-4 md:p-6">
         <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Upload className="w-5 h-5" />

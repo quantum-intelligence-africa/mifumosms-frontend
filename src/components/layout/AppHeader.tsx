@@ -71,7 +71,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-3 lg:px-6 relative z-50 backdrop-blur-xl lg:z-50">
+    <header className="sticky top-0 h-12 sm:h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-2 sm:px-3 lg:px-6 relative z-50 backdrop-blur-xl lg:z-50">
       {/* Mobile menu button */}
       {isMobile && (
         <Button

@@ -97,7 +97,7 @@ const Developer = () => {
               <span className={`font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none transition-colors duration-300 ${
                 isScrolled ? 'text-gray-900' : 'text-white'
               }`}>
-                Mifumo SMS
+                SENDA
               </span>
             </div>
           </Link>
@@ -188,12 +188,12 @@ const Developer = () => {
             <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
-                  {language === 'sw' ? 'API ya Mifumo SMS' : 'Mifumo SMS API'}
+                  {language === 'sw' ? 'API ya SENDA' : 'SENDA API'}
                   <br />
                   <span className="text-blue-200">{language === 'sw' ? 'Nyaraka' : 'Documentation'}</span>
                 </h1>
                 <p className="text-center text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl mx-auto leading-relaxed font-normal">
-                  {language === 'sw' ? 'Rahisisha mawasiliano yako kwa kutumia API ya Mifumo SMS. Nyaraka na mwongozo wa msanidi programu vinakupa kila kitu unachohitaji kuunganisha huduma za SMS kwenye programu zako.' : 'Simplify your communication with the Mifumo SMS API. Our comprehensive documentation and developer guides provide everything you need to seamlessly integrate SMS services into your applications.'}
+                  {language === 'sw' ? 'Rahisisha mawasiliano yako kwa kutumia API ya SENDA. Nyaraka na mwongozo wa msanidi programu vinakupa kila kitu unachohitaji kuunganisha huduma za SMS kwenye programu zako.' : 'Simplify your communication with the SENDA API. Our comprehensive documentation and developer guides provide everything you need to seamlessly integrate SMS services into your applications.'}
                 </p>
               </div>
 
@@ -232,7 +232,7 @@ const Developer = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Upatikanaji wa Juu' : 'High Availability'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya Mifumo SMS imeundwa kuwa na upatikanaji wa juu na kupanuka. Inaboresha uaminifu wa programu zako kwa kutumia mifumo iliyosambazwa.' : 'Mifumo SMS API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.'}
+                  {language === 'sw' ? 'API ya SENDA imeundwa kuwa na upatikanaji wa juu na kupanuka. Inaboresha uaminifu wa programu zako kwa kutumia mifumo iliyosambazwa.' : 'SENDA API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.'}
                 </p>
                 <div className="mt-4 items-center text-blue-600 font-medium hidden">
                   <span>Learn more</span>
@@ -250,7 +250,7 @@ const Developer = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Lenga Kinachohusika' : 'Focus on What Matters'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya Mifumo SMS inakuwezesha kuzingatia mantiki ya biashara yako kwa kutoa huduma ya arifa inayotegemewa na inayopanuka. Unahitaji tu kuunganisha na API yetu na tutashughulikia yote mengine.' : 'Mifumo SMS API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.'}
+                  {language === 'sw' ? 'API ya SENDA inakuwezesha kuzingatia mantiki ya biashara yako kwa kutoa huduma ya arifa inayotegemewa na inayopanuka. Unahitaji tu kuunganisha na API yetu na tutashughulikia yote mengine.' : 'SENDA API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.'}
                 </p>
                 <div className="mt-4 items-center text-green-600 font-medium hidden">
                   <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
@@ -268,7 +268,7 @@ const Developer = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Uwasilishaji wa Ujumbe wa Kuaminika' : 'Reliable Message Delivery'}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya Mifumo SMS inahakikisha ujumbe wako unawafikia watumiaji wako kwa wakati. Tunatoa kumbukumbu na ripoti za kina ili kukusaidia kufuatilia hali ya ujumbe wako.' : 'Mifumo SMS API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.'}
+                  {language === 'sw' ? 'API ya SENDA inahakikisha ujumbe wako unawafikia watumiaji wako kwa wakati. Tunatoa kumbukumbu na ripoti za kina ili kukusaidia kufuatilia hali ya ujumbe wako.' : 'SENDA API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.'}
                 </p>
                 <div className="mt-4 items-center text-purple-600 font-medium hidden">
                   <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
@@ -342,7 +342,7 @@ const Developer = () => {
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </Link>
 
@@ -369,7 +369,7 @@ const Developer = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
           </div>
         </div>
       </footer>

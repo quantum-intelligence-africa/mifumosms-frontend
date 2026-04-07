@@ -47,33 +47,33 @@ export function QuickActions() {
     }
   ];
   return (
-    <Card className="p-5 sm:p-6 glass border border-border-subtle">
-      <div className="flex items-center gap-2.5 mb-5">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Rocket className="w-4 h-4 text-primary" />
+    <Card className="p-3 glass border border-border-subtle">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 rounded-md bg-primary/10">
+          <Rocket className="w-3 h-3 text-primary" />
         </div>
-        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
+        <h3 className="font-heading text-xs sm:text-sm font-bold text-foreground">
           {t("dashboard.quick_actions.title")}
         </h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <Button
               key={action.name}
               variant={action.variant}
-              className="h-[100px] sm:h-[105px] p-3 sm:p-4 flex-col items-start text-left whitespace-normal hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
+              className="h-[78px] sm:h-[86px] p-2.5 flex-col items-start text-left whitespace-normal hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
               onClick={() => action.to && navigate(action.to)}
             >
-              <div className="flex items-center gap-2 w-full mb-1.5">
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="font-semibold text-[13px] sm:text-sm flex-1 min-w-0 leading-tight">
+              <div className="flex items-center gap-1.5 w-full mb-1">
+                <Icon className="w-3 h-3 flex-shrink-0" />
+                <span className="font-semibold text-[11px] sm:text-xs flex-1 min-w-0 leading-tight">
                   {action.name}
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs opacity-70 text-left leading-snug">
+              <p className="text-[9px] sm:text-[10px] opacity-75 text-left leading-snug">
                 {action.description}
               </p>
             </Button>
@@ -81,31 +81,31 @@ export function QuickActions() {
         })}
       </div>
 
-      <div className="mt-5 pt-4 border-t border-border-subtle">
-  <div className="flex flex-row gap-2">
-    <Button
-      variant="link"
-      size="sm"
-      className="flex-1 h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline justify-center"
-      onClick={() => setShowVideoModal(true)}
-    >
-      <Play className="w-3 h-3 mr-1" />
-      {t("dashboard.quick_actions.view_tutorial")}
-    </Button>
-    <Button
-      variant="link"
-      size="sm"
-      className="flex-1 h-auto p-0 text-primary text-xs sm:text-sm font-semibold hover:underline justify-center"
-      onClick={() => window.open("https://wa.me/255615229007", "_blank")}
-    >
-      {t("dashboard.quick_actions.contact_support")}
-    </Button>
-  </div>
-</div>
+      <div className="mt-2.5 pt-2 border-t border-border-subtle">
+        <div className="flex flex-row gap-2">
+          <Button
+            variant="link"
+            size="sm"
+            className="flex-1 h-auto p-0 text-primary text-[10px] sm:text-xs font-semibold hover:underline justify-center"
+            onClick={() => setShowVideoModal(true)}
+          >
+            <Play className="w-3 h-3 mr-1" />
+            {t("dashboard.quick_actions.view_tutorial")}
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            className="flex-1 h-auto p-0 text-primary text-[10px] sm:text-xs font-semibold hover:underline justify-center"
+            onClick={() => window.open("https://wa.me/255615229007", "_blank")}
+          >
+            {t("dashboard.quick_actions.contact_support")}
+          </Button>
+        </div>
+      </div>
 
       {/* Video Tutorial Modal */}
       <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
-        <DialogContent className="glass max-w-2xl max-h-[90vh] flex flex-col p-4 rounded-lg">
+        <DialogContent className="glass w-full max-w-[95vw] sm:max-w-2xl max-h-[90vh] flex flex-col p-3 sm:p-4 rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Play className="w-5 h-5 text-primary" />

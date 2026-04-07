@@ -87,8 +87,8 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
   };
 
   return (
-    <Card className="p-4 sm:p-6 glass">
-      <form onSubmit={handleSubmit} className="space-y-6">
+    <Card className="p-3 sm:p-4 lg:p-6 glass">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Sender ID */}
         <div className="space-y-2">
           <Label htmlFor="sender-id" className="text-sm font-semibold">
@@ -152,7 +152,7 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             KYC Documents <span className="text-red-500">*</span>
           </Label>
 
-          <div className="relative border-2 border-dashed border-border rounded-lg p-6 text-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
+          <div className="relative border-2 border-dashed border-border rounded-lg p-4 sm:p-6 text-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
             <input
               type="file"
               multiple

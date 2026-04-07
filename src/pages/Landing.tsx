@@ -213,13 +213,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   // Business profiles with their SMS messages
   const businessProfiles = useMemo(() => [
     {
-      name: "Mifumo SMS",
-      sender: "Mifumo SMS",
+      name: "SENDA",
+      sender: "SENDA",
       messages: [
-        { text: "MIFUMO SMS: Usikose! Kumbusha wateja wako kuhusu punguzo la mwisho wa mwezi.", time: "1:00 PM" },
-        { text: "MIFUMO SMS: Vikumbusho vya oda vimefufua wateja 24 waliokuwa kimya.", time: "2:30 PM" },
-        { text: "MIFUMO SMS: Ujumbe wako wa 'Asante Mteja' umetumwa kwa wateja 1,200.", time: "3:10 PM" },
-        { text: "MIFUMO SMS: Je, salio limeisha? Ongeza sasa ili kampeni zako ziendelee.", time: "3:40 PM" },
+        { text: "SENDA: Usikose! Kumbusha wateja wako kuhusu punguzo la mwisho wa mwezi.", time: "1:00 PM" },
+        { text: "SENDA: Vikumbusho vya oda vimefufua wateja 24 waliokuwa kimya.", time: "2:30 PM" },
+        { text: "SENDA: Ujumbe wako wa 'Asante Mteja' umetumwa kwa wateja 1,200.", time: "3:10 PM" },
+        { text: "SENDA: Je, salio limeisha? Ongeza sasa ili kampeni zako ziendelee.", time: "3:40 PM" },
       ]
     },
     {
@@ -765,7 +765,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               <span className={`font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none transition-colors duration-300 ${
                 isScrolled ? 'text-gray-900' : 'text-white'
               }`}>
-                Mifumo SMS
+                SENDA
               </span>
             </div>
           </div>
@@ -1424,7 +1424,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 ? 'animate-fade-in-up'
                 : 'opacity-0 translate-y-4'
             }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
-              {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia Mifumo SMS' : 'Join thousands of African businesses already using Mifumo SMS'}
+              {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia SENDA' : 'Join thousands of African businesses already using SENDA'}
             </p>
 
           <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-800 delay-400 ${
@@ -1473,7 +1473,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
 
@@ -1500,7 +1500,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
           </div>
         </div>
       </footer>
@@ -1521,7 +1521,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         Video Tutorial
       </DialogTitle>
       <DialogDescription>
-        Learn how to use Mifumo SMS platform effectively
+        Learn how to use SENDA platform effectively
       </DialogDescription>
     </DialogHeader>
 

@@ -66,8 +66,8 @@ export const SMSPackageCards: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-background p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+    <div className="w-full bg-background p-3 sm:p-4 lg:p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-6xl mx-auto">
         {smsPackages.map((pkg, index) => (
           <Card
             key={pkg.id || `package-${index}`}
@@ -84,27 +84,27 @@ export const SMSPackageCards: React.FC = () => {
               </div>
             )}
 
-            <CardContent className="p-6 text-center h-full flex flex-col">
+            <CardContent className="p-4 sm:p-6 text-center h-full flex flex-col">
               {/* Package Name */}
-              <h3 className="text-xl font-bold text-foreground mb-3">
+              <h3 className="text-base sm:text-xl font-bold text-foreground mb-2 sm:mb-3">
                 {pkg.name}
               </h3>
 
               {/* Price */}
-              <div className="text-3xl font-bold text-foreground mb-2">
+              <div className="text-xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">
                 {pkg.price}
               </div>
 
               {/* SMS Range */}
-              <div className="text-sm text-text-subtle mb-6">
+              <div className="text-xs sm:text-sm text-text-subtle mb-4 sm:mb-6">
                 {pkg.smsRange}
               </div>
 
               {/* Features */}
-              <div className="space-y-3 mb-6 flex-1">
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 flex-1">
                 {pkg.features.map((feature, index) => (
-                  <div key={index} className="flex items-start text-sm text-foreground">
-                    <Check className="w-4 h-4 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <div key={index} className="flex items-start text-xs sm:text-sm text-foreground">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-left">{feature}</span>
                   </div>
                 ))}

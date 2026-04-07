@@ -10,20 +10,20 @@ All colors MUST be HSL for consistency and theming.
     :root {
         /* Core Background & Surface Colors - Layered approach */
         --background: 220 18% 95%;
-        --foreground: 222 24% 12%;
+        --foreground: 0 0% 0%;
         --surface: 220 20% 96%;
         --surface-elevated: 0 0% 97%;
         --surface-variant: 220 14% 93%;
 
         /* Card & Container Colors - Multiple depths */
-        --card: 0 0% 97%;
-        --card-foreground: 222 24% 12%;
-        --card-glass: 0 0% 97% / 0.7;
-        --card-elevated: 0 0% 98%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 0%;
+        --card-glass: 0 0% 100% / 0.7;
+        --card-elevated: 0 0% 100%;
 
         /* Popover & Overlay Colors */
-        --popover: 0 0% 97%;
-        --popover-foreground: 222 24% 12%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 0%;
 
         /* Primary Brand Colors - Refined deep blue */
         --primary: 221 83% 53%;
@@ -52,13 +52,13 @@ All colors MUST be HSL for consistency and theming.
 
         /* Muted & Text Colors - Better hierarchy */
         --muted: 220 14% 93%;
-        --muted-foreground: 220 12% 50%;
-        --text-subtle: 220 9% 62%;
-        --text-placeholder: 220 8% 68%;
+        --muted-foreground: 0 0% 20%;
+        --text-subtle: 0 0% 30%;
+        --text-placeholder: 0 0% 45%;
 
         /* Accent & Interactive Colors */
         --accent: 220 14% 93%;
-        --accent-foreground: 222 24% 12%;
+        --accent-foreground: 0 0% 0%;
         --accent-hover: 220 16% 91%;
 
         /* Status Colors */
@@ -106,8 +106,8 @@ All colors MUST be HSL for consistency and theming.
         --radius-lg: 0.875rem;
 
         /* Sidebar - Refined */
-        --sidebar-background: 0 0% 97%;
-        --sidebar-foreground: 222 24% 12%;
+        --sidebar-background: 0 0% 100%;
+        --sidebar-foreground: 0 0% 0%;
         --sidebar-primary: 221 83% 53%;
         --sidebar-primary-foreground: 0 0% 100%;
         --sidebar-accent: 220 14% 93%;
@@ -119,20 +119,20 @@ All colors MUST be HSL for consistency and theming.
     .dark {
         /* Core Background & Surface Colors - Layered dark mode */
         --background: 222 28% 7%;
-        --foreground: 220 15% 92%;
+        --foreground: 0 0% 100%;
         --surface: 222 25% 9%;
         --surface-elevated: 222 22% 11%;
         --surface-variant: 222 20% 13%;
 
         /* Card & Container Colors - Multiple depths */
         --card: 222 24% 10%;
-        --card-foreground: 220 15% 92%;
+        --card-foreground: 0 0% 100%;
         --card-glass: 222 24% 10% / 0.7;
         --card-elevated: 222 22% 12%;
 
         /* Popover & Overlay Colors */
         --popover: 222 24% 10%;
-        --popover-foreground: 220 15% 92%;
+        --popover-foreground: 0 0% 100%;
 
         /* Primary Brand Colors - Vibrant in dark */
         --primary: 221 83% 53%;
@@ -161,13 +161,13 @@ All colors MUST be HSL for consistency and theming.
 
         /* Muted & Text Colors - Better hierarchy */
         --muted: 222 20% 13%;
-        --muted-foreground: 220 12% 58%;
-        --text-subtle: 220 9% 48%;
-        --text-placeholder: 220 8% 40%;
+        --muted-foreground: 0 0% 80%;
+        --text-subtle: 0 0% 70%;
+        --text-placeholder: 0 0% 55%;
 
         /* Accent & Interactive Colors */
         --accent: 222 20% 13%;
-        --accent-foreground: 220 15% 92%;
+        --accent-foreground: 0 0% 100%;
         --accent-hover: 222 22% 15%;
 
         /* Status Colors */
@@ -206,7 +206,7 @@ All colors MUST be HSL for consistency and theming.
 
         /* Sidebar Colors - Darker in dark mode */
         --sidebar-background: 222 28% 7%;
-        --sidebar-foreground: 220 15% 92%;
+        --sidebar-foreground: 0 0% 100%;
         --sidebar-primary: 221 83% 53%;
         --sidebar-primary-foreground: 0 0% 100%;
         --sidebar-accent: 222 20% 13%;
@@ -223,11 +223,19 @@ All colors MUST be HSL for consistency and theming.
 
     body {
         @apply bg-background text-foreground font-sans antialiased;
-        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+        letter-spacing: -0.005em;
+        color: #000000;
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+    }
+
+    .dark body {
+        color: #ffffff;
     }
 
     /* Global premium scrollbar for all pages and scroll containers */
@@ -275,15 +283,94 @@ All colors MUST be HSL for consistency and theming.
     h4,
     h5,
     h6 {
-        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
-        font-weight: 600;
-        letter-spacing: -0.015em;
+        font-family: Inter, system-ui, sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+        color: #000000;
     }
 
-    h1 { @apply text-2xl; }
-    h2 { @apply text-xl; }
-    h3 { @apply text-lg; }
-    h4 { @apply text-base; }
+    .dark h1,
+    .dark h2,
+    .dark h3,
+    .dark h4,
+    .dark h5,
+    .dark h6 {
+        color: #ffffff;
+    }
+
+    h1 { @apply text-xl; }
+    h2 { @apply text-lg; }
+    h3 { @apply text-base; }
+    h4 { @apply text-sm; }
+
+    p {
+        line-height: 1.55;
+        margin-bottom: 0;
+    }
+
+    label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #000000;
+        letter-spacing: 0.01em;
+    }
+
+    .dark label {
+        color: #ffffff;
+    }
+}
+
+/* ── Global text-color overrides: force full black/white for max readability ── */
+@layer utilities {
+    /* Dark text shades → pure black in light mode */
+    .text-gray-900, .text-gray-800, .text-gray-700,
+    .text-slate-900, .text-slate-800, .text-slate-700 {
+        color: #000000 !important;
+    }
+
+    /* Mid grays → very dark (near-black) for readability */
+    .text-gray-600, .text-gray-500,
+    .text-slate-600, .text-slate-500 {
+        color: #111111 !important;
+    }
+
+    /* Light grays → dark gray, still readable */
+    .text-gray-400, .text-gray-300,
+    .text-slate-400, .text-slate-300 {
+        color: #2a2a2a !important;
+    }
+
+    /* Dark mode inversions */
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700,
+    .dark .text-slate-900, .dark .text-slate-800, .dark .text-slate-700 {
+        color: #ffffff !important;
+    }
+
+    .dark .text-gray-600, .dark .text-gray-500,
+    .dark .text-slate-600, .dark .text-slate-500 {
+        color: #eeeeee !important;
+    }
+
+    .dark .text-gray-400, .dark .text-gray-300,
+    .dark .text-slate-400, .dark .text-slate-300 {
+        color: #dddddd !important;
+    }
+
+    /* White text always stays white (buttons, colored backgrounds) */
+    .text-white { color: #ffffff !important; }
+
+    /* Minimum readable font sizes */
+    .text-\[7px\], .text-\[7\.5px\], .text-\[8px\] { font-size: 10px !important; }
+    .text-\[8\.5px\], .text-\[9px\]               { font-size: 10px !important; }
+    .text-\[10px\]                                  { font-size: 11px !important; }
+    .text-\[11px\]                                  { font-size: 12px !important; }
+
+    /* Better spacing */
+    .space-y-1 > * + * { margin-top: 0.4rem; }
+    .space-y-2 > * + * { margin-top: 0.65rem; }
+    .space-y-3 > * + * { margin-top: 0.9rem; }
+    .space-y-4 > * + * { margin-top: 1.15rem; }
 }
 
 @layer components {
@@ -429,5 +516,189 @@ All colors MUST be HSL for consistency and theming.
 
     .notification-dropdown .dropdown-content {
         z-index: 10000 !important;
+    }
+
+    /* ─── Modern Responsive Design Utilities ─── */
+
+    /* Responsive Card System */
+    .card-responsive {
+        @apply rounded-xl border-2 border-gray-200 bg-white shadow-md hover:shadow-lg transition-shadow duration-300;
+    }
+
+    .card-elevated {
+        @apply rounded-2xl border-2 border-gray-300 bg-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1;
+    }
+
+    /* Responsive Form Elements */
+    .input-responsive {
+        @apply h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200;
+    }
+
+    .button-responsive {
+        @apply h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base font-semibold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg;
+    }
+
+    .button-primary {
+        @apply bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white;
+    }
+
+    .button-secondary {
+        @apply border-2 border-gray-300 hover:bg-gray-100 text-gray-900;
+    }
+
+    .button-success {
+        @apply bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white;
+    }
+
+    /* Responsive Typography */
+    .heading-responsive {
+        @apply text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900;
+    }
+
+    .subheading-responsive {
+        @apply text-base sm:text-lg lg:text-xl font-semibold text-gray-800;
+    }
+
+    .text-responsive {
+        @apply text-sm sm:text-base text-gray-700;
+    }
+
+    .text-small {
+        @apply text-xs sm:text-sm text-gray-600;
+    }
+
+    /* Spacing utilities */
+    .px-responsive {
+        @apply px-3 sm:px-4 md:px-5 lg:px-6;
+    }
+
+    .py-responsive {
+        @apply py-3 sm:py-4 md:py-5 lg:py-6;
+    }
+
+    .gap-responsive {
+        @apply gap-2 sm:gap-3 md:gap-4 lg:gap-5;
+    }
+
+    /* Grid layouts */
+    .grid-responsive-2 {
+        @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4;
+    }
+
+    .grid-responsive-3 {
+        @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4;
+    }
+
+    .grid-responsive-4 {
+        @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3;
+    }
+
+    /* Badge styles */
+    .badge-responsive {
+        @apply px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-semibold rounded-full;
+    }
+
+    /* Border utilities */
+    .border-subtle {
+        @apply border-2 border-gray-200;
+    }
+
+    .border-highlight {
+        @apply border-2 border-blue-300;
+    }
+
+    .border-success {
+        @apply border-2 border-emerald-300;
+    }
+
+    .border-error {
+        @apply border-2 border-red-300;
+    }
+
+    /* Shadow utilities */
+    .shadow-gentle {
+        @apply shadow-sm;
+    }
+
+    .shadow-elevated {
+        @apply shadow-lg shadow-blue-100/50;
+    }
+
+    /* Gradient backgrounds */
+    .bg-gradient-blue {
+        @apply bg-gradient-to-r from-blue-600 to-indigo-600;
+    }
+
+    .bg-gradient-green {
+        @apply bg-gradient-to-r from-emerald-600 to-teal-600;
+    }
+
+    .bg-gradient-pink {
+        @apply bg-gradient-to-r from-red-600 to-pink-600;
+    }
+
+    .bg-gradient-purple {
+        @apply bg-gradient-to-r from-purple-500 to-pink-500;
+    }
+
+    /* Light background gradients */
+    .bg-light-blue {
+        @apply bg-gradient-to-br from-blue-50 to-indigo-50;
+    }
+
+    .bg-light-green {
+        @apply bg-gradient-to-br from-emerald-50 to-teal-50;
+    }
+
+    .bg-light-pink {
+        @apply bg-gradient-to-br from-red-50 to-pink-50;
+    }
+
+    .bg-light-purple {
+        @apply bg-gradient-to-br from-purple-50 to-pink-50;
+    }
+
+    /* Animation classes */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .animate-slide-in-up {
+        animation: slideInUp 0.3s ease-out;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .animate-scale-in {
+        animation: scaleIn 0.2s ease-out;
     }
 }

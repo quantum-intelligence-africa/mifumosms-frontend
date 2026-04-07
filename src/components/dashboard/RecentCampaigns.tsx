@@ -79,10 +79,10 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
   return (
     <Card className="p-3.5 sm:p-4 glass border border-border-subtle">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-heading text-base sm:text-lg font-semibold text-foreground">
+        <h3 className="font-heading text-sm sm:text-base font-semibold text-foreground">
           {t("dashboard.recent_campaigns.title")}
         </h3>
-        <Button variant="outline" size="sm" onClick={handleViewAll} className="text-[13px] font-medium">
+        <Button variant="outline" size="sm" onClick={handleViewAll} className="text-xs sm:text-sm font-medium h-7 sm:h-8 px-2 sm:px-3">
           {t("dashboard.recent_campaigns.view_all")}
         </Button>
       </div>

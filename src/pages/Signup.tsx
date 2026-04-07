@@ -84,7 +84,7 @@ const Signup = () => {
 
           toast({
             title: "Account activated successfully!",
-            description: message || "Welcome to Mifumo SMS! You are now logged in and being redirected to your dashboard.",
+            description: message || "Welcome to SENDA! You are now logged in and being redirected to your dashboard.",
             duration: 5000
           });
 
@@ -287,7 +287,7 @@ const Signup = () => {
         } else {
           toast({
             title: "Account created successfully!",
-            description: result.message || "Welcome to Mifumo SMS! You can now access your dashboard."
+            description: result.message || "Welcome to SENDA! You can now access your dashboard."
           });
           const from = location.state?.from?.pathname || "/dashboard";
           navigate(from, { replace: true });
@@ -383,7 +383,7 @@ const Signup = () => {
                 <MessageSquare className="w-4 h-4 text-white" />
               </div>
               <span className="font-heading text-lg font-bold text-white">
-                Mifumo SMS
+                SENDA
               </span>
             </Link>
 
@@ -424,7 +424,7 @@ const Signup = () => {
                   Create your account
                 </motion.h2>
                 <p className="text-xs text-gray-600">
-                  Join Mifumo SMS today
+                  Join SENDA today
                 </p>
               </div>
 
@@ -697,7 +697,7 @@ const Signup = () => {
                 </div>
                 <div>
                   <span className="font-heading text-2xl font-bold text-gray-900">
-                    Mifumo SMS
+                    SENDA
                   </span>
                   <p className="text-base text-black mt-1">
                     Reliable SMS solutions for businesses
@@ -708,7 +708,7 @@ const Signup = () => {
 
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
+                <h3 className="text-base font-semibold text-black mb-2">Why Choose SENDA?</h3>
                 <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
@@ -755,7 +755,7 @@ const Signup = () => {
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <span className="font-heading text-lg font-bold text-gray-900">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
 

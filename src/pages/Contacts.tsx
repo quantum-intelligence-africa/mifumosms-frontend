@@ -941,8 +941,8 @@ return;
 
 try {
 await navigator.share({
-title: 'Import Contacts to Mifumo SMS',
-text: 'Please share your contacts to import them into Mifumo SMS. You can export your contacts from your phone\'s contact app and share them here.',
+title: 'Import Contacts to SENDA',
+text: 'Please share your contacts to import them into SENDA. You can export your contacts from your phone\'s contact app and share them here.',
 url: window.location.href
 });
 } catch (error) {
@@ -2048,18 +2048,18 @@ Delete Contact
       isMobile ? 'fixed right-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''
     }`}
   >
-<div className="p-6 border-b border-border-subtle">
+<div className="p-4 sm:p-6 border-b border-border-subtle">
 
-<div className="flex items-center justify-between mb-4">
-  <h3 className="font-heading text-lg font-semibold">Contact Details</h3>
+<div className="flex items-center justify-between mb-3 sm:mb-4">
+  <h3 className="font-heading text-base sm:text-lg font-semibold">Contact Details</h3>
   <Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
     <X className="w-4 h-4" />
   </Button>
 </div>
 
-<div className="text-center mb-6">
-  <Avatar className="w-16 h-16 mx-auto mb-3">
-    <AvatarFallback className="bg-primary/10 text-primary text-lg">
+<div className="text-center mb-4 sm:mb-6">
+  <Avatar className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-3">
+    <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-lg">
       {selectedContact.name.split(" ").map(n => n[0]).join("").toUpperCase()}
     </AvatarFallback>
   </Avatar>
@@ -2072,10 +2072,10 @@ Delete Contact
   </div>
 </div>
 
-<div className="space-y-4">
+<div className="space-y-3 sm:space-y-4">
 <div>
-<p className="text-sm text-text-subtle mb-1">Phone Number</p>
-<p className="text-foreground">{selectedContact.phone_e164}</p>
+<p className="text-xs sm:text-sm text-text-subtle mb-1">Phone Number</p>
+<p className="text-sm sm:text-base text-foreground">{selectedContact.phone_e164}</p>
 </div>
 
 {selectedContact.email && (
@@ -2125,22 +2125,22 @@ selectedContact.tags.map((tag) => (
 
 </div>
 
-<div className="flex gap-2 mt-6">
+<div className="flex gap-2 mt-4 sm:mt-6">
 <Button
 size="sm"
-className="flex-1"
+className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
 onClick={() => handleSendMessage(selectedContact)}
 >
-<MessageSquare className="w-4 h-4 mr-1" />
+<MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Message
 </Button>
 <Button
 variant="outline"
 size="sm"
-className="flex-1"
+className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
 onClick={() => handleEditContact(selectedContact)}
 >
-<Edit className="w-4 h-4 mr-1" />
+<Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Edit
 </Button>
 </div>
@@ -2172,7 +2172,7 @@ Delete
 
 {/* Bulk Import Dialog */}
 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-<DialogContent className="glass max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+<DialogContent className="glass w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
 <DialogHeader>
 <DialogTitle>Import Multiple Contacts from Mobile Device</DialogTitle>
 <DialogDescription>
@@ -2384,7 +2384,7 @@ Access your phone's contact list to quickly import multiple contacts at once
 <div className="p-3 bg-muted/30 rounded-lg">
 <p className="text-xs text-text-subtle">
 <strong>Note:</strong> You can select multiple contacts at once. Only contacts with both name and phone number will be imported.
-Your contacts remain private and are only stored in your Mifumo SMS account.
+Your contacts remain private and are only stored in your SENDA account.
 </p>
 </div>
 

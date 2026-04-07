@@ -10,7 +10,7 @@ export interface QRCodeData {
 export const generate2FAQRCode = async (
   accountName: string,
   secretKey: string,
-  issuer: string = 'Mifumo SMS'
+  issuer: string = 'SENDA'
 ): Promise<QRCodeData> => {
   try {
     // Generate TOTP URI

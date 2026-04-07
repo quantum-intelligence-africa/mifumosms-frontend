@@ -65,7 +65,7 @@ const Terms = () => {
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
               <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none text-gray-900">
-                Mifumo SMS
+                SENDA
               </span>
             </div>
           </div>
@@ -226,7 +226,7 @@ const Terms = () => {
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
 
@@ -253,7 +253,7 @@ const Terms = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. All rights reserved.</p>
           </div>
         </div>
       </footer>

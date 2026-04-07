@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { API_CONFIG, buildApiUrl } from "@/config/api";
 
 const defaultFeatures = [
   {
@@ -83,7 +84,7 @@ export default function VoiceAgents() {
 
     const load = async () => {
       try {
-        const res = await fetch("/api/early-access/voice-agents/status/", {
+        const res = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.VOICE_AGENTS.STATUS), {
           headers: { Accept: "application/json" },
         });
         if (!res.ok) return;
@@ -123,6 +124,7 @@ export default function VoiceAgents() {
     if (!name.trim() || !email.trim() || !kycFile) return;
 
     const formData = new FormData();
+    formData.append("product", "voice_agents");
     formData.append("full_name", name.trim());
     formData.append("email", email.trim());
     if (phone.trim()) formData.append("phone", phone.trim());
@@ -132,7 +134,7 @@ export default function VoiceAgents() {
 
     try {
       setIsSubmitting(true);
-      const res = await fetch("/api/early-access/voice-agents/waitlist/", {
+      const res = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.VOICE_AGENTS.WAITLIST), {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: formData,

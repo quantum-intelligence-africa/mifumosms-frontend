@@ -66,7 +66,7 @@ const Privacy = () => {
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
               </div>
               <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none text-gray-900">
-                Mifumo SMS
+                SENDA
               </span>
             </div>
           </div>
@@ -124,7 +124,7 @@ const Privacy = () => {
         <div className="p-6 sm:p-8 lg:p-12 text-black min-h-[80vh] overflow-y-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">1. Introduction</h2>
           <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-            Welcome to Mifumo SMS ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our SMS communication platform.
+            Welcome to SENDA ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our SMS communication platform.
           </p>
           <p className="text-gray-800 text-lg mb-8 leading-relaxed">
             By using our services, you agree to the collection and use of information in accordance with this policy. We comply with Tanzanian and Kenyan data protection laws, including the Data Protection Act and any applicable telecommunications regulations.
@@ -387,7 +387,7 @@ const Privacy = () => {
                   <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
 
@@ -414,7 +414,7 @@ const Privacy = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 Mifumo SMS. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. All rights reserved.</p>
           </div>
         </div>
       </footer>

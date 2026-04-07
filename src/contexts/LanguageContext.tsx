@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const translations = {
   en: {
-    "app.name": "Mifumo SMS",
+    "app.name": "SENDA",
     "app.tagline": "Communication Hub",
-    "tutorial.title": "Welcome to Mifumo SMS",
+    "tutorial.title": "Welcome to SENDA",
     "tutorial.description": "Watch this quick tutorial to get started with our system.",
     "nav.dashboard": "Dashboard",
     "nav.sms": "SMS",
@@ -59,7 +59,7 @@ const translations = {
     "dashboard.quick_actions.need_help": "Need help?",
     "dashboard.quick_actions.contact_support": "Contact Support →",
     "dashboard.quick_actions.view_tutorial": "View Tutorial",
-    "dashboard.quick_actions.tutorial_description": "Watch our video tutorial to learn how to use Mifumo SMS",
+    "dashboard.quick_actions.tutorial_description": "Watch our video tutorial to learn how to use SENDA",
     "dashboard.recent_campaigns.title": "Recent Campaigns",
     "dashboard.recent_campaigns.view_all": "View all →",
     "dashboard.recent_campaigns.empty_title": "No campaigns yet",
@@ -234,9 +234,9 @@ const translations = {
     "integration.step": "Step {{step}}",
   },
   sw: {
-    "app.name": "Mifumo SMS",
+    "app.name": "SENDA",
     "app.tagline": "Kituo cha Mawasiliano",
-    "tutorial.title": "Karibu Mifumo SMS",
+    "tutorial.title": "Karibu SENDA",
     "tutorial.description": "Tazama video hii fupi ya mafunzo ili kuanza kutumia mfumo wetu.",
     "nav.dashboard": "Dashibodi",
     "nav.sms": "SMS",
@@ -291,7 +291,7 @@ const translations = {
     "dashboard.quick_actions.need_help": "Unahitaji msaada?",
     "dashboard.quick_actions.contact_support": "Wasiliana na Msaada →",
     "dashboard.quick_actions.view_tutorial": "Tazama Kuchimba",
-    "dashboard.quick_actions.tutorial_description": "Tazama video ya kuchimba kuhusu jinsi ya kutumia Mifumo SMS",
+    "dashboard.quick_actions.tutorial_description": "Tazama video ya kuchimba kuhusu jinsi ya kutumia SENDA",
     "dashboard.recent_campaigns.title": "Kampeni za Hivi Karibuni",
     "dashboard.recent_campaigns.view_all": "Tazama zote →",
     "dashboard.recent_campaigns.empty_title": "Bado hakuna kampeni",

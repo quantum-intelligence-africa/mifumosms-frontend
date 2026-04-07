@@ -109,30 +109,30 @@ export function ContactList({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Contacts</h2>
-          <p className="text-text-subtle">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">Contacts</h2>
+          <p className="text-xs sm:text-sm text-text-subtle">
             {totalCount} total contacts
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <ContactAddDialog onContactAdded={onRefresh}>
-            <Button className="bg-primary hover:bg-primary-dark">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button className="bg-primary hover:bg-primary-dark text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Add Contact
             </Button>
           </ContactAddDialog>
           <ContactImportDialog>
-            <Button variant="outline">
-              <Users className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               Import
             </Button>
           </ContactImportDialog>
-          <Button onClick={onRefresh} variant="outline">
-            <Users className="w-4 h-4 mr-2" />
+          <Button onClick={onRefresh} variant="outline" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+            <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             Refresh
           </Button>
         </div>
@@ -140,90 +140,91 @@ export function ContactList({
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-3 h-3 sm:w-4 sm:h-4" />
         <Input
           placeholder="Search contacts by name, phone, or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-8 sm:pl-10 text-xs sm:text-sm h-8 sm:h-9"
         />
       </div>
 
       {/* Contacts Table */}
       <Card>
+        <div className="overflow-x-auto -mx-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Name</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Phone</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">Email</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">Tags</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Status</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden sm:table-cell">Created</TableHead>
+              <TableHead className="w-10 sm:w-12 px-2 py-2 sm:px-4 sm:py-3"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredContacts.length > 0 ? (
               filteredContacts.map((contact, index) => (
                 <TableRow key={contact.id || `contact-${index}`} className="hover:bg-accent/50">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
                       </div>
-                      <div>
-                        <div className="font-medium">{contact.name}</div>
-                        <div className="text-sm text-text-subtle">
+                      <div className="min-w-0">
+                        <div className="font-medium text-xs sm:text-sm truncate">{contact.name}</div>
+                        <div className="text-[10px] sm:text-xs text-text-subtle truncate">
                           ID: {contact.id.slice(0, 8)}...
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-text-subtle" />
-                      {contact.phone_e164}
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3">
+                    <div className="flex items-center gap-1 text-xs sm:text-sm">
+                      <Phone className="w-3 h-3 text-text-subtle flex-shrink-0" />
+                      <span className="truncate">{contact.phone_e164}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">
                     {contact.email ? (
-                      <div className="flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-text-subtle" />
-                        {contact.email}
+                      <div className="flex items-center gap-1 text-xs sm:text-sm">
+                        <Mail className="w-3 h-3 text-text-subtle flex-shrink-0" />
+                        <span className="truncate">{contact.email}</span>
                       </div>
                     ) : (
-                      <span className="text-text-subtle">—</span>
+                      <span className="text-text-subtle text-xs">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {contact.tags.length > 0 ? (
                         contact.tags.map((tag: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            <Tag className="w-3 h-3 mr-1" />
+                          <Badge key={index} variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
+                            <Tag className="w-2.5 h-2.5 mr-1" />
                             {tag}
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-text-subtle text-sm">No tags</span>
+                        <span className="text-text-subtle text-xs">No tags</span>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3">
                     {getStatusBadge(contact)}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-text-subtle">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(contact.created_at)}
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3 hidden sm:table-cell">
+                    <div className="flex items-center gap-1 text-xs text-text-subtle">
+                      <Calendar className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{formatDate(contact.created_at)}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 py-2 sm:px-4 sm:py-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                          <MoreVertical className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -273,6 +274,7 @@ export function ContactList({
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Pagination */}
@@ -293,7 +295,7 @@ export function ContactList({
 
       {/* Contact Details Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Contact Details</DialogTitle>
           </DialogHeader>

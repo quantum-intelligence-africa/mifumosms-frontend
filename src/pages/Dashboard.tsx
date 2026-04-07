@@ -36,11 +36,11 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 // ─── Thin divider with inline label ──────────────────────────────────────────
 function Divider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-gray-400 whitespace-nowrap">
+    <div className="flex items-center gap-4 pt-2">
+      <span className="text-xs sm:text-sm font-bold tracking-[0.08em] uppercase text-gray-700 whitespace-nowrap">
         {label}
       </span>
-      <div className="flex-1 h-px bg-gray-200" />
+      <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-200 via-gray-100 to-transparent" />
     </div>
   );
 }
@@ -53,28 +53,25 @@ interface MetricProps {
   icon: React.ElementType;
   accentBg: string;
   accentText: string;
-  topBar: string;
 }
 
-function Metric({ title, value, description, icon: Icon, accentBg, accentText, topBar }: MetricProps) {
+function Metric({ title, value, description, icon: Icon, accentBg, accentText }: MetricProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.10)] hover:-translate-y-[1px] transition-all duration-200 overflow-hidden cursor-default flex flex-col">
-      {/* Unique colored top strip — instant visual ID per card */}
-      <div className={`h-[3px] w-full flex-shrink-0 ${topBar}`} />
-      <div className="px-4 py-3.5 flex flex-col gap-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-gray-400 leading-none">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col h-full">
+      <div className="px-3 py-2.5 flex flex-col gap-1.5 flex-1">
+        <div className="flex items-center justify-between gap-1.5">
+          <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.07em] uppercase text-gray-500 leading-tight line-clamp-1">
             {title}
           </span>
-          <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${accentBg}`}>
-            <Icon className={`w-3 h-3 ${accentText}`} strokeWidth={2.2} />
+          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 ${accentBg}`}>
+            <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${accentText}`} strokeWidth={2} />
           </div>
         </div>
-        <div>
-          <p className="text-[26px] leading-none font-bold text-gray-900 tracking-[-0.03em] tabular-nums">
+        <div className="flex-1">
+          <p className="text-lg sm:text-xl lg:text-2xl leading-none font-bold text-gray-900 tabular-nums">
             {value}
           </p>
-          <p className="text-[11px] text-gray-400 leading-snug mt-1.5">
+          <p className="text-[9px] sm:text-[10px] text-gray-500 leading-snug mt-1 line-clamp-1 font-medium">
             {description}
           </p>
         </div>
@@ -86,22 +83,30 @@ function Metric({ title, value, description, icon: Icon, accentBg, accentText, t
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void }) {
   return (
-    <div className="flex h-screen bg-[#F3F4F6] overflow-hidden">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 overflow-hidden">
       <div className="flex-shrink-0 h-full bg-white border-r border-gray-200">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-5">
-          <div className="max-w-[1280px] mx-auto space-y-3">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[90px] rounded-xl" />)}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6">
+          <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-5">
+            {/* Welcome skeleton */}
+            <Skeleton className="h-16 sm:h-20 rounded-2xl" />
+
+            {/* Metrics skeleton */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[100px] sm:h-[120px] rounded-xl" />)}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <Skeleton className="h-52 rounded-xl" />
-              <Skeleton className="lg:col-span-2 h-52 rounded-xl" />
+
+            {/* Middle section skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+              <Skeleton className="h-48 rounded-xl" />
+              <Skeleton className="lg:col-span-2 h-48 rounded-xl" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+            {/* Activity section skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
               <Skeleton className="h-52 rounded-xl" />
               <Skeleton className="h-52 rounded-xl" />
             </div>
@@ -146,7 +151,6 @@ const Dashboard = () => {
       icon: MessageSquare,
       accentBg: "bg-blue-50",
       accentText: "text-blue-600",
-      topBar: "bg-blue-500",
     },
     {
       title: t("dashboard.metric.active_contacts"),
@@ -155,7 +159,6 @@ const Dashboard = () => {
       icon: Users,
       accentBg: "bg-emerald-50",
       accentText: "text-emerald-600",
-      topBar: "bg-emerald-500",
     },
     {
       title: t("dashboard.metric.current_credits"),
@@ -164,7 +167,6 @@ const Dashboard = () => {
       icon: DollarSign,
       accentBg: "bg-amber-50",
       accentText: "text-amber-600",
-      topBar: "bg-amber-500",
     },
     {
       title: t("dashboard.metric.sender_id"),
@@ -173,16 +175,15 @@ const Dashboard = () => {
       icon: Hash,
       accentBg: "bg-violet-50",
       accentText: "text-violet-600",
-      topBar: "bg-violet-500",
     },
   ];
 
   try {
     return (
-      <div className="flex h-screen bg-[#F3F4F6] overflow-hidden">
+      <div className="flex h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 overflow-hidden">
 
-        {/* Sidebar — white bg + right border = clear contained boundary */}
-        <div className="flex-shrink-0 h-full bg-white border-r border-gray-200 shadow-[1px_0_0_rgba(0,0,0,0.04)]">
+        {/* Sidebar */}
+        <div className="flex-shrink-0 h-full bg-white border-r border-gray-200 shadow-[1px_0_2px_rgba(0,0,0,0.05)]">
           <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
 
@@ -190,60 +191,66 @@ const Dashboard = () => {
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
           <main className="flex-1 overflow-y-auto">
-            {/* Compact, consistent padding — 16px mobile / 20px desktop */}
-            <div className="p-4 md:p-5">
-              <div className="max-w-[1280px] mx-auto space-y-3">
+            <div className="p-2.5 sm:p-3 md:p-4">
+              <div className="max-w-[1400px] mx-auto space-y-2.5 sm:space-y-3">
 
-                {/* ── Zone 1: Metrics ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Welcome Section */}
+                <h1 className="text-base sm:text-lg font-bold text-gray-900">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
                   {metricCards.map((card) => <Metric key={card.title} {...card} />)}
                 </div>
 
-                {/* ── Zone 2: Quick Actions + Performance (no section label) ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                {/* Middle Section: Quick Actions + Performance */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
                   <div className="lg:col-span-1 h-full">
-                    <Card className="h-full">
-                      <QuickActions />
-                    </Card>
+                    <QuickActions />
                   </div>
                   <div className="lg:col-span-2 h-full">
-                    <Card className="h-full">
+                    <Card>
                       <PerformanceOverview performance={performanceOverview} />
                     </Card>
                   </div>
                 </div>
 
-                {/* ── Zone 3: Activity + Campaigns ── */}
-                <Divider label="Recent activity" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  <Card><ActivityFeed /></Card>
-                  <Card><RecentCampaigns campaigns={recentCampaigns || []} /></Card>
+                {/* Bottom Section: Activity + Campaigns */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  <ActivityFeed />
+                  <Card>
+                    <RecentCampaigns campaigns={recentCampaigns || []} />
+                  </Card>
                 </div>
 
-                {/* ── Zone 4: Sender IDs ── */}
-                <Divider label="Sender IDs" />
-                <Card><SenderIds senderIds={senderIds} /></Card>
+                {/* Sender IDs Section */}
+                <Card>
+                  <SenderIds senderIds={senderIds} />
+                </Card>
+
+
 
               </div>
             </div>
           </main>
         </div>
 
-        {/* Video tutorial modal */}
+        {/* Video Tutorial Modal */}
         <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
-          <DialogContent className="max-w-[620px] w-[calc(100vw-32px)] p-0 rounded-2xl border-0 shadow-[0_24px_60px_rgba(0,0,0,0.20)] overflow-hidden bg-white">
-            <div className="px-5 pt-4 pb-3.5 border-b border-gray-100">
-              <DialogTitle className="flex items-center gap-2 text-[14px] font-semibold text-gray-900">
-                <span className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Play className="w-3 h-3 text-blue-600" strokeWidth={2.5} />
-                </span>
-                {t("tutorial.title") || "Welcome to Mifumo SMS"}
-              </DialogTitle>
-              <DialogDescription className="mt-0.5 text-[12px] text-gray-500">
-                {t("tutorial.description") || "Watch this short video to get started quickly."}
-              </DialogDescription>
+          <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-3xl max-h-[95vh] p-0 rounded-2xl border-0 shadow-2xl overflow-hidden bg-white">
+            <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-gray-100 flex items-start justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-3 text-lg sm:text-xl font-bold text-gray-900">
+                  <div className="p-2.5 rounded-lg bg-blue-100">
+                    <Play className="w-5 h-5 text-blue-600" strokeWidth={2.5} />
+                  </div>
+                  {t("tutorial.title") || "Welcome to SENDA"}
+                </DialogTitle>
+                <DialogDescription className="mt-1.5 text-sm text-gray-600">
+                  {t("tutorial.description") || "Watch this short video to learn how to get started."}
+                </DialogDescription>
+              </div>
             </div>
-            <div className="bg-gray-950 aspect-video">
+            <div className="bg-black aspect-video w-full">
               <video key={showVideoModal ? "open" : "closed"} controls autoPlay className="w-full h-full object-contain">
                 <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
               </video>

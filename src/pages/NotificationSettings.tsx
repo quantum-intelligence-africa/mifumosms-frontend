@@ -96,30 +96,34 @@ const NotificationSettingsPage = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-4xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 xl:p-8">
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Notification Settings</h1>
-                <p className="text-text-subtle">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">Notification Settings</h1>
+                <p className="text-xs sm:text-sm text-text-subtle">
                   Manage your notification preferences and thresholds
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   onClick={handleRefresh}
                   disabled={isLoading}
                   variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+                  <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2", isLoading && "animate-spin")} />
                   Refresh
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={isSaving}
+                  size="sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>

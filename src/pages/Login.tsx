@@ -66,7 +66,7 @@ const Login = () => {
       if (result.success) {
         toast({
           title: "Login successful",
-          description: "Welcome back to Mifumo SMS!"
+          description: "Welcome back to SENDA!"
         });
 
         const from = location.state?.from?.pathname || "/dashboard";
@@ -204,7 +204,7 @@ const Login = () => {
                 <MessageSquare className="w-4 h-4 text-white" />
               </div>
               <span className="font-heading text-lg font-bold text-white">
-                Mifumo SMS
+                SENDA
               </span>
             </Link>
 
@@ -364,7 +364,7 @@ const Login = () => {
                 </div>
                 <div>
                   <span className="font-heading text-2xl font-bold text-gray-900">
-                    Mifumo SMS
+                    SENDA
                   </span>
                   <p className="text-base text-black mt-1">
                     Reliable SMS solutions for businesses
@@ -375,7 +375,7 @@ const Login = () => {
 
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">Why Choose Mifumo SMS?</h3>
+                <h3 className="text-base font-semibold text-black mb-2">Why Choose SENDA?</h3>
                 <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
@@ -422,7 +422,7 @@ const Login = () => {
                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <span className="font-heading text-base sm:text-lg font-bold text-gray-900">
-                  Mifumo SMS
+                  SENDA
                 </span>
               </div>
 

@@ -248,6 +248,23 @@ export const API_CONFIG = {
 			SYSTEM_CLEANUP: '/notifications/system/cleanup/',
 			TEMPLATES: '/notifications/templates/',
 		},
+		EARLY_ACCESS: {
+			AI_AGENTS: {
+				STATUS: '/early-access/ai-agents/status/',
+				WAITLIST: '/early-access/ai-agents/waitlist/',
+				CREATE: '/early-access/ai-agents/create/',
+				LIST: '/early-access/ai-agents/',
+				DETAIL: (id: string) => `/early-access/ai-agents/${id}/`,
+				SAVE_FLOW: (id: string) => `/early-access/ai-agents/${id}/flow/`,
+				DEPLOY: (id: string) => `/early-access/ai-agents/${id}/deploy/`,
+				SIMULATE: (id: string) => `/early-access/ai-agents/${id}/simulate/`,
+			},
+			VOICE_AGENTS: {
+				STATUS: '/early-access/voice-agents/status/',
+				WAITLIST: '/early-access/voice-agents/waitlist/',
+				FEATURES: '/early-access/voice-agents/features/',
+			},
+		},
 	},
 } as const;
 
