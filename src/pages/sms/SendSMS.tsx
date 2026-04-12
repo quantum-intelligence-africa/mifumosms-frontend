@@ -79,6 +79,13 @@ const SendSMS = () => {
   const [pageReady, setPageReady] = useState(false);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(new AbortController());
+  const [costCalculation, setCostCalculation] = useState<{
+    cost_per_sms: number;
+    segments: number;
+    total_cost: number;
+    credits_needed: number;
+  } | null>(null);
+  const [isCalculatingCost, setIsCalculatingCost] = useState(false);
 
   // Normalize phone numbers for API: 12 digits, starts with 255 (no plus)
   const normalizeToApi = (input: string): string | null => {
@@ -381,11 +388,7 @@ const SendSMS = () => {
     return 18;
   }, [purchases, billingLoading, billingError]);
 
-  // SMS segment calculation using proper formula
-  const segmentInfo = getSegmentInfo(message);
-  const segmentCount = segmentInfo.segments;
-
-  // Calculate cost based on current mode
+  // Calculate cost using API Cost Calculator endpoint
   const getRecipientCount = () => {
     if (selectedMode === "single") return recipients.length;
     if (selectedMode === "bulk") return recipients.length;
@@ -396,7 +399,53 @@ const SendSMS = () => {
     return 0;
   };
 
-  const estimatedCost = calculateSMSCost(segmentCount, getRecipientCount(), costPerSMS);
+  // Call cost calculator API when message or recipients change
+  useEffect(() => {
+    if (!message.trim() || getRecipientCount() === 0) {
+      setCostCalculation(null);
+      return;
+    }
+
+    const calculateCost = async () => {
+      setIsCalculatingCost(true);
+      try {
+        const response = await apiClient.calculateSMSCost(message, getRecipientCount());
+        if (response.success && response.data && isMountedRef.current) {
+          setCostCalculation(response.data);
+          logger.debug('SMS cost calculated', {
+            segments: response.data.segments,
+            total_cost: response.data.total_cost,
+            credits_needed: response.data.credits_needed
+          });
+        }
+      } catch (error) {
+        logger.error('Error calculating SMS cost', { error });
+        // Fall back to local calculation if API fails
+        const localSegmentInfo = getSegmentInfo(message);
+        const localCost = calculateSMSCost(localSegmentInfo.segments, getRecipientCount(), costPerSMS);
+        setCostCalculation({
+          cost_per_sms: costPerSMS,
+          segments: localSegmentInfo.segments,
+          total_cost: localCost,
+          credits_needed: localSegmentInfo.segments
+        });
+      } finally {
+        if (isMountedRef.current) {
+          setIsCalculatingCost(false);
+        }
+      }
+    };
+
+    const debounceTimer = setTimeout(calculateCost, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [message, selectedMode, recipients.length, selectedSegment, segmentContacts.length, costPerSMS]);
+
+  // SMS segment calculation using proper formula
+  const segmentInfo = getSegmentInfo(message);
+  const segmentCount = segmentInfo.segments;
+
+  // Use cost from API if available, otherwise use local calculation
+  const estimatedCost = costCalculation?.total_cost ?? calculateSMSCost(segmentCount, getRecipientCount(), costPerSMS);
 
   // Fetch contacts when segment or tag selection changes
   useEffect(() => {
@@ -1364,15 +1413,15 @@ const SendSMS = () => {
                       className={`min-h-[100px] sm:min-h-[90px] md:min-h-[110px] lg:min-h-[120px] glass-subtle border-0 text-xs sm:text-sm md:text-base ${
                         segmentInfo.isOverLimit ? 'border-red-500 focus:border-red-500' : ''
                       }`}
-                      maxLength={160}
+                      maxLength={800}
                     />
                     <div className="flex items-center justify-between text-xs">
                       <p className="text-text-subtle">
-                      {segmentCount > 1 && (language === "sw" ? "Ujumbe umezidi kikomo cha maksimum" : "Message exceeds maximum character limit")}
+                      {segmentCount > 1 && (language === "sw" ? `${segmentCount} sehemu` : `${segmentCount} segments`)}
                     </p>
                       {segmentInfo.isOverLimit && (
                         <p className="text-red-500 font-medium">
-                          {language === "sw" ? "Ujumbe unazidi kikomo cha 160 herufi" : "Message exceeds 160 character limit"}
+                          {language === "sw" ? "Ujumbe unazidi kikomo cha 800 herufi (5 sehemu)" : "Message exceeds 800 character limit (5 segments)"}
                         </p>
                       )}
                     </div>
@@ -1409,7 +1458,7 @@ const SendSMS = () => {
                         </div>
                         {segmentInfo.isOverLimit && (
                           <div className="text-red-600 text-xs mt-1 font-medium">
-                            ⚠️ {language === "sw" ? "Ujumbe unazidi kikomo cha 160 herufi na hauwezi kutumwa" : "Message exceeds 160 character limit and cannot be sent"}
+                            ⚠️ {language === "sw" ? "Ujumbe unazidi kikomo cha 800 herufi na hauwezi kutumwa" : "Message exceeds 800 character limit (5 segments max) and cannot be sent"}
                           </div>
                         )}
                       </AlertDescription>

@@ -116,7 +116,7 @@ export function QuickActions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 flex items-center justify-center bg-black/5 rounded-lg overflow-hidden min-h-[400px]">
+          <div className="flex-1 flex items-center justify-center bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden min-h-[400px]">
             <video
               key={showVideoModal ? "visible" : "hidden"}
               controls

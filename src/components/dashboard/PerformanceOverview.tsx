@@ -138,11 +138,14 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     const radius = baseRadius + (isMobile ? 8 : 16);
     const x = cx + radius * Math.cos(-props.midAngle * RADIAN);
     const y = cy + radius * Math.sin(-props.midAngle * RADIAN);
+    // Detect dark mode and set text color accordingly
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const textColor = isDarkMode ? '#f0f9ff' : '#0f172a';
     return (
       <text
         x={x}
         y={y}
-        fill="#0f172a"
+        fill={textColor}
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={isMobile ? 10 : 12}
@@ -440,7 +443,6 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
         <div className="h-48 sm:h-64 w-full">
           {renderChart()}
         </div>
-        {renderLegendContent()}
 
         {performance && (
           <div className="text-center py-1">

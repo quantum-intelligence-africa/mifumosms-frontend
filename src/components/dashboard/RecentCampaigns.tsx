@@ -112,27 +112,27 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
           return (
             <div
               key={campaign.id || `campaign-${index}`}
-              className="p-2.5 rounded-lg glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border"
+              className="p-2.5 rounded-lg glass-subtle hover:bg-accent hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-border overflow-hidden"
               onClick={() => handleViewDetails(campaign.id)}
             >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-foreground text-[12px]">{campaign.name}</h4>
+              <div className="flex items-start justify-between mb-2 gap-2 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 min-w-0">
+                    <h4 className="font-medium text-foreground text-[12px] truncate">{campaign.name}</h4>
                     {campaign.type && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 flex-shrink-0">
                         {campaign.type}
                       </Badge>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <StatusIcon className={`w-3 h-3 text-${statusColor}`} />
-                    <span className={`text-[11px] text-${statusColor} capitalize`}>
+                  <div className="flex items-center gap-2 overflow-x-hidden">
+                    <StatusIcon className={`w-3 h-3 text-${statusColor} flex-shrink-0`} />
+                    <span className={`text-[11px] text-${statusColor} capitalize flex-shrink-0`}>
                       {statusConfig[campaign.status as keyof typeof statusConfig]?.label}
                     </span>
-                    <span className="text-[11px] text-text-subtle">•</span>
-                    <span className="text-[11px] text-text-subtle">{campaign.created_at_human}</span>
+                    <span className="text-[11px] text-text-subtle flex-shrink-0">•</span>
+                    <span className="text-[11px] text-text-subtle whitespace-nowrap">{campaign.created_at_human}</span>
                   </div>
                 </div>
 
@@ -141,7 +141,7 @@ export function RecentCampaigns({ campaigns = [] }: RecentCampaignsProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MoreHorizontal className="w-4 h-4" />

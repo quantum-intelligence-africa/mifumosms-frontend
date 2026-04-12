@@ -1,6 +1,7 @@
 // API Configuration and Client for Mifumo SMS
 import { API_CONFIG } from '@/config/api';
 import { logger } from '@/utils/logger';
+import { emitAuthenticationError, isAuthenticationError } from '@/utils/authErrorHandler';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
@@ -1117,6 +1118,21 @@ class ApiClient {
       // Handle authentication errors with token refresh
       if (response.status === 401 || response.status === 403) {
         const refreshToken = localStorage.getItem('refresh_token');
+        const hasAccessToken = !!currentToken;
+
+        // If no access token exists and endpoint requires auth, emit authentication error immediately
+        if (!hasAccessToken && !endpoint.includes('/auth/login/') && !endpoint.includes('/auth/register/')) {
+          const errorMsg = this.extractErrorMessage(data);
+          emitAuthenticationError('no-token');
+          return {
+            data: data,
+            error: errorMsg || 'Authentication required',
+            status: response.status,
+            success: false,
+            errors: data?.errors || data,
+          };
+        }
+
         if (refreshToken && !endpoint.includes('/auth/token/refresh/')) {
           logger.debug('Token expired, attempting refresh');
           try {
@@ -1180,22 +1196,66 @@ class ApiClient {
                 success: true,
               };
             } else {
-              // Refresh failed, clear tokens
+              // Refresh failed, clear tokens and emit error
+              logger.debug('Token refresh failed');
               localStorage.removeItem('access_token');
               localStorage.removeItem('refresh_token');
               this.setToken(null);
+              const errorMsg = this.extractErrorMessage(data);
+              emitAuthenticationError('token-expired');
+              return {
+                data: data,
+                error: errorMsg || 'Session expired. Please login again.',
+                status: response.status,
+                success: false,
+                errors: data?.errors || data,
+              };
             }
           } catch (refreshError) {
             logger.error('Token refresh failed');
+            // Refresh attempt failed, clear tokens and emit error
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             this.setToken(null);
+            const errorMsg = this.extractErrorMessage(data);
+            emitAuthenticationError('token-expired');
+            return {
+              data: data,
+              error: errorMsg || 'Session expired. Please login again.',
+              status: response.status,
+              success: false,
+              errors: data?.errors || data,
+            };
           }
+        } else {
+          // No refresh token available, authentication has failed
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          this.setToken(null);
+          const errorMsg = this.extractErrorMessage(data);
+          emitAuthenticationError('invalid-token');
+          return {
+            data: data,
+            error: errorMsg || 'Authentication required',
+            status: response.status,
+            success: false,
+            errors: data?.errors || data,
+          };
         }
       }
 
       if (!response.ok) {
         const errorMsg = this.extractErrorMessage(data);
+
+        // Check if this error message indicates authentication is needed
+        if (isAuthenticationError(response.status, data, errorMsg)) {
+          // Clear tokens and emit authentication error
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          this.setToken(null);
+          emitAuthenticationError('unauthorized');
+        }
+
         return {
           data: data,
           message: errorMsg,
@@ -2599,6 +2659,21 @@ class ApiClient {
     sender_id: string;
   }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.STATUS(messageId));
+  }
+
+  // Cost Calculator - Estimates SMS cost based on message and recipients
+  async calculateSMSCost(message: string, recipientCount: number = 1): Promise<ApiResponse<{
+    cost_per_sms: number;
+    segments: number;
+    total_cost: number;
+    credits_needed: number;
+  }>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('message', message);
+    queryParams.append('recipient_count', recipientCount.toString());
+
+    const endpoint = `${API_CONFIG.ENDPOINTS.BILLING.SMS.COST_CALCULATOR}?${queryParams.toString()}`;
+    return this.request(endpoint);
   }
 
   // =============================================

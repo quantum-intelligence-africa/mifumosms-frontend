@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useGlobalAuthErrorHandler } from "@/hooks/useGlobalAuthErrorHandler";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -101,38 +102,26 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
 //     },
 //   ];
 // }
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem
-      storageKey="theme-preference"
-      enableColorScheme
-    >
-      <AuthProvider>
-        <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-              <BrowserRouter
-                future={{
-                  v7_startTransition: true,
-                  v7_relativeSplatPath: true,
-                }}
-            >
-            <RouteAnimator>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              {/* SEO-friendly landing aliases */}
-              <Route path="/pricing" element={<Landing />} />
-              <Route path="/features" element={<Landing />} />
-              <Route path="/watch-tutorial" element={<Landing />} />
-              <Route path="/tutorial" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+
+// Main app content component that initializes global auth error handling
+const AppContent = () => {
+  // Initialize global authentication error handler
+  // This listens for auth errors across ALL endpoints and redirects to login
+  useGlobalAuthErrorHandler();
+
+  return (
+    <RouteAnimator>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        {/* SEO-friendly landing aliases */}
+        <Route path="/pricing" element={<Landing />} />
+        <Route path="/features" element={<Landing />} />
+        <Route path="/watch-tutorial" element={<Landing />} />
+        <Route path="/tutorial" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/smsactivation" element={<Smsactivation />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
@@ -249,20 +238,43 @@ const App = () => (
                 </ProtectedRoute>
               } />
               {/* ── New channel modules ── */}
-              <Route path="/ai-agents" element={
+              <Route path="/ai-copilots" element={
                 <ProtectedRoute>
                   <AIAgents />
                 </ProtectedRoute>
               } />
-              <Route path="/voice-agents" element={
+              <Route path="/voice-copilots" element={
                 <ProtectedRoute>
                   <VoiceAgents />
                 </ProtectedRoute>
               } />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </RouteAnimator>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </RouteAnimator>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      storageKey="theme-preference"
+      enableColorScheme
+    >
+      <AuthProvider>
+        <LanguageProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <AppContent />
             </BrowserRouter>
           </TooltipProvider>
         </LanguageProvider>

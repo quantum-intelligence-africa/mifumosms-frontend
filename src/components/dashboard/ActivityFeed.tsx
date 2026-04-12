@@ -81,16 +81,16 @@ export function ActivityFeed() {
             return (
               <div
                 key={activity.id || `activity-${index}`}
-                className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-accent transition-fast"
+                className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-accent transition-fast overflow-hidden"
               >
                 <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
                   <Icon className="w-3 h-3 text-primary" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="text-[12px] text-foreground font-medium leading-tight">
+                  <div className="flex items-start justify-between gap-2 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] text-foreground font-medium leading-tight truncate">
                         {activity.title}
                       </p>
 

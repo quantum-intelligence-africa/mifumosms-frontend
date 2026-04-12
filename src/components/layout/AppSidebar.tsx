@@ -95,8 +95,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
       ],
     },
-    { name: "AI Agents", href: "/ai-agents", icon: Bot },
-    { name: "Voice Agents", href: "/voice-agents", icon: Mic },
+    { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
+    { name: "Voice Copilots", href: "/voice-copilots", icon: Mic },
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
@@ -148,7 +148,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             <div className="w-8 h-8 rounded-[9px] bg-primary flex items-center justify-center flex-shrink-0">
               <MessageSquare className="w-4 h-4 text-primary-foreground" strokeWidth={2.2} />
             </div>
-            <span className="text-[16px] font-bold text-gray-950 tracking-tight leading-none">
+            <span className="text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-none">
               {t("app.name")}
             </span>
           </div>
@@ -156,7 +156,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           {isMobile && onClose && (
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-700 hover:text-gray-950 hover:bg-accent transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent dark:hover:bg-accent/50 transition-colors"
             >
               <X className="w-4 h-4" strokeWidth={2} />
             </button>
@@ -202,8 +202,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                         "text-[13px] font-medium tracking-tight",
                         "transition-colors duration-100",
                         anyChildActive
-                          ? "text-gray-950 font-semibold"
-                          : "text-gray-700 hover:text-gray-950 hover:bg-accent/60",
+                          ? "text-foreground dark:text-foreground font-semibold bg-primary/10 dark:bg-primary/15"
+                          : "text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent/60 dark:hover:bg-accent/30",
                       ].join(" ")}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
@@ -231,8 +231,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                               "w-full flex items-center gap-2.5 px-2.5 h-8 rounded-md text-left",
                               "text-[12.5px] tracking-tight transition-colors duration-100",
                               childActive
-                                ? "bg-primary/10 text-primary font-semibold"
-                                : "text-gray-600 hover:text-gray-950 hover:bg-accent/50 font-normal",
+                                ? "bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary font-semibold"
+                                : "text-foreground/60 dark:text-foreground/50 hover:text-foreground dark:hover:text-foreground hover:bg-accent/50 dark:hover:bg-accent/30 font-normal",
                             ].join(" ")}
                           >
                             <ChildIcon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
@@ -254,8 +254,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                   "w-full flex items-center gap-3 px-3 h-9 rounded-lg text-left",
                   "text-[13px] tracking-tight transition-colors duration-100",
                   isActive
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-gray-700 hover:text-gray-950 hover:bg-accent/60 font-medium",
+                    ? "bg-primary/10 dark:bg-primary/15 text-primary dark:text-primary font-semibold"
+                    : "text-foreground/70 dark:text-foreground/60 hover:text-foreground dark:hover:text-foreground hover:bg-accent/60 dark:hover:bg-accent/30 font-medium",
                 ].join(" ")}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
@@ -270,19 +270,19 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
         {/* ── User row ─────────────────────────────────── */}
         <div className="px-2 py-3">
-          <div className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-accent/50 transition-colors duration-100 group">
+          <div className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors duration-100 group">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarImage src="" alt={userName} />
-              <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-bold">
+              <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary text-[11px] font-bold">
                 {getInitials(userName)}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
+              <p className="text-[13px] font-semibold text-foreground dark:text-foreground truncate leading-tight">
                 {userName}
               </p>
-              <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+              <p className="text-[11px] text-foreground/60 dark:text-foreground/50 truncate leading-tight mt-0.5">
                 {userEmail}
               </p>
             </div>
@@ -291,7 +291,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={logout}
-                  className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all duration-100"
+                  className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md text-foreground/40 dark:text-foreground/30 opacity-0 group-hover:opacity-100 hover:text-destructive dark:hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20 transition-all duration-100"
                 >
                   <LogOut className="w-3.5 h-3.5" strokeWidth={2} />
                 </button>

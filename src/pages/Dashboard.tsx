@@ -27,7 +27,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 // ─── Reusable card shell ──────────────────────────────────────────────────────
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden ${className}`}>
+    <div className={`bg-card dark:bg-card/95 rounded-xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -37,10 +37,10 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 function Divider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-4 pt-2">
-      <span className="text-xs sm:text-sm font-bold tracking-[0.08em] uppercase text-gray-700 whitespace-nowrap">
+      <span className="text-xs sm:text-sm font-bold tracking-[0.08em] uppercase text-foreground/70 dark:text-foreground/60 whitespace-nowrap">
         {label}
       </span>
-      <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-200 via-gray-100 to-transparent" />
+      <div className="flex-1 h-0.5 bg-gradient-to-r from-border via-border/50 to-transparent dark:from-border/40 dark:via-border/20 dark:to-transparent" />
     </div>
   );
 }
@@ -57,21 +57,21 @@ interface MetricProps {
 
 function Metric({ title, value, description, icon: Icon, accentBg, accentText }: MetricProps) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col h-full">
+    <div className="bg-card dark:bg-card/95 rounded-lg border border-border dark:border-border/60 shadow-sm hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col h-full dark:hover:shadow-primary/20">
       <div className="px-3 py-2.5 flex flex-col gap-1.5 flex-1">
         <div className="flex items-center justify-between gap-1.5">
-          <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.07em] uppercase text-gray-500 leading-tight line-clamp-1">
+          <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.07em] uppercase text-text-subtle dark:text-foreground/50 leading-tight line-clamp-1">
             {title}
           </span>
-          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 ${accentBg}`}>
+          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-80`}>
             <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${accentText}`} strokeWidth={2} />
           </div>
         </div>
         <div className="flex-1">
-          <p className="text-lg sm:text-xl lg:text-2xl leading-none font-bold text-gray-900 tabular-nums">
+          <p className="text-lg sm:text-xl lg:text-2xl leading-none font-bold text-foreground dark:text-foreground tabular-nums">
             {value}
           </p>
-          <p className="text-[9px] sm:text-[10px] text-gray-500 leading-snug mt-1 line-clamp-1 font-medium">
+          <p className="text-[9px] sm:text-[10px] text-text-subtle dark:text-foreground/60 leading-snug mt-1 line-clamp-1 font-medium">
             {description}
           </p>
         </div>
@@ -83,32 +83,34 @@ function Metric({ title, value, description, icon: Icon, accentBg, accentText }:
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void }) {
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 overflow-hidden">
-      <div className="flex-shrink-0 h-full bg-white border-r border-gray-200">
+    <div className="flex h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 overflow-hidden">
+      <div className="flex-shrink-0 h-full bg-card dark:bg-background border-r border-border dark:border-border/60">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6">
-          <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-5">
-            {/* Welcome skeleton */}
-            <Skeleton className="h-16 sm:h-20 rounded-2xl" />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-2 sm:p-3 md:p-4 w-full overflow-x-hidden">
+            <div className="max-w-full px-1 mx-auto space-y-4 sm:space-y-5">
+              {/* Welcome skeleton */}
+              <Skeleton className="h-16 sm:h-20 rounded-2xl" />
 
-            {/* Metrics skeleton */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[100px] sm:h-[120px] rounded-xl" />)}
-            </div>
+              {/* Metrics skeleton */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-1.5 md:gap-2 overflow-x-hidden">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[100px] sm:h-[120px] rounded-xl" />)}
+              </div>
 
-            {/* Middle section skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-              <Skeleton className="h-48 rounded-xl" />
-              <Skeleton className="lg:col-span-2 h-48 rounded-xl" />
-            </div>
+              {/* Middle section skeleton */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                <Skeleton className="h-48 rounded-xl" />
+                <Skeleton className="lg:col-span-2 h-48 rounded-xl" />
+              </div>
 
-            {/* Activity section skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-              <Skeleton className="h-52 rounded-xl" />
-              <Skeleton className="h-52 rounded-xl" />
+              {/* Activity section skeleton */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                <Skeleton className="h-52 rounded-xl" />
+                <Skeleton className="h-52 rounded-xl" />
+              </div>
             </div>
           </div>
         </main>
@@ -180,34 +182,34 @@ const Dashboard = () => {
 
   try {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 overflow-hidden">
+      <div className="flex h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 overflow-hidden">
 
         {/* Sidebar */}
-        <div className="flex-shrink-0 h-full bg-white border-r border-gray-200 shadow-[1px_0_2px_rgba(0,0,0,0.05)]">
+        <div className="flex-shrink-0 h-full bg-card dark:bg-background border-r border-border dark:border-border/60 shadow-[1px_0_2px_rgba(0,0,0,0.05)] dark:shadow-[1px_0_2px_rgba(0,0,0,0.3)]">
           <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 overflow-y-auto">
-            <div className="p-2.5 sm:p-3 md:p-4">
-              <div className="max-w-[1400px] mx-auto space-y-2.5 sm:space-y-3">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="p-2 sm:p-3 md:p-4 w-full overflow-x-hidden">
+              <div className="max-w-full px-1 mx-auto space-y-2.5 sm:space-y-3">
 
                 {/* Welcome Section */}
-                <h1 className="text-base sm:text-lg font-bold text-gray-900">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
+                <h1 className="text-base sm:text-lg font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-1.5 md:gap-2 overflow-x-hidden">
                   {metricCards.map((card) => <Metric key={card.title} {...card} />)}
                 </div>
 
                 {/* Middle Section: Quick Actions + Performance */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-                  <div className="lg:col-span-1 h-full">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                  <div className="lg:col-span-1 h-full min-w-0">
                     <QuickActions />
                   </div>
-                  <div className="lg:col-span-2 h-full">
+                  <div className="lg:col-span-2 h-full min-w-0">
                     <Card>
                       <PerformanceOverview performance={performanceOverview} />
                     </Card>
@@ -215,7 +217,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Bottom Section: Activity + Campaigns */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
                   <ActivityFeed />
                   <Card>
                     <RecentCampaigns campaigns={recentCampaigns || []} />
@@ -236,21 +238,21 @@ const Dashboard = () => {
 
         {/* Video Tutorial Modal */}
         <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
-          <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-3xl max-h-[95vh] p-0 rounded-2xl border-0 shadow-2xl overflow-hidden bg-white">
-            <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-gray-100 flex items-start justify-between">
+          <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-3xl max-h-[95vh] p-0 rounded-2xl border-0 shadow-2xl overflow-hidden bg-card dark:bg-background">
+            <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-border dark:border-border/60 flex items-start justify-between">
               <div>
-                <DialogTitle className="flex items-center gap-3 text-lg sm:text-xl font-bold text-gray-900">
-                  <div className="p-2.5 rounded-lg bg-blue-100">
-                    <Play className="w-5 h-5 text-blue-600" strokeWidth={2.5} />
+                <DialogTitle className="flex items-center gap-3 text-lg sm:text-xl font-bold text-foreground dark:text-foreground">
+                  <div className="p-2.5 rounded-lg bg-primary/10 dark:bg-primary/20">
+                    <Play className="w-5 h-5 text-primary" strokeWidth={2.5} />
                   </div>
                   {t("tutorial.title") || "Welcome to SENDA"}
                 </DialogTitle>
-                <DialogDescription className="mt-1.5 text-sm text-gray-600">
+                <DialogDescription className="mt-1.5 text-sm text-text-subtle dark:text-foreground/60">
                   {t("tutorial.description") || "Watch this short video to learn how to get started."}
                 </DialogDescription>
               </div>
             </div>
-            <div className="bg-black aspect-video w-full">
+            <div className="bg-black/90 dark:bg-black aspect-video w-full">
               <video key={showVideoModal ? "open" : "closed"} controls autoPlay className="w-full h-full object-contain">
                 <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
               </video>
@@ -262,20 +264,20 @@ const Dashboard = () => {
   } catch (error) {
     console.error("Dashboard render error:", error);
     return (
-      <div className="flex h-screen bg-[#F3F4F6] overflow-hidden">
-        <div className="flex-shrink-0 h-full bg-white border-r border-gray-200">
+      <div className="flex h-screen bg-background dark:bg-background overflow-hidden">
+        <div className="flex-shrink-0 h-full bg-card dark:bg-background/50 border-r border-border dark:border-border/60">
           <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
         <div className="flex-1 flex flex-col overflow-hidden">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center max-w-sm">
-              <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
-                <span className="text-red-500 text-sm font-bold">!</span>
+          <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden">
+            <div className="text-center max-w-sm w-full">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/30 dark:border-destructive/40 flex items-center justify-center mx-auto mb-4">
+                <span className="text-destructive text-sm font-bold">!</span>
               </div>
-              <h2 className="text-[14px] font-semibold text-gray-900 mb-1">{t("dashboard.error.title")}</h2>
-              <p className="text-[12.5px] text-gray-500 mb-3">{t("dashboard.error.description")}</p>
-              <pre className="text-[11px] text-left bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-600 overflow-auto">
+              <h2 className="text-[14px] font-semibold text-foreground dark:text-foreground mb-1">{t("dashboard.error.title")}</h2>
+              <p className="text-[12.5px] text-text-subtle dark:text-foreground/60 mb-3">{t("dashboard.error.description")}</p>
+              <pre className="text-[11px] text-left bg-muted/50 dark:bg-muted/20 border border-border dark:border-border/60 rounded-lg p-3 text-foreground dark:text-foreground/70 overflow-auto">
                 {error instanceof Error ? error.message : "Unknown error"}
               </pre>
             </div>

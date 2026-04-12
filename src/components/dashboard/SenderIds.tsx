@@ -135,15 +135,15 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                 <TableBody>
                   {senderIds.slice(0, 3).map((senderId, index) => (
                     <TableRow key={senderId.id || `sender-${index}`} className="hover:bg-accent/30 transition-smooth">
-                      <TableCell className="font-semibold text-foreground py-3">
-                        <span className="text-sm">{senderId.sender_id}</span>
+                      <TableCell className="font-semibold text-foreground py-3 max-w-[120px] overflow-hidden">
+                        <span className="text-sm truncate block">{senderId.sender_id}</span>
                       </TableCell>
                       <TableCell className="py-3">
                         <Badge
                           variant="outline"
-                          className={`text-[11px] px-2.5 py-1 ${getStatusColor(senderId.status)}`}
+                          className={`text-[11px] px-2.5 py-1 flex-shrink-0 ${getStatusColor(senderId.status)}`}
                         >
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
                             {getStatusIcon(senderId.status)}
                             <span className="capitalize font-medium">
                               {senderId.status.toLowerCase() === 'approved'
@@ -160,7 +160,7 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                       <TableCell className="text-xs text-text-subtle max-w-xs truncate py-3 hidden md:table-cell">
                         {senderId.sample_content}
                       </TableCell>
-                      <TableCell className="text-xs text-text-subtle py-3">
+                      <TableCell className="text-xs text-text-subtle py-3 whitespace-nowrap">
                         {formatDate(senderId.created_at)}
                       </TableCell>
                     </TableRow>
