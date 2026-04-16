@@ -11,9 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, Users, CheckCircle, AlertCircle, X, Smartphone } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
 import { useToast } from '@/hooks/use-toast';
-import { isContactPickerSupported, isMobileDevice } from '@/utils/mobileContactPicker';
+import { isContactPickerSupported, isMobileDevice, MobileContact } from '@/utils/mobileContactPicker';
 import { parseCSVFile } from '@/utils/csvParser';
 import { parseExcelFile } from '@/utils/excelParser';
+import { MobileContactsDialog } from './MobileContactsDialog';
 
 interface ContactImportDialogProps {
   children: React.ReactNode;
@@ -33,6 +34,7 @@ interface ImportResult {
 
 export function ContactImportDialog({ children }: ContactImportDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileContactsOpen, setIsMobileContactsOpen] = useState(false);
   const [importType, setImportType] = useState<ImportType>('csv');
   const [csvData, setCsvData] = useState('');
   const [phoneContacts, setPhoneContacts] = useState<Array<{full_name: string; phone: string; email: string}>>([]);
@@ -97,17 +99,59 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
     setPhoneContacts(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleMobileContactsImport = async (selectedContacts: MobileContact[]) => {
+    try {
+      setIsImporting(true);
+
+      const importData = {
+        import_type: 'mobile_contacts',
+        contacts: selectedContacts.map(contact => ({
+          name: contact.full_name || 'Unknown',
+          phone_e164: contact.phone,
+          email: contact.email || '',
+          tags: [],
+          attributes: {}
+        })),
+        skip_duplicates: skipDuplicates,
+        update_existing: updateExisting
+      };
+
+      const result = await bulkImportContacts(importData);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `${result.imported} contacts imported successfully`,
+        });
+        setIsOpen(false);
+      } else {
+        setImportResult({
+          ...result,
+          errors: result.errors?.map(e => typeof e === 'string' ? e : e.error || 'Unknown error') || [],
+          message: ''
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Import failed';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleImport = async () => {
     try {
       setIsImporting(true);
       setImportResult(null);
 
       if (importType === 'mobile_contacts') {
-        toast({
-          title: "Not Implemented",
-          description: "Mobile contacts import is not yet available",
-          variant: "destructive"
-        });
+        // Open mobile contacts dialog instead of importing directly
+        setIsMobileContactsOpen(true);
+        setIsImporting(false);
         return;
       } else {
         let importData: any = {
@@ -165,7 +209,8 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
@@ -478,5 +523,14 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Mobile Contacts Dialog for large contact list handling */}
+    <MobileContactsDialog
+      open={isMobileContactsOpen}
+      onOpenChange={setIsMobileContactsOpen}
+      onImport={handleMobileContactsImport}
+      isImporting={isImporting}
+    />
+    </>
   );
 }

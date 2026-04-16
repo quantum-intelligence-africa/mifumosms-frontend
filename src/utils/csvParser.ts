@@ -174,7 +174,7 @@ function parseContactFromValues(
 
 	// Validate required field: phone number only
 	if (!phone) {
-		throw new Error('Phone number is required');
+		throw new Error('Missing phone number. Every contact must have a phone number in the "phone" column.');
 	}
 
 	// Handle scientific notation for phone numbers (e.g., 2.55700000001e+11)
@@ -188,12 +188,12 @@ function parseContactFromValues(
 	// Validate and normalize phone number
 	const normalizedPhone = normalizePhoneNumber(phone);
 	if (!normalizedPhone) {
-		throw new Error(`Invalid phone number format: ${phone}`);
+		throw new Error(`Invalid phone number: "${phone}". Expected format: +255700000001, 0700000001, or 255700000001`);
 	}
 
 	// Validate email if provided
 	if (email && !isValidEmail(email)) {
-		throw new Error(`Invalid email format: ${email}`);
+		throw new Error(`Invalid email format: "${email}". Expected format: example@domain.com`);
 	}
 
 	return {
@@ -210,30 +210,51 @@ function normalizePhoneNumber(phone: string): string | null {
 	// Remove all non-digit characters
 	const digitsOnly = phone.replace(/\D/g, '');
 
+	// Reject if no digits at all
+	if (!digitsOnly || digitsOnly.length < 7) {
+		return null;
+	}
+
 	// Handle different formats
-	// Format 1: International with country code: 255XXXXXXXXX (12 digits)
+	// Format 1: International with country code: 255XXXXXXXXX (12 digits for Tanzania)
 	if (digitsOnly.startsWith('255') && digitsOnly.length === 12) {
 		return digitsOnly;
 	}
 
-	// Format 2: Local format with leading 0: 0XXXXXXXXX (10 digits) -> convert to 255XXXXXXXXX
+	// Format 2: Other country codes with valid length (7-15 digits)
+	if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+		// Check if it looks like a country code format (starts with non-zero, is a known format)
+		if (digitsOnly.match(/^[1-9]\d{6,14}$/)) {
+			// This could be an international format with country code
+			// Accept it as-is
+			return digitsOnly;
+		}
+	}
+
+	// Format 3: Tanzanian local format with leading 0: 0XXXXXXXXX (10 digits) -> convert to 255XXXXXXXXX
 	if (digitsOnly.startsWith('0') && digitsOnly.length === 10) {
 		return `255${digitsOnly.slice(1)}`;
 	}
 
-	// Format 3: 9-digit number without leading 0 (assume Tanzanian): XXXXXXXXX -> 255XXXXXXXXX
+	// Format 4: Tanzanian 9-digit number without leading 0 (assume Tanzanian): XXXXXXXXX -> 255XXXXXXXXX
 	if (digitsOnly.length === 9 && !digitsOnly.startsWith('0')) {
 		return `255${digitsOnly}`;
 	}
 
-	// Format 4: Local format variations with leading 7: 7XXXXXXXXX (9 digits starting with 7) -> 2557XXXXXXXXX
+	// Format 5: Tanzanian local format variations with leading 7: 7XXXXXXXXX (9 digits starting with 7) -> 2557XXXXXXXXX
 	if (digitsOnly.startsWith('7') && digitsOnly.length === 9) {
 		return `255${digitsOnly}`;
 	}
 
-	// Format 5: Local format variations with leading 6: 6XXXXXXXXX (9 digits starting with 6) -> 2556XXXXXXXXX
+	// Format 6: Tanzanian local format variations with leading 6: 6XXXXXXXXX (9 digits starting with 6) -> 2556XXXXXXXXX
 	if (digitsOnly.startsWith('6') && digitsOnly.length === 9) {
 		return `255${digitsOnly}`;
+	}
+
+	// Format 7: Accept any 7-15 digit number that hasn't been handled yet
+	// This covers various international formats
+	if (digitsOnly.match(/^\d{7,15}$/)) {
+		return digitsOnly;
 	}
 
 	return null;

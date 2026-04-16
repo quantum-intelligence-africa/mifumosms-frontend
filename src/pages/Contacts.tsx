@@ -115,6 +115,10 @@ const [isCSVImportDialogOpen, setIsCSVImportDialogOpen] = useState(false);
 const [isMobileImportHelpOpen, setIsMobileImportHelpOpen] = useState(false);
 const [importMethod, setImportMethod] = useState<'mobile' | 'csv' | 'manual'>('mobile');
 const [importedContacts, setImportedContacts] = useState<CreateContactRequest[]>([]);
+const [importSelectedIndices, setImportSelectedIndices] = useState<Set<number>>(new Set());
+const [importSearchQuery, setImportSearchQuery] = useState('');
+const [importCurrentPage, setImportCurrentPage] = useState(0);
+const IMPORT_PAGE_SIZE = 50;
 const [isAddTagDialogOpen, setIsAddTagDialogOpen] = useState(false);
 const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -596,9 +600,6 @@ const handleCSVImport = async (data: {
 try {
 setIsCreating(true);
 
-// Close import dialog immediately
-setIsCSVImportDialogOpen(false);
-
 // Use the enhanced bulk import API
 const response = await apiClient.bulkImportContacts({
   import_type: data.import_type,
@@ -609,19 +610,56 @@ const response = await apiClient.bulkImportContacts({
   update_existing: data.update_existing ?? false
 });
 
-// Wait for import to complete, then refresh and show success
-try {
-  // Refresh contacts to show the imported data
-  await fetchContacts();
+// Get error details from response if available
+const apiErrors = response.data?.errors || [];
 
-  // Show success message after refresh is complete
+// If there are API errors, return them so dialog can show them
+if (apiErrors.length > 0) {
+  return {
+    success: true,
+    imported: response.data?.imported_count || 0,
+    updated: response.data?.updated_count || 0,
+    skipped: response.data?.skipped_count || 0,
+    total_processed: response.data?.total_processed || 0,
+    errors: apiErrors.map((e: any, idx: number) => {
+      // Extract error message from various possible formats
+      let errorMsg = 'Unknown error';
+
+      if (typeof e === 'string') {
+        errorMsg = e;
+      } else if (e.error) {
+        errorMsg = e.error;
+      } else if (e.message) {
+        errorMsg = e.message;
+      } else if (e.reason) {
+        errorMsg = e.reason;
+      } else if (e.detail) {
+        errorMsg = e.detail;
+      }
+
+      // Format contact info for better context
+      const contactInfo = e.contact ?
+        `${e.contact.name || 'Unknown'} (${e.contact.phone_e164 || e.contact.phone || 'No phone'})` :
+        'Unknown contact';
+
+      return {
+        row: e.row || e.index || (idx + 1),
+        contact: contactInfo,
+        error: errorMsg
+      };
+    })
+  };
+}
+
+// If import was successful with no errors, refresh and close
+try {
+  await fetchContacts();
   toast({
-    title: "Import completed",
-    description: "Contacts have been imported successfully",
+    title: "Import completed successfully",
+    description: `${response.data?.imported_count || 0} contacts imported`,
   });
 } catch (refreshError) {
   console.error('Error refreshing contacts:', refreshError);
-  // Still show success message even if refresh fails
   toast({
     title: "Import completed",
     description: "Contacts have been imported successfully",
@@ -639,32 +677,26 @@ return {
 } catch (error) {
 console.error('CSV import error:', error);
 
-// Close import dialog immediately even on error
-setIsCSVImportDialogOpen(false);
-
-// Even if there's an error, refresh to show current state, then show success
-try {
-  await fetchContacts();
-
-  toast({
-    title: "Import completed",
-    description: "Contacts have been imported successfully",
-  });
-} catch (refreshError) {
-  console.error('Error refreshing contacts:', refreshError);
-  toast({
-    title: "Import completed",
-    description: "Contacts have been imported successfully",
-  });
+// Better error extraction
+let errorMessage = 'Import failed';
+if (error instanceof Error) {
+  errorMessage = error.message;
+} else if (typeof error === 'object' && error !== null) {
+  const err = error as any;
+  errorMessage = err.message || err.error || err.detail || JSON.stringify(error);
 }
 
 return {
-  success: true,
+  success: false,
   imported: 0,
   updated: 0,
   skipped: 0,
   total_processed: 0,
-  errors: []
+  errors: [{
+    row: 'API',
+    contact: 'All contacts',
+    error: errorMessage
+  }]
 };
 } finally {
 setIsCreating(false);
@@ -859,7 +891,8 @@ return;
 }
 
 if (result.contacts && result.contacts.length > 0) {
-// Convert to CreateContactRequest format and validate
+// Keep any contact that has at least a name or a phone number.
+// Contacts missing one field will be flagged in the review dialog.
 const contactsToImport: CreateContactRequest[] = result.contacts
 .map(contact => ({
 name: contact.name,
@@ -868,12 +901,12 @@ email: contact.email,
 tags: contact.tags,
 attributes: contact.attributes
 }))
-.filter(contact => contact.name && contact.name.trim() && contact.phone_e164 && contact.phone_e164.trim());
+.filter(contact => (contact.name && contact.name.trim()) || (contact.phone_e164 && contact.phone_e164.trim()));
 
 if (contactsToImport.length === 0) {
 toast({
-title: "No valid contacts found",
-description: "Selected contacts don't have both name and phone number. Please select different contacts.",
+title: "No contacts found",
+description: "The selected contacts have no name or phone number. Please try again.",
 variant: "destructive"
 });
 return;
@@ -889,9 +922,20 @@ variant: "destructive"
 
 // If dialog is already open, append to existing contacts; otherwise replace
 if (isImportDialogOpen) {
+const prevLength = importedContacts.length;
 setImportedContacts(prev => [...prev, ...contactsToImport]);
+setImportSelectedIndices(prev => {
+  const newSet = new Set(prev);
+  for (let i = prevLength; i < prevLength + contactsToImport.length; i++) {
+    newSet.add(i);
+  }
+  return newSet;
+});
 } else {
 setImportedContacts(contactsToImport);
+setImportSelectedIndices(new Set(contactsToImport.map((_, i) => i)));
+setImportSearchQuery('');
+setImportCurrentPage(0);
 setIsImportDialogOpen(true);
 }
 
@@ -977,8 +1021,19 @@ description: "QR code import feature will be available soon. Please use manual e
 const handleBulkCreateContacts = async () => {
 if (importedContacts.length === 0) return;
 
+// Only import contacts that are selected
+const selectedContacts = importedContacts.filter((_, i) => importSelectedIndices.has(i));
+if (selectedContacts.length === 0) {
+toast({
+  title: "No contacts selected",
+  description: "Please select at least one contact to import.",
+  variant: "destructive"
+});
+return;
+}
+
 // Validate contacts before import
-const validContacts = importedContacts.filter(contact =>
+const validContacts = selectedContacts.filter(contact =>
 contact.name && contact.name.trim() &&
 contact.phone_e164 && contact.phone_e164.trim()
 );
@@ -992,10 +1047,10 @@ variant: "destructive"
 return;
 }
 
-if (validContacts.length < importedContacts.length) {
+if (validContacts.length < selectedContacts.length) {
 toast({
 title: "Some contacts skipped",
-description: `${importedContacts.length - validContacts.length} contacts were skipped because they're missing required information.`,
+description: `${selectedContacts.length - validContacts.length} contacts were skipped because they're missing required information.`,
 variant: "destructive"
 });
 }
@@ -1023,6 +1078,9 @@ try {
   await fetchContacts();
 
   setImportedContacts([]);
+  setImportSelectedIndices(new Set());
+  setImportSearchQuery('');
+  setImportCurrentPage(0);
   setIsImportDialogOpen(false);
 
   // Show success message after refresh is complete
@@ -2171,159 +2229,203 @@ Delete
 </AlertDialog>
 
 {/* Bulk Import Dialog */}
-<Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-<DialogContent className="glass w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+<Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+  if (!open) {
+    setImportedContacts([]);
+    setImportSelectedIndices(new Set());
+    setImportSearchQuery('');
+    setImportCurrentPage(0);
+  }
+  setIsImportDialogOpen(open);
+}}>
+<DialogContent className="glass w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
 <DialogHeader>
-<DialogTitle>Import Multiple Contacts from Mobile Device</DialogTitle>
+<DialogTitle>Import Contacts from Phone</DialogTitle>
 <DialogDescription>
-Review and import {importedContacts.length} contacts from your device. You can select multiple contacts at once.
+{importedContacts.length} contact{importedContacts.length !== 1 ? 's' : ''} loaded &mdash; {importSelectedIndices.size} selected for import.
 </DialogDescription>
 </DialogHeader>
 
-<div className="flex-1 overflow-hidden flex flex-col">
-{/* Import Method Selection */}
-<div className="mb-4">
-<Tabs value={importMethod} onValueChange={(value) => setImportMethod(value as 'mobile' | 'csv' | 'manual')}>
-<TabsList className="grid w-full grid-cols-3">
-<TabsTrigger value="mobile" className="text-xs">
-<Smartphone className="w-3 h-3 mr-1" />
-Mobile
-</TabsTrigger>
-<TabsTrigger value="csv" className="text-xs">
-<FileText className="w-3 h-3 mr-1" />
-CSV
-</TabsTrigger>
-<TabsTrigger value="manual" className="text-xs">
-<Users className="w-3 h-3 mr-1" />
-Manual
-</TabsTrigger>
-</TabsList>
-</Tabs>
-</div>
+<div className="flex-1 overflow-hidden flex flex-col gap-3">
 
-{/* Bulk Actions for Imported Contacts */}
-{importedContacts.length > 0 && (
-<div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border-subtle">
-<div className="flex items-center justify-between">
+{/* Search + Select All toolbar */}
 <div className="flex items-center gap-2">
-<Users className="w-4 h-4 text-primary" />
-<span className="text-sm font-medium text-foreground">
-{importedContacts.length} contact{importedContacts.length !== 1 ? 's' : ''} selected
-</span>
+<div className="relative flex-1">
+<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-subtle pointer-events-none" />
+<input
+  type="text"
+  placeholder="Search by name or number…"
+  value={importSearchQuery}
+  onChange={e => { setImportSearchQuery(e.target.value); setImportCurrentPage(0); }}
+  className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+/>
 </div>
-<div className="flex gap-2">
 <Button
-variant="outline"
-size="sm"
-onClick={() => setImportedContacts([])}
-className="text-xs h-7"
+  variant="outline"
+  size="sm"
+  className="text-xs h-8 shrink-0"
+  onClick={() => {
+    const q = importSearchQuery.toLowerCase();
+    const filtered = importedContacts
+      .map((c, i) => ({ c, i }))
+      .filter(({ c }) => !q || c.name?.toLowerCase().includes(q) || c.phone_e164?.includes(q));
+    const allSelected = filtered.length > 0 && filtered.every(({ i }) => importSelectedIndices.has(i));
+    setImportSelectedIndices(prev => {
+      const newSet = new Set(prev);
+      filtered.forEach(({ i }) => { if (allSelected) newSet.delete(i); else newSet.add(i); });
+      return newSet;
+    });
+  }}
 >
-<X className="w-3 h-3 mr-1" />
-Clear All
+  {(() => {
+    const q = importSearchQuery.toLowerCase();
+    const filtered = importedContacts.map((c, i) => ({ c, i })).filter(({ c }) => !q || c.name?.toLowerCase().includes(q) || c.phone_e164?.includes(q));
+    return filtered.length > 0 && filtered.every(({ i }) => importSelectedIndices.has(i)) ? 'Deselect All' : 'Select All';
+  })()}
 </Button>
 <Button
-variant="outline"
-size="sm"
-onClick={handleMobileContactImport}
-disabled={isImporting}
-className="text-xs h-7"
+  variant="outline"
+  size="sm"
+  className="text-xs h-8 shrink-0"
+  onClick={handleMobileContactImport}
+  disabled={isImporting}
 >
 <Smartphone className="w-3 h-3 mr-1" />
-Add More Contacts
+Add More
 </Button>
 </div>
-</div>
+
+{/* Count summary */}
+{importedContacts.length > 0 && (
+<div className="flex items-center justify-between text-xs text-text-subtle px-1">
+  <span>
+    {(() => {
+      const q = importSearchQuery.toLowerCase();
+      const n = importedContacts.filter(c => !q || c.name?.toLowerCase().includes(q) || c.phone_e164?.includes(q)).length;
+      return `${n} matching • ${importSelectedIndices.size} selected`;
+    })()}
+  </span>
+  {importSelectedIndices.size > 0 && (
+    <button className="text-destructive underline text-xs" onClick={() => setImportSelectedIndices(new Set())}>
+      Clear selection
+    </button>
+  )}
 </div>
 )}
 
-{/* Imported Contacts List */}
-<div className="flex-1 overflow-y-auto border rounded-lg p-4 space-y-3">
+{/* Contacts list - paginated for performance with large contact sets */}
+<div className="flex-1 overflow-y-auto border rounded-lg divide-y divide-border-subtle">
 {importedContacts.length === 0 ? (
-<div className="text-center py-8 text-text-subtle">
-<Smartphone className="w-8 h-8 mx-auto mb-2 opacity-50" />
-<p className="text-sm">No contacts selected yet</p>
-<p className="text-xs">Tap "Add More Contacts" to select contacts from your phone</p>
+<div className="text-center py-10 text-text-subtle">
+<Smartphone className="w-8 h-8 mx-auto mb-2 opacity-40" />
+<p className="text-sm">No contacts loaded yet</p>
+<p className="text-xs mt-1">Tap "Add More" to pick contacts from your phone</p>
 </div>
-) : (
-importedContacts.map((contact, index) => (
-<div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-<div className="flex-1">
-<div className="flex items-center gap-2 mb-1">
-<User className="w-4 h-4 text-text-subtle" />
-<span className="font-medium text-sm">{contact.name || 'No name'}</span>
-{!contact.name && (
-<Badge variant="outline" className="text-xs text-destructive">
-Missing name
-</Badge>
-)}
-</div>
-<div className="flex items-center gap-4 text-xs text-text-subtle">
-{contact.phone_e164 && (
-<div className="flex items-center gap-1">
-<Phone className="w-3 h-3" />
-<span>{contact.phone_e164}</span>
-</div>
-)}
-{contact.email && (
-<div className="flex items-center gap-1">
-<Mail className="w-3 h-3" />
-<span>{contact.email}</span>
-</div>
-)}
-{!contact.phone_e164 && (
-<Badge variant="outline" className="text-xs text-destructive">
-Missing phone
-</Badge>
-)}
-</div>
-</div>
-<Button
-variant="ghost"
-size="sm"
-onClick={() => {
-const updatedContacts = importedContacts.filter((_, i) => i !== index);
-setImportedContacts(updatedContacts);
-}}
-className="h-8 w-8 p-0 hover:bg-destructive/10"
-title="Remove contact"
->
-<XCircle className="w-4 h-4 text-destructive" />
-</Button>
-</div>
-))
-)}
+) : (() => {
+  const q = importSearchQuery.toLowerCase();
+  const filtered = importedContacts
+    .map((contact, originalIdx) => ({ contact, originalIdx }))
+    .filter(({ contact: c }) => !q || c.name?.toLowerCase().includes(q) || c.phone_e164?.includes(q));
+  const pageStart = importCurrentPage * IMPORT_PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + IMPORT_PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / IMPORT_PAGE_SIZE);
+  if (pageItems.length === 0) {
+    return <div className="text-center py-10 text-text-subtle"><p className="text-sm">No contacts match your search</p></div>;
+  }
+  return (
+    <>
+      {pageItems.map(({ contact, originalIdx }) => {
+        const isSelected = importSelectedIndices.has(originalIdx);
+        return (
+          <div
+            key={originalIdx}
+            className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-muted/40'}`}
+            onClick={() => setImportSelectedIndices(prev => {
+              const s = new Set(prev);
+              if (s.has(originalIdx)) s.delete(originalIdx); else s.add(originalIdx);
+              return s;
+            })}
+          >
+            <div className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border'}`}>
+              {isSelected && <CheckCircle className="w-3 h-3 text-primary-foreground" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-sm truncate">{contact.name || <span className="text-destructive text-xs italic">No name</span>}</span>
+                {!contact.name && <Badge variant="outline" className="text-[10px] text-destructive shrink-0">Missing name</Badge>}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-text-subtle mt-0.5">
+                {contact.phone_e164 ? (
+                  <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{contact.phone_e164}</span>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-destructive">Missing phone</Badge>
+                )}
+                {contact.email && <span className="truncate flex items-center gap-1"><Mail className="w-3 h-3" />{contact.email}</span>}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 hover:bg-destructive/10 shrink-0"
+              title="Remove contact"
+              onClick={e => {
+                e.stopPropagation();
+                setImportedContacts(prev => prev.filter((_, i) => i !== originalIdx));
+                setImportSelectedIndices(prev => {
+                  const s = new Set<number>();
+                  for (const i of prev) {
+                    if (i < originalIdx) s.add(i);
+                    else if (i > originalIdx) s.add(i - 1);
+                  }
+                  return s;
+                });
+              }}
+            >
+              <XCircle className="w-3.5 h-3.5 text-destructive" />
+            </Button>
+          </div>
+        );
+      })}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-3 py-2 bg-muted/20 text-xs text-text-subtle sticky bottom-0">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage === 0} onClick={() => setImportCurrentPage(p => p - 1)}>← Prev</Button>
+          <span>Page {importCurrentPage + 1} / {totalPages} &nbsp;({filtered.length} contacts)</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage >= totalPages - 1} onClick={() => setImportCurrentPage(p => p + 1)}>Next →</Button>
+        </div>
+      )}
+    </>
+  );
+})()}
 </div>
 
 {/* Action Buttons */}
-<div className="flex items-center justify-between pt-4 border-t">
-<div className="text-sm text-text-subtle">
-{importedContacts.length === 0
-? "No contacts selected"
-: `${importedContacts.length} contact${importedContacts.length !== 1 ? 's' : ''} ready to import`
-}
+<div className="flex items-center justify-between pt-2 border-t shrink-0">
+<div className="text-xs text-text-subtle">
+{importSelectedIndices.size === 0 ? "No contacts selected" : `${importSelectedIndices.size} contact${importSelectedIndices.size !== 1 ? 's' : ''} will be imported`}
 </div>
 <div className="flex gap-2">
 <Button
-variant="outline"
-onClick={() => {
-setImportedContacts([]);
-setIsImportDialogOpen(false);
-}}
-disabled={isCreating}
+  variant="outline"
+  size="sm"
+  onClick={() => {
+    setImportedContacts([]);
+    setImportSelectedIndices(new Set());
+    setImportSearchQuery('');
+    setImportCurrentPage(0);
+    setIsImportDialogOpen(false);
+  }}
+  disabled={isCreating}
 >
 Cancel
 </Button>
 <Button
-onClick={handleBulkCreateContacts}
-disabled={isCreating || importedContacts.length === 0}
-className="gap-2"
+  size="sm"
+  onClick={handleBulkCreateContacts}
+  disabled={isCreating || importSelectedIndices.size === 0}
+  className="gap-2"
 >
-{isCreating ? (
-<Loader2 className="w-4 h-4 animate-spin" />
-) : (
-<CheckCircle className="w-4 h-4" />
-)}
-Import {importedContacts.length} Contact{importedContacts.length !== 1 ? 's' : ''}
+{isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+Import {importSelectedIndices.size} Contact{importSelectedIndices.size !== 1 ? 's' : ''}
 </Button>
 </div>
 </div>

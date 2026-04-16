@@ -71,6 +71,39 @@ export const isValidE164 = (phone: string): boolean => {
 	return /^\d+$/.test(digitsOnly);
 };
 
+/**
+ * Process a large array of raw contacts asynchronously in chunks.
+ * Yields to the browser between chunks so the UI doesn't freeze.
+ */
+async function processContactsInChunks(
+	raw: RawContact[],
+	chunkSize = 200
+): Promise<NormalizedContact[]> {
+	const result: NormalizedContact[] = [];
+
+	for (let i = 0; i < raw.length; i += chunkSize) {
+		const chunk = raw.slice(i, i + chunkSize);
+
+		for (const contact of chunk) {
+			const name = (contact.name?.[0] ?? "").trim();
+			const phone = normalizeTanzanianPhone(contact.tel?.[0]);
+			const email = (contact.email?.[0] ?? "").trim();
+
+			// Keep any contact that has at least a name or any phone number
+			if (name || phone) {
+				result.push({ name, phone_e164: phone, email, tags: [], attributes: {} });
+			}
+		}
+
+		// Yield to the browser event loop between chunks so it stays responsive
+		if (i + chunkSize < raw.length) {
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		}
+	}
+
+	return result;
+}
+
 // Main function to handle contact picking from phone
 export async function handlePickFromPhone(): Promise<{
 	imported: number;
@@ -84,43 +117,21 @@ export async function handlePickFromPhone(): Promise<{
 	}
 
 	try {
+		// Request only name + tel to keep the payload small.
+		// Skipping email reduces the data transferred from native → JS,
+		// which is the main cause of failures with 2000+ contacts.
 		// @ts-ignore - Contact Picker API is not in TypeScript definitions yet
 		const picked: RawContact[] = await navigator.contacts.select(
-			["name", "tel", "email"], // fields we want back
-			{ multiple: true } // Allow multiple contact selection
+			["name", "tel"],
+			{ multiple: true }
 		);
 
 		if (!picked || picked.length === 0) {
 			return { imported: 0, canceled: true };
 		}
 
-		// Normalize and filter contacts
-		const normalizedContacts: NormalizedContact[] = picked
-			.map((contact) => {
-				const name = (contact.name?.[0] ?? "").trim();
-				const phone = normalizeTanzanianPhone(contact.tel?.[0]);
-				const email = (contact.email?.[0] ?? "").trim();
-
-				return {
-					name,
-					phone_e164: phone,
-					email,
-					tags: [],
-					attributes: {}
-				};
-			})
-			.filter((contact) => {
-				// Only include contacts with at least name or phone
-				return contact.name || (contact.phone_e164 && isValidE164(contact.phone_e164));
-			});
-
-		if (normalizedContacts.length === 0) {
-			return {
-				imported: 0,
-				contacts: [],
-				canceled: false
-			};
-		}
+		// Process contacts in background chunks so the main thread stays free
+		const normalizedContacts = await processContactsInChunks(picked);
 
 		return {
 			imported: normalizedContacts.length,
@@ -128,20 +139,30 @@ export async function handlePickFromPhone(): Promise<{
 			canceled: false
 		};
 	} catch (err: any) {
-		// Map common errors to friendly messages
-		if (err?.name === "NotAllowedError") {
-			throw new Error("Please allow access to contacts to use this feature.");
-		}
+		// User canceled — not an error
 		if (err?.name === "AbortError") {
-			// User canceled; not a failure
 			return { imported: 0, canceled: true };
 		}
-		if (err?.message?.includes("not supported")) {
-			throw new Error("Contact access is not supported on this device. Please use CSV upload or manual entry instead.");
+
+		// Permission denied
+		if (err?.name === "NotAllowedError" || err?.name === "SecurityError") {
+			throw new Error("Please allow access to contacts to use this feature.");
 		}
 
-		// Re-throw other errors
-		throw err;
+		// API called while another picker is open
+		if (err?.name === "InvalidStateError") {
+			throw new Error("Contact picker is already open. Please close it and try again.");
+		}
+
+		// "not supported" message from the browser
+		if (err?.message?.toLowerCase().includes("not supported")) {
+			throw new Error("Contact access is not supported on this device. Please use CSV upload instead.");
+		}
+
+		// Anything else — give a clear, user-friendly message instead of a raw browser error
+		throw new Error(
+			"Could not open contacts. Make sure you are using Chrome on Android and have given contact permission, then try again."
+		);
 	}
 }
 
