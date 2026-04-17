@@ -2,6 +2,7 @@
 import { API_CONFIG } from '@/config/api';
 import { logger } from '@/utils/logger';
 import { emitAuthenticationError, isAuthenticationError } from '@/utils/authErrorHandler';
+import { chunkCSVData } from '@/utils/csvParser';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
@@ -2092,6 +2093,133 @@ class ApiClient {
 
     logger.debug('CSV data converted', { rowCount: rows.length });
     return csvContent;
+  }
+
+  /**
+   * Bulk import contacts in chunks to prevent timeout on large imports
+   * Processes each chunk sequentially to avoid overwhelming the server
+   */
+  async bulkImportContactsChunked(data: {
+    import_type: 'csv' | 'excel' | 'phone_contacts';
+    csv_data?: string;
+    file?: File;
+    contacts?: CreateContactRequest[];
+    skip_duplicates?: boolean;
+    update_existing?: boolean;
+    chunkSize?: number; // Default: 1000 contacts per chunk
+    onProgress?: (progress: { chunk: number; total: number; imported: number; updated: number; skipped: number }) => void;
+  }): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    imported_count: number;
+    updated_count: number;
+    skipped_count: number;
+    total_processed: number;
+    errors: Array<{
+      row?: number;
+      contact?: CreateContactRequest;
+      error: string;
+    }>;
+  }>> {
+    const { chunkSize = 1000, onProgress } = data;
+
+    // For Excel/file uploads, use standard import (files are handled on backend)
+    if (data.import_type === 'excel' && data.file) {
+      return this.bulkImportContacts(data);
+    }
+
+    let csvDataToChunk = data.csv_data || '';
+
+    // Convert phone contacts to CSV if needed
+    if (data.import_type === 'phone_contacts' && data.contacts) {
+      csvDataToChunk = this.convertContactsToCSV(data.contacts);
+    }
+
+    // Split CSV into chunks
+    const chunks = chunkCSVData(csvDataToChunk, chunkSize);
+
+    if (chunks.length === 1) {
+      // Only one chunk, use standard import
+      return this.bulkImportContacts({
+        import_type: 'csv',
+        csv_data: chunks[0],
+        skip_duplicates: data.skip_duplicates ?? true,
+        update_existing: data.update_existing ?? false
+      });
+    }
+
+    // Process chunks sequentially
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    let totalProcessed = 0;
+    const allErrors: Array<{ row?: number; contact?: CreateContactRequest; error: string }> = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const response = await this.bulkImportContacts({
+          import_type: 'csv',
+          csv_data: chunks[i],
+          skip_duplicates: data.skip_duplicates ?? true,
+          update_existing: data.update_existing ?? false
+        });
+
+        if (response.success && response.data) {
+          totalImported += response.data.imported_count || 0;
+          totalUpdated += response.data.updated_count || 0;
+          totalSkipped += response.data.skipped_count || 0;
+          totalProcessed += response.data.total_processed || 0;
+
+          // Collect errors from this chunk
+          if (response.data.errors && response.data.errors.length > 0) {
+            allErrors.push(...response.data.errors);
+          }
+
+          // Call progress callback
+          if (onProgress) {
+            onProgress({
+              chunk: i + 1,
+              total: chunks.length,
+              imported: totalImported,
+              updated: totalUpdated,
+              skipped: totalSkipped
+            });
+          }
+        } else {
+          // Chunk import failed
+          const errorMsg = response.error || 'Chunk import failed';
+          allErrors.push({
+            row: i + 1,
+            error: `Chunk ${i + 1} failed: ${errorMsg}`
+          });
+        }
+
+        // Small delay between chunks to avoid overwhelming server
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        allErrors.push({
+          row: i + 1,
+          error: `Chunk ${i + 1} error: ${errorMsg}`
+        });
+      }
+    }
+
+    return {
+      success: allErrors.length === 0,
+      data: {
+        success: allErrors.length === 0,
+        message: `Imported ${totalImported} contacts across ${chunks.length} chunks`,
+        imported_count: totalImported,
+        updated_count: totalUpdated,
+        skipped_count: totalSkipped,
+        total_processed: totalProcessed,
+        errors: allErrors
+      },
+      status: 200
+    };
   }
 
   // Legacy methods for backward compatibility

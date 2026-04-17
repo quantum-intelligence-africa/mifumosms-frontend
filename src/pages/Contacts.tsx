@@ -597,110 +597,141 @@ const handleCSVImport = async (data: {
   skip_duplicates?: boolean;
   update_existing?: boolean;
 }) => {
-try {
-setIsCreating(true);
+  try {
+    setIsCreating(true);
 
-// Use the enhanced bulk import API
-const response = await apiClient.bulkImportContacts({
-  import_type: data.import_type,
-  csv_data: data.csv_data,
-  file: data.file,
-  contacts: data.contacts,
-  skip_duplicates: data.skip_duplicates ?? true,
-  update_existing: data.update_existing ?? false
-});
+    // Determine if we should use chunked import
+    // Count rows in CSV data to decide
+    let shouldUseChunked = false;
+    let rowCount = 0;
 
-// Get error details from response if available
-const apiErrors = response.data?.errors || [];
+    if (data.csv_data) {
+      rowCount = data.csv_data.split('\n').length - 1; // Subtract header
+      shouldUseChunked = rowCount > 5000; // Use chunking for 5000+ contacts
+    } else if (data.contacts) {
+      rowCount = data.contacts.length;
+      shouldUseChunked = rowCount > 5000;
+    }
 
-// If there are API errors, return them so dialog can show them
-if (apiErrors.length > 0) {
-  return {
-    success: true,
-    imported: response.data?.imported_count || 0,
-    updated: response.data?.updated_count || 0,
-    skipped: response.data?.skipped_count || 0,
-    total_processed: response.data?.total_processed || 0,
-    errors: apiErrors.map((e: any, idx: number) => {
-      // Extract error message from various possible formats
-      let errorMsg = 'Unknown error';
+    // Use chunked import for large datasets
+    const response = shouldUseChunked
+      ? await apiClient.bulkImportContactsChunked({
+          import_type: data.import_type,
+          csv_data: data.csv_data,
+          file: data.file,
+          contacts: data.contacts,
+          skip_duplicates: data.skip_duplicates ?? true,
+          update_existing: data.update_existing ?? false,
+          chunkSize: 1000, // Process 1000 contacts per chunk
+          onProgress: (progress) => {
+            console.log(`Importing chunk ${progress.chunk}/${progress.total}: ${progress.imported} imported, ${progress.updated} updated`);
+          }
+        })
+      : await apiClient.bulkImportContacts({
+          import_type: data.import_type,
+          csv_data: data.csv_data,
+          file: data.file,
+          contacts: data.contacts,
+          skip_duplicates: data.skip_duplicates ?? true,
+          update_existing: data.update_existing ?? false
+        });
 
-      if (typeof e === 'string') {
-        errorMsg = e;
-      } else if (e.error) {
-        errorMsg = e.error;
-      } else if (e.message) {
-        errorMsg = e.message;
-      } else if (e.reason) {
-        errorMsg = e.reason;
-      } else if (e.detail) {
-        errorMsg = e.detail;
-      }
+    // Get error details from response if available
+    const apiErrors = response.data?.errors || [];
 
-      // Format contact info for better context
-      const contactInfo = e.contact ?
-        `${e.contact.name || 'Unknown'} (${e.contact.phone_e164 || e.contact.phone || 'No phone'})` :
-        'Unknown contact';
-
+    // If there are API errors, return them so dialog can show them
+    if (apiErrors.length > 0) {
       return {
-        row: e.row || e.index || (idx + 1),
-        contact: contactInfo,
-        error: errorMsg
+        success: true,
+        imported: response.data?.imported_count || 0,
+        updated: response.data?.updated_count || 0,
+        skipped: response.data?.skipped_count || 0,
+        total_processed: response.data?.total_processed || 0,
+        errors: apiErrors.map((e: Record<string, unknown>, idx: number) => {
+          // Extract error message from various possible formats
+          let errorMsg = 'Unknown error';
+
+          if (typeof e === 'string') {
+            errorMsg = e;
+          } else if (e.error) {
+            errorMsg = String(e.error);
+          } else if (e.message) {
+            errorMsg = String(e.message);
+          } else if (e.reason) {
+            errorMsg = String(e.reason);
+          } else if (e.detail) {
+            errorMsg = String(e.detail);
+          }
+
+          // Format contact info for better context
+          const contactInfo = (e.contact && typeof e.contact === 'object') ?
+            `${(e.contact as Record<string, unknown>).name || 'Unknown'} (${(e.contact as Record<string, unknown>).phone_e164 || (e.contact as Record<string, unknown>).phone || 'No phone'})` :
+            'Unknown contact';
+
+          // Ensure row is a number
+          const rowNum = typeof e.row === 'number' ? e.row :
+                        typeof e.index === 'number' ? e.index :
+                        idx + 1;
+
+          return {
+            row: rowNum,
+            contact: contactInfo,
+            error: errorMsg
+          };
+        })
       };
-    })
-  };
-}
+    }
 
-// If import was successful with no errors, refresh and close
-try {
-  await fetchContacts();
-  toast({
-    title: "Import completed successfully",
-    description: `${response.data?.imported_count || 0} contacts imported`,
-  });
-} catch (refreshError) {
-  console.error('Error refreshing contacts:', refreshError);
-  toast({
-    title: "Import completed",
-    description: "Contacts have been imported successfully",
-  });
-}
+    // If import was successful with no errors, refresh and close
+    try {
+      await fetchContacts();
+      toast({
+        title: "Import completed successfully",
+        description: `${response.data?.imported_count || 0} contacts imported${shouldUseChunked ? ' (processed in chunks)' : ''}`,
+      });
+    } catch (refreshError) {
+      console.error('Error refreshing contacts:', refreshError);
+      toast({
+        title: "Import completed",
+        description: "Contacts have been imported successfully",
+      });
+    }
 
-return {
-  success: true,
-  imported: response.data?.imported_count || 0,
-  updated: response.data?.updated_count || 0,
-  skipped: response.data?.skipped_count || 0,
-  total_processed: response.data?.total_processed || 0,
-  errors: []
-};
-} catch (error) {
-console.error('CSV import error:', error);
+    return {
+      success: true,
+      imported: response.data?.imported_count || 0,
+      updated: response.data?.updated_count || 0,
+      skipped: response.data?.skipped_count || 0,
+      total_processed: response.data?.total_processed || 0,
+      errors: []
+    };
+  } catch (error) {
+    console.error('CSV import error:', error);
 
-// Better error extraction
-let errorMessage = 'Import failed';
-if (error instanceof Error) {
-  errorMessage = error.message;
-} else if (typeof error === 'object' && error !== null) {
-  const err = error as any;
-  errorMessage = err.message || err.error || err.detail || JSON.stringify(error);
-}
+    // Better error extraction
+    let errorMessage = 'Import failed';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      const err = error as Record<string, unknown>;
+      errorMessage = String(err.message || err.error || err.detail || JSON.stringify(error));
+    }
 
-return {
-  success: false,
-  imported: 0,
-  updated: 0,
-  skipped: 0,
-  total_processed: 0,
-  errors: [{
-    row: 'API',
-    contact: 'All contacts',
-    error: errorMessage
-  }]
-};
-} finally {
-setIsCreating(false);
-}
+    return {
+      success: false,
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+      total_processed: 0,
+      errors: [{
+        row: 'API',
+        contact: 'All contacts',
+        error: errorMessage
+      }]
+    };
+  } finally {
+    setIsCreating(false);
+  }
 };
 
 const formatDate = (dateString: string) => {

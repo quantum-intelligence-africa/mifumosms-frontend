@@ -149,7 +149,7 @@ export function MobileContactsDialog({
             // Initial state - show fetch button
             <div className="space-y-3 sm:space-y-4">
               <Alert>
-                <AlertCircle className="h-3 h-3 sm:h-4 sm:w-4" />
+                <AlertCircle className="w-3 h-3 sm:h-4 sm:w-4" />
                 <AlertDescription className="text-xs sm:text-sm">
                   Click the button below to access your device contacts. This will show all available contacts on your device.
                 </AlertDescription>

@@ -279,3 +279,28 @@ export function generateSampleCSV(): string {
 
 	return csvContent;
 }
+
+/**
+ * Split CSV data into chunks to prevent timeout on large imports
+ * @param csvText - Full CSV text with headers
+ * @param chunkSize - Number of data rows per chunk (default: 1000)
+ * @returns Array of CSV text strings, each with headers + chunk of data
+ */
+export function chunkCSVData(csvText: string, chunkSize: number = 1000): string[] {
+	const lines = csvText.split('\n').filter((line) => line.trim());
+	if (lines.length < 2) {
+		return [csvText]; // Return as-is if no data rows
+	}
+
+	const header = lines[0];
+	const dataLines = lines.slice(1);
+	const chunks: string[] = [];
+
+	for (let i = 0; i < dataLines.length; i += chunkSize) {
+		const chunk = dataLines.slice(i, i + chunkSize);
+		const csvChunk = [header, ...chunk].join('\n');
+		chunks.push(csvChunk);
+	}
+
+	return chunks;
+}

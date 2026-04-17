@@ -27,8 +27,8 @@ interface CSVImportDialogProps {
     skipped: number;
     total_processed: number;
     errors: Array<{
-      row?: number;
-      contact?: CreateContactRequest;
+      row?: number | string;
+      contact?: string | CreateContactRequest;
       error: string;
     }>;
   }>;
