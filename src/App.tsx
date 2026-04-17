@@ -37,6 +37,8 @@ import PertinaInsights from "./pages/PertinaInsights";
 import Developer from "./pages/Developer";
 import AIAgents from "./pages/AIAgents";
 import VoiceAgents from "./pages/VoiceAgents";
+// @ts-ignore — standalone JSX admin dashboard
+import SendaAdmin from "../senda-dashboard.jsx";
 
 const queryClient = new QueryClient();
 
@@ -248,6 +250,8 @@ const AppContent = () => {
                   <VoiceAgents />
                 </ProtectedRoute>
               } />
+        {/* ── SENDA Admin Dashboard (standalone, no auth guard) ── */}
+        <Route path="/admin" element={<SendaAdmin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </RouteAnimator>
