@@ -10,6 +10,30 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ComposedChart, Scatter, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
+import {
+  AlertTriangle,
+  Ban,
+  BarChart3,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  DollarSign,
+  ExternalLink,
+  Globe,
+  Handshake,
+  Hourglass,
+  LogOut,
+  Mail,
+  MessageSquare,
+  Package,
+  ShieldCheck,
+  Tag,
+  UserCheck,
+  Users,
+  Wallet,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND   = '#2563EB';
@@ -22,9 +46,369 @@ const CYAN    = '#06b6d4';
 const PINK    = '#ec4899';
 const ORANGE  = '#f97316';
 
-const ADMIN_EMAIL    = 'admin@senda.co.tz';
-const ADMIN_PASSWORD = 'senda@2025';
-const LS_KEY         = 'senda_admin_auth';
+const LS_KEY     = 'senda_admin_auth';
+const BASE_URL   = 'https://mifumosms.mifumolabs.com';
+
+function compactNumber(n) {
+  if (n == null || Number.isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000)     return `${(n / 1_000_000).toFixed(1)}M`;
+  return Math.round(n).toLocaleString();
+}
+
+function revenueSourcePriority(source) {
+  const s = (source || '').toString().toLowerCase().trim();
+  if (s === 'payment_transaction' || s === 'paymenttransaction') return 1;
+  if (s === 'purchase') return 2;
+  if (s === 'custom_sms_purchase' || s === 'customsmspurchase') return 3;
+  if (s === 'senderid_request_payment' || s === 'senderidrequestpayment') return 4;
+  if (s === 'manual_activity_log' || s === 'manualactivitylog') return 5;
+  return 999;
+}
+
+function normalizeRefKey(ref) {
+  return (ref || '').toString().trim().toLowerCase();
+}
+
+function parseNumberLoose(v) {
+  if (typeof v === 'number') return v;
+  const s = (v || '').toString().replace(/[^0-9.,-]/g, '').trim();
+  if (!s) return null;
+  const cleaned = s.replace(/,/g, '');
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parseLocalDateTime(s) {
+  if (!s) return null;
+  if (s instanceof Date) return Number.isNaN(s.getTime()) ? null : s;
+  const str = s.toString().trim();
+  if (!str) return null;
+
+  const direct = new Date(str);
+  if (!Number.isNaN(direct.getTime())) return direct;
+
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) {
+    const [, y, mo, d, hh, mm, ss] = m;
+    const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm), ss ? Number(ss) : 0);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  return null;
+}
+
+function startOfPeriodLocal(now, periodKey) {
+  const d = new Date(now);
+  if (Number.isNaN(d.getTime())) return null;
+
+  if (periodKey === 'today') return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  if (periodKey === 'week') {
+    const day = d.getDay(); // 0 Sun ... 6 Sat
+    const diff = (day + 6) % 7; // days since Monday
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff, 0, 0, 0, 0);
+  }
+  if (periodKey === 'month') return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+  if (periodKey === 'year') return new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+  return null;
+}
+
+function computeRevenueOverviewFromEntries(entries) {
+  const normalized = (entries || [])
+    .map((e, idx) => {
+      const source = e.source || e.kind || e.table || e.model || e.type || 'unknown';
+      const sourceNorm = source.toString().toLowerCase().trim();
+      const amount = parseNumberLoose(e.amount ?? e.total ?? e.total_price ?? e.value);
+
+      if (amount == null) return null;
+
+      const paymentTx = e.payment_transaction || e.paymentTransaction || e.payment || e.transaction || null;
+      const paymentStatus = (paymentTx?.status || '').toString().toLowerCase().trim();
+      const status = (e.status || '').toString().toLowerCase().trim();
+      const snippeStatus = (e.snippe_status || e.snippeStatus || '').toString().toLowerCase().trim();
+
+      // Completion rules (only applied when relevant fields exist)
+      if (sourceNorm.includes('paymenttransaction') || sourceNorm === 'payment_transaction') {
+        if (e.status != null && status && status !== 'completed') return null;
+      } else if (sourceNorm === 'purchase') {
+        const purchaseCompleted = status === 'completed';
+        const paymentCompleted = paymentStatus === 'completed';
+        if (e.status != null && !purchaseCompleted && !paymentCompleted) return null;
+      } else if (sourceNorm.includes('custom') || sourceNorm === 'custom_sms_purchase') {
+        const customCompleted = status === 'completed';
+        const paymentCompleted = paymentStatus === 'completed';
+        if (e.status != null && !customCompleted && !paymentCompleted) return null;
+      } else if (sourceNorm.includes('senderid') || sourceNorm === 'senderid_request_payment') {
+        const paid = e.paid === true;
+        const snippeCompleted = snippeStatus === 'completed';
+        if ((e.paid != null || snippeStatus) && !paid && !snippeCompleted) return null;
+      } else if (sourceNorm.includes('manual') || sourceNorm === 'manual_activity_log') {
+        const activityType = (e.activity_type || e.activityType || '').toString().toLowerCase().trim();
+        if (activityType && activityType !== 'transaction') return null;
+        if (!(amount > 0)) return null;
+      }
+
+      // Timestamp resolution (prefers completed time where available)
+      const paymentWhen =
+        parseLocalDateTime(paymentTx?.completed_at) ||
+        parseLocalDateTime(paymentTx?.updated_at) ||
+        parseLocalDateTime(paymentTx?.created_at);
+      const when =
+        parseLocalDateTime(e.completed_at) ||
+        paymentWhen ||
+        parseLocalDateTime(e.updated_at) ||
+        parseLocalDateTime(e.created_at) ||
+        parseLocalDateTime(e.when) ||
+        parseLocalDateTime(e.timestamp) ||
+        parseLocalDateTime(e.time);
+      const tenant = (e.tenant || e.workspace || e.account || e.org || '').toString().trim();
+      const userLabel = (e.user_label || e.user || e.customer || e.email || '').toString().trim();
+      const ref =
+        e.ref ??
+        e.reference ??
+        e.invoice ??
+        e.invoice_ref ??
+        e.order_ref ??
+        e.gateway_ref ??
+        e.gateway_reference ??
+        e.transaction_ref ??
+        e.transaction_reference ??
+        '';
+      const objId = e.obj_id ?? e.id ?? e.pk ?? idx;
+
+      if (when == null) return null;
+
+      const normalizedRef = normalizeRefKey(ref);
+      const key = normalizedRef || `${source}:${objId}`;
+      return {
+        key,
+        source: source.toString(),
+        priority: revenueSourcePriority(source),
+        amount,
+        when,
+        tenant,
+        userLabel,
+        ref: (ref || '').toString(),
+        objId,
+      };
+    })
+    .filter(Boolean);
+
+  normalized.sort((a, b) => (a.priority - b.priority) || (a.when - b.when));
+  const seen = new Set();
+  const deduped = [];
+  for (const e of normalized) {
+    if (seen.has(e.key)) continue;
+    seen.add(e.key);
+    deduped.push(e);
+  }
+
+  const now = new Date();
+  const starts = {
+    today: startOfPeriodLocal(now, 'today'),
+    week: startOfPeriodLocal(now, 'week'),
+    month: startOfPeriodLocal(now, 'month'),
+    year: startOfPeriodLocal(now, 'year'),
+  };
+
+  const periodDefs = [
+    { key: 'today', label: 'Today', start: starts.today },
+    { key: 'week', label: 'Week', start: starts.week },
+    { key: 'month', label: 'Month', start: starts.month },
+    { key: 'year', label: 'Year', start: starts.year },
+  ];
+
+  const periods = periodDefs.map(p => {
+    const inPeriod = p.start ? deduped.filter(e => e.when >= p.start) : [];
+    const revenue = inPeriod.reduce((s, e) => s + e.amount, 0);
+    return { key: p.key, label: p.label, amount: revenue, count: inPeriod.length };
+  });
+
+  const allRevenue = deduped.reduce((s, e) => s + e.amount, 0);
+  const allCount = deduped.length;
+  periods.push({ key: 'all', label: 'All Time', amount: allRevenue, count: allCount });
+
+  const tenantMap = new Map();
+  for (const e of deduped) {
+    const k = e.tenant || 'Unknown';
+    tenantMap.set(k, (tenantMap.get(k) || 0) + e.amount);
+  }
+  const topTenants = Array.from(tenantMap.entries())
+    .map(([tenant, amount]) => ({ tenant, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 8);
+
+  const recentEntries = [...deduped].sort((a, b) => b.when - a.when).slice(0, 12);
+
+  return { periods, topTenants, recentEntries, allRevenue, allCount };
+}
+
+function extractRevenueEntriesFromHtml(doc) {
+  const tables = Array.from(doc.querySelectorAll('table'));
+  let best = null;
+  let bestScore = 0;
+  for (const t of tables) {
+    const headerCells = Array.from(t.querySelectorAll('thead th')).map(th => (th.textContent || '').trim().toLowerCase());
+    if (!headerCells.length) continue;
+    const score =
+      (headerCells.some(h => h.includes('amount')) ? 2 : 0) +
+      (headerCells.some(h => h.includes('tenant')) ? 2 : 0) +
+      (headerCells.some(h => h.includes('time') || h.includes('date')) ? 2 : 0) +
+      (headerCells.some(h => h.includes('invoice') || h.includes('ref') || h.includes('reference')) ? 1 : 0) +
+      (headerCells.some(h => h.includes('source')) ? 1 : 0);
+    if (score > bestScore) {
+      best = { table: t, headerCells };
+      bestScore = score;
+    }
+  }
+
+  if (!best || bestScore < 4) return [];
+  const { table, headerCells } = best;
+  const headerIndex = (pred) => headerCells.findIndex(pred);
+  const idxAmount = headerIndex(h => h.includes('amount'));
+  const idxTenant = headerIndex(h => h.includes('tenant'));
+  const idxWhen = headerIndex(h => h.includes('time') || h.includes('date'));
+  const idxRef = headerIndex(h => h.includes('invoice') || h.includes('ref') || h.includes('reference'));
+  const idxSource = headerIndex(h => h.includes('source'));
+  const idxUser = headerIndex(h => h.includes('user') || h.includes('customer') || h.includes('email'));
+
+  const rows = Array.from(table.querySelectorAll('tbody tr'));
+  const entries = [];
+  for (const [i, r] of rows.entries()) {
+    const cells = Array.from(r.querySelectorAll('td')).map(td => (td.textContent || '').replace(/\s+/g, ' ').trim());
+    if (!cells.length) continue;
+    const amount = idxAmount >= 0 ? parseNumberLoose(cells[idxAmount]) : null;
+    const when = idxWhen >= 0 ? parseLocalDateTime(cells[idxWhen]) : null;
+    if (amount == null || when == null) continue;
+    entries.push({
+      source: idxSource >= 0 ? cells[idxSource] : 'unknown',
+      amount,
+      when,
+      tenant: idxTenant >= 0 ? cells[idxTenant] : '',
+      user_label: idxUser >= 0 ? cells[idxUser] : '',
+      ref: idxRef >= 0 ? cells[idxRef] : '',
+      id: i,
+    });
+  }
+  return entries;
+}
+
+function parseRevenueOverviewHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // 1) Try to find embedded JSON (best case)
+  const jsonScripts = Array.from(doc.querySelectorAll('script[type="application/json"]'));
+  for (const s of jsonScripts) {
+    const text = (s.textContent || '').trim();
+    if (!text) continue;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        const possibleEntries = parsed.entries || parsed.data?.entries || parsed.recent_entries || parsed.recentEntries;
+        if (Array.isArray(possibleEntries) && possibleEntries.length) {
+          return { kind: 'computed', overview: computeRevenueOverviewFromEntries(possibleEntries) };
+        }
+        return { kind: 'json', parsed };
+      }
+    } catch {}
+  }
+
+  // 2) Try to parse entry rows from HTML and compute totals client-side (dedupe + periods)
+  try {
+    const entries = extractRevenueEntriesFromHtml(doc);
+    if (entries.length) {
+      return { kind: 'computed', overview: computeRevenueOverviewFromEntries(entries) };
+    }
+  } catch {}
+
+  // 3) Fallback: heuristic text parsing (server-rendered totals already on page)
+  const text = (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+  const amountFrom = (labels) => {
+    for (const label of labels) {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`${escaped}\\s*[:\\-—]?\\s*(?:TZS|TSh|Tsh)?\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)`, 'i');
+      const m = text.match(re);
+      if (m?.[1]) return Number(m[1].replace(/,/g, ''));
+    }
+    return null;
+  };
+
+  const periods = [
+    { key: 'today', label: 'Today', amount: amountFrom(['Today', 'This Day']) },
+    { key: 'week', label: 'Week', amount: amountFrom(['This Week', 'Week']) },
+    { key: 'month', label: 'Month', amount: amountFrom(['This Month', 'Month']) },
+    { key: 'year', label: 'Year', amount: amountFrom(['This Year', 'Year']) },
+    { key: 'all', label: 'All Time', amount: amountFrom(['All time', 'All Time', 'All-time']) },
+  ];
+
+  const any = periods.some(p => typeof p.amount === 'number' && !Number.isNaN(p.amount));
+  if (!any) return { kind: 'unparsed', text };
+
+  return { kind: 'periods', periods };
+}
+
+async function fetchRevenueOverview() {
+  const res = await fetch(`${BASE_URL}/api/revenue-overview/`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Accept': 'text/html' },
+  });
+  if (!res.ok) {
+    const message =
+      res.status === 403
+        ? 'Access denied (403). Log in with a staff/superuser account on sys-admin-control-v3.'
+        : `Failed to load revenue overview (HTTP ${res.status}).`;
+    throw new Error(message);
+  }
+  const html = await res.text();
+  return parseRevenueOverviewHtml(html);
+}
+
+// ─── API Client ────────────────────────────────────────────────────────────────
+function getToken() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    return s ? JSON.parse(s).token : null;
+  } catch { return null; }
+}
+
+async function adminFetch(path, options = {}, onLogout) {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    try {
+      const refreshed = await fetch(`${BASE_URL}/auth/admin/refresh`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (refreshed.ok) {
+        const { data } = await refreshed.json();
+        const existing = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          ...existing, token: data.access_token,
+          expires_at: Date.now() + data.expires_in * 1000,
+        }));
+        return adminFetch(path, options, onLogout);
+      }
+    } catch {}
+    if (onLogout) onLogout();
+    return { success: false, error: { code: 'TOKEN_EXPIRED', message: 'Session expired. Please log in again.' } };
+  }
+
+  return res.json();
+}
+
+// ─── App Context ───────────────────────────────────────────────────────────────
+const AppContext = React.createContext({ showToast: () => {}, onLogout: () => {} });
 
 // ─── CSS Injection ────────────────────────────────────────────────────────────
 const CSS = `
@@ -90,6 +474,10 @@ body{font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
 .senda-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;transition:all .18s;color:#64748b;font-size:13.5px;font-weight:500;border:none;background:transparent;width:100%;text-align:left;white-space:nowrap;}
 .senda-nav-item:hover{background:#f0f4ff;color:${BRAND};}
 .senda-nav-item.active{background:#eff6ff;color:${BRAND};font-weight:700;border-left:3px solid ${BRAND};padding-left:9px;}
+.senda-nav-icon{width:18px;height:18px;flex-shrink:0;}
+.senda-ops-link{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;text-decoration:none;color:#0f172a;transition:background .15s,border-color .15s,transform .15s,box-shadow .15s;}
+.senda-ops-link:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.06);}
+.senda-ops-kind{font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
 
 .tab-wrapper{display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:20px;}
 .tab-btn{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#94a3b8;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .18s;font-family:inherit;}
@@ -121,66 +509,31 @@ function injectCSS() {
   document.head.appendChild(s);
 }
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const monthlySMS = [
-  { month:'Jan', sent:42000, delivered:39500, failed:1800, pending:700 },
-  { month:'Feb', sent:51000, delivered:48200, failed:2100, pending:700 },
-  { month:'Mar', sent:47500, delivered:44900, failed:1900, pending:700 },
-  { month:'Apr', sent:63000, delivered:60100, failed:2300, pending:600 },
-  { month:'May', sent:58000, delivered:55400, failed:1900, pending:700 },
-  { month:'Jun', sent:72000, delivered:68800, failed:2600, pending:600 },
-  { month:'Jul', sent:68000, delivered:65200, failed:2100, pending:700 },
-  { month:'Aug', sent:84000, delivered:80500, failed:2900, pending:600 },
-  { month:'Sep', sent:79000, delivered:75800, failed:2500, pending:700 },
-  { month:'Oct', sent:93000, delivered:89200, failed:3100, pending:700 },
-  { month:'Nov', sent:101000, delivered:97000, failed:3300, pending:700 },
-  { month:'Dec', sent:115000, delivered:110500, failed:3800, pending:700 },
-];
+// ─── Loading / Error helpers ───────────────────────────────────────────────────
+function LoadingState({ label = 'Loading data...' }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:60, gap:12, color:'#94a3b8', fontSize:14 }}>
+      <Spinner size={22} color={BRAND}/> {label}
+    </div>
+  );
+}
 
-const revenueData = [
-  { month:'Jan', revenue:1280000, packages:42, avgOrder:30476 },
-  { month:'Feb', revenue:1540000, packages:58, avgOrder:26551 },
-  { month:'Mar', revenue:1390000, packages:51, avgOrder:27254 },
-  { month:'Apr', revenue:1870000, packages:71, avgOrder:26338 },
-  { month:'May', revenue:1720000, packages:65, avgOrder:26461 },
-  { month:'Jun', revenue:2140000, packages:83, avgOrder:25783 },
-  { month:'Jul', revenue:1980000, packages:76, avgOrder:26052 },
-  { month:'Aug', revenue:2450000, packages:95, avgOrder:25789 },
-  { month:'Sep', revenue:2280000, packages:88, avgOrder:25909 },
-  { month:'Oct', revenue:2710000, packages:107, avgOrder:25327 },
-  { month:'Nov', revenue:2980000, packages:119, avgOrder:25042 },
-  { month:'Dec', revenue:3350000, packages:138, avgOrder:24275 },
-];
+function ErrorState({ message, onRetry }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:60, gap:10 }}>
+      <AlertTriangle size={32} strokeWidth={1.8} color={AMBER}/>
+      <div style={{ fontSize:15, fontWeight:700, color:'#0f172a' }}>Failed to load data</div>
+      <div style={{ fontSize:12, color:'#64748b', textAlign:'center', maxWidth:360 }}>{message}</div>
+      {onRetry && (
+        <button className="senda-btn senda-btn-primary" onClick={onRetry} style={{ height:36, fontSize:13, marginTop:8 }}>
+          ↺ Retry
+        </button>
+      )}
+    </div>
+  );
+}
 
-const userGrowth = [
-  { month:'Jan', users:310, active:240, churned:18 },
-  { month:'Feb', users:385, active:298, churned:22 },
-  { month:'Mar', users:442, active:348, churned:19 },
-  { month:'Apr', users:531, active:420, churned:25 },
-  { month:'May', users:614, active:490, churned:28 },
-  { month:'Jun', users:723, active:582, churned:31 },
-  { month:'Jul', users:808, active:650, churned:29 },
-  { month:'Aug', users:941, active:765, churned:35 },
-  { month:'Sep', users:1052, active:860, churned:38 },
-  { month:'Oct', users:1218, active:1001, churned:42 },
-  { month:'Nov', users:1380, active:1140, churned:46 },
-  { month:'Dec', users:1547, active:1289, churned:51 },
-];
-
-const deliveryPie = [
-  { name:'Delivered', value:110500, color:GREEN },
-  { name:'Failed',    value:3800,   color:RED    },
-  { name:'Pending',   value:700,    color:AMBER  },
-];
-
-const networkPerf = [
-  { network:'Vodacom', rate:97.2, vol:48000, color:BRAND },
-  { network:'Airtel',  rate:95.8, vol:31000, color:GREEN  },
-  { network:'Tigo',    rate:96.1, vol:22000, color:AMBER  },
-  { network:'Halotel', rate:94.3, vol:9000,  color:VIOLET },
-  { network:'TTCL',    rate:93.7, vol:5000,  color:CYAN   },
-];
-
+// ─── Hourly heatmap (no API endpoint — kept as visual reference) ───────────────
 const hourlyHeatmap = [
   { hour:'06:00', Mon:120,Tue:140,Wed:115,Thu:130,Fri:180,Sat:90,Sun:60 },
   { hour:'08:00', Mon:380,Tue:410,Wed:360,Thu:400,Fri:520,Sat:150,Sun:110 },
@@ -191,97 +544,6 @@ const hourlyHeatmap = [
   { hour:'18:00', Mon:490,Tue:510,Wed:470,Thu:500,Fri:630,Sat:220,Sun:180 },
   { hour:'20:00', Mon:280,Tue:300,Wed:260,Thu:290,Fri:380,Sat:180,Sun:150 },
 ];
-
-const transactions = Array.from({length:30}, (_,i)=>({
-  id:`TXN-${String(10001+i).padStart(5,'0')}`,
-  user:`user${i+1}@${['gmail','yahoo','outlook','senda'][i%4]}.com`,
-  package:['Starter 500','Basic 2000','Pro 5000','Business 10K','Enterprise 25K'][i%5],
-  amount:[5000,18000,42000,80000,185000][i%5],
-  credits:[500,2000,5000,10000,25000][i%5],
-  method:['M-Pesa','Tigo Pesa','Airtel Money','Bank Transfer'][i%4],
-  status:i%7===0?'failed':i%5===0?'pending':'completed',
-  date:new Date(Date.now()-i*86400000*1.2).toISOString().split('T')[0],
-  ref:`REF${Math.random().toString(36).substr(2,8).toUpperCase()}`,
-}));
-
-const SENDER_ID_STATUSES = ['approved','pending','await_payment','rejected','require_changes'];
-const senderIds = Array.from({length:25}, (_,i)=>({
-  id:`SID-${String(1001+i).padStart(4,'0')}`,
-  name:['SENDA','VODABANK','HEALTHNET','EDUPAY','GOVTTZ','SHOPIFY','MFUMOLABS','TECHCO','BONGO','KARIBU','JUMUIA','PAMOJA','UHURU','IMARA','SIMBA'][i%15],
-  owner:`business${i+1}@company${i+1}.co.tz`,
-  company:['Senda Ltd','Voda Bank','HealthNet TZ','EduPay','Govt TZ','Shopify TZ','Mfumo Labs','TechCo','Bongo Media','Karibu Group','Jumuia Co','Pamoja Ltd','Uhuru Corp','Imara Ventures','Simba Holdings'][i%15],
-  status: i%5===0?'await_payment': i%7===0?'require_changes': i%9===0?'rejected': i%11===0?'pending':'approved',
-  type:['Promotional','Transactional'][i%2],
-  network:['Vodacom','Airtel','Tigo','All Networks'][i%4],
-  purpose:['Marketing','OTP & Alerts','Customer Service','Notifications'][i%4],
-  created:new Date(Date.now()-i*5*86400000).toISOString().split('T')[0],
-  smsCount:Math.floor(Math.random()*50000+1000),
-  invoiceNo: i%5===0 ? `INV-${String(20001+i).padStart(5,'0')}` : null,
-  notes: i%7===0 ? 'Business registration certificate required' : i%9===0 ? 'Name violates telecom naming policy' : '',
-}));
-
-// ─── Partners Mock Data ───────────────────────────────────────────────────────
-const partners = Array.from({length:18}, (_,i)=>({
-  id:`PTR-${String(3001+i).padStart(4,'0')}`,
-  name:['NexaComm','AfricaLink','TechBridge TZ','MobiSolutions','CloudSMS','DataPulse','NetReach','ConnectTZ','SignalPro','SwiftMsg','PeakComm','InfoPath','SmartBiz','RapidSMS','LinkMedia','VoiceEdge','PrimeTech','ZetraCom'][i%18],
-  contact:`partner${i+1}@agency${i+1}.co.tz`,
-  phone:`+2557${String(20000000+i*999999).slice(0,8)}`,
-  region:['Dar es Salaam','Arusha','Mwanza','Dodoma','Mbeya','Zanzibar','Morogoro','Tanga'][i%8],
-  status: i%8===0?'pending': i%11===0?'suspended':'active',
-  tier:   i%3===0?'Gold': i%5===0?'Platinum':'Silver',
-  clients:Math.floor(Math.random()*40+5),
-  smsSent:Math.floor(Math.random()*200000+10000),
-  revenue:Math.floor(Math.random()*4000000+500000),
-  commission:Math.floor(Math.random()*400000+50000),
-  joinDate:new Date(Date.now()-i*14*86400000).toISOString().split('T')[0],
-  apiKey:`pk_live_${Math.random().toString(36).substr(2,16)}`,
-}));
-
-const partnerRevTrend = [
-  { month:'Jul', revenue:3200000, commission:320000, clients:28 },
-  { month:'Aug', revenue:3900000, commission:390000, clients:32 },
-  { month:'Sep', revenue:4400000, commission:440000, clients:35 },
-  { month:'Oct', revenue:5100000, commission:510000, clients:38 },
-  { month:'Nov', revenue:5800000, commission:580000, clients:42 },
-  { month:'Dec', revenue:6700000, commission:670000, clients:46 },
-];
-
-const tierDist = [
-  { name:'Platinum', value:3, color:'#6366f1' },
-  { name:'Gold',     value:6, color:AMBER      },
-  { name:'Silver',   value:9, color:'#94a3b8'  },
-];
-
-const loginActivity = Array.from({length:25}, (_,i)=>({
-  id:`LOG-${String(5001+i).padStart(5,'0')}`,
-  user:i===0?'admin@senda.co.tz':`user${i}@${['gmail','yahoo','outlook'][i%3]}.com`,
-  ip:`${192+i%3}.${168+i%5}.${1+i%10}.${Math.floor(Math.random()*254+1)}`,
-  device:['Chrome / Windows','Safari / macOS','Firefox / Linux','Chrome / Android','Safari / iOS'][i%5],
-  location:['Dar es Salaam','Arusha','Mwanza','Dodoma','Mbeya','Zanzibar'][i%6],
-  status:i%8===0?'failed':'success',
-  time:new Date(Date.now()-i*3600000*1.5).toISOString().replace('T',' ').split('.')[0],
-  role:i===0?'admin':'user',
-}));
-
-const smsPackages = [
-  { id:'PKG-001', name:'Starter',    credits:500,   price:5000,   per_sms:10.0, popular:false, color:'#64748b', desc:'Perfect for individuals & small tests' },
-  { id:'PKG-002', name:'Basic',      credits:2000,  price:18000,  per_sms:9.0,  popular:false, color:GREEN,     desc:'Ideal for small businesses' },
-  { id:'PKG-003', name:'Pro',        credits:5000,  price:42000,  per_sms:8.4,  popular:true,  color:BRAND,     desc:'Best value for growing businesses' },
-  { id:'PKG-004', name:'Business',   credits:10000, price:80000,  per_sms:8.0,  popular:false, color:VIOLET,    desc:'For established enterprises' },
-  { id:'PKG-005', name:'Enterprise', credits:25000, price:185000, per_sms:7.4,  popular:false, color:AMBER,     desc:'Maximum savings at scale' },
-  { id:'PKG-006', name:'Unlimited',  credits:50000, price:350000, per_sms:7.0,  popular:false, color:PINK,      desc:'For high-volume senders' },
-];
-
-const stats = {
-  totalUsers:    { value:'1,547',   change:'+12.4%', up:true,  desc:'Total registered users'   },
-  activeUsers:   { value:'1,289',   change:'+8.7%',  up:true,  desc:'Active this month'         },
-  smsSent:       { value:'876,500', change:'+18.2%', up:true,  desc:'SMS sent this year'        },
-  revenue:       { value:'25.7M',   change:'+21.5%', up:true,  desc:'Total revenue (TZS)'       },
-  senderIds:     { value:'117',     change:'+5',     up:true,  desc:'Approved sender IDs'       },
-  failRate:      { value:'3.28%',   change:'-0.4%',  up:false, desc:'Delivery failure rate'     },
-  avgResponse:   { value:'1.8s',    change:'-0.3s',  up:false, desc:'Avg delivery time'         },
-  pendingAppr:   { value:'8',       change:'+2',     up:false, desc:'Pending sender IDs'        },
-};
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -359,7 +621,7 @@ function Spinner({ size=20, color='#fff' }) {
 }
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
-function StatCard({ title, value, change, up, desc, icon, accent }) {
+function StatCard({ title, value, change, up, desc, icon: Icon, accent }) {
   return (
     <div className="senda-card" style={{padding:'16px 18px',transition:'transform .2s,box-shadow .2s',cursor:'default'}}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';}}
@@ -368,7 +630,7 @@ function StatCard({ title, value, change, up, desc, icon, accent }) {
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
         <span style={{fontSize:11,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase',color:'#94a3b8'}}>{title}</span>
         <div style={{width:32,height:32,borderRadius:9,background:`${accent}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          <span style={{fontSize:16}}>{icon}</span>
+          {Icon ? <Icon size={16} className="senda-nav-icon" style={{width:16,height:16,color:accent}} strokeWidth={2.2}/> : null}
         </div>
       </div>
       <div style={{fontSize:26,fontWeight:800,color:'#0f172a',letterSpacing:'-.5px',lineHeight:1}}>{value}</div>
@@ -442,34 +704,96 @@ function Badge({ status }) {
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 function OverviewTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
 
-  const statCards = [
-    { title:'Total Users',    value:stats.totalUsers.value,  change:stats.totalUsers.change,  up:true,  desc:'registered',  icon:'👥', accent:BRAND  },
-    { title:'Active Users',   value:stats.activeUsers.value, change:stats.activeUsers.change, up:true,  desc:'this month',  icon:'✅', accent:GREEN  },
-    { title:'SMS Sent',       value:stats.smsSent.value,     change:stats.smsSent.change,     up:true,  desc:'this year',   icon:'📨', accent:VIOLET },
-    { title:'Revenue (TZS)',  value:stats.revenue.value,     change:stats.revenue.change,     up:true,  desc:'total',       icon:'💰', accent:AMBER  },
-    { title:'Sender IDs',     value:stats.senderIds.value,   change:stats.senderIds.change,   up:true,  desc:'approved',    icon:'🏷️', accent:CYAN   },
-    { title:'Fail Rate',      value:stats.failRate.value,    change:stats.failRate.change,     up:false, desc:'Dec avg',     icon:'⚠️', accent:RED    },
-    { title:'Avg Delivery',   value:stats.avgResponse.value, change:stats.avgResponse.change,  up:false, desc:'response',    icon:'⚡', accent:GREEN  },
-    { title:'Pending Appr.',  value:stats.pendingAppr.value, change:stats.pendingAppr.change,  up:false, desc:'sender IDs',  icon:'🕐', accent:AMBER  },
-  ];
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [statsData, setStatsData] = useState(null);
+  const [monthlySMS, setMonthlySMS]       = useState([]);
+  const [revenueData, setRevenueData]     = useState([]);
+  const [userGrowth, setUserGrowth]       = useState([]);
+  const [deliveryPie, setDeliveryPie]     = useState([]);
+  const [networkPerf, setNetworkPerf]     = useState([]);
+  const [delivRate, setDelivRate]         = useState([]);
 
-  const chartH = isMobile ? 180 : bp === 'tablet' ? 200 : 260;
+  const fetchAll = useCallback(() => {
+    const year = new Date().getFullYear();
+    setLoading(true);
+    setError(null);
 
-  // Delivery rate 12-month trend
-  const delivRate = monthlySMS.map(m=>({
-    month: m.month,
-    'Delivery Rate': +((m.delivered/m.sent)*100).toFixed(2),
-    'MA-3': 0, // placeholder; computed below
-  }));
-  for(let i=2;i<delivRate.length;i++){
-    delivRate[i]['MA-3'] = +((delivRate[i-2]['Delivery Rate']+delivRate[i-1]['Delivery Rate']+delivRate[i]['Delivery Rate'])/3).toFixed(2);
-  }
+    Promise.all([
+      adminFetch(`/analytics/summary?period=current_year`, {}, onLogout),
+      adminFetch(`/analytics/sms/monthly?year=${year}`, {}, onLogout),
+      adminFetch(`/analytics/revenue/monthly?year=${year}`, {}, onLogout),
+      adminFetch(`/analytics/users/growth?year=${year}`, {}, onLogout),
+      adminFetch(`/analytics/sms/delivery-status?period=current_month`, {}, onLogout),
+      adminFetch(`/analytics/networks/performance?period=current_month`, {}, onLogout),
+      adminFetch(`/analytics/sms/delivery-rate-trend?year=${year}&ma_window=3`, {}, onLogout),
+    ]).then(([summary, sms, revenue, growth, pie, networks, trend]) => {
+      if (summary.success) setStatsData(summary.data.stats);
+      if (sms.success)     setMonthlySMS(sms.data);
+      if (revenue.success) setRevenueData(revenue.data.map(d => ({ ...d, avgOrder: d.avg_order })));
+      if (growth.success)  setUserGrowth(growth.data);
+      if (pie.success) {
+        const pieColors = { delivered: GREEN, failed: RED, pending: AMBER };
+        setDeliveryPie(pie.data.breakdown.map(b => ({
+          name: b.status.charAt(0).toUpperCase() + b.status.slice(1),
+          value: b.value,
+          color: pieColors[b.status] || BRAND,
+        })));
+      }
+      if (networks.success) {
+        const netColors = [BRAND, GREEN, AMBER, VIOLET, CYAN];
+        setNetworkPerf(networks.data.map((n, i) => ({
+          ...n, rate: n.delivery_rate, vol: n.volume, color: netColors[i % netColors.length],
+        })));
+      }
+      if (trend.success) {
+        setDelivRate(trend.data.map(d => ({
+          month: d.month,
+          'Delivery Rate': d.delivery_rate,
+          'MA-3': d.moving_avg_3,
+        })));
+      }
+      const anyFailed = [summary, sms, revenue, growth, pie, networks, trend].some(r => !r.success);
+      if (anyFailed) setError('Some data could not be loaded. Showing available data.');
+    }).catch(e => {
+      setError(e.message);
+    }).finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const fmtChange = (s) => {
+    const sign = s.change_direction === 'up' ? '+' : '';
+    return `${sign}${s.change}`;
+  };
+  const statCards = statsData ? [
+    { title:'Total Users',   value: statsData.total_users.value.toLocaleString(),            change: fmtChange(statsData.total_users),   up: statsData.total_users.change_direction==='up',              desc:'registered',  icon:Users,         accent:BRAND  },
+    { title:'Active Users',  value: statsData.active_users.value.toLocaleString(),           change: fmtChange(statsData.active_users),  up: statsData.active_users.change_direction==='up',             desc:'this month',  icon:UserCheck,      accent:GREEN  },
+    { title:'SMS Sent',      value: statsData.sms_sent.value.toLocaleString(),               change: fmtChange(statsData.sms_sent),      up: statsData.sms_sent.change_direction==='up',                 desc:'this year',   icon:MessageSquare,  accent:VIOLET },
+    { title:'Revenue (TZS)', value: compactNumber(statsData.revenue_tzs.value),            change: fmtChange(statsData.revenue_tzs),   up: statsData.revenue_tzs.change_direction==='up',              desc:'total',       icon:Wallet,         accent:AMBER  },
+    { title:'Sender IDs',    value: statsData.approved_sender_ids.value.toString(),          change: fmtChange(statsData.approved_sender_ids), up: statsData.approved_sender_ids.change_direction==='up', desc:'approved',    icon:Tag,            accent:CYAN  },
+    { title:'Fail Rate',     value: `${statsData.delivery_fail_rate.value}%`,                change: fmtChange(statsData.delivery_fail_rate),  up: statsData.delivery_fail_rate.change_direction==='up',  desc:'delivery',    icon:AlertTriangle,  accent:RED    },
+    { title:'Avg Delivery',  value: `${statsData.avg_delivery_time_seconds.value}s`,         change: fmtChange(statsData.avg_delivery_time_seconds), up: statsData.avg_delivery_time_seconds.change_direction==='up', desc:'response', icon:Zap,            accent:GREEN },
+    { title:'Pending Appr.', value: statsData.pending_sender_id_approvals.value.toString(),  change: fmtChange(statsData.pending_sender_id_approvals), up: statsData.pending_sender_id_approvals.change_direction==='up', desc:'sender IDs', icon:Clock,         accent:AMBER },
+  ] : [];
+
+  const totalPie = deliveryPie.reduce((s, d) => s + d.value, 0);
+  const chartH   = isMobile ? 180 : bp === 'tablet' ? 200 : 260;
+
+  if (loading) return <LoadingState label="Loading analytics..."/>;
 
   return (
     <div className="senda-fade-in">
+      {error && (
+        <div style={{ padding:'10px 14px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:10, marginBottom:16, fontSize:13, color:'#92400e', display:'flex', alignItems:'center', gap:8 }}>
+          <AlertTriangle size={14} strokeWidth={2} color='#92400e' style={{flexShrink:0}}/> {error}
+        </div>
+      )}
+
       {/* Stat Cards — 2 cols mobile, 4 cols md+ */}
       <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:24}}>
         {statCards.map(c => <StatCard key={c.title} {...c}/>)}
@@ -507,7 +831,7 @@ function OverviewTab() {
 
         {/* Delivery Pie */}
         <div className="senda-card" style={{padding:20}}>
-          <SectionHeader title="Dec Delivery Status" subtitle="Current month breakdown"/>
+          <SectionHeader title="Delivery Status" subtitle="Current month breakdown"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -520,14 +844,16 @@ function OverviewTab() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={{display:'flex',justifyContent:'space-around',marginTop:8}}>
-            {deliveryPie.map(d=>(
-              <div key={d.name} style={{textAlign:'center'}}>
-                <div style={{fontSize:13,fontWeight:700,color:d.color}}>{((d.value/115000)*100).toFixed(1)}%</div>
-                <div style={{fontSize:10,color:'#94a3b8'}}>{d.name}</div>
-              </div>
-            ))}
-          </div>
+          {totalPie > 0 && (
+            <div style={{display:'flex',justifyContent:'space-around',marginTop:8}}>
+              {deliveryPie.map(d=>(
+                <div key={d.name} style={{textAlign:'center'}}>
+                  <div style={{fontSize:13,fontWeight:700,color:d.color}}>{((d.value/totalPie)*100).toFixed(1)}%</div>
+                  <div style={{fontSize:10,color:'#94a3b8'}}>{d.name}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -611,7 +937,7 @@ function OverviewTab() {
                 <div style={{background:'#f1f5f9',borderRadius:99,height:6,overflow:'hidden'}}>
                   <div style={{width:`${n.rate}%`,background:n.color,height:'100%',borderRadius:99,transition:'width .8s ease'}}/>
                 </div>
-                <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>{n.vol.toLocaleString()} SMS</div>
+                <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>{(n.vol||0).toLocaleString()} SMS</div>
               </div>
             ))}
           </div>
@@ -623,44 +949,57 @@ function OverviewTab() {
 
 // ─── Transactions Tab ─────────────────────────────────────────────────────────
 function TransactionsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const PER = 8;
+  const [items, setItems]   = useState([]);
+  const [meta, setMeta]     = useState({});
+  const [summary, setSummary] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState(null);
+  const PER = 10;
 
-  const filtered = transactions.filter(t => {
-    const matchStatus = filter === 'all' || t.status === filter;
-    const q = search.toLowerCase();
-    const matchSearch = !q || t.id.toLowerCase().includes(q) || t.user.toLowerCase().includes(q) || t.package.toLowerCase().includes(q) || t.ref.toLowerCase().includes(q);
-    return matchStatus && matchSearch;
-  });
-  const total = filtered.length;
-  const paged = filtered.slice((page-1)*PER, page*PER);
-  const pages = Math.ceil(total/PER);
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    const qs = new URLSearchParams({ page, limit: PER, sort: 'date', order: 'desc' });
+    if (filter !== 'all') qs.set('status', filter);
+    if (search.trim())    qs.set('search', search.trim());
+    adminFetch(`/transactions?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setItems(res.data); setMeta(res.meta || {}); setSummary(res.summary || {}); }
+        else setError(res.error?.message || 'Failed to load transactions.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, filter, search, onLogout]);
 
-  const summary = {
-    total: transactions.length,
-    completed: transactions.filter(t=>t.status==='completed').length,
-    pending:   transactions.filter(t=>t.status==='pending').length,
-    failed:    transactions.filter(t=>t.status==='failed').length,
-    revenue:   transactions.filter(t=>t.status==='completed').reduce((s,t)=>s+t.amount,0),
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const total  = meta.total || 0;
+  const pages  = meta.total_pages || 1;
 
   return (
     <div className="senda-fade-in">
       {/* Summary cards */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
         {[
-          {label:'Total Txns',  value:summary.total,                     icon:'📋', color:BRAND},
-          {label:'Completed',   value:summary.completed,                 icon:'✅', color:GREEN},
-          {label:'Pending',     value:summary.pending,                   icon:'⏳', color:AMBER},
-          {label:'Failed',      value:summary.failed,                    icon:'❌', color:RED  },
-          {label:'Revenue (K)', value:`${(summary.revenue/1000).toFixed(0)}K`, icon:'💰', color:VIOLET},
+          {label:'Total Txns',  value: summary.total_count  ?? '—',                               icon:CreditCard,   color:BRAND},
+          {label:'Completed',   value: summary.completed_count ?? '—',                            icon:CheckCircle2, color:GREEN},
+          {label:'Pending',     value: summary.pending_count ?? '—',                              icon:Hourglass,    color:AMBER},
+          {label:'Failed',      value: summary.failed_count ?? '—',                               icon:XCircle,      color:RED  },
+          {label:'Revenue (K)', value: summary.total_revenue != null ? `${Math.round(summary.total_revenue/1000)}K` : '—', icon:Wallet,       color:VIOLET},
         ].map(c=>(
           <div key={c.label} className="senda-card" style={{padding:'14px 16px'}}>
             <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              <div style={{width:36,height:36,borderRadius:10,background:`${c.color}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{c.icon}</div>
+              <div style={{width:36,height:36,borderRadius:10,background:`${c.color}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {(() => {
+                  const Icon = c.icon;
+                  return <Icon size={18} strokeWidth={2.2} color={c.color} />;
+                })()}
+              </div>
               <div>
                 <div style={{fontSize:20,fontWeight:800,color:'#0f172a'}}>{c.value}</div>
                 <div style={{fontSize:10,color:'#94a3b8',fontWeight:600,textTransform:'uppercase',letterSpacing:'.06em'}}>{c.label}</div>
@@ -687,125 +1026,150 @@ function TransactionsTab() {
       </div>
 
       {/* Table */}
-      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="senda-table" style={{minWidth:720}}>
-            <thead>
-              <tr>
-                <th>Txn ID</th><th>User</th><th>Package</th>
-                <th>Amount (TZS)</th><th>Credits</th>
-                <th>Method</th><th>Status</th><th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map(t=>(
-                <tr key={t.id}>
-                  <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{t.id}</td>
-                  <td style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.user}</td>
-                  <td>{t.package}</td>
-                  <td style={{fontWeight:600}}>{t.amount.toLocaleString()}</td>
-                  <td>{t.credits.toLocaleString()}</td>
-                  <td><span style={{fontSize:11,background:'#f1f5f9',padding:'2px 8px',borderRadius:6}}>{t.method}</span></td>
-                  <td><Badge status={t.status}/></td>
-                  <td style={{fontSize:12,color:'#64748b'}}>{t.date}</td>
-                  <td>
-                    <div style={{display:'flex',gap:4}}>
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" title="View">👁</button>
-                      {t.status==='pending' && <button className="senda-btn senda-btn-sm senda-btn-success" title="Approve">✓</button>}
-                      {t.status!=='failed' && <button className="senda-btn senda-btn-sm senda-btn-danger" title="Refund">↩</button>}
-                    </div>
-                  </td>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:720}}>
+              <thead>
+                <tr>
+                  <th>Txn ID</th><th>User</th><th>Package</th>
+                  <th>Amount (TZS)</th><th>Credits</th>
+                  <th>Method</th><th>Status</th><th>Date</th>
                 </tr>
+              </thead>
+              <tbody>
+                {items.map(t=>(
+                  <tr key={t.id}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{t.id}</td>
+                    <td style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.user_email}</td>
+                    <td>{t.package}</td>
+                    <td style={{fontWeight:600}}>{t.amount.toLocaleString()}</td>
+                    <td>{t.credits.toLocaleString()}</td>
+                    <td><span style={{fontSize:11,background:'#f1f5f9',padding:'2px 8px',borderRadius:6}}>{t.method}</span></td>
+                    <td><Badge status={t.status}/></td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{t.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {items.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No transactions found.</div>}
+          {/* Pagination */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} of {pages} · {total} total</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page===1} onClick={()=>setPage(p=>p-1)} style={{opacity:page===1?.4:1}}>← Prev</button>
+              {Array.from({length:Math.min(pages,7)},(_,i)=>i+1).map(p=>(
+                <button key={p} className="senda-btn senda-btn-sm" onClick={()=>setPage(p)}
+                  style={{background:p===page?BRAND:'#f1f5f9',color:p===page?'#fff':'#64748b',border:'none',minWidth:30}}>
+                  {p}
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Pagination */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
-          <span style={{fontSize:12,color:'#94a3b8'}}>Showing {Math.min((page-1)*PER+1,total)}–{Math.min(page*PER,total)} of {total}</span>
-          <div style={{display:'flex',gap:4}}>
-            <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page===1} onClick={()=>setPage(p=>p-1)} style={{opacity:page===1?.4:1}}>← Prev</button>
-            {Array.from({length:pages},(_,i)=>i+1).map(p=>(
-              <button key={p} className="senda-btn senda-btn-sm" onClick={()=>setPage(p)}
-                style={{background:p===page?BRAND:'#f1f5f9',color:p===page?'#fff':'#64748b',border:'none',minWidth:30}}>
-                {p}
-              </button>
-            ))}
-            <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page===pages} onClick={()=>setPage(p=>p+1)} style={{opacity:page===pages?.4:1}}>Next →</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:page>=pages?.4:1}}>Next →</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
 // ─── Sender IDs Tab ───────────────────────────────────────────────────────────
 const STATUS_META = {
-  approved:        { label:'Approved',        color:GREEN,   bg:'#d1fae5', icon:'✅', desc:'Active & live on network'         },
-  pending:         { label:'Pending Review',  color:AMBER,   bg:'#fef3c7', icon:'⏳', desc:'Awaiting admin review'            },
-  await_payment:   { label:'Await Payment',   color:ORANGE,  bg:'#ffedd5', icon:'💳', desc:'Invoice issued, payment pending'  },
-  rejected:        { label:'Rejected',        color:RED,     bg:'#fee2e2', icon:'❌', desc:'Declined — policy violation'      },
-  require_changes: { label:'Require Changes', color:CYAN,    bg:'#cffafe', icon:'🔁', desc:'Admin requested document changes' },
+  approved:        { label:'Approved',        color:GREEN,   bg:'#d1fae5', Icon:CheckCircle2, desc:'Active & live on network'         },
+  pending:         { label:'Pending Review',  color:AMBER,   bg:'#fef3c7', Icon:Hourglass,    desc:'Awaiting admin review'            },
+  await_payment:   { label:'Await Payment',   color:ORANGE,  bg:'#ffedd5', Icon:CreditCard,   desc:'Invoice issued, payment pending'  },
+  rejected:        { label:'Rejected',        color:RED,     bg:'#fee2e2', Icon:XCircle,      desc:'Declined — policy violation'      },
+  require_changes: { label:'Require Changes', color:CYAN,    bg:'#cffafe', Icon:Clock,        desc:'Admin requested document changes' },
 };
 
-// Inline notes/feedback modal (lightweight)
-function NotesModal({ item, onClose, onSave }) {
-  const [note, setNote] = useState(item.notes || '');
-  return (
-    <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.55)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-      <div className="senda-card senda-fade-up" style={{width:'100%',maxWidth:480,padding:24}}>
-        <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',marginBottom:4}}>📝 Admin Notes for <span style={{color:BRAND}}>{item.name}</span></h3>
-        <p style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>These notes are sent to the applicant as change-request feedback.</p>
-        <textarea value={note} onChange={e=>setNote(e.target.value)}
-          placeholder="e.g. Please submit updated business registration certificate…"
-          style={{width:'100%',minHeight:100,borderRadius:10,border:'1.5px solid #e2e8f0',padding:'10px 12px',fontSize:13,fontFamily:'inherit',color:'#1e293b',outline:'none',resize:'vertical'}}/>
-        <div style={{display:'flex',gap:8,marginTop:14,justifyContent:'flex-end'}}>
-          <button className="senda-btn senda-btn-ghost" onClick={onClose} style={{height:36,fontSize:13}}>Cancel</button>
-          <button className="senda-btn senda-btn-primary" onClick={()=>onSave(note)} style={{height:36,fontSize:13}}>💾 Save & Send</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SenderIdsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [items, setItems] = useState(senderIds);
-  const [notesModal, setNotesModal] = useState(null); // item being edited
+  const [filter, setFilter]           = useState('all');
+  const [search, setSearch]           = useState('');
+  const [items, setItems]             = useState([]);
+  const [apiSummary, setApiSummary]   = useState(null);
+  const [loadedPages, setLoadedPages] = useState(0);
+  const [totalPages, setTotalPages]   = useState(1);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [page, setPage]               = useState(1);
+  const PER_PAGE = 50;
 
-  const updateStatus = (id, newStatus, notes) => {
-    setItems(prev => prev.map(s => s.id === id ? { ...s, status: newStatus, notes: notes ?? s.notes } : s));
-  };
-  const openRequireChanges = (item) => setNotesModal(item);
-  const saveNotes = (note) => {
-    updateStatus(notesModal.id, 'require_changes', note);
-    setNotesModal(null);
-  };
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    setItems([]); setApiSummary(null); setLoadedPages(0); setTotalPages(1);
 
-  const counts = Object.fromEntries(
-    ['all',...Object.keys(STATUS_META)].map(k => [k, k==='all' ? items.length : items.filter(s=>s.status===k).length])
-  );
+    // Fetch page 1 to get meta + summary
+    adminFetch(`/sender-ids?limit=100&page=1`, {}, onLogout)
+      .then(res => {
+        if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
+        const rows  = res.data || [];
+        const meta  = res.meta || {};
+        const pages = meta.total_pages || 1;
+        if (res.summary) setApiSummary(res.summary);
+        setTotalPages(pages);
+        setLoadedPages(1);
+        setItems(rows);
 
-  const filtered = items.filter(s => {
-    const m = filter === 'all' || s.status === filter;
-    const q = search.toLowerCase();
-    return m && (!q || s.name.toLowerCase().includes(q) || s.owner.toLowerCase().includes(q) || s.company.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
-  });
+        // Fetch remaining pages in parallel
+        if (pages > 1) {
+          Promise.all(
+            Array.from({ length: pages - 1 }, (_, i) =>
+              adminFetch(`/sender-ids?limit=100&page=${i + 2}`, {}, onLogout)
+            )
+          ).then(responses => {
+            const extra = responses.flatMap(r => (r.success ? r.data || [] : []));
+            setItems(prev => [...prev, ...extra]);
+            setLoadedPages(pages);
+          }).catch(() => {/* partial data already shown */});
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
 
-  // Status distribution pie for mini chart
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Use API summary for accurate platform-wide counts; fall back to counting loaded rows
+  const counts = React.useMemo(() => {
+    if (apiSummary) {
+      return {
+        all:             apiSummary.total            ?? items.length,
+        approved:        apiSummary.approved         ?? 0,
+        pending:         apiSummary.pending          ?? 0,
+        await_payment:   apiSummary.await_payment    ?? 0,
+        require_changes: apiSummary.require_changes  ?? 0,
+        rejected:        apiSummary.rejected         ?? 0,
+      };
+    }
+    return Object.fromEntries(
+      ['all', ...Object.keys(STATUS_META)].map(k => [
+        k, k === 'all' ? items.length : items.filter(s => s.status === k).length,
+      ])
+    );
+  }, [apiSummary, items]);
+
+  const filtered = React.useMemo(() => {
+    setPage(1);
+    return items.filter(s => {
+      const m = filter === 'all' || s.status === filter;
+      const q = search.toLowerCase();
+      return m && (!q || (s.name||'').toLowerCase().includes(q) || (s.owner_email||'').toLowerCase().includes(q) || (s.company||'').toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, filter, search]);
+
+  const totalFilteredPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
   const pieDist = Object.entries(STATUS_META).map(([k,v]) => ({ name:v.label, value:counts[k], color:v.color })).filter(d=>d.value>0);
 
   return (
     <div className="senda-fade-in">
-
-      {notesModal && <NotesModal item={notesModal} onClose={()=>setNotesModal(null)} onSave={saveNotes}/>}
-
       {/* ── Top analytics row ── */}
       <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'2fr 1fr',gap:16,marginBottom:20}}>
-        {/* Status breakdown bar chart */}
         <div className="senda-card" style={{padding:20}}>
           <SectionHeader title="Sender ID Status Distribution" subtitle="All 5 lifecycle stages at a glance"/>
           <div style={{height:160}}>
@@ -822,15 +1186,13 @@ function SenderIdsTab() {
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Summary stat tiles */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           {Object.entries(STATUS_META).map(([k,v])=>(
             <div key={k} className="senda-card" style={{padding:'10px 12px',cursor:'pointer',borderLeft:`3px solid ${v.color}`,transition:'transform .15s'}}
               onClick={()=>setFilter(k)}
               onMouseEnter={e=>e.currentTarget.style.transform='translateY(-1px)'}
               onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
-              <div style={{fontSize:18,marginBottom:2}}>{v.icon}</div>
+              <v.Icon size={18} strokeWidth={2} color={v.color} style={{marginBottom:2}}/>
               <div style={{fontSize:20,fontWeight:800,color:'#0f172a'}}>{counts[k]}</div>
               <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',lineHeight:1.3}}>{v.label}</div>
             </div>
@@ -851,103 +1213,112 @@ function SenderIdsTab() {
           {Object.entries(STATUS_META).map(([k,v])=>(
             <button key={k} className="senda-btn senda-btn-sm" onClick={()=>setFilter(k)}
               style={{background:filter===k?v.color:'#f1f5f9',color:filter===k?'#fff':'#64748b',border:'none'}}>
-              {v.icon} {v.label} ({counts[k]})
+              {v.label} ({counts[k]})
             </button>
           ))}
         </div>
-        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto',display:'flex',alignItems:'center',gap:6}}>
+          {filtered.length.toLocaleString()} record{filtered.length!==1?'s':''}
+          {loadedPages < totalPages && (
+            <>
+              <div style={{width:10,height:10,borderRadius:'50%',border:`2px solid ${BRAND}`,borderTopColor:'transparent',animation:'spin 0.7s linear infinite'}}/>
+              <span style={{color:AMBER}}>loading {loadedPages}/{totalPages}</span>
+            </>
+          )}
+        </span>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
       </div>
 
       {/* ── Table ── */}
-      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="senda-table" style={{minWidth:860}}>
-            <thead>
-              <tr>
-                <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th>
-                <th>Type</th><th>Network</th><th>SMS Sent</th>
-                <th>Status</th><th>Invoice</th><th>Created</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(s=>(
-                <tr key={s.id}>
-                  <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{s.id}</td>
-                  <td>
-                    <div style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{s.name}</div>
-                    {s.notes && <div style={{fontSize:10,color:'#f97316',marginTop:1,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.notes}>⚠ {s.notes}</div>}
-                  </td>
-                  <td style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{s.company}</td>
-                  <td style={{fontSize:11,color:'#64748b',maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.owner}</td>
-                  <td><Badge status={s.type.toLowerCase()}/></td>
-                  <td style={{fontSize:11,color:'#475569'}}>{s.network}</td>
-                  <td style={{fontWeight:600}}>{s.smsCount.toLocaleString()}</td>
-                  <td><Badge status={s.status}/></td>
-                  <td style={{fontSize:11,color:s.invoiceNo?ORANGE:'#cbd5e1',fontWeight:s.invoiceNo?600:400}}>{s.invoiceNo||'—'}</td>
-                  <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created}</td>
-                  <td>
-                    <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
-                      {/* PENDING → Approve / Request Changes / Reject */}
-                      {s.status==='pending' && <>
-                        <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'approved')}>✅ Approve</button>
-                        <button className="senda-btn senda-btn-sm" style={{fontSize:11,background:'#cffafe',color:'#155e75',border:'1px solid #a5f3fc'}} onClick={()=>openRequireChanges(s)}>🔁 Changes</button>
-                        <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'rejected')}>❌ Reject</button>
-                      </>}
-
-                      {/* AWAIT PAYMENT → Mark Paid (→approved) / Cancel */}
-                      {s.status==='await_payment' && <>
-                        <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'approved')}>💳 Mark Paid</button>
-                        <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'rejected')}>Cancel</button>
-                      </>}
-
-                      {/* REQUIRE CHANGES → Edit Note / Approve once fixed / Reject */}
-                      {s.status==='require_changes' && <>
-                        <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'approved')}>✅ Approve</button>
-                        <button className="senda-btn senda-btn-sm" style={{fontSize:11,background:'#ede9fe',color:'#5b21b6',border:'1px solid #ddd6fe'}} onClick={()=>openRequireChanges(s)}>📝 Edit Note</button>
-                        <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'rejected')}>Reject</button>
-                      </>}
-
-                      {/* APPROVED → Request Payment / Revoke */}
-                      {s.status==='approved' && <>
-                        <button className="senda-btn senda-btn-sm" style={{fontSize:11,background:'#ffedd5',color:'#9a3412',border:'1px solid #fed7aa'}} onClick={()=>updateStatus(s.id,'await_payment')}>💳 Req. Payment</button>
-                        <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'rejected')}>Revoke</button>
-                      </>}
-
-                      {/* REJECTED → Re-review (→pending) */}
-                      {s.status==='rejected' && <>
-                        <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(s.id,'approved')}>✅ Re-approve</button>
-                        <button className="senda-btn senda-btn-sm" style={{fontSize:11,background:'#fef3c7',color:'#92400e',border:'1px solid #fde68a'}} onClick={()=>updateStatus(s.id,'pending')}>↩ Re-review</button>
-                      </>}
-
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{fontSize:11}} title="View full details">👁</button>
-                    </div>
-                  </td>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:860}}>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th>
+                  <th>Type</th><th>Network</th><th>SMS Sent</th>
+                  <th>Status</th><th>Invoice</th><th>Created</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
-            No sender IDs match the current filter.
+              </thead>
+              <tbody>
+                {paginated.map(s=>(
+                  <tr key={s.id}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{s.id}</td>
+                    <td>
+                      <div style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{s.name}</div>
+                      {s.notes && <div style={{fontSize:10,color:'#f97316',marginTop:1,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.notes}>⚠ {s.notes}</div>}
+                    </td>
+                    <td style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{s.company}</td>
+                    <td style={{fontSize:11,color:'#64748b',maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.owner_email}</td>
+                    <td><Badge status={(s.type||'').toLowerCase()}/></td>
+                    <td style={{fontSize:11,color:'#475569'}}>{s.network}</td>
+                    <td style={{fontWeight:600}}>{(s.sms_count||0).toLocaleString()}</td>
+                    <td><Badge status={s.status}/></td>
+                    <td style={{fontSize:11,color:s.invoice_no?ORANGE:'#cbd5e1',fontWeight:s.invoice_no?600:400}}>{s.invoice_no||'—'}</td>
+                    <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+          {filtered.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs match the current filter.</div>}
+
+          {/* Pagination bar */}
+          {filtered.length > PER_PAGE && (
+            <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span style={{fontSize:12,color:'#94a3b8'}}>
+                {((page-1)*PER_PAGE+1).toLocaleString()}–{Math.min(page*PER_PAGE,filtered.length).toLocaleString()} of {filtered.length.toLocaleString()}
+              </span>
+              <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={page===1} onClick={()=>setPage(1)}
+                  style={{opacity:page===1?.4:1,minWidth:32}}>«</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={page===1} onClick={()=>setPage(p=>p-1)}
+                  style={{opacity:page===1?.4:1}}>‹ Prev</button>
+
+                {/* Page number pills */}
+                {Array.from({length: totalFilteredPages}, (_,i)=>i+1)
+                  .filter(p => p===1 || p===totalFilteredPages || Math.abs(p-page)<=2)
+                  .reduce((acc,p,i,arr)=>{
+                    if(i>0 && p-arr[i-1]>1) acc.push('…');
+                    acc.push(p);
+                    return acc;
+                  },[])
+                  .map((p,i)=> p==='…'
+                    ? <span key={`gap-${i}`} style={{fontSize:12,color:'#94a3b8',padding:'0 4px'}}>…</span>
+                    : <button key={p} className="senda-btn senda-btn-sm"
+                        onClick={()=>setPage(p)}
+                        style={{minWidth:32,background:page===p?BRAND:'#f1f5f9',color:page===p?'#fff':'#64748b',border:'none',fontWeight:page===p?700:400}}>
+                        {p}
+                      </button>
+                  )
+                }
+
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={page===totalFilteredPages} onClick={()=>setPage(p=>p+1)}
+                  style={{opacity:page===totalFilteredPages?.4:1}}>Next ›</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={page===totalFilteredPages} onClick={()=>setPage(totalFilteredPages)}
+                  style={{opacity:page===totalFilteredPages?.4:1,minWidth:32}}>»</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Status lifecycle guide ── */}
       <div className="senda-card" style={{padding:16,marginTop:16}}>
         <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:12}}>Status Lifecycle</div>
         <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
           {[
-            {s:'pending',   arrow:'→'},
-            {s:'await_payment', arrow:'→'},
-            {s:'approved',  arrow:null},
-            {s:'require_changes', arrow:'→ (back to pending)'},
-            {s:'rejected',  arrow:null},
+            {s:'pending',arrow:'→'},{s:'await_payment',arrow:'→'},{s:'approved',arrow:null},
+            {s:'require_changes',arrow:'→ (back to pending)'},{s:'rejected',arrow:null},
           ].map(({s,arrow})=>(
             <React.Fragment key={s}>
               <div style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',borderRadius:99,background:STATUS_META[s].bg}}>
-                <span>{STATUS_META[s].icon}</span>
+                {React.createElement(STATUS_META[s].Icon, {size:12,strokeWidth:2,color:STATUS_META[s].color})}
                 <span style={{fontSize:11,fontWeight:600,color:STATUS_META[s].color}}>{STATUS_META[s].label}</span>
               </div>
               {arrow && <span style={{fontSize:12,color:'#cbd5e1',fontWeight:700}}>{arrow}</span>}
@@ -961,27 +1332,39 @@ function SenderIdsTab() {
 
 // ─── Login Activity Tab ───────────────────────────────────────────────────────
 function LoginActivityTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
+  const [filter, setFilter]   = useState('all');
+  const [search, setSearch]   = useState('');
+  const [items, setItems]     = useState([]);
+  const [dailyData, setDailyData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
-  const filtered = loginActivity.filter(l => {
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    Promise.all([
+      adminFetch('/auth/activity', {}, onLogout),
+      adminFetch('/auth/activity/daily?days=7', {}, onLogout),
+    ]).then(([actRes, dailyRes]) => {
+      if (actRes.success) setItems(actRes.data || []);
+      else setError(actRes.error?.message || 'Failed to load activity.');
+      if (dailyRes.success) setDailyData(dailyRes.data || []);
+    }).catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filtered = items.filter(l => {
     const m = filter === 'all' || l.status === filter;
     const q = search.toLowerCase();
-    return m && (!q || l.user.includes(q) || l.ip.includes(q) || l.location.toLowerCase().includes(q));
+    return m && (!q || (l.user||'').toLowerCase().includes(q) || (l.ip||'').includes(q) || (l.location||'').toLowerCase().includes(q));
   });
 
-  const successRate = ((loginActivity.filter(l=>l.status==='success').length/loginActivity.length)*100).toFixed(1);
-
-  // Group by day for chart
-  const byDay = {};
-  loginActivity.forEach(l => {
-    const d = l.time.split(' ')[0];
-    if (!byDay[d]) byDay[d] = { date:d, success:0, failed:0 };
-    byDay[d][l.status]++;
-  });
-  const chartData = Object.values(byDay).sort((a,b)=>a.date.localeCompare(b.date)).slice(-7);
-
+  const successRate = items.length > 0
+    ? ((items.filter(l=>l.status==='success').length / items.length)*100).toFixed(1)
+    : '—';
   return (
     <div className="senda-fade-in">
       {/* Mini chart row */}
@@ -990,7 +1373,7 @@ function LoginActivityTab() {
           <SectionHeader title="Login Activity (Last 7 Days)" subtitle="Successful vs failed login attempts"/>
           <div style={{height:150}}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{top:4,right:8,left:0,bottom:0}}>
+              <BarChart data={dailyData} margin={{top:4,right:8,left:0,bottom:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
                 <XAxis dataKey="date" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
@@ -1005,10 +1388,10 @@ function LoginActivityTab() {
         <div className="senda-card" style={{padding:20,display:'flex',flexDirection:'column',gap:12}}>
           <SectionHeader title="Auth Summary" subtitle="Overall health"/>
           {[
-            {l:'Total Attempts', v:loginActivity.length, c:BRAND},
-            {l:'Successful', v:loginActivity.filter(l=>l.status==='success').length, c:GREEN},
-            {l:'Failed', v:loginActivity.filter(l=>l.status==='failed').length, c:RED},
-            {l:'Success Rate', v:`${successRate}%`, c:successRate>90?GREEN:AMBER},
+            {l:'Total Attempts', v:items.length,                                         c:BRAND},
+            {l:'Successful',     v:items.filter(l=>l.status==='success').length,         c:GREEN},
+            {l:'Failed',         v:items.filter(l=>l.status==='failed').length,          c:RED},
+            {l:'Success Rate',   v:`${successRate}%`,                                    c:Number(successRate)>90?GREEN:AMBER},
           ].map(x=>(
             <div key={x.l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}>
               <span style={{fontSize:12,color:'#64748b'}}>{x.l}</span>
@@ -1032,176 +1415,350 @@ function LoginActivityTab() {
           ))}
         </div>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{filtered.length} records</span>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
       </div>
 
       {/* Table */}
-      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="senda-table" style={{minWidth:680}}>
-            <thead>
-              <tr><th>Log ID</th><th>User</th><th>IP Address</th><th>Device</th><th>Location</th><th>Role</th><th>Status</th><th>Time</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              {filtered.map(l=>(
-                <tr key={l.id}>
-                  <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{l.id}</td>
-                  <td style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{l.user}</td>
-                  <td style={{fontFamily:'monospace',fontSize:12,color:'#475569'}}>{l.ip}</td>
-                  <td style={{fontSize:12,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.device}</td>
-                  <td style={{fontSize:12}}>{l.location}</td>
-                  <td><Badge status={l.role}/></td>
-                  <td><Badge status={l.status}/></td>
-                  <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{l.time}</td>
-                  <td>
-                    <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} title="Block IP">🚫 Block</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:680}}>
+              <thead>
+                <tr><th>Log ID</th><th>User</th><th>IP Address</th><th>Device</th><th>Location</th><th>Role</th><th>Status</th><th>Time</th></tr>
+              </thead>
+              <tbody>
+                {filtered.map(l=>(
+                  <tr key={l.id}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{l.id}</td>
+                    <td style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{l.user_email||l.user}</td>
+                    <td style={{fontFamily:'monospace',fontSize:12,color:'#475569'}}>{l.ip}</td>
+                    <td style={{fontSize:12,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.device}</td>
+                    <td style={{fontSize:12}}>{l.location}</td>
+                    <td><Badge status={l.role}/></td>
+                    <td><Badge status={l.status}/></td>
+                    <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{l.time ? new Date(l.time).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No activity records found.</div>}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── SMS Packages Tab ─────────────────────────────────────────────────────────
-function SmsPackagesTab() {
+// ─── Packages Analytics Tab (SMS + WhatsApp + Custom) ────────────────────────
+const WA_GREEN = '#25D366';
+
+function PackagesTab() {
+  const { onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
-  const [pkgs, setPkgs] = useState(smsPackages);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({});
-  const [showAdd, setShowAdd] = useState(false);
+  const isMobile = bp === 'mobile';
 
-  const openEdit = (pkg) => { setEditing(pkg.id); setForm({...pkg}); setShowAdd(false); };
-  const openAdd  = () => { setShowAdd(true); setEditing(null); setForm({id:`PKG-${String(pkgs.length+1).padStart(3,'0')}`,name:'',credits:1000,price:8000,per_sms:8.0,popular:false,color:BRAND,desc:''}); };
-  const saveEdit = () => {
-    if (editing) setPkgs(p=>p.map(x=>x.id===editing?{...form}:x));
-    else setPkgs(p=>[...p,{...form}]);
-    setEditing(null); setShowAdd(false);
-  };
-  const deletePkg = id => { if(window.confirm('Delete this package?')) setPkgs(p=>p.filter(x=>x.id!==id)); };
+  const [smsPkgs,    setSmsPkgs]    = useState([]);
+  const [waPkgs,     setWaPkgs]     = useState([]);
+  const [customList, setCustomList] = useState([]);
+  const [smsAnl,     setSmsAnl]     = useState({});
+  const [waAnl,      setWaAnl]      = useState({});
+  const [customAnl,  setCustomAnl]  = useState({});
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [section,    setSection]    = useState('sms');
 
-  // Comparison chart data
-  const cmpData = pkgs.map(p=>({name:p.name,credits:p.credits,price:p.price/1000,per_sms:p.per_sms}));
+  const fetchAll = useCallback(() => {
+    setLoading(true); setError(null);
+    Promise.all([
+      adminFetch('/packages',                              {}, onLogout),
+      adminFetch('/packages/analytics',                   {}, onLogout),
+      adminFetch('/packages?type=whatsapp',               {}, onLogout),
+      adminFetch('/packages/analytics?type=whatsapp',     {}, onLogout),
+      adminFetch('/custom-sms-purchases',                 {}, onLogout),
+      adminFetch('/custom-sms-purchases/analytics',       {}, onLogout),
+    ]).then(([sr, sa, wr, wa, cr, ca]) => {
+      if (sr.success) setSmsPkgs(sr.data || []);
+      if (sa.success) setSmsAnl(sa.data || {});
+      if (wr.success) setWaPkgs(wr.data || []);
+      if (wa.success) setWaAnl(wa.data || {});
+      if (cr.success) setCustomList(cr.data || []);
+      if (ca.success) setCustomAnl(ca.data || {});
+      const anyFail = [sr,sa,wr,wa,cr,ca].some(r => !r.success);
+      if (anyFail) setError('Some data could not be loaded — showing available data.');
+    }).catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
 
-  const isEditing = editing || showAdd;
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // ── Aggregate totals ──────────────────────────────────────────────────────
+  const smsRev    = smsAnl.total_revenue    ?? smsPkgs.reduce((s,p)=>s+(p.total_revenue||0),0);
+  const waRev     = waAnl.total_revenue     ?? waPkgs.reduce((s,p)=>s+(p.total_revenue||0),0);
+  const custRev   = customAnl.total_revenue ?? customList.reduce((s,p)=>s+(parseNumberLoose(p.total_price)||0),0);
+  const totalRev  = smsRev + waRev + custRev;
+
+  const smsBuyers  = smsAnl.total_buyers  ?? smsPkgs.reduce((s,p)=>s+(p.purchase_count||0),0);
+  const waBuyers   = waAnl.total_buyers   ?? waPkgs.reduce((s,p)=>s+(p.purchase_count||0),0);
+  const custBuyers = customAnl.total_buyers ?? customList.length;
+  const totalBuyers = smsBuyers + waBuyers + custBuyers;
+
+  const custAvg    = custBuyers > 0 ? custRev / custBuyers : 0;
+  const custMax    = customAnl.largest_deal ?? Math.max(0, ...customList.map(p=>parseNumberLoose(p.total_price)||0));
+
+  // ── Chart data ────────────────────────────────────────────────────────────
+  const revMix = [
+    { name:'SMS',       value: Math.round(smsRev),  color: BRAND     },
+    { name:'WhatsApp',  value: Math.round(waRev),   color: WA_GREEN  },
+    { name:'Custom',    value: Math.round(custRev),  color: VIOLET    },
+  ].filter(d => d.value > 0);
+
+  const smsBuyerChart = smsPkgs.map(p => ({
+    name: p.name,
+    Buyers:   p.purchase_count || 0,
+    Revenue:  Math.round((p.total_revenue || 0) / 1000),
+  }));
+
+  const waBuyerChart = waPkgs.map(p => ({
+    name: p.name,
+    Buyers:   p.purchase_count || 0,
+    Revenue:  Math.round((p.total_revenue || 0) / 1000),
+  }));
+
+  const PKG_COLORS = [BRAND, GREEN, AMBER, VIOLET, CYAN, ORANGE, PINK];
+
+  // ── Package card renderer ─────────────────────────────────────────────────
+  const PkgCard = ({ p, accent }) => (
+    <div className="senda-card" style={{
+      padding: 18,
+      borderTop: `3px solid ${accent}`,
+      position: 'relative',
+      opacity: p.active === false ? 0.55 : 1,
+    }}>
+      {p.popular && (
+        <div style={{position:'absolute',top:12,right:12,background:accent,color:'#fff',
+          fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99,letterSpacing:'.08em'}}>
+          POPULAR
+        </div>
+      )}
+      {p.active === false && (
+        <div style={{position:'absolute',top:12,right:p.popular?80:12,background:'#f1f5f9',color:'#94a3b8',
+          fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99,letterSpacing:'.08em'}}>
+          INACTIVE
+        </div>
+      )}
+      <div style={{fontSize:10,fontWeight:700,color:'#cbd5e1',letterSpacing:'.07em',textTransform:'uppercase',marginBottom:3}}>{p.id}</div>
+      <div style={{fontSize:17,fontWeight:800,color:'#0f172a',marginBottom:2}}>{p.name}</div>
+      <div style={{fontSize:12,color:'#64748b',marginBottom:14,minHeight:18}}>{p.desc || ''}</div>
+
+      {/* Core metrics row */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
+        {[
+          { label:'Credits',  value:(p.credits||0).toLocaleString(), color: accent },
+          { label:'Price TZS', value: compactNumber(p.price||0), color:'#0f172a' },
+          { label:'TZS/unit',  value:p.per_sms ?? p.per_conversation ?? '—', color: GREEN },
+        ].map(m=>(
+          <div key={m.label} style={{background:'#f8fafc',borderRadius:8,padding:'8px 10px'}}>
+            <div style={{fontSize:15,fontWeight:800,color:m.color}}>{m.value}</div>
+            <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:1}}>{m.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Purchase analytics */}
+      {(p.purchase_count != null || p.total_revenue != null) && (
+        <div style={{borderTop:'1px solid #f1f5f9',paddingTop:12,display:'flex',gap:16}}>
+          {p.purchase_count != null && (
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:BRAND}}>{(p.purchase_count||0).toLocaleString()}</div>
+              <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em'}}>Buyers</div>
+            </div>
+          )}
+          {p.total_revenue != null && (
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:GREEN}}>{compactNumber(p.total_revenue)} TZS</div>
+              <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em'}}>Revenue</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Sections ──────────────────────────────────────────────────────────────
+  const sections = [
+    { id:'sms',      label:'SMS Packages',       count: smsPkgs.length   },
+    { id:'whatsapp', label:'WhatsApp Packages',  count: waPkgs.length    },
+    { id:'custom',   label:'Custom Deals',       count: custBuyers        },
+  ];
+
+  if (loading) return <LoadingState label="Loading package analytics..."/>;
 
   return (
     <div className="senda-fade-in">
-      {/* Analytics row */}
-      <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'1fr 1fr',gap:16,marginBottom:20}}>
+      {error && (
+        <div style={{padding:'10px 14px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:10,marginBottom:16,fontSize:13,color:'#92400e'}}>
+          {error}
+        </div>
+      )}
+
+      {/* ── Cross-channel KPI strip ── */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:20}}>
+        {[
+          { label:'Total Revenue',    value: compactNumber(totalRev)  + ' TZS',  accent: BRAND   },
+          { label:'SMS Revenue',      value: compactNumber(smsRev)    + ' TZS',  accent: BRAND   },
+          { label:'WhatsApp Revenue', value: compactNumber(waRev)     + ' TZS',  accent: WA_GREEN},
+          { label:'Custom Revenue',   value: compactNumber(custRev)   + ' TZS',  accent: VIOLET  },
+          { label:'Total Buyers',     value: totalBuyers.toLocaleString(),        accent: AMBER   },
+          { label:'Custom Buyers',    value: custBuyers.toLocaleString(),         accent: ORANGE  },
+        ].map(k => (
+          <div key={k.label} className="senda-card" style={{padding:'14px 16px',borderLeft:`3px solid ${k.accent}`}}>
+            <div style={{fontSize:18,fontWeight:800,color:'#0f172a'}}>{k.value}</div>
+            <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:3}}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Charts row ── */}
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 2fr',gap:16,marginBottom:20}}>
+        {/* Revenue channel mix donut */}
         <div className="senda-card" style={{padding:20}}>
-          <SectionHeader title="Credits vs Price Comparison" subtitle="Package value analysis"/>
+          <SectionHeader title="Revenue by Channel" subtitle="SMS · WhatsApp · Custom"/>
           <div style={{height:200}}>
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={cmpData} margin={{top:4,right:8,left:0,bottom:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                <XAxis dataKey="name" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <YAxis yAxisId="left" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v}K`} tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <Tooltip content={<ChartTooltip/>}/>
+              <PieChart>
+                <Pie data={revMix} cx="50%" cy="50%" innerRadius="52%" outerRadius="80%"
+                  paddingAngle={4} dataKey="value" nameKey="name">
+                  {revMix.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                </Pie>
+                <Tooltip formatter={v=>`${compactNumber(v)} TZS`}
+                  contentStyle={{borderRadius:10,border:'none',background:'#1e293b',color:'#f1f5f9'}}/>
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/>
-                <Bar yAxisId="left" dataKey="credits" name="Credits" fill={`${BRAND}99`} radius={[4,4,0,0]} barSize={18}/>
-                <Line yAxisId="right" type="monotone" dataKey="price" name="Price (K TZS)" stroke={AMBER} strokeWidth={2.5} dot={{r:4,fill:AMBER}}/>
-              </ComposedChart>
+              </PieChart>
             </ResponsiveContainer>
           </div>
+          <div style={{display:'flex',justifyContent:'space-around',marginTop:4}}>
+            {revMix.map(d=>(
+              <div key={d.name} style={{textAlign:'center'}}>
+                <div style={{fontSize:12,fontWeight:800,color:d.color}}>{totalRev>0?((d.value/totalRev)*100).toFixed(1):0}%</div>
+                <div style={{fontSize:9,color:'#94a3b8'}}>{d.name}</div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Buyers per package (SMS + WA combined) */}
         <div className="senda-card" style={{padding:20}}>
-          <SectionHeader title="Cost per SMS by Package" subtitle="Lower = better value for customers"/>
+          <SectionHeader
+            title="Buyers per Package"
+            subtitle="Purchase count & revenue (TZS K) across all packages"
+          />
           <div style={{height:200}}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cmpData} layout="vertical" margin={{top:4,right:24,left:60,bottom:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false}/>
-                <XAxis type="number" domain={[6,11]} tickFormatter={v=>`${v} TZS`} tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <YAxis type="category" dataKey="name" tick={{fontSize:11,fill:'#64748b'}} axisLine={false} tickLine={false}/>
-                <Tooltip content={<ChartTooltip prefix="" suffix=" TZS/SMS"/>}/>
-                <Bar dataKey="per_sms" name="Cost/SMS" radius={[0,4,4,0]} barSize={16}>
-                  {cmpData.map((_, i) => <Cell key={i} fill={[BRAND,GREEN,AMBER,VIOLET,CYAN,PINK][i%6]}/>)}
-                </Bar>
+              <BarChart
+                data={[...smsBuyerChart.map(d=>({...d,type:'SMS'})), ...waBuyerChart.map(d=>({...d,type:'WA'}))]}
+                margin={{top:4,right:8,left:0,bottom:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                <XAxis dataKey="name" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                <YAxis yAxisId="left" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                <YAxis yAxisId="right" orientation="right" tickFormatter={v=>`${v}K`} tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                <Tooltip content={<ChartTooltip/>}/>
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/>
+                <Bar yAxisId="left"  dataKey="Buyers"  name="Buyers"        fill={BRAND}       radius={[4,4,0,0]} barSize={14}/>
+                <Bar yAxisId="right" dataKey="Revenue" name="Revenue (K)"   fill={`${GREEN}99`} radius={[4,4,0,0]} barSize={14}/>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Header + Add */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div>
-          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a'}}>SMS Package Manager</h3>
-          <p style={{fontSize:12,color:'#94a3b8',marginTop:2}}>{pkgs.length} packages configured</p>
-        </div>
-        <button className="senda-btn senda-btn-primary" onClick={openAdd} style={{height:38,fontSize:13}}>+ Add Package</button>
-      </div>
-
-      {/* Inline Edit Form */}
-      {isEditing && (
-        <div className="senda-card senda-fade-up" style={{padding:20,marginBottom:16,borderLeft:`4px solid ${BRAND}`}}>
-          <h4 style={{fontSize:14,fontWeight:700,color:'#0f172a',marginBottom:14}}>{editing?'Edit Package':'New Package'}</h4>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
-            {[
-              {k:'name',label:'Package Name',type:'text'},
-              {k:'credits',label:'Credits',type:'number'},
-              {k:'price',label:'Price (TZS)',type:'number'},
-              {k:'per_sms',label:'Cost per SMS',type:'number'},
-              {k:'desc',label:'Description',type:'text'},
-            ].map(f=>(
-              <div key={f.k}>
-                <label style={{fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>{f.label}</label>
-                <input className="senda-input" type={f.type} value={form[f.k]||''} onChange={e=>setForm(p=>({...p,[f.k]:f.type==='number'?+e.target.value:e.target.value}))} style={{height:38,fontSize:13}}/>
-              </div>
-            ))}
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>Popular?</label>
-              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',marginTop:10}}>
-                <input type="checkbox" checked={!!form.popular} onChange={e=>setForm(p=>({...p,popular:e.target.checked}))} style={{width:16,height:16,accentColor:BRAND}}/>
-                <span style={{fontSize:13,color:'#334155'}}>Mark as Popular</span>
-              </label>
-            </div>
-          </div>
-          <div style={{display:'flex',gap:8,marginTop:16}}>
-            <button className="senda-btn senda-btn-primary" onClick={saveEdit} style={{height:36,fontSize:13}}>💾 Save</button>
-            <button className="senda-btn senda-btn-ghost" onClick={()=>{setEditing(null);setShowAdd(false);}} style={{height:36,fontSize:13}}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* Package Cards */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16}}>
-        {pkgs.map(p=>(
-          <div key={p.id} className="senda-card" style={{padding:20,borderTop:`4px solid ${p.color}`,position:'relative',transition:'transform .2s,box-shadow .2s'}}
-            onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';}}
-          >
-            {p.popular && <div style={{position:'absolute',top:12,right:12,background:BRAND,color:'#fff',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99,letterSpacing:'.08em'}}>POPULAR</div>}
-            <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',letterSpacing:'.07em',textTransform:'uppercase',marginBottom:4}}>{p.id}</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:2}}>{p.name}</div>
-            <div style={{fontSize:12,color:'#64748b',marginBottom:14}}>{p.desc}</div>
-            <div style={{display:'flex',gap:16,marginBottom:14}}>
-              <div>
-                <div style={{fontSize:22,fontWeight:800,color:p.color}}>{p.credits.toLocaleString()}</div>
-                <div style={{fontSize:10,color:'#94a3b8',fontWeight:600}}>CREDITS</div>
-              </div>
-              <div>
-                <div style={{fontSize:22,fontWeight:800,color:'#0f172a'}}>{(p.price/1000).toFixed(0)}K</div>
-                <div style={{fontSize:10,color:'#94a3b8',fontWeight:600}}>TZS</div>
-              </div>
-              <div>
-                <div style={{fontSize:22,fontWeight:800,color:GREEN}}>{p.per_sms}</div>
-                <div style={{fontSize:10,color:'#94a3b8',fontWeight:600}}>TZS/SMS</div>
-              </div>
-            </div>
-            <div style={{height:4,background:'#f1f5f9',borderRadius:99,marginBottom:14,overflow:'hidden'}}>
-              <div style={{width:`${(p.credits/50000)*100}%`,background:p.color,height:'100%',borderRadius:99}}/>
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>openEdit(p)} style={{flex:1}}>✏️ Edit</button>
-              <button className="senda-btn senda-btn-sm senda-btn-danger" onClick={()=>deletePkg(p.id)}>🗑</button>
-            </div>
-          </div>
+      {/* ── Section switcher ── */}
+      <div className="tab-wrapper" style={{marginBottom:20}}>
+        {sections.map(s=>(
+          <button key={s.id} className={`tab-btn${section===s.id?' active':''}`} onClick={()=>setSection(s.id)}>
+            {s.label}
+            <span style={{marginLeft:6,fontSize:11,background:section===s.id?`${BRAND}18`:'#f1f5f9',
+              color:section===s.id?BRAND:'#94a3b8',padding:'1px 6px',borderRadius:99,fontWeight:700}}>
+              {s.count}
+            </span>
+          </button>
         ))}
       </div>
+
+      {/* ── SMS Packages ── */}
+      {section === 'sms' && (
+        smsPkgs.length === 0
+          ? <div style={{padding:'40px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No SMS packages found.</div>
+          : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
+              {smsPkgs.map((p,i)=><PkgCard key={p.id} p={p} accent={PKG_COLORS[i%PKG_COLORS.length]}/>)}
+            </div>
+      )}
+
+      {/* ── WhatsApp Packages ── */}
+      {section === 'whatsapp' && (
+        waPkgs.length === 0
+          ? <div style={{padding:'40px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No WhatsApp packages found.</div>
+          : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
+              {waPkgs.map((p,i)=><PkgCard key={p.id} p={p} accent={WA_GREEN}/>)}
+            </div>
+      )}
+
+      {/* ── Custom Deals ── */}
+      {section === 'custom' && (
+        <div>
+          {/* Custom KPIs */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:20}}>
+            {[
+              { label:'Total Custom Buyers', value: custBuyers.toLocaleString(),                 accent: VIOLET  },
+              { label:'Total Revenue',        value: compactNumber(custRev) + ' TZS',             accent: GREEN   },
+              { label:'Avg Deal Size',         value: compactNumber(custAvg) + ' TZS',            accent: BRAND   },
+              { label:'Largest Deal',          value: compactNumber(custMax) + ' TZS',            accent: ORANGE  },
+            ].map(k=>(
+              <div key={k.label} className="senda-card" style={{padding:'16px 18px',borderTop:`3px solid ${k.accent}`}}>
+                <div style={{fontSize:22,fontWeight:800,color:'#0f172a',letterSpacing:'-.5px'}}>{k.value}</div>
+                <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:4}}>{k.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Custom purchases table */}
+          {customList.length === 0
+            ? <div style={{padding:'40px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No custom purchase records found.</div>
+            : (
+              <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+                <div style={{overflowX:'auto'}}>
+                  <table className="senda-table" style={{minWidth:700}}>
+                    <thead>
+                      <tr>
+                        <th>ID</th><th>Customer</th><th>Credits</th>
+                        <th>Total Price (TZS)</th><th>Cost/Unit</th>
+                        <th>Status</th><th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customList.map(c=>(
+                        <tr key={c.id}>
+                          <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{c.id}</td>
+                          <td style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{c.user_email||c.customer||'—'}</td>
+                          <td style={{fontWeight:600}}>{(c.credits||c.sms_credits||0).toLocaleString()}</td>
+                          <td style={{fontWeight:700,color:GREEN}}>{(parseNumberLoose(c.total_price)||0).toLocaleString()}</td>
+                          <td style={{fontSize:12,color:'#475569'}}>{c.per_sms ?? c.cost_per_unit ?? '—'}</td>
+                          <td><Badge status={c.status}/></td>
+                          <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>
+                            {c.created_at ? new Date(c.created_at).toLocaleDateString() : (c.date || '—')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{padding:'10px 16px',borderTop:'1px solid #f1f5f9',fontSize:12,color:'#94a3b8'}}>
+                  {customList.length} custom deal{customList.length!==1?'s':''} · Total {compactNumber(custRev)} TZS
+                </div>
+              </div>
+            )
+          }
+        </div>
+      )}
     </div>
   );
 }
@@ -1209,66 +1766,317 @@ function SmsPackagesTab() {
 // ─── Partners Tab ─────────────────────────────────────────────────────────────
 const TIER_COLOR = { Platinum:'#6366f1', Gold:AMBER, Silver:'#94a3b8' };
 
-function PartnersTab() {
-  const bp = useBreakpoint();
-  const isMobile = bp === 'mobile';
-  const [items, setItems] = useState(partners);
-  const [filter, setFilter] = useState('all');
-  const [tierFilter, setTierFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({});
+function PartnerSenderIdsModal({ partner, onClose }) {
+  const { onLogout } = React.useContext(AppContext);
+  const [senderIds, setSenderIds]       = useState([]);
+  const [apiSummary, setApiSummary]     = useState(null);
+  const [loadedPages, setLoadedPages]   = useState(0);
+  const [totalPages, setTotalPages]     = useState(1);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [source, setSource]             = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch]             = useState('');
 
-  const updateStatus = (id, s) => setItems(p => p.map(x => x.id===id ? {...x, status:s} : x));
-  const openEdit = (pt) => { setEditId(pt.id); setForm({...pt}); setShowAdd(false); };
-  const saveEdit = () => {
-    if (editId) setItems(p=>p.map(x=>x.id===editId?{...form}:x));
-    else setItems(p=>[...p,{...form,id:`PTR-${String(3001+p.length).padStart(4,'0')}`,joinDate:new Date().toISOString().split('T')[0]}]);
-    setEditId(null); setShowAdd(false);
-  };
-  const deleteParter = id => { if(window.confirm('Remove this partner?')) setItems(p=>p.filter(x=>x.id!==id)); };
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setSenderIds([]);
+    setApiSummary(null);
+    setLoadedPages(0);
+    setTotalPages(1);
 
-  const counts = {
-    all:       items.length,
-    active:    items.filter(p=>p.status==='active').length,
-    pending:   items.filter(p=>p.status==='pending').length,
-    suspended: items.filter(p=>p.status==='suspended').length,
-  };
-  const tierCounts = { all:items.length, Platinum:items.filter(p=>p.tier==='Platinum').length, Gold:items.filter(p=>p.tier==='Gold').length, Silver:items.filter(p=>p.tier==='Silver').length };
+    const externalBase = (partner.api_url || partner.base_url || '').replace(/\/$/, '');
 
-  const filtered = items.filter(p => {
-    const ms = filter==='all' || p.status===filter;
-    const mt = tierFilter==='all' || p.tier===tierFilter;
-    const q  = search.toLowerCase();
-    return ms && mt && (!q || p.name.toLowerCase().includes(q) || p.contact.includes(q) || p.region.toLowerCase().includes(q));
+    if (externalBase) {
+      setSource(externalBase);
+
+      const fetchPage = (page) =>
+        fetch(`${externalBase}/api/user-senders?limit=100&page=${page}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include',
+        }).then(r => r.json());
+
+      // Fetch page 1 first to get meta + summary
+      fetchPage(1)
+        .then(res => {
+          const rows  = res.data ?? res.results ?? res.sender_ids ?? (Array.isArray(res) ? res : []);
+          const meta  = res.meta || {};
+          const pages = meta.total_pages || 1;
+
+          if (res.summary) setApiSummary(res.summary);
+          setTotalPages(pages);
+          setLoadedPages(1);
+          setSenderIds(rows);
+
+          // Fetch remaining pages in parallel if any
+          if (pages > 1) {
+            const remaining = Array.from({ length: pages - 1 }, (_, i) => fetchPage(i + 2));
+            Promise.all(remaining)
+              .then(responses => {
+                const extra = responses.flatMap(r =>
+                  r.data ?? r.results ?? r.sender_ids ?? (Array.isArray(r) ? r : [])
+                );
+                setSenderIds(prev => [...prev, ...extra]);
+                setLoadedPages(pages);
+              })
+              .catch(() => {/* partial data already shown */});
+          }
+        })
+        .catch(e => setError(e.message))
+        .finally(() => setLoading(false));
+
+    } else {
+      setSource(BASE_URL);
+      const qs = new URLSearchParams({ limit: 100 });
+      if (partner.id)      qs.set('partner_id', partner.id);
+      if (partner.user_id) qs.set('user_id', partner.user_id);
+      adminFetch(`/sender-ids?${qs}`, {}, onLogout)
+        .then(res => {
+          if (res.success) {
+            setSenderIds(res.data || []);
+            if (res.summary) setApiSummary(res.summary);
+          } else {
+            setError(res.error?.message || 'Failed to load sender IDs.');
+          }
+        })
+        .catch(e => setError(e.message))
+        .finally(() => setLoading(false));
+    }
+  }, [partner, onLogout]);
+
+  const tierColor = TIER_COLOR[partner.tier] || BRAND;
+
+  // Prefer API-supplied summary for true totals; fall back to counting loaded rows
+  const statusCounts = React.useMemo(() => {
+    if (apiSummary) {
+      return {
+        all:             apiSummary.total            ?? senderIds.length,
+        approved:        apiSummary.approved         ?? 0,
+        pending:         apiSummary.pending          ?? 0,
+        rejected:        apiSummary.rejected         ?? 0,
+        require_changes: apiSummary.require_changes  ?? 0,
+        await_payment:   apiSummary.await_payment    ?? 0,
+      };
+    }
+    const map = { all: senderIds.length };
+    senderIds.forEach(s => {
+      const k = (s.status || 'unknown').toLowerCase();
+      map[k] = (map[k] || 0) + 1;
+    });
+    return map;
+  }, [apiSummary, senderIds]);
+
+  const filtered = senderIds.filter(s => {
+    const matchStatus = statusFilter === 'all' || (s.status || '').toLowerCase() === statusFilter;
+    const q = search.toLowerCase();
+    const matchSearch = !q ||
+      (s.name || s.sender_name || s.sender_id || '').toLowerCase().includes(q) ||
+      (s.user_email || s.user || s.owner || '').toLowerCase().includes(q);
+    return matchStatus && matchSearch;
   });
 
-  const totalRevenue = items.reduce((s,p)=>s+p.revenue,0);
-  const totalComm    = items.reduce((s,p)=>s+p.commission,0);
-  const totalClients = items.reduce((s,p)=>s+p.clients,0);
-  const totalSMS     = items.reduce((s,p)=>s+p.smsSent,0);
+  const STATUS_FILTERS = [
+    { key: 'all',              label: 'All',             color: BRAND  },
+    { key: 'approved',         label: 'Approved',        color: GREEN  },
+    { key: 'pending',          label: 'Pending',         color: AMBER  },
+    { key: 'rejected',         label: 'Rejected',        color: RED    },
+    { key: 'require_changes',  label: 'Require Changes', color: CYAN   },
+    { key: 'await_payment',    label: 'Await Payment',   color: VIOLET },
+  ].filter(f => f.key === 'all' || (statusCounts[f.key] || 0) > 0);
 
-  const isEditing = editId || showAdd;
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:9000,background:'#f8fafc',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+
+      {/* ── Top bar ── */}
+      <div style={{height:64,background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',alignItems:'center',padding:'0 24px',gap:16,flexShrink:0,boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
+        <button onClick={onClose} style={{display:'flex',alignItems:'center',gap:6,border:'none',background:'#f1f5f9',borderRadius:8,height:34,padding:'0 12px',cursor:'pointer',fontSize:13,fontWeight:600,color:'#475569',flexShrink:0}}>
+          ← Back
+        </button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:16,fontWeight:800,color:'#0f172a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{partner.name}</span>
+            <span style={{padding:'2px 9px',borderRadius:99,fontSize:10,fontWeight:700,background:`${tierColor}18`,color:tierColor,flexShrink:0}}>{partner.tier}</span>
+            <Badge status={partner.status}/>
+          </div>
+          <div style={{fontSize:10,color:'#94a3b8',marginTop:1}}>Sender IDs · {partner.api_url || partner.base_url ? 'External API' : 'SENDA API'}</div>
+        </div>
+        <code style={{fontSize:10,color:'#cbd5e1',display:'none'}}>{source}</code>
+      </div>
+
+      {/* ── KPI strip ── */}
+      {!error && (
+        <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',padding:'12px 24px',display:'flex',gap:32,alignItems:'center',flexShrink:0,overflowX:'auto'}}>
+          {[
+            { label:'Total Sender IDs', value: statusCounts['all']             || 0, color: BRAND  },
+            { label:'Approved',         value: statusCounts['approved']        || 0, color: GREEN  },
+            { label:'Pending',          value: statusCounts['pending']         || 0, color: AMBER  },
+            { label:'Rejected',         value: statusCounts['rejected']        || 0, color: RED    },
+            { label:'Require Changes',  value: statusCounts['require_changes'] || 0, color: CYAN   },
+            { label:'Await Payment',    value: statusCounts['await_payment']   || 0, color: VIOLET },
+          ].map(k => (
+            <div key={k.label} style={{flexShrink:0}}>
+              <div style={{fontSize:22,fontWeight:800,color:k.color,lineHeight:1}}>
+                {loading ? '…' : k.value}
+              </div>
+              <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginTop:3}}>{k.label}</div>
+            </div>
+          ))}
+          {/* Background pagination progress */}
+          {!loading && totalPages > 1 && loadedPages < totalPages && (
+            <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+              <div style={{width:14,height:14,borderRadius:'50%',border:`2px solid ${BRAND}`,borderTopColor:'transparent',animation:'spin 0.7s linear infinite'}}/>
+              <span style={{fontSize:11,color:'#94a3b8'}}>Loading page {loadedPages}/{totalPages}…</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Filter + Search bar ── */}
+      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',padding:'10px 24px',display:'flex',alignItems:'center',gap:10,flexShrink:0,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+          {STATUS_FILTERS.map(f => (
+            <button key={f.key} onClick={()=>setStatusFilter(f.key)}
+              style={{height:30,padding:'0 11px',borderRadius:7,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,
+                background: statusFilter===f.key ? f.color : '#f1f5f9',
+                color: statusFilter===f.key ? '#fff' : '#64748b',
+                transition:'all .15s',
+              }}>
+              {f.label}
+              <span style={{marginLeft:5,fontSize:10,fontWeight:700,
+                background: statusFilter===f.key ? 'rgba(255,255,255,.25)' : '#e2e8f0',
+                color: statusFilter===f.key ? '#fff' : '#94a3b8',
+                padding:'1px 5px',borderRadius:99}}>
+                {statusCounts[f.key] || 0}
+              </span>
+            </button>
+          ))}
+        </div>
+        <input
+          value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search sender name or user…"
+          className="senda-input"
+          style={{height:32,fontSize:12,width:220,marginLeft:'auto'}}
+        />
+        <span style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>
+          {filtered.length} result{filtered.length!==1?'s':''}
+          {loadedPages < totalPages && <span style={{color:AMBER}}> · loading…</span>}
+        </span>
+      </div>
+
+      {/* ── Table ── */}
+      <div style={{flex:1,overflowY:'auto',padding:'0 24px 24px'}}>
+        {loading ? (
+          <div style={{padding:60,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading sender IDs…</div>
+        ) : error ? (
+          <div style={{padding:40,textAlign:'center',color:RED,fontSize:13}}>{error}</div>
+        ) : senderIds.length === 0 ? (
+          <div style={{padding:60,textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs found for this partner.</div>
+        ) : (
+          <div className="senda-card senda-table-wrap" style={{marginTop:16,overflow:'hidden'}}>
+            <div style={{overflowX:'auto'}}>
+              <table className="senda-table" style={{minWidth:640}}>
+                <thead>
+                  <tr>
+                    <th>#</th><th>Sender Name</th><th>User / Owner</th><th>Status</th><th>Registered</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s, i) => (
+                    <tr key={s.id || i}>
+                      <td style={{fontSize:11,color:'#cbd5e1',fontWeight:600,width:40}}>{i + 1}</td>
+                      <td style={{fontWeight:700,color:'#0f172a'}}>{s.name || s.sender_name || s.sender_id || '—'}</td>
+                      <td style={{fontSize:12,color:'#64748b',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {s.user_email || s.user || s.owner || s.contact || '—'}
+                      </td>
+                      <td><Badge status={s.status}/></td>
+                      <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>
+                        {s.created_at ? new Date(s.created_at).toLocaleDateString() : (s.date || '—')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {filtered.length === 0 && (
+              <div style={{padding:'28px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs match this filter.</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PartnersTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
+  const [items, setItems]                     = useState([]);
+  const [summary, setSummary]                 = useState({});
+  const [revTrend, setRevTrend]               = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [error, setError]                     = useState(null);
+  const [filter, setFilter]                   = useState('all');
+  const [search, setSearch]                   = useState('');
+  const [selectedPartner, setSelectedPartner] = useState(null);
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    Promise.all([
+      adminFetch('/partners', {}, onLogout),
+      adminFetch('/partners/analytics/revenue-trend?months=6', {}, onLogout),
+    ]).then(([pRes, rRes]) => {
+      if (pRes.success) {
+        setItems(pRes.data || []);
+        if (pRes.summary) setSummary(pRes.summary);
+      } else {
+        setError(pRes.error?.message || 'Failed to load partners.');
+      }
+      if (rRes.success) setRevTrend(rRes.data || []);
+    }).catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Prefer API summary for accurate platform-wide counts
+  const totalPartners = summary.total          ?? items.length;
+  const activeCount   = summary.active         ?? items.filter(p=>p.status==='active').length;
+  const pendingCount  = summary.pending        ?? items.filter(p=>p.status==='pending').length;
+  const suspendedCount= summary.suspended      ?? items.filter(p=>p.status==='suspended').length;
+  const totalClients  = summary.total_clients  ?? items.reduce((s,p)=>s+(p.clients||0),0);
+  const totalSMS      = summary.total_sms_sent ?? items.reduce((s,p)=>s+(p.sms_sent||0),0);
+  const totalRevenue  = summary.total_revenue  ?? items.reduce((s,p)=>s+(p.revenue||0),0);
+  const totalComm     = summary.total_commission ?? items.reduce((s,p)=>s+(p.commission||0),0);
+
+  // Table filter runs on the loaded items array
+  const filtered = items.filter(p => {
+    const ms = filter==='all' || p.status===filter;
+    const q  = search.toLowerCase();
+    return ms && (!q || (p.name||'').toLowerCase().includes(q) || (p.contact||'').includes(q) || (p.region||'').toLowerCase().includes(q));
+  });
 
   return (
     <div className="senda-fade-in">
-
       {/* ── KPI cards ── */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
         {[
-          {l:'Total Partners', v:items.length,                   c:BRAND,  i:'🤝'},
-          {l:'Active',         v:counts.active,                  c:GREEN,  i:'✅'},
-          {l:'Pending',        v:counts.pending,                 c:AMBER,  i:'⏳'},
-          {l:'Suspended',      v:counts.suspended,               c:RED,    i:'🚫'},
-          {l:'Total Clients',  v:totalClients,                   c:VIOLET, i:'👥'},
-          {l:'SMS via Partners',v:`${(totalSMS/1000).toFixed(0)}K`,c:CYAN, i:'📨'},
-          {l:'Partner Revenue',v:`${(totalRevenue/1000000).toFixed(1)}M`,c:ORANGE,i:'💰'},
-          {l:'Commissions',    v:`${(totalComm/1000000).toFixed(2)}M`,c:GREEN,i:'💸'},
+          {l:'Total Partners',  v:totalPartners,                               c:BRAND,  Icon:Handshake},
+          {l:'Active',          v:activeCount,                               c:GREEN,  Icon:CheckCircle2},
+          {l:'Pending',         v:pendingCount,                              c:AMBER,  Icon:Hourglass},
+          {l:'Suspended',       v:suspendedCount,                            c:RED,    Icon:Ban},
+          {l:'Total Clients',   v:totalClients.toLocaleString(),             c:VIOLET, Icon:Users},
+          {l:'SMS via Partners',v:compactNumber(totalSMS),                   c:CYAN,   Icon:MessageSquare},
+          {l:'Partner Revenue', v:compactNumber(totalRevenue) + ' TZS',      c:ORANGE, Icon:Wallet},
+          {l:'Commissions',     v:compactNumber(totalComm) + ' TZS',         c:GREEN,  Icon:DollarSign},
         ].map(x=>(
           <div key={x.l} className="senda-card" style={{padding:'12px 14px'}}>
             <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              <div style={{width:32,height:32,borderRadius:8,background:`${x.c}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{x.i}</div>
+              <div style={{width:32,height:32,borderRadius:8,background:`${x.c}18`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <x.Icon size={16} strokeWidth={2.2} color={x.c} />
+              </div>
               <div>
                 <div style={{fontSize:18,fontWeight:800,color:'#0f172a'}}>{x.v}</div>
                 <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em'}}>{x.l}</div>
@@ -1279,110 +2087,42 @@ function PartnersTab() {
       </div>
 
       {/* ── Analytics charts ── */}
-      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:16,marginBottom:20}}>
-        <div className="senda-card" style={{padding:20}}>
-          <SectionHeader title="Partner Revenue & Commission Trend" subtitle="6-month growth with commission overlay"/>
-          <div style={{height:isMobile?160:200}}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={partnerRevTrend} margin={{top:4,right:8,left:0,bottom:0}}>
-                <defs>
-                  <linearGradient id="partnerRevGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={BRAND} stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor={BRAND} stopOpacity={0.02}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                <XAxis dataKey="month" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <YAxis yAxisId="left"  tickFormatter={v=>`${(v/1000000).toFixed(1)}M`} tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <YAxis yAxisId="right" orientation="right" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                <Tooltip content={<ChartTooltip/>}/>
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/>
-                <Area yAxisId="left" type="monotone" dataKey="revenue" name="Revenue (TZS)" stroke={BRAND} fill="url(#partnerRevGrad)" strokeWidth={2}/>
-                <Bar yAxisId="left" dataKey="commission" name="Commission" fill={`${GREEN}99`} radius={[4,4,0,0]} barSize={12}/>
-                <Line yAxisId="right" type="monotone" dataKey="clients" name="Active Clients" stroke={VIOLET} strokeWidth={2.5} dot={{r:3,fill:VIOLET}}/>
-              </ComposedChart>
-            </ResponsiveContainer>
+      {!loading && !error && (
+        <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:16,marginBottom:20}}>
+          <div className="senda-card" style={{padding:20}}>
+            <SectionHeader title="Partner Revenue & Commission Trend" subtitle="6-month growth with commission overlay"/>
+            <div style={{height:isMobile?160:200}}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={revTrend} margin={{top:4,right:8,left:0,bottom:0}}>
+                  <defs>
+                    <linearGradient id="partnerRevGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={BRAND} stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor={BRAND} stopOpacity={0.02}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                  <XAxis dataKey="month" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                  <YAxis yAxisId="left"  tickFormatter={v=>`${(v/1000000).toFixed(1)}M`} tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                  <Tooltip content={<ChartTooltip/>}/>
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/>
+                  <Area yAxisId="left" type="monotone" dataKey="revenue" name="Revenue (TZS)" stroke={BRAND} fill="url(#partnerRevGrad)" strokeWidth={2}/>
+                  <Bar yAxisId="left" dataKey="commission" name="Commission" fill={`${GREEN}99`} radius={[4,4,0,0]} barSize={12}/>
+                  <Line yAxisId="right" type="monotone" dataKey="clients" name="Active Clients" stroke={VIOLET} strokeWidth={2.5} dot={{r:3,fill:VIOLET}}/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="senda-card" style={{padding:20}}>
-          <SectionHeader title="Partner Tier Distribution" subtitle="Platinum / Gold / Silver breakdown"/>
-          <div style={{height:isMobile?140:160}}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={tierDist} cx="50%" cy="50%" innerRadius="50%" outerRadius="78%" paddingAngle={4} dataKey="value">
-                  {tierDist.map((d,i)=><Cell key={i} fill={d.color}/>)}
-                </Pie>
-                <Tooltip formatter={v=>v} contentStyle={{borderRadius:10,border:'none',background:'#1e293b',color:'#f1f5f9'}}/>
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11}}/>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{display:'flex',justifyContent:'space-around',marginTop:4}}>
-            {tierDist.map(d=>(
-              <div key={d.name} style={{textAlign:'center'}}>
-                <div style={{fontSize:18,fontWeight:800,color:d.color}}>{d.value}</div>
-                <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em'}}>{d.name}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Header + Add button ── */}
+      {/* ── Header ── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <div>
           <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a'}}>Partner Directory</h3>
           <p style={{fontSize:12,color:'#94a3b8',marginTop:2}}>{filtered.length} partners shown</p>
         </div>
-        <button className="senda-btn senda-btn-primary" onClick={()=>{setShowAdd(true);setEditId(null);setForm({name:'',contact:'',phone:'',region:'Dar es Salaam',tier:'Silver',status:'pending',clients:0,smsSent:0,revenue:0,commission:0,apiKey:`pk_live_${Math.random().toString(36).substr(2,16)}`});}} style={{height:38,fontSize:13}}>
-          + Add Partner
-        </button>
       </div>
-
-      {/* ── Inline add/edit form ── */}
-      {isEditing && (
-        <div className="senda-card senda-fade-up" style={{padding:20,marginBottom:16,borderLeft:`4px solid ${BRAND}`}}>
-          <h4 style={{fontSize:14,fontWeight:700,color:'#0f172a',marginBottom:14}}>{editId?'Edit Partner':'Onboard New Partner'}</h4>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
-            {[
-              {k:'name',label:'Agency Name',type:'text'},
-              {k:'contact',label:'Contact Email',type:'email'},
-              {k:'phone',label:'Phone',type:'text'},
-              {k:'region',label:'Region',type:'text'},
-            ].map(f=>(
-              <div key={f.k}>
-                <label style={{fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>{f.label}</label>
-                <input className="senda-input" type={f.type} value={form[f.k]||''} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={{height:38,fontSize:13}}/>
-              </div>
-            ))}
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>Tier</label>
-              <select value={form.tier||'Silver'} onChange={e=>setForm(p=>({...p,tier:e.target.value}))}
-                className="senda-input" style={{height:38,fontSize:13,cursor:'pointer'}}>
-                <option>Silver</option><option>Gold</option><option>Platinum</option>
-              </select>
-            </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>Status</label>
-              <select value={form.status||'pending'} onChange={e=>setForm(p=>({...p,status:e.target.value}))}
-                className="senda-input" style={{height:38,fontSize:13,cursor:'pointer'}}>
-                <option value="active">Active</option><option value="pending">Pending</option><option value="suspended">Suspended</option>
-              </select>
-            </div>
-          </div>
-          {form.apiKey && (
-            <div style={{marginTop:12,padding:'8px 12px',background:'#f8fafc',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:11,color:'#94a3b8',fontWeight:600}}>API KEY:</span>
-              <code style={{fontSize:11,color:'#1e293b',fontFamily:'monospace'}}>{form.apiKey}</code>
-            </div>
-          )}
-          <div style={{display:'flex',gap:8,marginTop:14}}>
-            <button className="senda-btn senda-btn-primary" onClick={saveEdit} style={{height:36,fontSize:13}}>💾 Save</button>
-            <button className="senda-btn senda-btn-ghost" onClick={()=>{setEditId(null);setShowAdd(false);}} style={{height:36,fontSize:13}}>Cancel</button>
-          </div>
-        </div>
-      )}
 
       {/* ── Filters ── */}
       <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
@@ -1392,140 +2132,252 @@ function PartnersTab() {
           {[['all','All'],['active','Active'],['pending','Pending'],['suspended','Suspended']].map(([k,l])=>(
             <button key={k} className="senda-btn senda-btn-sm" onClick={()=>setFilter(k)}
               style={{background:filter===k?BRAND:'#f1f5f9',color:filter===k?'#fff':'#64748b',border:'none'}}>
-              {l} ({counts[k]??items.length})
+              {l} ({k==='all'?totalPartners:k==='active'?activeCount:k==='pending'?pendingCount:suspendedCount})
             </button>
           ))}
         </div>
-        <div style={{display:'flex',gap:4}}>
-          {['all','Platinum','Gold','Silver'].map(t=>(
-            <button key={t} className="senda-btn senda-btn-sm" onClick={()=>setTierFilter(t)}
-              style={{background:tierFilter===t?(TIER_COLOR[t]||BRAND):'#f1f5f9',color:tierFilter===t?'#fff':'#64748b',border:'none'}}>
-              {t==='all'?'All Tiers':t}
-            </button>
-          ))}
-        </div>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
       </div>
 
       {/* ── Table ── */}
-      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="senda-table" style={{minWidth:860}}>
-            <thead>
-              <tr>
-                <th>ID</th><th>Agency Name</th><th>Contact</th><th>Region</th>
-                <th>Tier</th><th>Clients</th><th>SMS Sent</th>
-                <th>Revenue (TZS)</th><th>Commission</th><th>Status</th><th>Joined</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(p=>(
-                <tr key={p.id}>
-                  <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{p.id}</td>
-                  <td style={{fontWeight:700,color:'#0f172a'}}>{p.name}</td>
-                  <td style={{fontSize:11,color:'#64748b',maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.contact}</td>
-                  <td style={{fontSize:12}}>{p.region}</td>
-                  <td>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:`${TIER_COLOR[p.tier]}22`,color:TIER_COLOR[p.tier]}}>
-                      {p.tier==='Platinum'?'💎':p.tier==='Gold'?'🥇':'🥈'} {p.tier}
-                    </span>
-                  </td>
-                  <td style={{fontWeight:600}}>{p.clients}</td>
-                  <td style={{fontWeight:600}}>{(p.smsSent/1000).toFixed(1)}K</td>
-                  <td style={{fontWeight:700,color:GREEN}}>{(p.revenue/1000).toFixed(0)}K</td>
-                  <td style={{fontWeight:600,color:ORANGE}}>{(p.commission/1000).toFixed(0)}K</td>
-                  <td><Badge status={p.status}/></td>
-                  <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{p.joinDate}</td>
-                  <td>
-                    <div style={{display:'flex',gap:3}}>
-                      {p.status==='pending'   && <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(p.id,'active')}>✅ Activate</button>}
-                      {p.status==='active'    && <button className="senda-btn senda-btn-sm senda-btn-danger"  style={{fontSize:11}} onClick={()=>updateStatus(p.id,'suspended')}>🚫 Suspend</button>}
-                      {p.status==='suspended' && <button className="senda-btn senda-btn-sm senda-btn-success" style={{fontSize:11}} onClick={()=>updateStatus(p.id,'active')}>↩ Reinstate</button>}
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{fontSize:11}} onClick={()=>openEdit(p)}>✏️</button>
-                      <button className="senda-btn senda-btn-sm senda-btn-danger" style={{fontSize:11}} onClick={()=>deleteParter(p.id)}>🗑</button>
-                    </div>
-                  </td>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:860}}>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Agency Name</th><th>Contact</th><th>Region</th>
+                  <th>Tier</th><th>Sender IDs</th><th>Clients</th><th>SMS Sent</th>
+                  <th>Revenue (TZS)</th><th>Commission</th><th>Status</th><th>Joined</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map(p=>(
+                  <tr key={p.id}>
+                    <td
+                      style={{fontWeight:600,color:BRAND,fontSize:12,cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}
+                      title="Click to view sender IDs"
+                      onClick={()=>setSelectedPartner(p)}
+                    >{p.id}</td>
+                    <td style={{fontWeight:700,color:'#0f172a'}}>{p.name}</td>
+                    <td style={{fontSize:11,color:'#64748b',maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.contact}</td>
+                    <td style={{fontSize:12}}>{p.region}</td>
+                    <td>
+                      <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:`${TIER_COLOR[p.tier]||BRAND}18`,color:TIER_COLOR[p.tier]||BRAND}}>
+                        <span style={{width:6,height:6,borderRadius:'50%',background:TIER_COLOR[p.tier]||BRAND,flexShrink:0,display:'inline-block'}}/>
+                        {p.tier || '—'}
+                      </span>
+                    </td>
+                    <td style={{fontWeight:600,color:CYAN,cursor:'pointer'}} onClick={()=>setSelectedPartner(p)}>
+                      {p.sender_id_count ?? p.sender_ids_count ?? p.sender_ids ?? (
+                        <span style={{fontSize:11,color:BRAND,textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}>View</span>
+                      )}
+                    </td>
+                    <td style={{fontWeight:600}}>{(p.clients||0).toLocaleString()}</td>
+                    <td style={{fontWeight:600}}>{compactNumber(p.sms_sent||0)}</td>
+                    <td style={{fontWeight:700,color:GREEN}}>{compactNumber(p.revenue||0)}</td>
+                    <td style={{fontWeight:600,color:ORANGE}}>{compactNumber(p.commission||0)}</td>
+                    <td><Badge status={p.status}/></td>
+                    <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{p.join_date ? new Date(p.join_date).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length===0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No partners match the current filter.</div>}
         </div>
-        {filtered.length===0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No partners match the current filter.</div>}
-      </div>
+      )}
+
+      {selectedPartner && (
+        <PartnerSenderIdsModal partner={selectedPartner} onClose={()=>setSelectedPartner(null)}/>
+      )}
     </div>
   );
 }
 
 // ─── Users Management Tab ─────────────────────────────────────────────────────
 function UsersTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
-  const [search, setSearch] = useState('');
+  const [search, setSearch]       = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [items, setItems]         = useState([]);
+  const [meta, setMeta]           = useState({});
+  const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const PER = 15;
 
-  const users = Array.from({length:20}, (_,i) => ({
-    id: `USR-${String(1001+i).padStart(5,'0')}`,
-    name: ['Alice Mwanga','Bob Karibu','Clara Ndoto','David Moshi','Eva Nyerere','Frank Soko','Grace Tembo','Henry Juma','Irene Bongo','James Kibet'][i%10],
-    email: `user${i+1}@${['gmail','yahoo','outlook','senda'][i%4]}.com`,
-    phone: `+2557${String(10000000+i*1234567).slice(0,8)}`,
-    role: i===0?'admin':i%5===0?'partner':'user',
-    status: i%9===0?'suspended':'active',
-    joined: new Date(Date.now()-i*7*86400000).toISOString().split('T')[0],
-    smsSent: Math.floor(Math.random()*5000+100),
-    balance: Math.floor(Math.random()*50000+500),
-  }));
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page, limit: PER });
+    if (filterRole !== 'all')   qs.set('role', filterRole);
+    if (filterStatus !== 'all') qs.set('status', filterStatus);
+    if (search.trim())          qs.set('search', search.trim());
+    adminFetch(`/users?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setItems(res.data || []); setMeta(res.meta || {}); }
+        else setError(res.error?.message || 'Failed to load users.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, filterRole, filterStatus, search, onLogout]);
 
-  const filtered = users.filter(u => {
-    const m = filterRole==='all' || u.role===filterRole;
-    const q = search.toLowerCase();
-    return m && (!q || u.name.toLowerCase().includes(q) || u.email.includes(q));
-  });
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const total = meta.total || 0;
+  const pages = meta.total_pages || 1;
 
   return (
     <div className="senda-fade-in">
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-        <input className="senda-input" placeholder="Search by name, email..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:bp==='mobile'?'100%':260,height:38,fontSize:13}}/>
+        <input className="senda-input" placeholder="Search by name, email..." value={search}
+          onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{width:bp==='mobile'?'100%':260,height:38,fontSize:13}}/>
         <div style={{display:'flex',gap:4}}>
           {['all','admin','partner','user'].map(f=>(
-            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setFilterRole(f)}
+            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>{setFilterRole(f);setPage(1);}}
               style={{background:filterRole===f?BRAND:'#f1f5f9',color:filterRole===f?'#fff':'#64748b',border:'none'}}>
               {f.charAt(0).toUpperCase()+f.slice(1)}
             </button>
           ))}
         </div>
-        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{filtered.length} users</span>
+        <div style={{display:'flex',gap:4}}>
+          {['all','active','suspended'].map(f=>(
+            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>{setFilterStatus(f);setPage(1);}}
+              style={{background:filterStatus===f?(f==='suspended'?RED:f==='active'?GREEN:BRAND):'#f1f5f9',color:filterStatus===f?'#fff':'#64748b',border:'none'}}>
+              {f.charAt(0).toUpperCase()+f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{total} users</span>
       </div>
 
-      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="senda-table" style={{minWidth:780}}>
-            <thead>
-              <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {filtered.map(u=>(
-                <tr key={u.id}>
-                  <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{u.id}</td>
-                  <td style={{fontWeight:600,color:'#0f172a'}}>{u.name}</td>
-                  <td style={{fontSize:12,color:'#64748b'}}>{u.email}</td>
-                  <td style={{fontFamily:'monospace',fontSize:12}}>{u.phone}</td>
-                  <td><Badge status={u.role}/></td>
-                  <td style={{fontWeight:600}}>{u.smsSent.toLocaleString()}</td>
-                  <td style={{fontWeight:600,color:GREEN}}>{u.balance.toLocaleString()}</td>
-                  <td><Badge status={u.status}/></td>
-                  <td style={{fontSize:12,color:'#64748b'}}>{u.joined}</td>
-                  <td>
-                    <div style={{display:'flex',gap:4}}>
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" title="View">👁</button>
-                      {u.status==='active'
-                        ? <button className="senda-btn senda-btn-sm senda-btn-danger" title="Suspend" style={{fontSize:11}}>Suspend</button>
-                        : <button className="senda-btn senda-btn-sm senda-btn-success" title="Activate" style={{fontSize:11}}>Activate</button>
-                      }
-                    </div>
-                  </td>
-                </tr>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:780}}>
+              <thead>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>Joined</th></tr>
+              </thead>
+              <tbody>
+                {items.map(u=>(
+                  <tr key={u.id}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{u.id}</td>
+                    <td style={{fontWeight:600,color:'#0f172a'}}>{u.name}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{u.email}</td>
+                    <td style={{fontFamily:'monospace',fontSize:12}}>{u.phone}</td>
+                    <td><Badge status={u.role}/></td>
+                    <td style={{fontWeight:600}}>{(u.sms_sent||0).toLocaleString()}</td>
+                    <td style={{fontWeight:600,color:GREEN}}>{(u.balance||0).toLocaleString()}</td>
+                    <td><Badge status={u.status}/></td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {items.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No users found.</div>}
+          {/* Pagination */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} of {pages} · {total} total</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page===1} onClick={()=>setPage(p=>p-1)} style={{opacity:page===1?.4:1}}>← Prev</button>
+              {Array.from({length:Math.min(pages,7)},(_,i)=>i+1).map(p=>(
+                <button key={p} className="senda-btn senda-btn-sm" onClick={()=>setPage(p)}
+                  style={{background:p===page?BRAND:'#f1f5f9',color:p===page?'#fff':'#64748b',border:'none',minWidth:30}}>
+                  {p}
+                </button>
               ))}
-            </tbody>
-          </table>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:page>=pages?.4:1}}>Next →</button>
+            </div>
+          </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Operations Tab ───────────────────────────────────────────────────────────
+const OPS_LINKS = [
+  {
+    title: 'Revenue Overview',
+    url: 'https://mifumosms.mifumolabs.com/api/revenue-overview/',
+    kind: 'HTML Page',
+    desc: 'Aggregated completed revenue from all sources — PaymentTransaction, Purchase, CustomSMSPurchase, SenderIDRequestPayment, and ManualActivityLog. Requires staff/superuser session.',
+  },
+  {
+    title: 'User Accounts Admin',
+    url: 'https://mifumosms.mifumolabs.com/sys-admin-control-v3/accounts/user/',
+    kind: 'Django Admin',
+    desc: 'Full Django admin interface for the accounts app — view, search, and manage all registered user accounts.',
+  },
+  {
+    title: 'User Analysis',
+    url: 'https://mifumosms.mifumolabs.com/sys-admin-control-v3/user-analysis/',
+    kind: 'Django Admin',
+    desc: 'Inactive user tracking and analysis tooling for churn monitoring and engagement insights.',
+  },
+  {
+    title: 'SMS Dashboard',
+    url: 'https://mifumosms.mifumolabs.com/sys-admin-control-v3/sms-dashboard/',
+    kind: 'Django Admin',
+    desc: 'SMS delivery statistics, channel performance, and related stats under the sms-dashboard admin app.',
+  },
+];
+
+function OperationsTab() {
+  return (
+    <div className="senda-fade-in">
+      <div className="senda-card" style={{
+        padding:'14px 18px', marginBottom:20,
+        borderLeft:`4px solid ${AMBER}`, background:'#fffbeb',
+      }}>
+        <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+          <AlertTriangle size={15} strokeWidth={2} color={AMBER} style={{marginTop:2,flexShrink:0}}/>
+          <div>
+            <p style={{fontSize:13,fontWeight:600,color:'#92400e',margin:0}}>Session Cookie Authentication Required</p>
+            <p style={{fontSize:12,color:'#b45309',margin:'3px 0 0',lineHeight:1.5}}>
+              These pages use Django session authentication — not Bearer tokens. Log in as a staff or superuser on sys-admin-control-v3 before opening these links.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
+        {OPS_LINKS.map(l => (
+          <div key={l.url} className="senda-card" style={{padding:24,display:'flex',flexDirection:'column',gap:12}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+              <div>
+                <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>{l.kind}</p>
+                <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>{l.title}</h3>
+              </div>
+              <div style={{width:36,height:36,borderRadius:10,background:'#eff6ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                <Globe size={16} strokeWidth={2} color={BRAND}/>
+              </div>
+            </div>
+            <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:0,flex:1}}>{l.desc}</p>
+            <div style={{borderTop:'1px solid #f1f5f9',paddingTop:12}}>
+              <code style={{fontSize:10,color:'#94a3b8',wordBreak:'break-all',display:'block',marginBottom:10,lineHeight:1.4}}>{l.url}</code>
+              <a
+                href={l.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display:'inline-flex',alignItems:'center',gap:6,
+                  padding:'0 14px',height:34,borderRadius:8,
+                  background:BRAND,color:'#fff',
+                  fontSize:13,fontWeight:600,textDecoration:'none',
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.background=BRAND2;}}
+                onMouseLeave={e=>{e.currentTarget.style.background=BRAND;}}
+              >
+                <ExternalLink size={13} strokeWidth={2.2}/>
+                Open
+              </a>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1533,13 +2385,14 @@ function UsersTab() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const NAV = [
-  { id:'overview',    icon:'📊', label:'Overview'      },
-  { id:'users',       icon:'👥', label:'Users'          },
-  { id:'transactions',icon:'💳', label:'Transactions'   },
-  { id:'senderids',   icon:'🏷️', label:'Sender IDs'    },
-  { id:'partners',    icon:'🤝', label:'Partners'       },
-  { id:'loginactivity',icon:'🔐',label:'Login Activity' },
-  { id:'smspackages', icon:'📦', label:'SMS Packages'   },
+  { id:'overview',     Icon:BarChart3,   label:'Overview'       },
+  { id:'users',        Icon:Users,       label:'Users'          },
+  { id:'transactions', Icon:CreditCard,  label:'Transactions'   },
+  { id:'senderids',    Icon:Tag,         label:'Sender IDs'     },
+  { id:'partners',     Icon:Handshake,   label:'Partners'       },
+  { id:'loginactivity',Icon:ShieldCheck, label:'Login Activity' },
+  { id:'packages',     Icon:Package,     label:'Packages'       },
+  { id:'operations',   Icon:Globe,       label:'Operations'     },
 ];
 
 function Sidebar({ active, setActive, onLogout, mode }) {
@@ -1560,7 +2413,7 @@ function Sidebar({ active, setActive, onLogout, mode }) {
         padding:collapsed?'0':'0 16px', borderBottom:'1px solid #f1f5f9', flexShrink:0}}>
         <div style={{width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${BRAND},${BRAND2})`,
           display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          <span style={{fontSize:18,color:'#fff'}}>✉</span>
+          <Mail size={18} strokeWidth={2.4} color="#fff" />
         </div>
         {!collapsed && (
           <div style={{marginLeft:10}}>
@@ -1578,7 +2431,7 @@ function Sidebar({ active, setActive, onLogout, mode }) {
             onClick={()=>setActive(n.id)}
             title={collapsed?n.label:''}
             style={{justifyContent:collapsed?'center':'flex-start', borderLeft:active===n.id&&!collapsed?`3px solid ${BRAND}`:'3px solid transparent', paddingLeft:collapsed?undefined:9}}>
-            <span style={{fontSize:18,flexShrink:0}}>{n.icon}</span>
+            <n.Icon className="senda-nav-icon" strokeWidth={2.2} />
             {!collapsed && <span>{n.label}</span>}
           </button>
         ))}
@@ -1589,7 +2442,7 @@ function Sidebar({ active, setActive, onLogout, mode }) {
         <button className="senda-nav-item" onClick={onLogout}
           title={collapsed?'Logout':''}
           style={{justifyContent:collapsed?'center':'flex-start',color:RED,width:'100%'}}>
-          <span style={{fontSize:18,flexShrink:0}}>🚪</span>
+          <LogOut className="senda-nav-icon" strokeWidth={2.2} />
           {!collapsed && <span>Logout</span>}
         </button>
       </div>
@@ -1599,39 +2452,42 @@ function Sidebar({ active, setActive, onLogout, mode }) {
 
 // ─── Bottom Nav (mobile) ──────────────────────────────────────────────────────
 function BottomNav({ active, setActive, onLogout }) {
-  const visible = NAV.slice(0,5);
   return (
     <nav style={{
       position:'fixed', bottom:0, left:0, right:0, zIndex:200,
       background:'#fff', borderTop:'1px solid #e2e8f0',
-      display:'flex', alignItems:'center',
       boxShadow:'0 -4px 16px rgba(0,0,0,.08)',
-      height:60,
+      height:60, display:'flex', alignItems:'stretch',
+      overflowX:'auto', overflowY:'hidden',
     }}>
-      {visible.map(n=>(
+      {NAV.map(n=>(
         <button key={n.id} onClick={()=>setActive(n.id)} style={{
-          flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-          border:'none', background:'none', cursor:'pointer', padding:'4px 2px', gap:2,
+          minWidth:56, flex:'0 0 auto',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          border:'none', background:'none', cursor:'pointer', padding:'4px 6px', gap:2,
           color: active===n.id ? BRAND : '#94a3b8',
+          borderBottom: active===n.id ? `2px solid ${BRAND}` : '2px solid transparent',
           transition:'color .15s',
         }}>
-          <span style={{fontSize:20, filter:active===n.id?'none':'grayscale(50%)'}}>{n.icon}</span>
-          <span style={{fontSize:9,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase'}}>{n.label.split(' ')[0]}</span>
+          <n.Icon size={18} strokeWidth={2.2} color={active===n.id ? BRAND : '#94a3b8'} />
+          <span style={{fontSize:8,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{n.label.split(' ')[0]}</span>
         </button>
       ))}
       <button onClick={onLogout} style={{
-        flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-        border:'none', background:'none', cursor:'pointer', padding:'4px 2px', gap:2, color:RED,
+        minWidth:56, flex:'0 0 auto',
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        border:'none', borderBottom:'2px solid transparent',
+        background:'none', cursor:'pointer', padding:'4px 6px', gap:2, color:RED,
       }}>
-        <span style={{fontSize:20}}>🚪</span>
-        <span style={{fontSize:9,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase'}}>Logout</span>
+        <LogOut size={18} strokeWidth={2.2} color={RED} />
+        <span style={{fontSize:8,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase'}}>Logout</span>
       </button>
     </nav>
   );
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ onLogout }) {
+function Dashboard({ onLogout, adminInfo, showToast }) {
   const bp = useBreakpoint();
   const [active, setActive] = useState('overview');
   const isMobile = bp === 'mobile';
@@ -1650,10 +2506,12 @@ function Dashboard({ onLogout }) {
     senderids:    <SenderIdsTab/>,
     partners:     <PartnersTab/>,
     loginactivity:<LoginActivityTab/>,
-    smspackages:  <SmsPackagesTab/>,
+    packages:     <PackagesTab/>,
+    operations:   <OperationsTab/>,
   };
 
   return (
+    <AppContext.Provider value={{ showToast: showToast || (()=>{}), onLogout }}>
     <div style={{display:'flex',height:'100vh',background:'#f8fafc',overflow:'hidden'}}>
       <Sidebar active={active} setActive={setActive} onLogout={onLogout} mode={sidebarMode}/>
 
@@ -1668,12 +2526,15 @@ function Dashboard({ onLogout }) {
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             {isMobile && (
               <div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${BRAND},${BRAND2})`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <span style={{fontSize:16,color:'#fff'}}>✉</span>
+                <Mail size={16} strokeWidth={2.4} color="#fff" />
               </div>
             )}
             <div>
               <h2 style={{fontSize:isMobile?14:16,fontWeight:700,color:'#0f172a',lineHeight:1}}>
-                {tabLabel?.icon} {tabLabel?.label}
+                <span style={{display:'inline-flex',alignItems:'center',gap:8}}>
+                  {tabLabel?.Icon ? <tabLabel.Icon size={18} strokeWidth={2.2} color={BRAND} /> : null}
+                  <span>{tabLabel?.label}</span>
+                </span>
               </h2>
               {!isMobile && <p style={{fontSize:11,color:'#94a3b8',marginTop:1}}>SENDA Admin Portal</p>}
             </div>
@@ -1681,13 +2542,15 @@ function Dashboard({ onLogout }) {
           <div style={{display:'flex',alignItems:'center',gap:isMobile?8:12}}>
             {!isMobile && (
               <div style={{textAlign:'right'}}>
-                <div style={{fontSize:13,fontWeight:600,color:'#0f172a'}}>Admin</div>
-                <div style={{fontSize:11,color:'#94a3b8'}}>admin@senda.co.tz</div>
+                <div style={{fontSize:13,fontWeight:600,color:'#0f172a'}}>{adminInfo?.name || 'Admin'}</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{adminInfo?.email || ''}</div>
               </div>
             )}
             <div style={{width:36,height:36,borderRadius:'50%',background:`linear-gradient(135deg,${BRAND},${BRAND2})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:14,flexShrink:0}}>A</div>
             {isMobile && (
-              <button className="senda-btn senda-btn-sm senda-btn-danger" onClick={onLogout} style={{padding:'0 10px',height:32,fontSize:12}}>🚪</button>
+              <button className="senda-btn senda-btn-sm senda-btn-danger" onClick={onLogout} style={{padding:'0 10px',height:32}}>
+                <LogOut size={16} strokeWidth={2.2} />
+              </button>
             )}
           </div>
         </header>
@@ -1700,6 +2563,7 @@ function Dashboard({ onLogout }) {
 
       {isMobile && <BottomNav active={active} setActive={setActive} onLogout={onLogout}/>}
     </div>
+    </AppContext.Provider>
   );
 }
 
@@ -1718,12 +2582,28 @@ function LoginPage({ onLogin }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 520));
-    if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      localStorage.setItem(LS_KEY, JSON.stringify({ email, loginAt: Date.now() }));
-      onLogin();
-    } else {
-      setError('Invalid credentials. Please try again.');
+    try {
+      const res = await fetch(`${BASE_URL}/auth/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          token: data.data.access_token,
+          expires_at: Date.now() + data.data.expires_in * 1000,
+          admin: data.data.admin,
+          loginAt: Date.now(),
+        }));
+        onLogin(data.data.admin);
+      } else {
+        setError(data.error?.message || 'Invalid credentials.');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -1759,7 +2639,7 @@ function LoginPage({ onLogin }) {
             background:`linear-gradient(135deg,${BRAND},${BRAND2})`,
             boxShadow:`0 8px 24px ${BRAND}66`,marginBottom:14,
           }}>
-            <span style={{fontSize:28,color:'#fff'}}>✉</span>
+            <Mail size={28} strokeWidth={2.4} color="#fff" />
           </div>
           <div style={{fontSize:24,fontWeight:800,color:'#fff',letterSpacing:'-.5px'}}>SENDA</div>
           <div style={{fontSize:12,color:'rgba(255,255,255,0.5)',marginTop:2,letterSpacing:'.1em',textTransform:'uppercase',fontWeight:600}}>Admin Dashboard</div>
@@ -1775,7 +2655,7 @@ function LoginPage({ onLogin }) {
             borderRadius:10,padding:'10px 14px',marginBottom:16,
             display:'flex',alignItems:'center',gap:8,
           }}>
-            <span style={{fontSize:16}}>⚠️</span>
+            <AlertTriangle size={15} strokeWidth={2} color='#fca5a5' style={{flexShrink:0}}/>
             <span style={{fontSize:13,color:'#fca5a5',fontWeight:500}}>{error}</span>
           </div>
         )}
@@ -1785,7 +2665,7 @@ function LoginPage({ onLogin }) {
           <div style={{marginBottom:14}}>
             <label style={{display:'block',fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',marginBottom:6,letterSpacing:'.08em',textTransform:'uppercase'}}>Email</label>
             <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',fontSize:16,opacity:.6}}>📧</span>
+              <Mail size={15} strokeWidth={2} color='rgba(255,255,255,0.4)' style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
               <input
                 type="email" value={email} onChange={e=>{setEmail(e.target.value);setError('');}} required
                 placeholder="admin@senda.co.tz"
@@ -1803,7 +2683,7 @@ function LoginPage({ onLogin }) {
           <div style={{marginBottom:16}}>
             <label style={{display:'block',fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',marginBottom:6,letterSpacing:'.08em',textTransform:'uppercase'}}>Password</label>
             <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',fontSize:16,opacity:.6}}>🔒</span>
+              <ShieldCheck size={15} strokeWidth={2} color='rgba(255,255,255,0.4)' style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
               <input
                 type={showPass?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value);setError('');}} required
                 placeholder="••••••••"
@@ -1865,10 +2745,14 @@ export default function SendaAdmin() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (!saved) return false;
-      const { loginAt } = JSON.parse(saved);
-      // Session expires after 8 hours
-      return Date.now() - loginAt < 8 * 3600 * 1000;
+      const { token, expires_at } = JSON.parse(saved);
+      return !!token && Date.now() < expires_at;
     } catch { return false; }
+  });
+
+  const [adminInfo, setAdminInfo] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}').admin || null; }
+    catch { return null; }
   });
 
   const [toast, setToast] = useState(null);
@@ -1879,14 +2763,19 @@ export default function SendaAdmin() {
     setToast({ id, message, type });
   }, []);
 
-  const handleLogin = useCallback(() => {
+  const handleLogin = useCallback((admin) => {
+    setAdminInfo(admin || null);
     setIsLoggedIn(true);
-    setTimeout(() => showToast('Welcome back, Admin! 👋', 'success'), 150);
+    setTimeout(() => showToast(`Welcome back, ${admin?.name || 'Admin'}!`, 'success'), 150);
   }, [showToast]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      await adminFetch('/auth/admin/logout', { method: 'POST' }, null);
+    } catch {}
     localStorage.removeItem(LS_KEY);
     setIsLoggedIn(false);
+    setAdminInfo(null);
     document.title = 'SENDA Admin | Login';
   }, []);
 
@@ -1896,7 +2785,7 @@ export default function SendaAdmin() {
         <Toast key={toast.id} message={toast.message} type={toast.type} onDone={() => setToast(null)}/>
       )}
       {isLoggedIn
-        ? <Dashboard onLogout={handleLogout}/>
+        ? <Dashboard onLogout={handleLogout} adminInfo={adminInfo} showToast={showToast}/>
         : <LoginPage onLogin={handleLogin}/>
       }
     </div>

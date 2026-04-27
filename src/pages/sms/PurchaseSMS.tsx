@@ -1,19 +1,18 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { logger } from "@/utils/logger";
 import {
   CreditCard,
   Wallet,
-  Zap,
   Check,
   ArrowRight,
-  Download,
   RefreshCw,
   Loader2,
   AlertCircle,
   CheckCircle,
   Clock,
   Smartphone,
-  Calculator
+  Calculator,
+  MessageSquare,
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -35,7 +34,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient, SMSPackage, SMSBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
+import { apiClient, SMSPackage, SMSBalance, WhatsAppCreditBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface PaymentMethod {
@@ -77,6 +76,7 @@ const PurchaseSMS = () => {
   const { t } = useLanguage();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [serviceType, setServiceType] = useState<"sms" | "whatsapp">("sms");
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [customCredits, setCustomCredits] = useState("");
@@ -91,13 +91,33 @@ const PurchaseSMS = () => {
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [packages, setPackages] = useState<SMSPackage[]>([]);
-  const [balance, setBalance] = useState<SMSBalance | null>(null);
+  const [balance, setBalance] = useState<SMSBalance | WhatsAppCreditBalance | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
   const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
   const [mobileMoneyProviders, setMobileMoneyProviders] = useState<MobileMoneyProvider[]>([]);
   const [customSMSState, setCustomSMSState] = useState<CustomSMSState | null>(null);
   const [isCalculatingCustom, setIsCalculatingCustom] = useState(false);
   const [customCreditsError, setCustomCreditsError] = useState<string>("");
+
+  const fetchBalance = useCallback(async (type: "sms" | "whatsapp") => {
+    try {
+      setBalanceLoading(true);
+      setBalance(null);
+
+      const balanceResponse =
+        type === "whatsapp"
+          ? await apiClient.getWhatsAppCreditBalance()
+          : await apiClient.getSMSBalance();
+
+      if (balanceResponse.success && balanceResponse.data) {
+        setBalance(balanceResponse.data);
+      }
+    } catch (error) {
+      logger.warn("Error fetching balance");
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
 
   // Default packages matching the pricing table
   const defaultPackages: SMSPackage[] = useMemo(() => [
@@ -184,6 +204,73 @@ const PurchaseSMS = () => {
     }
   ], []);
 
+  // WhatsApp packages based on billing tiers
+  const defaultWhatsAppPackages: SMSPackage[] = useMemo(() => [
+    {
+      id: "wa-standard",
+      name: "Standard",
+      package_type: "standard",
+      credits: 5000,
+      price: "80000.00",
+      unit_price: "16.00",
+      subtitle: "1 to 50,000 messages",
+      description: "For small campaigns and starter broadcasts",
+      is_popular: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      features: [
+        "Message delivery status",
+        "Template message support",
+        "Basic sender name",
+        "Webhook support",
+      ],
+      savings_percentage: 0,
+    },
+    {
+      id: "wa-growth",
+      name: "Growth",
+      package_type: "growth",
+      credits: 75000,
+      price: "1050000.00",
+      unit_price: "14.00",
+      subtitle: "50,001 to 100,000 messages",
+      description: "Ideal for growing businesses with regular broadcasts",
+      is_popular: true,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      features: [
+        "Advanced delivery analytics",
+        "Media message support",
+        "Template management",
+        "API access",
+      ],
+      savings_percentage: 12.5,
+    },
+    {
+      id: "wa-enterprise",
+      name: "Enterprise",
+      package_type: "enterprise",
+      credits: 150000,
+      price: "1800000.00",
+      unit_price: "12.00",
+      subtitle: "100,001+ messages",
+      description: "Custom pricing for high-volume WhatsApp messaging",
+      is_popular: false,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      features: [
+        "Dedicated account manager",
+        "Advanced webhooks & callbacks",
+        "Priority support & SLA",
+        "Custom integration assistance",
+      ],
+      savings_percentage: 25.0,
+    },
+  ], []);
+
   // Fetch packages, balance, and mobile money providers on component mount (non-blocking)
   useEffect(() => {
     // Fetch packages
@@ -216,21 +303,6 @@ const PurchaseSMS = () => {
       }
     };
 
-    // Fetch balance
-    const fetchBalance = async () => {
-      try {
-        setBalanceLoading(true);
-        const balanceResponse = await apiClient.getSMSBalance();
-        if (balanceResponse.success && balanceResponse.data) {
-          setBalance(balanceResponse.data);
-        }
-      } catch (error) {
-        logger.warn('Error fetching balance');
-      } finally {
-        setBalanceLoading(false);
-      }
-    };
-
     // Fetch providers
     const fetchProviders = async () => {
       try {
@@ -248,9 +320,13 @@ const PurchaseSMS = () => {
 
     // Start all requests in parallel (non-blocking)
     fetchPackages();
-    fetchBalance();
     fetchProviders();
   }, [defaultPackages]);
+
+  // Fetch balance on mount and whenever the service type changes
+  useEffect(() => {
+    fetchBalance(serviceType);
+  }, [fetchBalance, serviceType]);
 
   // Cleanup payment polling on unmount
   useEffect(() => {
@@ -308,47 +384,56 @@ const PurchaseSMS = () => {
 
   // Tiered pricing helpers
   type Tier = { id: string; name: string; min: number; max?: number; rate?: number; note?: string; rangeLabel: string };
-  const tiers: Tier[] = useMemo(() => [
+  const smsTiers: Tier[] = useMemo(() => [
     { id: "lite", name: "Lite", min: 1, max: 49999, rate: 18, rangeLabel: "1 to 49,999 SMS" },
     { id: "standard", name: "Standard", min: 50000, max: 149999, rate: 14, rangeLabel: "50,000 to 149,999 SMS" },
     { id: "pro", name: "Pro", min: 250000, rate: 12, rangeLabel: "250,000 SMS and above" },
   ], []);
 
-  const selectedPkg = packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage);
+  const whatsappTiers: Tier[] = useMemo(() => [
+    { id: "standard", name: "Standard", min: 1, max: 50000, rate: 16, rangeLabel: "1 to 50,000 messages" },
+    { id: "growth", name: "Growth", min: 50001, max: 100000, rate: 14, rangeLabel: "50,001 to 100,000 messages" },
+    { id: "enterprise", name: "Enterprise", min: 100001, rate: 12, rangeLabel: "100,001+ messages" },
+  ], []);
+
+  const tiers = serviceType === "whatsapp" ? whatsappTiers : smsTiers;
+
+  const selectedPkg = serviceType === "whatsapp"
+    ? defaultWhatsAppPackages.find(p => p.id === selectedPackage)
+    : (packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage));
+
   const parsedCredits = useMemo(() => {
     if (selectedPackage) {
       return selectedPkg?.credits || 0;
     }
     return Math.max(parseInt(customCredits || "0", 10) || 0, 0);
   }, [selectedPackage, selectedPkg, customCredits]);
+
   const activeTier = useMemo(() => {
     if (parsedCredits === 0) return null;
-    if (parsedCredits < 50000) return tiers[0]; // Lite: 1-49,999
-    if (parsedCredits < 250000) return tiers[1]; // Standard: 50,000-149,999
-    return tiers[2]; // Pro: 250,000+
-  }, [parsedCredits, tiers]);
+    if (serviceType === "whatsapp") {
+      if (parsedCredits <= 50000) return whatsappTiers[0];
+      if (parsedCredits <= 100000) return whatsappTiers[1];
+      return whatsappTiers[2];
+    }
+    if (parsedCredits < 50000) return smsTiers[0];
+    if (parsedCredits < 250000) return smsTiers[1];
+    return smsTiers[2];
+  }, [parsedCredits, serviceType, smsTiers, whatsappTiers]);
 
   const customPrice = useMemo(() => {
-    const localPrice = (() => {
-      if (!parsedCredits) return 0;
-      if (!activeTier) return 0;
-      return parsedCredits * (activeTier.rate as number);
-    })();
-
-    if (customSMSState && customSMSState.totalPrice) {
-      return customSMSState.totalPrice;
-    }
-
-    return localPrice;
+    if (!parsedCredits || !activeTier) return 0;
+    // Prefer API-calculated price (covers both SMS and WhatsApp via purchase_type)
+    if (customSMSState?.totalPrice) return customSMSState.totalPrice;
+    // Fall back to local tier calculation while API call is in-flight
+    return parsedCredits * (activeTier.rate as number);
   }, [parsedCredits, activeTier, customSMSState]);
 
-  // Calculate custom SMS pricing using API
-  const calculateCustomSMSPrice = async (credits: number) => {
-    if (credits < 1000) return;
-
+  // Calculate custom pricing using API (shared for SMS and WhatsApp via purchase_type)
+  const calculateCustomPrice = async (credits: number, type: "sms" | "whatsapp") => {
     try {
       setIsCalculatingCustom(true);
-      const response = await apiClient.calculateCustomSMSPrice({ credits });
+      const response = await apiClient.calculateCustomSMSPrice({ credits, purchase_type: type });
 
       if (response.success && response.data) {
         setCustomSMSState({
@@ -361,21 +446,26 @@ const PurchaseSMS = () => {
         });
       }
     } catch (error) {
-      logger.warn('Error calculating custom SMS price');
+      logger.warn('Error calculating custom price');
     } finally {
       setIsCalculatingCustom(false);
     }
   };
 
-  // Calculate custom pricing when credits change
+  // Calculate custom pricing when credits or service type changes
   useEffect(() => {
+    const minCredits = serviceType === "whatsapp" ? 10000 : 1000;
     if (customCredits && !selectedPackage) {
       const credits = parseInt(customCredits);
-      if (credits >= 1000) {
+      if (credits >= minCredits) {
         setCustomCreditsError("");
-        calculateCustomSMSPrice(credits);
+        calculateCustomPrice(credits, serviceType);
       } else if (credits > 0) {
-        setCustomCreditsError(t('min_purchase_required'));
+        setCustomCreditsError(
+          serviceType === "whatsapp"
+            ? "Minimum 10,000 messages required"
+            : t('min_purchase_required')
+        );
         setCustomSMSState(null);
       } else {
         setCustomCreditsError("");
@@ -385,7 +475,16 @@ const PurchaseSMS = () => {
       setCustomCreditsError("");
       setCustomSMSState(null);
     }
-  }, [customCredits, selectedPackage, t]);
+  }, [customCredits, selectedPackage, serviceType, t]);
+
+  // Reset selection when switching service type
+  useEffect(() => {
+    setSelectedPackage("");
+    setSelectedPackageId("");
+    setCustomCredits("");
+    setCustomSMSState(null);
+    setPaymentMethod("");
+  }, [serviceType]);
 
   // Payment polling function
   const pollPaymentStatus = async (transactionId: string) => {
@@ -411,14 +510,11 @@ const PurchaseSMS = () => {
           setProcessing(false);
 
           // Refresh balance
-          const balanceResponse = await apiClient.getSMSBalance();
-          if (balanceResponse.success && balanceResponse.data) {
-            setBalance(balanceResponse.data);
-          }
+          await fetchBalance(serviceType);
 
           toast({
             title: "Payment successful!",
-            description: "SMS credits have been added to your account",
+            description: `${serviceType === "whatsapp" ? "WhatsApp" : "SMS"} credits have been added to your account`,
           });
 
           // Reset form
@@ -532,16 +628,15 @@ const PurchaseSMS = () => {
         logger.debug('Payment initiated');
         response = await apiClient.initiatePayment(paymentData);
       } else if (customCredits) {
-        // Custom SMS purchase
-        const customData = {
+        // Custom purchase — purchase_type differentiates SMS vs WhatsApp on the backend
+        response = await apiClient.initiateCustomSMSPayment({
           credits: parseInt(customCredits),
+          purchase_type: serviceType,
           buyer_email: userEmail,
           buyer_name: userName,
           buyer_phone: userPaymentNumber,
           mobile_money_provider: paymentMethod
-        };
-
-        response = await apiClient.initiateCustomSMSPayment(customData);
+        });
       } else {
         toast({
           title: "No selection",
@@ -643,11 +738,37 @@ const PurchaseSMS = () => {
             {/* Header */}
             <div>
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                {t('purchase_sms_credits')}
+                {serviceType === "whatsapp" ? "Purchase WhatsApp Credits" : t('purchase_sms_credits')}
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
                 {t('top_up_account')}
               </p>
+            </div>
+
+            {/* Service Type Toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-muted w-fit">
+              <button
+                onClick={() => setServiceType("sms")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  serviceType === "sms"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-text-subtle hover:text-foreground"
+                }`}
+              >
+                <Smartphone className="w-4 h-4" />
+                SMS
+              </button>
+              <button
+                onClick={() => setServiceType("whatsapp")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  serviceType === "whatsapp"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-text-subtle hover:text-foreground"
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                WhatsApp
+              </button>
             </div>
 
             {/* Balance Card */}
@@ -661,7 +782,10 @@ const PurchaseSMS = () => {
                     </div>
                   ) : (
                   <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                    {balance?.credits?.toLocaleString() || 0} <span className="text-base sm:text-lg font-normal text-text-subtle">SMS</span>
+                    {balance?.credits?.toLocaleString() || 0}{" "}
+                    <span className="text-base sm:text-lg font-normal text-text-subtle">
+                      {serviceType === "whatsapp" ? "Messages" : "SMS"}
+                    </span>
                   </p>
                   )}
                 </div>
@@ -676,8 +800,7 @@ const PurchaseSMS = () => {
               <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
               <div className="flex justify-center">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-6xl w-full">
-                {packagesLoading ? (
-                  // Skeleton loaders for packages
+                {serviceType === "sms" && packagesLoading ? (
                   Array.from({ length: 3 }).map((_, index) => (
                     <Card key={index} className="p-3 sm:p-4 glass h-full">
                       <Skeleton className="h-5 w-16 mb-2" />
@@ -691,58 +814,57 @@ const PurchaseSMS = () => {
                     </Card>
                   ))
                 ) : (
-                  (packages.length > 0 ? packages : defaultPackages).slice(0, 3).map((pkg) => (
-                  <Card
-                    key={pkg.id}
-                    className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
-                      selectedPackage === pkg.id
-                        ? "ring-2 ring-primary shadow-lg"
-                        : "hover:shadow-lg"
-                    }`}
-                    onClick={() => {
-                      setSelectedPackage(pkg.id);
-                      setSelectedPackageId(pkg.id); // Use the actual package ID from API
-                      setCustomCredits("");
-                      setPaymentMethod(""); // Reset payment method when package changes
-                    }}
-                  >
-                    {pkg.is_popular && (
-                      <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
-                        <Badge className="bg-primary text-primary-foreground text-xs px-3 py-1 font-semibold whitespace-nowrap">
-                          Most Popular
-                        </Badge>
-                      </div>
-                    )}
-                    <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
-                    <div className="mb-3">
-                      <p className="text-xl sm:text-2xl font-bold text-foreground mb-1">
-                        TZS {pkg.unit_price}/SMS
-                      </p>
-                      <p className="text-xs text-text-subtle">
-                        {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
-                         pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
-                         pkg.id === 'pro' ? '250,000 SMS and above' :
-                         'Custom')}
-                      </p>
-                    </div>
-                    <div className="space-y-2 mb-3 flex-1">
-                      {/* <div className="flex items-center text-xs">
-                        <Check className="w-3 h-3 mr-1 text-success" />
-                        <span>Never expires</span>
-                      </div> */}
-                      {pkg.features?.map((feature, i) => (
-                        <div key={i} className="flex items-start text-xs text-foreground">
-                          <Check className="w-3 h-3 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
-                          <span>{feature}</span>
+                  (serviceType === "whatsapp"
+                    ? defaultWhatsAppPackages
+                    : (packages.length > 0 ? packages : defaultPackages).slice(0, 3)
+                  ).map((pkg) => (
+                    <Card
+                      key={pkg.id}
+                      className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
+                        selectedPackage === pkg.id
+                          ? "ring-2 ring-primary shadow-lg"
+                          : "hover:shadow-lg"
+                      }`}
+                      onClick={() => {
+                        setSelectedPackage(pkg.id);
+                        setSelectedPackageId(pkg.id);
+                        setCustomCredits("");
+                        setPaymentMethod("");
+                      }}
+                    >
+                      {pkg.is_popular && (
+                        <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
+                          <Badge className="bg-primary text-primary-foreground text-xs px-3 py-1 font-semibold whitespace-nowrap">
+                            Most Popular
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
-                    {selectedPackage === pkg.id && (
-                      <Badge variant="secondary" className="w-full justify-center text-[10px] mt-auto">
-                        Selected
-                      </Badge>
-                    )}
-                  </Card>
+                      )}
+                      <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
+                      <div className="mb-3">
+                        <p className="text-xl sm:text-2xl font-bold text-foreground mb-1">
+                          TZS {pkg.unit_price}/{serviceType === "whatsapp" ? "msg" : "SMS"}
+                        </p>
+                        <p className="text-xs text-text-subtle">
+                          {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
+                           pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
+                           pkg.id === 'pro' ? '250,000 SMS and above' :
+                           'Custom')}
+                        </p>
+                      </div>
+                      <div className="space-y-2 mb-3 flex-1">
+                        {pkg.features?.map((feature, i) => (
+                          <div key={i} className="flex items-start text-xs text-foreground">
+                            <Check className="w-3 h-3 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {selectedPackage === pkg.id && (
+                        <Badge variant="secondary" className="w-full justify-center text-[10px] mt-auto">
+                          Selected
+                        </Badge>
+                      )}
+                    </Card>
                   ))
                 )}
               </div>
@@ -757,7 +879,9 @@ const PurchaseSMS = () => {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-sm">Number of SMS Credits</Label>
+                  <Label className="text-sm">
+                    {serviceType === "whatsapp" ? "Number of Messages" : "Number of SMS Credits"}
+                  </Label>
                   <Input
                     type="number"
                     placeholder="e.g., 5000"
@@ -766,15 +890,13 @@ const PurchaseSMS = () => {
                       const value = e.target.value;
                       setCustomCredits(value);
                       if (selectedPackage) {
-                        // Switch to custom mode when user edits credits
                         setSelectedPackage("");
                         setSelectedPackageId("");
                       }
-                      setPaymentMethod(""); // Reset payment method when custom amount changes
+                      setPaymentMethod("");
                     }}
                     onFocus={() => {
                       if (selectedPackage && customCredits === "") {
-                        // Prefill with selected package credits, then switch to custom mode
                         setCustomCredits(String(selectedPkg?.credits || ""));
                         setSelectedPackage("");
                         setSelectedPackageId("");
@@ -783,10 +905,10 @@ const PurchaseSMS = () => {
                     className={`glass-subtle border-0 h-9 text-sm ${
                       customCreditsError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                     }`}
-                    min="1000"
+                    min={serviceType === "whatsapp" ? "10000" : "1000"}
                   />
                   {selectedPackage && customCredits === "" ? (
-                  <p className="text-xs text-text-subtle">{t('base_credits_from_package')}</p>
+                    <p className="text-xs text-text-subtle">{t('base_credits_from_package')}</p>
                   ) : customCreditsError ? (
                     <p className="text-xs text-red-500 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
@@ -809,19 +931,28 @@ const PurchaseSMS = () => {
                 </div>
               </div>
 
-              {/* Custom SMS Pricing Details */}
+              {/* Pricing tier breakdown */}
               {parsedCredits > 0 && !selectedPackage && (
                 <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Active Tier:</span>
-                      <Badge variant="secondary">{customSMSState?.activeTier || activeTier?.name}</Badge>
+                      <Badge variant="secondary">
+                        {serviceType === "whatsapp"
+                          ? activeTier?.name
+                          : (customSMSState?.activeTier || activeTier?.name)}
+                      </Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-text-subtle">Unit Price:</span>
-                      <span className="text-sm font-medium">TZS {customSMSState?.unitPrice || activeTier?.rate}/SMS</span>
+                      <span className="text-sm font-medium">
+                        TZS {serviceType === "whatsapp"
+                          ? activeTier?.rate
+                          : (customSMSState?.unitPrice || activeTier?.rate)
+                        }/{serviceType === "whatsapp" ? "msg" : "SMS"}
+                      </span>
                     </div>
-                    {customSMSState?.savingsPercentage > 0 && (
+                    {serviceType === "sms" && customSMSState?.savingsPercentage > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-text-subtle">Savings:</span>
                         <span className="text-sm font-medium text-success">
@@ -833,20 +964,25 @@ const PurchaseSMS = () => {
                 </div>
               )}
 
-              <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                <span>
-                  {customSMSState ? (
-                    <>Dynamic pricing based on volume</>
-                  ) : (
-                    <>Active tier: {activeTier ? (
-                      <>
-                        <b>{activeTier.name}</b> — {activeTier.rangeLabel} — {activeTier.id === 'enterprise' ? (activeTier.note || 'Custom') : `TZS ${activeTier.rate}/SMS`}
-                      </>
-                    ) : '—'}</>
-                  )}
-                </span>
-                <span>{t('min_purchase_required')}</span>
-              </div>
+              {serviceType === "sms" && (
+                <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span>
+                    {customSMSState ? (
+                      <>Dynamic pricing based on volume</>
+                    ) : (
+                      <>Active tier: {activeTier ? (
+                        <><b>{activeTier.name}</b> — {activeTier.rangeLabel} — TZS {activeTier.rate}/SMS</>
+                      ) : "—"}</>
+                    )}
+                  </span>
+                  <span>{t('min_purchase_required')}</span>
+                </div>
+              )}
+              {serviceType === "whatsapp" && (
+                <p className="mt-2 text-xs text-text-subtle text-right">
+                  Minimum 10,000 messages required
+                </p>
+              )}
             </Card>
 
             {/* Payment Method - Only show when package or custom amount is selected */}
@@ -1068,7 +1204,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
                       <span>{t('total_amount')}</span>
                       <span className="text-primary">
-                        TZS {(selectedPkg?.price || customPrice).toLocaleString()}
+                        TZS {(selectedPkg ? parseFloat(selectedPkg.price) : customPrice).toLocaleString()}
                       </span>
                     </div>
                   </div>

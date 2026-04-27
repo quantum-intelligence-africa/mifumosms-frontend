@@ -728,6 +728,14 @@ export interface SMSBalance {
   created_at: string;
 }
 
+// WhatsApp Billing Types
+export interface WhatsAppCreditBalance {
+  credits: number;
+  total_purchased: number;
+  total_used: number;
+  message?: string;
+}
+
 export interface Purchase {
   id: string;
   tenant: string;
@@ -3069,7 +3077,7 @@ class ApiClient {
   }
 
   // 3. Calculate Custom SMS Price
-  async calculateCustomSMSPrice(data: { credits: number }): Promise<ApiResponse<CustomSMSCalculation>> {
+  async calculateCustomSMSPrice(data: { credits: number; purchase_type?: "sms" | "whatsapp" }): Promise<ApiResponse<CustomSMSCalculation>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CUSTOM_CALCULATE}`, {
         method: 'POST',
@@ -3090,16 +3098,20 @@ class ApiClient {
   // 4. Initiate Custom SMS Payment
   async initiateCustomSMSPayment(data: {
     credits: number;
+    purchase_type: "sms" | "whatsapp";
     buyer_email: string;
     buyer_name: string;
     buyer_phone: string;
     mobile_money_provider: string;
   }): Promise<ApiResponse<{
+    purchase_id: string;
+    purchase_type: "sms" | "whatsapp";
     transaction_id: string;
     order_id: string;
+    total_price: number;
+    status: string;
     payment_instructions: string;
-    amount: number;
-    credits: number;
+    progress?: { step: number; total_steps: number; current_step: string; next_step: string; percentage: number };
   }>> {
     try {
       const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.CUSTOM_INITIATE}`, {
@@ -3123,6 +3135,7 @@ class ApiClient {
       };
     }
   }
+
 
   // 2. Check Payment Status
   async checkPaymentStatus(transactionId: string): Promise<ApiResponse<PaymentStatusResponse>> {
@@ -3257,6 +3270,23 @@ class ApiClient {
       });
 
       return await this.handleResponse<SMSBalance>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // Get WhatsApp Credit Balance
+  async getWhatsAppCreditBalance(): Promise<ApiResponse<WhatsAppCreditBalance>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.WHATSAPP_BILLING.BALANCE}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<WhatsAppCreditBalance>(response);
     } catch (error) {
       return {
         success: false,

@@ -37,6 +37,8 @@ import PertinaInsights from "./pages/PertinaInsights";
 import Developer from "./pages/Developer";
 import AIAgents from "./pages/AIAgents";
 import VoiceAgents from "./pages/VoiceAgents";
+import WhatsAppCloud from "./pages/WhatsAppCloud";
+import WhatsAppBroadcast from "./pages/WhatsAppBroadcast";
 // @ts-ignore — standalone JSX admin dashboard
 import SendaAdmin from "../senda-dashboard.jsx";
 
@@ -115,6 +117,7 @@ const AppContent = () => {
     <RouteAnimator>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/whatsapp-broadcast" element={<WhatsAppBroadcast />} />
         {/* SEO-friendly landing aliases */}
         <Route path="/pricing" element={<Landing />} />
         <Route path="/features" element={<Landing />} />
@@ -240,6 +243,11 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               {/* ── New channel modules ── */}
+              <Route path="/whatsapp" element={
+                <ProtectedRoute>
+                  <WhatsAppCloud />
+                </ProtectedRoute>
+              } />
               <Route path="/ai-copilots" element={
                 <ProtectedRoute>
                   <AIAgents />

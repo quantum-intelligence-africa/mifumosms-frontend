@@ -16,6 +16,7 @@ import {
   Server,
   Bot,
   Mic,
+  MessagesSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       icon: MessageSquare,
       children: [
         { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
+        { name: "WhatsApp", href: "/whatsapp", icon: MessagesSquare },
         { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
         { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
         { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },

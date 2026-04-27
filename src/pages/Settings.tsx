@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { logger } from "@/utils/logger";
 import {
   User,
@@ -26,7 +27,9 @@ import {
   MapPin,
   Calendar,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  MessageCircle,
+  ExternalLink,
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -76,6 +79,7 @@ import { usePartinaRequest } from "@/hooks/usePartinaRequest";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useTheme } from "next-themes";
+import { buildApiUrl, API_CONFIG } from "@/config/api";
 
 interface SettingsCategory {
   id: string;
@@ -145,13 +149,28 @@ interface ProfileUpdateData {
 }
 
 const Settings = () => {
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
+  // Hooks must come first
   const isMobile = useIsMobile();
+  const [searchParams] = useSearchParams();
+
+  // State declarations - must come before useEffects that use them
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState<string | null>(null);
+  const [currentCategory, setCurrentCategory] = useState<string | null>(searchParams.get('tab'));
+  // WhatsApp Credentials state
+  const [waCopilotId, setWaCopilotId] = useState("");
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState("");
+  const [waAccessToken, setWaAccessToken] = useState("");
+  const [waVerifyToken, setWaVerifyToken] = useState("");
+  const [waWabaId, setWaWabaId] = useState("");
+  const [waGraphApiBase, setWaGraphApiBase] = useState("");
+  const [waCredsBusy, setWaCredsBusy] = useState(false);
+  const [waCredsError, setWaCredsError] = useState<string | null>(null);
+  const [waCredsResult, setWaCredsResult] = useState<{ hint: string; callbackUrl: string } | null>(null);
+  const [showWaToken, setShowWaToken] = useState(false);
+  // WhatsApp existing channel status (loaded via GET)
+  const [waLinkedCopilotId, setWaLinkedCopilotId] = useState<string | null>(null);
+  const [waChannelStatus, setWaChannelStatus] = useState<{ phoneNumberId: string; wabaId: string; tokenHint: string; callbackUrl: string } | null>(null);
+  const [waStatusLoading, setWaStatusLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -185,6 +204,54 @@ const Settings = () => {
   const [showSecurityEvents, setShowSecurityEvents] = useState(false);
   const [fallbackQRCode, setFallbackQRCode] = useState<QRCodeData | null>(null);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+
+  // useEffects come after all state declarations
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Load WhatsApp credentials when entering whatsapp settings
+  useEffect(() => {
+    if (currentCategory === "whatsapp") {
+      const loadWaCredentials = async () => {
+        setWaStatusLoading(true);
+        try {
+          const token = localStorage.getItem("access_token");
+          const url = buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WHATSAPP_CREDENTIALS_AUTO);
+          const res = await fetch(url, {
+            headers: {
+              Accept: "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          });
+          const data = await res.json().catch(() => null);
+          if (data?.success && data?.data) {
+            if (data.data.chatbot_id) {
+              setWaLinkedCopilotId(data.data.chatbot_id);
+              setWaCopilotId(data.data.chatbot_id);
+            }
+            if (data.data.WHATSAPP_BUSINESS_ACCOUNT_ID) {
+              setWaWabaId(data.data.WHATSAPP_BUSINESS_ACCOUNT_ID);
+            }
+            const ch = data.data.whatsapp_channel;
+            if (ch) {
+              setWaChannelStatus({
+                phoneNumberId: ch.phone_number_id ?? "",
+                wabaId: ch.whatsapp_business_account_id ?? "",
+                tokenHint: ch.access_token_hint ?? "",
+                callbackUrl: data.data.meta_webhook_callback_url ?? "",
+              });
+            }
+          }
+        } catch (err) {
+          logger.error("Failed to load WhatsApp credentials:", err);
+        } finally {
+          setWaStatusLoading(false);
+        }
+      };
+      void loadWaCredentials();
+    }
+  }, [currentCategory]);
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -499,6 +566,13 @@ const Settings = () => {
       description: "Request to become a Partner",
       icon: Users,
       color: "bg-orange-500"
+    },
+    {
+      id: "whatsapp",
+      title: "WhatsApp",
+      description: "Store Meta Cloud API credentials for AI Copilots",
+      icon: MessageCircle,
+      color: "bg-emerald-500"
     }
   ];
 
@@ -545,9 +619,16 @@ const Settings = () => {
     loadNotificationSettings();
   }, []);
 
-  // Ensure we stay on the settings page and profile category after successful updates
+  // Sync category with URL ?tab= param whenever searchParams changes
   useEffect(() => {
-    // Only auto-select profile category on desktop, let mobile users choose
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setCurrentCategory(tabParam);
+    }
+  }, [searchParams]);
+
+  // Default to profile on desktop when no category is selected
+  useEffect(() => {
     if (currentCategory === null && !isMobile) {
       setCurrentCategory('profile');
     }
@@ -559,7 +640,7 @@ const Settings = () => {
     try {
       const response = await apiClient.getAPISettings();
       if (response.success && response.data) {
-        setApiSettings(response.data as any);
+        setApiSettings(response.data as typeof apiSettings);
       } else {
         toast({
           title: "Failed to load API settings",
@@ -585,6 +666,44 @@ const Settings = () => {
       loadAPISettings();
     }
   }, [currentCategory, apiSettings, loadAPISettings]);
+
+  // Load existing WhatsApp credentials when the whatsapp category is opened
+  useEffect(() => {
+    if (currentCategory !== 'whatsapp') return;
+    const load = async () => {
+      try {
+        setWaStatusLoading(true);
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(
+          buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WHATSAPP_CREDENTIALS_AUTO),
+          { headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
+        );
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.data) {
+          setWaLinkedCopilotId(data.data.chatbot_id ?? null);
+          const ch = data.data.whatsapp_channel;
+          if (ch) {
+            setWaChannelStatus({
+              phoneNumberId: ch.phone_number_id ?? "",
+              wabaId: ch.whatsapp_business_account_id ?? "",
+              tokenHint: ch.access_token_hint ?? "",
+              callbackUrl: data.data.meta_webhook_callback_url ?? "",
+            });
+            // Pre-fill non-sensitive fields
+            if (ch.phone_number_id) setWaPhoneNumberId(ch.phone_number_id);
+            if (ch.graph_api_base) setWaGraphApiBase(ch.graph_api_base);
+          } else {
+            setWaChannelStatus(null);
+          }
+        }
+      } catch {
+        // silent — user can still fill the form manually
+      } finally {
+        setWaStatusLoading(false);
+      }
+    };
+    void load();
+  }, [currentCategory]);
 
   // API Key Handlers
   const handleCreateAPIKey = async () => {
@@ -1774,7 +1893,7 @@ const Settings = () => {
                           placeholder="Enter 6-digit code"
                           value={smsVerificationCode}
                           onChange={(e) => setSmsVerificationCode(e.target.value)}
-                          className="glass-subtle border-0 text-sm text-center text-lg tracking-widest"
+                          className="glass-subtle border-0 text-center text-lg tracking-widest"
                           maxLength={6}
                           inputMode="numeric"
                           pattern="[0-9]*"
@@ -2335,6 +2454,284 @@ const Settings = () => {
       case "partina":
         return <PartinaRequestSection />;
 
+      case "whatsapp": {
+        const handleWaCredentials = async (method: "PUT" | "PATCH") => {
+          setWaCredsError(null);
+          setWaCredsResult(null);
+          if (method === "PUT" && (!waPhoneNumberId.trim() || !waAccessToken.trim() || !waVerifyToken.trim())) {
+            setWaCredsError("Phone Number ID, Access Token, and Verify Token are required for PUT.");
+            return;
+          }
+          try {
+            setWaCredsBusy(true);
+            // Build request body with proper field names per documentation
+            // API accepts both lowercase camelCase and UPPERCASE_SNAKE_CASE variants
+            const body: Record<string, string> = {};
+
+            // Required fields (sending both variants for compatibility)
+            if (waPhoneNumberId.trim()) {
+              body.phone_number_id = waPhoneNumberId.trim();
+              body.WHATSAPP_PHONE_NUMBER_ID = waPhoneNumberId.trim();
+            }
+            if (waAccessToken.trim()) {
+              body.access_token = waAccessToken.trim();
+              body.WHATSAPP_ACCESS_TOKEN = waAccessToken.trim();
+            }
+            if (waVerifyToken.trim()) {
+              body.verify_token = waVerifyToken.trim();
+              body.VERIFY_TOKEN = waVerifyToken.trim();
+              body.WHATSAPP_VERIFY_TOKEN = waVerifyToken.trim();
+            }
+
+            // Optional fields
+            if (waWabaId.trim()) {
+              body.whatsapp_business_account_id = waWabaId.trim();
+              body.WHATSAPP_BUSINESS_ACCOUNT_ID = waWabaId.trim();
+            }
+            if (waGraphApiBase.trim()) {
+              body.graph_api_base = waGraphApiBase.trim();
+              body.WA_API_BASE = waGraphApiBase.trim();
+            }
+
+            const token = localStorage.getItem("access_token");
+            const id = waCopilotId.trim();
+            // Use ID-based URL when a valid cb_ ID is provided, otherwise auto-resolve
+            const url = id.startsWith("cb_")
+              ? buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WHATSAPP_CREDENTIALS(id))
+              : buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WHATSAPP_CREDENTIALS_AUTO);
+            const res = await fetch(url, {
+              method,
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              throw new Error((data && (data.message || data.error)) || `Request failed (HTTP ${res.status})`);
+            }
+            // Capture resolved chatbot_id from response
+            if (data?.data?.chatbot_id) {
+              setWaLinkedCopilotId(data.data.chatbot_id);
+              setWaCopilotId(data.data.chatbot_id);
+            }
+            // Capture WABA ID from response
+            if (data?.data?.WHATSAPP_BUSINESS_ACCOUNT_ID) {
+              setWaWabaId(data.data.WHATSAPP_BUSINESS_ACCOUNT_ID);
+            }
+            const ch = data?.data?.whatsapp_channel;
+            if (ch) {
+              setWaChannelStatus({
+                phoneNumberId: ch.phone_number_id ?? "",
+                wabaId: ch.whatsapp_business_account_id ?? "",
+                tokenHint: ch.access_token_hint ?? "",
+                callbackUrl: data?.data?.meta_webhook_callback_url ?? "",
+              });
+            }
+            setWaCredsResult({
+              hint: ch?.access_token_hint ?? "",
+              callbackUrl: data?.data?.meta_webhook_callback_url ?? "",
+            });
+            setWaAccessToken(""); // clear sensitive field
+          } catch (err) {
+            setWaCredsError(err instanceof Error ? err.message : "Failed to save credentials");
+          } finally {
+            setWaCredsBusy(false);
+          }
+        };
+
+        return (
+          <div className="space-y-4">
+            <Card className="glass border-0">
+              <CardHeader className="p-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  WhatsApp Cloud API Credentials
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-4 pt-0">
+                <p className="text-xs text-text-subtle">
+                  Store Meta WhatsApp Cloud API credentials for your AI Copilot. The backend
+                  automatically selects your latest active copilot.
+                </p>
+
+                {/* Existing channel status */}
+                {waStatusLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-text-subtle">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted border-t-foreground/40" />
+                    Loading existing credentials…
+                  </div>
+                ) : waChannelStatus ? (
+                  <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5 space-y-1.5">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5" /> WhatsApp channel linked
+                    </p>
+                    {waLinkedCopilotId ? (
+                      <p className="text-xs text-text-subtle">Copilot: <code className="font-mono">{waLinkedCopilotId}</code></p>
+                    ) : null}
+                    {waChannelStatus.phoneNumberId ? (
+                      <p className="text-xs text-text-subtle">Phone Number ID: <code className="font-mono">{waChannelStatus.phoneNumberId}</code></p>
+                    ) : null}
+                    {waChannelStatus.wabaId ? (
+                      <p className="text-xs text-text-subtle">WABA ID: <code className="font-mono">{waChannelStatus.wabaId}</code></p>
+                    ) : null}
+                    {waChannelStatus.tokenHint ? (
+                      <p className="text-xs text-text-subtle">Token: configured <span className="font-mono">({waChannelStatus.tokenHint})</span></p>
+                    ) : null}
+                    {waChannelStatus.callbackUrl ? (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-text-subtle break-all flex-1">Webhook URL: {waChannelStatus.callbackUrl}</p>
+                        <button
+                          type="button"
+                          onClick={() => void navigator.clipboard.writeText(waChannelStatus.callbackUrl)}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                          title="Copy webhook URL"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wa-phone-id" className="text-xs">Phone Number ID *</Label>
+                    <Input
+                      id="wa-phone-id"
+                      placeholder="759679347239794"
+                      value={waPhoneNumberId}
+                      onChange={(e) => setWaPhoneNumberId(e.target.value)}
+                      className="glass-subtle border-0 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wa-waba-id" className="text-xs">WABA ID (WhatsApp Business Account) - Recommended</Label>
+                    <Input
+                      id="wa-waba-id"
+                      placeholder="1648312066173681"
+                      value={waWabaId}
+                      onChange={(e) => setWaWabaId(e.target.value)}
+                      className="glass-subtle border-0 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Your Meta WhatsApp Business Account ID. Required for browsing templates. Found in Meta Business Manager.</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wa-token" className="text-xs">Access Token *</Label>
+                    <div className="relative">
+                      <Input
+                        id="wa-token"
+                        type={showWaToken ? "text" : "password"}
+                        placeholder="EAAxxxxxxxx..."
+                        value={waAccessToken}
+                        onChange={(e) => setWaAccessToken(e.target.value)}
+                        className="glass-subtle border-0 text-sm pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowWaToken((v) => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showWaToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Your Meta app access token for WhatsApp Cloud API</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wa-verify" className="text-xs">Verify Token *</Label>
+                    <Input
+                      id="wa-verify"
+                      placeholder="your-random-verify-string"
+                      value={waVerifyToken}
+                      onChange={(e) => setWaVerifyToken(e.target.value)}
+                      className="glass-subtle border-0 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Webhook verification token for Meta webhook signature validation</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wa-graph" className="text-xs">Graph API Base (optional)</Label>
+                    <Input
+                      id="wa-graph"
+                      placeholder="Leave blank for default"
+                      value={waGraphApiBase}
+                      onChange={(e) => setWaGraphApiBase(e.target.value)}
+                      className="glass-subtle border-0 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Advanced: Override Graph API endpoint if using a custom or legacy base URL</p>
+                  </div>
+                </div>
+
+                {waCredsError ? (
+                  <div className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-400/40 px-3 py-2">
+                    <p className="text-xs text-rose-600 dark:text-rose-400">{waCredsError}</p>
+                  </div>
+                ) : null}
+
+                {waCredsResult ? (
+                  <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5 space-y-1">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5" /> Credentials saved
+                    </p>
+                    {waCredsResult.hint ? (
+                      <p className="text-xs text-text-subtle">Token hint: <code className="font-mono">{waCredsResult.hint}</code></p>
+                    ) : null}
+                    {waCredsResult.callbackUrl ? (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-text-subtle break-all flex-1">Webhook callback URL: {waCredsResult.callbackUrl}</p>
+                        <button
+                          type="button"
+                          onClick={() => void navigator.clipboard.writeText(waCredsResult.callbackUrl)}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                          title="Copy"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => void handleWaCredentials("PUT")}
+                    disabled={waCredsBusy}
+                    className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {waCredsBusy ? "Saving…" : "Save Credentials (PUT)"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleWaCredentials("PATCH")}
+                    disabled={waCredsBusy}
+                    className="text-xs px-3"
+                    title="Partial update — omit fields to leave them unchanged"
+                  >
+                    Patch
+                  </Button>
+                </div>
+
+                <Card className="glass border-0 bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500">
+                  <CardContent className="p-4">
+                    <div className="space-y-2 text-xs text-text-subtle">
+                      <p><strong>Save Credentials (PUT):</strong> Replaces ALL credentials. All three required fields (Phone ID, Access Token, Verify Token) must be present.</p>
+                      <p><strong>Patch:</strong> Updates only the fields you enter. Omit fields to leave them unchanged. Useful for updating WABA ID or Graph API base without re-entering tokens.</p>
+                      <p><strong>WABA ID:</strong> Your WhatsApp Business Account ID from Meta Business Manager. Required for template browsing (Meta's Graph API lists templates at <code className="font-mono">{'/{waba-id}/message_templates'}</code>).</p>
+                      <p><strong>Webhook URL:</strong> Use this as your <em>Callback URL</em> when configuring your Meta app webhook in Business Manager settings.</p>
+                      <p><strong>Field names:</strong> API accepts both camelCase (phone_number_id) and UPPERCASE (WHATSAPP_PHONE_NUMBER_ID) variants for compatibility.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -2550,13 +2947,6 @@ const Settings = () => {
                             <ArrowLeft className="w-4 h-4" />
                           </Button>
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg ${settingsCategories.find(cat => cat.id === currentCategory)?.color} flex items-center justify-center`}>
-                              {(() => {
-                                const category = settingsCategories.find(cat => cat.id === currentCategory);
-                                const IconComponent = category?.icon;
-                                return IconComponent ? <IconComponent className="w-4 h-4 text-white" /> : null;
-                              })()}
-                            </div>
                             <div>
                               <h2 className="font-medium text-foreground text-sm">
                                 {settingsCategories.find(cat => cat.id === currentCategory)?.title}
