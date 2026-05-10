@@ -3120,13 +3120,37 @@ class ApiClient {
         body: JSON.stringify(data)
       });
 
-      return await this.handleResponse<{
+      const raw = await this.handleResponse<{
         transaction_id: string;
         order_id: string;
         payment_instructions: string;
         amount: number;
         credits: number;
       }>(response);
+
+      if (!raw.success) {
+        return {
+          success: false,
+          error: raw.error || 'Failed to initiate payment',
+          status: raw.status || 0
+        };
+      }
+
+      // Map backend response to expected shape
+      return {
+        success: true,
+        data: {
+          purchase_id: raw.data.order_id, // Use order_id as purchase_id if not provided
+          purchase_type: data.purchase_type,
+          transaction_id: raw.data.transaction_id,
+          order_id: raw.data.order_id,
+          total_price: raw.data.amount,
+          status: 'pending', // Default to pending, adjust if backend provides status
+          payment_instructions: raw.data.payment_instructions,
+          // progress is optional and not provided by backend
+        },
+        status: raw.status || 200
+      };
     } catch (error) {
       return {
         success: false,
@@ -3252,6 +3276,24 @@ class ApiClient {
         headers: this.getHeaders()
       });
 
+      return await this.handleResponse<{ results: SMSPackage[]; count: number }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 1b. List WhatsApp Packages — same endpoint admin uses, filtered with ?type=whatsapp.
+  // Backend returns the same SMSPackage shape so consumers can reuse render code.
+  async getWhatsAppPackages(): Promise<ApiResponse<{ results: SMSPackage[]; count: number }>> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.SMS.PACKAGES}?type=whatsapp`,
+        { headers: this.getHeaders() }
+      );
       return await this.handleResponse<{ results: SMSPackage[]; count: number }>(response);
     } catch (error) {
       return {
@@ -4523,6 +4565,35 @@ class ApiClient {
           msisdn: string;
           timestamp: string;
         };
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // GET SENDER REQUEST FEE
+  // GET /api/messaging/sender-requests/fee/
+  async getSenderRequestFee(): Promise<ApiResponse<{
+    success: boolean;
+    currency: string;
+    amount: number;
+    data: { currency: string; amount: number };
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/messaging/sender-requests/fee/`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        success: boolean;
+        currency: string;
+        amount: number;
+        data: { currency: string; amount: number };
       }>(response);
     } catch (error) {
       return {

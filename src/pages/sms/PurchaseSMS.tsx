@@ -91,6 +91,7 @@ const PurchaseSMS = () => {
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [packages, setPackages] = useState<SMSPackage[]>([]);
+  const [waPackages, setWaPackages] = useState<SMSPackage[]>([]);
   const [balance, setBalance] = useState<SMSBalance | WhatsAppCreditBalance | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
   const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
@@ -273,31 +274,37 @@ const PurchaseSMS = () => {
 
   // Fetch packages, balance, and mobile money providers on component mount (non-blocking)
   useEffect(() => {
-    // Fetch packages
+    // Helper: pull a packages list out of either the legacy array or new {results} shape.
+    const extractList = (resp: unknown): SMSPackage[] => {
+      const r = resp as { data?: SMSPackage[] | { results?: SMSPackage[] } } | undefined;
+      const data = r?.data;
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return Array.isArray(data.results) ? data.results : [];
+    };
+
+    // Fetch SMS + WhatsApp packages in parallel — same backend admin uses, just `?type=whatsapp`.
     const fetchPackages = async () => {
       try {
         setPackagesLoading(true);
-        const packagesResponse = await apiClient.getSMSPackages();
+        const [smsResp, waResp] = await Promise.all([
+          apiClient.getSMSPackages(),
+          apiClient.getWhatsAppPackages(),
+        ]);
 
-        if (packagesResponse.success && packagesResponse.data) {
-          if (Array.isArray(packagesResponse.data)) {
-            // Handle legacy response format
-            setPackages(packagesResponse.data);
-          } else if (packagesResponse.data.results && packagesResponse.data.results.length > 0) {
-            // Handle new response format
-            setPackages(packagesResponse.data.results);
-          } else {
-            logger.warn('No packages returned from API, using defaults');
-            setPackages(defaultPackages);
-          }
-        } else {
-          // Use default packages if API doesn't return any
-          logger.warn('API packages request failed, using defaults');
-          setPackages(defaultPackages);
-        }
+        const smsList = smsResp?.success ? extractList(smsResp) : [];
+        const waList  = waResp?.success  ? extractList(waResp)  : [];
+
+        setPackages(smsList.length > 0 ? smsList : defaultPackages);
+        // WhatsApp falls back to local defaults only if backend returns nothing — admin shape wins when present.
+        setWaPackages(waList.length > 0 ? waList : defaultWhatsAppPackages);
+
+        if (smsList.length === 0) logger.warn('No SMS packages from API, using defaults');
+        if (waList.length === 0)  logger.warn('No WhatsApp packages from API, using defaults');
       } catch (error) {
         logger.warn('Error fetching packages');
         setPackages(defaultPackages);
+        setWaPackages(defaultWhatsAppPackages);
       } finally {
         setPackagesLoading(false);
       }
@@ -321,7 +328,7 @@ const PurchaseSMS = () => {
     // Start all requests in parallel (non-blocking)
     fetchPackages();
     fetchProviders();
-  }, [defaultPackages]);
+  }, [defaultPackages, defaultWhatsAppPackages]);
 
   // Fetch balance on mount and whenever the service type changes
   useEffect(() => {
@@ -399,7 +406,7 @@ const PurchaseSMS = () => {
   const tiers = serviceType === "whatsapp" ? whatsappTiers : smsTiers;
 
   const selectedPkg = serviceType === "whatsapp"
-    ? defaultWhatsAppPackages.find(p => p.id === selectedPackage)
+    ? (waPackages.find(p => p.id === selectedPackage) || defaultWhatsAppPackages.find(p => p.id === selectedPackage))
     : (packages.find(p => p.id === selectedPackage) || defaultPackages.find(p => p.id === selectedPackage));
 
   const parsedCredits = useMemo(() => {
@@ -815,7 +822,7 @@ const PurchaseSMS = () => {
                   ))
                 ) : (
                   (serviceType === "whatsapp"
-                    ? defaultWhatsAppPackages
+                    ? (waPackages.length > 0 ? waPackages : defaultWhatsAppPackages)
                     : (packages.length > 0 ? packages : defaultPackages).slice(0, 3)
                   ).map((pkg) => (
                     <Card

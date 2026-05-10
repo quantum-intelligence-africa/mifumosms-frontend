@@ -1,0 +1,22 @@
+{
+  "name": "SENDA",
+  "short_name": "Senda",
+  "icons": [
+    {
+      "src": "/favicon/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/favicon/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "theme_color": "#0A5CDB",
+  "background_color": "#0A5CDB",
+  "display": "standalone",
+  "start_url": "/"
+}

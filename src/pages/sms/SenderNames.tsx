@@ -105,7 +105,11 @@ const SenderNames = () => {
     // Listen for navigation events from sidebar
     const handlePageNavigate = (event: Event) => {
       const customEvent = event as CustomEvent;
-      if (customEvent.detail?.href && !customEvent.detail.href.includes('/sms/sender-names')) {
+      const targetHref: string | undefined = customEvent.detail?.href;
+      const isStillOnSenderNames = !!targetHref && (
+        targetHref.includes('/sms/sender-names') || targetHref.includes('/messaging/sender-names')
+      );
+      if (targetHref && !isStillOnSenderNames) {
         // Abort ALL pending operations immediately
         abortControllerRef.current.abort();
         isMountedRef.current = false;
@@ -139,7 +143,10 @@ const SenderNames = () => {
 
   // Immediate cleanup when navigating away from this page
   useEffect(() => {
-    const isLeavingPage = !location.pathname.includes('/sms/sender-names');
+    const isOnSenderNames =
+      location.pathname.includes('/sms/sender-names') ||
+      location.pathname.includes('/messaging/sender-names');
+    const isLeavingPage = !isOnSenderNames;
 
     if (isLeavingPage) {
       // Abort ALL pending operations immediately
@@ -362,6 +369,47 @@ const SenderNames = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // Sender request fee (fetched from API)
+  const [senderFeeAmount, setSenderFeeAmount] = useState<number | null>(null);
+  const [senderFeeCurrency, setSenderFeeCurrency] = useState<string>("TZS");
+  const [senderFeeLoading, setSenderFeeLoading] = useState(false);
+
+  const formatSenderFee = () => {
+    if (senderFeeAmount == null) return null;
+    const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(senderFeeAmount);
+    return `${senderFeeCurrency} ${formatted}`;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchFee = async () => {
+      setSenderFeeLoading(true);
+      try {
+        const response = await apiClient.getSenderRequestFee();
+        if (cancelled) return;
+        if (response.success && response.data) {
+          const payload = response.data as {
+            currency?: string;
+            amount?: number;
+            data?: { currency?: string; amount?: number };
+          };
+          const amount = payload.amount ?? payload.data?.amount;
+          const currency = payload.currency ?? payload.data?.currency ?? "TZS";
+          if (typeof amount === 'number') {
+            setSenderFeeAmount(amount);
+            setSenderFeeCurrency(currency);
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch sender request fee');
+      } finally {
+        if (!cancelled) setSenderFeeLoading(false);
+      }
+    };
+    fetchFee();
+    return () => { cancelled = true; };
+  }, []);
 
   // Check for payment return from payment gateway
   useEffect(() => {
@@ -1801,7 +1849,9 @@ const SenderNames = () => {
                 <DialogHeader className="pb-2 sm:pb-2.5">
                   <DialogTitle className="text-sm sm:text-base md:text-lg">Request New Sender Name</DialogTitle>
                   <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    We charge 12,000Tsh for registration of Sender ID, which includes 300 SMS credits.
+                    {senderFeeLoading && senderFeeAmount == null
+                      ? "Loading registration fee..."
+                      : `We charge ${formatSenderFee() ?? "the registration fee"} for registration of Sender ID, which includes 300 SMS credits.`}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -2005,7 +2055,9 @@ const SenderNames = () => {
                         <div className="pt-2 border-t border-primary/10">
                           <div className="flex justify-between items-center">
                             <span className="text-text-subtle font-medium">Total Amount:</span>
-                            <span className="text-lg sm:text-xl font-bold text-primary">TSH 12,000</span>
+                            <span className="text-lg sm:text-xl font-bold text-primary">
+                              {senderFeeLoading && senderFeeAmount == null ? "Loading..." : (formatSenderFee() ?? "—")}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -2055,7 +2107,7 @@ const SenderNames = () => {
                     ) : (
                       <>
                         <CreditCard className="w-3 h-3 mr-1" />
-                        Pay TSH 12,000
+                        Pay {formatSenderFee() ?? "Now"}
                       </>
                     )}
                   </Button>
