@@ -354,23 +354,23 @@ const PurchaseHistory = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
-            {/* Header */}
-            <div>
-              <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main">
+          <div className="max-w-3xl lg:max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 space-y-5">
+            {/* Header — iOS large title */}
+            <header>
+              <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
                 {t('purchase_history')}
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
                 {t('view_all_credit_purchases')}
               </p>
-            </div>
+            </header>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-3">
@@ -872,7 +872,7 @@ const PurchaseHistory = () => {
               </SheetContent>
             </Sheet>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -1,18 +1,23 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Activity, MessageSquare, Send, Users, CheckCircle, Download, Upload, MoreVertical, Trash2, Eye, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useEffect, useMemo, useState } from "react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { AppSidebar } from '@/components/layout/AppSidebar';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { useDashboard } from '@/hooks/useDashboard';
+  Activity,
+  Bell,
+  CheckCircle,
+  MessageSquare,
+  Search,
+  Send,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDashboard } from "@/hooks/useDashboard";
+import { PushSettingsCard } from "@/components/pwa/PushSettingsCard";
 
 type ActivityItem = {
   id: string;
@@ -25,38 +30,94 @@ type ActivityItem = {
   metadata?: Record<string, unknown>;
 };
 
-const getActivityIcon = (type: string) => {
-  switch (type) {
-    case "message_sent":
-    case "reply":
-    case "message":
-      return MessageSquare;
-    case "campaign_completed":
-    case "campaign_completion":
-    case "campaign":
-      return Send;
-    case "contact_added":
-    case "contacts_added":
-    case "contact":
-      return Users;
-    case "template_approval":
-    case "template":
-      return CheckCircle;
-    default:
-      return Activity;
-  }
-};
+type FilterKey = "all" | "messages" | "campaigns" | "contacts";
 
-const getStatusBadgeColor = (type: string) => {
-  if (type.includes('sent') || type.includes('completed') || type.includes('delivered')) {
-    return 'bg-green-100 text-green-700';
-  } else if (type.includes('failed') || type.includes('error')) {
-    return 'bg-red-100 text-red-700';
-  } else if (type.includes('pending')) {
-    return 'bg-yellow-100 text-yellow-700';
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "messages", label: "Messages" },
+  { key: "campaigns", label: "Campaigns" },
+  { key: "contacts", label: "Contacts" },
+];
+
+interface TypeStyle {
+  Icon: LucideIcon;
+  iconBg: string;
+  iconColor: string;
+}
+
+function getTypeStyle(type: string): TypeStyle {
+  if (type.includes("message") || type.includes("reply")) {
+    return {
+      Icon: MessageSquare,
+      iconBg: "bg-blue-100 dark:bg-blue-500/15",
+      iconColor: "text-blue-600 dark:text-blue-400",
+    };
   }
-  return 'bg-blue-100 text-blue-700';
-};
+  if (type.includes("campaign")) {
+    return {
+      Icon: Send,
+      iconBg: "bg-emerald-100 dark:bg-emerald-500/15",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+    };
+  }
+  if (type.includes("contact")) {
+    return {
+      Icon: Users,
+      iconBg: "bg-amber-100 dark:bg-amber-500/15",
+      iconColor: "text-amber-600 dark:text-amber-400",
+    };
+  }
+  if (type.includes("template") || type.includes("approval")) {
+    return {
+      Icon: CheckCircle,
+      iconBg: "bg-violet-100 dark:bg-violet-500/15",
+      iconColor: "text-violet-600 dark:text-violet-400",
+    };
+  }
+  return {
+    Icon: Activity,
+    iconBg: "bg-muted",
+    iconColor: "text-foreground/60 dark:text-foreground/55",
+  };
+}
+
+function getStatusTone(type: string): string {
+  if (type.includes("failed") || type.includes("error")) {
+    return "text-destructive bg-destructive/10";
+  }
+  if (type.includes("sent") || type.includes("completed") || type.includes("delivered")) {
+    return "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/15";
+  }
+  if (type.includes("pending")) {
+    return "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/15";
+  }
+  return "text-foreground/60 bg-muted";
+}
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+type DateBucket = "Today" | "Yesterday" | "Earlier";
+
+function bucketFor(timestamp: string): DateBucket {
+  const ts = new Date(timestamp).getTime();
+  if (Number.isNaN(ts)) return "Earlier";
+  const today = startOfDay(new Date());
+  const dayMs = 24 * 60 * 60 * 1000;
+  if (ts >= today) return "Today";
+  if (ts >= today - dayMs) return "Yesterday";
+  return "Earlier";
+}
+
+function matchesFilter(item: ActivityItem, filter: FilterKey): boolean {
+  if (filter === "all") return true;
+  const t = (item.type || "").toLowerCase();
+  if (filter === "messages") return t.includes("message") || t.includes("reply") || t.includes("sms");
+  if (filter === "campaigns") return t.includes("campaign");
+  if (filter === "contacts") return t.includes("contact");
+  return true;
+}
 
 const NotificationsPage = () => {
   useEffect(() => {
@@ -65,288 +126,404 @@ const NotificationsPage = () => {
 
   const { recentActivity, isLoading } = useDashboard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
 
-  // Update activities when recentActivity changes
-  useMemo(() => {
-    if (!recentActivity) return;
-    const sorted = [...recentActivity].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setActivities(sorted as ActivityItem[]);
-  }, [recentActivity]);
+  const activities: ActivityItem[] = useMemo(() => {
+    if (!recentActivity) return [];
+    return [...(recentActivity as ActivityItem[])]
+      .filter((a) => !hiddenIds.has(a.id))
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+  }, [recentActivity, hiddenIds]);
 
-  const filteredActivities = useMemo(() => {
-    return activities.filter(activity =>
-      activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered: ActivityItem[] = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return activities.filter(
+      (a) =>
+        matchesFilter(a, activeFilter) &&
+        (term === "" ||
+          a.title.toLowerCase().includes(term) ||
+          a.description.toLowerCase().includes(term)),
     );
-  }, [activities, searchTerm]);
+  }, [activities, searchTerm, activeFilter]);
 
-  const paginatedActivities = useMemo(() => {
-    return filteredActivities.slice(0, entriesPerPage);
-  }, [filteredActivities, entriesPerPage]);
+  const grouped = useMemo(() => {
+    const buckets: Record<DateBucket, ActivityItem[]> = {
+      Today: [],
+      Yesterday: [],
+      Earlier: [],
+    };
+    for (const item of filtered) {
+      buckets[bucketFor(item.timestamp)].push(item);
+    }
+    return buckets;
+  }, [filtered]);
 
-  // Handle View action
-  const handleViewActivity = (activity: ActivityItem) => {
-    setSelectedActivity(activity);
-    setShowViewModal(true);
+  const removeActivity = (id: string) => {
+    setHiddenIds((s) => new Set(s).add(id));
+    setSelectedActivity((prev) => (prev?.id === id ? null : prev));
   };
 
-  // Handle Delete action
-  const handleDeleteActivity = (activityId: string) => {
-    setActivities(prevActivities => prevActivities.filter(activity => activity.id !== activityId));
-  };
+  const orderedBuckets: DateBucket[] = ["Today", "Yesterday", "Earlier"];
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4">
-            {/* Header Section */}
-            <div>
-              <h1 className="font-heading text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1 sm:mb-2">Notifications</h1>
+
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-3 sm:p-4 lg:p-6 max-w-3xl mx-auto w-full">
+            {/* Desktop header (mobile header lives in the top bar context) */}
+            <div className="hidden md:block mb-4">
+              <h1 className="font-heading text-xl lg:text-2xl font-bold text-foreground leading-tight">
+                Notifications
+              </h1>
+              <p className="text-sm text-foreground/60 mt-1">
+                Activity across messages, campaigns and contacts.
+              </p>
             </div>
 
-            {/* Report Card */}
-            <Card className="glass border border-border-subtle">
-              {/* Header with Controls */}
-              <CardHeader className="pb-4">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-text-subtle whitespace-nowrap">Show entries</span>
-                      <select
-                        value={entriesPerPage}
-                        onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-                        className="h-8 px-2 rounded border border-border-subtle bg-background text-foreground text-sm"
-                      >
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                      </select>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 gap-1 hidden sm:inline-flex">
-                      <Upload className="w-3 h-3" />
-                      <span className="hidden md:inline">Import</span>
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 gap-1 hidden sm:inline-flex">
-                      <Download className="w-3 h-3" />
-                      <span className="hidden md:inline">Export</span>
-                    </Button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <div className="relative flex-1 sm:flex-none">
-                      <Input
-                        placeholder="Search here..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-8 text-sm pl-3 pr-8 w-full sm:w-48"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none">
-                        Filter
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 flex-1 sm:flex-none">
-                            Action
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                          <DropdownMenuItem>Archive</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
+            {/* Mobile: simple count line */}
+            <div className="md:hidden mb-3">
+              <p className="text-[13px] text-foreground/60">
+                {filtered.length === 0 ? "Nothing to show" : `${filtered.length} notification${filtered.length === 1 ? "" : "s"}`}
+              </p>
+            </div>
 
-              {/* Table Content */}
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border-subtle bg-accent/30">
-                        <th className="hidden sm:table-cell px-4 py-3 text-left font-semibold text-foreground w-8">
-                          <input type="checkbox" className="rounded border-border-subtle" />
-                        </th>
-                        <th className="hidden md:table-cell px-4 py-3 text-left font-semibold text-foreground">Time</th>
-                        <th className="px-3 sm:px-4 py-3 text-left font-semibold text-foreground">Title</th>
-                        <th className="hidden lg:table-cell px-4 py-3 text-left font-semibold text-foreground">Description</th>
-                        <th className="hidden lg:table-cell px-4 py-3 text-left font-semibold text-foreground">Type</th>
-                        <th className="px-3 sm:px-4 py-3 text-left font-semibold text-foreground">Status</th>
-                        <th className="px-3 sm:px-4 py-3 text-center font-semibold text-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedActivities.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-4 py-12 text-center text-text-subtle">
-                            <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                            <h3 className="text-lg font-medium mb-2">No notifications found</h3>
-                            <p className="text-sm">New notifications will appear here.</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedActivities.map((activity) => {
-                          const Icon = getActivityIcon(activity.type);
-                          const date = new Date(activity.timestamp);
-                          const formattedDate = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
-                          const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            {/* Push notification settings */}
+            <div className="mb-4">
+              <PushSettingsCard />
+            </div>
 
-                          return (
-                            <tr key={activity.id} className="border-b border-border-subtle hover:bg-accent/50 transition-colors">
-                              <td className="hidden sm:table-cell px-4 py-3">
-                                <input type="checkbox" className="rounded border-border-subtle" />
-                              </td>
-                              <td className="hidden md:table-cell px-4 py-3 text-foreground text-xs whitespace-nowrap">
-                                {formattedDate}, {formattedTime}
-                              </td>
-                              <td className="px-3 sm:px-4 py-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Icon className="w-4 h-4 text-primary flex-shrink-0" />
-                                  <span className="font-medium text-foreground text-[9px] sm:text-xs truncate">{activity.title}</span>
-                                </div>
-                              </td>
-                              <td className="hidden lg:table-cell px-4 py-3 text-text-subtle max-w-xs truncate">
-                                {activity.description}
-                              </td>
-                              <td className="hidden lg:table-cell px-4 py-3">
-                                <Badge variant="outline" className="text-[11px]">
-                                  {activity.type.replace(/_/g, ' ').toUpperCase()}
-                                </Badge>
-                              </td>
-                              <td className="px-3 sm:px-4 py-3">
-                                <Badge className={`text-[11px] ${getStatusBadgeColor(activity.type)}`}>
-                                  {activity.is_live ? 'LIVE' : 'COMPLETED'}
-                                </Badge>
-                              </td>
-                              <td className="px-3 sm:px-4 py-3 text-center">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                      <MoreVertical className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleViewActivity(activity)}>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleDeleteActivity(activity.id)} className="text-red-600">
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search notifications"
+                className="h-10 pl-9 pr-9 text-sm rounded-xl bg-card dark:bg-card/95 border-border/70 dark:border-border/50"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 inline-flex items-center justify-center rounded-full text-foreground/50 active:bg-accent/60"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-            {/* Footer Info */}
-            {filteredActivities.length > 0 && (
-              <div className="text-xs text-text-subtle text-center">
-                Showing {paginatedActivities.length} of {filteredActivities.length} notifications
-              </div>
-            )}
+            {/* Filter chips */}
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-1.5 mb-3 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {FILTERS.map((f) => {
+                const active = activeFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setActiveFilter(f.key)}
+                    className={[
+                      "flex-shrink-0 h-8 px-3 rounded-full text-[12px] font-semibold tracking-tight",
+                      "transition-colors duration-150",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card dark:bg-card/95 border border-border/70 dark:border-border/50 text-foreground/70 dark:text-foreground/65 active:bg-accent/60",
+                    ].join(" ")}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* View Activity Modal */}
-            {showViewModal && selectedActivity && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <Card className="w-full max-w-md glass border border-border-subtle">
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <CardTitle>Activity Details</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setShowViewModal(false)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Title</p>
-                      <p className="text-sm font-semibold text-foreground">{selectedActivity.title}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Description</p>
-                      <p className="text-sm text-foreground">{selectedActivity.description}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Type</p>
-                        <Badge variant="outline" className="text-[11px]">
-                          {selectedActivity.type.replace(/_/g, ' ').toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Status</p>
-                        <Badge className={`text-[11px] ${getStatusBadgeColor(selectedActivity.type)}`}>
-                          {selectedActivity.is_live ? 'LIVE' : 'COMPLETED'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Time</p>
-                      <p className="text-sm text-foreground">
-                        {new Date(selectedActivity.timestamp).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })}
+            {/* Body */}
+            {isLoading ? (
+              <SkeletonList />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                hasFilter={activeFilter !== "all" || searchTerm.length > 0}
+                onClear={() => {
+                  setSearchTerm("");
+                  setActiveFilter("all");
+                }}
+              />
+            ) : (
+              <div className="space-y-4">
+                {orderedBuckets.map((bucket) => {
+                  const items = grouped[bucket];
+                  if (items.length === 0) return null;
+                  return (
+                    <section key={bucket}>
+                      <p className="px-2.5 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-foreground/45 dark:text-foreground/40">
+                        {bucket}
                       </p>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowViewModal(false)}
-                        className="flex-1"
-                      >
-                        Close
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          handleDeleteActivity(selectedActivity.id);
-                          setShowViewModal(false);
-                        }}
-                        className="flex-1"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden">
+                        {items.map((item, idx) => (
+                          <NotificationRow
+                            key={item.id}
+                            item={item}
+                            isLast={idx === items.length - 1}
+                            onOpen={() => setSelectedActivity(item)}
+                            onDelete={() => removeActivity(item.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {/* Detail sheet (mobile-friendly modal) */}
+      {selectedActivity && (
+        <DetailSheet
+          item={selectedActivity}
+          onClose={() => setSelectedActivity(null)}
+          onDelete={() => removeActivity(selectedActivity.id)}
+        />
+      )}
     </div>
   );
 };
+
+interface RowProps {
+  item: ActivityItem;
+  isLast: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}
+
+function NotificationRow({ item, isLast, onOpen, onDelete }: RowProps) {
+  const style = getTypeStyle(item.type);
+  const Icon = style.Icon;
+  const date = new Date(item.timestamp);
+  const timeLabel =
+    item.time_ago ||
+    date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return (
+    <div
+      className={[
+        "flex items-start gap-3 px-3.5 py-3 active:bg-accent/60 dark:active:bg-accent/40 transition-colors",
+        !isLast ? "border-b border-border/40 dark:border-border/25" : "",
+      ].join(" ")}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex-1 flex items-start gap-3 min-w-0 text-left"
+      >
+        <div
+          className={`w-10 h-10 rounded-xl ${style.iconBg} flex items-center justify-center flex-shrink-0`}
+        >
+          <Icon className={`w-[18px] h-[18px] ${style.iconColor}`} strokeWidth={2.2} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="flex-1 min-w-0 text-[14px] font-semibold text-foreground dark:text-foreground leading-tight truncate">
+              {item.title}
+            </p>
+            <span className="flex-shrink-0 text-[11px] text-foreground/50 dark:text-foreground/45 tabular-nums">
+              {timeLabel}
+            </span>
+          </div>
+          <p className="text-[12.5px] text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5 line-clamp-2">
+            {item.description}
+          </p>
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="Dismiss"
+        className="flex-shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-full text-foreground/40 dark:text-foreground/35 active:bg-destructive/10 active:text-destructive transition-colors -mr-1"
+      >
+        <X className="w-4 h-4" strokeWidth={2.2} />
+      </button>
+    </div>
+  );
+}
+
+function SkeletonList() {
+  return (
+    <div className="space-y-4">
+      {[1, 2].map((g) => (
+        <section key={g}>
+          <Skeleton className="h-3 w-16 mb-2 ml-2.5" />
+          <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 px-3.5 py-3 border-b last:border-b-0 border-border/40 dark:border-border/25"
+              >
+                <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                <div className="flex-1 min-w-0 space-y-2 pt-0.5">
+                  <Skeleton className="h-3.5 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  hasFilter: boolean;
+  onClear: () => void;
+}
+
+function EmptyState({ hasFilter, onClear }: EmptyStateProps) {
+  return (
+    <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 p-8 text-center">
+      <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+        <Bell className="w-7 h-7" strokeWidth={1.8} />
+      </div>
+      <h3 className="text-[15px] font-semibold text-foreground dark:text-foreground">
+        {hasFilter ? "No matches" : "You're all caught up"}
+      </h3>
+      <p className="text-[12.5px] text-foreground/60 dark:text-foreground/55 leading-snug mt-1 max-w-xs mx-auto">
+        {hasFilter
+          ? "Try a different filter or clear your search to see everything."
+          : "New activity from messages, campaigns and contacts will show up here."}
+      </p>
+      {hasFilter && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClear}
+          className="mt-4 h-9 px-4 text-xs font-semibold"
+        >
+          Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}
+
+interface DetailSheetProps {
+  item: ActivityItem;
+  onClose: () => void;
+  onDelete: () => void;
+}
+
+function DetailSheet({ item, onClose, onDelete }: DetailSheetProps) {
+  const style = getTypeStyle(item.type);
+  const Icon = style.Icon;
+  const statusTone = getStatusTone(item.type);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+      />
+      <div
+        className="relative w-full sm:max-w-md bg-card dark:bg-background rounded-t-3xl sm:rounded-2xl shadow-2xl border border-border/70 dark:border-border/40"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Grab handle on mobile */}
+        <div className="sm:hidden flex justify-center pt-2">
+          <div className="w-10 h-1 rounded-full bg-foreground/15 dark:bg-foreground/20" />
+        </div>
+        <div className="flex items-start gap-3 px-4 pt-3 pb-1">
+          <div className={`w-12 h-12 rounded-2xl ${style.iconBg} flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-6 h-6 ${style.iconColor}`} strokeWidth={2.2} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[16px] font-bold text-foreground dark:text-foreground leading-tight">
+              {item.title}
+            </h3>
+            <span
+              className={`inline-block mt-1 text-[10.5px] font-bold tracking-wide px-2 py-0.5 rounded-full ${statusTone}`}
+            >
+              {item.type.replace(/_/g, " ").toUpperCase()}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center rounded-full text-foreground/70 active:bg-accent/60 transition-colors -mr-1"
+          >
+            <X className="w-5 h-5" strokeWidth={2.2} />
+          </button>
+        </div>
+
+        <div className="px-4 pt-2 pb-4 space-y-3">
+          <p className="text-[13.5px] text-foreground/80 dark:text-foreground/75 leading-relaxed">
+            {item.description}
+          </p>
+
+          <div className="rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/60 dark:border-border/30 divide-y divide-border/40 dark:divide-border/25 text-[12.5px]">
+            <Field label="Type" value={item.type.replace(/_/g, " ").toUpperCase()} />
+            <Field
+              label="Time"
+              value={new Date(item.timestamp).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            />
+            <Field label="Time ago" value={item.time_ago || "—"} />
+          </div>
+        </div>
+
+        <div className="px-4 pb-4 flex gap-2 border-t border-border/60 dark:border-border/30 pt-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="flex-1 h-10 text-sm font-semibold"
+          >
+            Close
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              onDelete();
+              onClose();
+            }}
+            className="flex-1 h-10 text-sm font-semibold"
+          >
+            <Trash2 className="w-4 h-4 mr-1.5" />
+            Dismiss
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+      <span className="text-foreground/55 dark:text-foreground/50">{label}</span>
+      <span className="text-foreground dark:text-foreground font-medium text-right truncate">
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default NotificationsPage;

@@ -375,19 +375,19 @@ const PertinaIntegrationContent = () => {
   );
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={!isMobile || sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-5 text-sm text-foreground">
-          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5">
-            <div>
-              <h1 className="font-heading text-xl sm:text-2xl font-bold">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main px-4 sm:px-6 pt-4 sm:pt-6 pb-8 text-sm text-foreground">
+          <div className="max-w-4xl mx-auto w-full space-y-5">
+            <header>
+              <h1 className="font-heading text-[24px] sm:text-3xl font-bold leading-tight tracking-tight">
                 {language === "sw" ? "Rejea ya Ujumuishaji wa Mshirika" : "Partner Integration Reference"}
               </h1>
-              <p className="text-sm text-foreground/90 max-w-2xl">
+              <p className="text-[13px] sm:text-sm text-foreground/65 mt-1 max-w-2xl">
                 {language === "sw"
                   ? "Kila kitu unachohitaji kuunganisha endpoints za Mshirika kwenye dashibodi, kuanzia mipangilio ya API hadi mifano ya maombi ya salio na takwimu za matumizi."
                   : "Everything you need to wire the Partner integration endpoints into the dashboard, from API configuration to example requests for credit balance and usage statistics."}
@@ -398,7 +398,7 @@ const PertinaIntegrationContent = () => {
                   This documentation is for future reference when the feature becomes available.
                 </p>
               </div> */}
-            </div>
+            </header>
 
             <Card className="glass p-3 sm:p-4">
               <CardHeader>
@@ -530,7 +530,7 @@ const PertinaIntegrationContent = () => {
               </CardContent>
             </Card>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

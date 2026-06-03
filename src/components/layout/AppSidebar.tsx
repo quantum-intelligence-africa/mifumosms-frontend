@@ -16,9 +16,11 @@ import {
   Server,
   Bot,
   Mic,
-  MessagesSquare,
 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/BrandLogo";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { LucideIcon } from "lucide-react";
+import type { ComponentType, SVGAttributes } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -27,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 import {
   Collapsible,
   CollapsibleContent,
@@ -39,10 +42,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Accept both Lucide icons and our custom WhatsAppIcon — both are render-able
+// SVG components that take a className + strokeWidth prop.
+type NavIcon = LucideIcon | ComponentType<SVGAttributes<SVGSVGElement> & { strokeWidth?: number | string }>;
+
 interface NavItem {
   name: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   children?: NavItem[];
 }
 
@@ -59,26 +66,20 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { isPartina } = useRoles();
+  const { avatar } = useUserAvatar();
+
+  // Mobile uses the bottom tab bar + 3-dot menu; the sidebar has no trigger
+  // here, so keeping it mounted only causes a transition-transform flicker
+  // when pages remount on every route change.
+  if (isMobile) return null;
 
   const handleNavigation = (href: string) => {
-    if (location.pathname !== href) {
-      const isLeavingHeavyPage =
-        location.pathname.includes("/sms/send") ||
-        location.pathname.includes("/messaging/send") ||
-        location.pathname.includes("/sms/sender-names") ||
-        location.pathname.includes("/messaging/sender-names");
-
-      if (isLeavingHeavyPage) {
-        window.location.href = href;
-      } else {
-        window.dispatchEvent(new CustomEvent("page-navigate", { detail: { href } }));
-        setTimeout(() => {
-          window.scrollTo(0, 0);
-          navigate(href);
-          if (isMobile && onClose) onClose();
-        }, 10);
-      }
-    }
+    if (location.pathname === href) return;
+    // Heavy pages (SendSMS, SenderNames) listen for this and abort in-flight work.
+    window.dispatchEvent(new CustomEvent("page-navigate", { detail: { href } }));
+    window.scrollTo(0, 0);
+    navigate(href);
+    if (isMobile && onClose) onClose();
   };
 
   const navigation: NavItem[] = [
@@ -89,7 +90,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       icon: MessageSquare,
       children: [
         { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
-        { name: "WhatsApp", href: "/whatsapp", icon: MessagesSquare },
+        { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
         { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
         { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
         { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
@@ -136,20 +137,26 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       <aside
         className={[
           "flex flex-col h-screen bg-[hsl(var(--background))] border-r border-border/50 select-none",
-          "w-[240px]",
+          isMobile ? "w-[84vw] max-w-[320px]" : "w-[240px]",
           isMobile
             ? `fixed left-0 top-0 z-[110] shadow-2xl transition-transform duration-300 ease-smooth-out ${
                 isOpen ? "translate-x-0" : "-translate-x-full"
               }`
             : "relative",
         ].join(" ")}
+        style={
+          isMobile
+            ? {
+                paddingTop: "env(safe-area-inset-top)",
+                paddingBottom: "env(safe-area-inset-bottom)",
+              }
+            : undefined
+        }
       >
         {/* ── Logo ─────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-[9px] bg-primary flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-4 h-4 text-primary-foreground" strokeWidth={2.2} />
-            </div>
+          <div className="flex items-center gap-2">
+            <BrandLogo className="h-14 w-auto -my-3 -mr-7" />
             <span className="text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-none">
               {t("app.name")}
             </span>
@@ -273,9 +280,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
         {/* ── User row ─────────────────────────────────── */}
         <div className="px-2 py-3">
           <div className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors duration-100 group">
-            <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src="" alt={userName} />
-              <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary text-[11px] font-bold">
+            <Avatar className="h-11 w-11 flex-shrink-0 ring-2 ring-border/60 dark:ring-border/40 shadow-sm">
+              <AvatarImage src={avatar} alt={userName} className="object-cover" />
+              <AvatarFallback className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary text-[13px] font-bold">
                 {getInitials(userName)}
               </AvatarFallback>
             </Avatar>

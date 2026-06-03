@@ -11,6 +11,7 @@ import { SMSVerificationCode } from "@/components/auth/SMSVerificationCode";
 import { normalizePhoneNumber, getPhonePlaceholder, toBackendPhoneFormat } from "@/utils/phoneUtils";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const ForgotPassword = () => {
   const isMobile = useIsMobile();
@@ -455,9 +456,7 @@ const ForgotPassword = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-400 to-blue-500 flex items-center justify-center shadow-md">
-                <MessageSquare className="w-4 h-4 text-white" />
-              </div>
+              <BrandLogo className="h-16 w-auto -my-3 -mr-8" />
               <span className="font-heading text-lg font-bold text-white">
                 SENDA
               </span>
@@ -530,9 +529,7 @@ const ForgotPassword = () => {
           <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
             <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-                  <MessageSquare className="w-6 h-6 text-white" />
-                </div>
+                <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
                 <div>
                   <span className="font-heading text-2xl font-bold text-gray-900">
                     SENDA
@@ -637,9 +634,7 @@ const ForgotPassword = () => {
           <div className="w-full max-w-sm sm:max-w-md space-y-6">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
-                  <MessageSquare className="w-5 h-5 text-white" />
-                </div>
+                <BrandLogo className="h-20 w-auto -my-3 -mr-10" />
                 <span className="font-heading text-lg font-bold text-gray-900">
                   SENDA
                 </span>

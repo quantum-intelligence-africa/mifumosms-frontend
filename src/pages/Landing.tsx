@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { logger } from "@/utils/logger";
 import {
   MessageSquare,
@@ -17,17 +16,20 @@ import {
   Zap,
   BarChart3,
   Play,
-  Sparkles,
   Wifi,
   Network,
   Activity,
   ChevronLeft,
   ChevronRight,
-  Menu,
-  X
 } from "lucide-react";
-import MobileMenu from "@/components/layout/MobileMenu";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { LandingHeader } from "@/components/layout/LandingHeader";
+import { LandingFooter } from "@/components/layout/LandingFooter";
+import OmnichannelInboxSection from "@/components/landing/OmnichannelInboxSection";
+import VoiceAndIvrSection from "@/components/landing/VoiceAndIvrSection";
+import AgentWorkspaceSection from "@/components/landing/AgentWorkspaceSection";
+import AiCopilotsSection from "@/components/landing/AiCopilotsSection";
+import AnalyticsSection from "@/components/landing/AnalyticsSection";
+import IntegrationsSection from "@/components/landing/IntegrationsSection";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState, useRef, useContext } from "react";
 import { LanguageContext } from "@/contexts/LanguageContext";
@@ -97,8 +99,6 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   const [currentBusiness, setCurrentBusiness] = useState(0);
   const [isPhoneHovered, setIsPhoneHovered] = useState(false);
   const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
 
   // Scroll-based animations for the desktop section
@@ -153,53 +153,6 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       setShowVideoModal(true);
     }
   }, [location.pathname, location.search, location.hash]);
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    // Cleanup on unmount
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isMobileMenuOpen]);
-
-  // Handle scroll-based header color change with performance optimization
-  useEffect(() => {
-    let ticking = false;
-    let cachedHeroBottom = 0;
-
-    const cacheHeroBottom = () => {
-      const heroSection = document.getElementById('about');
-      if (heroSection) {
-        cachedHeroBottom = heroSection.offsetTop + heroSection.offsetHeight;
-      }
-    };
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setIsScrolled(window.scrollY > cachedHeroBottom - 100);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    cacheHeroBottom();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', cacheHeroBottom, { passive: true });
-    handleScroll(); // Check initial state
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', cacheHeroBottom);
-    };
-  }, []);
 
   // Background slides with company colors - Only blue gradient
   const backgroundSlides = [
@@ -721,9 +674,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             }
           }
 
-          /* Prevent horizontal scrolling */
-          body, html {
+          /* Prevent horizontal scrolling without affecting vertical scroll.
+             Only body gets overflow-x: hidden; html stays default so the
+             window remains the scrolling element. */
+          body {
             overflow-x: hidden;
+            overflow-y: auto;
+            max-width: 100%;
+          }
+          html {
             max-width: 100%;
           }
 
@@ -752,107 +711,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       {/* Sliding Background */}
       <SlidingBackground />
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 z-[50] w-full bg-transparent py-4 backdrop-blur-xl">
-        <section className="px-0 pl-6 sm:pl-8 md:pl-12 lg:pl-20 flex items-center justify-between max-w-full pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-
-          {/* Logo */}
-          <div onClick={() => scrollToSection('about')} className="flex items-center justify-start cursor-pointer">
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 h-8">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg flex-shrink-0">
-                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
-              </div>
-              <span className={`font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none transition-colors duration-300 ${
-                isScrolled ? 'text-gray-900' : 'text-white'
-              }`}>
-                SENDA
-              </span>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="hidden lg:flex items-center gap-8">
-            <button onClick={() => scrollToSection('features')} className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-gray-700'
-                : 'text-white hover:text-gray-200'
-            }`}>
-              {language === 'sw' ? 'Vipengele' : 'Features'}
-            </button>
-            <button onClick={() => scrollToSection('pricing')} className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-gray-700'
-                : 'text-white hover:text-gray-200'
-            }`}>
-              {language === 'sw' ? 'Bei' : 'Pricing'}
-            </button>
-            <Link to="/developer" className={`transition-colors duration-300 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-gray-700'
-                : 'text-white hover:text-gray-200'
-            }`}>
-              {language === 'sw' ? 'Developa' : 'Developer'}
-            </Link>
-            <Link to="/whatsapp-broadcast" className={`transition-colors duration-300 flex items-center gap-1.5 ${
-              isScrolled
-                ? 'text-gray-900 hover:text-[#25D366]'
-                : 'text-white hover:text-[#25D366]'
-            }`}>
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
-              WhatsApp
-            </Link>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="hidden lg:flex items-center gap-3 justify-end">
-              <LanguageToggle isDark={isScrolled} />
-              <Link to="/login">
-                <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center ${
-                  isScrolled
-                    ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-                    : 'border border-white text-white hover:bg-white hover:text-gray-900'
-                }`}>
-                  {language === 'sw' ? 'Ingia' : 'Login'}
-                </button>
-              </Link>
-              <Link to="/signup">
-                <button className={`relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer inline-flex items-center justify-center leading-tight whitespace-nowrap ${
-                  isScrolled
-                    ? 'border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600'
-                    : 'border border-white text-white hover:bg-blue-600 hover:text-white hover:border-blue-600'
-                }`}>
-                  {language === 'sw' ? 'Jiunge' : 'Get started'}
-                </button>
-              </Link>
-          </div>
-
-          {/* Language Toggle and Mobile Menu Button (Mobile) */}
-          <div className="flex lg:hidden items-center gap-2">
-            <LanguageToggle isDark={isScrolled} />
-            <button
-              className={`relative p-2 cursor-pointer transition-colors duration-300 ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-gray-700'
-                  : 'text-white hover:text-gray-200'
-              }`}
-              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              aria-expanded={isMobileMenuOpen}
-              aria-label="Toggle mobile menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </section>
-      </header>
-
-      {/* Mobile Menu - Half page overlay */}
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        scrollToSection={scrollToSection}
-      />
+      {/* Shared landing header */}
+      <LandingHeader scrollToSection={scrollToSection} />
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-6 lg:pt-32 lg:pb-8 z-10">
@@ -1207,96 +1067,235 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
       {/* Testimonials removed */}
 
-      {/* Pricing */}
-      <section id="pricing" className="pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24 px-3 sm:px-4 lg:px-6 relative bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+      {/* §A Omnichannel Inbox */}
+      <OmnichannelInboxSection />
 
-            <h2 className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              <span className="block text-blue-600">
-                {language === 'sw' ? 'Vifurushi vya Bei' : 'Pricing packages'}
+      {/* §B Voice & IVR */}
+      <VoiceAndIvrSection />
+
+      {/* §C Agent Workspace */}
+      <AgentWorkspaceSection />
+
+      {/* §D AI Copilots */}
+      <AiCopilotsSection />
+
+      {/* §E Analytics */}
+      <AnalyticsSection />
+
+      {/* §F Integrations & API */}
+      <IntegrationsSection />
+
+      {/* Pricing */}
+      <section
+        id="pricing"
+        className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-600 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      >
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute top-0 left-1/4 h-80 w-80 -translate-x-1/2 -translate-y-1/3 rounded-full bg-blue-400/30 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-72 w-72 translate-x-1/2 translate-y-1/3 rounded-full bg-blue-300/25 blur-3xl" />
+        </div>
+
+        <div className="max-w-7xl mx-auto">
+          {/* Section header */}
+          <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
+            <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-[1.1]">
+              {language === 'sw' ? 'Bei sahihi kwa' : 'Pay only for what you send —'}{' '}
+              <span className="text-blue-200">
+                {language === 'sw' ? 'kila kiwango cha biashara' : 'volume discounts built-in'}
               </span>
             </h2>
-            <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              {language === 'sw' ? 'Chagua mpango unaofaa mahitaji ya biashara yako' : 'Choose the plan that fits your business needs'}
+            <p className="mt-5 text-base sm:text-lg text-white leading-relaxed">
+              {language === 'sw'
+                ? 'Hakuna mkataba, hakuna ada za usajili. Bei hupungua kadiri unavyokua.'
+                : 'No contracts, no setup fees. The rate per SMS drops automatically as your volume grows.'}
             </p>
           </div>
 
-          <div ref={pricingReveal.containerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {pricing.map((plan, index) => (
-              <div key={index} className={`relative group ${
-                pricingReveal.isVisible
-                  ? 'animate-scale-in'
-                  : 'reveal-hidden'
-              }`} style={{
-                animationDelay: pricingReveal.isVisible ? `${index * 200}ms` : '0ms',
-                animationFillMode: 'both'
-              }}>
-                {plan.popular && (
-                  <div className="absolute -top-6 sm:-top-7 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10">
-                    <Badge className="px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 text-xs sm:text-sm font-bold bg-yellow-400 text-black shadow-lg group-hover:scale-110 group-hover:shadow-xl group-hover:border-yellow-400 transition-all duration-300 rounded-full border-2 border-yellow-300">
-                    Most Popular
-                  </Badge>
-                  </div>
-                )}
-                <Card
-                  className={`relative overflow-hidden bg-white/90 backdrop-blur-sm border-0 transition-all duration-500 hover:-translate-y-2 hover:scale-105 cursor-pointer ${
-                    plan.popular
-                      ? 'shadow-xl ring-2 ring-yellow-500/20 scale-105 hover:ring-yellow-500/30 hover:shadow-2xl'
-                      : 'shadow-md hover:shadow-xl'
+          {/* Plan cards */}
+          <div
+            ref={pricingReveal.containerRef}
+            className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-7 items-stretch"
+          >
+            {pricing.map((plan, index) => {
+              const [priceMain, priceSuffix] = plan.rate.split('/');
+              const planMeta = [
+                {
+                  Icon: Send,
+                  taglineEn: 'For teams getting started with SMS',
+                  taglineSw: 'Kwa biashara zinazoanza na SMS',
+                  saving: null,
+                  prevPlanEn: null,
+                  prevPlanSw: null,
+                },
+                {
+                  Icon: TrendingUp,
+                  taglineEn: 'For growing teams running active campaigns',
+                  taglineSw: 'Kwa biashara zinazokua na kampeni hai',
+                  saving: 22,
+                  prevPlanEn: 'Lite',
+                  prevPlanSw: 'Rahisi',
+                },
+                {
+                  Icon: Zap,
+                  taglineEn: 'Built for high-volume senders & developers',
+                  taglineSw: 'Imejengwa kwa watumiaji wakubwa na waendelezaji',
+                  saving: 33,
+                  prevPlanEn: 'Standard',
+                  prevPlanSw: 'Kawaida',
+                },
+              ][index];
+
+              return (
+                <div
+                  key={index}
+                  className={`group relative flex ${
+                    pricingReveal.isVisible ? 'animate-scale-in' : 'reveal-hidden'
                   }`}
+                  style={{
+                    animationDelay: pricingReveal.isVisible ? `${index * 150}ms` : '0ms',
+                    animationFillMode: 'both',
+                  }}
                 >
-
-                <div className={`absolute inset-0 bg-gradient-to-br ${
-                  plan.popular
-                    ? 'from-yellow-500/10 via-transparent to-blue-500/10'
-                    : 'from-blue-500/5 via-transparent to-yellow-500/5'
-                } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
-                <CardContent className="relative p-4 sm:p-6 lg:p-8">
-                  <div className="text-center mb-6">
-                    <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-300">
-                    {plan.name}
-                  </h3>
-                    <div className="mb-2">
-                      <span className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                        {plan.rate}
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-blue-600 to-blue-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] ring-1 ring-white/20">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                        {language === 'sw' ? 'Maarufu zaidi' : 'Most popular'}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                      {plan.credits}
-                    </p>
-                  </div>
+                  )}
 
-                  <ul className="space-y-3 mb-6">
-                    {plan.features?.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Check className="w-2.5 h-2.5 text-green-600" />
+                  <div
+                    className={`relative flex flex-col w-full overflow-hidden rounded-3xl bg-white transition-all duration-300 group-hover:-translate-y-1 ${
+                      plan.popular
+                        ? 'ring-2 ring-blue-500 shadow-[0_20px_50px_-15px_rgba(37,99,235,0.4)] group-hover:shadow-[0_30px_60px_-15px_rgba(37,99,235,0.5)]'
+                        : 'ring-1 ring-gray-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.12)] group-hover:ring-gray-300 group-hover:shadow-[0_15px_35px_-10px_rgba(15,23,42,0.18)]'
+                    }`}
+                  >
+                    {/* Header block */}
+                    <div className="relative px-7 pt-8 pb-6">
+                      {/* Plan icon + name row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                              plan.popular
+                                ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-100'
+                                : 'bg-gray-50 text-gray-600 ring-1 ring-gray-100'
+                            }`}
+                          >
+                            <planMeta.Icon className="h-4 w-4" strokeWidth={2.2} />
+                          </span>
+                          <p className="font-heading text-[15px] font-semibold text-gray-900">
+                            {plan.name}
+                          </p>
                         </div>
-                        <span className="text-xs text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
 
-                  <Link to="/signup">
-                    <Button
-                      className={`w-full text-xs sm:text-sm h-8 sm:h-10 font-bold transition-all duration-300 group-hover:scale-105 ${
-                        plan.popular
-                          ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black shadow-lg hover:shadow-yellow-500/25'
-                          : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
-                      }`}
-                    >
-                      Get Started
-                      <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-                    </Button>
-                  </Link>
-                </CardContent>
-                </Card>
-              </div>
-            ))}
+                        {planMeta.saving && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                            {language === 'sw' ? `Punguzo ${planMeta.saving}%` : `Save ${planMeta.saving}%`}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-[13px] text-gray-500 leading-relaxed">
+                        {language === 'sw' ? planMeta.taglineSw : planMeta.taglineEn}
+                      </p>
+
+                      {/* Price */}
+                      <div className="mt-6 flex items-baseline gap-1.5">
+                        <span className="font-heading text-[44px] sm:text-[48px] font-bold text-gray-900 leading-none tracking-tight">
+                          {priceMain.trim()}
+                        </span>
+                        <span className="text-sm font-medium text-gray-500">
+                          /{(priceSuffix || 'SMS').trim()}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[12px] font-medium text-gray-500">
+                        {plan.credits}
+                      </p>
+                    </div>
+
+                    {/* CTA in header zone for stronger hierarchy */}
+                    <div className="px-7 pb-7 pt-1">
+                      <Link to="/signup" className="block">
+                        <Button
+                          className={`w-full h-11 text-sm font-semibold rounded-xl transition-all ${
+                            plan.popular
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/40'
+                              : 'bg-gray-900 hover:bg-gray-800 text-white shadow-sm'
+                          }`}
+                        >
+                          {language === 'sw' ? 'Anza sasa' : 'Get started'}
+                          <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-0.5" />
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {/* Hairline divider */}
+                    <div className="mx-7 border-t border-gray-100" />
+
+                    {/* "What's included" + features */}
+                    <div className="px-7 pt-6 pb-7 flex-1 flex flex-col">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-4">
+                        {language === 'sw' ? 'Kinajumuisha' : "What's included"}
+                      </p>
+
+                      {planMeta.prevPlanEn && (
+                        <p className="mb-3 text-[12.5px] font-medium text-gray-700">
+                          {language === 'sw'
+                            ? `Kila kitu kwenye ${planMeta.prevPlanSw}, jumuisha:`
+                            : `Everything in ${planMeta.prevPlanEn}, plus:`}
+                        </p>
+                      )}
+
+                      <ul className="space-y-3">
+                        {plan.features?.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span
+                              className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full mt-0.5 ${
+                                plan.popular
+                                  ? 'bg-blue-50 text-blue-600'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              <Check className="h-3 w-3" strokeWidth={3} />
+                            </span>
+                            <span className="text-[13.5px] leading-relaxed text-gray-700">
+                              {feature}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Included-in-every-plan strip */}
+          <div className="mt-12 flex flex-col items-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+              {language === 'sw' ? 'Vipo katika kila mpango' : 'Included in every plan'}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {[
+                { label: language === 'sw' ? 'Hakuna mkataba' : 'No contracts' },
+                { label: language === 'sw' ? 'Bei ya wazi' : 'Transparent pricing' },
+                { label: language === 'sw' ? 'Ripoti za uwasilishaji' : 'Delivery reports' },
+                { label: language === 'sw' ? 'Msaada wa 24/7' : '24/7 support' },
+                { label: language === 'sw' ? 'API & webhooks' : 'API & webhooks' },
+              ].map((item) => (
+                <span
+                  key={item.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-white/85 hover:border-blue-400/40 hover:text-white transition-colors"
+                >
+                  <Check className="h-3 w-3 text-blue-300" strokeWidth={3} />
+                  {item.label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -1418,108 +1417,44 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         </div>
 
         <div ref={ctaReveal.elementRef} className="max-w-3xl mx-auto text-center relative z-10">
-
-            <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
-              ctaReveal.isVisible
-                ? 'animate-fade-in-up'
-                : 'opacity-0 translate-y-4'
-            }`}>
-              {language === 'sw' ? 'Uko tayari kubadilisha' : 'Ready to transform your'}
-              <span className="block text-blue-600">
-                {language === 'sw' ? 'mawasiliano ya wateja?' : 'customer communication?'}
-              </span>
-            </h2>
-            <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
-              ctaReveal.isVisible
-                ? 'animate-fade-in-up'
-                : 'opacity-0 translate-y-4'
-            }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
-              {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia SENDA' : 'Join thousands of African businesses already using SENDA'}
-            </p>
+          <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
+            ctaReveal.isVisible
+              ? 'animate-fade-in-up'
+              : 'opacity-0 translate-y-4'
+          }`}>
+            {language === 'sw' ? 'Uko tayari kubadilisha' : 'Ready to transform your'}
+            <span className="block text-blue-600">
+              {language === 'sw' ? 'mawasiliano ya wateja?' : 'customer communication?'}
+            </span>
+          </h2>
+          <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
+            ctaReveal.isVisible
+              ? 'animate-fade-in-up'
+              : 'opacity-0 translate-y-4'
+          }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
+            {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia SENDA' : 'Join thousands of African businesses already using SENDA'}
+          </p>
 
           <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-800 delay-400 ${
             ctaReveal.isVisible
               ? 'animate-scale-in'
               : 'opacity-0 scale-95'
           }`} style={{ animationDelay: ctaReveal.isVisible ? '400ms' : '0ms' }}>
-          <Link to="/signup">
+            <Link to="/signup">
               <Button
                 size="lg"
                 className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group"
               >
-              {language === 'sw' ? 'Anza' : 'Get Started'}
+                {language === 'sw' ? 'Anza' : 'Get Started'}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
             </Link>
-            {/* <Button
-              size="hero"
-              variant="outline"
-              className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300 hover:scale-105"
-            >
-              Contact Sales
-            </Button> */}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative py-4 sm:py-6 px-3 sm:px-4 lg:px-6">
-        {/* Background Image for Footer */}
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src="/home background12.jpg"
-            alt="Footer background"
-            className="w-full h-full object-cover"
-          />
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/20"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            {/* Brand */}
-            <div onClick={() => scrollToSection('about')} className="flex items-center gap-1 sm:gap-2 cursor-pointer">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
-                  <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
-                  SENDA
-                </span>
-              </div>
-
-            {/* Nav */}
-            <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <a className="hover:underline hover:text-white" href="#about">{language === 'sw' ? 'Kuhusu' : 'About'}</a>
-              <a className="hover:underline hover:text-white" href="#features">{language === 'sw' ? 'Vipengele' : 'Features'}</a>
-              <a className="hover:underline hover:text-white" href="#pricing">{language === 'sw' ? 'Bei' : 'Pricing'}</a>
-              <a href="/developer" className="hover:underline hover:text-white">{language === 'sw' ? 'Developa' : 'Developer'}</a>
-              <Link to="/whatsapp-broadcast" className="hover:underline hover:text-[#25D366] flex items-center gap-1">
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                WhatsApp
-              </Link>
-            </nav>
-
-            {/* Contact */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-white/90">+255 615 229 007</span>
-              <a
-                href="https://wa.me/255615229007"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm transition-colors duration-300"
-              >
-                WhatsApp
-              </a>
-            </div>
-          </div>
-
-          <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. {language === 'sw' ? 'Haki zote zimehifadhiwa.' : 'All rights reserved.'}</p>
-          </div>
-        </div>
-      </footer>
+      {/* Shared landing footer */}
+      <LandingFooter scrollToSection={scrollToSection} />
       {/* Video Tutorial Modal */}
 <Dialog
   open={showVideoModal}

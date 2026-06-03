@@ -10,6 +10,11 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  // When true the toast renders modally: full-screen backdrop, no auto-dismiss,
+  // user must explicitly close it. Reserve for genuinely blocking conditions
+  // (e.g. insufficient credits, hard validation errors). Most toasts should
+  // leave this unset so they remain non-intrusive.
+  critical?: boolean;
 };
 
 const actionTypes = {

@@ -3046,6 +3046,8 @@ class ApiClient {
     buyer_name: string;
     buyer_phone: string;
     mobile_money_provider: string;
+    /** Channel hint for the backend so it routes credits to the right wallet. */
+    purchase_type?: "sms" | "whatsapp";
   }): Promise<ApiResponse<{
     transaction_id: string;
     order_id: string;

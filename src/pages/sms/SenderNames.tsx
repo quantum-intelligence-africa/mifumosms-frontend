@@ -19,7 +19,8 @@ import {
   ShoppingCart,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  ChevronRight
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -1114,11 +1115,11 @@ const SenderNames = () => {
   if (loading && safeSenderNames.length === 0 && !error) {
     // Show the page structure with a loading indicator
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
@@ -1159,7 +1160,7 @@ const SenderNames = () => {
                 </div>
               </Card>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     );
@@ -1184,11 +1185,11 @@ const SenderNames = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
@@ -1343,241 +1344,214 @@ const SenderNames = () => {
                 </div>
               </Card>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     );
   }
 
+  // Stat numbers for the redesigned hero
+  const statsTotal = stats?.total_requests || safeSenderNames.length || 0;
+  const statsPending = stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0;
+  const statsApproved = stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0;
+  const statsRejected = stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0;
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                    {t('sender_names')}
-                  </h1>
-                  <p className="text-sm sm:text-base text-text-subtle">
-                    {t('manage_sender_ids')}
-                  </p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button
-                    onClick={() => setShowRequestDialog(true)}
-                    className="h-9"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Request</span>
-                    <span className="sm:hidden">Request</span>
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      await Promise.all([refreshData(), refreshDefaultSender()]);
-                    }}
-                    variant="outline"
-                    className="h-9"
-                    disabled={loading || isLoadingDefault}
-                  >
-                    <RefreshCw className={`w-4 h-4 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-3xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-5">
+
+            {/* Page header */}
+            <header className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+                  {t('sender_names')}
+                </h1>
+                <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+                  {t('manage_sender_ids')}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={async () => { await Promise.all([refreshData(), refreshDefaultSender()]); }}
+                disabled={loading || isLoadingDefault}
+                aria-label="Refresh"
+                className="flex-shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-full text-foreground/65 active:bg-foreground/[0.06] disabled:opacity-50 transition-colors mr-11 md:mr-0"
+              >
+                <RefreshCw className={`w-[18px] h-[18px] ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} strokeWidth={2.2} />
+              </button>
+            </header>
+
+            {/* Primary CTA - Request button */}
+            <Button
+              onClick={() => setShowRequestDialog(true)}
+              className="w-full h-12 rounded-2xl text-[14px] font-semibold shadow-md"
+            >
+              <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
+              Request new sender ID
+            </Button>
+
+            {/* Stats — 2x2 mini grid with brand colors */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              <StatCard
+                label="Total"
+                value={statsTotal}
+                icon={Hash}
+                tone="primary"
+                loading={loading}
+              />
+              <StatCard
+                label="Pending"
+                value={statsPending}
+                icon={Clock}
+                tone="amber"
+                loading={loading}
+              />
+              <StatCard
+                label="Approved"
+                value={statsApproved}
+                icon={Check}
+                tone="emerald"
+                loading={loading}
+              />
+              <StatCard
+                label="Rejected"
+                value={statsRejected}
+                icon={X}
+                tone="destructive"
+                loading={loading}
+              />
             </div>
 
-            {/* Animated Stats Section */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Hash className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-primary" />
-                    </div>
-                    <div className="text-center sm:text-left min-w-0">
-                      <p className="text-xs sm:text-sm text-text-subtle">Total</p>
-                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
-                        {loading ? (
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
-                        ) : (
-                          <span className="animate-in fade-in-50 duration-500">
-                            {stats?.total_requests || safeSenderNames.length || 0}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-100">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-warning" />
-                    </div>
-                    <div className="text-center sm:text-left min-w-0">
-                      <p className="text-xs sm:text-sm text-text-subtle">Pending</p>
-                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
-                        {loading ? (
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
-                        ) : (
-                          <span className="animate-in fade-in-50 duration-500 delay-200">
-                              {stats?.pending_requests || safeSenderNames.filter(s => s.status === 'pending').length || 0}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-200">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-success" />
-                    </div>
-                    <div className="text-center sm:text-left min-w-0">
-                      <p className="text-xs sm:text-sm text-text-subtle">Approved</p>
-                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
-                        {loading ? (
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
-                        ) : (
-                          <span className="animate-in fade-in-50 duration-500 delay-300">
-                              {stats?.approved_requests || safeSenderNames.filter(s => s.status === 'approved').length || 0}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-3 sm:p-4 lg:p-6 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-300">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                      <X className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-destructive" />
-                    </div>
-                    <div className="text-center sm:text-left min-w-0">
-                      <p className="text-xs sm:text-sm text-text-subtle">Rejected</p>
-                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
-                        {loading ? (
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
-                        ) : (
-                          <span className="animate-in fade-in-50 duration-500 delay-400">
-                              {stats?.rejected_requests || safeSenderNames.filter(s => s.status === 'rejected').length || 0}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-            </div>
-
-            {/* Default Sender Card - Hidden when BOTH Taarifa-SMS AND Mifumosms are Approved/Active across all pages */}
+            {/* Default Sender — hero card */}
             {overview && !shouldHideDefaultSenderCard && (
-              <Card className={`p-3 sm:p-4 lg:p-6 glass border-l-4 ${(canRequestDefaultSender?.() ? 'border-blue-500' : 'border-green-500')}`}>
-                <div className="flex flex-col gap-3">
+              <div className={[
+                "relative overflow-hidden rounded-2xl border bg-card dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]",
+                canRequestDefaultSender?.() ? "border-primary/30 dark:border-primary/40" : "border-emerald-500/30 dark:border-emerald-500/40",
+              ].join(" ")}>
+                <div className={[
+                  "absolute -right-12 -top-12 w-40 h-40 rounded-full blur-3xl pointer-events-none",
+                  canRequestDefaultSender?.() ? "bg-primary/10 dark:bg-primary/15" : "bg-emerald-500/10 dark:bg-emerald-500/15",
+                ].join(" ")} />
+                <div className="relative p-4 sm:p-5">
                   <div className="flex items-start gap-3">
-                    {canRequestDefaultSender?.() ? (
-                      <Zap className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    )}
+                    <div className={[
+                      "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
+                      canRequestDefaultSender?.() ? "bg-primary/10 dark:bg-primary/15" : "bg-emerald-500/10 dark:bg-emerald-500/15",
+                    ].join(" ")}>
+                      {canRequestDefaultSender?.() ? (
+                        <Zap className="w-5 h-5 text-primary" strokeWidth={2.2} />
+                      ) : (
+                        <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" strokeWidth={2.4} />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
-                        <div className="min-w-0">
-                          <h3 className={`font-semibold ${canRequestDefaultSender?.() ? 'text-blue-600' : 'text-green-600'} mb-1`}>Default Sender ID</h3>
-                          <p className="text-sm text-text-subtle">
-                            Use the default sender ID "{getDefaultSenderName?.() || 'Taarifa-SMS'}" for instant SMS sending
-                          </p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                          {(canRequestDefaultSender && canRequestDefaultSender()) ? (
-                            <Button
-                              onClick={handleRequestDefaultSender}
-                              disabled={isRequesting}
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-                            >
-                              {isRequesting ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Requesting...
-                                </>
-                              ) : (
-                                <>
-                                  <Zap className="w-4 h-4 mr-2" />
-                                  <span className="hidden sm:inline">Request Default Sender</span>
-                                  <span className="sm:hidden">Request</span>
-                                </>
-                              )}
-                            </Button>
-                          ) : (
-                            <div className="text-left sm:text-right w-full sm:w-auto">
-                              <div className="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-green-50 border-green-200">
-                                <Check className="w-4 h-4 text-green-600" />
-                                <span className="text-green-700 text-sm font-medium">{overview.active_request?.status || 'Available'}</span>
-                              </div>
-                              {getCannotRequestReason?.() && (
-                                <p className="text-xs text-text-subtle">{getCannotRequestReason()}</p>
-                              )}
-                              {(overview.active_request?.status === 'pending' || overview.active_request?.status === 'approved') && (
-                                <div className="mt-2">
-                                  <Button
-                                    onClick={async () => { await cancelDefaultSender?.(); await refreshDefaultSender(); }}
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={isRequesting}
-                                    className="w-full sm:w-auto"
-                                  >
-                                    <span className="hidden sm:inline">Cancel Default Sender</span>
-                                    <span className="sm:hidden">Cancel</span>
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <p className={[
+                        "text-[10.5px] font-bold tracking-wider uppercase leading-none",
+                        canRequestDefaultSender?.() ? "text-primary" : "text-emerald-600 dark:text-emerald-400",
+                      ].join(" ")}>
+                        Default Sender ID
+                      </p>
+                      <h3 className="text-[15px] font-bold text-foreground leading-tight mt-1.5 truncate">
+                        {getDefaultSenderName?.() || 'Taarifa-SMS'}
+                      </h3>
+                      <p className="text-[12px] text-foreground/60 leading-snug mt-1">
+                        Use this for instant SMS sending without waiting for approval.
+                      </p>
 
-                      {/* Balance and Purchase Info */}
-                      <div className="flex flex-col gap-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4 text-text-subtle shrink-0" />
-                          <span className="text-text-subtle">Credits:</span>
-                          <span className="font-medium">{getCurrentCredits?.() || 0}</span>
+                      {/* Credits + purchase hint */}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
+                        <div className="inline-flex items-center gap-1.5 text-foreground/65">
+                          <CreditCard className="w-3.5 h-3.5" strokeWidth={2.2} />
+                          <span>Credits:</span>
+                          <span className="font-semibold text-foreground">{getCurrentCredits?.() || 0}</span>
                         </div>
                         {needsPurchaseCredits?.() && (
-                          <div className="flex items-center gap-2">
-                            <ShoppingCart className="w-4 h-4 text-orange-500 shrink-0" />
-                            <span className="text-orange-600 font-medium">Purchase credits to send SMS</span>
+                          <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                            <ShoppingCart className="w-3.5 h-3.5" strokeWidth={2.2} />
+                            Top up to send SMS
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Action row */}
+                  <div className="mt-4 pt-3 border-t border-border/40 dark:border-border/25">
+                    {(canRequestDefaultSender && canRequestDefaultSender()) ? (
+                      <Button
+                        onClick={handleRequestDefaultSender}
+                        disabled={isRequesting}
+                        className="w-full h-11 rounded-xl text-[13px] font-semibold"
+                      >
+                        {isRequesting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Requesting…
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" strokeWidth={2.4} />
+                            Request default sender
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
+                            <Check className="w-3 h-3" strokeWidth={3} />
+                            {overview.active_request?.status || 'Available'}
+                          </span>
+                          {getCannotRequestReason?.() && (
+                            <p className="text-[11px] text-foreground/55 mt-1.5 leading-snug">
+                              {getCannotRequestReason()}
+                            </p>
+                          )}
+                        </div>
+                        {(overview.active_request?.status === 'pending' || overview.active_request?.status === 'approved') && (
+                          <Button
+                            onClick={async () => { await cancelDefaultSender?.(); await refreshDefaultSender(); }}
+                            variant="outline"
+                            size="sm"
+                            disabled={isRequesting}
+                            className="h-9 px-3 rounded-lg text-[12px] font-semibold flex-shrink-0"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </Card>
+              </div>
             )}
 
-            {/* Info Card - hide once any sender is approved */}
+            {/* Requirements — show until first sender is approved */}
             {!hasAnyApprovedSender && (
-              <Card className="p-3 sm:p-4 lg:p-6 glass border-l-4 border-primary">
-                <div className="flex gap-3">
-                  <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium mb-2">Sender Name Requirements</p>
-                    <ul className="text-text-subtle space-y-1.5 list-disc list-inside leading-relaxed">
-                      <li>Maximum 11 characters (letters, numbers, spaces, _, -)</li>
-                      <li>Must be relevant to your business or brand</li>
-                      <li>Approval typically takes 1-3 business days</li>
-                      <li>Provide valid use case and sample messages</li>
+              <div className="rounded-2xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/15 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-[18px] h-[18px] text-primary" strokeWidth={2.2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[14px] font-bold text-foreground leading-tight">
+                      Sender Name Requirements
+                    </h3>
+                    <ul className="text-[12.5px] text-foreground/65 dark:text-foreground/60 mt-2 space-y-1 leading-relaxed">
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Maximum 11 characters (letters, numbers, spaces, _, -)</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Must be relevant to your business or brand</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Approval typically takes 1-3 business days</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Provide valid use case and sample messages</li>
                     </ul>
                   </div>
                 </div>
-              </Card>
+              </div>
             )}
 
             {/* Sender Names Table - Desktop */}
@@ -1702,129 +1676,166 @@ const SenderNames = () => {
               )}
             </Card>
 
-            {/* Mobile Card Layout */}
-            <div className="lg:hidden space-y-3 sm:space-y-4">
+            {/* Mobile list — full-detail cards (table-style) */}
+            <div className="lg:hidden">
               {safeSenderNames.length === 0 ? (
-                <Card className="glass p-6 sm:p-12 text-center">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                    <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-primary/10 dark:bg-primary/15 flex items-center justify-center">
+                    <Hash className="w-7 h-7 text-primary" strokeWidth={1.8} />
                   </div>
-                  <h3 className="font-heading text-base sm:text-lg font-semibold mb-2">
+                  <h3 className="text-[15px] font-semibold text-foreground">
                     No sender names yet
                   </h3>
-                  <p className="text-sm sm:text-base text-text-subtle">
-                    Request your first sender name to start sending SMS
+                  <p className="text-[12.5px] text-foreground/60 leading-snug mt-1 max-w-xs mx-auto">
+                    Request your first sender ID to start sending branded SMS.
                   </p>
-                </Card>
+                </div>
               ) : (
                 <>
-                {paginatedSenderNames.map((sender, index) => {
-                  const isUnified = 'tenant_name' in sender;
-                  const unifiedSender = sender as unknown as UnifiedSenderName;
-                  const legacySender = sender as SenderNameRequest;
+                  <p className="px-2.5 mb-2 text-[11px] font-bold tracking-wider uppercase text-foreground/55">
+                    Your sender IDs · {paginatedSenderNames.length}
+                  </p>
+                  <div className="space-y-3">
+                    {paginatedSenderNames.map((sender, index) => {
+                      const isUnified = 'tenant_name' in sender;
+                      const unifiedSender = sender as unknown as UnifiedSenderName;
+                      const legacySender = sender as SenderNameRequest;
+                      const senderId = isUnified ? unifiedSender.sender_id : sender.sender_name;
+                      const tenantOrUseCase = isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—");
+                      const sampleContent = !isUnified
+                        ? ((legacySender as unknown as Record<string, unknown>)?.sample_content as string | undefined)
+                        : undefined;
+                      const tone = statusTone(sender.status);
+                      const isActive = isUnified && unifiedSender.source === "SMSSenderID";
+                      return (
+                        <div
+                          key={isUnified ? `${unifiedSender.id}-${unifiedSender.sender_id}-${index}` : `${legacySender.id}-${index}`}
+                          className={[
+                            "relative overflow-hidden rounded-2xl",
+                            "bg-card dark:bg-card",
+                            "border shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]",
+                            tone.border,
+                            "transition-all active:scale-[0.995]",
+                          ].join(" ")}
+                        >
+                          {/* Status accent strip + colored corner glow */}
+                          <div className={`absolute inset-x-0 top-0 h-1 ${tone.strip}`} />
+                          <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-2xl opacity-50 pointer-events-none ${tone.glow}`} />
 
-                  return (
-                    <Card
-                      key={isUnified ? `${unifiedSender.id}-${unifiedSender.sender_id}-${index}` : `${legacySender.id}-${index}`}
-                      className="glass p-4 sm:p-6 animate-in slide-in-from-bottom-4 fade-in-50"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex flex-col space-y-3">
-                        {/* Header with Sender Name and Status */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-col flex-1 min-w-0">
-                            <span className="font-mono font-semibold text-sm sm:text-base truncate">
-                              {isUnified ? unifiedSender.sender_id : sender.sender_name}
-                            </span>
-                            {!isUnified && sender.sender_name && (
-                              <span className="text-xs text-text-subtle mt-1">
-                                Sender Name: {sender.sender_name}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isUnified && unifiedSender.source === "SMSSenderID" && (
-                              <Badge variant="outline" className="text-xs shrink-0">
-                                Active ID
-                              </Badge>
-                            )}
-                            {getStatusBadge(sender.status as SenderStatus)}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="glass">
-                                <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenRepayDialog(sender)}
-                                  disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
-                                >
-                                  <CreditCard className="w-4 h-4 mr-2" />
-                                  {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleEditRequest(sender)}
-                                  disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
-                                >
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  {isUnified ?
-                                    (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Edit" : "Edit (Not Available)") :
-                                    (sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)")
-                                  }
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteRequest(sender)}
-                                  disabled={
-                                    !["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
-                                  }
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  {
-                                    ["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
-                                      ? "Delete Request"
-                                      : "Delete (Not Available)"
-                                  }
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                          <div className="relative">
+                            {/* Hero header */}
+                            <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${tone.iconBg}`}>
+                                <Hash className={`w-[22px] h-[22px] ${tone.iconColor}`} strokeWidth={2.4} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {/* Eyebrow: ACTIVE chip OR "Sender ID" label */}
+                                <div className="flex items-center gap-1.5">
+                                  {isActive ? (
+                                    <span className="inline-flex items-center gap-1 text-[9.5px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">
+                                      <Check className="w-2.5 h-2.5" strokeWidth={3.2} />
+                                      ACTIVE
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[10px] font-bold tracking-wider uppercase ${tone.eyebrow}`}>
+                                      Sender ID
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Big mono name */}
+                                <h3 className="font-mono font-bold text-[17px] text-foreground leading-tight tracking-tight truncate mt-1">
+                                  {senderId}
+                                </h3>
+                                {/* Status badge */}
+                                <div className="mt-2">
+                                  {getStatusBadge(sender.status as SenderStatus)}
+                                </div>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 rounded-full -mr-1 -mt-1">
+                                    <MoreVertical className="w-[18px] h-[18px]" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="glass">
+                                  <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenRepayDialog(sender)}
+                                    disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
+                                  >
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditRequest(sender)}
+                                    disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    {isUnified ?
+                                      (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Edit" : "Edit (Not Available)") :
+                                      (sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)")
+                                    }
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteRequest(sender)}
+                                    disabled={
+                                      !["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
+                                    }
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    {["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status) ? "Delete Request" : "Delete (Not Available)"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+
+                            {/* Detail rows inside a subtle inner card */}
+                            <div className="mx-3 mb-3 rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/40 dark:border-border/25 divide-y divide-border/40 dark:divide-border/25">
+                              <DetailRow label={isUnified ? "Tenant" : "Use case"} value={tenantOrUseCase} />
+                              <DetailRow label="Created" value={safeFormatDate(sender.created_at)} />
+                              {sampleContent && (
+                                <DetailRow label="Sample" value={sampleContent} clamp />
+                              )}
+                            </div>
+
+                            {/* Footer action */}
+                            <button
+                              type="button"
+                              onClick={() => handleViewDetails(sender)}
+                              className={[
+                                "w-full inline-flex items-center justify-center gap-1.5 px-4 py-3",
+                                "text-[13px] font-bold transition-colors",
+                                "border-t border-border/50 dark:border-border/30",
+                                tone.cta,
+                              ].join(" ")}
+                            >
+                              View details
+                              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.6} />
+                            </button>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        {/* Footer with Tenant and Date */}
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border-subtle">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                            <span className="text-xs text-text-subtle">
-                              <span className="font-medium">Tenant:</span> {isUnified ? unifiedSender.tenant_name : (legacySender.use_case || "—")}
-                            </span>
-                          </div>
-                          <span className="text-xs text-text-subtle">
-                            {safeFormatDate(sender.created_at)}
-                          </span>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-
-                {/* Mobile Pagination - show only when more than 10 items */}
-                {totalItems > 10 && (
-                  <DataTablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    pageSize={pageSize}
-                    onPageChange={handlePageChange}
-                    onPageSizeChange={handlePageSizeChange}
-                    isLoading={loading}
-                    pageSizeOptions={[10, 20, 30, 50]}
-                  />
-                )}
+                  {totalItems > 10 && (
+                    <div className="mt-4">
+                      <DataTablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        isLoading={loading}
+                        pageSizeOptions={[10, 20, 30, 50]}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1845,130 +1856,183 @@ const SenderNames = () => {
               }
               setShowRequestDialog(open);
             }}>
-              <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
-                <DialogHeader className="pb-2 sm:pb-2.5">
-                  <DialogTitle className="text-sm sm:text-base md:text-lg">Request New Sender Name</DialogTitle>
-                  <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    {senderFeeLoading && senderFeeAmount == null
-                      ? "Loading registration fee..."
-                      : `We charge ${formatSenderFee() ?? "the registration fee"} for registration of Sender ID, which includes 300 SMS credits.`}
-                  </DialogDescription>
-                </DialogHeader>
+              <DialogContent className="max-w-[95vw] sm:max-w-md md:max-w-lg max-h-[92vh] flex flex-col overflow-hidden p-0 rounded-2xl border-border/60 bg-card">
+                {/* Hero header — full design, smaller text */}
+                <div className="relative overflow-hidden border-b border-border/60 dark:border-border/40 bg-gradient-to-br from-primary/8 via-card to-card dark:from-primary/15 dark:via-card dark:to-card px-4 pt-3.5 pb-3 flex-shrink-0">
+                  <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-primary/15 dark:bg-primary/20 blur-2xl pointer-events-none" />
+                  <div className="relative">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-primary/15 dark:bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Hash className="w-[18px] h-[18px]" strokeWidth={2.4} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <DialogTitle className="text-[14px] font-bold text-foreground leading-tight">
+                          Request a Sender ID
+                        </DialogTitle>
+                        <DialogDescription className="text-[11px] text-foreground/65 leading-snug mt-0.5">
+                          A branded sender ID lets you send SMS as your business name.
+                        </DialogDescription>
+                      </div>
+                    </div>
 
-                <div className="space-y-2 sm:space-y-2.5">
-                  {/* ID and Type Row - Stack on mobile, 2-col on larger screens */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-2.5">
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm font-medium">Sender ID *</Label>
+                    {/* Fee chip */}
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 dark:bg-primary/15 border border-primary/20 dark:border-primary/30">
+                      <CreditCard className="w-3 h-3 text-primary" strokeWidth={2.4} />
+                      <span className="text-[10.5px] font-semibold text-primary">
+                        {senderFeeLoading && senderFeeAmount == null
+                          ? "Loading fee…"
+                          : `${formatSenderFee() ?? "Fee"} · includes 300 SMS credits`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form body */}
+                <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
+                  {/* Sender ID + Phone */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
+                        Sender ID
+                      </Label>
                       <Input
-                        placeholder="e.g., YourBrand"
+                        placeholder="e.g. YourBrand"
                         value={requestedSenderId}
                         onChange={(e) => setRequestedSenderId(e.target.value)}
                         maxLength={11}
-                        className="glass-subtle border-0 font-mono text-xs sm:text-sm h-9 sm:h-8"
+                        className="mt-1 h-9 rounded-lg font-mono border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12.5px]"
                       />
-                      <p className="text-xs text-text-subtle">
+                      <p className={`text-[10px] mt-0.5 leading-tight tabular-nums ${requestedSenderId.length >= 11 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-foreground/55"}`}>
                         {requestedSenderId.length}/11 characters
                       </p>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm font-medium">Phone Number *</Label>
+                    <div>
+                      <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
+                        Phone Number
+                      </Label>
                       <Input
                         placeholder="+255 762 781 427"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         type="tel"
-                        className="glass-subtle border-0 text-xs sm:text-sm h-9 sm:h-8"
+                        inputMode="tel"
+                        className="mt-1 h-9 rounded-lg border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12.5px]"
                       />
-                      <p className="text-xs text-text-subtle">
-                        Enter your  payment phone number
+                      <p className="text-[10px] mt-0.5 leading-tight text-foreground/55">
+                        Used for payment
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-1 hidden">
-                    <Label className="text-xs sm:text-sm font-medium">Type *</Label>
+                  {/* Hidden type field - preserved for state */}
+                  <div className="hidden">
                     <select
                       value={requestType}
                       onChange={(e) => setRequestType(e.target.value)}
-                      className="glass-subtle border border-border rounded-md px-2 py-2 sm:py-1.5 text-xs sm:text-sm w-full h-9 sm:h-8 bg-background"
                     >
                       <option value="custom">Custom</option>
                       <option value="default">Default</option>
                     </select>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
+                  {/* Sample Content */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
+                        Sample Message
+                      </Label>
+                      <span className={`text-[10px] tabular-nums leading-tight ${sampleContent.length >= 160 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-foreground/55"}`}>
+                        {sampleContent.length}/160
+                      </span>
+                    </div>
                     <Textarea
-                      placeholder="e.g., Ndugu Florence,Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
+                      placeholder="e.g. Ndugu Florence, Hongera. Offer yako ipo tayari. Wasiliana 255808080808"
                       value={sampleContent}
                       onChange={(e) => setSampleContent(e.target.value)}
-                      className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
-                      rows={3}
+                      className="mt-1 min-h-[64px] rounded-lg border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12px] leading-relaxed"
+                      rows={2}
                       maxLength={160}
                     />
-                    <p className="text-[10px] text-text-subtle">
-                      {sampleContent.length}/160 characters
+                    <p className="text-[10px] mt-0.5 leading-tight text-foreground/55">
+                      An example of the SMS you'll send with this sender ID.
                     </p>
                   </div>
 
-                  <div className="space-y-1 hidden">
-                    <Label className="text-xs sm:text-sm font-medium">Purpose (Optional)</Label>
+                  {/* Hidden purpose field */}
+                  <div className="hidden">
                     <Textarea
-                      placeholder="e.g., User registration verification"
                       value={senderNamePurpose}
                       onChange={(e) => setSenderNamePurpose(e.target.value)}
-                      className="glass-subtle border-0 text-xs sm:text-sm min-h-16 sm:min-h-14"
-                      rows={2}
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">KYC Documents (Optional)</Label>
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-1.5 sm:p-2 mb-2">
-                      <p className="text-[10px] text-blue-700 font-medium mb-0.5">Required:</p>
-                      <ul className="text-[10px] text-blue-600 space-y-0 ml-3">
-                        <li>• Business License • BRELA Registration</li>
-                        <li>• TIN Certificate • Company Registration</li>
+                  {/* KYC Documents */}
+                  <div>
+                    <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
+                      KYC Documents <span className="text-foreground/40 font-medium normal-case ml-1">(Optional)</span>
+                    </Label>
+
+                    {/* Required docs hint */}
+                    <div className="mt-1 rounded-lg bg-primary/[0.04] dark:bg-primary/10 border border-primary/15 dark:border-primary/25 px-2.5 py-1.5">
+                      <p className="text-[9.5px] font-bold tracking-wider uppercase text-primary mb-0.5">
+                        Accepted documents
+                      </p>
+                      <ul className="text-[10.5px] text-foreground/70 dark:text-foreground/65 leading-snug space-y-0">
+                        <li className="flex gap-1"><span className="text-primary">•</span> Business License or BRELA Registration</li>
+                        <li className="flex gap-1"><span className="text-primary">•</span> TIN Certificate or Company Registration</li>
                       </ul>
+                      <p className="text-[9.5px] text-foreground/50 mt-1">PDF · Max 8MB per file</p>
                     </div>
-                    <p className="text-[10px] text-text-subtle mb-2">PDF - Max 8MB</p>
-                    <div className="border border-dashed border-border rounded-lg p-2 sm:p-2 text-center">
+
+                    {/* Upload zone */}
+                    <div className="mt-1.5 rounded-lg border-2 border-dashed border-border/60 dark:border-border/40 hover:border-primary/40 transition-colors p-2.5 bg-background/40 dark:bg-background/20">
                       {kycDocuments.length > 0 ? (
                         <div className="space-y-1.5">
-                          <Check className="w-4 h-4 mx-auto text-green-500" />
-                          <p className="text-[10px] font-medium text-green-600">
-                            {kycDocuments.length} file(s) uploaded
-                          </p>
-                          <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto text-left">
-                            {kycDocuments.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between text-xs px-1 py-0.5">
-                                <span className="truncate flex-1 mr-1">{file.name}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+                              </div>
+                              <p className="text-[11.5px] font-semibold text-foreground">
+                                {kycDocuments.length} file{kycDocuments.length === 1 ? "" : "s"} attached
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleRemoveAllFiles}
+                              className="text-[10.5px] font-semibold text-destructive active:opacity-60 transition-opacity"
+                            >
+                              Clear all
+                            </button>
+                          </div>
+                          <div className="space-y-0.5 max-h-20 overflow-y-auto">
+                            {kycDocuments.map((file, fIdx) => (
+                              <div
+                                key={fIdx}
+                                className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-card dark:bg-card/95 border border-border/40 dark:border-border/30"
+                              >
+                                <span className="text-[11px] font-medium text-foreground truncate flex-1">{file.name}</span>
                                 <button
-                                  onClick={() => handleRemoveFile(index)}
-                                  className="text-red-600 hover:text-red-700 flex-shrink-0 p-1"
+                                  type="button"
+                                  onClick={() => handleRemoveFile(fIdx)}
+                                  aria-label={`Remove ${file.name}`}
+                                  className="w-5 h-5 inline-flex items-center justify-center rounded-full text-foreground/50 active:bg-destructive/15 active:text-destructive transition-colors flex-shrink-0"
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className="w-2.5 h-2.5" strokeWidth={2.5} />
                                 </button>
                               </div>
                             ))}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRemoveAllFiles}
-                            className="text-red-600 hover:text-red-700 text-[10px] w-full h-8 sm:h-7"
-                          >
-                            <X className="w-3 h-3 mr-1" />
-                            Clear Files
-                          </Button>
                         </div>
                       ) : (
-                        <div className="space-y-1 py-2 sm:py-1.5">
-                          <Upload className="w-4 h-4 mx-auto text-text-subtle" />
-                          <p className="text-[10px] font-medium text-text-subtle">Upload KYC Documents</p>
+                        <div className="text-center">
+                          <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-primary/10 dark:bg-primary/15 flex items-center justify-center">
+                            <Upload className="w-4 h-4 text-primary" strokeWidth={2.2} />
+                          </div>
+                          <p className="text-[11.5px] font-semibold text-foreground mb-1">
+                            Upload documents
+                          </p>
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -1979,8 +2043,8 @@ const SenderNames = () => {
                             onChange={handleFileSelect}
                           />
                           <label htmlFor="kyc-upload">
-                            <Button variant="outline" size="sm" asChild className="text-[10px] h-8 sm:h-7">
-                              <span>Choose Files</span>
+                            <Button variant="outline" size="sm" asChild className="h-7 px-3 text-[11px] font-semibold rounded-md">
+                              <span>Choose PDF files</span>
                             </Button>
                           </label>
                         </div>
@@ -1989,30 +2053,34 @@ const SenderNames = () => {
                   </div>
                 </div>
 
-                <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-2.5">
+                {/* Footer */}
+                <div className="bg-card border-t border-border/60 dark:border-border/40 px-3.5 py-2.5 flex gap-2 flex-shrink-0">
                   <Button
                     variant="outline"
                     onClick={() => setShowRequestDialog(false)}
                     disabled={submitting}
-                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
+                    className="flex-1 h-10 rounded-lg text-[12.5px] font-semibold"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleRequestSenderName}
-                    disabled={submitting}
-                    className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-1 sm:order-2"
+                    disabled={submitting || !requestedSenderId.trim() || !phoneNumber.trim() || !sampleContent.trim()}
+                    className="flex-1 h-10 rounded-lg text-[12.5px] font-semibold shadow-md"
                   >
                     {submitting ? (
                       <>
-                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Submitting...
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        Submitting…
                       </>
                     ) : (
-                      "Pay & Submit Request"
+                      <>
+                        <CreditCard className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
+                        Pay & Submit
+                      </>
                     )}
                   </Button>
-                </DialogFooter>
+                </div>
               </DialogContent>
             </Dialog>
 
@@ -2754,10 +2822,126 @@ const SenderNames = () => {
               </DialogContent>
             </Dialog>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 };
+
+interface SenderCardTone {
+  border: string;
+  strip: string;
+  glow: string;
+  iconBg: string;
+  iconColor: string;
+  eyebrow: string;
+  cta: string;
+}
+
+/** Per-status color theme applied to the mobile sender card. */
+function statusTone(status: string): SenderCardTone {
+  switch (status) {
+    case "approved":
+    case "active":
+      return {
+        border: "border-emerald-500/30 dark:border-emerald-500/40",
+        strip: "bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600",
+        glow: "bg-emerald-500/30",
+        iconBg: "bg-emerald-500/10 dark:bg-emerald-500/15",
+        iconColor: "text-emerald-600 dark:text-emerald-400",
+        eyebrow: "text-emerald-600 dark:text-emerald-400",
+        cta: "text-emerald-700 dark:text-emerald-400 active:bg-emerald-500/10 dark:active:bg-emerald-500/15",
+      };
+    case "rejected":
+    case "suspended":
+      return {
+        border: "border-destructive/30 dark:border-destructive/40",
+        strip: "bg-gradient-to-r from-rose-400 via-rose-500 to-rose-600",
+        glow: "bg-destructive/30",
+        iconBg: "bg-destructive/10 dark:bg-destructive/15",
+        iconColor: "text-destructive",
+        eyebrow: "text-destructive",
+        cta: "text-destructive active:bg-destructive/10 dark:active:bg-destructive/15",
+      };
+    case "pending":
+    case "requires_changes":
+    case "awaiting_payment":
+      return {
+        border: "border-amber-500/30 dark:border-amber-500/40",
+        strip: "bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600",
+        glow: "bg-amber-500/30",
+        iconBg: "bg-amber-500/10 dark:bg-amber-500/15",
+        iconColor: "text-amber-600 dark:text-amber-400",
+        eyebrow: "text-amber-600 dark:text-amber-400",
+        cta: "text-amber-700 dark:text-amber-400 active:bg-amber-500/10 dark:active:bg-amber-500/15",
+      };
+    default:
+      return {
+        border: "border-border dark:border-border/60",
+        strip: "bg-gradient-to-r from-primary/60 via-primary to-primary/60",
+        glow: "bg-primary/25",
+        iconBg: "bg-primary/10 dark:bg-primary/15",
+        iconColor: "text-primary",
+        eyebrow: "text-primary",
+        cta: "text-primary active:bg-primary/10 dark:active:bg-primary/15",
+      };
+  }
+}
+
+/** Label/value row used inside the mobile sender card. */
+function DetailRow({ label, value, clamp = false }: { label: string; value: string; clamp?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-2.5">
+      <span className="text-[11.5px] font-semibold tracking-wide uppercase text-foreground/50 dark:text-foreground/45 flex-shrink-0 pt-0.5">
+        {label}
+      </span>
+      <span className={`text-[13px] font-medium text-foreground/85 text-right ${clamp ? "line-clamp-2" : "truncate"} min-w-0`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/** Small stat tile used in the Sender Names hero grid. */
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  loading,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Hash;
+  tone: "primary" | "amber" | "emerald" | "destructive";
+  loading?: boolean;
+}) {
+  const toneClass = {
+    primary: { iconBg: "bg-primary/10 dark:bg-primary/15", iconColor: "text-primary" },
+    amber: { iconBg: "bg-amber-100 dark:bg-amber-500/15", iconColor: "text-amber-600 dark:text-amber-400" },
+    emerald: { iconBg: "bg-emerald-100 dark:bg-emerald-500/15", iconColor: "text-emerald-600 dark:text-emerald-400" },
+    destructive: { iconBg: "bg-destructive/10 dark:bg-destructive/15", iconColor: "text-destructive" },
+  }[tone];
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+      <div className="flex items-center gap-2.5">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${toneClass.iconBg}`}>
+          <Icon className={`w-[16px] h-[16px] ${toneClass.iconColor}`} strokeWidth={2.2} />
+        </div>
+        <span className="text-[11px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 line-clamp-1">
+          {label}
+        </span>
+      </div>
+      <p className="mt-2 text-[22px] sm:text-2xl font-bold text-foreground tabular-nums tracking-tight leading-none">
+        {loading ? (
+          <span className="inline-block w-5 h-5 align-middle border-2 border-current border-t-transparent rounded-full animate-spin opacity-50" />
+        ) : (
+          value.toLocaleString()
+        )}
+      </p>
+    </div>
+  );
+}
 
 export default SenderNames;

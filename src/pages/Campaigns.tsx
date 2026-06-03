@@ -576,11 +576,11 @@ const Campaigns = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-3 lg:p-6">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Loading skeletons */}
               <div className="flex items-center justify-between">
@@ -608,11 +608,11 @@ const Campaigns = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-6">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-3 lg:p-6">
             <div className="max-w-7xl mx-auto">
               <Card>
                 <CardContent className="p-12 text-center">
@@ -633,91 +633,77 @@ const Campaigns = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-4 xl:p-6">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
-              {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 lg:gap-4">
-              <div>
-                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-3xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-5">
+              {/* iOS large-title header */}
+            <header className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
                   {language === "sw" ? "Kampeni" : "Campaigns"}
                 </h1>
-                <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  {language === "sw" ? "Dhibiti na fuatilia kampeni zako za masoko" : "Manage and track your marketing campaigns"}
+                <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+                  {language === "sw" ? "Dhibiti na fuatilia kampeni zako" : "Track and manage your campaigns"}
                 </p>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 sm:gap-2 text-xs sm:text-sm"
-                  onClick={refreshCampaignData}
-                  disabled={isRefreshing}
-                >
-                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  {language === "sw" ? "Sasisha" : "Refresh"}
-                </Button>
-                <CreateCampaignDialog
-                  open={isNewCampaignOpen}
-                  onOpenChange={handleDialogClose}
-                  onSuccess={refreshCampaignData}
-                >
-                  <Button className="gap-1 sm:gap-2 text-xs sm:text-sm" size="sm">
-                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{language === "sw" ? "Ongeza Kampeni Mpya" : "Add New Campaign"}</span>
-                    <span className="sm:hidden">{language === "sw" ? "Ongeza" : "Add New"}</span>
-                  </Button>
-                </CreateCampaignDialog>
-              </div>
-            </div>
+              <button
+                type="button"
+                onClick={refreshCampaignData}
+                disabled={isRefreshing}
+                aria-label="Refresh"
+                className="flex-shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-full text-foreground/65 active:bg-foreground/[0.06] disabled:opacity-50 transition-colors mr-11 md:mr-0"
+              >
+                <RefreshCw className={`w-[18px] h-[18px] ${isRefreshing ? "animate-spin" : ""}`} strokeWidth={2.2} />
+              </button>
+            </header>
 
-            {/* Summary Cards */}
+            {/* Primary CTA */}
+            <CreateCampaignDialog
+              open={isNewCampaignOpen}
+              onOpenChange={handleDialogClose}
+              onSuccess={refreshCampaignData}
+            >
+              <Button className="w-full h-12 rounded-2xl text-[14px] font-semibold shadow-md">
+                <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
+                {language === "sw" ? "Tengeneza kampeni mpya" : "Create new campaign"}
+              </Button>
+            </CreateCampaignDialog>
+
+            {/* Stats — 3-up mini grid */}
             {summary && (
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
-                <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Jumla ya kampeni" : "Total Campaigns"}</p>
-                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_campaigns}</p>
-                      </div>
-                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-primary/10 flex-shrink-0 self-start lg:self-auto">
-                        <Send className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-primary/15 flex items-center justify-center mb-2">
+                    <Send className="w-[15px] h-[15px] text-primary" strokeWidth={2.2} />
+                  </div>
+                  <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
+                    {language === "sw" ? "Jumla" : "Total"}
+                  </p>
+                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.total_campaigns}</p>
+                </div>
 
-                <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1 whitespace-nowrap">{language === "sw" ? "Kampeni zinazoendelea" : "Active Campaigns"}</p>
-                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.active_campaigns}</p>
-                      </div>
-                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-green-100 flex-shrink-0 self-start lg:self-auto">
-                        <Play className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-green-500" />
-                      </div>
-                      </div>
-                  </CardContent>
-                </Card>
+                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-2">
+                    <Play className="w-[15px] h-[15px] text-emerald-600 dark:text-emerald-400" strokeWidth={2.2} />
+                  </div>
+                  <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
+                    {language === "sw" ? "Hai" : "Active"}
+                  </p>
+                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.active_campaigns}</p>
+                </div>
 
-                <Card>
-                  <CardContent className="p-2 sm:p-3 lg:p-4 xl:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex-1 min-w-0 mb-1 sm:mb-2 lg:mb-0">
-                        <p className="text-xs font-medium text-text-subtle mb-1">{language === "sw" ? "Jumla ya wapokeaji" : "Total Recipients"}</p>
-                        <p className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold text-foreground">{summary.summary.total_recipients.toLocaleString()}</p>
-                      </div>
-                      <div className="p-1 sm:p-1.5 lg:p-2 xl:p-3 rounded-lg lg:rounded-xl bg-blue-100 flex-shrink-0 self-start lg:self-auto">
-                        <Users className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-blue-500" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mb-2">
+                    <Users className="w-[15px] h-[15px] text-amber-600 dark:text-amber-400" strokeWidth={2.2} />
+                  </div>
+                  <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
+                    {language === "sw" ? "Wapokeaji" : "Recipients"}
+                  </p>
+                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.total_recipients.toLocaleString()}</p>
+                </div>
               </div>
             )}
 

@@ -90,22 +90,23 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const { senderNames, loading: sendersLoading } = useSenderNames();
   const showContactsEmptyState = !contactsLoading && contacts.length === 0;
 
-  // Filter approved sender names - handle both SenderNameRequest and UnifiedSenderName response types
+  // Filter usable sender names - handle both SenderNameRequest and UnifiedSenderName response types.
+  // The unified endpoint returns provider-registered senders with status "active" and internal
+  // request-flow senders with status "approved". Both are ready to send from, so include both.
   const approvedSenders = useMemo(() => {
     if (!senderNames || senderNames.length === 0) {
       return [];
     }
 
-    return (senderNames || [])
+    const mapped = (senderNames || [])
       .filter((req: SenderNameRequest | UnifiedSenderName) => {
         const status = (req.status || '').toLowerCase();
         const senderName = ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null);
 
-        // Only include approved status with valid name
-        const isApproved = status === "approved";
+        const isUsable = status === "approved" || status === "active";
         const hasValidName = senderName && senderName.trim() !== "";
 
-        return isApproved && hasValidName;
+        return isUsable && hasValidName;
       })
       .map((req: SenderNameRequest | UnifiedSenderName) => {
         const name = (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '').trim();
@@ -115,6 +116,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           status: (req.status || '').toLowerCase(),
         };
       });
+
+    // Deduplicate by sender_name — the same sender can appear from multiple sources
+    // (provider + internal request) and would otherwise produce duplicate Select items.
+    const seen = new Map<string, typeof mapped[0]>();
+    for (const entry of mapped) {
+      if (!seen.has(entry.sender_name)) seen.set(entry.sender_name, entry);
+    }
+    return Array.from(seen.values());
   }, [senderNames]);
 
   // Fetch SMS balance when dialog opens
@@ -303,13 +312,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           newTag: '',
         });
 
-        // Call success callback to refresh parent component after campaign is created
+        // Parent refetches campaigns via React Query, so the new row appears
+        // without a hard reload — that reload was wiping the success toast.
         onSuccess?.();
-
-        // Refresh the entire page to show new data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       }
     } catch (error) {
       console.error('Campaign creation error:', error);
@@ -332,8 +337,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-4xl h-[95vh] sm:h-auto max-h-[95vh] overflow-y-auto p-4 sm:p-6 rounded-xl sm:rounded-2xl">
-        <DialogHeader className="pb-4 sm:pb-6 border-b border-gradient-to-r from-blue-100 to-indigo-100">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl p-0 gap-0 rounded-2xl sm:rounded-2xl flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-blue-100">
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -386,7 +391,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-6">
           {/* Step 1: Basic Information */}
           {step === 1 && (
             <div className="space-y-4 sm:space-y-5">
@@ -574,7 +579,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </div>
                 )}
               </div>
-                      id="scheduled_at"              {/* Recurring Schedule Configuration */}
+
+              {/* Recurring Schedule Configuration */}
               {formData.is_recurring && (
                 <div className="rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 sm:p-5 space-y-4 shadow-lg shadow-blue-100/30">
                   <div className="flex items-center gap-2 text-base font-semibold text-gray-900">
@@ -900,22 +906,26 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             </div>
           )}
 
-          {/* Navigation - Modern Footer */}
-          <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-gray-200">
+        </div>
+
+        {/* Navigation - Sticky Footer.
+            On mobile we stack: compact step row on top, full-width action buttons below.
+            On sm+ we keep the original side-by-side layout. */}
+        <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-5 border-t border-gray-200 bg-background">
             {/* Step Indicators */}
-            <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 1 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
-              <div className={`w-3 h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 2 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
-              <span className="text-xs sm:text-sm text-gray-600 font-medium">Step {step} of 2</span>
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 1 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
+              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 2 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
+              <span className="text-[11px] sm:text-sm text-gray-600 font-medium">Step {step} of 2</span>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               {step > 1 && (
                 <Button
                   variant="outline"
                   onClick={() => setStep(step - 1)}
-                  className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base font-semibold border-2 border-gray-300 hover:bg-gray-100 rounded-lg transition-all"
+                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-6 text-[13px] sm:text-base font-semibold border-2 border-gray-300 hover:bg-gray-100 rounded-lg transition-all"
                 >
                   ← Previous
                 </Button>
@@ -925,7 +935,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={() => setStep(2)}
                   disabled={!canProceedToStep2}
-                  className="h-10 sm:h-12 px-4 sm:px-6 text-sm sm:text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
+                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-6 text-[13px] sm:text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
                 >
                   Next →
                 </Button>
@@ -933,23 +943,25 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || isSubmitting}
-                  className="h-10 sm:h-12 px-4 sm:px-8 text-sm sm:text-base font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none flex items-center gap-2"
+                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-8 text-[13px] sm:text-base font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-1.5 sm:gap-2"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-3 border-transparent border-t-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-transparent border-t-white"></div>
                       <span>Creating...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="w-5 h-5" />
-                      <span>Create Campaign</span>
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                      <span className="truncate">
+                        <span className="sm:hidden">Create</span>
+                        <span className="hidden sm:inline">Create Campaign</span>
+                      </span>
                     </>
                   )}
                 </Button>
               )}
             </div>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

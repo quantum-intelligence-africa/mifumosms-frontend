@@ -19,7 +19,9 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Frosted-glass backdrop: dark wash + blur so dialogs feel layered on top of the app.
+      // z-[120] covers the mobile tab bar (z-80) and the floating 3-dot menu button (z-55).
+      "fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -36,9 +38,21 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        // Position + size: vertically constrained to the viewport with safe-area awareness
+        // so even tall dialogs on short phones (iPhone SE, 320×568) are fully visible and
+        // the body can scroll inside instead of clipping at the top.
+        "fixed left-[50%] top-[50%] z-[120] grid w-[calc(100vw-1rem)] sm:w-full max-w-lg translate-x-[-50%] translate-y-[-50%]",
+        "max-h-[calc(100dvh-2rem)] sm:max-h-[90vh]",
+        "overflow-y-auto overscroll-contain",
+        "gap-4 border bg-background p-6 shadow-2xl rounded-2xl sm:rounded-lg",
+        "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
+      style={{
+        // Keep the dialog clear of iOS home-indicator + status bar on phones.
+        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+        paddingTop: "max(1.5rem, env(safe-area-inset-top))",
+      }}
       {...props}
     >
       {children}

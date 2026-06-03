@@ -81,6 +81,15 @@ export function formatSegmentCount(segments: number): string {
 }
 
 /**
+ * Format segment count as "N SMS" — user-facing label that maps the underlying
+ * segment count to credits the user actually pays for, which is more intuitive
+ * than the carrier-protocol term "segment".
+ */
+export function formatSegmentCountAsSms(segments: number): string {
+	return `${segments} SMS`;
+}
+
+/**
  * Calculate cost for SMS based on segments and recipient count
  * @param segments - Number of segments per message
  * @param recipientCount - Number of recipients
@@ -102,5 +111,5 @@ export function calculateSMSCost(
  */
 export function getCharacterCountDisplay(message: string): string {
 	const { characters, segments, maxCharacters } = getSegmentInfo(message);
-	return `${characters}/${maxCharacters} characters (${formatSegmentCount(segments)})`;
+	return `${characters}/${maxCharacters} characters (${formatSegmentCountAsSms(segments)})`;
 }

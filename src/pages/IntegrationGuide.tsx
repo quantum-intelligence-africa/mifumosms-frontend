@@ -76,13 +76,13 @@ const IntegrationGuide = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={!isMobile || sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto scrollbar-premium p-2 sm:p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
+          <div className="max-w-4xl mx-auto w-full space-y-4 sm:space-y-5">
             <Card className="glass border border-border-subtle overflow-hidden">
               <CardContent className="p-0">
                 <div className="p-4 sm:p-6 lg:p-7 bg-gradient-to-br from-primary/10 via-background to-violet-500/10">

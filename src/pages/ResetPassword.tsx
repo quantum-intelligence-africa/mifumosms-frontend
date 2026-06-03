@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -108,9 +109,7 @@ const ResetPassword = () => {
               <span className="text-sm">Back to homepage</span>
             </Link>
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                <MessageSquare className="w-6 h-6 text-white" />
-              </div>
+              <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
               <span className="font-heading text-2xl font-bold text-gray-900">
                 SENDA
               </span>
@@ -168,9 +167,7 @@ const ResetPassword = () => {
             <span className="text-sm">Back to homepage</span>
           </Link>
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <MessageSquare className="w-6 h-6 text-white" />
-            </div>
+            <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
             <span className="font-heading text-2xl font-bold text-gray-900">
               SENDA
             </span>

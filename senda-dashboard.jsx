@@ -493,9 +493,37 @@ body{font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
 /* Responsive helpers */
 @media(max-width:639px){
   .hide-mobile{display:none!important;}
-  .senda-stat-grid{grid-template-columns:1fr 1fr!important;}
+  /* Stat clusters become a horizontal swipe row on phones.
+     Each card is a fixed-width snap target; the parent scrolls horizontally
+     so the page stays short instead of stacking 20 tiles vertically. */
+  .senda-stat-grid{
+    display:flex!important;
+    grid-template-columns:unset!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x mandatory;
+    gap:10px!important;
+    padding-bottom:6px;
+    /* Edge fade hint that more content is to the right */
+    mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 24px),transparent 100%);
+    -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 24px),transparent 100%);
+  }
+  .senda-stat-grid::-webkit-scrollbar{height:4px;}
+  .senda-stat-grid::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px;}
+  .senda-stat-grid > .senda-card{
+    flex:0 0 auto!important;
+    width:170px!important;
+    scroll-snap-align:start;
+    padding:12px 12px!important;
+  }
+  .senda-stat-grid > .senda-card > div:first-child > span{font-size:9px!important;}
+  .senda-stat-grid > .senda-card > div:nth-child(2){font-size:20px!important;}
+  /* Chart and table cards: lighter padding on phones */
   .chart-h-responsive{height:180px!important;}
   .senda-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .overview-chart-card{padding:14px!important;}
 }
 @media(min-width:640px) and (max-width:1023px){
   .senda-stat-grid{grid-template-columns:1fr 1fr!important;}
@@ -903,31 +931,31 @@ function OverviewTab() {
 
       {/* ── Users (9 tiles) ─────────────────────────────────────────────── */}
       <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Users · Registrations · Engagement</div>
-      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:18}}>
+      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:isMobile?14:18}}>
         {userTiles.map(c => <StatCard key={c.title} {...c}/>)}
       </div>
 
       {/* ── Messages (6 tiles) ─────────────────────────────────────────── */}
       <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Messages · Delivery Quality</div>
-      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:18}}>
+      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:isMobile?14:18}}>
         {messageTiles.map(c => <StatCard key={c.title} {...c}/>)}
       </div>
 
       {/* ── Revenue (2 tiles) ──────────────────────────────────────────── */}
       <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Revenue</div>
-      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:18}}>
+      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:isMobile?14:18}}>
         {revenueTiles.map(c => <StatCard key={c.title} {...c}/>)}
       </div>
 
       {/* ── Sender IDs (3 tiles) ───────────────────────────────────────── */}
       <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Sender IDs</div>
-      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:24}}>
+      <div className="senda-stat-grid" style={{display:'grid',gap:12,marginBottom:isMobile?16:24}}>
         {senderTiles.map(c => <StatCard key={c.title} {...c}/>)}
       </div>
 
       {/* Row 1: SMS Volume vs Delivery */}
-      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:16,marginBottom:16}}>
-        <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:isMobile?12:16,marginBottom:isMobile?12:16}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="SMS Volume & Delivery Analysis" subtitle="Sent vs Delivered vs Failed — 12-month comparison"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -956,7 +984,7 @@ function OverviewTab() {
         </div>
 
         {/* Delivery Pie — derived from period stats (sms_sent − failed_messages) */}
-        <div className="senda-card" style={{padding:20}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Delivery Status" subtitle="Period (delivered = sent − failed)"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -984,8 +1012,8 @@ function OverviewTab() {
       </div>
 
       {/* Row 2: Registrations + Paying vs Non-paying — both from server series */}
-      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:16,marginBottom:16}}>
-        <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:isMobile?12:16,marginBottom:isMobile?12:16}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Registrations" subtitle="New users per month — last 12 months"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -1008,7 +1036,7 @@ function OverviewTab() {
           </div>
         </div>
 
-        <div className="senda-card" style={{padding:20}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Paying vs Non-Paying" subtitle="End-of-month cumulative — last 12 months"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -1027,8 +1055,8 @@ function OverviewTab() {
       </div>
 
       {/* Row 2b: Revenue monthly — from server series */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr',gap:16,marginBottom:16}}>
-        <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr',gap:isMobile?12:16,marginBottom:isMobile?12:16}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Revenue · Last 12 Months" subtitle="From canonical aggregator (matches transactions/admin totals)"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -1047,8 +1075,8 @@ function OverviewTab() {
       </div>
 
       {/* Row 3: Delivery Rate Trend + Network Performance */}
-      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:16}}>
-        <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'2fr 1fr',gap:isMobile?12:16}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Delivery Rate Trend (with 3-Month MA)" subtitle="Rate % and moving average overlay — quality monitoring"/>
           <div className="chart-h-responsive" style={{height:chartH}}>
             <ResponsiveContainer width="100%" height="100%">
@@ -1065,7 +1093,7 @@ function OverviewTab() {
           </div>
         </div>
 
-        <div className="senda-card" style={{padding:20}}>
+        <div className="senda-card overview-chart-card" style={{padding:20}}>
           <SectionHeader title="Network Performance" subtitle="Delivery rate by carrier"/>
           <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:4}}>
             {networkPerf.map(n=>(
@@ -1514,6 +1542,9 @@ function SenderIdsTab() {
   const [page, setPage]               = useState(1);
   const [users, setUsers]             = useState([]);
   const [partners, setPartners]       = useState([]);
+  // Default: exclude partner-network applications (development@swahilies.com et al)
+  // so the cards show "our customers". Toggle to include them at any time.
+  const [excludePartner, setExcludePartner] = useState(true);
   const PER_PAGE = 50;
 
   const fetchData = useCallback(() => {
@@ -1563,9 +1594,19 @@ function SenderIdsTab() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Use API summary for accurate platform-wide counts; fall back to counting loaded rows
+  // Apply the partner-exclude toggle once; everything downstream reads `visibleItems`.
+  const visibleItems = React.useMemo(() => {
+    if (!excludePartner) return items;
+    const blocked = new Set([...ENGAGEMENT_EXCLUDED_EMAILS]);
+    return items.filter(s => !blocked.has(String(s.owner_email || '').toLowerCase()));
+  }, [items, excludePartner]);
+
+  // Counts:
+  //  • Include partners → use the server's apiSummary (authoritative, includes pages
+  //    beyond what we've loaded).
+  //  • Exclude partners → recompute from visibleItems (server can't know about our filter).
   const counts = React.useMemo(() => {
-    if (apiSummary) {
+    if (apiSummary && !excludePartner) {
       return {
         all:             apiSummary.total            ?? items.length,
         approved:        apiSummary.approved         ?? 0,
@@ -1577,20 +1618,20 @@ function SenderIdsTab() {
     }
     return Object.fromEntries(
       ['all', ...Object.keys(STATUS_META)].map(k => [
-        k, k === 'all' ? items.length : items.filter(s => s.status === k).length,
+        k, k === 'all' ? visibleItems.length : visibleItems.filter(s => s.status === k).length,
       ])
     );
-  }, [apiSummary, items]);
+  }, [apiSummary, items, visibleItems, excludePartner]);
 
   const filtered = React.useMemo(() => {
     setPage(1);
-    return items.filter(s => {
+    return visibleItems.filter(s => {
       const m = filter === 'all' || s.status === filter;
       const q = search.toLowerCase();
       return m && (!q || (s.name||'').toLowerCase().includes(q) || (s.owner_email||'').toLowerCase().includes(q) || (s.company||'').toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, filter, search]);
+  }, [visibleItems, filter, search]);
 
   const totalFilteredPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -1599,6 +1640,34 @@ function SenderIdsTab() {
 
   return (
     <div className="senda-fade-in">
+      {/* Audience toggle — exclude/include partner-network applications. */}
+      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
+        <span style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginRight:4}}>Audience</span>
+        {[
+          { id: true,  label: 'Exclude partners' },
+          { id: false, label: 'Include partners' },
+        ].map(opt => {
+          const isActive = excludePartner === opt.id;
+          return (
+            <button key={String(opt.id)} onClick={() => setExcludePartner(opt.id)}
+              title={opt.id
+                ? `Hide senders owned by ${[...ENGAGEMENT_EXCLUDED_EMAILS].join(', ')}`
+                : 'Show every sender, including partner-owned ones'}
+              style={{
+                height:28,padding:'0 11px',borderRadius:7,border:'none',cursor:'pointer',
+                fontSize:11,fontWeight:600,
+                background: isActive ? BRAND : '#f1f5f9',
+                color:      isActive ? '#fff' : '#64748b',
+              }}>{opt.label}</button>
+          );
+        })}
+        {excludePartner && items.length > 0 && (
+          <span style={{fontSize:10,color:'#94a3b8',marginLeft:4}}>
+            {items.length - visibleItems.length} hidden
+          </span>
+        )}
+      </div>
+
       {/* ── Analytics row ── */}
       <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'2fr 1fr',gap:16,marginBottom:20}}>
         <div className="senda-card" style={{padding:20}}>
@@ -3770,6 +3839,7 @@ function OperationsTab() {
 const NAV = [
   { id:'overview',     Icon:BarChart3,   label:'Overview'       },
   { id:'insights',     Icon:Activity,    label:'Insights'       },
+  { id:'engagement',   Icon:MessageSquare, label:'Engagement'   },
   { id:'users',        Icon:Users,       label:'Users'          },
   { id:'transactions', Icon:CreditCard,  label:'Transactions'   },
   { id:'senderids',    Icon:Tag,         label:'Sender IDs'     },
@@ -3954,7 +4024,7 @@ function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }
 // ─── Toggleable chart/table panel (generic) ───────────────────────────────────
 // Renders a card with header + Chart/Table toggle. Each metric supplies its own
 // `renderChart()` and `renderTable()` so charts can vary (Area, Bar, Pie, etc).
-function ToggleablePanel({ title, subtitle, color, hasData = true, emptyMsg = 'No data.', renderChart, renderTable, footer }) {
+function ToggleablePanel({ title, subtitle, color, hasData = true, emptyMsg = 'No data.', renderChart, renderTable, footer, headerAction }) {
   const [view, setView] = useState('chart');
 
   const TabBtn = ({ id, label }) => (
@@ -3972,12 +4042,13 @@ function ToggleablePanel({ title, subtitle, color, hasData = true, emptyMsg = 'N
 
   return (
     <div className="senda-card" style={{overflow:'hidden',display:'flex',flexDirection:'column'}}>
-      <div style={{padding:'14px 18px',borderBottom:'1px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+      <div style={{padding:'14px 18px',borderBottom:'1px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
         <div style={{minWidth:0,flex:1}}>
           <h4 style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>{title}</h4>
           {subtitle && <p style={{fontSize:11,color:'#94a3b8',marginTop:2}}>{subtitle}</p>}
         </div>
-        <div style={{display:'flex',gap:4,flexShrink:0}}>
+        <div style={{display:'flex',gap:6,flexShrink:0,alignItems:'center'}}>
+          {headerAction}
           <TabBtn id="chart" label="Chart"/>
           <TabBtn id="table" label="Table"/>
         </div>
@@ -4340,26 +4411,12 @@ function IdleBuyersTable({ rows, transactions = [] }) {
 
   const handleDownload = () => {
     if (filteredRows.length === 0) return;
-    const headers = ['User ID','Name','Email','Phone','Status','Joined','Last Seen','Days Idle','Purchases','Total Spent (TZS)','Last Purchase','Sources'];
+    // Per request: Insights CSVs export only Name + Phone (no email / no other fields).
+    const headers = ['Name','Phone'];
     const escape = (c) => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`;
     const lines  = [headers.map(escape).join(',')];
     filteredRows.forEach(u => {
-      const days = u.last_seen_at ? Math.floor((now - new Date(u.last_seen_at).getTime()) / DAY) : 'Never';
-      const st   = statsFor(u);
-      lines.push([
-        u.id || '',
-        u.name || '',
-        u.email || '',
-        u.phone || '',
-        u.status || '',
-        u.joined_at ? new Date(u.joined_at).toISOString().slice(0,10) : '',
-        u.last_seen_at ? new Date(u.last_seen_at).toISOString().slice(0,10) : '',
-        days,
-        st.count,
-        st.total,
-        st.lastDate ? st.lastDate.toISOString().slice(0,10) : '',
-        [...st.sources].join('|'),
-      ].map(escape).join(','));
+      lines.push([u.name || '', u.phone || ''].map(escape).join(','));
     });
     const tag = bucket === 'all' ? 'all' : bucket.replace(/[^a-z0-9-]/gi, '');
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -4586,26 +4643,12 @@ function InactiveUsersTable({ rows }) {
 
   const handleDownload = () => {
     if (filteredRows.length === 0) return;
-    const headers = ['Name','Email','Phone','Status','Last Seen','Days Idle','Joined','User ID','SMS Sent','Balance (TZS)'];
+    // Insights CSVs export only Name + Phone.
+    const headers = ['Name','Phone'];
     const escape = (c) => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`;
     const lines = [headers.map(escape).join(',')];
     filteredRows.forEach(u => {
-      const days = u.last_seen_at ? Math.floor((now - new Date(u.last_seen_at).getTime()) / DAY) : null;
-      const idle = (u.status || '').toLowerCase() === 'suspended' ? 'Suspended'
-                 : days === null ? 'Never'
-                 : String(days);
-      lines.push([
-        u.name || '',
-        u.email || '',
-        u.phone || '',
-        u.status || '',
-        u.last_seen_at ? new Date(u.last_seen_at).toISOString().slice(0,10) : '',
-        idle,
-        u.joined_at ? new Date(u.joined_at).toISOString().slice(0,10) : '',
-        u.id || '',
-        u.sms_sent ?? 0,
-        u.balance ?? 0,
-      ].map(escape).join(','));
+      lines.push([u.name || '', u.phone || ''].map(escape).join(','));
     });
     const bucketTag = bucket === 'all' ? 'all' : bucket.replace(/[^a-z0-9-]/gi, '');
     const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -4799,25 +4842,16 @@ function ApprovedNoPaymentTable({ rows, users, partners = [] }) {
 
   const handleDownload = () => {
     if (filteredRows.length === 0) return;
-    const headers = ['Sender Name','Owner Name','Owner Email','Phone','Partner Network','Source','Approved Date','Sender ID'];
+    // Insights CSVs export only Name + Phone. Owner name comes from the
+    // resolved user record (falls back to the sender name itself).
+    const headers = ['Name','Phone'];
     const escape = (c) => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`;
     const lines = [headers.map(escape).join(',')];
     filteredRows.forEach(s => {
-      const u  = lookupOwner(s);
-      const ts = s.approved_at || s.created_at;
-      lines.push([
-        s.name || s.sender_name || s.sender_id || '',
-        u?.name || '',
-        s.user_email || s.owner_email || u?.email || '',
-        u?.phone || '',
-        u?._partner_name || (u?._source === 'partner_unmatched' ? '(via partner email)' : ''),
-        u?._source === 'partner_customer' ? 'Partner customer'
-          : u?._source === 'partner_unmatched' ? 'Partner-owned (customer not matched)'
-          : u?._source === 'direct_user' ? 'Direct user'
-          : 'Unmatched',
-        ts ? new Date(ts).toISOString().slice(0, 10) : '',
-        s.id || s.sender_id || '',
-      ].map(escape).join(','));
+      const u = lookupOwner(s);
+      const name  = u?.name || s.name || s.sender_name || s.sender_id || '';
+      const phone = u?.phone || '';
+      lines.push([name, phone].map(escape).join(','));
     });
     // Filename reflects the active bucket so files don't collide.
     const bucketTag = bucket === 'all' ? 'all' : bucket.replace(/[^a-z0-9-]/gi, '');
@@ -5644,19 +5678,49 @@ function InsightsTab() {
                 },
               };
             });
+            const downloadPeriod = (item) => {
+              const matched = filteredUsers.filter(item.filter);
+              if (matched.length === 0) return;
+              const slug = String(item.label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              downloadEngagementCsv(
+                `registrations-${slug || 'period'}-${new Date().toISOString().slice(0,10)}.csv`,
+                ['Name','Phone'],
+                matched.map(u => [u.name || '', u.phone || '']),
+              );
+            };
             return (
               <>
               <RegYearChips years={regYears} value={regYearFilter} onChange={setRegYearFilter}/>
               <ExpandableTable
                 accent={BRAND}
-                headers={['Period','Count']}
+                headers={['Period','Count','CSV']}
                 items={[...aggregateItems, ...monthItems]}
-                renderRow={(item) => (
-                  <>
-                    <td style={{fontWeight: item.__highlight ? 700 : 600, fontSize:12, color:'#0f172a'}}>{item.label}</td>
-                    <td style={{fontSize:12, color: item.__highlight ? BRAND : '#64748b', fontWeight:600}}>{Number(item.count||0).toLocaleString()}</td>
-                  </>
-                )}
+                renderRow={(item) => {
+                  const matchedCount = filteredUsers.filter(item.filter).length;
+                  return (
+                    <>
+                      <td style={{fontWeight: item.__highlight ? 700 : 600, fontSize:12, color:'#0f172a'}}>{item.label}</td>
+                      <td style={{fontSize:12, color: item.__highlight ? BRAND : '#64748b', fontWeight:600}}>{Number(item.count||0).toLocaleString()}</td>
+                      <td style={{width:60}}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); downloadPeriod(item); }}
+                          disabled={matchedCount === 0}
+                          title={matchedCount === 0 ? 'No users to export' : `Download ${matchedCount} user${matchedCount===1?'':'s'} (Name + Phone)`}
+                          style={{
+                            display:'inline-flex',alignItems:'center',gap:4,
+                            padding:'4px 9px',borderRadius:6,border:'none',
+                            background: matchedCount === 0 ? '#f1f5f9' : BRAND,
+                            color:      matchedCount === 0 ? '#94a3b8' : '#fff',
+                            fontSize:10,fontWeight:700,
+                            cursor: matchedCount === 0 ? 'not-allowed' : 'pointer',
+                          }}>
+                          <Download size={11} strokeWidth={2.4}/>
+                          {matchedCount}
+                        </button>
+                      </td>
+                    </>
+                  );
+                }}
                 renderDetail={(item) => {
                   const matched = filteredUsers.filter(item.filter);
                   if (matched.length === 0) return <div style={{fontSize:12, color:'#94a3b8'}}>No registered users in this period (within loaded sample of {users.length}).</div>;
@@ -5839,25 +5903,12 @@ function InsightsTab() {
             };
             const downloadUnpaidCsv = (rows, tag) => {
               if (!rows.length) return;
-              const headers = ['User ID','Name','Email','Phone','Role','Status','Joined','Last Seen','Days Since Joining','SMS Sent','Balance (TZS)'];
+              // Insights CSVs export only Name + Phone.
+              const headers = ['Name','Phone'];
               const escape = (c) => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`;
               const lines  = [headers.map(escape).join(',')];
-              const now = Date.now();
               rows.forEach(u => {
-                const days = u.joined_at ? Math.floor((now - new Date(u.joined_at).getTime()) / 86400000) : '';
-                lines.push([
-                  u.id || '',
-                  u.name || '',
-                  u.email || '',
-                  u.phone || '',
-                  u.role || '',
-                  u.status || '',
-                  u.joined_at ? new Date(u.joined_at).toISOString().slice(0,10) : '',
-                  u.last_seen_at ? new Date(u.last_seen_at).toISOString().slice(0,10) : '',
-                  days,
-                  u.sms_sent ?? 0,
-                  u.balance ?? 0,
-                ].map(escape).join(','));
+                lines.push([u.name || '', u.phone || ''].map(escape).join(','));
               });
               const safeTag = String(tag || 'all').replace(/[^a-z0-9-]/gi, '');
               const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -6384,6 +6435,935 @@ function InsightsTab() {
   );
 }
 
+// ─── Engagement Tab ──────────────────────────────────────────────────────────
+// Three outreach dashboards backed by /api/admin/v1/engagement/*:
+//   • Approved Senders (payment intelligence + intent tracking)
+//   • Active Users (happy customers, sorted by spend)
+//   • Inactive Users (registered but never engaged)
+// Each row has an inline note editor that PUTs to the server-side notes endpoint.
+
+// Normalize the wide range of envelopes the admin API might send back —
+// DRF paginated ({count, results}), DRF wrapped ({success, data: {count, results}}),
+// bare arrays, bare {items: []}, etc. — into a single shape:
+//   { ok, count, items, pageSummary, error }
+// The views consume those four fields directly, no further branching needed.
+function unwrapEngagementResponse(res) {
+  if (typeof console !== 'undefined' && console.debug) console.debug('[engagement] raw response:', res);
+  if (res == null) return { ok: false, count: 0, items: [], pageSummary: {}, meta: null, hasNext: false, error: 'Empty response.' };
+
+  // Explicit failure
+  if (typeof res === 'object' && res.success === false) {
+    return { ok: false, count: 0, items: [], pageSummary: {}, meta: null, hasNext: false,
+      error: res.error?.message || res.error || res.message || 'Request failed.' };
+  }
+
+  // Walk through possible payload locations.
+  // 1) wrapped: { success: true, data: <payload> }
+  // 2) raw DRF: payload at top level
+  // 3) bare array: top level is the items array
+  const tryRoots = [];
+  if (Array.isArray(res)) tryRoots.push({ items: res });
+  if (typeof res === 'object') {
+    tryRoots.push(res);
+    if (res.data) tryRoots.push(res.data);
+    if (res.results && typeof res.results === 'object' && !Array.isArray(res.results)) tryRoots.push(res.results);
+  }
+
+  let items = null;
+  let pageSummary = {};
+  let count = null;
+  let meta = null;
+  let hasNext = null;
+  for (const root of tryRoots) {
+    if (!root || typeof root !== 'object') continue;
+    // count may live at root.count (DRF default) OR at root.meta.total / root.meta.count (custom envelope)
+    if (count == null && typeof root.count === 'number') count = root.count;
+    if (root.meta && typeof root.meta === 'object') {
+      if (!meta) meta = root.meta;
+      if (count == null && typeof root.meta.total === 'number') count = root.meta.total;
+      if (count == null && typeof root.meta.count === 'number') count = root.meta.count;
+      if (hasNext == null && typeof root.meta.has_next === 'boolean') hasNext = root.meta.has_next;
+    }
+    if (root.page_summary && typeof root.page_summary === 'object') pageSummary = root.page_summary;
+    // items may be at root.items, root.results.items, or root.results (if array)
+    if (items == null) {
+      if (Array.isArray(root.items))   items = root.items;
+      else if (Array.isArray(root.results)) items = root.results;
+      else if (root.results && Array.isArray(root.results.items)) items = root.results.items;
+    }
+  }
+
+  // If we got anything (even just an empty items array), treat as OK.
+  // IMPORTANT: do NOT fall back `count` to `items.length` — callers rely on
+  // a real total to know when to stop paginating, and a per-page fallback
+  // would make them think page 1 was the whole dataset.
+  if (items != null || count != null) {
+    return {
+      ok: true,
+      count: count != null ? count : (items?.length ?? 0),
+      items: items || [],
+      pageSummary,
+      meta,
+      hasNext: hasNext != null ? hasNext : null,
+      error: null,
+    };
+  }
+
+  // Genuinely couldn't find data — surface what the server said.
+  return {
+    ok: false, count: 0, items: [], pageSummary: {}, meta: null, hasNext: false,
+    error: res.error?.message || res.error || res.message || 'Unexpected response shape — check console for raw payload.',
+  };
+}
+
+// Paginate through every page of an engagement endpoint and return the merged
+// items array. Used by the CSV download buttons so the export covers the entire
+// filtered set, not just the page currently on screen.
+async function fetchAllEngagementPages(adminFetchFn, basePath, params = {}, onLogout) {
+  const all = [];
+  let page = 1;
+  // Request a large page_size — the server may cap this lower (e.g. 20),
+  // so the loop never assumes one page == one dataset. Stop signals are,
+  // in order of preference: `meta.has_next`, `meta.total`, or an empty page.
+  const PAGE_SIZE = 200;
+  let safety = 0;
+  let totalCount = null;
+  while (safety++ < 500) {
+    const qs = new URLSearchParams({ ...params, page: String(page), page_size: String(PAGE_SIZE) });
+    const res = await adminFetchFn(`${basePath}?${qs}`, {}, onLogout);
+    const { ok, items, count, meta, hasNext } = unwrapEngagementResponse(res);
+    if (!ok && items.length === 0) break;
+    // Prefer the explicit total from `meta.total` over the unwrap fallback
+    // (which collapses to items.length when the server omits a count).
+    if (meta && typeof meta.total === 'number') totalCount = meta.total;
+    else if (totalCount == null && count != null && page === 1 && items.length > 0 && count > items.length) {
+      // Only trust unwrap's count if it clearly represents a true total
+      // (greater than the items just returned). Otherwise leave null.
+      totalCount = count;
+    }
+    all.push(...items);
+    // 1) Explicit `has_next: false` from the server → we have everything.
+    if (hasNext === false) break;
+    // 2) Total known and reached.
+    if (totalCount != null && all.length >= totalCount) break;
+    // 3) No total reported AND the server returned an empty page → done.
+    if (items.length === 0) break;
+    page++;
+  }
+  return all;
+}
+
+// Build + trigger a CSV download. UTF-8 with BOM so Excel reads Swahili / accented
+// names correctly. `headers` is an array of column titles, `rows` is array of
+// arrays whose order matches `headers`.
+function downloadEngagementCsv(filename, headers, rows) {
+  const escape = (c) => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach(row => lines.push(row.map(escape).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+const PAYMENT_STATUS_META = {
+  paid:      { label: 'Paid',      color: GREEN  },
+  not_paid:  { label: 'Not paid',  color: '#94a3b8' },
+  pending:   { label: 'Pending',   color: AMBER  },
+  attempted: { label: 'Attempted', color: ORANGE },
+};
+
+const PAYMENT_INTENT_OPTIONS = [
+  { value: 'unknown',   label: 'Unknown'   },
+  { value: 'will_pay',  label: 'Will pay'  },
+  { value: 'declined',  label: 'Declined'  },
+  { value: 'attempted', label: 'Attempted' },
+];
+
+// Generic note editor — used by all three views. Variant=`sender` shows the
+// payment_intent dropdown; `user` omits it.
+function EngagementNoteEditor({ note = {}, variant = 'user', onSave, saving = false, accent = BRAND }) {
+  const [checked, setChecked]    = useState(!!note.checked);
+  const [intent,  setIntent]     = useState(note.payment_intent || 'unknown');
+  const [text,    setText]       = useState(note.feedback || '');
+  const [dirty,   setDirty]      = useState(false);
+
+  // Sync to upstream note when row's note arrives/changes.
+  useEffect(() => {
+    setChecked(!!note.checked);
+    setIntent(note.payment_intent || 'unknown');
+    setText(note.feedback || '');
+    setDirty(false);
+  }, [note.checked, note.payment_intent, note.feedback, note.updated_at]);
+
+  const save = (overrides = {}) => {
+    const body = { checked, feedback: text, ...overrides };
+    if (variant === 'sender') body.payment_intent = overrides.payment_intent ?? intent;
+    onSave?.(body);
+    setDirty(false);
+  };
+
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+      <div>
+        <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>Outreach status</div>
+        <label style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,cursor:'pointer',fontSize:12,color:'#0f172a'}}>
+          <input type="checkbox" checked={checked}
+            onChange={e => { setChecked(e.target.checked); setDirty(true); save({ checked: e.target.checked }); }}
+            style={{width:16,height:16,accentColor:accent,cursor:'pointer'}}/>
+          <span>Mark as <strong>contacted</strong></span>
+        </label>
+        {variant === 'sender' && (
+          <>
+            <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>Payment intent</div>
+            <select className="senda-input" value={intent}
+              onChange={e => { setIntent(e.target.value); setDirty(true); save({ payment_intent: e.target.value }); }}
+              style={{height:32,fontSize:12,width:'100%'}}>
+              {PAYMENT_INTENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </>
+        )}
+        {(note.last_contacted_at || note.contacted_by) && (
+          <div style={{fontSize:10,color:'#94a3b8',marginTop:10}}>
+            Last contact: {note.last_contacted_at ? new Date(note.last_contacted_at).toLocaleString() : '—'}
+            {note.contacted_by && <><br/>By {note.contacted_by}</>}
+          </div>
+        )}
+      </div>
+      <div>
+        <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>Feedback</div>
+        <textarea className="senda-input" rows={4}
+          placeholder="What did the customer say? Free-text notes…"
+          value={text}
+          onChange={e => { setText(e.target.value); setDirty(true); }}
+          onBlur={() => { if (dirty) save(); }}
+          style={{width:'100%',fontSize:12,resize:'vertical',padding:'8px 10px'}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6,gap:8}}>
+          <span style={{fontSize:10,color: dirty ? AMBER : '#94a3b8'}}>{saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved'}</span>
+          <button onClick={() => save()} disabled={saving || !dirty}
+            style={{padding:'6px 12px',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:dirty && !saving ? 'pointer':'not-allowed',
+              background: dirty && !saving ? accent : '#f1f5f9', color: dirty && !saving ? '#fff' : '#94a3b8'}}>
+            Save note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Approved Senders sub-view ────────────────────────────────────────────────
+// Emails that belong to partner-network admin accounts. Senders whose contact
+// email matches one of these are excluded from the Approved Senders view —
+// they're partner-owned applications, not direct customers.
+const ENGAGEMENT_EXCLUDED_EMAILS = new Set([
+  'development@swahilies.com',
+]);
+function isExcludedSenderRow(it) {
+  const e = String(it?.email || '').trim().toLowerCase();
+  return ENGAGEMENT_EXCLUDED_EMAILS.has(e);
+}
+
+function ApprovedSendersView() {
+  const { onLogout } = React.useContext(AppContext);
+  // Single source of truth: every row that matched the active server-side filters,
+  // pulled across every page. Client-side filters (excludePartner) + pagination
+  // run on top of this in-memory dataset. `items` and `count` below are derived.
+  const [allItems, setAllItems] = useState([]);
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('all');
+  const [intent, setIntent]     = useState('all');
+  const [excludePartner, setExcludePartner] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [openId, setOpenId]     = useState(null);
+  const [savingId, setSavingId] = useState(null);
+  const PER = 25;
+
+  // Refetch all pages when the SERVER-SIDE filters change. Toggling the
+  // audience or paging through pages doesn't refire the request.
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const params = {};
+    if (search.trim())            params.search = search.trim();
+    if (paymentStatus !== 'all')  params.payment_status = paymentStatus;
+    if (intent !== 'all')         params.intent = intent;
+    fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/approved-senders/', params, onLogout)
+      .then(all => { setAllItems(all || []); })
+      .catch(e => setError(e?.message || 'Failed to load approved senders.'))
+      .finally(() => setLoading(false));
+  }, [onLogout, search, paymentStatus, intent]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setPage(1); }, [search, paymentStatus, intent, excludePartner]);
+
+  // Apply audience filter (excludePartner) once. Everything downstream reads
+  // from filteredAllItems so summary counts, table contents, and pagination
+  // can never disagree.
+  const filteredAllItems = React.useMemo(
+    () => (excludePartner ? allItems.filter(it => !isExcludedSenderRow(it)) : allItems),
+    [allItems, excludePartner]
+  );
+  const totalFiltered = filteredAllItems.length;
+  const totalPages    = Math.max(1, Math.ceil(totalFiltered / PER));
+  const safePage      = Math.min(page, totalPages);
+  const items         = React.useMemo(
+    () => filteredAllItems.slice((safePage - 1) * PER, safePage * PER),
+    [filteredAllItems, safePage]
+  );
+  const count = totalFiltered; // exposes the right number to the existing UI bindings.
+
+  // Summary cards now reflect the entire filtered dataset, not just one page.
+  const summaryCards = React.useMemo(() => {
+    const paid    = filteredAllItems.filter(i => i.payment_status === 'paid').length;
+    const notPaid = filteredAllItems.filter(i => i.payment_status === 'not_paid').length;
+    const pending = filteredAllItems.filter(i => ['pending','attempted'].includes(i.payment_status)).length;
+    return {
+      total: totalFiltered,
+      paid,
+      not_paid: notPaid,
+      pending_or_attempted: pending,
+    };
+  }, [filteredAllItems, totalFiltered]);
+
+  const [downloading, setDownloading] = useState(false);
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const params = {};
+      if (search.trim())            params.search = search.trim();
+      if (paymentStatus !== 'all')  params.payment_status = paymentStatus;
+      if (intent !== 'all')         params.intent = intent;
+      const fetched = await fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/approved-senders/', params, onLogout);
+      const all = excludePartner ? fetched.filter(it => !isExcludedSenderRow(it)) : fetched;
+      if (all.length === 0) return;
+      downloadEngagementCsv(
+        `approved-senders-${new Date().toISOString().slice(0,10)}.csv`,
+        ['Sender Name','Business','Phone','Email','Location','Payment Status','Total Paid (TZS)','Txn Count','Customers','Days Active','Approved At','Last Payment','Note · Checked','Note · Intent','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        all.map(it => [
+          it.sender_name || '',
+          it.business || '',
+          it.phone || '',
+          it.email || '',
+          it.location || '',
+          it.payment_status || '',
+          Number(it.total_paid_tzs || 0),
+          it.txn_count || 0,
+          it.customer_count || 0,
+          it.days_active ?? '',
+          it.approved_at || '',
+          it.last_payment_at || '',
+          it.note?.checked ? 'yes' : 'no',
+          it.note?.payment_intent || '',
+          it.note?.feedback || '',
+          it.note?.last_contacted_at || '',
+          it.note?.contacted_by || '',
+        ]),
+      );
+    } finally { setDownloading(false); }
+  };
+
+  const saveNote = (requestId, body) => {
+    setSavingId(requestId);
+    adminFetch(`/api/admin/v1/engagement/approved-senders/${requestId}/note/`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }, onLogout)
+      .then(res => {
+        const noteData = (res && res.success && res.data) ? res.data
+                       : (res && (res.checked != null || res.feedback != null || res.payment_intent != null)) ? res
+                       : null;
+        if (noteData) {
+          setAllItems(prev => prev.map(it => it.request_id === requestId ? { ...it, note: noteData } : it));
+        }
+      })
+      .finally(() => setSavingId(null));
+  };
+
+  return (
+    <div>
+      {/* Audience toggle — include or exclude partner-network applications */}
+      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:10,flexWrap:'wrap'}}>
+        <span style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginRight:4}}>Audience</span>
+        {[
+          { id: true,  label: 'Exclude partners' },
+          { id: false, label: 'Include partners' },
+        ].map(opt => {
+          const isActive = excludePartner === opt.id;
+          return (
+            <button key={String(opt.id)} onClick={() => setExcludePartner(opt.id)}
+              title={opt.id ? `Hide senders owned by ${[...ENGAGEMENT_EXCLUDED_EMAILS].join(', ')}` : 'Show every approved sender, including partner-owned ones'}
+              style={{
+                height:26,padding:'0 11px',borderRadius:7,border:'none',cursor:'pointer',
+                fontSize:11,fontWeight:600,
+                background: isActive ? BRAND : '#f1f5f9',
+                color:      isActive ? '#fff' : '#64748b',
+              }}>{opt.label}</button>
+          );
+        })}
+      </div>
+
+      {/* Page-summary cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:14}}>
+        {[
+          { label:'Total',        value: summaryCards.total,               color: BRAND },
+          { label:'Paid',         value: summaryCards.paid,                color: GREEN },
+          { label:'Not paid',     value: summaryCards.not_paid,            color: '#94a3b8' },
+          { label:'Pending / Attempted', value: summaryCards.pending_or_attempted, color: AMBER },
+        ].map(k => (
+          <div key={k.label} className="senda-card" style={{padding:'14px 16px',borderLeft:`3px solid ${k.color}`}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#0f172a'}}>{Number(k.value || 0).toLocaleString()}</div>
+            <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:3}}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search name, business, email, phone…"
+          value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:280,height:34,fontSize:12}}/>
+        <div style={{display:'flex',gap:4}}>
+          {['all','paid','not_paid','pending','attempted'].map(f => {
+            const meta = PAYMENT_STATUS_META[f] || { label:'All', color: BRAND };
+            const isActive = paymentStatus === f;
+            return (
+              <button key={f} onClick={()=>setPaymentStatus(f)} className="senda-btn senda-btn-sm"
+                style={{background: isActive ? meta.color : '#f1f5f9', color: isActive ? '#fff' : '#64748b', border:'none'}}>
+                {f === 'all' ? 'All' : meta.label}
+              </button>
+            );
+          })}
+        </div>
+        <select className="senda-input" value={intent} onChange={e=>setIntent(e.target.value)}
+          style={{height:34,fontSize:12}}>
+          <option value="all">All intents</option>
+          {PAYMENT_INTENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{count.toLocaleString()} senders</span>
+        <button onClick={handleDownload} disabled={downloading || count === 0}
+          style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
+            background: (downloading || count===0) ? '#f1f5f9' : BRAND,
+            color: (downloading || count===0) ? '#94a3b8' : '#fff',
+            border:'none',borderRadius:7,fontSize:11,fontWeight:700,
+            cursor: (downloading || count===0) ? 'not-allowed' : 'pointer'}}>
+          <Download size={13} strokeWidth={2.4}/>
+          {downloading ? 'Preparing…' : `Download CSV (${count})`}
+        </button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:1000}}>
+              <thead>
+                <tr>
+                  <th>Sender</th><th>Business</th><th>Contact</th>
+                  <th>Payment</th><th>Paid (TZS)</th><th>Customers</th><th>Days</th><th>Note</th><th style={{width:30}}/>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(it => {
+                  const isOpen = openId === it.request_id;
+                  const meta = PAYMENT_STATUS_META[it.payment_status] || { label: it.payment_status, color:'#94a3b8' };
+                  return (
+                    <React.Fragment key={it.request_id}>
+                      <tr onClick={() => setOpenId(isOpen ? null : it.request_id)}
+                        style={{cursor:'pointer', background: isOpen ? '#eff6ff' : undefined}}>
+                        <td style={{fontWeight:700,fontSize:12,color:'#0f172a'}}>{it.sender_name || '—'}</td>
+                        <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.business || '—'}</td>
+                        <td style={{fontSize:11,color:'#64748b',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {it.email || '—'}
+                          {it.phone && <div style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:10,color:'#94a3b8'}}>{it.phone}</div>}
+                        </td>
+                        <td>
+                          <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:99,background:`${meta.color}18`,color:meta.color,textTransform:'uppercase',letterSpacing:'.04em'}}>
+                            {meta.label}
+                          </span>
+                        </td>
+                        <td style={{fontWeight:600,color:GREEN,fontSize:12}}>{Number(it.total_paid_tzs || 0).toLocaleString()}</td>
+                        <td style={{fontSize:12}}>{(it.customer_count || 0).toLocaleString()}</td>
+                        <td style={{fontSize:11,color:'#64748b'}}>{it.days_active ?? '—'} d</td>
+                        <td style={{fontSize:11,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {it.note?.checked && <span style={{display:'inline-block',padding:'1px 6px',borderRadius:99,background:`${GREEN}18`,color:GREEN,fontSize:9,fontWeight:700,marginRight:4}}>✓</span>}
+                          {it.note?.feedback || <span style={{color:'#cbd5e1'}}>—</span>}
+                        </td>
+                        <td style={{textAlign:'center',fontWeight:700,color: isOpen ? BRAND : '#cbd5e1'}}>{isOpen ? '▾' : '▸'}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={9} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${BRAND}`,borderBottom:'1px solid #e2e8f0'}}>
+                            <EngagementNoteEditor
+                              note={it.note || {}}
+                              variant="sender"
+                              accent={BRAND}
+                              saving={savingId === it.request_id}
+                              onSave={(body) => saveNote(it.request_id, body)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {items.length === 0 && (
+                  <tr><td colSpan={9} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No senders match this filter.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination */}
+          <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {safePage} of {totalPages} · {count.toLocaleString()} senders</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(1)} style={{opacity: page===1?.4:1}}>«</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(p=>p-1)} style={{opacity: page===1?.4:1}}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(p=>p+1)} style={{opacity: page>=totalPages?.4:1}}>Next ›</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(totalPages)} style={{opacity: page>=totalPages?.4:1}}>»</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Active Users sub-view ────────────────────────────────────────────────────
+function ActiveUsersView() {
+  const { onLogout } = React.useContext(AppContext);
+  // Full dataset across pages; visible rows + count derived below.
+  const [allItems, setAllItems] = useState([]);
+  const [page, setPage]     = useState(1);
+  const [search, setSearch] = useState('');
+  const [minPaid, setMinPaid] = useState(0);
+  const [minSms, setMinSms]   = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [openId, setOpenId]   = useState(null);
+  const [savingId, setSavingId] = useState(null);
+  const PER = 25;
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const params = {};
+    if (search.trim()) params.search = search.trim();
+    if (minPaid > 0)   params.min_total_paid = String(minPaid);
+    if (minSms > 0)    params.min_sms_count = String(minSms);
+    fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/active-users/', params, onLogout)
+      .then(all => setAllItems(all || []))
+      .catch(e => setError(e?.message || 'Failed to load active users.'))
+      .finally(() => setLoading(false));
+  }, [onLogout, search, minPaid, minSms]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setPage(1); }, [search, minPaid, minSms]);
+
+  // Derived: all rows, then page slice. (No partner-toggle on Active Users yet,
+  // but the structure is parallel to ApprovedSendersView in case we add one.)
+  const totalFiltered = allItems.length;
+  const totalPages    = Math.max(1, Math.ceil(totalFiltered / PER));
+  const safePage      = Math.min(page, totalPages);
+  const items         = React.useMemo(
+    () => allItems.slice((safePage - 1) * PER, safePage * PER),
+    [allItems, safePage]
+  );
+  const count = totalFiltered;
+
+  const saveNote = (userId, body) => {
+    setSavingId(userId);
+    adminFetch(`/api/admin/v1/engagement/users/${userId}/note/`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }, onLogout)
+      .then(res => {
+        // Accept either { success, data } or a bare note object.
+        const noteData = (res && res.success && res.data) ? res.data
+                       : (res && (res.checked != null || res.feedback != null)) ? res
+                       : null;
+        if (noteData) {
+          setAllItems(prev => prev.map(it => it.user_id === userId ? { ...it, note: noteData } : it));
+        }
+      })
+      .finally(() => setSavingId(null));
+  };
+
+  const [downloading, setDownloading] = useState(false);
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const params = {};
+      if (search.trim()) params.search = search.trim();
+      if (minPaid > 0)   params.min_total_paid = String(minPaid);
+      if (minSms > 0)    params.min_sms_count  = String(minSms);
+      const all = await fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/active-users/', params, onLogout);
+      if (all.length === 0) return;
+      downloadEngagementCsv(
+        `active-users-${new Date().toISOString().slice(0,10)}.csv`,
+        ['Name','Phone','Email','Business','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Total Paid (TZS)','Txn Count','SMS Total','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        all.map(u => [
+          u.name || '',
+          u.phone || '',
+          u.email || '',
+          u.business || '',
+          u.location || '',
+          u.registered_at || '',
+          u.days_since_registration ?? '',
+          u.last_login_at || '',
+          u.phone_verified ? 'yes' : 'no',
+          Number(u.total_paid_tzs || 0),
+          u.txn_count || 0,
+          u.sms_total || 0,
+          u.note?.checked ? 'yes' : 'no',
+          u.note?.feedback || '',
+          u.note?.last_contacted_at || '',
+          u.note?.contacted_by || '',
+        ]),
+      );
+    } finally { setDownloading(false); }
+  };
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search email, name, phone, business…"
+          value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:280,height:34,fontSize:12}}/>
+        <div style={{display:'flex',gap:4}}>
+          <button className="senda-btn senda-btn-sm" onClick={()=>{ setMinPaid(0); setMinSms(0); }}
+            style={{background: minPaid===0 && minSms===0 ? BRAND : '#f1f5f9', color: minPaid===0 && minSms===0 ? '#fff' : '#64748b', border:'none'}}>
+            All
+          </button>
+          <button className="senda-btn senda-btn-sm" onClick={()=>{ setMinPaid(50000); setMinSms(0); }}
+            style={{background: minPaid===50000 ? GREEN : '#f1f5f9', color: minPaid===50000 ? '#fff' : '#64748b', border:'none'}}>
+            Big spenders (≥50K)
+          </button>
+          <button className="senda-btn senda-btn-sm" onClick={()=>{ setMinSms(1000); setMinPaid(0); }}
+            style={{background: minSms===1000 ? VIOLET : '#f1f5f9', color: minSms===1000 ? '#fff' : '#64748b', border:'none'}}>
+            Heavy SMS (≥1K)
+          </button>
+        </div>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{count.toLocaleString()} users</span>
+        <button onClick={handleDownload} disabled={downloading || count === 0}
+          style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
+            background: (downloading || count===0) ? '#f1f5f9' : GREEN,
+            color: (downloading || count===0) ? '#94a3b8' : '#fff',
+            border:'none',borderRadius:7,fontSize:11,fontWeight:700,
+            cursor: (downloading || count===0) ? 'not-allowed' : 'pointer'}}>
+          <Download size={13} strokeWidth={2.4}/>
+          {downloading ? 'Preparing…' : `Download CSV (${count})`}
+        </button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:980}}>
+              <thead>
+                <tr>
+                  <th>User</th><th>Business</th><th>Phone</th>
+                  <th>Total Paid (TZS)</th><th>Txns</th><th>SMS</th><th>Days</th><th>Note</th><th style={{width:30}}/>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, i) => {
+                  const isOpen = openId === it.user_id;
+                  return (
+                    <React.Fragment key={it.user_id || i}>
+                      <tr onClick={() => setOpenId(isOpen ? null : it.user_id)}
+                        style={{cursor:'pointer', background: isOpen ? '#f0fdf4' : undefined}}>
+                        <td>
+                          <div style={{fontWeight:600,fontSize:12,color:'#0f172a'}}>{it.name || '—'}</div>
+                          <div style={{fontSize:10,color:'#94a3b8',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.email || '—'}</div>
+                        </td>
+                        <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.business || '—'}</td>
+                        <td style={{fontSize:11,fontFamily:'ui-monospace,Menlo,monospace',color:'#475569',whiteSpace:'nowrap'}}>{it.phone || '—'}</td>
+                        <td style={{fontSize:12,fontWeight:700,color:GREEN}}>{Number(it.total_paid_tzs || 0).toLocaleString()}</td>
+                        <td style={{fontSize:12}}>{it.txn_count || 0}</td>
+                        <td style={{fontSize:12,fontWeight:600,color:VIOLET}}>{(it.sms_total || 0).toLocaleString()}</td>
+                        <td style={{fontSize:11,color:'#64748b'}}>{it.days_since_registration ?? '—'}</td>
+                        <td style={{fontSize:11,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {it.note?.checked && <span style={{display:'inline-block',padding:'1px 6px',borderRadius:99,background:`${GREEN}18`,color:GREEN,fontSize:9,fontWeight:700,marginRight:4}}>✓</span>}
+                          {it.note?.feedback || <span style={{color:'#cbd5e1'}}>—</span>}
+                        </td>
+                        <td style={{textAlign:'center',fontWeight:700,color: isOpen ? GREEN : '#cbd5e1'}}>{isOpen ? '▾' : '▸'}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={9} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${GREEN}`,borderBottom:'1px solid #e2e8f0'}}>
+                            <EngagementNoteEditor
+                              note={it.note || {}}
+                              variant="user"
+                              accent={GREEN}
+                              saving={savingId === it.user_id}
+                              onSave={(body) => saveNote(it.user_id, body)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {items.length === 0 && (
+                  <tr><td colSpan={9} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No active users match this filter.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {safePage} of {totalPages} · {count.toLocaleString()} users · sorted by spend</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(1)} style={{opacity: page===1?.4:1}}>«</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(p=>p-1)} style={{opacity: page===1?.4:1}}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(p=>p+1)} style={{opacity: page>=totalPages?.4:1}}>Next ›</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(totalPages)} style={{opacity: page>=totalPages?.4:1}}>»</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inactive Users sub-view ──────────────────────────────────────────────────
+function InactiveUsersView() {
+  const { onLogout } = React.useContext(AppContext);
+  // Full dataset across pages; visible rows + count derived below.
+  const [allItems, setAllItems] = useState([]);
+  const [page, setPage]     = useState(1);
+  const [search, setSearch] = useState('');
+  const [neverLoggedIn, setNeverLoggedIn] = useState(false);
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [openId, setOpenId]   = useState(null);
+  const [savingId, setSavingId] = useState(null);
+  const PER = 25;
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const params = { days: String(days) };
+    if (search.trim()) params.search = search.trim();
+    if (neverLoggedIn) params.never_logged_in = 'true';
+    fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/inactive-users/', params, onLogout)
+      .then(all => setAllItems(all || []))
+      .catch(e => setError(e?.message || 'Failed to load inactive users.'))
+      .finally(() => setLoading(false));
+  }, [onLogout, search, neverLoggedIn, days]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { setPage(1); }, [search, neverLoggedIn, days]);
+
+  const totalFiltered = allItems.length;
+  const totalPages    = Math.max(1, Math.ceil(totalFiltered / PER));
+  const safePage      = Math.min(page, totalPages);
+  const items         = React.useMemo(
+    () => allItems.slice((safePage - 1) * PER, safePage * PER),
+    [allItems, safePage]
+  );
+  const count = totalFiltered;
+
+  const saveNote = (userId, body) => {
+    setSavingId(userId);
+    adminFetch(`/api/admin/v1/engagement/users/${userId}/note/`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }, onLogout)
+      .then(res => {
+        // Accept either { success, data } or a bare note object.
+        const noteData = (res && res.success && res.data) ? res.data
+                       : (res && (res.checked != null || res.feedback != null)) ? res
+                       : null;
+        if (noteData) {
+          setAllItems(prev => prev.map(it => it.user_id === userId ? { ...it, note: noteData } : it));
+        }
+      })
+      .finally(() => setSavingId(null));
+  };
+
+  const [downloading, setDownloading] = useState(false);
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const params = { days: String(days) };
+      if (search.trim()) params.search = search.trim();
+      if (neverLoggedIn) params.never_logged_in = 'true';
+      const all = await fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/inactive-users/', params, onLogout);
+      if (all.length === 0) return;
+      downloadEngagementCsv(
+        `inactive-users-${new Date().toISOString().slice(0,10)}.csv`,
+        ['Name','Phone','Email','Business','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        all.map(u => [
+          u.name || '',
+          u.phone || '',
+          u.email || '',
+          u.business || '',
+          u.location || '',
+          u.registered_at || '',
+          u.days_since_registration ?? '',
+          u.last_login_at || 'never',
+          u.phone_verified ? 'yes' : 'no',
+          u.note?.checked ? 'yes' : 'no',
+          u.note?.feedback || '',
+          u.note?.last_contacted_at || '',
+          u.note?.contacted_by || '',
+        ]),
+      );
+    } finally { setDownloading(false); }
+  };
+
+  return (
+    <div>
+      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search email, name, phone, business…"
+          value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:280,height:34,fontSize:12}}/>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:11,color:'#475569',fontWeight:600}}>Min days inactive:</span>
+          <select className="senda-input" value={days} onChange={e=>setDays(Number(e.target.value))}
+            style={{height:34,fontSize:12}}>
+            {[1, 7, 14, 30, 60, 90].map(d => <option key={d} value={d}>{d} d</option>)}
+          </select>
+        </div>
+        <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#475569'}}>
+          <input type="checkbox" checked={neverLoggedIn} onChange={e=>setNeverLoggedIn(e.target.checked)}
+            style={{accentColor:RED}}/>
+          Never logged in only
+        </label>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{count.toLocaleString()} users</span>
+        <button onClick={handleDownload} disabled={downloading || count === 0}
+          style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
+            background: (downloading || count===0) ? '#f1f5f9' : RED,
+            color: (downloading || count===0) ? '#94a3b8' : '#fff',
+            border:'none',borderRadius:7,fontSize:11,fontWeight:700,
+            cursor: (downloading || count===0) ? 'not-allowed' : 'pointer'}}>
+          <Download size={13} strokeWidth={2.4}/>
+          {downloading ? 'Preparing…' : `Download CSV (${count})`}
+        </button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:900}}>
+              <thead>
+                <tr>
+                  <th>User</th><th>Business</th><th>Phone</th>
+                  <th>Days Idle</th><th>Last Login</th><th>Note</th><th style={{width:30}}/>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, i) => {
+                  const isOpen = openId === it.user_id;
+                  return (
+                    <React.Fragment key={it.user_id || i}>
+                      <tr onClick={() => setOpenId(isOpen ? null : it.user_id)}
+                        style={{cursor:'pointer', background: isOpen ? '#fef2f2' : undefined}}>
+                        <td>
+                          <div style={{fontWeight:600,fontSize:12,color:'#0f172a'}}>{it.name || '—'}</div>
+                          <div style={{fontSize:10,color:'#94a3b8',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.email || '—'}</div>
+                        </td>
+                        <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.business || '—'}</td>
+                        <td style={{fontSize:11,fontFamily:'ui-monospace,Menlo,monospace',color:'#475569',whiteSpace:'nowrap'}}>{it.phone || '—'}</td>
+                        <td style={{fontSize:12,fontWeight:700,color:RED}}>{it.days_since_registration ?? '—'} d</td>
+                        <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>
+                          {it.last_login_at ? new Date(it.last_login_at).toLocaleDateString() : <span style={{color:RED,fontWeight:700}}>Never</span>}
+                        </td>
+                        <td style={{fontSize:11,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {it.note?.checked && <span style={{display:'inline-block',padding:'1px 6px',borderRadius:99,background:`${GREEN}18`,color:GREEN,fontSize:9,fontWeight:700,marginRight:4}}>✓</span>}
+                          {it.note?.feedback || <span style={{color:'#cbd5e1'}}>—</span>}
+                        </td>
+                        <td style={{textAlign:'center',fontWeight:700,color: isOpen ? RED : '#cbd5e1'}}>{isOpen ? '▾' : '▸'}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={7} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${RED}`,borderBottom:'1px solid #e2e8f0'}}>
+                            <EngagementNoteEditor
+                              note={it.note || {}}
+                              variant="user"
+                              accent={RED}
+                              saving={savingId === it.user_id}
+                              onSave={(body) => saveNote(it.user_id, body)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {items.length === 0 && (
+                  <tr><td colSpan={7} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No inactive users match this filter.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {safePage} of {totalPages} · {count.toLocaleString()} users · ≥ {days} d inactive{neverLoggedIn ? ' · never logged in' : ''}</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(1)} style={{opacity: page===1?.4:1}}>«</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page === 1} onClick={()=>setPage(p=>p-1)} style={{opacity: page===1?.4:1}}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(p=>p+1)} style={{opacity: page>=totalPages?.4:1}}>Next ›</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page >= totalPages} onClick={()=>setPage(totalPages)} style={{opacity: page>=totalPages?.4:1}}>»</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EngagementTab() {
+  const [view, setView] = useState('approved-senders');
+  const views = [
+    { id:'approved-senders', label:'Approved Senders', color: BRAND, Icon: Tag },
+    { id:'active-users',     label:'Active Users',     color: GREEN, Icon: UserCheck },
+    { id:'inactive-users',   label:'Inactive Users',   color: RED,   Icon: UserX },
+  ];
+  const active = views.find(v => v.id === view);
+
+  return (
+    <div className="senda-fade-in">
+      <div style={{marginBottom:14}}>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a'}}>Engagement &amp; Outreach</h3>
+        <p style={{fontSize:12,color:'#94a3b8',marginTop:2}}>
+          Payment intelligence on approved senders, top-spender retention, and dormant-account follow-up.
+          Saves admin notes via <code style={{fontSize:10,color:'#475569'}}>/api/admin/v1/engagement/</code>.
+        </p>
+      </div>
+
+      <div style={{display:'flex',gap:6,marginBottom:16,flexWrap:'wrap'}}>
+        {views.map(v => {
+          const isActive = view === v.id;
+          return (
+            <button key={v.id} onClick={()=>setView(v.id)}
+              style={{
+                display:'inline-flex',alignItems:'center',gap:6,
+                height:34,padding:'0 14px',borderRadius:7,border:'none',cursor:'pointer',
+                fontSize:12,fontWeight:600,
+                background: isActive ? v.color : '#f1f5f9',
+                color:      isActive ? '#fff'   : '#475569',
+                transition:'background .12s',
+              }}>
+              <v.Icon size={14} strokeWidth={2.2}/>
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === 'approved-senders' && <ApprovedSendersView/>}
+      {view === 'active-users'     && <ActiveUsersView/>}
+      {view === 'inactive-users'   && <InactiveUsersView/>}
+    </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ onLogout, adminInfo, showToast }) {
   const bp = useBreakpoint();
@@ -6407,6 +7387,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   const tabMap = {
     overview:     <OverviewTab/>,
     insights:     <InsightsTab/>,
+    engagement:   <EngagementTab/>,
     users:        <UsersTab/>,
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
@@ -6700,7 +7681,13 @@ export default function SendaAdmin() {
     localStorage.removeItem(LS_KEY);
     setIsLoggedIn(false);
     setAdminInfo(null);
-    document.title = 'SENDA Admin | Login';
+    document.title = 'SENDA';
+    // Send the admin back to the public user-login page rather than the
+    // hidden admin LoginPage. /admin is intentionally not advertised in the UI;
+    // admins re-enter by appending ".admin" to their email on /login.
+    if (typeof window !== 'undefined') {
+      window.location.replace('/login');
+    }
   }, []);
 
   return (

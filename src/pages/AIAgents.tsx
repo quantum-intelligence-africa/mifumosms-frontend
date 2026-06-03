@@ -1303,22 +1303,23 @@ export default function AIAgents() {
   };
 
   return (
-    <div className="flex h-screen bg-background dark:bg-background overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-            <div className="mb-5 sm:mb-6 md:mb-8">
-              <h1 className="text-lg sm:text-[22px] md:text-[26px] font-semibold text-foreground dark:text-foreground tracking-[-0.02em] leading-tight">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
+            {/* Header — iOS large title */}
+            <header className="mb-5">
+              <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
                 AI Copilots
               </h1>
-              <p className="mt-1 text-xs sm:text-[13px] md:text-[14px] text-foreground/60 dark:text-foreground/50">
+              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
                 Build and deploy intelligent copilots for automated customer engagement
               </p>
-            </div>
+            </header>
 
             <div className="relative bg-card dark:bg-card/95 rounded-xl sm:rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-5 sm:mb-6 md:mb-8">
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-500 via-violet-500 to-indigo-500" />
@@ -2248,7 +2249,8 @@ export default function AIAgents() {
                                 <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Ready to deploy</p>
                               </div>
                             </div>
-                            <div className="bg-muted dark:bg-muted/70 rounded-xl p-2 mb-2 border border-border dark:border-border/40">
+                            {/* Hidden from regular users — dev-only payload preview */}
+                            <div className="hidden bg-muted dark:bg-muted/70 rounded-xl p-2 mb-2 border border-border dark:border-border/40">
                               <pre className="text-[7px] sm:text-[8px] leading-4 text-foreground dark:text-foreground overflow-x-auto max-h-[140px]">
                                 {formatJson(createPayload)}
                               </pre>
@@ -2624,8 +2626,8 @@ export default function AIAgents() {
                           </div>
 
                           <div className="space-y-2">
-                            {/* Flow Contract */}
-                            <div className="rounded-xl bg-muted/30 dark:bg-muted/15 p-3">
+                            {/* Flow Contract — hidden from regular users (dev-only) */}
+                            <div className="hidden rounded-xl bg-muted/30 dark:bg-muted/15 p-3">
                               <div className="flex items-center gap-2 mb-2">
                                 <div className="w-7 h-7 rounded-lg bg-violet-600/10 dark:bg-violet-400/20 flex items-center justify-center flex-shrink-0">
                                   <Code className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" strokeWidth={1.8} />
@@ -2846,7 +2848,8 @@ export default function AIAgents() {
                         </div>
 
                         <div className="space-y-4 sm:space-y-5 md:space-y-6">
-                          <div className="rounded-xl bg-muted/30 dark:bg-muted/15 p-4 sm:p-5 md:p-6">
+                          {/* Deployment Payload — hidden from regular users (dev-only) */}
+                          <div className="hidden rounded-xl bg-muted/30 dark:bg-muted/15 p-4 sm:p-5 md:p-6">
                             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
                               <div>
                                 <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">Deployment Payload</p>
@@ -2909,7 +2912,8 @@ export default function AIAgents() {
                             ) : null}
                           </div>
 
-                          <div className="rounded-xl bg-muted/30 dark:bg-muted/15 p-4 sm:p-5 md:p-6">
+                          {/* Backend Response — hidden from regular users (dev-only) */}
+                          <div className="hidden rounded-xl bg-muted/30 dark:bg-muted/15 p-4 sm:p-5 md:p-6">
                             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
                               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-600/10 dark:bg-slate-400/20 flex items-center justify-center">
                                 <Code className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 dark:text-slate-400" strokeWidth={1.8} />

@@ -92,6 +92,7 @@ export const API_CONFIG = {
 				COPY: (id: string) => `/messaging/templates/${id}/copy/`,
 			},
 			TEMPLATE_STATISTICS: '/messaging/templates/statistics/',
+			TEMPLATE_AVAILABLE_VARIABLES: '/messaging/templates/available-variables/',
 			CONVERSATIONS: '/messaging/conversations/',
 			MESSAGES: '/messaging/messages/',
 			CAMPAIGNS: {
@@ -166,6 +167,24 @@ export const API_CONFIG = {
 				AUDIENCE_PHONES_AUTO: '/messaging/whatsapp/cloud/audience/phones/',
 				MESSAGE_TEMPLATES: (id: string) => `/messaging/whatsapp/cloud/${id}/message-templates/`,
 				MESSAGE_TEMPLATES_AUTO: '/messaging/whatsapp/cloud/message-templates/',
+				MESSAGE_TEMPLATE_DETAIL: (id: string, templateId: string) =>
+					`/messaging/whatsapp/cloud/${id}/message-templates/${templateId}/`,
+				MESSAGE_TEMPLATE_DETAIL_AUTO: (templateId: string) =>
+					`/messaging/whatsapp/cloud/message-templates/${templateId}/`,
+				// §2.2 — builder endpoint: flat UI fields, server constructs components.
+				MESSAGE_TEMPLATES_SIMPLE: (id: string) =>
+					`/messaging/whatsapp/cloud/${id}/message-templates/simple/`,
+				MESSAGE_TEMPLATES_SIMPLE_AUTO: '/messaging/whatsapp/cloud/message-templates/simple/',
+				// §2.3 — dry-run preview for the builder (no submission).
+				MESSAGE_TEMPLATES_SIMPLE_PREVIEW: (id: string) =>
+					`/messaging/whatsapp/cloud/${id}/message-templates/simple/preview/`,
+				MESSAGE_TEMPLATES_SIMPLE_PREVIEW_AUTO:
+					'/messaging/whatsapp/cloud/message-templates/simple/preview/',
+				SEND_FROM_TEMPLATE: (id: string) => `/messaging/whatsapp/cloud/${id}/send-from-template/`,
+				SEND_FROM_TEMPLATE_AUTO: '/messaging/whatsapp/cloud/send-from-template/',
+				// §1.4 — same view as send-from-template but the URL signals media/poll intent.
+				SEND_TEMPLATE_RICH: (id: string) => `/messaging/whatsapp/cloud/${id}/send-template-rich/`,
+				SEND_TEMPLATE_RICH_AUTO: '/messaging/whatsapp/cloud/send-template-rich/',
 				SEND_BY_CATEGORY: (id: string) => `/messaging/whatsapp/cloud/${id}/send-by-category/`,
 				SEND_BY_CATEGORY_AUTO: '/messaging/whatsapp/cloud/send-by-category/',
 				SEND_BY_USER_IDS: (id: string) => `/messaging/whatsapp/cloud/${id}/send-by-user-ids/`,
@@ -174,6 +193,14 @@ export const API_CONFIG = {
 				SEND_BY_DATE_RANGE_AUTO: '/messaging/whatsapp/cloud/send-by-date-range/',
 				CREDENTIALS: '/early-access/ai-copilots/whatsapp-credentials/',
 				CREDENTIALS_SCOPED: (id: string) => `/early-access/ai-copilots/${id}/whatsapp-credentials/`,
+				POLL_RESULTS: (pollId: string) => `/messaging/whatsapp/cloud/polls/${pollId}/results/`,
+				POLL_BY_NAME: (name: string) => `/messaging/whatsapp/cloud/polls/by-name/${encodeURIComponent(name)}/`,
+				POLL_BY_NAME_RESULTS: (name: string) => `/messaging/whatsapp/cloud/polls/by-name/${encodeURIComponent(name)}/results/`,
+				POLL_LIST: '/messaging/whatsapp/cloud/polls/',
+				POLL_CREATE: '/messaging/whatsapp/cloud/polls/',
+				POLL_DETAIL: (pollId: string) => `/messaging/whatsapp/cloud/polls/${pollId}/`,
+				BULK_IMAGE_SEND: '/whatsapp/bulk-image-send/',
+				BULK_IMAGE_SEND_DETAIL: (jobId: string) => `/whatsapp/bulk-image-send/${jobId}/`,
 			},
 		},
 		BILLING: {
@@ -276,6 +303,34 @@ export const API_CONFIG = {
 			SYSTEM_REPORT_PROBLEM: '/notifications/system/report-problem/',
 			SYSTEM_CLEANUP: '/notifications/system/cleanup/',
 			TEMPLATES: '/notifications/templates/',
+			PUSH: {
+				VAPID_PUBLIC_KEY: '/notifications/push/vapid-public-key/',
+				SUBSCRIBE: '/notifications/push/subscribe/',
+				UNSUBSCRIBE: '/notifications/push/unsubscribe/',
+				TEST: '/notifications/push/test/',
+				SEND: '/notifications/push/send/',
+				BROADCAST: '/notifications/push/broadcast/',
+			},
+		},
+		SENDA: {
+			DASHBOARD: '/dashboard/',
+			DASHBOARD_ENGAGEMENT: (days = 30) => `/dashboard/analytics/engagement/?days=${days}`,
+			DASHBOARD_FUNNEL: '/dashboard/analytics/onboarding-funnel/',
+			ONBOARDING: {
+				STATUS: '/onboarding/status/',
+				NEXT_STEP: '/onboarding/next-step/',
+				COMPLETE_STEP: '/onboarding/complete-step/',
+			},
+			RECOMMENDATIONS: '/recommendations/',
+			SCORES: '/user/scores/',
+			BEHAVIOR: {
+				TRACK: '/behavior/events/track/',
+				EVENTS: '/behavior/events/',
+				SCORES: '/behavior/scores/',
+				SCORES_HISTORY: '/behavior/scores/history/',
+				STAGES_HISTORY: '/behavior/stages/history/',
+				ACTIVITY: '/behavior/activity/',
+			},
 		},
 		EARLY_ACCESS: {
 			AI_AGENTS: {

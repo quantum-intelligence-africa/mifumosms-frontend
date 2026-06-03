@@ -1,22 +1,69 @@
 {
-  "name": "SENDA",
-  "short_name": "Senda",
+  "name": "SENDA — Communication Platform",
+  "short_name": "SENDA",
+  "description": "Enterprise WhatsApp & SMS messaging platform.",
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "start_url": "/dashboard?source=pwa",
+  "id": "/?app=senda",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#0A5CDB",
+  "background_color": "#0A5CDB",
+  "categories": ["business", "productivity", "communication"],
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
       "src": "/favicon/web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "theme_color": "#0A5CDB",
-  "background_color": "#0A5CDB",
-  "display": "standalone",
-  "start_url": "/"
+  "shortcuts": [
+    {
+      "name": "Send SMS",
+      "short_name": "Send",
+      "url": "/messaging/send?source=pwa",
+      "icons": [
+        { "src": "/favicon/web-app-manifest-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Campaigns",
+      "short_name": "Campaigns",
+      "url": "/messaging/campaigns?source=pwa",
+      "icons": [
+        { "src": "/favicon/web-app-manifest-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Contacts",
+      "short_name": "Contacts",
+      "url": "/messaging/contacts?source=pwa",
+      "icons": [
+        { "src": "/favicon/web-app-manifest-192x192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
 }

@@ -610,6 +610,10 @@ const PurchaseSMS = () => {
       return;
     }
 
+    // Reset any lingering payment state from a previous purchase so the dialog
+    // always opens on the "Confirm purchase" view, never on a stale progress screen.
+    setPaymentState({ isActive: false });
+    setProcessing(false);
     setShowInvoice(true);
   };
 
@@ -622,18 +626,36 @@ const PurchaseSMS = () => {
       if (selectedPackage) {
         // Package purchase
         const packageId = selectedPackageId || selectedPackage;
-        logger.debug('Processing package purchase', { packageId });
+        // Local WhatsApp default packages have IDs like "wa-standard" / "wa-growth"
+        // that don't exist on the backend — route them through the custom-credits
+        // endpoint instead so the backend can price them by credits + purchase_type.
+        const isLocalWhatsAppPackage = serviceType === "whatsapp" && packageId.startsWith("wa-");
 
-        const paymentData = {
-          package_id: packageId, // Use the actual package ID
-          buyer_email: userEmail,
-          buyer_name: userName,
-          buyer_phone: userPaymentNumber,
-          mobile_money_provider: paymentMethod
-        };
-
-        logger.debug('Payment initiated');
-        response = await apiClient.initiatePayment(paymentData);
+        if (isLocalWhatsAppPackage) {
+          const pkg = defaultWhatsAppPackages.find((p) => p.id === packageId);
+          const credits = pkg?.credits ?? 0;
+          logger.debug('Processing local WhatsApp package via custom endpoint', { packageId, credits });
+          response = await apiClient.initiateCustomSMSPayment({
+            credits,
+            purchase_type: "whatsapp",
+            buyer_email: userEmail,
+            buyer_name: userName,
+            buyer_phone: userPaymentNumber,
+            mobile_money_provider: paymentMethod,
+          });
+        } else {
+          logger.debug('Processing package purchase', { packageId, serviceType });
+          const paymentData = {
+            package_id: packageId,
+            // Always tag the channel so the backend wallet routing is unambiguous.
+            purchase_type: serviceType,
+            buyer_email: userEmail,
+            buyer_name: userName,
+            buyer_phone: userPaymentNumber,
+            mobile_money_provider: paymentMethod,
+          };
+          response = await apiClient.initiatePayment(paymentData);
+        }
       } else if (customCredits) {
         // Custom purchase — purchase_type differentiates SMS vs WhatsApp on the backend
         response = await apiClient.initiateCustomSMSPayment({
@@ -734,23 +756,23 @@ const PurchaseSMS = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
-          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
-            {/* Header */}
-            <div>
-              <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main">
+          <div className="max-w-3xl lg:max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 space-y-5">
+            {/* Header — iOS large title */}
+            <header>
+              <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
                 {serviceType === "whatsapp" ? "Purchase WhatsApp Credits" : t('purchase_sms_credits')}
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
+              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
                 {t('top_up_account')}
               </p>
-            </div>
+            </header>
 
             {/* Service Type Toggle */}
             <div className="flex items-center gap-1 p-1 rounded-xl bg-muted w-fit">
@@ -822,14 +844,21 @@ const PurchaseSMS = () => {
                   ))
                 ) : (
                   (serviceType === "whatsapp"
-                    ? (waPackages.length > 0 ? waPackages : defaultWhatsAppPackages)
+                    // Always use local WhatsApp defaults — the backend's `?type=whatsapp`
+                    // doesn't always return WhatsApp-specific tiers, so we guarantee the
+                    // user sees real WhatsApp pricing here.
+                    ? defaultWhatsAppPackages
                     : (packages.length > 0 ? packages : defaultPackages).slice(0, 3)
-                  ).map((pkg) => (
+                  ).map((pkg) => {
+                    const isWhatsApp = serviceType === "whatsapp";
+                    return (
                     <Card
                       key={pkg.id}
                       className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
                         selectedPackage === pkg.id
-                          ? "ring-2 ring-primary shadow-lg"
+                          ? isWhatsApp
+                            ? "ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20"
+                            : "ring-2 ring-primary shadow-lg"
                           : "hover:shadow-lg"
                       }`}
                       onClick={() => {
@@ -841,15 +870,25 @@ const PurchaseSMS = () => {
                     >
                       {pkg.is_popular && (
                         <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
-                          <Badge className="bg-primary text-primary-foreground text-xs px-3 py-1 font-semibold whitespace-nowrap">
+                          <Badge className={`${isWhatsApp ? "bg-emerald-500 text-white" : "bg-primary text-primary-foreground"} text-xs px-3 py-1 font-semibold whitespace-nowrap`}>
                             Most Popular
                           </Badge>
                         </div>
                       )}
+                      {/* Channel pill — makes it obvious which service this card is for */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className={`text-[9.5px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full ${
+                          isWhatsApp
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "bg-primary/10 text-primary"
+                        }`}>
+                          {isWhatsApp ? "WhatsApp" : "SMS"}
+                        </span>
+                      </div>
                       <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
                       <div className="mb-3">
-                        <p className="text-xl sm:text-2xl font-bold text-foreground mb-1">
-                          TZS {pkg.unit_price}/{serviceType === "whatsapp" ? "msg" : "SMS"}
+                        <p className={`text-xl sm:text-2xl font-bold mb-1 ${isWhatsApp ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>
+                          TZS {pkg.unit_price}/{isWhatsApp ? "msg" : "SMS"}
                         </p>
                         <p className="text-xs text-text-subtle">
                           {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
@@ -861,18 +900,19 @@ const PurchaseSMS = () => {
                       <div className="space-y-2 mb-3 flex-1">
                         {pkg.features?.map((feature, i) => (
                           <div key={i} className="flex items-start text-xs text-foreground">
-                            <Check className="w-3 h-3 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+                            <Check className={`w-3 h-3 ${isWhatsApp ? "text-emerald-500" : "text-green-500"} mr-2 flex-shrink-0 mt-0.5`} />
                             <span>{feature}</span>
                           </div>
                         ))}
                       </div>
                       {selectedPackage === pkg.id && (
-                        <Badge variant="secondary" className="w-full justify-center text-[10px] mt-auto">
+                        <Badge variant="secondary" className={`w-full justify-center text-[10px] mt-auto ${isWhatsApp ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : ""}`}>
                           Selected
                         </Badge>
                       )}
                     </Card>
-                  ))
+                  );
+                  })
                 )}
               </div>
               </div>
@@ -1134,7 +1174,18 @@ const PurchaseSMS = () => {
             )}
 
             {/* Invoice Dialog */}
-            <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
+            <Dialog
+              open={showInvoice}
+              onOpenChange={(open) => {
+                setShowInvoice(open);
+                // When the dialog closes, clear any in-progress payment UI so a
+                // subsequent "Proceed to payment" click opens on the fresh review screen.
+                if (!open) {
+                  setPaymentState({ isActive: false });
+                  setProcessing(false);
+                }
+              }}
+            >
               <DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="pb-2">
                   <DialogTitle className="text-base sm:text-lg">
@@ -1270,7 +1321,7 @@ const PurchaseSMS = () => {
               </DialogContent>
             </Dialog>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

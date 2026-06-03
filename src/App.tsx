@@ -9,6 +9,10 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useGlobalAuthErrorHandler } from "@/hooks/useGlobalAuthErrorHandler";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/layout/PullToRefreshIndicator";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { PWAManager } from "@/components/pwa/PWAManager";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -25,6 +29,7 @@ import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 // import NotificationSettings from "./pages/NotificationSettings";
 import SendSMS from "./pages/sms/SendSMS";
+import SendHub from "./pages/SendHub";
 import PurchaseSMS from "./pages/sms/PurchaseSMS";
 import SenderNames from "./pages/sms/SenderNames";
 import PurchaseHistory from "./pages/sms/PurchaseHistory";
@@ -38,6 +43,7 @@ import Developer from "./pages/Developer";
 import AIAgents from "./pages/AIAgents";
 import VoiceAgents from "./pages/VoiceAgents";
 import WhatsAppCloud from "./pages/WhatsAppCloud";
+import CreateWhatsAppTemplate from "./pages/CreateWhatsAppTemplate";
 import WhatsAppBroadcast from "./pages/WhatsAppBroadcast";
 // @ts-ignore — standalone JSX admin dashboard
 import SendaAdmin from "../senda-dashboard.jsx";
@@ -91,7 +97,9 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
     }
   }, [location.pathname]);
 
-  return <div key={location.pathname}>{children}</div>;
+  // No key prop — letting React Router reconcile naturally is significantly
+  // faster than force-remounting the whole tree on every route change.
+  return <>{children}</>;
 };
 
 // export default function sitemap(): MetadataRoute.Sitemap {
@@ -113,8 +121,21 @@ const AppContent = () => {
   // This listens for auth errors across ALL endpoints and redirects to login
   useGlobalAuthErrorHandler();
 
+  // Pull-to-refresh on every route, mobile only. The installed PWA strips the
+  // browser's native gesture, so users have no built-in way to reload — this
+  // restores it uniformly across Dashboard, marketing, auth, etc.
+  const isMobile = useIsMobile();
+  const pull = usePullToRefresh({ enabled: isMobile });
+
   return (
-    <RouteAnimator>
+    <>
+      <PullToRefreshIndicator
+        pulled={pull.pulled}
+        refreshing={pull.refreshing}
+        threshold={pull.threshold}
+      />
+      <PWAManager />
+      <RouteAnimator>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/whatsapp-broadcast" element={<WhatsAppBroadcast />} />
@@ -191,6 +212,11 @@ const AppContent = () => {
                   <NotificationSettings />
                 </ProtectedRoute>
               } /> */}
+              <Route path="/send" element={
+                <ProtectedRoute>
+                  <SendHub />
+                </ProtectedRoute>
+              } />
               <Route path="/sms/send" element={
                 <ProtectedRoute>
                   <SendSMS />
@@ -248,6 +274,11 @@ const AppContent = () => {
                   <WhatsAppCloud />
                 </ProtectedRoute>
               } />
+              <Route path="/whatsapp/templates/new" element={
+                <ProtectedRoute>
+                  <CreateWhatsAppTemplate />
+                </ProtectedRoute>
+              } />
               <Route path="/ai-copilots" element={
                 <ProtectedRoute>
                   <AIAgents />
@@ -263,6 +294,7 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </RouteAnimator>
+    </>
   );
 };
 

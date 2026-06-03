@@ -5,6 +5,7 @@ import {
   Hash,
   Play,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +19,12 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
 import { SenderIds } from "@/components/dashboard/SenderIds";
-import { useEffect, useState } from "react";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useSendaOnboarding } from "@/hooks/useSendaOnboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -50,32 +54,43 @@ interface MetricProps {
   title: string;
   value: string;
   description: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   accentBg: string;
   accentText: string;
 }
 
 function Metric({ title, value, description, icon: Icon, accentBg, accentText }: MetricProps) {
   return (
-    <div className="bg-card dark:bg-card/95 rounded-lg border border-border dark:border-border/60 shadow-sm hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col h-full dark:hover:shadow-primary/20">
-      <div className="px-3 py-2.5 flex flex-col gap-1.5 flex-1">
-        <div className="flex items-center justify-between gap-1.5">
-          <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.07em] uppercase text-text-subtle dark:text-foreground/50 leading-tight line-clamp-1">
-            {title}
-          </span>
-          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-80`}>
-            <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${accentText}`} strokeWidth={2} />
-          </div>
+    <div
+      className={[
+        "relative overflow-hidden",
+        "bg-card dark:bg-card/95",
+        "rounded-2xl border border-border/70 dark:border-border/50",
+        "shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
+        "hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5",
+        "transition-all duration-200",
+        "p-3 md:p-4 flex flex-col gap-1.5 md:gap-2 min-h-[110px] md:min-h-[128px]",
+      ].join(" ")}
+    >
+      {/* Row 1: icon + title side-by-side */}
+      <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
+        <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-90`}>
+          <Icon className={`w-[16px] h-[16px] md:w-[18px] md:h-[18px] ${accentText}`} strokeWidth={2.2} />
         </div>
-        <div className="flex-1">
-          <p className="text-lg sm:text-xl lg:text-2xl leading-none font-bold text-foreground dark:text-foreground tabular-nums">
-            {value}
-          </p>
-          <p className="text-[9px] sm:text-[10px] text-text-subtle dark:text-foreground/60 leading-snug mt-1 line-clamp-1 font-medium">
-            {description}
-          </p>
-        </div>
+        <span className="flex-1 min-w-0 text-[11.5px] md:text-xs font-semibold text-foreground/70 dark:text-foreground/60 leading-tight tracking-tight truncate">
+          {title}
+        </span>
       </div>
+
+      {/* Row 2: big value */}
+      <p className="text-[22px] md:text-2xl lg:text-[26px] leading-none font-bold text-foreground dark:text-foreground tabular-nums tracking-tight">
+        {value}
+      </p>
+
+      {/* Row 3: description */}
+      <p className="text-[11px] md:text-[11.5px] text-foreground/55 dark:text-foreground/50 leading-snug font-medium line-clamp-2">
+        {description}
+      </p>
     </div>
   );
 }
@@ -123,9 +138,37 @@ function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boole
 const Dashboard = () => {
   const { user } = useAuth();
   const { metrics, recentCampaigns, performanceOverview, senderIds, isLoading } = useDashboard();
+  const senda = useSendaOnboarding();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const { t } = useLanguage();
+
+  // A "new user" sees the Getting Started wizard. As soon as the user has ANY
+  // concrete signal of activity — even a pending sender ID request, an imported
+  // contact, or any sent message — they get the normal dashboard. These hard
+  // signals take priority over the Senda lifecycle stage (which can lag).
+  const isNewUser = useMemo(() => {
+    const hasAnySenderId = (senderIds?.length ?? 0) > 0;
+    const hasContacts = (metrics?.active_contacts?.value ?? 0) > 0;
+    const hasSentMessages = (metrics?.total_messages?.value ?? 0) > 0;
+
+    // Any of these → not a new user, full dashboard.
+    if (hasAnySenderId || hasContacts || hasSentMessages) return false;
+
+    // Otherwise, fall back to the Senda lifecycle stage when available.
+    const stage = senda.scores?.stage;
+    if (stage) {
+      return stage === "new_user" || stage === "onboarding" || stage === "exploring";
+    }
+
+    // No signals + no stage info → assume fresh sign-up.
+    return true;
+  }, [
+    senda.scores?.stage,
+    senderIds,
+    metrics?.active_contacts?.value,
+    metrics?.total_messages?.value,
+  ]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -193,43 +236,71 @@ const Dashboard = () => {
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            {/* Mobile-only colored hero — only shown once the user has finished
+                onboarding (otherwise the wizard is the focus). */}
+            {!isNewUser && (
+              <MobileHomeHero metricCards={metricCards.slice(0, 2)} />
+            )}
+
+            {/* During onboarding on mobile, give the wizard breathing room from the top bar */}
+            {isNewUser && (
+              <div className="md:hidden h-3" />
+            )}
+
             <div className="p-2 sm:p-3 md:p-4 w-full overflow-x-hidden">
               <div className="max-w-full px-1 mx-auto space-y-2.5 sm:space-y-3">
 
-                {/* Welcome Section */}
-                <h1 className="text-base sm:text-lg font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
+                {isNewUser ? (
+                  /* Onboarding wizard only — Quick Actions / Activity Feed appear
+                     once all onboarding steps are complete and isNewUser flips false. */
+                  <GettingStarted
+                    status={senda.status}
+                    recommendations={senda.recommendations}
+                    firstName={user?.first_name || user?.full_name?.split(' ')[0]}
+                    approvedSenderIds={approvedSenderIds}
+                    currentCredits={metrics?.current_credits?.value ?? 0}
+                  />
+                ) : (
+                  <>
+                    {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
+                    <h1 className="hidden md:block text-base sm:text-lg font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-1.5 md:gap-2 overflow-x-hidden">
-                  {metricCards.map((card) => <Metric key={card.title} {...card} />)}
-                </div>
+                    {/* Desktop: full metrics grid (4 cards). */}
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 overflow-x-hidden">
+                      {metricCards.map((card) => <Metric key={card.title} {...card} />)}
+                    </div>
 
-                {/* Middle Section: Quick Actions + Performance */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
-                  <div className="lg:col-span-1 h-full min-w-0">
-                    <QuickActions />
-                  </div>
-                  <div className="lg:col-span-2 h-full min-w-0">
+                    {/* Mobile: remaining 2 metric cards below the hero. */}
+                    <div className="md:hidden grid grid-cols-2 gap-2.5 overflow-x-hidden">
+                      {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
+                    </div>
+
+                    {/* Middle Section: Quick Actions + Performance */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                      <div className="lg:col-span-1 h-full min-w-0">
+                        <QuickActions />
+                      </div>
+                      <div className="lg:col-span-2 h-full min-w-0">
+                        <Card>
+                          <PerformanceOverview performance={performanceOverview} />
+                        </Card>
+                      </div>
+                    </div>
+
+                    {/* Bottom Section: Activity + Campaigns */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                      <ActivityFeed />
+                      <Card>
+                        <RecentCampaigns campaigns={recentCampaigns || []} />
+                      </Card>
+                    </div>
+
+                    {/* Sender IDs Section */}
                     <Card>
-                      <PerformanceOverview performance={performanceOverview} />
+                      <SenderIds senderIds={senderIds} />
                     </Card>
-                  </div>
-                </div>
-
-                {/* Bottom Section: Activity + Campaigns */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
-                  <ActivityFeed />
-                  <Card>
-                    <RecentCampaigns campaigns={recentCampaigns || []} />
-                  </Card>
-                </div>
-
-                {/* Sender IDs Section */}
-                <Card>
-                  <SenderIds senderIds={senderIds} />
-                </Card>
-
-
+                  </>
+                )}
 
               </div>
             </div>

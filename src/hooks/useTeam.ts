@@ -257,24 +257,46 @@ export function useTeam(tenantId: string | null, token?: string) {
     return withResult<{ message: string }>(res);
   }, [base, token]);
 
-  return {
-    isLoading,
-    error,
-    members,
-    stats,
-    listMembers,
-    getStats,
-    inviteMember,
-    getMember,
-    updateMember,
-    removeMember,
-    suspendMember,
-    activateMember,
-    resendInvitation,
-    transferOwnership,
-    acceptInvitation,
-    rejectInvitation,
-  };
+  // Memoise the returned API so consumers that depend on the hook's object
+  // identity don't trigger infinite re-fetch loops on every parent render.
+  return useMemo(
+    () => ({
+      isLoading,
+      error,
+      members,
+      stats,
+      listMembers,
+      getStats,
+      inviteMember,
+      getMember,
+      updateMember,
+      removeMember,
+      suspendMember,
+      activateMember,
+      resendInvitation,
+      transferOwnership,
+      acceptInvitation,
+      rejectInvitation,
+    }),
+    [
+      isLoading,
+      error,
+      members,
+      stats,
+      listMembers,
+      getStats,
+      inviteMember,
+      getMember,
+      updateMember,
+      removeMember,
+      suspendMember,
+      activateMember,
+      resendInvitation,
+      transferOwnership,
+      acceptInvitation,
+      rejectInvitation,
+    ],
+  );
 }
 
 

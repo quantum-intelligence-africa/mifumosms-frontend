@@ -24,8 +24,9 @@ Smartphone,
 Users,
 FileText,
 QrCode,
-X
+X,
 } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,7 @@ const [isAddTagDialogOpen, setIsAddTagDialogOpen] = useState(false);
 const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 const [selectedTags, setSelectedTags] = useState<string[]>([]);
+const [tagInput, setTagInput] = useState<string>("");
 const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
 const [isSelectingAll, setIsSelectingAll] = useState(false);
 const [bulkEditData, setBulkEditData] = useState<Partial<CreateContactRequest>>({
@@ -153,6 +155,12 @@ const [isLoadingMobileAllContacts, setIsLoadingMobileAllContacts] = useState(fal
 const handleSendMessage = (contact: Contact) => {
 // Navigate to SMS send page with contact phone number pre-filled
 window.location.href = `/sms/send?contact=${encodeURIComponent(contact.phone_e164)}`;
+};
+
+// Mirror of handleSendMessage that targets the WhatsApp Cloud page. Same query
+// param so /whatsapp can pre-fill the same way.
+const handleSendWhatsApp = (contact: Contact) => {
+window.location.href = `/whatsapp?contact=${encodeURIComponent(contact.phone_e164)}`;
 };
 
 const handleEditContact = (contact: Contact) => {
@@ -228,6 +236,68 @@ window.location.href = `/sms/send?contacts=${phoneNumbersParam}`;
   console.error('Error fetching contacts for bulk send:', error);
   toast({
     title: "Failed to send message",
+    description: "An error occurred while preparing contacts. Please try again.",
+    variant: "destructive"
+  });
+} finally {
+  setIsBulkActionLoading(false);
+}
+};
+
+// WhatsApp counterpart: same lookup pipeline, lands on /whatsapp which reads
+// the ?contacts=… param and pre-selects them in Bulk Send mode.
+const handleBulkSendWhatsApp = async () => {
+if (selectedContacts.length === 0) {
+toast({
+title: "No contacts selected",
+description: "Please select contacts to send a WhatsApp to",
+variant: "destructive"
+});
+return;
+}
+
+try {
+setIsBulkActionLoading(true);
+const phoneNumbers: string[] = [];
+const selectedIdsSet = new Set(selectedContacts);
+let currentPageNum = 1;
+let hasMore = true;
+const pageSizeForFetch = 100;
+
+while (hasMore && phoneNumbers.length < selectedContacts.length) {
+  const response = await apiClient.getContacts({
+    page: currentPageNum,
+    page_size: pageSizeForFetch,
+  });
+  if (response.success && response.data) {
+    const pagePhoneNumbers = response.data.results
+      .filter(contact => selectedIdsSet.has(contact.id))
+      .map(contact => contact.phone_e164)
+      .filter(phone => phone);
+    phoneNumbers.push(...pagePhoneNumbers);
+    hasMore = !!response.data.next;
+    currentPageNum++;
+    if (currentPageNum > 1000) break;
+  } else {
+    break;
+  }
+}
+
+if (phoneNumbers.length === 0) {
+  toast({
+    title: "No valid contacts",
+    description: "Selected contacts don't have phone numbers",
+    variant: "destructive"
+  });
+  return;
+}
+
+const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
+window.location.href = `/whatsapp?contacts=${phoneNumbersParam}`;
+} catch (error) {
+  console.error('Error fetching contacts for WhatsApp bulk send:', error);
+  toast({
+    title: "Failed to send WhatsApp",
     description: "An error occurred while preparing contacts. Please try again.",
     variant: "destructive"
   });
@@ -558,6 +628,13 @@ setIsCreating(true);
 const success = await createContact(formDataWithConvertedPhone);
 
 if (success) {
+// Mobile renders from a separate `mobileAllContacts` cache, so the hook's
+// internal fetchContacts() doesn't refresh the visible list. Refresh that
+// cache before closing the dialog so the new contact is on screen by the
+// time the success toast appears.
+if (isMobile) {
+  await fetchAllContactsForMobile();
+}
 setIsCreateDialogOpen(false);
 setCreateFormData({
 name: "",
@@ -571,10 +648,8 @@ department: ""
 });
 setNewTag("");
 setSelectedContact(null);
-toast({
-title: "Contact created",
-description: "Contact has been successfully added to your database",
-});
+// useContacts.createContact() already shows its own toast after
+// fetchContacts() resolves — no duplicate needed here.
 }
     } catch (error) {
 toast({
@@ -682,9 +757,14 @@ const handleCSVImport = async (data: {
       };
     }
 
-    // If import was successful with no errors, refresh and close
+    // If import was successful with no errors, refresh and close.
+    // On mobile the visible list reads from a separate cache, so refresh that
+    // too — otherwise the toast appears before any of the imported rows do.
     try {
       await fetchContacts();
+      if (isMobile) {
+        await fetchAllContactsForMobile();
+      }
       toast({
         title: "Import completed successfully",
         description: `${response.data?.imported_count || 0} contacts imported${shouldUseChunked ? ' (processed in chunks)' : ''}`,
@@ -1103,10 +1183,14 @@ const response = await apiClient.bulkImportContacts({
   update_existing: false
 });
 
-// Wait for import to complete, then refresh and show success
+// Wait for import to complete, then refresh and show success.
+// On mobile the visible list reads from a separate cache, so refresh that
+// too — otherwise the toast appears before any of the imported rows do.
 try {
-  // Refresh contacts to show the imported data
   await fetchContacts();
+  if (isMobile) {
+    await fetchAllContactsForMobile();
+  }
 
   setImportedContacts([]);
   setImportSelectedIndices(new Set());
@@ -1134,6 +1218,9 @@ console.error('Bulk import error:', error);
 // Even if there's an error, refresh to show current state, then show success
 try {
   await fetchContacts();
+  if (isMobile) {
+    await fetchAllContactsForMobile();
+  }
 
   setImportedContacts([]);
   setIsImportDialogOpen(false);
@@ -1437,23 +1524,23 @@ if (error) {
 }
 
 return (
-  <div className="flex h-screen bg-background">
+  <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
     <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-<div className="flex-1 overflow-y-auto sm:overflow-hidden scrollbar-premium">
-<div className="h-full p-2 sm:p-3 lg:p-4 xl:p-6">
-<div className={`max-w-7xl mx-auto ${isMobile ? "min-h-full" : "h-full"} flex flex-col`}>
-{/* Header */}
-<div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
+<div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium app-shell-main">
+<div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-4 lg:h-full">
+<div className={`max-w-3xl lg:max-w-7xl mx-auto w-full ${isMobile ? "" : "lg:h-full"} flex flex-col`}>
+{/* iOS large-title header */}
+<div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-5 gap-3">
 <div>
-<h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
+<h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
 {t('contacts')}
 </h1>
-<p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-{t('manage_customer_database')} ({totalCount || 0} {t('total')})
+<p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+{t('manage_customer_database')} · {totalCount || 0} {t('total')}
 </p>
 </div>
 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 lg:gap-3 w-full lg:w-auto">
@@ -1770,7 +1857,7 @@ className="pl-10 glass-subtle border-0 text-sm"
     )}
   </div>
 </div>
-<div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+<div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:items-center gap-2">
 {/* <Button
 variant="outline"
 size="sm"
@@ -1798,7 +1885,16 @@ onClick={handleBulkSendMessage}
 className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
 >
 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Send Message
+Send SMS
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={handleBulkSendWhatsApp}
+className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 border-[#25D366]/40 text-[#1ebe5d] hover:bg-[#25D366]/10 hover:text-[#1ebe5d]"
+>
+<WhatsAppIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+Send WhatsApp
 </Button>
 <Button
 variant="outline"
@@ -1824,9 +1920,130 @@ Delete
             </div>
           )}
 
-{/* Contacts Table */}
-<Card className={`${isMobile ? "glass border-0 overflow-visible" : "flex-1 glass border-0 overflow-hidden"}`}>
-<div className={isMobile ? "overflow-visible" : "overflow-auto h-full scrollbar-premium"}>
+{/* Mobile-only: iOS grouped contact list */}
+{!isLoading && !isLoadingMobileAllContacts && (
+  <div className="lg:hidden">
+    {filteredContacts.length === 0 ? (
+      <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+        <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-primary/10 dark:bg-primary/15 flex items-center justify-center">
+          <Phone className="w-7 h-7 text-primary" strokeWidth={1.8} />
+        </div>
+        <h3 className="text-[15px] font-semibold text-foreground">No contacts</h3>
+        <p className="text-[12.5px] text-foreground/60 leading-snug mt-1 max-w-xs mx-auto">
+          {searchQuery || filterTag !== "all"
+            ? "No contacts match your current search or filter."
+            : "Add or import your first contact to start sending messages."}
+        </p>
+      </div>
+    ) : (
+      <>
+        <p className="px-2.5 mb-2 text-[11px] font-bold tracking-wider uppercase text-foreground/55">
+          Contacts · {filteredContacts.length}
+        </p>
+        <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+          {filteredContacts.map((contact, idx) => {
+            const initials = contact.name
+              ? contact.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+              : "—";
+            const isSelected = selectedContacts.includes(contact.id);
+            const isLast = idx === filteredContacts.length - 1;
+            return (
+              <div
+                key={contact.id}
+                className={[
+                  "flex items-center gap-2.5 px-3 py-2 active:bg-accent/40 dark:active:bg-accent/30 transition-colors",
+                  !isLast ? "border-b border-border/35 dark:border-border/20" : "",
+                  isSelected ? "bg-primary/[0.04] dark:bg-primary/[0.08]" : "",
+                ].join(" ")}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
+                  className="h-4 w-4 flex-shrink-0"
+                  aria-label={`Select ${contact.name}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSelectedContact(contact)}
+                  className="flex-1 min-w-0 flex items-center gap-2.5 text-left"
+                >
+                  <Avatar className="w-9 h-9 flex-shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[13px] font-semibold text-foreground leading-tight truncate">
+                        {contact.name || "(no name)"}
+                      </span>
+                      <span
+                        className={[
+                          "inline-block w-1.5 h-1.5 rounded-full flex-shrink-0",
+                          contact.is_active && contact.is_opted_in
+                            ? "bg-emerald-500"
+                            : !contact.is_active
+                              ? "bg-foreground/30"
+                              : "bg-amber-500",
+                        ].join(" ")}
+                        aria-label={getStatusText(contact.is_active, contact.is_opted_in)}
+                      />
+                    </div>
+                    <p className="text-[11.5px] font-mono text-foreground/60 dark:text-foreground/55 leading-tight truncate mt-0.5">
+                      {contact.phone_e164}
+                      {contact.tags.length > 0 && (
+                        <span className="ml-1.5 text-primary font-sans font-semibold">
+                          · {contact.tags.slice(0, 2).join(", ")}
+                          {contact.tags.length > 2 ? ` +${contact.tags.length - 2}` : ""}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 rounded-full -mr-1">
+                      <MoreVertical className="w-[17px] h-[17px]" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass">
+                    <DropdownMenuItem onClick={() => handleSendMessage(contact)}>
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Send SMS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSendWhatsApp(contact)}>
+                      <WhatsAppIcon className="w-4 h-4 mr-2 text-[#25D366]" />
+                      Send WhatsApp
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleEditContact(contact)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Contact
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => {
+                        setContactToDelete(contact);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Contact
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    )}
+  </div>
+)}
+
+{/* Contacts Table — desktop+ only */}
+<Card className={`hidden lg:block flex-1 glass border-0 overflow-hidden`}>
+<div className={"overflow-auto h-full scrollbar-premium"}>
 {(isLoading || (isMobile && isLoadingMobileAllContacts)) ? (
 <div className="p-4 lg:p-6 space-y-4">
 {Array.from({ length: pageSize }).map((_, i) => (
@@ -1940,7 +2157,11 @@ className="h-3 w-3 sm:h-4 sm:w-4"
 <DropdownMenuContent align="end" className="glass">
 <DropdownMenuItem onClick={() => handleSendMessage(contact)}>
 <MessageSquare className="w-4 h-4 mr-2" />
-Send Message
+Send SMS
+</DropdownMenuItem>
+<DropdownMenuItem onClick={() => handleSendWhatsApp(contact)}>
+<WhatsAppIcon className="w-4 h-4 mr-2 text-[#25D366]" />
+Send WhatsApp
 </DropdownMenuItem>
 <DropdownMenuItem onClick={() => handleEditContact(contact)}>
 <Edit className="w-4 h-4 mr-2" />
@@ -2221,7 +2442,15 @@ className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
 onClick={() => handleSendMessage(selectedContact)}
 >
 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Message
+SMS
+</Button>
+<Button
+size="sm"
+className="flex-1 text-xs sm:text-sm h-8 sm:h-9 bg-[#25D366] hover:bg-[#1ebe5d] text-white"
+onClick={() => handleSendWhatsApp(selectedContact)}
+>
+<WhatsAppIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+WhatsApp
 </Button>
 <Button
 variant="outline"
@@ -2551,8 +2780,14 @@ Import Multiple Contacts
 </DialogContent>
 </Dialog>
 
-{/* Add Tag Dialog */}
-<Dialog open={isAddTagDialogOpen} onOpenChange={setIsAddTagDialogOpen}>
+{/* Add Tag Dialog — type your own tag names */}
+<Dialog open={isAddTagDialogOpen} onOpenChange={(open) => {
+  setIsAddTagDialogOpen(open);
+  if (!open) {
+    setSelectedTags([]);
+    setTagInput("");
+  }
+}}>
 <DialogContent className="glass max-w-md">
 <DialogHeader>
 <DialogTitle className="flex items-center gap-2">
@@ -2560,42 +2795,60 @@ Import Multiple Contacts
 Add Tags to Selected Contacts
 </DialogTitle>
 <DialogDescription>
-Select tags to add to {selectedContacts.length} selected contact(s)
+Type tag names to add to {selectedContacts.length} selected contact{selectedContacts.length === 1 ? "" : "s"}. Press Enter or comma to add each tag.
 </DialogDescription>
 </DialogHeader>
 
 <div className="space-y-4">
 <div className="space-y-2">
-<Label className="text-sm font-medium">Select Tags</Label>
-<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-{predefinedTags.map((tag) => (
-<div key={tag} className="flex items-center space-x-2">
-<Checkbox
-id={`bulk-tag-${tag}`}
-checked={selectedTags.includes(tag)}
-onCheckedChange={() => handleBulkTagToggle(tag)}
-className="h-4 w-4"
-/>
-<Label
-htmlFor={`bulk-tag-${tag}`}
-className="text-sm font-normal cursor-pointer"
->
-{tag}
-</Label>
+<Label htmlFor="bulk-tag-input" className="text-sm font-medium">Tag names</Label>
+<div className="flex flex-wrap items-center gap-1.5 min-h-[44px] rounded-xl border border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 px-2.5 py-2 focus-within:border-primary/50">
+  {selectedTags.map((tag) => (
+    <span
+      key={tag}
+      className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary/10 dark:bg-primary/15 text-primary text-[12px] font-semibold"
+    >
+      {tag}
+      <button
+        type="button"
+        onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
+        aria-label={`Remove ${tag}`}
+        className="w-4 h-4 inline-flex items-center justify-center rounded-full hover:bg-destructive/15 hover:text-destructive transition-colors"
+      >
+        <X className="w-2.5 h-2.5" strokeWidth={2.6} />
+      </button>
+    </span>
+  ))}
+  <input
+    id="bulk-tag-input"
+    type="text"
+    value={tagInput}
+    onChange={(e) => setTagInput(e.target.value)}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        const trimmed = tagInput.trim().replace(/,$/, "");
+        if (trimmed && !selectedTags.includes(trimmed)) {
+          setSelectedTags([...selectedTags, trimmed]);
+        }
+        setTagInput("");
+      } else if (e.key === "Backspace" && !tagInput && selectedTags.length > 0) {
+        setSelectedTags(selectedTags.slice(0, -1));
+      }
+    }}
+    onBlur={() => {
+      const trimmed = tagInput.trim();
+      if (trimmed && !selectedTags.includes(trimmed)) {
+        setSelectedTags([...selectedTags, trimmed]);
+      }
+      setTagInput("");
+    }}
+    placeholder={selectedTags.length === 0 ? "e.g. vip, marketing, lead…" : ""}
+    className="flex-1 min-w-[120px] bg-transparent border-0 outline-none text-[13px] py-0.5"
+  />
 </div>
-))}
-</div>
-{selectedTags.length > 0 && (
-<div className="flex flex-wrap gap-1 mt-2">
-{selectedTags.map((tag) => (
-<Badge key={tag} variant="secondary" className="text-xs">
-{tag}
-</Badge>
-))}
-</div>
-)}
 <p className="text-xs text-text-subtle">
-Selected tags will be added to all selected contacts
+  Type a tag and press <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">Enter</kbd> or <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">,</kbd> to add. These tags will be added to every selected contact.
 </p>
 </div>
 </div>

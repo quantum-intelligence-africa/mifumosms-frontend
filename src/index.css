@@ -232,6 +232,33 @@ All colors MUST be HSL for consistency and theming.
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        /* PWA: prevent rubber-band overscroll and tap highlight */
+        overscroll-behavior-y: contain;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+    }
+
+    /* PWA: when installed/standalone AND on an authed app page, lock the
+       outer body so only <main> scrolls (prevents iOS rubber-band bouncing). */
+    @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+        html:has(body.app-shell), body.app-shell {
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+        }
+        body.app-shell {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body.app-shell input,
+        body.app-shell textarea,
+        body.app-shell [contenteditable="true"],
+        body.app-shell .selectable {
+            user-select: text;
+            -webkit-user-select: text;
+        }
     }
 
     .dark body {
@@ -318,6 +345,84 @@ All colors MUST be HSL for consistency and theming.
 
     .dark label {
         color: #ffffff;
+    }
+}
+
+/* ── Safe-area + mobile-app shell utilities ─────────────────────────────── */
+@layer utilities {
+    /* Safe-area helpers (iOS notch / Android gesture bar) */
+    .pt-safe { padding-top: env(safe-area-inset-top); }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    .pl-safe { padding-left: env(safe-area-inset-left); }
+    .pr-safe { padding-right: env(safe-area-inset-right); }
+
+    .mt-safe { margin-top: env(safe-area-inset-top); }
+    .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
+
+    .top-safe { top: env(safe-area-inset-top); }
+    .bottom-safe { bottom: env(safe-area-inset-bottom); }
+
+    .h-safe-top { height: env(safe-area-inset-top); }
+    .h-safe-bottom { height: env(safe-area-inset-bottom); }
+
+    .min-h-screen-safe {
+        min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+
+    /* Mobile app shell: bottom tab bar + safe-area aware bottom padding for main. */
+    :root {
+        --mobile-tabbar-h: 64px;
+        --mobile-topbar-h: 52px;
+        /* Total clearance below scrolling content so the last item is never
+           hidden behind the tab bar. Generous buffer (72px) so dense lists
+           on short phones (iPhone SE / iPhone 5) still show the last row
+           comfortably above the tab bar. */
+        --mobile-bottom-clearance: calc(var(--mobile-tabbar-h) + env(safe-area-inset-bottom) + 72px);
+    }
+
+    /* When app shell is active and viewport is mobile, push main content above the tab bar. */
+    @media (max-width: 767px) {
+        body.app-shell main,
+        body.app-shell .app-shell-main {
+            padding-bottom: var(--mobile-bottom-clearance) !important;
+        }
+        body.app-shell {
+            /* Status bar / notch breathing room when standalone. */
+            padding-top: env(safe-area-inset-top);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+        /* On Home, the colored hero extends behind the notch with its own
+           safe-area-top padding — so drop the body-level padding. */
+        body.app-shell.home-page {
+            padding-top: 0;
+        }
+    }
+
+    /* Pages with their own sticky bottom action bar (e.g. Send SMS) need extra
+       clearance so the last content row sits above BOTH the action bar and tab bar.
+       Add `data-sticky-bottom-bar` to <main> and the rule kicks in automatically. */
+    @media (max-width: 767px) {
+        body.app-shell main[data-sticky-bottom-bar],
+        body.app-shell .app-shell-main[data-sticky-bottom-bar] {
+            padding-bottom: calc(var(--mobile-bottom-clearance) + 80px) !important;
+        }
+    }
+
+    /* Smooth, momentum-style scrolling on iOS inside main. */
+    body.app-shell main,
+    body.app-shell .app-shell-main {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* Hide native scrollbars on mobile for an app-like feel. */
+    @media (max-width: 767px) {
+        body.app-shell main::-webkit-scrollbar,
+        body.app-shell .app-shell-main::-webkit-scrollbar { width: 0; height: 0; }
+        body.app-shell main,
+        body.app-shell .app-shell-main { scrollbar-width: none; }
     }
 }
 

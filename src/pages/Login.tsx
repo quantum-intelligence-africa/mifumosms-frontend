@@ -10,6 +10,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
+import { BrandLogo } from "@/components/layout/BrandLogo";
+import { API_CONFIG } from "@/config/api";
+
+// Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
+// routes the login attempt to the admin endpoint and drops the user on /admin
+// without ever exposing the /admin URL in the UI. The suffix is stripped before
+// the request is sent.
+const ADMIN_SUFFIX = ".admin";
+const ADMIN_SESSION_KEY = "senda_admin_auth";
+// /auth/admin/login lives at the root of mifumosms.mifumolabs.com, not under /api.
+const ADMIN_BASE_URL = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
 
 const Login = () => {
   const isMobile = useIsMobile();
@@ -56,6 +67,54 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    // ── Hidden admin gate ────────────────────────────────────────────────
+    // If the email ends with ".admin", strip the suffix, call the admin
+    // endpoint, and redirect to the admin dashboard. Regular users go
+    // through the normal login flow. The user never sees an "Admin login"
+    // link or visits /admin directly.
+    const trimmedEmail = formData.email.trim();
+    if (trimmedEmail.toLowerCase().endsWith(ADMIN_SUFFIX)) {
+      const realEmail = trimmedEmail.slice(0, -ADMIN_SUFFIX.length);
+      try {
+        const res = await fetch(`${ADMIN_BASE_URL}/auth/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: realEmail, password: formData.password }),
+        });
+        const data = await res.json().catch(() => ({} as Record<string, unknown>));
+        if (data && (data as { success?: boolean }).success) {
+          const payload = (data as { data: { access_token: string; expires_in: number; admin: unknown } }).data;
+          localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({
+            token: payload.access_token,
+            expires_at: Date.now() + payload.expires_in * 1000,
+            admin: payload.admin,
+            loginAt: Date.now(),
+          }));
+          toast({ title: "Welcome back", description: "Opening admin panel…" });
+          navigate("/admin", { replace: true });
+          return;
+        }
+        // Fall through to a "wrong credentials" toast — generic, doesn't
+        // reveal that admin-mode was attempted.
+        const errObj = (data as { error?: { message?: string } }).error;
+        toast({
+          title: "Login failed",
+          description: errObj?.message || "Please check your credentials and try again.",
+          variant: "destructive",
+        });
+      } catch {
+        toast({
+          title: "Login failed",
+          description: "Network error. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       const result = await login({
@@ -200,9 +259,7 @@ const Login = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
-                <MessageSquare className="w-4 h-4 text-white" />
-              </div>
+              <BrandLogo className="h-16 w-auto -my-3 -mr-8" />
               <span className="font-heading text-lg font-bold text-white">
                 SENDA
               </span>
@@ -359,9 +416,7 @@ const Login = () => {
           <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
             <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-                  <MessageSquare className="w-6 h-6 text-white" />
-                </div>
+                <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
                 <div>
                   <span className="font-heading text-2xl font-bold text-gray-900">
                     SENDA
@@ -418,9 +473,7 @@ const Login = () => {
           <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
             <div className="text-center mb-4 sm:mb-6">
               <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
-                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
+                <BrandLogo className="h-16 sm:h-20 w-auto -my-3 sm:-my-3 -mr-8 sm:-mr-10" />
                 <span className="font-heading text-base sm:text-lg font-bold text-gray-900">
                   SENDA
                 </span>

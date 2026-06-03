@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
   Mic, Plus, Phone, GitBranch, PhoneCall, FileAudio, Settings2,
-  CheckCircle2, ArrowRight, Sparkles,
+  CheckCircle2, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,24 +162,24 @@ export default function VoiceAgents() {
   };
 
   return (
-    <div className="flex h-screen bg-background dark:bg-background overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
 
-            {/* ── Page Header ──────────────────────────────── */}
-            <div className="mb-8">
-              <h1 className="text-[26px] font-semibold text-foreground dark:text-foreground tracking-[-0.02em] leading-tight">
+            {/* iOS large-title header */}
+            <header className="mb-5">
+              <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
                 Voice Copilots
               </h1>
-              <p className="mt-1 text-[14px] text-foreground/60 dark:text-foreground/50">
+              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
                 Deploy AI-powered voice copilots to automate inbound and outbound calls
               </p>
-            </div>
+            </header>
 
             {/* ── Hero Card: Value prop + Waitlist form ────── */}
             <div className="relative bg-card dark:bg-card/95 rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-8">
@@ -281,7 +281,6 @@ export default function VoiceAgents() {
                           disabled={isSubmitting}
                           className="w-full h-9 text-[13px] font-medium gap-2"
                         >
-                          <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
                           {isSubmitting ? "Submitting..." : "Request Early Access"}
                           <ArrowRight className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />
                         </Button>

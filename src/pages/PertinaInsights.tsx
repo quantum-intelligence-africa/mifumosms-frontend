@@ -226,13 +226,13 @@ const PertinaInsights = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-primary/10 via-background to-primary/10 dark:from-primary/15 dark:via-background dark:to-primary/15">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-6 bg-gradient-to-b from-background to-background/80 text-sm">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-6 pt-4 sm:pt-6 pb-8 text-sm">
+          <div className="max-w-4xl mx-auto w-full space-y-5">
             <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-6 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { X, ChevronRight, MessageSquare } from "lucide-react";
+import { X, ChevronRight, ChevronDown, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { PLATFORM_LINKS } from "@/components/landing/shared/platformLinks";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface MobileMenuProps {
 }
 
 const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
+  const [platformOpen, setPlatformOpen] = useState(false);
+
   const handleNavClick = (sectionId: string) => {
     if (scrollToSection) {
       scrollToSection(sectionId);
@@ -60,6 +64,59 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
                   </span>
                   <ChevronRight className="w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </Link>
+              </motion.div>
+
+              {/* Platform — expandable group */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.08, duration: 0.2 }}
+                className="border-b border-border dark:border-border/60"
+              >
+                <button
+                  type="button"
+                  onClick={() => setPlatformOpen((v) => !v)}
+                  aria-expanded={platformOpen}
+                  className="w-full flex items-center justify-between py-4 group touch-manipulation"
+                >
+                  <span className="text-base font-semibold text-foreground dark:text-foreground group-hover:text-primary transition-colors">
+                    Platform
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary transition-transform duration-200 ${
+                      platformOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {platformOpen && (
+                    <motion.ul
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden pb-3"
+                    >
+                      {PLATFORM_LINKS.map(({ id, anchor, label, Icon }) => (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            onClick={() => handleNavClick(anchor)}
+                            className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/40 touch-manipulation"
+                          >
+                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="text-sm font-medium text-foreground dark:text-foreground">
+                              {label}
+                            </span>
+                            <ChevronRight className="ml-auto w-4 h-4 text-foreground/40" />
+                          </button>
+                        </li>
+                      ))}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
               </motion.div>
 
               {/* Pricing */}

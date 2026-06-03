@@ -1,4 +1,5 @@
-import { Menu, User, LogOut, Moon, Sun } from "lucide-react";
+import { useEffect } from "react";
+import { User, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -15,7 +16,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
-// import NotificationDropdown from "@/components/notifications/NotificationDropdown";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { MobileMoreButton } from "@/components/layout/MobileMoreButton";
+import { useTabSwipeNavigation } from "@/hooks/useTabSwipeNavigation";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
@@ -27,32 +31,30 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { updateTheme, preferences } = usePreferences();
+  const { updateTheme } = usePreferences();
+  const { avatar } = useUserAvatar();
+
+  // Wire up swipe-left/right tab navigation on mobile.
+  useTabSwipeNavigation();
+
+  // Tag the body so global CSS can pad <main> for the bottom tab bar.
+  useEffect(() => {
+    document.body.classList.add("app-shell");
+    return () => {
+      document.body.classList.remove("app-shell");
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleThemeToggle = async () => {
-    // Determine next theme: light → dark → light
-    let newTheme: 'light' | 'dark' | 'system' = 'light';
-    if (theme === 'light') {
-      newTheme = 'dark';
-    } else if (theme === 'dark') {
-      newTheme = 'light';
-    } else {
-      // System mode - toggle to light
-      newTheme = 'light';
-    }
-
-    // Update theme immediately for instant visual feedback
+    const newTheme: "light" | "dark" = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-
-    // Save to API (don't await to keep UI responsive)
     updateTheme(newTheme).catch((error) => {
-      console.error('Failed to save theme preference:', error);
-      // Revert on error would be handled by the hook
+      console.error("Failed to save theme preference:", error);
     });
   };
 
@@ -61,39 +63,33 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     setLanguage(next);
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
+  // On mobile, only the bottom tab bar is rendered globally. The Home page
+  // renders its own colored hero inside <main> so it scrolls with content,
+  // and non-home pages render no top bar at all (cleaner native-app feel).
+  void onMenuClick;
+  if (isMobile) {
+    return (
+      <>
+        <MobileMoreButton />
+        <MobileTabBar />
+      </>
+    );
+  }
+
+  // Desktop layout (unchanged).
   return (
-    <header className="sticky top-0 h-12 sm:h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-2 sm:px-3 lg:px-6 relative z-50 backdrop-blur-xl lg:z-50">
-      {/* Mobile menu button */}
-      {isMobile && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="h-9 w-9 hover:bg-accent rounded-lg transition-fast"
-        >
-          <Menu className="w-4 h-4" />
-        </Button>
-      )}
+    <header className="sticky top-0 h-12 sm:h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-2 sm:px-3 lg:px-6 z-50 backdrop-blur-xl">
+      <div className="flex-1" />
 
-      {/* Spacer for desktop - pushes actions to the right */}
-      {!isMobile && <div className="flex-1" />}
-
-      {/* Actions */}
       <div className="flex items-center gap-2 lg:gap-3">
-
-        {/* Notifications - Removed for now */}
-        {/* <NotificationDropdown /> */}
-
-        {/* Theme Toggle */}
         <Button
           variant="ghost"
           size="icon"
@@ -105,7 +101,6 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <span className="sr-only">{t("theme.toggle")}</span>
         </Button>
 
-        {/* Language Toggle */}
         <Button
           type="button"
           variant="outline"
@@ -118,33 +113,30 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           </span>
         </Button>
 
-        {/* User Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className={`h-9 hover:bg-accent rounded-lg transition-fast ${isMobile ? 'px-1.5' : 'px-2.5'}`}
+              className="h-12 hover:bg-accent rounded-xl transition-fast pl-1.5 pr-3"
             >
-              <Avatar className={`h-7 w-7 ring-2 ring-border ${isMobile ? '' : 'mr-2.5'}`}>
-                <AvatarImage src="" alt={user?.full_name || user?.first_name} />
-                <AvatarFallback className="text-xs font-medium bg-gradient-to-br from-primary to-primary-light text-primary-foreground">
-                  {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
+              <Avatar className="h-10 w-10 ring-2 ring-border mr-2.5 shadow-sm">
+                <AvatarImage src={avatar} alt={user?.full_name || user?.first_name} className="object-cover" />
+                <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary to-primary-light text-primary-foreground">
+                  {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : "U"}
                 </AvatarFallback>
               </Avatar>
-              {!isMobile && (
-                <span className="text-[13px] font-medium">
-                  {isLoading ? t("user.loading") : (user?.first_name || t("user.user"))}
-                </span>
-              )}
+              <span className="text-[13px] font-medium">
+                {isLoading ? t("user.loading") : (user?.first_name || t("user.user"))}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 glass-subtle shadow-xl">
             <DropdownMenuLabel className="font-normal pb-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 ring-2 ring-border">
-                  <AvatarImage src="" alt={user?.full_name || user?.first_name} />
-                  <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary to-primary-light text-primary-foreground">
-                    {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
+                <Avatar className="h-14 w-14 ring-2 ring-border shadow-sm">
+                  <AvatarImage src={avatar} alt={user?.full_name || user?.first_name} className="object-cover" />
+                  <AvatarFallback className="text-base font-bold bg-gradient-to-br from-primary to-primary-light text-primary-foreground">
+                    {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col space-y-1 flex-1 min-w-0">
@@ -152,14 +144,14 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
                     {isLoading ? t("user.loading") : (user?.full_name || `${user?.first_name} ${user?.last_name}` || t("user.user"))}
                   </p>
                   <p className="text-xs leading-none text-text-subtle truncate">
-                    {isLoading ? '...' : (user?.email || t("user.no_email"))}
+                    {isLoading ? "..." : (user?.email || t("user.no_email"))}
                   </p>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border-subtle" />
             <DropdownMenuItem
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate("/settings")}
               className="cursor-pointer hover:bg-accent transition-fast py-2.5"
             >
               <User className="mr-3 h-4 w-4" />
@@ -176,16 +168,13 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Status Indicator - Hidden on mobile */}
-        {!isMobile && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20">
-            <div className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-            </div>
-            <span className="text-[11px] font-medium text-success">{t("status.online")}</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20">
+          <div className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
           </div>
-        )}
+          <span className="text-[11px] font-medium text-success">{t("status.online")}</span>
+        </div>
       </div>
     </header>
   );

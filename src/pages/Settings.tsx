@@ -22,6 +22,7 @@ import {
   MoreVertical,
   ArrowLeft,
   ChevronRight,
+  ChevronDown,
   Mail,
   Phone,
   MapPin,
@@ -41,6 +42,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarPicker } from "@/components/settings/AvatarPicker";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -174,6 +177,7 @@ const Settings = () => {
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: "",
     lastName: "",
@@ -254,6 +258,7 @@ const Settings = () => {
   }, [currentCategory]);
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
+  const { avatar: selectedAvatar } = useUserAvatar();
   const { language, setLanguage, t } = useLanguage();
   const { theme: currentTheme, setTheme } = useTheme();
 
@@ -343,14 +348,18 @@ const Settings = () => {
   useEffect(() => {
     if (currentCategory === 'team' && currentTenant?.id) {
       logger.debug('Loading team members for tenant');
-      team.listMembers().catch(err => {
+      team.listMembers().catch(() => {
         if (import.meta.env.DEV) logger.warn('Failed to load team members');
       });
-      team.getStats().catch(err => {
+      team.getStats().catch(() => {
         if (import.meta.env.DEV) logger.warn('Failed to load team stats');
       });
     }
-  }, [currentCategory, currentTenant?.id, team]);
+    // `team` is intentionally omitted: its returned object identity is unstable
+    // across renders, which previously triggered an infinite fetch loop. The
+    // functions inside (listMembers/getStats) are themselves useCallback-stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCategory, currentTenant?.id]);
 
   const fetchBillingData = useCallback(async () => {
     try {
@@ -1301,12 +1310,48 @@ const Settings = () => {
               <CardContent className="space-y-4 p-4 pt-0">
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="flex flex-col items-center gap-4">
-                    <Avatar className="w-16 h-16">
-                      <AvatarImage src={(user as ExtendedUser)?.profile_photo || ""} alt={user?.full_name || user?.first_name} />
+                    <Avatar className="w-20 h-20">
+                      <AvatarImage
+                        src={selectedAvatar || (user as ExtendedUser)?.profile_photo || ""}
+                        alt={user?.full_name || user?.first_name}
+                      />
                       <AvatarFallback className="bg-primary/10 text-primary text-lg">
                         {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
                       </AvatarFallback>
                     </Avatar>
+                  </div>
+
+                  <div className="rounded-xl border border-border/60 dark:border-border/40 bg-muted/30 dark:bg-muted/15 p-3 sm:p-4">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarPickerOpen((v) => !v)}
+                      aria-expanded={avatarPickerOpen}
+                      aria-controls="avatar-picker-panel"
+                      className="w-full flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h4 className="text-[13px] font-semibold text-foreground dark:text-foreground truncate">
+                          Choose your avatar
+                        </h4>
+                        {!avatarPickerOpen && (
+                          <span className="text-[10.5px] font-medium text-foreground/55 dark:text-foreground/50">
+                            (hidden)
+                          </span>
+                        )}
+                      </div>
+                      <span className="flex-shrink-0 text-[11px] font-semibold text-primary group-active:opacity-60 transition-opacity inline-flex items-center gap-1">
+                        {avatarPickerOpen ? "Hide" : "Show"}
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${avatarPickerOpen ? "rotate-180" : ""}`}
+                          strokeWidth={2.4}
+                        />
+                      </span>
+                    </button>
+                    {avatarPickerOpen && (
+                      <div id="avatar-picker-panel" className="mt-3">
+                        <AvatarPicker />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">
@@ -2874,17 +2919,17 @@ const Settings = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-2 sm:p-3 lg:p-4 xl:p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-full">
             <div className="max-w-7xl mx-auto flex flex-col">
-              {/* Header */}
-              <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
+              {/* Header — desktop only; mobile uses the per-page context */}
+              <div className="hidden md:block mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
                   Settings
                 </h1>
@@ -2897,87 +2942,91 @@ const Settings = () => {
               {isMobile ? (
                 <div className="flex-1 overflow-hidden">
                   {!currentCategory ? (
-                    <div className="space-y-2 sm:space-y-3 overflow-y-auto pb-4 sm:pb-6 h-full">
-                      {/* Mobile Category Selection Header */}
-                      <div className="mb-4">
-                        <h2 className="font-heading text-lg font-semibold text-foreground mb-2">
-                          Choose Settings Category
-                        </h2>
-                        <p className="text-sm text-text-subtle">
-                          Select a category to manage your settings
-                        </p>
-                      </div>
+                    <div className="overflow-y-auto h-full">
+                      {/* User card — iOS Settings-style header */}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentCategory("profile")}
+                        className="w-full rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 px-3.5 py-3 flex items-center gap-3 active:bg-accent/40 dark:active:bg-accent/30 transition-colors mb-4"
+                      >
+                        <Avatar className="h-14 w-14 ring-1 ring-border/60">
+                          <AvatarImage src={selectedAvatar} alt={user?.full_name || user?.first_name} className="object-cover" />
+                          <AvatarFallback className="bg-primary/10 text-primary text-base font-semibold">
+                            {user ? getInitials(user.full_name || `${user.first_name} ${user.last_name}`) : 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-[15px] font-semibold text-foreground dark:text-foreground leading-tight truncate">
+                            {user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Your account"}
+                          </p>
+                          {user?.email && (
+                            <p className="text-[12px] text-foreground/60 dark:text-foreground/55 truncate mt-0.5">
+                              {user.email}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-primary font-semibold mt-1.5 tracking-tight">
+                            Profile · Avatar · Account
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-foreground/35 flex-shrink-0" />
+                      </button>
 
-                      {settingsCategories.map((category) => (
-                        <Card
-                          key={category.id}
-                          className={`glass border-0 cursor-pointer transition-all duration-200 ${
-                            currentCategory === category.id
-                              ? 'border-l-4 border-t-4 border-primary bg-primary/5 shadow-lg'
-                              : 'hover:shadow-lg'
-                          }`}
-                          onClick={() => setCurrentCategory(category.id)}
-                        >
-                          <CardContent className="p-3 sm:p-4">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${category.color} flex items-center justify-center`}>
-                                <category.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      {/* iOS-style grouped category list (excluding profile — handled above) */}
+                      <p className="px-3 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-foreground/45 dark:text-foreground/40">
+                        Settings
+                      </p>
+                      <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden">
+                        {settingsCategories
+                          .filter((c) => c.id !== "profile")
+                          .map((category, idx, arr) => (
+                            <button
+                              key={category.id}
+                              type="button"
+                              onClick={() => setCurrentCategory(category.id)}
+                              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left active:bg-accent/60 dark:active:bg-accent/40 transition-colors ${
+                                idx < arr.length - 1 ? "border-b border-border/40 dark:border-border/25" : ""
+                              }`}
+                            >
+                              <div className={`w-8 h-8 rounded-lg ${category.color} flex items-center justify-center flex-shrink-0`}>
+                                <category.icon className="w-4 h-4 text-white" />
                               </div>
-                              <div className="flex-1">
-                                <h3 className="font-medium text-foreground text-xs sm:text-sm">{category.title}</h3>
-                                <p className="text-xs text-text-subtle">{category.description}</p>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-[14px] font-medium text-foreground dark:text-foreground leading-tight truncate">
+                                  {category.title}
+                                </h3>
+                                <p className="text-[11px] text-foreground/55 dark:text-foreground/50 leading-snug truncate mt-0.5">
+                                  {category.description}
+                                </p>
                               </div>
-                              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                              <ChevronRight className="w-4 h-4 text-foreground/35 dark:text-foreground/30 flex-shrink-0" />
+                            </button>
+                          ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col h-full">
-                      {/* Category Header */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setCurrentCategory(null)}
-                            className="h-8 w-8"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </Button>
-                          <div className="flex items-center gap-3">
-                            <div>
-                              <h2 className="font-medium text-foreground text-sm">
-                                {settingsCategories.find(cat => cat.id === currentCategory)?.title}
-                              </h2>
-                              <p className="text-xs text-text-subtle">
-                                {settingsCategories.find(cat => cat.id === currentCategory)?.description}
-                              </p>
-                            </div>
-                          </div>
+                      {/* Category Header — cleaner, no inline switcher */}
+                      <div className="flex items-center gap-2 mb-3 -ml-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentCategory(null)}
+                          aria-label="Back"
+                          className="w-9 h-9 inline-flex items-center justify-center rounded-full text-foreground/80 active:bg-accent/60 transition-colors"
+                        >
+                          <ArrowLeft className="w-[20px] h-[20px]" strokeWidth={2.2} />
+                        </button>
+                        <div className="min-w-0">
+                          <h2 className="text-[16px] font-bold text-foreground dark:text-foreground leading-tight truncate">
+                            {settingsCategories.find(cat => cat.id === currentCategory)?.title}
+                          </h2>
+                          <p className="text-[11px] text-foreground/55 dark:text-foreground/50 leading-snug truncate mt-0.5">
+                            {settingsCategories.find(cat => cat.id === currentCategory)?.description}
+                          </p>
                         </div>
-
-                        {/* Quick Category Switcher */}
-                        <Select value={currentCategory || ""} onValueChange={setCurrentCategory}>
-                          <SelectTrigger className="w-32 h-8 text-xs glass-subtle border-0">
-                            <SelectValue placeholder="Switch" />
-                          </SelectTrigger>
-                          <SelectContent className="glass">
-                            {settingsCategories.map((category) => (
-                              <SelectItem key={category.id} value={category.id} className="text-xs">
-                                <div className="flex items-center gap-2">
-                                  <category.icon className="w-3 h-3" />
-                                  {category.title}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       {/* Category Content */}
-                      <div className="flex-1 overflow-y-auto pb-6">
+                      <div className="flex-1 overflow-y-auto">
                         {renderCategoryContent()}
                       </div>
                     </div>
@@ -3027,7 +3076,7 @@ const Settings = () => {
               )}
             </div>
           </div>
-        </div>
+        </main>
       </div>
 
       {/* API Key Display Dialog */}

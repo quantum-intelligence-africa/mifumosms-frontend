@@ -4,6 +4,7 @@ import {
   Menu
 } from "lucide-react";
 import MobileMenu from "@/components/layout/MobileMenu";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -60,10 +61,8 @@ const Terms = () => {
 
           {/* Logo */}
           <div onClick={() => navigate('/')} className="w-28 flex items-center justify-center cursor-pointer">
-            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 h-8">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-lg flex-shrink-0">
-                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
-              </div>
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 h-8">
+              <BrandLogo className="h-14 sm:h-16 lg:h-20 w-auto -my-3 sm:-my-3 lg:-my-4 -mr-7 sm:-mr-8 lg:-mr-10" />
               <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold whitespace-nowrap leading-none text-gray-900">
                 SENDA
               </span>
@@ -221,10 +220,8 @@ const Terms = () => {
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
             {/* Brand */}
-            <div onClick={() => navigate('/')} className="flex items-center gap-1 sm:gap-2 cursor-pointer">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
-                  <MessageSquare className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                </div>
+            <div onClick={() => navigate('/')} className="flex items-center gap-1.5 sm:gap-2 cursor-pointer">
+                <BrandLogo className="h-16 sm:h-20 w-auto -my-3 sm:-my-4 -mr-8 sm:-mr-10" />
                 <span className="font-heading text-sm sm:text-lg lg:text-xl font-bold text-white">
                   SENDA
                 </span>
