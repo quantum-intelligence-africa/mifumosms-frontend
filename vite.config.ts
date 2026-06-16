@@ -42,13 +42,14 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
           if (id.includes("qrcode")) return "qrcode";
           if (id.includes("@radix-ui")) return "radix";
-          if (
-            id.includes("/react/") ||
-            id.includes("/react-dom/") ||
-            id.includes("/react-router") ||
-            id.includes("/scheduler/")
-          )
-            return "react-vendor";
+          // NOTE: React core is intentionally NOT split into its own chunk.
+          // react/react-dom are CommonJS, so Rollup's interop helpers get
+          // hoisted into `vendor`; a separate react chunk then imports those
+          // helpers from `vendor` while `vendor` imports React back — a
+          // circular chunk-init order that leaves React undefined
+          // ("Cannot read properties of undefined (reading 'forwardRef')").
+          // Keeping React in `vendor` avoids the cycle. The splits above are
+          // all one-directional leaf consumers, so they're safe.
           return "vendor";
         },
       },
