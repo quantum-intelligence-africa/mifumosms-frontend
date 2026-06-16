@@ -153,6 +153,13 @@ export const API_CONFIG = {
 				PRICING: '/messaging/whatsapp/billing/pricing/',
 				BALANCE: '/messaging/whatsapp/billing/balance/',
 			},
+			// Admin-only: manage platform-default + per-partner WhatsApp send credentials.
+			ADMIN_WHATSAPP_CREDENTIALS: {
+				LIST: '/messaging/admin/whatsapp-credentials/',
+				PARTNERS: '/messaging/admin/whatsapp-credentials/partners/',
+				DETAIL: (id: string) => `/messaging/admin/whatsapp-credentials/${id}/`,
+				VERIFY: (id: string) => `/messaging/admin/whatsapp-credentials/${id}/verify/`,
+			},
 			WHATSAPP_CLOUD: {
 				BASE: '/messaging/whatsapp/cloud/',
 				SEND: (id: string) => `/messaging/whatsapp/cloud/${id}/send/`,
@@ -185,6 +192,11 @@ export const API_CONFIG = {
 				// §1.4 — same view as send-from-template but the URL signals media/poll intent.
 				SEND_TEMPLATE_RICH: (id: string) => `/messaging/whatsapp/cloud/${id}/send-template-rich/`,
 				SEND_TEMPLATE_RICH_AUTO: '/messaging/whatsapp/cloud/send-template-rich/',
+				// Bulk APPROVED Meta template with per-recipient field-mapped params.
+				SEND_APPROVED_TEMPLATE_BULK: (id: string) =>
+					`/messaging/whatsapp/cloud/${id}/send-approved-template-bulk/`,
+				SEND_APPROVED_TEMPLATE_BULK_AUTO:
+					'/messaging/whatsapp/cloud/send-approved-template-bulk/',
 				SEND_BY_CATEGORY: (id: string) => `/messaging/whatsapp/cloud/${id}/send-by-category/`,
 				SEND_BY_CATEGORY_AUTO: '/messaging/whatsapp/cloud/send-by-category/',
 				SEND_BY_USER_IDS: (id: string) => `/messaging/whatsapp/cloud/${id}/send-by-user-ids/`,

@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubTabSwipe } from "@/hooks/useSubTabSwipe";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { CreatePollDialog } from "@/components/whatsapp/CreatePollDialog";
+import { MetaTemplateMessenger } from "@/components/whatsapp/MetaTemplateMessenger";
 import {
   CreateTemplateDialog,
   DeleteTemplateDialog,
@@ -452,20 +453,40 @@ function MediaPollFields({
   );
 }
 
+// Resolve the variable keys a local template needs. Prefers the backend's
+// authoritative `variables` list (covers positional {{1}} AND named {{name}}),
+// falling back to extracting any {{…}} token from the body when absent.
+const getTemplateVariableKeys = (tpl?: LocalTemplate | null): string[] => {
+  if (!tpl) return [];
+  if (Array.isArray(tpl.variables) && tpl.variables.length > 0) {
+    return tpl.variables.map((v) => String(v).trim()).filter(Boolean);
+  }
+  const found = new Set<string>();
+  const re = /{{\s*([^}]+?)\s*}}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(tpl.body_text ?? "")) !== null) {
+    const tok = m[1].trim();
+    if (tok) found.add(tok);
+  }
+  return Array.from(found);
+};
+
 // ─── Single Send Tab ──────────────────────────────────────────────────────────
 
 function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: string; prefillSearch?: string }) {
-  const { sendSingle, sendFromTemplate, sendTemplateRich, getUsers, isLoading } = useWhatsAppCloud();
-  const [msgType, setMsgType] = useState<"text" | "template">("text");
+  const { sendSingle, sendApprovedTemplateBulk, getMessageTemplates, getUsers, isLoading } = useWhatsAppCloud();
+  // Policy: WhatsApp proactive sends are template-only (WHATSAPP_REQUIRE_TEMPLATE).
+  const [msgType] = useState<"text" | "template">("template");
   const [text, setText] = useState("");
   const mediaPoll = useMediaPoll();
-  // Local templates from messaging.Template (channel=whatsapp). The send endpoint
-  // expects the local UUID, not a Meta template name.
-  const [templateId, setTemplateId] = useState("");
-  const [templates, setTemplates] = useState<LocalTemplate[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [variables, setVariables] = useState<Record<string, string>>({});
+  // Approved Meta templates (real type=template send, by name). Loaded live from
+  // Meta so only genuinely-approved templates appear — never local custom drafts.
+  const [metaTpls, setMetaTpls] = useState<WAMessageTemplate[]>([]);
+  const [metaTplLoading, setMetaTplLoading] = useState(false);
+  const [metaTplError, setMetaTplError] = useState<string | null>(null);
+  const [metaTplName, setMetaTplName] = useState("");
+  // token -> source ("name" | "phone" | "email" | "attr:<key>" | "static:<value>")
+  const [paramSources, setParamSources] = useState<Record<string, string>>({});
   const [result, setResult] = useState<WASendSingleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Carries credit + attachment metadata from the most recent template send
@@ -491,8 +512,6 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
   // Seeded from the URL when arriving via the /contacts → Send WhatsApp action.
   const [audienceSearch, setAudienceSearch] = useState(prefillSearch);
   const [audienceSearchDebounced, setAudienceSearchDebounced] = useState(prefillSearch);
-  const templatesLoadedForRef = useRef<string | null>(null);
-  const templatesRequestInFlightRef = useRef(false);
 
   // Debounce typing so we don't fire a request on every keystroke.
   useEffect(() => {
@@ -525,108 +544,84 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAudience(1); }, [waAccountId, audiencePageSize, audienceSearchDebounced]);
 
-  // Reusable loader so a fresh template (imported from Meta or newly created)
-  // shows up immediately. `selectId` auto-selects after reload.
-  const refreshTemplates = async (selectId?: string) => {
-    setTemplatesLoading(true);
-    setTemplatesError(null);
-    try {
-      const res = await apiClient.getTemplates({
-        channel: "whatsapp",
-        page_size: 100,
-      });
-      if (!res.success || !res.data) {
-        setTemplatesError(res.error || res.message || "Failed to load templates");
-        return;
+  // Load APPROVED Meta templates the first time the user enters template mode.
+  // These come straight from Meta (WABA message_templates) so the picker only
+  // ever shows real, approved templates — exactly the ones whose buttons render.
+  useEffect(() => {
+    if (msgType !== "template" || metaTpls.length > 0 || metaTplLoading) return;
+    let cancelled = false;
+    void (async () => {
+      setMetaTplLoading(true);
+      setMetaTplError(null);
+      try {
+        const res = await getMessageTemplates(waAccountId || undefined, {
+          status: "APPROVED",
+          limit: 100,
+        });
+        if (cancelled) return;
+        const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
+        setMetaTpls(list);
+      } catch (e) {
+        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : "Failed to load templates");
+      } finally {
+        if (!cancelled) setMetaTplLoading(false);
       }
-      const list = res.data.results?.templates ?? [];
-      setTemplates(list);
-      if (selectId && list.some((t) => t.id === selectId)) setTemplateId(selectId);
-    } catch (e) {
-      setTemplatesError(e instanceof Error ? e.message : "Failed to load templates");
-    } finally {
-      setTemplatesLoading(false);
-      templatesLoadedForRef.current = "loaded";
-    }
-  };
-
-  // First-time load when the user opens template mode.
-  useEffect(() => {
-    if (msgType !== "template") return;
-    if (templatesLoadedForRef.current === "loaded" || templatesRequestInFlightRef.current) return;
-    templatesRequestInFlightRef.current = true;
-    void refreshTemplates().finally(() => {
-      templatesRequestInFlightRef.current = false;
-    });
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [msgType]);
+  }, [msgType, waAccountId]);
 
-  // Local create-template dialog so users can author a new one without leaving Send.
-  const [createTemplateOpen, setCreateTemplateOpen] = useState(false);
-
-  // Pull {{key}} placeholders out of the selected template's body so the form
-  // can render an input per non-auto-filled variable.
-  const selectedTemplate = templates.find((t) => t.id === templateId);
-  const templateKeys = (() => {
-    const found = new Set<string>();
-    const re = /{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}/g;
+  const selectedMetaTpl = metaTpls.find((t) => t.name === metaTplName) || null;
+  const metaHeaderFormat = (selectedMetaTpl?.components ?? []).find((c) => c.type === "HEADER")?.format;
+  const metaNeedsImage = metaHeaderFormat === "IMAGE" || metaHeaderFormat === "VIDEO" || metaHeaderFormat === "DOCUMENT";
+  // Body placeholder tokens ({{1}}, {{name}}…) in order of first appearance.
+  const metaBodyTokens: string[] = (() => {
+    const body = (selectedMetaTpl?.components ?? []).find((c) => c.type === "BODY");
+    const bodyText = body?.text ?? "";
+    const re = /{{\s*([^}]+?)\s*}}/g;
+    const seen = new Set<string>();
+    const out: string[] = [];
     let m: RegExpExecArray | null;
-    while ((m = re.exec(selectedTemplate?.body_text ?? "")) !== null) found.add(m[1]);
-    return Array.from(found);
+    while ((m = re.exec(bodyText)) !== null) {
+      const tok = m[1].trim();
+      if (tok && !seen.has(tok)) { seen.add(tok); out.push(tok); }
+    }
+    return out;
   })();
-  const AUTOFILL = new Set(["name", "phone", "email"]);
-  const requiredKeys = templateKeys.filter((k) => !AUTOFILL.has(k));
+  // Each {{token}} -> contact-field source for the real Meta send.
+  const buildParamMap = () =>
+    metaBodyTokens.map((tok) => ({ token: tok, source: paramSources[tok] || "name" }));
 
-  // Reset variable values whenever the selected template changes.
-  useEffect(() => {
-    setVariables({});
-  }, [templateId]);
+  // Reset the field mapping when the selected approved template changes.
+  useEffect(() => { setParamSources({}); }, [metaTplName]);
 
   const sendTo = async (to: string) => {
     setError(null);
     setResult(null);
     try {
       if (msgType === "template") {
-        if (!templateId) {
-          setError("Pick a template first.");
+        if (!selectedMetaTpl) {
+          setError("Pick an approved template first.");
           return;
         }
-        const cleaned: Record<string, string> = {};
-        for (const [k, v] of Object.entries(variables)) {
-          if (v.trim().length > 0) cleaned[k] = v.trim();
-        }
 
-        // §1.4 — if the user attached media or a poll, route through the rich
-        // endpoint so the recipient gets ONE Meta message (image+caption /
-        // poll prefix), not two separate messages.
+        // Real Meta type=template send (by name) so the template's own buttons
+        // render and inbound taps are captured. An optional shared header image
+        // comes from the Media section (for IMAGE/VIDEO/DOCUMENT-header templates).
         const extras = mediaPoll.toApiFields() as Record<string, unknown>;
-        const hasExtras = Object.keys(extras).length > 0;
 
-        let data: Awaited<ReturnType<typeof sendFromTemplate>>;
-        if (hasExtras) {
-          data = await sendTemplateRich(
-            {
-              template_id: templateId,
-              recipients: [to],
-              ...(Object.keys(cleaned).length > 0 ? { variables: cleaned } : {}),
-              ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
-              ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
-              ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
-              ...(extras.filename ? { filename: String(extras.filename) } : {}),
-              ...(extras.poll_id ? { poll_id: String(extras.poll_id) } : {}),
-            },
-            waAccountId || undefined,
-          );
-        } else {
-          data = await sendFromTemplate(
-            {
-              template_id: templateId,
-              recipients: [to],
-              ...(Object.keys(cleaned).length > 0 ? { variables: cleaned } : {}),
-            },
-            waAccountId || undefined,
-          );
-        }
+        const data = await sendApprovedTemplateBulk(
+          {
+            template_name: selectedMetaTpl.name,
+            language_code: (selectedMetaTpl.language as string) || "en",
+            recipients: [to],
+            param_map: buildParamMap(),
+            ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
+            ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
+            ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
+          },
+          waAccountId || undefined,
+        );
 
         const first = data.results?.[0];
         setResult({
@@ -666,24 +661,27 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
     (mediaPoll.state.mediaMode === "url" && mediaPoll.state.mediaUrl.trim()) ||
     (mediaPoll.state.mediaMode === "file" && mediaPoll.state.mediaFile));
 
+  // Approved template chosen, every body param mapped, and — if the template has
+  // a media header — a shared image/document attached from the Media section.
+  const metaMediaProvided =
+    (mediaPoll.state.mediaMode === "url" && !!mediaPoll.state.mediaUrl.trim()) ||
+    (mediaPoll.state.mediaMode === "file" && !!mediaPoll.state.mediaFile);
   const canSendTemplate =
-    !!templateId &&
-    requiredKeys.every((k) => (variables[k] ?? "").trim().length > 0);
+    !!selectedMetaTpl &&
+    metaBodyTokens.every((t) => (paramSources[t] || "name").length > 0) &&
+    (!metaNeedsImage || metaMediaProvided);
 
   return (
     <div className="space-y-4 p-1">
       {/* Message type */}
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message Type</Label>
-        <Select value={msgType} onValueChange={(v) => setMsgType(v as "text" | "template")}>
-          <SelectTrigger className="h-9 text-sm border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="text">Text message</SelectItem>
-            <SelectItem value="template">Approved template</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-sm text-foreground">
+          Approved template
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          WhatsApp messages are sent using approved templates only.
+        </p>
       </div>
 
       {/* Message content */}
@@ -706,102 +704,107 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
       ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Template</Label>
-            {templatesLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</div>
-            ) : templatesError ? (
-              <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{templatesError}</AlertDescription></Alert>
-            ) : templates.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground flex items-center justify-between gap-3">
-                <span>No approved WhatsApp templates yet. Create one or import from Meta.</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px] gap-1"
-                  onClick={() => setCreateTemplateOpen(true)}
-                >
-                  <Plus className="w-3 h-3" />
-                  Create template
-                </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Approved template</Label>
+              <button
+                type="button"
+                onClick={() => { setMetaTpls([]); setMetaTplName(""); }}
+                disabled={metaTplLoading}
+                className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+              >
+                {metaTplLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Reload
+              </button>
+            </div>
+            {metaTplLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…</div>
+            ) : metaTplError ? (
+              <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{metaTplError}</AlertDescription></Alert>
+            ) : metaTpls.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground">
+                No approved Meta templates found. Create and get one approved in the Templates tab.
               </div>
             ) : (
-              <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select a WhatsApp template" /></SelectTrigger>
+              <Select value={metaTplName} onValueChange={setMetaTplName}>
+                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select an approved template" /></SelectTrigger>
                 <SelectContent>
-                  {templates.map((tpl) => (
-                    <SelectItem key={tpl.id} value={tpl.id}>
-                      {tpl.name} <span className="opacity-60 text-[11px] uppercase ml-1">({tpl.language || "—"})</span>
+                  {metaTpls.map((tpl) => (
+                    <SelectItem key={tpl.id} value={tpl.name}>
+                      {tpl.name} <span className="opacity-60 text-[11px] uppercase ml-1">({(tpl.language as string) || "—"})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            {selectedTemplate?.body_text && (
-              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed pt-1">
-                {selectedTemplate.body_text}
+            {selectedMetaTpl && (
+              <p className="text-[10.5px] text-muted-foreground/80 pt-0.5">
+                Live from Meta · only APPROVED templates shown · delivers outside the 24-hour window.
               </p>
-            )}
-            {!templatesLoading && !templatesError && templates.length > 0 && (
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <p className="text-[10.5px] text-muted-foreground/80">
-                  {templates.length} template{templates.length === 1 ? "" : "s"} available — manage them in the Templates tab.
-                </p>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-[11px] gap-1 px-2"
-                  onClick={() => setCreateTemplateOpen(true)}
-                >
-                  <Plus className="w-3 h-3" />
-                  New
-                </Button>
-              </div>
             )}
           </div>
 
-          {requiredKeys.length > 0 && (
+          {/* Per-recipient parameter mapping — each {{n}} resolves from a contact field. */}
+          {selectedMetaTpl && metaBodyTokens.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                Variables
-              </Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Parameters</Label>
               <p className="text-[11px] text-muted-foreground">
-                Fill placeholders not auto-filled from Contact ({"{{name}}"}, {"{{phone}}"}, {"{{email}}"} resolve at send time).
+                Map each placeholder to a contact field, or set fixed text. Fills in from the recipient's contact when sent.
               </p>
               <div className="space-y-1.5">
-                {requiredKeys.map((k) => (
-                  <div key={k} className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono text-muted-foreground w-24 shrink-0">{`{{${k}}}`}</span>
-                    <Input
-                      value={variables[k] ?? ""}
-                      onChange={(e) =>
-                        setVariables((prev) => ({ ...prev, [k]: e.target.value }))
-                      }
-                      placeholder={`Value for ${k}`}
-                      className="h-9 text-sm border-border"
-                    />
-                  </div>
-                ))}
+                {metaBodyTokens.map((tok) => {
+                  const src = paramSources[tok] || "name";
+                  const isAttr = src.startsWith("attr:");
+                  const isStatic = src.startsWith("static:");
+                  const preset = isAttr ? "attr" : isStatic ? "static" : src;
+                  return (
+                    <div key={tok} className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-mono text-muted-foreground w-12 shrink-0">{`{{${tok}}}`}</span>
+                      <Select
+                        value={preset}
+                        onValueChange={(v) =>
+                          setParamSources((prev) => ({
+                            ...prev,
+                            [tok]: v === "attr" ? "attr:" : v === "static" ? "static:" : v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-sm border-border w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Contact name</SelectItem>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="attr">Custom attribute…</SelectItem>
+                          <SelectItem value="static">Fixed text…</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {isAttr && (
+                        <Input
+                          value={src.slice("attr:".length)}
+                          onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `attr:${e.target.value}` }))}
+                          placeholder="attribute key (e.g. company)"
+                          className="h-9 text-sm border-border flex-1 min-w-[140px]"
+                        />
+                      )}
+                      {isStatic && (
+                        <Input
+                          value={src.slice("static:".length)}
+                          onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `static:${e.target.value}` }))}
+                          placeholder="same text for everyone"
+                          className="h-9 text-sm border-border flex-1 min-w-[140px]"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Approved Meta-side templates — import any one as a local template + auto-select */}
-          <MetaTemplateBrowser
-            waAccountId={waAccountId}
-            headerLabel="Use a Meta-approved template"
-            defaultOpen={false}
-            onUse={(local) => {
-              void refreshTemplates(local.id);
-            }}
-          />
-
-          <CreateTemplateDialog
-            open={createTemplateOpen}
-            onOpenChange={setCreateTemplateOpen}
-            onCreated={(tpl) => {
-              void refreshTemplates(tpl.id);
-            }}
-          />
+          {selectedMetaTpl && metaNeedsImage && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              This template has a {String(metaHeaderFormat).toLowerCase()} header — attach a shared {String(metaHeaderFormat).toLowerCase()} below (Media).
+            </p>
+          )}
         </div>
       )}
 
@@ -942,12 +945,15 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
 function BulkSendTab({
   waAccountId,
   prefillRecipients = [],
+  onUseImageBulkForTemplate,
 }: {
   waAccountId: string;
   prefillRecipients?: string[];
+  onUseImageBulkForTemplate?: (templateName: string) => void;
 }) {
-  const { sendBulk, sendFromTemplate, sendTemplateRich, getUsers, isLoading } = useWhatsAppCloud();
-  const [msgType, setMsgType] = useState<"text" | "template">("text");
+  const { sendBulk, sendFromTemplate, sendTemplateRich, getMessageTemplates, sendApprovedTemplateBulk, getUsers, isLoading } = useWhatsAppCloud();
+  // Policy: WhatsApp proactive sends are template-only (WHATSAPP_REQUIRE_TEMPLATE).
+  const [msgType] = useState<"text" | "template">("template");
   const [text, setText] = useState("");
   const [delayMs, setDelayMs] = useState(80);
   const [result, setResult] = useState<WASendBulkResult | null>(null);
@@ -1088,18 +1094,72 @@ function BulkSendTab({
   }, [msgType]);
 
   const selectedTemplate = templates.find((t) => t.id === templateId);
-  const templateKeys = (() => {
-    const found = new Set<string>();
-    const re = /{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(selectedTemplate?.body_text ?? "")) !== null) found.add(m[1]);
-    return Array.from(found);
-  })();
+  const templateKeys = getTemplateVariableKeys(selectedTemplate);
   const AUTOFILL = new Set(["name", "phone", "email"]);
   const requiredKeys = templateKeys.filter((k) => !AUTOFILL.has(k));
 
   // Reset variable values when the selected template changes.
   useEffect(() => { setVariables({}); }, [templateId]);
+
+  // ── Approved Meta templates (real type=template) + per-param field mapping ──
+  const [metaTpls, setMetaTpls] = useState<WAMessageTemplate[]>([]);
+  const [metaTplLoading, setMetaTplLoading] = useState(false);
+  const [metaTplError, setMetaTplError] = useState<string | null>(null);
+  const [metaTplName, setMetaTplName] = useState("");
+  // token -> source ("name" | "phone" | "email" | "attr:<key>" | "static:<value>")
+  const [paramSources, setParamSources] = useState<Record<string, string>>({});
+
+  // Load APPROVED Meta templates the first time the user enters template mode.
+  useEffect(() => {
+    if (msgType !== "template" || metaTpls.length > 0 || metaTplLoading) return;
+    let cancelled = false;
+    void (async () => {
+      setMetaTplLoading(true);
+      setMetaTplError(null);
+      try {
+        const res = await getMessageTemplates(waAccountId || undefined, {
+          status: "APPROVED",
+          limit: 100,
+        });
+        if (cancelled) return;
+        const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
+        setMetaTpls(list);
+      } catch (e) {
+        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : "Failed to load templates");
+      } finally {
+        if (!cancelled) setMetaTplLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgType]);
+
+  const selectedMetaTpl = metaTpls.find((t) => t.name === metaTplName) || null;
+  // Header format (IMAGE/VIDEO/DOCUMENT/TEXT) and body placeholder tokens, in order.
+  const metaHeaderFormat = (selectedMetaTpl?.components ?? []).find((c) => c.type === "HEADER")?.format;
+  const metaNeedsImage = metaHeaderFormat === "IMAGE" || metaHeaderFormat === "VIDEO" || metaHeaderFormat === "DOCUMENT";
+  const metaBodyTokens: string[] = (() => {
+    const body = (selectedMetaTpl?.components ?? []).find((c) => c.type === "BODY");
+    const text = body?.text ?? "";
+    const re = /{{\s*([^}]+?)\s*}}/g;
+    const seen = new Set<string>();
+    const out: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const tok = m[1].trim();
+      if (tok && !seen.has(tok)) { seen.add(tok); out.push(tok); }
+    }
+    return out;
+  })();
+  // Reset the field mapping when the selected approved template changes.
+  useEffect(() => { setParamSources({}); }, [metaTplName]);
+
+  // Build the param_map sent to the backend (each token -> contact-field source).
+  const buildParamMap = () =>
+    metaBodyTokens.map((tok, i) => ({
+      token: tok,
+      source: paramSources[tok] || (i === 0 ? "name" : "name"),
+    }));
 
   // Local create-template dialog — author a new one without leaving Send.
   const [createTemplateOpen, setCreateTemplateOpen] = useState(false);
@@ -1183,45 +1243,27 @@ function BulkSendTab({
     if (list.length > 500) { setError("Maximum 500 recipients per request."); return; }
     try {
       if (msgType === "template") {
-        if (!templateId) { setError("Pick a template first."); return; }
-        const cleaned: Record<string, string> = {};
-        for (const [k, v] of Object.entries(variables)) {
-          if (v.trim().length > 0) cleaned[k] = v.trim();
-        }
+        if (!selectedMetaTpl) { setError("Pick an approved template first."); return; }
 
-        // §1.4 — if the user attached media or a poll, hit /send-template-rich/
-        // so each recipient gets ONE Meta message (image+caption / poll prefix)
-        // and only ONE credit is charged per recipient.
+        // Real Meta type=template send. Each {{n}} resolves per recipient from
+        // the mapped contact field. An optional shared header image comes from
+        // the Media section (for IMAGE-header templates).
         const extras = mediaPoll.toApiFields() as Record<string, unknown>;
-        const hasExtras = Object.keys(extras).length > 0;
 
-        const data = hasExtras
-          ? await sendTemplateRich(
-              {
-                template_id: templateId,
-                recipients: list,
-                delay_ms: delayMs,
-                ...(Object.keys(cleaned).length > 0 ? { variables: cleaned } : {}),
-                ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
-                ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
-                ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
-                ...(extras.filename ? { filename: String(extras.filename) } : {}),
-                ...(extras.poll_id ? { poll_id: String(extras.poll_id) } : {}),
-              },
-              waAccountId || undefined,
-            )
-          : await sendFromTemplate(
-              {
-                template_id: templateId,
-                recipients: list,
-                delay_ms: delayMs,
-                ...(Object.keys(cleaned).length > 0 ? { variables: cleaned } : {}),
-              },
-              waAccountId || undefined,
-            );
+        const data = await sendApprovedTemplateBulk(
+          {
+            template_name: selectedMetaTpl.name,
+            language_code: (selectedMetaTpl.language as string) || "en",
+            recipients: list,
+            param_map: buildParamMap(),
+            ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
+            ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
+            ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
+          },
+          waAccountId || undefined,
+        );
 
-        // sendFromTemplate/sendTemplateRich return a shape compatible with
-        // WASendBulkResult once whatsapp_account_id is included.
+        // sendApprovedTemplateBulk returns the same shape as sendFromTemplate.
         setResult({
           whatsapp_account_id: data.whatsapp_account_id,
           total: data.total,
@@ -1293,8 +1335,15 @@ function BulkSendTab({
   const hasTextContent = !!(text.trim() || mediaPoll.state.pollId.trim() ||
     (mediaPoll.state.mediaMode === "url" && mediaPoll.state.mediaUrl.trim()) ||
     (mediaPoll.state.mediaMode === "file" && mediaPoll.state.mediaFile));
+  // Approved template chosen, and every body param has a source. If the template
+  // needs media (image header), require a shared image from the Media section.
+  const metaMediaProvided =
+    (mediaPoll.state.mediaMode === "url" && !!mediaPoll.state.mediaUrl.trim()) ||
+    (mediaPoll.state.mediaMode === "file" && !!mediaPoll.state.mediaFile);
   const hasTemplateContent =
-    !!templateId && requiredKeys.every((k) => (variables[k] ?? "").trim().length > 0);
+    !!selectedMetaTpl &&
+    metaBodyTokens.every((t) => (paramSources[t] || "name").length > 0) &&
+    (!metaNeedsImage || metaMediaProvided);
   const hasContent = msgType === "text" ? hasTextContent : hasTemplateContent;
   const sendDisabled =
     isLoading ||
@@ -1308,13 +1357,12 @@ function BulkSendTab({
       {/* Message type — Text vs Approved template */}
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message Type</Label>
-        <Select value={msgType} onValueChange={(v) => setMsgType(v as "text" | "template")}>
-          <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="text">Text message</SelectItem>
-            <SelectItem value="template">Approved template</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-sm text-foreground">
+          Approved template
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          WhatsApp messages are sent using approved templates only.
+        </p>
       </div>
 
       {msgType === "text" ? (
@@ -1330,98 +1378,125 @@ function BulkSendTab({
       ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Template</Label>
-            {templatesLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</div>
-            ) : templatesError ? (
-              <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{templatesError}</AlertDescription></Alert>
-            ) : templates.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground flex items-center justify-between gap-3">
-                <span>No approved WhatsApp templates yet. Create one or import from Meta.</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px] gap-1"
-                  onClick={() => setCreateTemplateOpen(true)}
-                >
-                  <Plus className="w-3 h-3" />
-                  Create template
-                </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Approved template</Label>
+              <button
+                type="button"
+                onClick={() => { setMetaTpls([]); setMetaTplName(""); }}
+                disabled={metaTplLoading}
+                className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+              >
+                {metaTplLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Reload
+              </button>
+            </div>
+            {metaTplLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…</div>
+            ) : metaTplError ? (
+              <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{metaTplError}</AlertDescription></Alert>
+            ) : metaTpls.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground">
+                No approved Meta templates found. Create and get one approved in the Templates tab.
               </div>
             ) : (
-              <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select a WhatsApp template" /></SelectTrigger>
+              <Select value={metaTplName} onValueChange={setMetaTplName}>
+                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select an approved template" /></SelectTrigger>
                 <SelectContent>
-                  {templates.map((tpl) => (
-                    <SelectItem key={tpl.id} value={tpl.id}>
-                      {tpl.name} <span className="opacity-60 text-[11px] uppercase ml-1">({tpl.language || "—"})</span>
+                  {metaTpls.map((tpl) => (
+                    <SelectItem key={tpl.id} value={tpl.name}>
+                      {tpl.name} <span className="opacity-60 text-[11px] uppercase ml-1">({(tpl.language as string) || "—"})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            {selectedTemplate?.body_text && (
-              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed pt-1">
-                {selectedTemplate.body_text}
+            {selectedMetaTpl && (
+              <p className="text-[10.5px] text-muted-foreground/80 pt-0.5">
+                Live from Meta · only APPROVED templates shown · delivers outside the 24-hour window.
               </p>
-            )}
-            {!templatesLoading && !templatesError && templates.length > 0 && (
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <p className="text-[10.5px] text-muted-foreground/80">
-                  {templates.length} template{templates.length === 1 ? "" : "s"} available — manage them in the Templates tab.
-                </p>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-[11px] gap-1 px-2"
-                  onClick={() => setCreateTemplateOpen(true)}
-                >
-                  <Plus className="w-3 h-3" />
-                  New
-                </Button>
-              </div>
             )}
           </div>
 
-          {requiredKeys.length > 0 && (
+          {/* Per-receiver parameter mapping — each {{n}} resolves from a contact field. */}
+          {selectedMetaTpl && metaBodyTokens.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Variables</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Parameters per receiver</Label>
               <p className="text-[11px] text-muted-foreground">
-                Shared values across all recipients. Contact data auto-fills {"{{name}}"}, {"{{phone}}"}, {"{{email}}"}.
+                Map each placeholder to a contact field — it fills in from each receiver's own contact when sent.
               </p>
               <div className="space-y-1.5">
-                {requiredKeys.map((k) => (
-                  <div key={k} className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono text-muted-foreground w-24 shrink-0">{`{{${k}}}`}</span>
-                    <Input
-                      value={variables[k] ?? ""}
-                      onChange={(e) => setVariables((prev) => ({ ...prev, [k]: e.target.value }))}
-                      placeholder={`Value for ${k}`}
-                      className="h-9 text-sm border-border"
-                    />
-                  </div>
-                ))}
+                {metaBodyTokens.map((tok) => {
+                  const src = paramSources[tok] || "name";
+                  const isAttr = src.startsWith("attr:");
+                  const isStatic = src.startsWith("static:");
+                  const preset = isAttr ? "attr" : isStatic ? "static" : src;
+                  return (
+                    <div key={tok} className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-mono text-muted-foreground w-12 shrink-0">{`{{${tok}}}`}</span>
+                      <Select
+                        value={preset}
+                        onValueChange={(v) =>
+                          setParamSources((prev) => ({
+                            ...prev,
+                            [tok]: v === "attr" ? "attr:" : v === "static" ? "static:" : v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-sm border-border w-40"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Contact name</SelectItem>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="attr">Custom attribute…</SelectItem>
+                          <SelectItem value="static">Fixed text…</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {isAttr && (
+                        <Input
+                          value={src.slice("attr:".length)}
+                          onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `attr:${e.target.value}` }))}
+                          placeholder="attribute key (e.g. company)"
+                          className="h-9 text-sm border-border flex-1 min-w-[140px]"
+                        />
+                      )}
+                      {isStatic && (
+                        <Input
+                          value={src.slice("static:".length)}
+                          onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `static:${e.target.value}` }))}
+                          placeholder="same text for everyone"
+                          className="h-9 text-sm border-border flex-1 min-w-[140px]"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Approved Meta-side templates — import any one as a local template + auto-select */}
-          <MetaTemplateBrowser
-            waAccountId={waAccountId}
-            headerLabel="Use a Meta-approved template"
-            defaultOpen={false}
-            onUse={(local) => {
-              void refreshTemplates(local.id);
-            }}
-          />
-
-          <CreateTemplateDialog
-            open={createTemplateOpen}
-            onOpenChange={setCreateTemplateOpen}
-            onCreated={(tpl) => {
-              void refreshTemplates(tpl.id);
-            }}
-          />
+          {selectedMetaTpl && metaNeedsImage && (
+            metaHeaderFormat === "IMAGE" && onUseImageBulkForTemplate ? (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 space-y-2">
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-snug">
+                  This template has an image header. Attach <span className="font-semibold">one shared image</span> below (Media), or send a
+                  {" "}<span className="font-semibold">different image to each receiver</span> — matched automatically by filename
+                  {" "}(e.g. <code className="font-mono">255712345678.jpg</code> or <code className="font-mono">Mary_Smith.png</code>).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onUseImageBulkForTemplate(selectedMetaTpl.name)}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-white text-[12px] font-semibold hover:bg-amber-600 transition active:scale-[0.98]"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" strokeWidth={2.4} />
+                  Upload one image per receiver →
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                This template has a {String(metaHeaderFormat).toLowerCase()} header — attach a shared {String(metaHeaderFormat).toLowerCase()} below (Media).
+              </p>
+            )
+          )}
         </div>
       )}
 
@@ -2471,6 +2546,12 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
 // ─── Templates Tab ────────────────────────────────────────────────────────────
 
 function TemplatesTab({ waAccountId }: { waAccountId: string }) {
+  // Two distinct template worlds live under this tab:
+  //   • "approved" — Meta-APPROVED templates synced live from the WhatsApp
+  //     Business API, sent via the Cloud API with resolved {{1}},{{2}} params.
+  //   • "local" — messaging.Template rows authored here, rendered to plain text.
+  const [templateMode, setTemplateMode] = useState<"approved" | "local">("approved");
+
   // Local WhatsApp templates (messaging.Template, channel=whatsapp).
   // The send pipeline renders these into plain WhatsApp text under the hood.
   const [templates, setTemplates] = useState<LocalTemplate[]>([]);
@@ -2511,6 +2592,41 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
 
   return (
     <div className="space-y-4 p-1">
+      {/* Sub-mode toggle: Meta-approved sender vs local template manager */}
+      <div
+        role="tablist"
+        aria-label="Template mode"
+        className="grid grid-cols-2 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-xl"
+      >
+        {[
+          { key: "approved" as const, label: "Approved (Meta)" },
+          { key: "local" as const, label: "Local" },
+        ].map(({ key, label }) => {
+          const active = templateMode === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTemplateMode(key)}
+              className={[
+                "h-9 rounded-lg text-[12.5px] font-bold tracking-tight transition-all duration-200",
+                active
+                  ? "bg-amber-500 text-white shadow-[0_2px_8px_rgba(245,158,11,0.35)]"
+                  : "text-foreground/70 active:bg-foreground/[0.04]",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {templateMode === "approved" ? (
+        <MetaTemplateMessenger waAccountId={waAccountId} />
+      ) : (
+        <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">WhatsApp Templates</Label>
@@ -2679,6 +2795,8 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
         onOpenChange={(o) => !o && setSendTpl(null)}
         waAccountId={waAccountId || undefined}
       />
+        </div>
+      )}
     </div>
   );
 }
@@ -3327,7 +3445,15 @@ interface BulkImageRow {
   name: string;
 }
 
-function BulkImageSendTab({ waAccountId }: { waAccountId: string }) {
+function BulkImageSendTab({
+  waAccountId,
+  prefill = null,
+  onPrefillConsumed,
+}: {
+  waAccountId: string;
+  prefill?: { templateName: string } | null;
+  onPrefillConsumed?: () => void;
+}) {
   const { createJob, getJob, listJobs, isLoading } = useWhatsAppBulkImageSend();
   // Load the user's address book on mount so we can auto-resolve each uploaded
   // image's filename to a contact (phone first, normalized name fallback —
@@ -3350,6 +3476,92 @@ function BulkImageSendTab({ waAccountId }: { waAccountId: string }) {
   const [job, setJob] = useState<WABulkImageJobDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
+
+  // ── Send mode: plain image + caption, or an approved template (image header) ──
+  const { getMessageTemplates } = useWhatsAppCloud();
+  // Policy: WhatsApp proactive sends are template-only — plain image+caption is
+  // disabled (WHATSAPP_REQUIRE_TEMPLATE), so default to (and stay on) template.
+  const [sendMode, setSendMode] = useState<"image" | "template">("template");
+  const [tplList, setTplList] = useState<WAMessageTemplate[]>([]);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [tplError, setTplError] = useState<string | null>(null);
+  const [tplName, setTplName] = useState<string>("");
+  // Body-variable values for the chosen template, keyed by placeholder token.
+  // Defaults to the {name} token so each recipient is personalized server-side.
+  const [tplVars, setTplVars] = useState<Record<string, string>>({});
+
+  // Arriving from the Text tab's "Upload one image per receiver" → start in
+  // template mode with that template pre-selected, then clear the hand-off so a
+  // later manual visit isn't forced back into template mode.
+  useEffect(() => {
+    if (!prefill?.templateName) return;
+    setSendMode("template");
+    setTplName(prefill.templateName);
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
+
+  // Lazy-load approved templates the first time the user switches to template mode.
+  useEffect(() => {
+    if (sendMode !== "template" || tplList.length > 0 || tplLoading) return;
+    let cancelled = false;
+    void (async () => {
+      setTplLoading(true);
+      setTplError(null);
+      try {
+        const res = await getMessageTemplates(waAccountId || undefined, { limit: 100 });
+        if (cancelled) return;
+        // Only APPROVED templates with an IMAGE header work for personalized
+        // image bulk send — the matched image is injected as that header.
+        const imgTpls = (res?.data?.graph?.data ?? []).filter(
+          (t) =>
+            t.status === "APPROVED" &&
+            (t.components ?? []).some((c) => c.type === "HEADER" && c.format === "IMAGE"),
+        );
+        setTplList(imgTpls);
+      } catch (e) {
+        if (!cancelled) setTplError(e instanceof Error ? e.message : "Failed to load templates");
+      } finally {
+        if (!cancelled) setTplLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sendMode]);
+
+  // Placeholder tokens ({{1}}, {{name}}, …) of the selected template's BODY, in order.
+  const selectedTpl = tplList.find((t) => t.name === tplName) || null;
+  const bodyTokens: string[] = (() => {
+    const body = (selectedTpl?.components ?? []).find((c) => c.type === "BODY");
+    const text = body?.text ?? "";
+    const re = /{{\s*([^}]+?)\s*}}/g;
+    const seen = new Set<string>();
+    const out: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const tok = m[1].trim();
+      if (tok && !seen.has(tok)) {
+        seen.add(tok);
+        out.push(tok);
+      }
+    }
+    return out;
+  })();
+
+  // Build the base `components` (BODY only — the image header is injected by the
+  // server per contact). Empty when the template has no body variables.
+  const buildTemplateComponents = (): unknown[] => {
+    if (bodyTokens.length === 0) return [];
+    const parameters = bodyTokens.map((tok, i) => {
+      const val = tplVars[tok] ?? (i === 0 ? "{name}" : "");
+      const p: Record<string, string> = { type: "text", text: val };
+      if (!/^\d+$/.test(tok)) p.parameter_name = tok;
+      return p;
+    });
+    return [{ type: "body", parameters }];
+  };
 
   useEffect(() => {
     // Big page so 5 000-name matching is fully client-side.
@@ -3545,7 +3757,11 @@ function BulkImageSendTab({ waAccountId }: { waAccountId: string }) {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
 
   const canSubmit =
-    files.length > 0 && contacts.length > 0 && !!waAccountId && !isLoading;
+    files.length > 0 &&
+    contacts.length > 0 &&
+    !!waAccountId &&
+    !isLoading &&
+    (sendMode === "image" || !!selectedTpl);
 
   const reset = () => {
     setFiles([]);
@@ -3588,13 +3804,23 @@ function BulkImageSendTab({ waAccountId }: { waAccountId: string }) {
     setJob(null);
     setActiveJobId(null);
     try {
+      const isTemplate = sendMode === "template";
       const res = await createJob({
         images: files,
         contacts,
-        caption: caption.trim() || undefined,
+        // Caption only applies to plain-image mode.
+        caption: isTemplate ? undefined : caption.trim() || undefined,
         whatsapp_account_id: waAccountId || undefined,
         wait,
         idempotency_key: idempotencyKey.trim() || undefined,
+        ...(isTemplate && selectedTpl
+          ? {
+              send_mode: "template" as const,
+              template_name: selectedTpl.name,
+              language_code: (selectedTpl.language as string) || "en",
+              components: buildTemplateComponents(),
+            }
+          : {}),
       });
       setJob(res);
       setActiveJobId(res.job_id);
@@ -4008,23 +4234,105 @@ function BulkImageSendTab({ waAccountId }: { waAccountId: string }) {
         </details>
       </div>
 
-      {/* Caption */}
+      {/* Send mode — template only (plain image + caption is disabled by policy). */}
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-          Caption (optional)
+          Send as
         </Label>
-        <Textarea
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          rows={2}
-          maxLength={1024}
-          className="text-xs resize-none border-border"
-          placeholder="Karibu {name}!"
-        />
-        <p className="text-[10.5px] text-muted-foreground">
-          Supports <span className="font-mono">{"{name}"}</span> · {caption.length}/1024
+        <div className="inline-flex rounded-xl border bg-muted/40 p-0.5 text-[12px]">
+          <span className="px-3 py-1 rounded-lg bg-background shadow-sm font-semibold">
+            Approved template
+          </span>
+        </div>
+        <p className="text-[10.5px] text-muted-foreground leading-snug">
+          Approved template with each contact's image as the header — delivers anytime.
+          WhatsApp messages are sent using approved templates only.
         </p>
       </div>
+
+      {sendMode === "image" ? (
+        /* Caption (image mode only) */
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+            Caption (optional)
+          </Label>
+          <Textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            rows={2}
+            maxLength={1024}
+            className="text-xs resize-none border-border"
+            placeholder="Karibu {name}!"
+          />
+          <p className="text-[10.5px] text-muted-foreground">
+            Supports <span className="font-mono">{"{name}"}</span> · {caption.length}/1024
+          </p>
+        </div>
+      ) : (
+        /* Template picker (template mode) */
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+            Template (image header)
+          </Label>
+          {tplLoading ? (
+            <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…
+            </p>
+          ) : tplError ? (
+            <p className="text-[11px] text-destructive">{tplError}</p>
+          ) : tplList.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              No approved templates with an image header. Create one in the Templates tab.
+            </p>
+          ) : (
+            <>
+              <select
+                value={tplName}
+                onChange={(e) => {
+                  setTplName(e.target.value);
+                  setTplVars({});
+                }}
+                className="w-full h-9 rounded-lg border border-border bg-background text-xs px-2"
+              >
+                <option value="">Select a template…</option>
+                {tplList.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name} ({(t.language as string) || "en"})
+                  </option>
+                ))}
+              </select>
+
+              {/* Body-variable inputs — tokens {name}/{phone} personalize per contact. */}
+              {selectedTpl && bodyTokens.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10.5px] text-muted-foreground">
+                    Body variables — use <span className="font-mono">{"{name}"}</span> or{" "}
+                    <span className="font-mono">{"{phone}"}</span> to personalize each recipient.
+                  </p>
+                  {bodyTokens.map((tok, i) => (
+                    <div key={tok} className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-muted-foreground w-16 flex-shrink-0">
+                        {`{{${tok}}}`}
+                      </span>
+                      <Input
+                        value={tplVars[tok] ?? (i === 0 ? "{name}" : "")}
+                        onChange={(e) =>
+                          setTplVars((prev) => ({ ...prev, [tok]: e.target.value }))
+                        }
+                        placeholder={i === 0 ? "{name}" : "value or {name}/{phone}"}
+                        className="h-8 text-xs border-border"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[10.5px] text-muted-foreground leading-snug">
+                Each matched image becomes the template's header. Unmatched contacts are skipped.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Advanced — idempotency key (collapsed by default). */}
       <details className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
@@ -4245,6 +4553,10 @@ function BulkSendCombined({
   prefillRecipients?: string[];
 }) {
   const [mode, setMode] = useState<BulkMode>("text");
+  // When the user picks an image-header template in the Text tab and chooses
+  // "one image per receiver", carry that template into the Image tab so the
+  // matched-image send continues with it already selected.
+  const [imageBulkPrefill, setImageBulkPrefill] = useState<{ templateName: string } | null>(null);
 
   const tabs: Array<{ key: BulkMode; label: string; icon: typeof Send; activeClass: string }> = [
     {
@@ -4294,9 +4606,20 @@ function BulkSendCombined({
       </div>
 
       {mode === "text" ? (
-        <BulkSendTab waAccountId={waAccountId} prefillRecipients={prefillRecipients} />
+        <BulkSendTab
+          waAccountId={waAccountId}
+          prefillRecipients={prefillRecipients}
+          onUseImageBulkForTemplate={(templateName) => {
+            setImageBulkPrefill({ templateName });
+            setMode("image");
+          }}
+        />
       ) : (
-        <BulkImageSendTab waAccountId={waAccountId} />
+        <BulkImageSendTab
+          waAccountId={waAccountId}
+          prefill={imageBulkPrefill}
+          onPrefillConsumed={() => setImageBulkPrefill(null)}
+        />
       )}
     </div>
   );

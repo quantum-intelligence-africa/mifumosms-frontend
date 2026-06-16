@@ -61,7 +61,7 @@ export interface WABulkImageCreatePayload {
   images: File[];
   /** Contact list (phone in E.164; optional name for caption `{name}` substitution). */
   contacts: WABulkContact[];
-  /** Optional caption; supports `{name}` placeholder. */
+  /** Optional caption; supports `{name}` placeholder (image mode only). */
   caption?: string;
   /** Copilot id (omit to use the user's default WhatsApp-linked copilot). */
   whatsapp_account_id?: string;
@@ -69,6 +69,18 @@ export interface WABulkImageCreatePayload {
   wait?: boolean;
   /** Replay protection — same key returns the existing completed job within 24h. */
   idempotency_key?: string;
+  /** "image" (plain image + caption) or "template" (approved template, image header). */
+  send_mode?: "image" | "template";
+  /** Required when send_mode === "template". */
+  template_name?: string;
+  /** Template language code (e.g. "en", "sw"). Defaults to "en" server-side. */
+  language_code?: string;
+  /**
+   * Base template components (body/buttons) as a JSON-serializable array. The
+   * per-contact image header is injected server-side, so omit the header here.
+   * `{name}`/`{phone}` tokens in body text params are personalized per contact.
+   */
+  components?: unknown[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -132,6 +144,12 @@ export const useWhatsAppBulkImageSend = () => {
       if (payload.wait) form.append("wait", "1");
       if (payload.idempotency_key)
         form.append("idempotency_key", payload.idempotency_key);
+      // Template mode: send_mode + template selection (+ optional base components).
+      if (payload.send_mode) form.append("send_mode", payload.send_mode);
+      if (payload.template_name) form.append("template_name", payload.template_name);
+      if (payload.language_code) form.append("language_code", payload.language_code);
+      if (payload.components && payload.components.length > 0)
+        form.append("components", JSON.stringify(payload.components));
       for (const file of payload.images) {
         form.append("images", file);
       }

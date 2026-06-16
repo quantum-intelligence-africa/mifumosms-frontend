@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npm run *)",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\mages\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\d--mifumosms-frontend\\\\\\\\810b8c3c-f180-47c6-8eeb-0aeb337f50e7\\\\\\\\tasks\\\\\\\\btck2gcvo.output)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

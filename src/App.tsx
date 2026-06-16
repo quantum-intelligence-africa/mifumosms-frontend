@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "next-themes";
@@ -13,44 +13,55 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/layout/PullToRefreshIndicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PWAManager } from "@/components/pwa/PWAManager";
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Smsactivation from "./pages/Smsactivation";
-import Dashboard from "./pages/Dashboard";
-import Conversations from "./pages/Conversations";
-import Contacts from "./pages/Contacts";
-import Campaigns from "./pages/Campaigns";
-import Templates from "./pages/Templates";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import Notifications from "./pages/Notifications";
-// import NotificationSettings from "./pages/NotificationSettings";
-import SendSMS from "./pages/sms/SendSMS";
-import SendHub from "./pages/SendHub";
-import PurchaseSMS from "./pages/sms/PurchaseSMS";
-import SenderNames from "./pages/sms/SenderNames";
-import PurchaseHistory from "./pages/sms/PurchaseHistory";
-import IntegrationGuide from "./pages/IntegrationGuide";
-import PertinaIntegration from "./pages/PertinaIntegration";
-import NotFound from "./pages/NotFound";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import PertinaInsights from "./pages/PertinaInsights";
-import Developer from "./pages/Developer";
-import AIAgents from "./pages/AIAgents";
-import VoiceAgents from "./pages/VoiceAgents";
-import WhatsAppCloud from "./pages/WhatsAppCloud";
-import CreateWhatsAppTemplate from "./pages/CreateWhatsAppTemplate";
-import WhatsAppBroadcast from "./pages/WhatsAppBroadcast";
+
+// Pages are lazily loaded so each route ships as its own chunk. This keeps the
+// initial bundle small — heavy deps (charts, xlsx, pdf) only download when a
+// route that uses them is visited.
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Smsactivation = lazy(() => import("./pages/Smsactivation"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Conversations = lazy(() => import("./pages/Conversations"));
+const Contacts = lazy(() => import("./pages/Contacts"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const Templates = lazy(() => import("./pages/Templates"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+// const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const SendSMS = lazy(() => import("./pages/sms/SendSMS"));
+const SendHub = lazy(() => import("./pages/SendHub"));
+const PurchaseSMS = lazy(() => import("./pages/sms/PurchaseSMS"));
+const SenderNames = lazy(() => import("./pages/sms/SenderNames"));
+const PurchaseHistory = lazy(() => import("./pages/sms/PurchaseHistory"));
+const IntegrationGuide = lazy(() => import("./pages/IntegrationGuide"));
+const PertinaIntegration = lazy(() => import("./pages/PertinaIntegration"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const PertinaInsights = lazy(() => import("./pages/PertinaInsights"));
+const Developer = lazy(() => import("./pages/Developer"));
+const AIAgents = lazy(() => import("./pages/AIAgents"));
+const VoiceAgents = lazy(() => import("./pages/VoiceAgents"));
+const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
+const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
+const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
 // @ts-ignore — standalone JSX admin dashboard
-import SendaAdmin from "../senda-dashboard.jsx";
+const SendaAdmin = lazy(() => import("../senda-dashboard.jsx"));
 
 const queryClient = new QueryClient();
 
 const CANONICAL_BASE_URL = "https://sms.mifumolabs.com";
+
+// Shown while a lazily-loaded route chunk is being fetched.
+const RouteFallback = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+  </div>
+);
 
 // Component to handle route-based key for forcing remounts and SEO canonicals
 const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
@@ -136,6 +147,7 @@ const AppContent = () => {
       />
       <PWAManager />
       <RouteAnimator>
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/whatsapp-broadcast" element={<WhatsAppBroadcast />} />
@@ -293,6 +305,7 @@ const AppContent = () => {
         <Route path="/admin" element={<SendaAdmin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </RouteAnimator>
     </>
   );

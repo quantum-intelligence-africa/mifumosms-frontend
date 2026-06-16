@@ -75,6 +75,7 @@ import { apiClient, User as UserType } from "@/lib/api";
 import { useSecurity } from "@/hooks/useSecurity";
 import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
 import { SettingsAPI } from "./SettingsAPI";
+import WhatsAppCredentialsAdmin from "@/components/settings/WhatsAppCredentialsAdmin";
 import { useSMSVerification } from "@/hooks/useSMSVerification";
 import { useTenants } from "@/hooks/useTenants";
 import { useTeam, TeamMember, TeamRole } from "@/hooks/useTeam";
@@ -582,7 +583,17 @@ const Settings = () => {
       description: "Store Meta Cloud API credentials for AI Copilots",
       icon: MessageCircle,
       color: "bg-emerald-500"
-    }
+    },
+    // Platform-admin only: manage default + per-partner WhatsApp send credentials.
+    ...((user?.is_staff || user?.is_superuser)
+      ? [{
+          id: "wa_admin",
+          title: "WhatsApp Credentials (Admin)",
+          description: "Platform default + per-partner Meta WhatsApp credentials",
+          icon: MessageCircle,
+          color: "bg-teal-600"
+        } as SettingsCategory]
+      : [])
   ];
 
   // Initialize profile data from user context
@@ -2498,6 +2509,9 @@ const Settings = () => {
 
       case "partina":
         return <PartinaRequestSection />;
+
+      case "wa_admin":
+        return <WhatsAppCredentialsAdmin />;
 
       case "whatsapp": {
         const handleWaCredentials = async (method: "PUT" | "PATCH") => {

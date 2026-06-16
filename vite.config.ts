@@ -26,6 +26,32 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: path.resolve(__dirname, "index.html"),
       },
+      output: {
+        // Split heavy/shared dependencies into their own chunks so the main
+        // bundle stays small and vendors cache independently across deploys.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (
+            id.includes("recharts") ||
+            id.includes("chart.js") ||
+            id.includes("react-chartjs-2") ||
+            id.includes("/d3-")
+          )
+            return "charts";
+          if (id.includes("xlsx")) return "xlsx";
+          if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
+          if (id.includes("qrcode")) return "qrcode";
+          if (id.includes("@radix-ui")) return "radix";
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/react-router") ||
+            id.includes("/scheduler/")
+          )
+            return "react-vendor";
+          return "vendor";
+        },
+      },
     },
   },
 }));

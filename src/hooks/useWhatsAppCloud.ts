@@ -280,6 +280,66 @@ export interface WACreateTemplatePayload {
 	components: WATemplateComponent[];
 }
 
+// ─── Meta Cloud API template-send payloads ───────────────────────────────────
+// Sending an approved template back to Meta requires the exact Cloud API
+// `components` shape: one entry per component that carries variables, each with
+// an ordered `parameters` array. See
+// https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
+
+export interface WATemplateTextParameter {
+	type: "text";
+	text: string;
+	/** Set for Meta named parameters ({{customer_name}}); omitted for positional {{1}}. */
+	parameter_name?: string;
+}
+
+export interface WATemplateMediaParameter {
+	type: "image" | "video" | "document";
+	image?: { link: string };
+	video?: { link: string };
+	document?: { link: string; filename?: string };
+}
+
+export interface WATemplateCurrencyParameter {
+	type: "currency";
+	currency: { fallback_value: string; code: string; amount_1000: number };
+}
+
+export interface WATemplateDateTimeParameter {
+	type: "date_time";
+	date_time: { fallback_value: string };
+}
+
+export type WATemplateSendParameter =
+	| WATemplateTextParameter
+	| WATemplateMediaParameter
+	| WATemplateCurrencyParameter
+	| WATemplateDateTimeParameter;
+
+export interface WATemplateSendComponent {
+	type: "header" | "body" | "button";
+	/** Required for BUTTON components. */
+	sub_type?: "quick_reply" | "url" | "catalog" | "copy_code";
+	/** Required for BUTTON components — the zero-based button index, as a string. */
+	index?: string;
+	parameters: WATemplateSendParameter[];
+}
+
+// Single-recipient approved-template send via the Meta Cloud API. The backend
+// `/send/` endpoint forwards `template` to Graph verbatim, so the `components`
+// array MUST follow Meta's structure exactly.
+export interface WASendTemplateMessagePayload {
+	to: string;
+	template_name: string;
+	language_code: string;
+	components?: WATemplateSendComponent[];
+	// Optional header-media upload: when set, the file is uploaded to Meta and the
+	// resulting media_id is bound into the template's header server-side (more
+	// reliable than a public link). `media_type` is image/video/document.
+	media_file?: File;
+	media_type?: "image" | "video" | "document";
+}
+
 export interface WACreateTemplateResult {
 	name: string;
 	language: WATemplateLanguage;
@@ -327,6 +387,25 @@ export interface WASendFromTemplatePayload {
 	user_ids?: string[];
 	variables?: Record<string, string | number>;
 	delay_ms?: number;
+}
+
+/** One body-parameter mapping: which contact field fills placeholder `token`. */
+export interface WATemplateParamMapping {
+	/** Placeholder token: "1"/"2" (positional) or a name ("customer_name"). */
+	token: string;
+	/** "name" | "phone" | "email" | "attr:<key>" | "static:<value>". */
+	source: string;
+}
+
+export interface WASendApprovedTemplateBulkPayload {
+	template_name: string;
+	language_code?: string;
+	recipients: string[];
+	param_map?: WATemplateParamMapping[];
+	/** Optional shared header image for all recipients (URL or uploaded file). */
+	media_url?: string;
+	media_file?: File;
+	media_type?: "image" | "video" | "document";
 }
 
 export interface WASendFromTemplateRow {
@@ -516,10 +595,30 @@ export const useWhatsAppCloud = () => {
 			headers: { "Content-Type": "application/json", ...getAuthHeaders() },
 			body: JSON.stringify(body),
 		});
-		const json = await res.json();
-		if (!json.success) {
-			const msg = json.message || json.error || "Request failed";
-			throw new Error(msg);
+		// Gateway/proxy errors (502/504) and crashes return HTML, not JSON — guard
+		// the parse so callers get a legible status instead of "Unexpected token <".
+		const json = await res.json().catch(() => null);
+		if (!res.ok) {
+			const serverMsg = json?.message || json?.error || json?.detail;
+			const gateway =
+				res.status === 502 || res.status === 503 || res.status === 504
+					? "WhatsApp service is temporarily unavailable"
+					: null;
+			throw new Error(serverMsg || gateway || `Server error (HTTP ${res.status})`);
+		}
+		if (!json) {
+			throw new Error(`Unexpected empty response (HTTP ${res.status})`);
+		}
+		if (json.success === false) {
+			// WhatsApp send failures nest Meta's Graph error under data.* — surface the
+			// most specific message (e.g. the #132000 param-count detail) instead of a
+			// generic "Request failed".
+			const d = json?.data ?? {};
+			const metaErr =
+				d?.data?.error?.error_data?.details ||
+				d?.data?.error?.message ||
+				d?.error;
+			throw new Error(metaErr || json.message || json.error || "Request failed");
 		}
 		return json.data as T;
 	};
@@ -906,6 +1005,81 @@ export const useWhatsAppCloud = () => {
 		}
 	};
 
+	// ── Bulk APPROVED Meta template with per-recipient field-mapped params ─────
+	// Real type=template send (delivers outside the 24h window). Each {{n}} maps
+	// to a contact field via `param_map` and resolves per recipient server-side.
+	const sendApprovedTemplateBulk = async (
+		payload: WASendApprovedTemplateBulkPayload,
+		waAccountId?: string,
+	): Promise<WASendFromTemplateResult> => {
+		setIsLoading(true);
+		try {
+			const url = waAccountId
+				? buildApiUrl(WA.SEND_APPROVED_TEMPLATE_BULK(waAccountId))
+				: buildApiUrl(WA.SEND_APPROVED_TEMPLATE_BULK_AUTO);
+
+			// Multipart only when a header image file is attached; else JSON.
+			let res: Response;
+			if (payload.media_file instanceof File) {
+				const form = new FormData();
+				form.append("template_name", payload.template_name);
+				if (payload.language_code) form.append("language_code", payload.language_code);
+				form.append("recipients", JSON.stringify(payload.recipients));
+				form.append("param_map", JSON.stringify(payload.param_map ?? []));
+				if (payload.media_type) form.append("media_type", payload.media_type);
+				form.append("media_file", payload.media_file);
+				res = await fetch(url, { method: "POST", headers: getAuthHeaders(), body: form });
+			} else {
+				res = await fetch(url, {
+					method: "POST",
+					headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+					body: JSON.stringify({
+						template_name: payload.template_name,
+						language_code: payload.language_code,
+						recipients: payload.recipients,
+						param_map: payload.param_map ?? [],
+						...(payload.media_url ? { media_url: payload.media_url } : {}),
+						...(payload.media_type ? { media_type: payload.media_type } : {}),
+					}),
+				});
+			}
+
+			const json = await res.json().catch(() => null);
+			if (res.status === 402 && json && typeof json.credits_required === "number") {
+				throw new WAInsufficientCreditsError(
+					json.message || "Insufficient WhatsApp credits.",
+					Number(json.credits_required) || 0,
+					Number(json.credits_available) || 0,
+				);
+			}
+			if (!res.ok) {
+				const msg = json?.message || json?.error || json?.detail || `HTTP ${res.status}`;
+				throw new Error(msg);
+			}
+			const data = json as WASendFromTemplateResult;
+			toast({
+				title: data.success ? "Template sent" : "Template send completed with errors",
+				description: `${data.sent} sent, ${data.failed} failed of ${data.total}`,
+				variant: data.success ? "default" : "destructive",
+			});
+			return data;
+		} catch (err) {
+			if (err instanceof WAInsufficientCreditsError) {
+				toast({
+					title: "Out of WhatsApp credits",
+					description: `Need ${err.credits_required}, have ${err.credits_available}. Top up to continue.`,
+					variant: "destructive",
+				});
+				throw err;
+			}
+			const msg = err instanceof Error ? err.message : "Bulk template send failed";
+			toast({ title: "Send failed", description: msg, variant: "destructive" });
+			throw err;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	// ── Send rich (template + media + poll) — §1.4 ────────────────────────────
 	// One call delivers template body + optional image/document/video + optional
 	// poll as a single Meta message. Multipart is auto-detected from media_file.
@@ -1116,6 +1290,57 @@ export const useWhatsAppCloud = () => {
 				: { ...payload, whatsapp_account_id: waAccountId };
 
 			const data = await post<WASendSingleResult>(url, body);
+			toast({ title: "Template sent", description: `Delivered to ${data.to}` });
+			return data;
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Send failed";
+			toast({ title: "Send failed", description: msg, variant: "destructive" });
+			throw err;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	// ── Send an approved Meta template (Cloud API structure) ──────────────────
+	// Posts to the same `/send/` endpoint as sendSingle but with `type: "template"`
+	// and the canonical Meta `template` block. Use this for messages built from a
+	// Meta-APPROVED template with resolved {{1}}, {{2}} … parameters.
+	const sendTemplateMessage = async (
+		payload: WASendTemplateMessagePayload,
+		waAccountId?: string,
+	): Promise<WASendSingleResult> => {
+		setIsLoading(true);
+		try {
+			const url = waAccountId
+				? buildApiUrl(WA.SEND(waAccountId))
+				: buildApiUrl(WA.SEND_AUTO);
+
+			const body: Record<string, unknown> = {
+				to: payload.to,
+				type: "template",
+				template_name: payload.template_name,
+				language_code: payload.language_code,
+			};
+			// Only attach components when the template actually has parameters —
+			// sending an empty/extra component trips Meta's #132000 param-count check.
+			if (payload.components && payload.components.length > 0) {
+				body.components = payload.components;
+			}
+			// On the auto endpoint the server resolves the account itself; pass the
+			// id explicitly only when we actually have one for the scoped route.
+			if (waAccountId) body.whatsapp_account_id = waAccountId;
+			// Header-media upload: attach the file so the server uploads it to Meta
+			// and binds the media_id into the header. postSmart switches to multipart
+			// automatically when a File is present (otherwise it posts JSON).
+			if (payload.media_file instanceof File) {
+				body.media_file = payload.media_file;
+				if (payload.media_type) body.media_type = payload.media_type;
+			}
+
+			const data = await postSmart<WASendSingleResult>(
+				url,
+				body as WAMediaFields & Record<string, unknown>,
+			);
 			toast({ title: "Template sent", description: `Delivered to ${data.to}` });
 			return data;
 		} catch (err) {
@@ -1453,12 +1678,14 @@ export const useWhatsAppCloud = () => {
 		deleteMessageTemplate,
 		sendFromTemplate,
 		sendTemplateRich,
+		sendApprovedTemplateBulk,
 		simplePreviewMetaTemplate,
 		simpleCreateMetaTemplate,
 		getAvailableVariables,
 		getCredentials,
 		saveCredentials,
 		sendTemplate,
+		sendTemplateMessage,
 		getPollResults,
 		getPollResultsByName,
 		resolvePollId,

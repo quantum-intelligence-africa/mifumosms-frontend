@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -15,28 +16,36 @@ import {
   AlertTriangle,
   Ban,
   BarChart3,
+  Bell,
   CheckCircle2,
   Clock,
   CreditCard,
   DollarSign,
   Download,
+  Eye,
+  EyeOff,
   ExternalLink,
   Globe,
   Handshake,
   Hourglass,
   LogOut,
   Mail,
+  Megaphone,
   Menu,
   MessageSquare,
   MoonStar,
   MoreHorizontal,
   Package,
+  RefreshCw,
+  Search,
+  Send,
   ShieldCheck,
   Tag,
   UserCheck,
   UserX,
   Users,
   Wallet,
+  X,
   XCircle,
   Zap,
 } from 'lucide-react';
@@ -434,6 +443,10 @@ body{font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
 @keyframes toastIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
 @keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(120%)}}
 @keyframes gradPulse{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(26px,-32px) scale(1.08)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-30px,24px) scale(1.1)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes shimmerText{0%{background-position:-200% center}100%{background-position:200% center}}
 
 .senda-fade-in{animation:fadeSlideIn .45s cubic-bezier(.25,.46,.45,.94) both}
 .senda-fade-up{animation:fadeSlideUp .5s cubic-bezier(.25,.46,.45,.94) both}
@@ -3053,6 +3066,168 @@ function PackageDetailPanel({ pkg, transactions, accent, onClose }) {
 // ─── Partners Tab ─────────────────────────────────────────────────────────────
 const TIER_COLOR = { Platinum:'#6366f1', Gold:AMBER, Silver:'#94a3b8' };
 
+function PartnerWhatsAppCredentials({ partner }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [cred, setCred]           = useState(null);
+  const [form, setForm]           = useState({
+    label: '', phone_number_id: '', access_token: '',
+    waba_id: '', verify_token: '', graph_api_base: '', is_active: true,
+  });
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    adminFetch(`/partners/${partner.id}/whatsapp-credentials`, {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          const d = res.data || {};
+          setCred(d);
+          setForm({
+            label: d.label || '', phone_number_id: d.phone_number_id || '',
+            access_token: '', waba_id: d.waba_id || '', verify_token: d.verify_token || '',
+            graph_api_base: d.graph_api_base || '', is_active: d.is_active !== false,
+          });
+        } else {
+          showToast && showToast(res.error?.message || 'Failed to load WhatsApp credentials', 'error');
+        }
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [partner.id, onLogout, showToast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = () => {
+    if (!form.phone_number_id.trim()) { showToast && showToast('Phone Number ID is required', 'error'); return; }
+    if (!cred?.access_token_set && !form.access_token.trim()) {
+      showToast && showToast('Access Token is required', 'error'); return;
+    }
+    setSaving(true);
+    const body = {
+      label: form.label.trim(), phone_number_id: form.phone_number_id.trim(),
+      waba_id: form.waba_id.trim(), verify_token: form.verify_token.trim(),
+      graph_api_base: form.graph_api_base.trim(), is_active: form.is_active,
+    };
+    if (form.access_token.trim()) body.access_token = form.access_token.trim();
+    adminFetch(`/partners/${partner.id}/whatsapp-credentials`, { method: 'PUT', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast && showToast('WhatsApp credentials saved', 'success'); load(); }
+        else showToast && showToast(res.error?.message || 'Save failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setSaving(false));
+  };
+
+  const verify = () => {
+    setVerifying(true);
+    adminFetch(`/partners/${partner.id}/whatsapp-credentials/verify`, { method: 'POST' }, onLogout)
+      .then(res => {
+        if (res.success) showToast && showToast('Credentials verified with Meta', 'success');
+        else showToast && showToast(res.error?.message || 'Verification failed', 'error');
+        load();
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setVerifying(false));
+  };
+
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 5, display: 'block', textTransform: 'uppercase', letterSpacing: '.04em' };
+  const fieldWrap  = { marginBottom: 14 };
+
+  if (loading) {
+    return <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading WhatsApp credentials…</div>;
+  }
+
+  const statusPill = (() => {
+    if (!cred?.configured) return { t: 'Not configured', bg: '#f1f5f9', fg: '#94a3b8' };
+    if (!cred?.is_active)  return { t: 'Disabled',       bg: `${RED}12`,  fg: RED };
+    if (cred?.verified)    return { t: 'Verified',       bg: `${GREEN}18`, fg: GREEN };
+    return { t: 'Unverified', bg: `${AMBER}18`, fg: AMBER };
+  })();
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 32px' }}>
+      <div className="senda-card" style={{ maxWidth: 720, padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Partner WhatsApp Credentials</span>
+          <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: statusPill.bg, color: statusPill.fg }}>
+            {statusPill.t}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 18, lineHeight: 1.5 }}>
+          Meta WhatsApp Cloud API credentials used to send <strong>this partner's</strong> messages —
+          and the messages of every client/sub-tenant they create.
+          {cred?.display_phone_number ? <> Connected number: <strong>{cred.display_phone_number}</strong>.</> : null}
+        </div>
+
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Label</label>
+          <input className="senda-input" style={{ width: '100%' }} placeholder="Business / WABA name"
+            value={form.label} onChange={e => setF('label', e.target.value)} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Phone Number ID *</label>
+            <input className="senda-input" style={{ width: '100%' }} placeholder="e.g. 123456789012345"
+              value={form.phone_number_id} onChange={e => setF('phone_number_id', e.target.value)} />
+          </div>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>WABA ID</label>
+            <input className="senda-input" style={{ width: '100%' }} placeholder="Optional"
+              value={form.waba_id} onChange={e => setF('waba_id', e.target.value)} />
+          </div>
+        </div>
+
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Access Token {cred?.access_token_set ? '(leave blank to keep current)' : '*'}</label>
+          <input className="senda-input" type="password" autoComplete="new-password" style={{ width: '100%' }}
+            placeholder={cred?.access_token_set ? `Stored ${cred.masked_token} — type to replace` : 'Meta long-lived / system-user token'}
+            value={form.access_token} onChange={e => setF('access_token', e.target.value)} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Verify Token</label>
+            <input className="senda-input" style={{ width: '100%' }} placeholder="Webhook verify token"
+              value={form.verify_token} onChange={e => setF('verify_token', e.target.value)} />
+          </div>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Graph API Base</label>
+            <input className="senda-input" style={{ width: '100%' }} placeholder="https://graph.facebook.com/v24.0"
+              value={form.graph_api_base} onChange={e => setF('graph_api_base', e.target.value)} />
+          </div>
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#475569', margin: '4px 0 18px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={form.is_active} onChange={e => setF('is_active', e.target.checked)} />
+          Active
+        </label>
+
+        {cred?.last_verify_error && !cred?.verified && (
+          <div style={{ fontSize: 12, color: RED, background: `${RED}0c`, border: `1px solid ${RED}33`, borderRadius: 8, padding: '8px 12px', marginBottom: 14 }}>
+            {cred.last_verify_error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={save} disabled={saving}
+            style={{ height: 38, padding: '0 18px', border: 'none', borderRadius: 9, background: BRAND, color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', opacity: saving ? .6 : 1 }}>
+            {saving ? 'Saving…' : (cred?.configured ? 'Update credentials' : 'Save credentials')}
+          </button>
+          <button onClick={verify} disabled={verifying || !cred?.configured}
+            style={{ height: 38, padding: '0 18px', borderRadius: 9, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontWeight: 700, fontSize: 13, cursor: (verifying || !cred?.configured) ? 'default' : 'pointer', opacity: (verifying || !cred?.configured) ? .6 : 1 }}>
+            {verifying ? 'Verifying…' : 'Verify with Meta'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PartnerSenderIdsModal({ partner, onClose }) {
   const { onLogout } = React.useContext(AppContext);
   const [senderIds, setSenderIds]       = useState([]);
@@ -3200,6 +3375,7 @@ function PartnerSenderIdsModal({ partner, onClose }) {
       <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',padding:'0 24px',display:'flex',gap:0,flexShrink:0}}>
         {[
           { id:'customers', label:'Partina Network', count: (partner.customers || []).length },
+          { id:'whatsapp',  label:'WhatsApp Credentials' },
         ].map(t=>(
           <button key={t.id} onClick={()=>setActiveView(t.id)}
             style={{height:42,padding:'0 18px',border:'none',background:'transparent',cursor:'pointer',
@@ -3209,11 +3385,13 @@ function PartnerSenderIdsModal({ partner, onClose }) {
               display:'flex',alignItems:'center',gap:7,transition:'all .15s',flexShrink:0,
             }}>
             {t.label}
-            <span style={{padding:'1px 7px',borderRadius:99,fontSize:10,fontWeight:700,
-              background:activeView===t.id?`${BRAND}18`:'#f1f5f9',
-              color:activeView===t.id?BRAND:'#94a3b8'}}>
-              {t.count}
-            </span>
+            {t.count != null && (
+              <span style={{padding:'1px 7px',borderRadius:99,fontSize:10,fontWeight:700,
+                background:activeView===t.id?`${BRAND}18`:'#f1f5f9',
+                color:activeView===t.id?BRAND:'#94a3b8'}}>
+                {t.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -3443,6 +3621,9 @@ function PartnerSenderIdsModal({ partner, onClose }) {
           </>
         );
       })()}
+
+      {/* ── WhatsApp Credentials view ── */}
+      {activeView === 'whatsapp' && <PartnerWhatsAppCredentials partner={partner} />}
     </div>
   );
 }
@@ -3778,9 +3959,679 @@ const OPS_LINKS = [
   },
 ];
 
+// ─── Push Notifications Tab ─────────────────────────────────────────────────────
+// Admin audit + control surface for Web Push. Lists every push dispatched to
+// users (automated events, system, manual sends, broadcasts and tests), with
+// filters, delivery stats, a broadcast composer and per-row resend.
+const PUSH_STATUS_STYLE = {
+  sent:    { bg:'#d1fae5', color:'#065f46', label:'Sent' },
+  failed:  { bg:'#fee2e2', color:'#991b1b', label:'Failed' },
+  skipped: { bg:'#f1f5f9', color:'#475569', label:'Skipped' },
+  pending: { bg:'#fef3c7', color:'#92400e', label:'Pending' },
+};
+const PUSH_SOURCE_STYLE = {
+  event:     { bg:'#eff6ff', color:'#1d4ed8', label:'Event' },
+  system:    { bg:'#f5f3ff', color:'#6d28d9', label:'System' },
+  manual:    { bg:'#ecfeff', color:'#0e7490', label:'Manual' },
+  broadcast: { bg:'#fff7ed', color:'#c2410c', label:'Broadcast' },
+  test:      { bg:'#f1f5f9', color:'#475569', label:'Test' },
+};
+
+function PushPill({ map, value }) {
+  const s = map[value] || { bg:'#f1f5f9', color:'#475569', label:value || '—' };
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,
+      fontSize:11,fontWeight:600,background:s.bg,color:s.color}}>
+      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{s.label}
+    </span>
+  );
+}
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // ISO: Mon=0 … Sun=6
+
+const FIELD_LABEL = {display:'block',fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6};
+
+function PushBroadcastModal({ onClose, onSent, editing }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [mode, setMode]     = useState(editing ? 'schedule' : 'now'); // 'now' | 'schedule'
+  const [title, setTitle]   = useState(editing?.title || '');
+  const [body, setBody]     = useState(editing?.body || '');
+  const [url, setUrl]       = useState(editing?.url || '');
+  const [target, setTarget] = useState(editing?.target || 'subscribed');
+  const [frequency, setFrequency] = useState(editing?.frequency || 'daily');
+  const [sendTime, setSendTime]   = useState((editing?.send_time || '09:00').slice(0,5));
+  const [weekdays, setWeekdays]   = useState(editing?.weekdays || [0]);
+  const [sending, setSending]     = useState(false);
+
+  const toggleDay = (d) => setWeekdays(prev => prev.includes(d) ? prev.filter(x=>x!==d) : [...prev, d].sort((a,b)=>a-b));
+
+  // Lock background scroll + close on Escape while the modal is open.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const submit = async () => {
+    if (!title.trim()) { showToast('Title is required', 'error'); return; }
+
+    if (mode === 'now') {
+      setSending(true);
+      try {
+        const res = await adminFetch('/api/notifications/admin/push-send/', {
+          method: 'POST',
+          body: JSON.stringify({ title: title.trim(), body: body.trim(), url: url.trim(), target }),
+        }, onLogout);
+        if (res.success) {
+          showToast(res.message || `Push delivered to ${res.delivered} device(s)`, 'success');
+          onSent && onSent(); onClose();
+        } else {
+          showToast(res.error?.message || res.error || 'Failed to send push', 'error');
+        }
+      } catch { showToast('Network error sending push', 'error'); }
+      finally { setSending(false); }
+      return;
+    }
+
+    // Schedule (create or update)
+    if (frequency === 'weekly' && weekdays.length === 0) {
+      showToast('Pick at least one day for a weekly schedule', 'error'); return;
+    }
+    setSending(true);
+    const payload = {
+      title: title.trim(), body: body.trim(), url: url.trim(), target,
+      frequency, send_time: sendTime, weekdays: frequency === 'weekly' ? weekdays : [],
+    };
+    try {
+      const path = editing
+        ? `/api/notifications/admin/push-schedules/${editing.id}/`
+        : '/api/notifications/admin/push-schedules/';
+      const res = await adminFetch(path, {
+        method: editing ? 'PATCH' : 'POST',
+        body: JSON.stringify(payload),
+      }, onLogout);
+      if (res.success) {
+        showToast(editing ? 'Schedule updated' : 'Schedule created', 'success');
+        onSent && onSent(); onClose();
+      } else {
+        showToast(res.error?.message || res.error || 'Failed to save schedule', 'error');
+      }
+    } catch { showToast('Network error saving schedule', 'error'); }
+    finally { setSending(false); }
+  };
+
+  const inputSm = { height:42, fontSize:13.5, borderRadius:10 };
+  const subtitle = editing ? 'Update this recurring message'
+    : mode === 'now' ? 'Deliver instantly to your audience'
+    : 'Send automatically on a repeating schedule';
+
+  // Render through a portal to <body> so the fixed overlay covers the whole
+  // viewport — otherwise a transformed ancestor (the tab's fade animation keeps
+  // a transform via fill:both) would clip and contain it.
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',
+      backdropFilter:'blur(3px)',display:'flex',alignItems:'flex-start',justifyContent:'center',
+      padding:'24px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up"
+        style={{width:'100%',maxWidth:460,margin:'auto',background:'#fff',borderRadius:18,
+          boxShadow:'0 24px 70px rgba(15,23,42,.28)',display:'flex',flexDirection:'column',
+          maxHeight:'calc(100vh - 48px)',overflow:'hidden'}}>
+
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',gap:13,padding:'20px 22px',borderBottom:'1px solid #eef2f7',flexShrink:0}}>
+          <div style={{width:42,height:42,borderRadius:12,flexShrink:0,
+            background:`linear-gradient(135deg,${BRAND},${BRAND2})`,boxShadow:`0 6px 16px ${BRAND}40`,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Bell size={19} strokeWidth={2.3} color="#fff"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:'#0f172a',letterSpacing:'-.2px'}}>{editing ? 'Edit schedule' : 'New push'}</h3>
+            <p style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{subtitle}</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{border:'none',background:'#f1f5f9',borderRadius:9,
+            width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748b',flexShrink:0}}>
+            <X size={16}/>
+          </button>
+        </div>
+
+        {/* Body (scrollable) */}
+        <div style={{padding:'18px 22px',overflowY:'auto',flex:1}}>
+          {!editing && (
+            <div style={{position:'relative',display:'flex',background:'#f1f5f9',padding:4,borderRadius:12,marginBottom:20}}>
+              <div style={{position:'absolute',top:4,bottom:4,left:mode==='now'?4:'50%',width:'calc(50% - 4px)',
+                background:'#fff',borderRadius:9,boxShadow:'0 1px 4px rgba(15,23,42,.10)',transition:'left .2s ease'}}/>
+              {[['now','Send now'],['schedule','Schedule recurring']].map(([id,label])=>(
+                <button key={id} onClick={()=>setMode(id)} style={{flex:1,position:'relative',zIndex:1,
+                  padding:'9px 8px',border:'none',background:'transparent',cursor:'pointer',
+                  fontSize:13,fontWeight:700,fontFamily:'inherit',
+                  color: mode===id ? BRAND : '#94a3b8',transition:'color .2s'}}>{label}</button>
+              ))}
+            </div>
+          )}
+
+          <label style={FIELD_LABEL}>Title</label>
+          <input className="senda-input" value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Weekly tips & updates" style={{...inputSm,marginBottom:14}}/>
+
+          <label style={FIELD_LABEL}>Message</label>
+          <textarea value={body} onChange={e=>setBody(e.target.value)} rows={3} placeholder="Notification body…"
+            className="senda-input" style={{height:'auto',fontSize:13.5,borderRadius:10,padding:'10px 14px',marginBottom:14,resize:'vertical',lineHeight:1.55}}/>
+
+          <label style={FIELD_LABEL}>Click-through URL <span style={{color:'#cbd5e1',fontWeight:500}}>· optional</span></label>
+          <input className="senda-input" value={url} onChange={e=>setUrl(e.target.value)} placeholder="/dashboard" style={{...inputSm,marginBottom:14}}/>
+
+          {mode === 'schedule' && (
+            <div style={{background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:12,padding:16,marginBottom:14}}>
+              <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                <div style={{flex:'1 1 140px'}}>
+                  <label style={FIELD_LABEL}>Frequency</label>
+                  <select className="senda-input" value={frequency} onChange={e=>setFrequency(e.target.value)} style={{...inputSm,background:'#fff'}}>
+                    <option value="daily">Every day</option>
+                    <option value="weekly">Every week</option>
+                    <option value="once">Once</option>
+                  </select>
+                </div>
+                <div style={{flex:'1 1 110px'}}>
+                  <label style={FIELD_LABEL}>Time</label>
+                  <input type="time" className="senda-input" value={sendTime} onChange={e=>setSendTime(e.target.value)} style={{...inputSm,background:'#fff'}}/>
+                </div>
+              </div>
+
+              {frequency === 'weekly' && (
+                <div style={{marginTop:14}}>
+                  <label style={FIELD_LABEL}>Days of week</label>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    {WEEKDAY_LABELS.map((lbl, d) => {
+                      const on = weekdays.includes(d);
+                      return (
+                        <button key={d} onClick={()=>toggleDay(d)} style={{
+                          minWidth:42,height:36,padding:'0 8px',borderRadius:9,cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',
+                          border: on ? `1.5px solid ${BRAND}` : '1.5px solid #e2e8f0',
+                          background: on ? BRAND : '#fff', color: on ? '#fff' : '#94a3b8',
+                          transition:'all .15s',
+                        }}>{lbl}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <p style={{fontSize:11,color:'#94a3b8',marginTop:12,display:'flex',alignItems:'center',gap:5}}>
+                <Clock size={12} strokeWidth={2}/> Platform timezone · Africa/Dar es Salaam
+              </p>
+            </div>
+          )}
+
+          <label style={FIELD_LABEL}>Audience</label>
+          <select className="senda-input" value={target} onChange={e=>setTarget(e.target.value)} style={{...inputSm}}>
+            <option value="subscribed">Subscribed users (have enabled push)</option>
+            <option value="all">All active users</option>
+            <option value="tenant">My tenant only</option>
+          </select>
+        </div>
+
+        {/* Footer (sticky) */}
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'14px 22px',borderTop:'1px solid #eef2f7',flexShrink:0,background:'#fff'}}>
+          <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={onClose} disabled={sending}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={submit} disabled={sending}>
+            {sending ? <><Spinner size={14} color="#fff"/> Saving…</>
+              : mode==='now' ? <><Send size={14} strokeWidth={2.2}/> Send broadcast</>
+              : <><Clock size={14} strokeWidth={2.2}/> {editing ? 'Save schedule' : 'Create schedule'}</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+function PushNotificationsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
+
+  const [stats, setStats]     = useState(null);
+  const [rows, setRows]       = useState([]);
+  const [meta, setMeta]       = useState({ page:1, total_pages:1, total:0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [resendingId, setResendingId] = useState(null);
+  const [showCompose, setShowCompose] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+
+  // Filters
+  const [search, setSearch]   = useState('');
+  const [statusF, setStatusF] = useState('');
+  const [sourceF, setSourceF] = useState('');
+  const [page, setPage]       = useState(1);
+
+  const fetchStats = useCallback(() => {
+    adminFetch('/api/notifications/admin/push-stats/', {}, onLogout)
+      .then(res => { if (res.success) setStats(res.data); })
+      .catch(() => {});
+  }, [onLogout]);
+
+  const fetchLogs = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page:String(page), limit:'25' });
+    if (search.trim()) qs.set('search', search.trim());
+    if (statusF) qs.set('status', statusF);
+    if (sourceF) qs.set('source', sourceF);
+    adminFetch(`/api/notifications/admin/push-logs/?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(res.data || []); setMeta(res.meta || { page:1, total_pages:1, total:0 }); }
+        else setError(res.error?.message || res.error || 'Failed to load push logs.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout, page, search, statusF, sourceF]);
+
+  const fetchSchedules = useCallback(() => {
+    adminFetch('/api/notifications/admin/push-schedules/', {}, onLogout)
+      .then(res => { if (res.success) setSchedules(res.data || []); })
+      .catch(() => {});
+  }, [onLogout]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+  useEffect(() => { setPage(1); }, [search, statusF, sourceF]);
+
+  const refreshAll = () => { fetchStats(); fetchLogs(); fetchSchedules(); };
+
+  const toggleSchedule = async (s) => {
+    const res = await adminFetch(`/api/notifications/admin/push-schedules/${s.id}/`, {
+      method: 'PATCH', body: JSON.stringify({ is_active: !s.is_active }),
+    }, onLogout);
+    if (res.success) { showToast(s.is_active ? 'Schedule paused' : 'Schedule resumed', 'success'); fetchSchedules(); }
+    else showToast('Failed to update schedule', 'error');
+  };
+
+  const deleteSchedule = async (s) => {
+    if (!window.confirm(`Delete the schedule "${s.title}"?`)) return;
+    const res = await adminFetch(`/api/notifications/admin/push-schedules/${s.id}/`, { method:'DELETE' }, onLogout);
+    if (res.success) { showToast('Schedule deleted', 'success'); fetchSchedules(); }
+    else showToast('Failed to delete schedule', 'error');
+  };
+
+  const scheduleSummary = (s) => {
+    const time = (s.send_time || '').slice(0,5);
+    if (s.frequency === 'daily') return `Every day at ${time}`;
+    if (s.frequency === 'once')  return `Once at ${time}`;
+    const days = (s.weekdays || []).map(d => WEEKDAY_LABELS[d]).join(', ');
+    return `Weekly (${days || '—'}) at ${time}`;
+  };
+
+  const handleResend = async (id) => {
+    setResendingId(id);
+    try {
+      const res = await adminFetch(`/api/notifications/admin/push-logs/${id}/resend/`, { method:'POST' }, onLogout);
+      if (res.success) showToast('Push re-sent successfully', 'success');
+      else showToast(`Resend ${res.status || 'failed'}: ${res.log?.error_message || res.error || ''}`, 'error');
+      refreshAll();
+    } catch {
+      showToast('Network error on resend', 'error');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const fmtTime = (iso) => {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  };
+
+  const statCards = stats ? [
+    { title:'Pushes (7 days)', value:Number(stats.last_7_days||0).toLocaleString(), desc:`${Number(stats.today||0).toLocaleString()} today · ${Number(stats.total||0).toLocaleString()} all-time`, icon:Bell, accent:BRAND },
+    { title:'Delivery rate', value:`${stats.delivery_rate ?? 0}%`, desc:`${Number(stats.devices_delivered||0).toLocaleString()} of ${Number(stats.devices_targeted||0).toLocaleString()} devices reached`, icon:CheckCircle2, accent:GREEN },
+    { title:'Failed', value:Number(stats.failed||0).toLocaleString(), desc:`${Number(stats.skipped||0).toLocaleString()} skipped (recipient has no device)`, icon:XCircle, accent:RED },
+    { title:'Active devices', value:Number(stats.active_subscriptions||0).toLocaleString(), desc:`${Number(stats.subscribed_users||0).toLocaleString()} users subscribed`, icon:Users, accent:VIOLET },
+  ] : [];
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader
+        title="Push Notifications"
+        subtitle="Every web push sent to users — automated events, system alerts, manual sends and broadcasts."
+        actions={
+          <>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={refreshAll}>
+              <RefreshCw size={14} strokeWidth={2.2}/> Refresh
+            </button>
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>{ setEditingSchedule(null); setShowCompose(true); }}>
+              <Send size={14} strokeWidth={2.2}/> New push
+            </button>
+          </>
+        }
+      />
+
+      {/* Stat cards */}
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr 1fr':'repeat(auto-fill,minmax(220px,1fr))',gap:14,marginBottom:20}}>
+        {statCards.length ? statCards.map(c => <StatCard key={c.title} {...c}/>) : (
+          [0,1,2,3].map(i => <div key={i} className="senda-card" style={{height:104,opacity:.5}}/>)
+        )}
+      </div>
+
+      {/* Recurring schedules */}
+      {schedules.length > 0 && (
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
+            <Clock size={13} strokeWidth={2.2}/> Recurring schedules ({schedules.length})
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
+            {schedules.map(s => (
+              <div key={s.id} className="senda-card" style={{padding:'14px 16px',opacity:s.is_active?1:0.6}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontWeight:700,color:'#0f172a',fontSize:13.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.title}</div>
+                    <div style={{fontSize:12,color:'#64748b',marginTop:2}}>{scheduleSummary(s)}</div>
+                  </div>
+                  <PushPill map={PUSH_STATUS_STYLE} value={s.is_active ? 'sent' : 'skipped'}/>
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',marginTop:8,display:'flex',gap:12,flexWrap:'wrap'}}>
+                  <span>{s.target_display || s.target}</span>
+                  {s.total_runs > 0 && <span>· sent {s.total_runs}×</span>}
+                  {s.next_run_at && s.is_active && <span>· next {new Date(s.next_run_at).toLocaleString()}</span>}
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:12,borderTop:'1px solid #f1f5f9',paddingTop:10}}>
+                  <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={()=>{ setEditingSchedule(s); setShowCompose(true); }}>Edit</button>
+                  <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={()=>toggleSchedule(s)}>{s.is_active ? 'Pause' : 'Resume'}</button>
+                  <button className="senda-btn senda-btn-danger senda-btn-sm" onClick={()=>deleteSchedule(s)} style={{marginLeft:'auto'}}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <div className="senda-card" style={{padding:14,marginBottom:16,display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+        <div style={{position:'relative',flex:'1 1 220px',minWidth:180}}>
+          <Search size={15} strokeWidth={2} color="#94a3b8" style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
+          <input className="senda-input" value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search title, message or user email…" style={{height:38,paddingLeft:36,fontSize:13}}/>
+        </div>
+        <select className="senda-input" value={statusF} onChange={e=>setStatusF(e.target.value)} style={{height:38,width:'auto',fontSize:13}}>
+          <option value="">All statuses</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+          <option value="skipped">Skipped</option>
+          <option value="pending">Pending</option>
+        </select>
+        <select className="senda-input" value={sourceF} onChange={e=>setSourceF(e.target.value)} style={{height:38,width:'auto',fontSize:13}}>
+          <option value="">All sources</option>
+          <option value="event">Event</option>
+          <option value="system">System</option>
+          <option value="manual">Manual</option>
+          <option value="broadcast">Broadcast</option>
+          <option value="test">Test</option>
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+        {loading ? (
+          <div style={{padding:'60px 0',display:'flex',justifyContent:'center'}}><Spinner size={26} color={BRAND}/></div>
+        ) : error ? (
+          <div style={{padding:'40px 20px',textAlign:'center',color:RED,fontSize:13}}>{error}</div>
+        ) : rows.length === 0 ? (
+          <div style={{padding:'48px 20px',textAlign:'center',color:'#94a3b8'}}>
+            <Bell size={28} strokeWidth={1.6} style={{opacity:.4,marginBottom:8}}/>
+            <p style={{fontSize:13}}>No push notifications match your filters yet.</p>
+          </div>
+        ) : (
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:880}}>
+              <thead>
+                <tr>
+                  <th>Time</th><th>Recipient</th><th>Notification</th><th>Source</th>
+                  <th>Status</th><th>Devices</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.id}>
+                    <td style={{whiteSpace:'nowrap',color:'#64748b'}}>
+                      <div style={{fontSize:12}}>{fmtTime(r.created_at)}</div>
+                      <div style={{fontSize:11,color:'#94a3b8'}}>{r.time_ago}</div>
+                    </td>
+                    <td>
+                      {(r.user_name || r.user_email) ? (
+                        <>
+                          <div style={{fontWeight:600,color:'#0f172a',fontSize:12.5}}>{r.user_name || r.user_email}</div>
+                          {r.user_email && r.user_name && <div style={{fontSize:11,color:'#94a3b8'}}>{r.user_email}</div>}
+                          {r.tenant_name && <div style={{fontSize:11,color:'#cbd5e1'}}>{r.tenant_name}</div>}
+                        </>
+                      ) : (
+                        <div style={{fontWeight:600,color:'#475569',fontSize:12.5,display:'inline-flex',alignItems:'center',gap:5}}>
+                          <Users size={12} strokeWidth={2.2} style={{color:'#94a3b8'}}/>
+                          {r.audience === 'tenant' && r.tenant_name
+                            ? `Tenant · ${r.tenant_name}`
+                            : (r.audience_display || 'All subscribers')}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{maxWidth:300}}>
+                      <div style={{fontWeight:600,color:'#0f172a',fontSize:12.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.title}</div>
+                      {r.body && <div style={{fontSize:11.5,color:'#64748b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.body}</div>}
+                      {r.error_message && r.status === 'failed' && (
+                        <div style={{fontSize:11,color:RED,marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={r.error_message}>⚠ {r.error_message}</div>
+                      )}
+                    </td>
+                    <td><PushPill map={PUSH_SOURCE_STYLE} value={r.source}/></td>
+                    <td><PushPill map={PUSH_STATUS_STYLE} value={r.status}/></td>
+                    <td style={{whiteSpace:'nowrap',color:'#475569',fontSize:12}}>
+                      {r.devices_delivered}/{r.devices_targeted}
+                    </td>
+                    <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+                      {(r.status === 'failed' || r.status === 'sent') && r.user_email && (
+                        <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={resendingId===r.id}
+                          onClick={()=>handleResend(r.id)} title="Resend this push">
+                          {resendingId===r.id ? <Spinner size={13} color={BRAND}/> : <RefreshCw size={13} strokeWidth={2.2}/>}
+                          {!isMobile && (resendingId===r.id ? ' Sending' : ' Resend')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {!loading && !error && rows.length > 0 && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:14,flexWrap:'wrap',gap:8}}>
+          <span style={{fontSize:12,color:'#94a3b8'}}>
+            Page {meta.page} of {meta.total_pages} · {Number(meta.total||0).toLocaleString()} total
+          </span>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Previous</button>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={page>=(meta.total_pages||1)} onClick={()=>setPage(p=>p+1)}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {showCompose && (
+        <PushBroadcastModal
+          editing={editingSchedule}
+          onClose={()=>{ setShowCompose(false); setEditingSchedule(null); }}
+          onSent={refreshAll}
+        />
+      )}
+    </div>
+  );
+}
+
+function DefaultWhatsAppCredentials() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [open, setOpen]           = useState(false);
+  const [cred, setCred]           = useState(null);
+  const [form, setForm]           = useState({
+    label: '', phone_number_id: '', access_token: '',
+    waba_id: '', verify_token: '', graph_api_base: '', is_active: true,
+  });
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    adminFetch('/whatsapp-credentials/default', {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          const d = res.data || {};
+          setCred(d);
+          setForm({
+            label: d.label || '', phone_number_id: d.phone_number_id || '',
+            access_token: '', waba_id: d.waba_id || '', verify_token: d.verify_token || '',
+            graph_api_base: d.graph_api_base || '', is_active: d.is_active !== false,
+          });
+        } else {
+          showToast && showToast(res.error?.message || 'Failed to load platform WhatsApp credentials', 'error');
+        }
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [onLogout, showToast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const setF = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = () => {
+    if (!form.phone_number_id.trim()) { showToast && showToast('Phone Number ID is required', 'error'); return; }
+    if (!cred?.access_token_set && !form.access_token.trim()) {
+      showToast && showToast('Access Token is required', 'error'); return;
+    }
+    setSaving(true);
+    const body = {
+      label: form.label.trim(), phone_number_id: form.phone_number_id.trim(),
+      waba_id: form.waba_id.trim(), verify_token: form.verify_token.trim(),
+      graph_api_base: form.graph_api_base.trim(), is_active: form.is_active,
+    };
+    if (form.access_token.trim()) body.access_token = form.access_token.trim();
+    adminFetch('/whatsapp-credentials/default', { method: 'PUT', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast && showToast('Platform default WhatsApp credentials saved', 'success'); load(); }
+        else showToast && showToast(res.error?.message || 'Save failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setSaving(false));
+  };
+
+  const verify = () => {
+    setVerifying(true);
+    adminFetch('/whatsapp-credentials/default/verify', { method: 'POST' }, onLogout)
+      .then(res => {
+        if (res.success) showToast && showToast('Credentials verified with Meta', 'success');
+        else showToast && showToast(res.error?.message || 'Verification failed', 'error');
+        load();
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setVerifying(false));
+  };
+
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 5, display: 'block', textTransform: 'uppercase', letterSpacing: '.04em' };
+  const fieldWrap  = { marginBottom: 14 };
+
+  const statusPill = (() => {
+    if (loading)           return { t: 'Loading…',      bg: '#f1f5f9', fg: '#94a3b8' };
+    if (!cred?.configured) return { t: 'Not configured', bg: '#f1f5f9', fg: '#94a3b8' };
+    if (!cred?.is_active)  return { t: 'Disabled',       bg: `${RED}12`,  fg: RED };
+    if (cred?.verified)    return { t: 'Verified',       bg: `${GREEN}18`, fg: GREEN };
+    return { t: 'Unverified', bg: `${AMBER}18`, fg: AMBER };
+  })();
+
+  return (
+    <div className="senda-card" style={{ padding: 22, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <MessageSquare size={16} strokeWidth={2} color={GREEN} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>Platform Default WhatsApp Credentials</h3>
+            <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: statusPill.bg, color: statusPill.fg }}>{statusPill.t}</span>
+          </div>
+          <p style={{ fontSize: 12, color: '#94a3b8', margin: '3px 0 0' }}>
+            Used to send messages for all normal (non-partner) customers.
+            {cred?.display_phone_number ? <> Number: <strong>{cred.display_phone_number}</strong>.</> : null}
+          </p>
+        </div>
+        <span style={{ fontSize: 18, color: '#94a3b8' }}>{open ? '▾' : '▸'}</span>
+      </div>
+
+      {open && !loading && (
+        <div style={{ marginTop: 18, maxWidth: 720 }}>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Label</label>
+            <input className="senda-input" style={{ width: '100%' }} placeholder="Platform business / WABA name"
+              value={form.label} onChange={e => setF('label', e.target.value)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Phone Number ID *</label>
+              <input className="senda-input" style={{ width: '100%' }} placeholder="e.g. 123456789012345"
+                value={form.phone_number_id} onChange={e => setF('phone_number_id', e.target.value)} />
+            </div>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>WABA ID</label>
+              <input className="senda-input" style={{ width: '100%' }} placeholder="Optional"
+                value={form.waba_id} onChange={e => setF('waba_id', e.target.value)} />
+            </div>
+          </div>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Access Token {cred?.access_token_set ? '(leave blank to keep current)' : '*'}</label>
+            <input className="senda-input" type="password" autoComplete="new-password" style={{ width: '100%' }}
+              placeholder={cred?.access_token_set ? `Stored ${cred.masked_token} — type to replace` : 'Meta long-lived / system-user token'}
+              value={form.access_token} onChange={e => setF('access_token', e.target.value)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Verify Token</label>
+              <input className="senda-input" style={{ width: '100%' }} placeholder="Webhook verify token"
+                value={form.verify_token} onChange={e => setF('verify_token', e.target.value)} />
+            </div>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Graph API Base</label>
+              <input className="senda-input" style={{ width: '100%' }} placeholder="https://graph.facebook.com/v24.0"
+                value={form.graph_api_base} onChange={e => setF('graph_api_base', e.target.value)} />
+            </div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#475569', margin: '4px 0 18px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.is_active} onChange={e => setF('is_active', e.target.checked)} />
+            Active
+          </label>
+          {cred?.last_verify_error && !cred?.verified && (
+            <div style={{ fontSize: 12, color: RED, background: `${RED}0c`, border: `1px solid ${RED}33`, borderRadius: 8, padding: '8px 12px', marginBottom: 14 }}>
+              {cred.last_verify_error}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={save} disabled={saving}
+              style={{ height: 38, padding: '0 18px', border: 'none', borderRadius: 9, background: BRAND, color: '#fff', fontWeight: 700, fontSize: 13, cursor: saving ? 'default' : 'pointer', opacity: saving ? .6 : 1 }}>
+              {saving ? 'Saving…' : (cred?.configured ? 'Update credentials' : 'Save credentials')}
+            </button>
+            <button onClick={verify} disabled={verifying || !cred?.configured}
+              style={{ height: 38, padding: '0 18px', borderRadius: 9, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontWeight: 700, fontSize: 13, cursor: (verifying || !cred?.configured) ? 'default' : 'pointer', opacity: (verifying || !cred?.configured) ? .6 : 1 }}>
+              {verifying ? 'Verifying…' : 'Verify with Meta'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OperationsTab() {
   return (
     <div className="senda-fade-in">
+      <DefaultWhatsAppCredentials />
       <div className="senda-card" style={{
         padding:'14px 18px', marginBottom:20,
         borderLeft:`4px solid ${AMBER}`, background:'#fffbeb',
@@ -3836,16 +4687,1126 @@ function OperationsTab() {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── Broadcast Tab (Admin Broadcast Messaging) ──────────────────────────────
+const BROADCAST_API = '/api/admin/v1';
+
+const AUDIENCES = [
+  { id:'direct_users', label:'Direct Users', desc:'Accounts registered directly on the platform.' },
+  { id:'partners',     label:'Partners',     desc:'Clients of a specific partner — pick the partner below, then message its users.' },
+];
+
+const SEGMENTS = [
+  { id:'all',            label:'All eligible',                 desc:'Everyone with an approved sender ID.' },
+  { id:'never_used',     label:'Never used SMS',               desc:'Have an approved sender but have never sent any SMS.' },
+  { id:'low_usage',      label:'Uses SMS slowly (1–100)',      desc:'Approved sender, but has sent only a few SMS.' },
+  { id:'credits_unused', label:'Has credits · never used',    desc:'Hold SMS credits but have never sent.' },
+  { id:'no_purchase',    label:'Approved sender · no purchase', desc:'Have an approved sender ID but never bought credits.' },
+];
+
+function smsSegments(text) {
+  const len = (text || '').length;
+  if (len === 0) return { len:0, segments:0 };
+  // GSM-7 single 160 / multipart 153 (approximation; matches portal display).
+  const segments = len <= 160 ? 1 : Math.ceil(len / 153);
+  return { len, segments };
+}
+
+function BroadcastTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+
+  const [view, setView]               = useState('compose'); // 'compose' | 'history'
+  const [audience, setAudience]       = useState('direct_users');
+  const [segment, setSegment]         = useState('all');
+  const [partnerId, setPartnerId]     = useState('');
+  const [partinas, setPartinas]       = useState([]);
+  const [loadingPartinas, setLoadingPartinas] = useState(false);
+  const [message, setMessage]         = useState('');
+  const [skipSent, setSkipSent]       = useState(true);
+  const [templates, setTemplates]     = useState([]);
+  const [savingTpl, setSavingTpl]     = useState(false);
+
+  const [preview, setPreview]         = useState(null);
+  const [previewing, setPreviewing]   = useState(false);
+
+  const [sending, setSending]         = useState(false);
+  const [progress, setProgress]       = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const [history, setHistory]         = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [logs, setLogs]               = useState(null); // { broadcast, rows }
+
+  const pollRef = useRef(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
+  useEffect(() => stopPolling, [stopPolling]);
+
+  // Re-resolve eligibility whenever audience, partner, or segment changes; clears stale preview.
+  useEffect(() => { setPreview(null); }, [audience, partnerId, segment]);
+
+  // Load the partner list the first time the admin targets Partners.
+  useEffect(() => {
+    if (audience !== 'partners' || partinas.length || loadingPartinas) return;
+    setLoadingPartinas(true);
+    adminFetch(`${BROADCAST_API}/broadcasts/partinas`, { method:'GET' }, onLogout)
+      .then(res => { if (res.success) setPartinas(res.data || []); })
+      .catch(() => {})
+      .finally(() => setLoadingPartinas(false));
+  }, [audience, partinas.length, loadingPartinas, onLogout]);
+
+  // Saved templates: load once, apply into the composer, save the current draft.
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/templates`, { method:'GET' }, onLogout);
+      if (res.success) setTemplates(res.data || []);
+    } catch {}
+  }, [onLogout]);
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  const applyTemplate = useCallback((id) => {
+    const t = templates.find(x => x.id === id);
+    if (t) setMessage(t.body);
+  }, [templates]);
+
+  const saveTemplate = useCallback(async () => {
+    if (!message.trim()) { showToast('Write a message first', 'error'); return; }
+    const name = (window.prompt('Template name?') || '').trim();
+    if (!name) return;
+    setSavingTpl(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/templates`, {
+        method:'POST', body: JSON.stringify({ name, body: message }),
+      }, onLogout);
+      if (res.success) { showToast('Template saved', 'success'); loadTemplates(); }
+      else showToast(res.error?.message || 'Failed to save template', 'error');
+    } catch { showToast('Network error saving template', 'error'); }
+    finally { setSavingTpl(false); }
+  }, [message, onLogout, showToast, loadTemplates]);
+
+  const doPreview = useCallback(async () => {
+    setPreviewing(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/preview`, {
+        method:'POST', body: JSON.stringify({ audience, partner_id: partnerId || undefined, segment, message }),
+      }, onLogout);
+      if (res.success) setPreview(res.data);
+      else showToast(res.error?.message || 'Failed to load recipients', 'error');
+    } catch { showToast('Network error loading preview', 'error'); }
+    finally { setPreviewing(false); }
+  }, [audience, partnerId, segment, message, onLogout, showToast]);
+
+  const pollProgress = useCallback((id) => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await adminFetch(`${BROADCAST_API}/broadcasts/${id}`, { method:'GET' }, onLogout);
+        if (res.success) {
+          setProgress(res.data);
+          if (res.data.is_complete) {
+            stopPolling();
+            setSending(false);
+            showToast(
+              res.data.status === 'completed'
+                ? `Broadcast complete — ${res.data.success_count} sent, ${res.data.failed_count} failed`
+                : 'Broadcast finished with errors', res.data.failed_count ? 'error' : 'success');
+          }
+        }
+      } catch {}
+    }, 2000);
+  }, [onLogout, showToast, stopPolling]);
+
+  const doSend = useCallback(async () => {
+    setConfirmOpen(false);
+    setSending(true);
+    setProgress(null);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/create`, {
+        method:'POST',
+        body: JSON.stringify({ audience, partner_id: partnerId || undefined, segment, message, skip_already_sent: skipSent }),
+      }, onLogout);
+      if (res.success) {
+        setProgress({
+          broadcast_id: res.data.broadcast_id, status:'pending', audience,
+          total_planned: res.data.eligible_count, success_count:0, failed_count:0,
+          skipped_count:0, processed:0, progress_pct:0, is_complete:false,
+        });
+        pollProgress(res.data.broadcast_id);
+      } else {
+        setSending(false);
+        showToast(res.error?.message || 'Failed to start broadcast', 'error');
+      }
+    } catch { setSending(false); showToast('Network error starting broadcast', 'error'); }
+  }, [audience, partnerId, segment, message, skipSent, onLogout, showToast, pollProgress]);
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts?limit=50`, { method:'GET' }, onLogout);
+      if (res.success) setHistory(res.data || []);
+    } catch {} finally { setLoadingHistory(false); }
+  }, [onLogout]);
+  useEffect(() => { if (view === 'history') loadHistory(); }, [view, loadHistory]);
+
+  const loadLogs = useCallback(async (b) => {
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?limit=100`, { method:'GET' }, onLogout);
+      if (res.success) setLogs({ broadcast:b, rows: res.data || [] });
+    } catch { showToast('Failed to load audit log', 'error'); }
+  }, [onLogout, showToast]);
+
+  const seg = smsSegments(message);
+  const stats = preview?.stats;
+  const live = progress && !progress.is_complete && sending;
+  const partnerNeeded = audience === 'partners' && !partnerId;
+  const canPreview = !partnerNeeded && !previewing && !live;
+  const canSend = !!stats && stats.eligible > 0 && message.trim().length > 0 && !partnerNeeded && !sending;
+
+  const Pill = ({ children, color }) => (
+    <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11,
+      fontWeight:700, background:`${color}1a`, color }}>{children}</span>
+  );
+  const statusColor = (s) => s === 'completed' ? '#16a34a' : s === 'failed' ? '#dc2626'
+    : s === 'running' ? BRAND : '#64748b';
+
+  return (
+    <div className="senda-fade-in">
+      {/* Sub-nav */}
+      <div style={{ display:'flex', gap:8, marginBottom:18 }}>
+        {[{id:'compose',label:'Compose'},{id:'history',label:'History'}].map(t => (
+          <button key={t.id} onClick={()=>setView(t.id)}
+            className="senda-btn senda-btn-sm"
+            style={{ background: view===t.id ? BRAND : '#fff', color: view===t.id ? '#fff' : '#475569',
+              border:`1.5px solid ${view===t.id ? BRAND : '#e2e8f0'}`, height:34 }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'compose' && (
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+          {/* Compose card */}
+          <div className="senda-card" style={{ padding:22 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+              <Megaphone size={20} color={BRAND} strokeWidth={2.2}/>
+              <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>New Broadcast</h3>
+            </div>
+
+            <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:8 }}>Target audience</label>
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:18 }}>
+              {AUDIENCES.map(a => (
+                <button key={a.id} onClick={()=>setAudience(a.id)} disabled={live}
+                  style={{ textAlign:'left', padding:'12px 14px', borderRadius:11, cursor: live?'default':'pointer',
+                    border:`1.5px solid ${audience===a.id ? BRAND : '#e2e8f0'}`,
+                    background: audience===a.id ? `${BRAND}0d` : '#fff', transition:'all .15s' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ width:16, height:16, borderRadius:'50%', flexShrink:0,
+                      border:`5px solid ${audience===a.id ? BRAND : '#cbd5e1'}`, background:'#fff' }}/>
+                    <span style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>{a.label}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#64748b', marginTop:4, marginLeft:24 }}>{a.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {audience === 'partners' && (
+              <div style={{ marginBottom:18 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:8 }}>Partner — whose clients to message</label>
+                <select value={partnerId} onChange={e=>setPartnerId(e.target.value)} disabled={live || loadingPartinas}
+                  className="senda-input" style={{ cursor: live ? 'default':'pointer' }}>
+                  <option value="">{loadingPartinas ? 'Loading partners…' : 'Select a partner…'}</option>
+                  {partinas.map(p => (
+                    <option key={p.partner_id} value={p.partner_id}>
+                      {p.name}{p.account_id ? ` · ${p.account_id}` : ''} — {p.clients_count} client{p.clients_count!==1?'s':''}
+                    </option>
+                  ))}
+                </select>
+                {!loadingPartinas && partinas.length === 0 && <div style={{ fontSize:12, color:'#94a3b8', marginTop:6 }}>No partners found.</div>}
+                {partnerNeeded && <div style={{ fontSize:11, color:'#d97706', marginTop:6 }}>Choose a partner to continue.</div>}
+              </div>
+            )}
+
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+              <label style={{ fontSize:12, fontWeight:700, color:'#334155' }}>Message</label>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <select defaultValue="" onChange={e=>{ if(e.target.value){ applyTemplate(e.target.value); e.target.value=''; } }}
+                  disabled={live || templates.length===0}
+                  className="senda-input" style={{ height:30, width:'auto', fontSize:12, padding:'0 8px', cursor:'pointer' }}>
+                  <option value="">{templates.length ? 'Load template…' : 'No templates'}</option>
+                  {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <button type="button" onClick={saveTemplate} disabled={live || savingTpl || !message.trim()}
+                  className="senda-btn senda-btn-sm" style={{ height:30, fontSize:12, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity:(!message.trim()||savingTpl)?.5:1 }}>
+                  {savingTpl ? 'Saving…' : 'Save as template'}
+                </button>
+              </div>
+            </div>
+            <textarea value={message} onChange={e=>setMessage(e.target.value)} disabled={live}
+              rows={5} placeholder="Type the SMS to broadcast… e.g. Habari ndugu {{name}}, ..."
+              className="senda-input" style={{ height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5 }}/>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>
+              {seg.len} chars · {seg.segments} SMS segment{seg.segments!==1?'s':''} · optional: add <code style={{ background:'#f1f5f9', padding:'1px 5px', borderRadius:4, color:'#475569' }}>{'{{name}}'}</code> to insert each recipient's name from the database
+            </div>
+
+            <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', margin:'18px 0 8px' }}>Recipient segment</label>
+            <select value={segment} onChange={e=>setSegment(e.target.value)} disabled={live}
+              className="senda-input" style={{ cursor: live ? 'default':'pointer' }}>
+              {SEGMENTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>{SEGMENTS.find(s=>s.id===segment)?.desc}</div>
+
+            <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:14, cursor:'pointer', fontSize:13, color:'#334155' }}>
+              <input type="checkbox" checked={skipSent} onChange={e=>setSkipSent(e.target.checked)} disabled={live}/>
+              Skip recipients who already received this exact message
+            </label>
+
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button className="senda-btn senda-btn-sm" onClick={doPreview} disabled={!canPreview}
+                style={{ height:40, border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700, opacity: canPreview ? 1 : .5, cursor: canPreview ? 'pointer':'not-allowed' }}>
+                {previewing ? 'Checking…' : 'Preview recipients'}
+              </button>
+              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>setConfirmOpen(true)}
+                disabled={!canSend}
+                style={{ height:40, fontWeight:700, opacity: canSend ? 1 : .5, cursor: canSend ? 'pointer':'not-allowed' }}>
+                <Send size={15} strokeWidth={2.2} style={{ marginRight:6 }}/>Send Broadcast
+              </button>
+            </div>
+            {!stats && <div style={{ fontSize:12, color:'#94a3b8', marginTop:10 }}>Run a preview to see how many recipients are eligible before sending.</div>}
+          </div>
+
+          {/* Right column: preview / live progress */}
+          <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+            {progress && (
+              <div className="senda-card" style={{ padding:20 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>{live ? 'Sending…' : 'Last broadcast'}</h3>
+                  <Pill color={statusColor(progress.status)}>{progress.status}</Pill>
+                </div>
+                <div style={{ height:10, borderRadius:99, background:'#eef2f7', overflow:'hidden' }}>
+                  <div style={{ width:`${progress.progress_pct||0}%`, height:'100%', borderRadius:99,
+                    background:`linear-gradient(90deg,${BRAND},${BRAND2})`, transition:'width .4s' }}/>
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', marginTop:6 }}>
+                  {progress.processed||0} / {progress.total_planned||0} processed ({progress.progress_pct||0}%)
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginTop:16 }}>
+                  {[
+                    { label:'Sent',     value:progress.success_count, color:'#16a34a' },
+                    { label:'Failed',   value:progress.failed_count,  color:'#dc2626' },
+                    { label:'Skipped',  value:progress.skipped_count, color:'#d97706' },
+                    { label:'SMS used', value:progress.sms_used,      color:BRAND },
+                  ].map(s => (
+                    <div key={s.label} style={{ textAlign:'center', padding:'12px 6px', borderRadius:11, background:'#f8fafc', border:'1px solid #eef2f7' }}>
+                      <div style={{ fontSize:22, fontWeight:800, color:s.color }}>{(s.value||0).toLocaleString()}</div>
+                      <div style={{ fontSize:11, color:'#94a3b8', fontWeight:600 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {live && <div style={{ fontSize:11, color:'#94a3b8', marginTop:12, display:'flex', alignItems:'center', gap:6 }}>
+                  <RefreshCw size={12} className="senda-spin"/> Live — refreshing every 2s</div>}
+                {progress.last_error && <div style={{ fontSize:11, color:'#dc2626', marginTop:10 }}>Last error: {progress.last_error}</div>}
+              </div>
+            )}
+
+            {stats && !live && (
+              <div className="senda-card" style={{ padding:20 }}>
+                <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>Eligible recipients</h3>
+                <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4 }}>
+                  <span style={{ fontSize:40, fontWeight:800, color:BRAND, lineHeight:1 }}>{stats.eligible.toLocaleString()}</span>
+                  <span style={{ fontSize:13, color:'#64748b' }}>of {stats.total_in_audience.toLocaleString()} in audience</span>
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', marginBottom:14 }}>
+                  Excluded: <b>{stats.excluded_no_sender}</b> with no approved sender ID, <b>{stats.excluded_no_phone}</b> with no phone
+                  {segment !== 'all' && <>, <b>{stats.excluded_by_segment}</b> outside “{SEGMENTS.find(s=>s.id===segment)?.label}” (of {stats.with_approved_sender} with an approved sender)</>}.
+                  These will <b>not</b> receive the message.
+                </div>
+                {message.trim() && preview.recipients?.[0]?.tenant_name && (
+                  <div style={{ marginBottom:14, padding:'10px 12px', borderRadius:10, background:'#f0f9ff', border:'1px solid #e0f2fe' }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>
+                      Example — as {preview.recipients[0].tenant_name} will receive it
+                    </div>
+                    <div style={{ fontSize:12.5, color:'#0f172a', lineHeight:1.55, whiteSpace:'pre-wrap' }}>
+                      {message
+                        .replace(/\{\{\s*(name|business_name)\s*\}\}/g, preview.recipients[0].tenant_name)
+                        .replace(/\{\s*(name|business_name)\s*\}/g, preview.recipients[0].tenant_name)}
+                    </div>
+                  </div>
+                )}
+                {preview.recipients?.length > 0 ? (
+                  <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid #eef2f7', borderRadius:10 }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                      <thead>
+                        <tr style={{ position:'sticky', top:0, background:'#f8fafc' }}>
+                          <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Recipient</th>
+                          <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Phone</th>
+                          <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Sender Name</th>
+                          <th style={{ textAlign:'right', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Credits</th>
+                          <th style={{ textAlign:'right', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Used</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview.recipients.map((r,i) => (
+                          <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
+                            <td style={{ padding:'8px 12px', color:'#0f172a' }}>{r.tenant_name || '—'}</td>
+                            <td style={{ padding:'8px 12px', color:'#64748b', fontFamily:'monospace' }}>{r.phone_masked}</td>
+                            <td style={{ padding:'8px 12px' }}><Pill color={BRAND}>{r.sender_name}</Pill></td>
+                            <td style={{ padding:'8px 12px', textAlign:'right', color:'#0f172a' }}>{(r.credits||0).toLocaleString()}</td>
+                            <td style={{ padding:'8px 12px', textAlign:'right', color:'#64748b' }}>{(r.used||0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <div style={{ fontSize:12, color:'#94a3b8' }}>No eligible recipients in this audience.</div>}
+                {preview.recipients_truncated && <div style={{ fontSize:11, color:'#94a3b8', marginTop:8 }}>Showing first {preview.recipients.length} — full list will be messaged.</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {view === 'history' && (
+        <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+            <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Broadcast history</h3>
+            <button className="senda-btn senda-btn-sm" onClick={loadHistory} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>
+              <RefreshCw size={13} strokeWidth={2.2} style={{ marginRight:6 }}/>Refresh
+            </button>
+          </div>
+          {loadingHistory ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+           : history.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No broadcasts yet.</div>
+           : (
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {['Date','Audience','Target','Status','Sent','Failed','SMS used','Message',''].map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {history.map(b => (
+                  <tr key={b.broadcast_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{b.created_at ? new Date(b.created_at).toLocaleString() : '—'}</td>
+                    <td style={{ padding:'10px 14px' }}>{AUDIENCES.find(a=>a.id===b.audience)?.label || b.audience}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{b.partner_name || (b.audience==='direct_users' ? '—' : '')}</td>
+                    <td style={{ padding:'10px 14px' }}><Pill color={statusColor(b.status)}>{b.status}</Pill></td>
+                    <td style={{ padding:'10px 14px', color:'#16a34a', fontWeight:700 }}>{b.success_count}</td>
+                    <td style={{ padding:'10px 14px', color:'#dc2626', fontWeight:700 }}>{b.failed_count}</td>
+                    <td style={{ padding:'10px 14px', color:BRAND, fontWeight:700 }}>{(b.sms_used||0).toLocaleString()}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569', maxWidth:240, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.message}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <button className="senda-btn senda-btn-sm" onClick={()=>loadLogs(b)} style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff', color:BRAND, fontWeight:700 }}>Audit log</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Confirm dialog */}
+      {confirmOpen && stats && createPortal(
+        <div onClick={()=>setConfirmOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:16 }}>
+          <div onClick={e=>e.stopPropagation()} className="senda-card" style={{ padding:24, maxWidth:420, width:'100%' }}>
+            <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:10 }}>Send broadcast?</h3>
+            <p style={{ fontSize:13, color:'#475569', lineHeight:1.6 }}>
+              This will message <b>{stats.eligible.toLocaleString()}</b> recipient{stats.eligible!==1?'s':''}
+              {audience === 'partners' && preview?.partner_name ? <> from partner <b>{preview.partner_name}</b></> : ' (direct users)'}
+              , each under their own approved sender name.
+              {stats.excluded_no_sender>0 && <> <b>{stats.excluded_no_sender}</b> without an approved sender ID will be skipped.</>}
+            </p>
+            <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'flex-end' }}>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setConfirmOpen(false)} style={{ height:38, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>Cancel</button>
+              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={doSend} style={{ height:38, fontWeight:700 }}>Send now</button>
+            </div>
+          </div>
+        </div>, document.body)}
+
+      {/* Audit log drawer */}
+      {logs && createPortal(
+        <div onClick={()=>setLogs(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', justifyContent:'flex-end', zIndex:1000 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ width:'min(720px,100%)', height:'100%', background:'#fff', display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+              <div>
+                <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Audit log</h3>
+                <div style={{ fontSize:11, color:'#94a3b8', fontFamily:'monospace' }}>{logs.broadcast.broadcast_id}</div>
+              </div>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setLogs(null)} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={16}/></button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ position:'sticky', top:0, background:'#f8fafc' }}>
+                    {['Recipient','Sender Used','Status','Date/Time'].map(h => (
+                      <th key={h} style={{ textAlign:'left', padding:'8px 14px', color:'#64748b', fontWeight:700 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.rows.length === 0 ? (
+                    <tr><td colSpan={4} style={{ padding:20, color:'#94a3b8' }}>No sends recorded yet.</td></tr>
+                  ) : logs.rows.map((r,i) => (
+                    <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
+                      <td style={{ padding:'8px 14px' }}>
+                        <div style={{ color:'#0f172a' }}>{r.tenant_name || '—'}</div>
+                        <div style={{ color:'#94a3b8', fontFamily:'monospace' }}>{r.recipient_phone}</div>
+                      </td>
+                      <td style={{ padding:'8px 14px' }}><Pill color={BRAND}>{r.sender_name_used}</Pill></td>
+                      <td style={{ padding:'8px 14px' }}>
+                        <Pill color={r.delivery_status==='sent' ? '#16a34a' : '#dc2626'}>{r.delivery_status}</Pill>
+                        {r.error_message && <div style={{ color:'#dc2626', fontSize:11, marginTop:3 }}>{r.error_message}</div>}
+                      </td>
+                      <td style={{ padding:'8px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
+// ─── Partner Clients Tab (approved sender IDs + clients missing a phone) ─────
+const PARTNER_VIEWS = [
+  { id:'senders',  label:'Approved Sender IDs', endpoint:'partner-client-senders' },
+  { id:'nophone',  label:'Missing phone',       endpoint:'partner-clients-no-phone' },
+  { id:'messages', label:'Messages sent',       endpoint:'partner-client-messages' },
+];
+
+const MSG_STATUSES = ['', 'queued', 'sent', 'delivered', 'read', 'failed'];
+
+function PartnerSendersTab() {
+  const { onLogout } = React.useContext(AppContext);
+
+  const [tab, setTab]             = useState('senders');
+  const [partinas, setPartinas]   = useState([]);
+  const [partnerId, setPartnerId] = useState('');
+  const [search, setSearch]       = useState('');
+  const [statusF, setStatusF]     = useState('');
+  const [dateFrom, setDateFrom]   = useState('');
+  const [dateTo, setDateTo]       = useState('');
+  const [downloading, setDownloading] = useState(false);
+  const [rows, setRows]           = useState([]);
+  const [meta, setMeta]           = useState({ total:0, page:1, total_pages:1, has_next:false, has_prev:false });
+  const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(false);
+  const [msgDetail, setMsgDetail] = useState(null); // { loading, data }
+
+  useEffect(() => {
+    adminFetch(`${BROADCAST_API}/broadcasts/partinas`, { method:'GET' }, onLogout)
+      .then(res => { if (res.success) setPartinas(res.data || []); })
+      .catch(() => {});
+  }, [onLogout]);
+
+  const openMessage = useCallback(async (id) => {
+    setMsgDetail({ loading:true, data:null });
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/partner-client-messages/${id}`, { method:'GET' }, onLogout);
+      setMsgDetail({ loading:false, data: res.success ? res.data : null });
+    } catch { setMsgDetail({ loading:false, data:null }); }
+  }, [onLogout]);
+
+  const endpoint = PARTNER_VIEWS.find(v => v.id === tab)?.endpoint || 'partner-client-senders';
+  const isMessages = tab === 'messages';
+
+  const buildParams = useCallback(() => {
+    const qs = new URLSearchParams();
+    if (partnerId) qs.set('partner_id', partnerId);
+    if (search.trim()) qs.set('search', search.trim());
+    if (isMessages) {
+      if (statusF) qs.set('status', statusF);
+      if (dateFrom) qs.set('from', dateFrom);
+      if (dateTo) qs.set('to', dateTo);
+    }
+    return qs;
+  }, [partnerId, search, isMessages, statusF, dateFrom, dateTo]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = buildParams();
+      qs.set('page', String(page)); qs.set('limit', '20');
+      const res = await adminFetch(`${BROADCAST_API}/${endpoint}?${qs.toString()}`, { method:'GET' }, onLogout);
+      if (res.success) { setRows(res.data || []); setMeta(res.meta || meta); }
+    } catch {} finally { setLoading(false); }
+  }, [endpoint, page, buildParams, onLogout]);
+
+  const downloadCsv = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const qs = buildParams();
+      qs.set('export', 'csv');
+      const token = getToken();
+      const resp = await fetch(`${BASE_URL}${BROADCAST_API}/partner-client-messages?${qs.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials:'include',
+      });
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'partner_client_messages.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {} finally { setDownloading(false); }
+  }, [buildParams]);
+
+  // Reset to page 1 when filters/tab change.
+  useEffect(() => { setPage(1); }, [partnerId, search, statusF, dateFrom, dateTo, tab]);
+  // Debounced load on filter/page/tab change.
+  useEffect(() => {
+    const t = setTimeout(load, 250);
+    return () => clearTimeout(t);
+  }, [load]);
+
+  const isSenders = tab === 'senders';
+
+  return (
+    <div className="senda-fade-in">
+      <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+        {PARTNER_VIEWS.map(v => (
+          <button key={v.id} onClick={()=>setTab(v.id)} className="senda-btn senda-btn-sm"
+            style={{ height:34, background: tab===v.id ? BRAND : '#fff', color: tab===v.id ? '#fff' : '#475569',
+              border:`1.5px solid ${tab===v.id ? BRAND : '#e2e8f0'}` }}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+            {isSenders ? <Tag size={18} color={BRAND} strokeWidth={2.2}/>
+             : isMessages ? <MessageSquare size={18} color={BRAND} strokeWidth={2.2}/>
+             : <AlertTriangle size={18} color="#d97706" strokeWidth={2.2}/>}
+            <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>
+              {isSenders ? 'Partner clients · Approved Sender IDs'
+               : isMessages ? 'Partner clients · Messages sent'
+               : 'Partner clients · Missing phone number'}
+            </h3>
+          </div>
+          <div style={{ fontSize:12, color:'#64748b' }}>
+            {isSenders
+              ? <>Every approved sender ID belonging to a partner's clients. {meta.total?.toLocaleString?.() || 0} total.</>
+              : isMessages
+              ? <>Every SMS sent by partner clients. {meta.total?.toLocaleString?.() || 0} total.</>
+              : <>Partner clients with no phone number — they can't receive broadcasts until a phone is added. {meta.total?.toLocaleString?.() || 0} total.</>}
+          </div>
+
+          <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap' }}>
+            <select value={partnerId} onChange={e=>setPartnerId(e.target.value)}
+              className="senda-input" style={{ height:38, width:'auto', minWidth:220, cursor:'pointer' }}>
+              <option value="">All partners</option>
+              {partinas.map(p => <option key={p.partner_id} value={p.partner_id}>{p.name} — {p.clients_count} client{p.clients_count!==1?'s':''}</option>)}
+            </select>
+            <div style={{ position:'relative', flex:1, minWidth:200 }}>
+              <Search size={15} color="#94a3b8" style={{ position:'absolute', left:12, top:11 }}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder={isSenders ? 'Search sender ID, client, partner, email…'
+                  : isMessages ? 'Search recipient, message, client, partner…'
+                  : 'Search client, partner, email…'}
+                className="senda-input" style={{ height:38, paddingLeft:34 }}/>
+            </div>
+          </div>
+
+          {isMessages && (
+            <div style={{ display:'flex', gap:10, marginTop:10, flexWrap:'wrap', alignItems:'center' }}>
+              <select value={statusF} onChange={e=>setStatusF(e.target.value)}
+                className="senda-input" style={{ height:36, width:'auto', cursor:'pointer' }}>
+                {MSG_STATUSES.map(s => <option key={s} value={s}>{s ? s[0].toUpperCase()+s.slice(1) : 'All statuses'}</option>)}
+              </select>
+              <label style={{ fontSize:12, color:'#64748b' }}>From <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} className="senda-input" style={{ height:36, width:'auto', display:'inline-block', marginLeft:4 }}/></label>
+              <label style={{ fontSize:12, color:'#64748b' }}>To <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} className="senda-input" style={{ height:36, width:'auto', display:'inline-block', marginLeft:4 }}/></label>
+              <button onClick={downloadCsv} disabled={downloading || meta.total===0}
+                className="senda-btn senda-btn-sm" style={{ height:36, marginLeft:'auto', border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700, opacity:(downloading||meta.total===0)?.5:1 }}>
+                <Download size={14} strokeWidth={2.2} style={{ marginRight:6 }}/>{downloading ? 'Preparing…' : 'Download CSV'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {loading ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+         : rows.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>
+             {isSenders ? 'No approved sender IDs found for partner clients.'
+              : isMessages ? 'No messages found for partner clients.'
+              : 'No partner clients are missing a phone number.'}
+           </div>
+         : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {(isSenders
+                    ? ['Partner','Client','Sender ID','Provider','Owner','Approved']
+                    : isMessages
+                    ? ['Partner','Client','Recipient','Sender ID','Message','Status','Date','']
+                    : ['Partner','Client','Email','Approved sender?','Joined']
+                   ).map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12, whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {isMessages ? rows.map(r => {
+                  const sc = (r.status==='delivered'||r.status==='read') ? '#16a34a' : (r.status==='failed'||r.status==='undelivered') ? '#dc2626' : r.status==='sent' ? BRAND : '#64748b';
+                  return (
+                  <tr key={r.id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{r.partner_name || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#0f172a' }}>{r.client_name || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', fontFamily:'monospace' }}>{r.recipient || '—'}</td>
+                    <td style={{ padding:'10px 14px' }}>{r.sender_id ? <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:99, fontSize:11, fontWeight:700, background:`${BRAND}1a`, color:BRAND }}>{r.sender_id}</span> : '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569', maxWidth:280, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={r.message}>{r.message || '—'}</td>
+                    <td style={{ padding:'10px 14px' }}><span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:`${sc}1a`, color:sc }}>{r.status}</span></td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <button className="senda-btn senda-btn-sm" onClick={()=>openMessage(r.id)} style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff', color:BRAND, fontWeight:700 }}>View</button>
+                    </td>
+                  </tr>
+                  );
+                }) : isSenders ? rows.map(r => (
+                  <tr key={r.sender_id_request_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{r.partner_name || '—'}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <div style={{ color:'#0f172a' }}>{r.client_name || '—'}</div>
+                      {r.client_phone && <div style={{ color:'#94a3b8', fontFamily:'monospace', fontSize:11 }}>{r.client_phone}</div>}
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:12, fontWeight:700, background:`${BRAND}1a`, color:BRAND }}>{r.sender_id}</span>
+                    </td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{r.provider || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b' }}>{r.owner_email || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.approved_at ? new Date(r.approved_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                )) : rows.map(r => (
+                  <tr key={r.tenant_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{r.partner_name || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#0f172a' }}>{r.client_name || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b' }}>{r.client_email || '—'}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11, fontWeight:700,
+                        background: r.has_approved_sender ? '#16a34a1a' : '#94a3b81a', color: r.has_approved_sender ? '#16a34a' : '#64748b' }}>
+                        {r.has_approved_sender ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {meta.total_pages > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderTop:'1px solid #eef2f7' }}>
+            <div style={{ fontSize:12, color:'#94a3b8' }}>Page {meta.page} of {meta.total_pages}</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_prev} onClick={()=>setPage(p=>Math.max(1,p-1))}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_prev?1:.5 }}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_next} onClick={()=>setPage(p=>p+1)}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_next?1:.5 }}>Next ›</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {msgDetail && createPortal(
+        <div onClick={()=>setMsgDetail(null)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', justifyContent:'flex-end', zIndex:1000 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ width:'min(640px,100%)', height:'100%', background:'#fff', display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+              <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Message detail</h3>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setMsgDetail(null)} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={16}/></button>
+            </div>
+            {msgDetail.loading ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+             : !msgDetail.data ? <div style={{ padding:24, color:'#dc2626', fontSize:13 }}>Could not load this message.</div>
+             : (() => { const d = msgDetail.data; return (
+              <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'8px 16px', fontSize:13, marginBottom:16 }}>
+                  <span style={{ color:'#94a3b8' }}>Partner</span><span style={{ color:'#0f172a', fontWeight:600 }}>{d.partner_name || '—'}</span>
+                  <span style={{ color:'#94a3b8' }}>Client</span><span style={{ color:'#0f172a' }}>{d.client_name || '—'}</span>
+                  <span style={{ color:'#94a3b8' }}>Sender ID</span><span style={{ color:'#0f172a' }}>{d.sender_id || '—'}</span>
+                  <span style={{ color:'#94a3b8' }}>Status</span><span style={{ color:'#0f172a' }}>{d.status}</span>
+                  <span style={{ color:'#94a3b8' }}>Recipients</span><span style={{ color:'#0f172a' }}>{(d.recipients_count||0).toLocaleString()}</span>
+                  <span style={{ color:'#94a3b8' }}>Date</span><span style={{ color:'#0f172a' }}>{d.created_at ? new Date(d.created_at).toLocaleString() : '—'}</span>
+                </div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>Message</div>
+                <div style={{ fontSize:13, color:'#0f172a', lineHeight:1.6, whiteSpace:'pre-wrap', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:10, padding:'12px 14px', marginBottom:18 }}>{d.full_message || '—'}</div>
+                {d.error_message && <div style={{ fontSize:12, color:'#dc2626', marginBottom:18 }}>Error: {d.error_message}</div>}
+
+                <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>
+                  Recipients ({(d.recipients_list||[]).length}{d.recipients_truncated ? '+' : ''})
+                </div>
+                {(d.recipients_list||[]).length === 0 ? <div style={{ fontSize:12, color:'#94a3b8' }}>No per-recipient breakdown recorded.</div>
+                 : (
+                  <div style={{ border:'1px solid #eef2f7', borderRadius:10, overflow:'hidden' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                      <thead><tr style={{ background:'#f8fafc' }}>
+                        <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Phone</th>
+                        <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Name</th>
+                        <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Status</th>
+                      </tr></thead>
+                      <tbody>
+                        {d.recipients_list.map((rec,i) => (
+                          <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
+                            <td style={{ padding:'8px 12px', fontFamily:'monospace', color:'#0f172a' }}>{rec.phone || '—'}</td>
+                            <td style={{ padding:'8px 12px', color:'#64748b' }}>{rec.name || '—'}</td>
+                            <td style={{ padding:'8px 12px', color: rec.status==='sent' ? '#16a34a' : rec.status==='failed' ? '#dc2626' : '#64748b' }}>{rec.status || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {d.recipients_truncated && <div style={{ fontSize:11, color:'#94a3b8', marginTop:8 }}>Showing first {(d.recipients_list||[]).length} recipients.</div>}
+              </div>
+             ); })()}
+          </div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
+// ─── Approved Senders Tab (by audience: partners vs direct users) ────────────
+function ApprovedSendersTab() {
+  const { onLogout } = React.useContext(AppContext);
+
+  const [audience, setAudience]   = useState('partners');
+  const [partinas, setPartinas]   = useState([]);
+  const [partnerId, setPartnerId] = useState('');
+  const [search, setSearch]       = useState('');
+  const [noProvider, setNoProvider] = useState(false);
+  const [usage, setUsage]         = useState('');
+  const [loginFrom, setLoginFrom] = useState('');
+  const [loginTo, setLoginTo]     = useState('');
+  const [downloading, setDownloading] = useState(false);
+  const [rows, setRows]           = useState([]);
+  const [summary, setSummary]     = useState({ total:0, no_provider:0, with_provider:0 });
+  const [meta, setMeta]           = useState({ total:0, page:1, total_pages:1, has_next:false, has_prev:false });
+  const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(false);
+
+  const isPartners = audience === 'partners';
+
+  useEffect(() => {
+    adminFetch(`${BROADCAST_API}/broadcasts/partinas`, { method:'GET' }, onLogout)
+      .then(res => { if (res.success) setPartinas(res.data || []); })
+      .catch(() => {});
+  }, [onLogout]);
+
+  const buildParams = useCallback(() => {
+    const qs = new URLSearchParams({ audience });
+    if (isPartners && partnerId) qs.set('partner_id', partnerId);
+    if (search.trim()) qs.set('search', search.trim());
+    if (noProvider) qs.set('no_provider', '1');
+    if (!isPartners && usage) qs.set('usage', usage);
+    if (!isPartners && loginFrom) qs.set('login_from', loginFrom);
+    if (!isPartners && loginTo) qs.set('login_to', loginTo);
+    return qs;
+  }, [audience, isPartners, partnerId, search, noProvider, usage, loginFrom, loginTo]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = buildParams();
+      qs.set('page', String(page)); qs.set('limit', '20');
+      const res = await adminFetch(`${BROADCAST_API}/approved-senders?${qs.toString()}`, { method:'GET' }, onLogout);
+      if (res.success) { setRows(res.data || []); setMeta(res.meta || meta); setSummary(res.summary || { total:0, no_provider:0, with_provider:0 }); }
+    } catch {} finally { setLoading(false); }
+  }, [buildParams, page, onLogout]);
+
+  const downloadCsv = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const qs = buildParams(); qs.set('export', 'csv');
+      const token = getToken();
+      const resp = await fetch(`${BASE_URL}${BROADCAST_API}/approved-senders?${qs.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials:'include',
+      });
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `approved_senders_${audience}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch {} finally { setDownloading(false); }
+  }, [buildParams, audience]);
+
+  useEffect(() => { setPage(1); }, [audience, partnerId, search, noProvider, usage, loginFrom, loginTo]);
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
+
+  const Chip = ({ label, value, active, onClick, color }) => (
+    <button onClick={onClick} style={{ cursor:onClick?'pointer':'default', textAlign:'left', padding:'8px 14px', borderRadius:10,
+      border:`1.5px solid ${active ? (color||BRAND) : '#e2e8f0'}`, background: active ? `${color||BRAND}0d` : '#fff' }}>
+      <div style={{ fontSize:18, fontWeight:800, color: color||'#0f172a' }}>{(value||0).toLocaleString()}</div>
+      <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>{label}</div>
+    </button>
+  );
+
+  return (
+    <div className="senda-fade-in">
+      <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+        {[{id:'partners',label:'Partners'},{id:'direct_users',label:'Direct Users'}].map(a => (
+          <button key={a.id} onClick={()=>setAudience(a.id)} className="senda-btn senda-btn-sm"
+            style={{ height:34, background: audience===a.id ? BRAND : '#fff', color: audience===a.id ? '#fff' : '#475569',
+              border:`1.5px solid ${audience===a.id ? BRAND : '#e2e8f0'}` }}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+            <Tag size={18} color={BRAND} strokeWidth={2.2}/>
+            <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>
+              Approved Sender IDs · {isPartners ? 'Partner clients' : 'Direct users'}
+            </h3>
+          </div>
+          <div style={{ fontSize:12, color:'#64748b' }}>
+            {isPartners
+              ? "All approved sender names belonging to partners' clients."
+              : 'All approved sender names belonging to directly-registered customers.'}
+          </div>
+
+          <div style={{ display:'flex', gap:10, marginTop:12 }}>
+            <Chip label="Total approved" value={summary.total} active={!noProvider} onClick={()=>setNoProvider(false)}/>
+            <Chip label="No provider" value={summary.no_provider} active={noProvider} onClick={()=>setNoProvider(!noProvider)} color="#d97706"/>
+          </div>
+
+          <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap', alignItems:'center' }}>
+            {isPartners && (
+              <select value={partnerId} onChange={e=>setPartnerId(e.target.value)}
+                className="senda-input" style={{ height:38, width:'auto', minWidth:220, cursor:'pointer' }}>
+                <option value="">All partners</option>
+                {partinas.map(p => <option key={p.partner_id} value={p.partner_id}>{p.name} — {p.clients_count} client{p.clients_count!==1?'s':''}</option>)}
+              </select>
+            )}
+            <div style={{ position:'relative', flex:1, minWidth:180 }}>
+              <Search size={15} color="#94a3b8" style={{ position:'absolute', left:12, top:11 }}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sender ID, account, owner…"
+                className="senda-input" style={{ height:38, paddingLeft:34 }}/>
+            </div>
+            <button onClick={downloadCsv} disabled={downloading || summary.total===0}
+              className="senda-btn senda-btn-sm" style={{ height:38, border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700, opacity:(downloading||summary.total===0)?.5:1 }}>
+              <Download size={14} strokeWidth={2.2} style={{ marginRight:6 }}/>{downloading ? 'Preparing…' : 'Download CSV'}
+            </button>
+          </div>
+
+          {!isPartners && (
+            <div style={{ display:'flex', gap:10, marginTop:10, flexWrap:'wrap', alignItems:'center' }}>
+              <select value={usage} onChange={e=>setUsage(e.target.value)} className="senda-input" style={{ height:36, width:'auto', cursor:'pointer' }}>
+                <option value="">All usage</option>
+                <option value="none">Never used SMS</option>
+                <option value="low">Uses SMS slowly (1–100)</option>
+                <option value="active">Active (100+)</option>
+              </select>
+              <span style={{ fontSize:12, color:'#64748b', fontWeight:600, marginLeft:6 }}>Last login between</span>
+              <input type="date" value={loginFrom} onChange={e=>setLoginFrom(e.target.value)} className="senda-input" style={{ height:36, width:'auto' }}/>
+              <span style={{ fontSize:12, color:'#94a3b8' }}>and</span>
+              <input type="date" value={loginTo} onChange={e=>setLoginTo(e.target.value)} className="senda-input" style={{ height:36, width:'auto' }}/>
+              {(usage || loginFrom || loginTo) && <button onClick={()=>{ setUsage(''); setLoginFrom(''); setLoginTo(''); }} className="senda-btn senda-btn-sm" style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b' }}>Clear</button>}
+            </div>
+          )}
+        </div>
+
+        {loading ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+         : rows.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No approved sender IDs found.</div>
+         : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {((isPartners ? ['Partner'] : []).concat(['Account','Sender ID','Provider'])
+                    .concat(isPartners ? [] : ['Last login','SMS used'])
+                    .concat(['Owner','Approved'])).map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12, whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.sender_id_request_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    {isPartners && <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{r.partner_name || '—'}</td>}
+                    <td style={{ padding:'10px 14px' }}>
+                      <div style={{ color:'#0f172a' }}>{r.account_name || '—'}</div>
+                      {r.account_phone && <div style={{ color:'#94a3b8', fontFamily:'monospace', fontSize:11 }}>{r.account_phone}</div>}
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:12, fontWeight:700, background:`${BRAND}1a`, color:BRAND }}>{r.sender_id}</span>
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {r.provider ? <span style={{ color:'#475569' }}>{r.provider}</span>
+                        : <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:99, fontSize:11, fontWeight:700, background:'#d977061a', color:'#d97706' }}>No provider</span>}
+                    </td>
+                    {!isPartners && <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.last_login ? new Date(r.last_login).toLocaleDateString() : 'Never'}</td>}
+                    {!isPartners && <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{(r.sms_used||0).toLocaleString()}</td>}
+                    <td style={{ padding:'10px 14px', color:'#64748b' }}>{r.owner_email || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.approved_at ? new Date(r.approved_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {meta.total_pages > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderTop:'1px solid #eef2f7' }}>
+            <div style={{ fontSize:12, color:'#94a3b8' }}>Page {meta.page} of {meta.total_pages}</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_prev} onClick={()=>setPage(p=>Math.max(1,p-1))}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_prev?1:.5 }}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_next} onClick={()=>setPage(p=>p+1)}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_next?1:.5 }}>Next ›</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Registered · Never requested (idle users) ──────────────────────────────
+function RegisteredIdleTab() {
+  const { onLogout } = React.useContext(AppContext);
+
+  const [search, setSearch]       = useState('');
+  const [minIdle, setMinIdle]     = useState('');
+  const [downloading, setDownloading] = useState(false);
+  const [rows, setRows]           = useState([]);
+  const [summary, setSummary]     = useState({ total:0 });
+  const [meta, setMeta]           = useState({ total:0, page:1, total_pages:1, has_next:false, has_prev:false });
+  const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(false);
+
+  const buildParams = useCallback(() => {
+    const qs = new URLSearchParams();
+    if (search.trim()) qs.set('search', search.trim());
+    if (minIdle) qs.set('min_idle', String(minIdle));
+    return qs;
+  }, [search, minIdle]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = buildParams(); qs.set('page', String(page)); qs.set('limit', '20');
+      const res = await adminFetch(`${BROADCAST_API}/registered-never-requested?${qs.toString()}`, { method:'GET' }, onLogout);
+      if (res.success) { setRows(res.data || []); setMeta(res.meta || meta); setSummary(res.summary || { total:0 }); }
+    } catch {} finally { setLoading(false); }
+  }, [buildParams, page, onLogout]);
+
+  const downloadCsv = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const qs = buildParams(); qs.set('export', 'csv');
+      const token = getToken();
+      const resp = await fetch(`${BASE_URL}${BROADCAST_API}/registered-never-requested?${qs.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials:'include',
+      });
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'registered_never_requested.csv';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch {} finally { setDownloading(false); }
+  }, [buildParams]);
+
+  useEffect(() => { setPage(1); }, [search, minIdle]);
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
+
+  return (
+    <div className="senda-fade-in">
+      <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+            <Clock size={18} color={BRAND} strokeWidth={2.2}/>
+            <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>Registered · Never requested a Sender ID</h3>
+          </div>
+          <div style={{ fontSize:12, color:'#64748b' }}>
+            Active users who signed up but never requested a sender ID, with how long they've been idle. {(summary.total||0).toLocaleString()} total.
+          </div>
+
+          <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap', alignItems:'center' }}>
+            <div style={{ position:'relative', flex:1, minWidth:200 }}>
+              <Search size={15} color="#94a3b8" style={{ position:'absolute', left:12, top:11 }}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, email, phone…"
+                className="senda-input" style={{ height:38, paddingLeft:34 }}/>
+            </div>
+            <label style={{ fontSize:12, color:'#64748b', fontWeight:600 }}>Idle ≥
+              <input type="number" min="0" value={minIdle} onChange={e=>setMinIdle(e.target.value)} placeholder="0"
+                className="senda-input" style={{ height:38, width:90, marginLeft:6, display:'inline-block' }}/> days
+            </label>
+            <button onClick={downloadCsv} disabled={downloading || summary.total===0}
+              className="senda-btn senda-btn-sm" style={{ height:38, border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700, opacity:(downloading||summary.total===0)?.5:1 }}>
+              <Download size={14} strokeWidth={2.2} style={{ marginRight:6 }}/>{downloading ? 'Preparing…' : 'Download CSV'}
+            </button>
+          </div>
+        </div>
+
+        {loading ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+         : rows.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No matching users.</div>
+         : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {['User','Business','Phone','Registered','Last login','Idle (days)'].map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12, whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.user_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px' }}>
+                      <div style={{ color:'#0f172a', fontWeight:600 }}>{r.name || '—'}</div>
+                      <div style={{ color:'#94a3b8', fontSize:11 }}>{r.email}</div>
+                    </td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{r.business || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', fontFamily:'monospace' }}>{r.phone || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.registered_at ? new Date(r.registered_at).toLocaleDateString() : '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.last_login ? new Date(r.last_login).toLocaleDateString() : 'Never'}</td>
+                    <td style={{ padding:'10px 14px', fontWeight:700, color: (r.idle_days||0) > 30 ? '#dc2626' : '#0f172a' }}>{r.idle_days != null ? r.idle_days.toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {meta.total_pages > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderTop:'1px solid #eef2f7' }}>
+            <div style={{ fontSize:12, color:'#94a3b8' }}>Page {meta.page} of {meta.total_pages}</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_prev} onClick={()=>setPage(p=>Math.max(1,p-1))}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_prev?1:.5 }}>‹ Prev</button>
+              <button className="senda-btn senda-btn-sm" disabled={!meta.has_next} onClick={()=>setPage(p=>p+1)}
+                style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', opacity: meta.has_next?1:.5 }}>Next ›</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const NAV = [
   { id:'overview',     Icon:BarChart3,   label:'Overview'       },
   { id:'insights',     Icon:Activity,    label:'Insights'       },
   { id:'engagement',   Icon:MessageSquare, label:'Engagement'   },
+  { id:'broadcast',    Icon:Megaphone,   label:'Broadcast'      },
   { id:'users',        Icon:Users,       label:'Users'          },
   { id:'transactions', Icon:CreditCard,  label:'Transactions'   },
   { id:'senderids',    Icon:Tag,         label:'Sender IDs'     },
   { id:'partners',     Icon:Handshake,   label:'Partners'       },
+  { id:'partnersenders',Icon:Tag,        label:'Partner Clients' },
+  { id:'approvedsenders',Icon:ShieldCheck, label:'Approved Senders' },
+  { id:'idleusers',    Icon:Clock,       label:'Idle Users'     },
+  { id:'whatsapp',     Icon:Send,        label:'WhatsApp'       },
   { id:'loginactivity',Icon:ShieldCheck, label:'Login Activity' },
   { id:'packages',     Icon:Package,     label:'Packages'       },
+  { id:'notifications',Icon:Bell,        label:'Push Notifications' },
   { id:'operations',   Icon:Globe,       label:'Operations'     },
 ];
 
@@ -6681,6 +8642,7 @@ function ApprovedSendersView() {
   const [error, setError]       = useState(null);
   const [openId, setOpenId]     = useState(null);
   const [savingId, setSavingId] = useState(null);
+  const [paySummary, setPaySummary] = useState(null);
   const PER = 25;
 
   // Refetch all pages when the SERVER-SIDE filters change. Toggling the
@@ -6699,6 +8661,13 @@ function ApprovedSendersView() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { setPage(1); }, [search, paymentStatus, intent, excludePartner]);
+
+  // Amount collected from approved senders, by period (independent of list filters).
+  useEffect(() => {
+    adminFetch('/api/admin/v1/engagement/approved-senders/payment-summary/', {}, onLogout)
+      .then(res => { if (res && res.success) setPaySummary(res.data); })
+      .catch(() => {});
+  }, [onLogout]);
 
   // Apply audience filter (excludePartner) once. Everything downstream reads
   // from filteredAllItems so summary counts, table contents, and pagination
@@ -6742,7 +8711,7 @@ function ApprovedSendersView() {
       if (all.length === 0) return;
       downloadEngagementCsv(
         `approved-senders-${new Date().toISOString().slice(0,10)}.csv`,
-        ['Sender Name','Business','Phone','Email','Location','Payment Status','Total Paid (TZS)','Txn Count','Customers','Days Active','Approved At','Last Payment','Note · Checked','Note · Intent','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        ['Sender Name','Business','Phone','Email','Location','Payment Status','Registration Fee (TZS)','SMS Spend (TZS)','Total Paid (TZS)','Txn Count','Customers','Days Active','Approved At','Last Payment','Note · Checked','Note · Intent','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
         all.map(it => [
           it.sender_name || '',
           it.business || '',
@@ -6750,6 +8719,8 @@ function ApprovedSendersView() {
           it.email || '',
           it.location || '',
           it.payment_status || '',
+          Number(it.registration_fee_tzs || 0),
+          Number(it.sms_spend_tzs || 0),
           Number(it.total_paid_tzs || 0),
           it.txn_count || 0,
           it.customer_count || 0,
@@ -6804,6 +8775,27 @@ function ApprovedSendersView() {
               }}>{opt.label}</button>
           );
         })}
+      </div>
+
+      {/* Amount collected by period (registration fees + SMS spend) */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:10,marginBottom:12}}>
+        {[
+          { label:'Paid · Today',      d: paySummary?.today },
+          { label:'Paid · This week',  d: paySummary?.this_week },
+          { label:'Paid · This month', d: paySummary?.this_month },
+          { label:'Paid · All time',   d: paySummary?.all_time },
+        ].map(c => (
+          <div key={c.label} className="senda-card" style={{padding:'14px 16px',borderLeft:`3px solid ${GREEN}`}}>
+            <div style={{fontSize:19,fontWeight:800,color: (c.d?.amount||0) > 0 ? '#0f172a' : '#94a3b8'}}>
+              {Number(c.d?.amount || 0).toLocaleString()}
+              <span style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginLeft:4}}>TZS</span>
+            </div>
+            <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginTop:3}}>{c.label}</div>
+            {paySummary
+              ? <div style={{fontSize:10,color:'#cbd5e1',marginTop:3}}>{Number(c.d?.payments||0).toLocaleString()} payments · reg {Number(c.d?.registration||0).toLocaleString()} · sms {Number(c.d?.sms||0).toLocaleString()}</div>
+              : <div style={{fontSize:10,color:'#e2e8f0',marginTop:3}}>loading…</div>}
+          </div>
+        ))}
       </div>
 
       {/* Page-summary cards */}
@@ -6885,7 +8877,17 @@ function ApprovedSendersView() {
                             {meta.label}
                           </span>
                         </td>
-                        <td style={{fontWeight:600,color:GREEN,fontSize:12}}>{Number(it.total_paid_tzs || 0).toLocaleString()}</td>
+                        <td style={{fontSize:12}}>
+                          <div style={{fontWeight:700,color: Number(it.total_paid_tzs||0) > 0 ? GREEN : '#94a3b8'}}>
+                            {Number(it.total_paid_tzs || 0).toLocaleString()}
+                          </div>
+                          {Number(it.registration_fee_tzs||0) > 0 && (
+                            <div style={{fontSize:10,color:'#94a3b8',marginTop:1}}>
+                              reg {Number(it.registration_fee_tzs).toLocaleString()}
+                              {Number(it.sms_spend_tzs||0) > 0 ? ` · sms ${Number(it.sms_spend_tzs).toLocaleString()}` : ''}
+                            </div>
+                          )}
+                        </td>
                         <td style={{fontSize:12}}>{(it.customer_count || 0).toLocaleString()}</td>
                         <td style={{fontSize:11,color:'#64748b'}}>{it.days_active ?? '—'} d</td>
                         <td style={{fontSize:11,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
@@ -6933,6 +8935,192 @@ function ApprovedSendersView() {
 }
 
 // ── Active Users sub-view ────────────────────────────────────────────────────
+// Compose + send an SMS/email outreach message to selected users.
+function MessageComposerModal({ recipients, onClose, onSent }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [useSms, setUseSms]   = useState(false);
+  const [useEmail, setUseEmail] = useState(true);
+  const [subject, setSubject] = useState('Message from SENDA');
+  const [body, setBody]       = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  const MAX_RECIPIENTS = 5000;
+  const overCap = recipients.length > MAX_RECIPIENTS;
+  const withPhone = recipients.filter(r => r.phone).length;
+  const withEmail = recipients.filter(r => r.email).length;
+  const smsSegments = Math.max(1, Math.ceil((body.length || 0) / 160));
+
+  const submit = async () => {
+    if (overCap) { showToast(`Select at most ${MAX_RECIPIENTS} recipients per send.`, 'error'); return; }
+    const channels = [];
+    if (useSms) channels.push('sms');
+    if (useEmail) channels.push('email');
+    if (!channels.length) { showToast('Pick at least one channel (SMS or Email)', 'error'); return; }
+    if (!body.trim()) { showToast('Message body is required', 'error'); return; }
+    setSending(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/engagement/message/', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_ids: recipients.map(r => r.user_id),
+          channels, message: body.trim(), subject: subject.trim(),
+        }),
+      }, onLogout);
+      if (res && res.success) {
+        showToast(res.message || `Sent to ${recipients.length} user(s)`, 'success');
+        onSent && onSent(); onClose();
+      } else {
+        showToast(res?.error?.message || res?.error || 'Failed to send message', 'error');
+      }
+    } catch { showToast('Network error sending message', 'error'); }
+    finally { setSending(false); }
+  };
+
+  const ChannelToggle = ({ on, set, label, sub, icon: Icon }) => (
+    <button onClick={()=>set(v=>!v)} style={{
+      flex:1, display:'flex', alignItems:'flex-start', gap:9, textAlign:'left',
+      padding:'11px 13px', borderRadius:11, cursor:'pointer', fontFamily:'inherit',
+      border: on ? `1.5px solid ${BRAND}` : '1.5px solid #e2e8f0',
+      background: on ? `${BRAND}0c` : '#fff',
+    }}>
+      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,marginTop:1,
+        border: on ? 'none' : '1.5px solid #cbd5e1', background: on ? BRAND : '#fff',
+        display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:800}}>
+        {on ? '✓' : ''}
+      </div>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:700,color: on ? BRAND : '#475569',display:'flex',alignItems:'center',gap:5}}>
+          <Icon size={13} strokeWidth={2.3}/> {label}
+        </div>
+        <div style={{fontSize:10.5,color:'#94a3b8',marginTop:1}}>{sub}</div>
+      </div>
+    </button>
+  );
+
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',
+      backdropFilter:'blur(3px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'24px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up"
+        style={{width:'100%',maxWidth:480,margin:'auto',background:'#fff',borderRadius:18,
+          boxShadow:'0 24px 70px rgba(15,23,42,.28)',display:'flex',flexDirection:'column',maxHeight:'calc(100vh - 48px)',overflow:'hidden'}}>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',gap:13,padding:'20px 22px',borderBottom:'1px solid #eef2f7',flexShrink:0}}>
+          <div style={{width:42,height:42,borderRadius:12,flexShrink:0,background:`linear-gradient(135deg,${BRAND},${BRAND2})`,
+            boxShadow:`0 6px 16px ${BRAND}40`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Send size={18} strokeWidth={2.3} color="#fff"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:'#0f172a',letterSpacing:'-.2px'}}>Message {recipients.length} user{recipients.length>1?'s':''}</h3>
+            <p style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{withPhone} with phone · {withEmail} with email</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{border:'none',background:'#f1f5f9',borderRadius:9,width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748b',flexShrink:0}}>
+            <X size={16}/>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{padding:'18px 22px',overflowY:'auto',flex:1}}>
+          {overCap && (
+            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'9px 12px',marginBottom:14,fontSize:11,color:'#991b1b',display:'flex',gap:7}}>
+              <AlertTriangle size={13} strokeWidth={2} style={{flexShrink:0,marginTop:1}}/>
+              <span>You selected {recipients.length.toLocaleString()} users, but at most {MAX_RECIPIENTS} can be messaged per send. Narrow your selection (e.g. use a filter), then send in batches.</span>
+            </div>
+          )}
+          <label style={FIELD_LABEL}>Channels</label>
+          <div style={{display:'flex',gap:10,marginBottom:16}}>
+            <ChannelToggle on={useEmail} set={setUseEmail} label="Email" sub={`${withEmail} reachable`} icon={Mail}/>
+            <ChannelToggle on={useSms} set={setUseSms} label="SMS" sub={`${withPhone} reachable`} icon={MessageSquare}/>
+          </div>
+
+          {useSms && (
+            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'9px 12px',marginBottom:14,fontSize:11,color:'#92400e',display:'flex',gap:7}}>
+              <AlertTriangle size={13} strokeWidth={2} style={{flexShrink:0,marginTop:1}}/>
+              <span>SMS sends through the platform provider (sender “SENDA”) and uses platform credits — ~{smsSegments} segment{smsSegments>1?'s':''} per message.</span>
+            </div>
+          )}
+
+          {useEmail && (
+            <>
+              <label style={FIELD_LABEL}>Email subject</label>
+              <input className="senda-input" value={subject} onChange={e=>setSubject(e.target.value)} style={{height:42,fontSize:13.5,borderRadius:10,marginBottom:14}}/>
+            </>
+          )}
+
+          <label style={FIELD_LABEL}>Message</label>
+          <textarea value={body} onChange={e=>setBody(e.target.value)} rows={5} placeholder="Write your message…"
+            className="senda-input" style={{height:'auto',fontSize:13.5,borderRadius:10,padding:'10px 14px',resize:'vertical',lineHeight:1.55}}/>
+          <div style={{fontSize:10.5,color:'#94a3b8',marginTop:5}}>
+            {body.length} chars{useSms ? ` · ~${smsSegments} SMS segment${smsSegments>1?'s':''}` : ''}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'14px 22px',borderTop:'1px solid #eef2f7',flexShrink:0}}>
+          <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={onClose} disabled={sending}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={submit} disabled={sending || overCap}>
+            {sending ? <><Spinner size={14} color="#fff"/> Sending…</> : <><Send size={14} strokeWidth={2.2}/> Send to {recipients.length.toLocaleString()}</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+// Cell renderer: a user's sender-name status (approved names, requested, or none).
+function SenderNameCell({ it }) {
+  const approved = it.approved_sender_names || [];
+  const pending  = it.pending_sender_names || [];
+  if (it.sender_status === 'approved' && approved.length) {
+    return (
+      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+        {approved.map((n, i) => (
+          <span key={i} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:6,background:`${GREEN}18`,color:GREEN,fontFamily:'ui-monospace,Menlo,monospace'}}>{n}</span>
+        ))}
+      </div>
+    );
+  }
+  if (it.sender_status === 'requested') {
+    return (
+      <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:99,background:`${AMBER}18`,color:AMBER}}
+        title={pending.length ? `Requested: ${pending.join(', ')}` : 'Requested, not approved'}>
+        Requested{pending.length ? ` · ${pending[0]}` : ''}
+      </span>
+    );
+  }
+  return <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:99,background:'#f1f5f9',color:'#94a3b8'}}>No sender</span>;
+}
+
+// Filter chips for sender-name status. value: '' | 'approved' | 'requested' | 'none'.
+function SenderStatusChips({ value, onChange }) {
+  const opts = [
+    { id:'',          label:'All senders',     color: BRAND },
+    { id:'approved',  label:'Has sender name', color: GREEN },
+    { id:'requested', label:'Requested',       color: AMBER },
+    { id:'none',      label:'No sender name',  color: '#64748b' },
+  ];
+  return (
+    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+      {opts.map(o => {
+        const on = value === o.id;
+        return (
+          <button key={o.id} className="senda-btn senda-btn-sm" onClick={()=>onChange(o.id)}
+            style={{background: on ? o.color : '#f1f5f9', color: on ? '#fff' : '#64748b', border:'none'}}>
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ActiveUsersView() {
   const { onLogout } = React.useContext(AppContext);
   // Full dataset across pages; visible rows + count derived below.
@@ -6941,11 +9129,16 @@ function ActiveUsersView() {
   const [search, setSearch] = useState('');
   const [minPaid, setMinPaid] = useState(0);
   const [minSms, setMinSms]   = useState(0);
+  const [senderStatus, setSenderStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [openId, setOpenId]   = useState(null);
   const [savingId, setSavingId] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
+  const [showComposer, setShowComposer] = useState(false);
   const PER = 25;
+
+  const toggleSel = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null);
@@ -6953,14 +9146,15 @@ function ActiveUsersView() {
     if (search.trim()) params.search = search.trim();
     if (minPaid > 0)   params.min_total_paid = String(minPaid);
     if (minSms > 0)    params.min_sms_count = String(minSms);
+    if (senderStatus)  params.sender_status = senderStatus;
     fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/active-users/', params, onLogout)
       .then(all => setAllItems(all || []))
       .catch(e => setError(e?.message || 'Failed to load active users.'))
       .finally(() => setLoading(false));
-  }, [onLogout, search, minPaid, minSms]);
+  }, [onLogout, search, minPaid, minSms, senderStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { setPage(1); }, [search, minPaid, minSms]);
+  useEffect(() => { setPage(1); }, [search, minPaid, minSms, senderStatus]);
 
   // Derived: all rows, then page slice. (No partner-toggle on Active Users yet,
   // but the structure is parallel to ApprovedSendersView in case we add one.)
@@ -7003,12 +9197,14 @@ function ActiveUsersView() {
       if (all.length === 0) return;
       downloadEngagementCsv(
         `active-users-${new Date().toISOString().slice(0,10)}.csv`,
-        ['Name','Phone','Email','Business','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Total Paid (TZS)','Txn Count','SMS Total','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        ['Name','Phone','Email','Business','Sender Status','Sender Names','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Total Paid (TZS)','Txn Count','SMS Total','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
         all.map(u => [
           u.name || '',
           u.phone || '',
           u.email || '',
           u.business || '',
+          u.sender_status || '',
+          (u.approved_sender_names && u.approved_sender_names.length ? u.approved_sender_names : (u.pending_sender_names || [])).join(' / '),
           u.location || '',
           u.registered_at || '',
           u.days_since_registration ?? '',
@@ -7047,6 +9243,29 @@ function ActiveUsersView() {
             Heavy SMS (≥1K)
           </button>
         </div>
+        <SenderStatusChips value={senderStatus} onChange={setSenderStatus}/>
+        {allItems.length > 0 && (
+          <button onClick={()=>setSelected(prev => {
+              const allSelected = allItems.every(it => prev.has(it.user_id));
+              const n = new Set(prev);
+              if (allSelected) allItems.forEach(it => n.delete(it.user_id));
+              else allItems.forEach(it => n.add(it.user_id));
+              return n;
+            })}
+            className="senda-btn senda-btn-sm senda-btn-ghost" style={{fontSize:12}}>
+            {allItems.every(it => selected.has(it.user_id)) ? 'Deselect all' : `Select all ${allItems.length.toLocaleString()}`}
+          </button>
+        )}
+        {selected.size > 0 && (
+          <>
+            <button onClick={()=>setShowComposer(true)} className="senda-btn senda-btn-sm"
+              style={{background:BRAND,color:'#fff',border:'none'}}>
+              <Send size={13} strokeWidth={2.4}/> Message {selected.size.toLocaleString()}
+            </button>
+            <button onClick={()=>setSelected(new Set())} className="senda-btn senda-btn-sm senda-btn-ghost"
+              style={{fontSize:12,color:'#94a3b8'}}>Clear</button>
+          </>
+        )}
         <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{count.toLocaleString()} users</span>
         <button onClick={handleDownload} disabled={downloading || count === 0}
           style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
@@ -7063,10 +9282,23 @@ function ActiveUsersView() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:980}}>
+            <table className="senda-table" style={{minWidth:1020}}>
               <thead>
                 <tr>
-                  <th>User</th><th>Business</th><th>Phone</th>
+                  <th style={{width:30}}>
+                    <input type="checkbox"
+                      title="Select all users (every page)"
+                      checked={allItems.length > 0 && allItems.every(it => selected.has(it.user_id))}
+                      ref={el => { if (el) el.indeterminate = selected.size > 0 && !(allItems.length > 0 && allItems.every(it => selected.has(it.user_id))); }}
+                      onChange={e => setSelected(prev => {
+                        const n = new Set(prev);
+                        if (e.target.checked) allItems.forEach(it => n.add(it.user_id));
+                        else allItems.forEach(it => n.delete(it.user_id));
+                        return n;
+                      })}
+                      style={{accentColor:BRAND,cursor:'pointer'}}/>
+                  </th>
+                  <th>User</th><th>Business</th><th>Sender name</th><th>Phone</th>
                   <th>Total Paid (TZS)</th><th>Txns</th><th>SMS</th><th>Days</th><th>Note</th><th style={{width:30}}/>
                 </tr>
               </thead>
@@ -7076,12 +9308,16 @@ function ActiveUsersView() {
                   return (
                     <React.Fragment key={it.user_id || i}>
                       <tr onClick={() => setOpenId(isOpen ? null : it.user_id)}
-                        style={{cursor:'pointer', background: isOpen ? '#f0fdf4' : undefined}}>
+                        style={{cursor:'pointer', background: isOpen ? '#f0fdf4' : (selected.has(it.user_id) ? '#eff6ff' : undefined)}}>
+                        <td onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
+                          <input type="checkbox" checked={selected.has(it.user_id)} onChange={()=>toggleSel(it.user_id)} style={{accentColor:BRAND,cursor:'pointer'}}/>
+                        </td>
                         <td>
                           <div style={{fontWeight:600,fontSize:12,color:'#0f172a'}}>{it.name || '—'}</div>
                           <div style={{fontSize:10,color:'#94a3b8',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.email || '—'}</div>
                         </td>
                         <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.business || '—'}</td>
+                        <td><SenderNameCell it={it}/></td>
                         <td style={{fontSize:11,fontFamily:'ui-monospace,Menlo,monospace',color:'#475569',whiteSpace:'nowrap'}}>{it.phone || '—'}</td>
                         <td style={{fontSize:12,fontWeight:700,color:GREEN}}>{Number(it.total_paid_tzs || 0).toLocaleString()}</td>
                         <td style={{fontSize:12}}>{it.txn_count || 0}</td>
@@ -7095,7 +9331,7 @@ function ActiveUsersView() {
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={9} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${GREEN}`,borderBottom:'1px solid #e2e8f0'}}>
+                          <td colSpan={11} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${GREEN}`,borderBottom:'1px solid #e2e8f0'}}>
                             <EngagementNoteEditor
                               note={it.note || {}}
                               variant="user"
@@ -7110,7 +9346,7 @@ function ActiveUsersView() {
                   );
                 })}
                 {items.length === 0 && (
-                  <tr><td colSpan={9} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No active users match this filter.</td></tr>
+                  <tr><td colSpan={11} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No active users match this filter.</td></tr>
                 )}
               </tbody>
             </table>
@@ -7126,6 +9362,14 @@ function ActiveUsersView() {
           </div>
         </div>
       )}
+
+      {showComposer && (
+        <MessageComposerModal
+          recipients={allItems.filter(u => selected.has(u.user_id))}
+          onClose={()=>setShowComposer(false)}
+          onSent={()=>setSelected(new Set())}
+        />
+      )}
     </div>
   );
 }
@@ -7139,25 +9383,31 @@ function InactiveUsersView() {
   const [search, setSearch] = useState('');
   const [neverLoggedIn, setNeverLoggedIn] = useState(false);
   const [days, setDays] = useState(7);
+  const [senderStatus, setSenderStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [openId, setOpenId]   = useState(null);
   const [savingId, setSavingId] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
+  const [showComposer, setShowComposer] = useState(false);
   const PER = 25;
+
+  const toggleSel = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null);
     const params = { days: String(days) };
     if (search.trim()) params.search = search.trim();
     if (neverLoggedIn) params.never_logged_in = 'true';
+    if (senderStatus)  params.sender_status = senderStatus;
     fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/inactive-users/', params, onLogout)
       .then(all => setAllItems(all || []))
       .catch(e => setError(e?.message || 'Failed to load inactive users.'))
       .finally(() => setLoading(false));
-  }, [onLogout, search, neverLoggedIn, days]);
+  }, [onLogout, search, neverLoggedIn, days, senderStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { setPage(1); }, [search, neverLoggedIn, days]);
+  useEffect(() => { setPage(1); }, [search, neverLoggedIn, days, senderStatus]);
 
   const totalFiltered = allItems.length;
   const totalPages    = Math.max(1, Math.ceil(totalFiltered / PER));
@@ -7193,16 +9443,19 @@ function InactiveUsersView() {
       const params = { days: String(days) };
       if (search.trim()) params.search = search.trim();
       if (neverLoggedIn) params.never_logged_in = 'true';
+      if (senderStatus)  params.sender_status = senderStatus;
       const all = await fetchAllEngagementPages(adminFetch, '/api/admin/v1/engagement/inactive-users/', params, onLogout);
       if (all.length === 0) return;
       downloadEngagementCsv(
         `inactive-users-${new Date().toISOString().slice(0,10)}.csv`,
-        ['Name','Phone','Email','Business','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
+        ['Name','Phone','Email','Business','Sender Status','Sender Names','Location','Registered At','Days Since Registration','Last Login','Phone Verified','Note · Checked','Note · Feedback','Note · Last Contacted','Note · Contacted By'],
         all.map(u => [
           u.name || '',
           u.phone || '',
           u.email || '',
           u.business || '',
+          u.sender_status || '',
+          (u.approved_sender_names && u.approved_sender_names.length ? u.approved_sender_names : (u.pending_sender_names || [])).join(' / '),
           u.location || '',
           u.registered_at || '',
           u.days_since_registration ?? '',
@@ -7235,6 +9488,29 @@ function InactiveUsersView() {
             style={{accentColor:RED}}/>
           Never logged in only
         </label>
+        <SenderStatusChips value={senderStatus} onChange={setSenderStatus}/>
+        {allItems.length > 0 && (
+          <button onClick={()=>setSelected(prev => {
+              const allSelected = allItems.every(it => prev.has(it.user_id));
+              const n = new Set(prev);
+              if (allSelected) allItems.forEach(it => n.delete(it.user_id));
+              else allItems.forEach(it => n.add(it.user_id));
+              return n;
+            })}
+            className="senda-btn senda-btn-sm senda-btn-ghost" style={{fontSize:12}}>
+            {allItems.every(it => selected.has(it.user_id)) ? 'Deselect all' : `Select all ${allItems.length.toLocaleString()}`}
+          </button>
+        )}
+        {selected.size > 0 && (
+          <>
+            <button onClick={()=>setShowComposer(true)} className="senda-btn senda-btn-sm"
+              style={{background:BRAND,color:'#fff',border:'none'}}>
+              <Send size={13} strokeWidth={2.4}/> Message {selected.size.toLocaleString()}
+            </button>
+            <button onClick={()=>setSelected(new Set())} className="senda-btn senda-btn-sm senda-btn-ghost"
+              style={{fontSize:12,color:'#94a3b8'}}>Clear</button>
+          </>
+        )}
         <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{count.toLocaleString()} users</span>
         <button onClick={handleDownload} disabled={downloading || count === 0}
           style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
@@ -7251,10 +9527,23 @@ function InactiveUsersView() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:900}}>
+            <table className="senda-table" style={{minWidth:940}}>
               <thead>
                 <tr>
-                  <th>User</th><th>Business</th><th>Phone</th>
+                  <th style={{width:30}}>
+                    <input type="checkbox"
+                      title="Select all users (every page)"
+                      checked={allItems.length > 0 && allItems.every(it => selected.has(it.user_id))}
+                      ref={el => { if (el) el.indeterminate = selected.size > 0 && !(allItems.length > 0 && allItems.every(it => selected.has(it.user_id))); }}
+                      onChange={e => setSelected(prev => {
+                        const n = new Set(prev);
+                        if (e.target.checked) allItems.forEach(it => n.add(it.user_id));
+                        else allItems.forEach(it => n.delete(it.user_id));
+                        return n;
+                      })}
+                      style={{accentColor:BRAND,cursor:'pointer'}}/>
+                  </th>
+                  <th>User</th><th>Business</th><th>Sender name</th><th>Phone</th>
                   <th>Days Idle</th><th>Last Login</th><th>Note</th><th style={{width:30}}/>
                 </tr>
               </thead>
@@ -7264,12 +9553,16 @@ function InactiveUsersView() {
                   return (
                     <React.Fragment key={it.user_id || i}>
                       <tr onClick={() => setOpenId(isOpen ? null : it.user_id)}
-                        style={{cursor:'pointer', background: isOpen ? '#fef2f2' : undefined}}>
+                        style={{cursor:'pointer', background: isOpen ? '#fef2f2' : (selected.has(it.user_id) ? '#eff6ff' : undefined)}}>
+                        <td onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
+                          <input type="checkbox" checked={selected.has(it.user_id)} onChange={()=>toggleSel(it.user_id)} style={{accentColor:BRAND,cursor:'pointer'}}/>
+                        </td>
                         <td>
                           <div style={{fontWeight:600,fontSize:12,color:'#0f172a'}}>{it.name || '—'}</div>
                           <div style={{fontSize:10,color:'#94a3b8',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.email || '—'}</div>
                         </td>
                         <td style={{fontSize:12,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.business || '—'}</td>
+                        <td><SenderNameCell it={it}/></td>
                         <td style={{fontSize:11,fontFamily:'ui-monospace,Menlo,monospace',color:'#475569',whiteSpace:'nowrap'}}>{it.phone || '—'}</td>
                         <td style={{fontSize:12,fontWeight:700,color:RED}}>{it.days_since_registration ?? '—'} d</td>
                         <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>
@@ -7283,7 +9576,7 @@ function InactiveUsersView() {
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={7} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${RED}`,borderBottom:'1px solid #e2e8f0'}}>
+                          <td colSpan={9} style={{padding:'14px 18px',background:'#f8fafc',borderTop:`2px solid ${RED}`,borderBottom:'1px solid #e2e8f0'}}>
                             <EngagementNoteEditor
                               note={it.note || {}}
                               variant="user"
@@ -7298,7 +9591,7 @@ function InactiveUsersView() {
                   );
                 })}
                 {items.length === 0 && (
-                  <tr><td colSpan={7} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No inactive users match this filter.</td></tr>
+                  <tr><td colSpan={9} style={{padding:'30px 18px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No inactive users match this filter.</td></tr>
                 )}
               </tbody>
             </table>
@@ -7313,6 +9606,14 @@ function InactiveUsersView() {
             </div>
           </div>
         </div>
+      )}
+
+      {showComposer && (
+        <MessageComposerModal
+          recipients={allItems.filter(u => selected.has(u.user_id))}
+          onClose={()=>setShowComposer(false)}
+          onSent={()=>setSelected(new Set())}
+        />
       )}
     </div>
   );
@@ -7365,6 +9666,247 @@ function EngagementTab() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
+function WhatsAppSend({ partners }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [scope, setScope]         = useState('default');
+  const [mode, setMode]           = useState('single');
+  const [recipients, setRecipients] = useState('');
+  const [templates, setTemplates] = useState([]);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [tplIdx, setTplIdx]       = useState('');
+  const [variables, setVariables] = useState([]);
+  const [sending, setSending]     = useState(false);
+  const [result, setResult]       = useState(null);
+
+  const loadTemplates = React.useCallback((sc) => {
+    setTplLoading(true); setTemplates([]); setTplIdx(''); setVariables([]);
+    adminFetch(`/whatsapp/templates?scope=${encodeURIComponent(sc)}`, {}, onLogout)
+      .then(res => {
+        if (res.success) setTemplates(res.data?.templates || []);
+        else showToast && showToast(res.error?.message || 'Failed to load templates', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setTplLoading(false));
+  }, [onLogout, showToast]);
+
+  useEffect(() => { loadTemplates(scope); }, [scope, loadTemplates]);
+
+  const tpl = tplIdx !== '' ? templates[Number(tplIdx)] : null;
+  const onPickTpl = (idx) => {
+    setTplIdx(idx);
+    const t = idx !== '' ? templates[Number(idx)] : null;
+    setVariables(t ? Array.from({ length: t.variable_count || 0 }, () => '') : []);
+  };
+
+  const send = () => {
+    if (!tpl) { showToast && showToast('Pick a template', 'error'); return; }
+    const recips = recipients.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    if (mode === 'single' && recips.length === 0) { showToast && showToast('Add at least one recipient', 'error'); return; }
+    setSending(true); setResult(null);
+    const body = {
+      scope, mode,
+      template_name: tpl.name, language: tpl.language || 'en',
+      variables,
+      recipients: recips,
+    };
+    adminFetch('/whatsapp/send', { method: 'POST', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (res.success) { setResult(res.data); showToast && showToast(res.message || 'Sent', 'success'); }
+        else showToast && showToast(res.error?.message || 'Send failed', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setSending(false));
+  };
+
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 5, display: 'block', textTransform: 'uppercase', letterSpacing: '.04em' };
+  const isDefault = scope === 'default';
+
+  return (
+    <div className="senda-card" style={{ padding: 22, maxWidth: 760 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Send using</label>
+          <select className="senda-input" style={{ width: '100%' }} value={scope} onChange={e => { setScope(e.target.value); if (e.target.value === 'default') setMode('single'); }}>
+            <option value="default">Platform Default (our number)</option>
+            {partners.map(p => (
+              <option key={p.partner_id} value={p.partner_id}>
+                {(p.name || p.owner_email)}{p.credential?.configured ? '' : ' — no creds'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Mode</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['single', 'broadcast'].map(m => (
+              <button key={m} onClick={() => setMode(m)} disabled={m === 'broadcast' && isDefault}
+                style={{ flex: 1, height: 38, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: (m === 'broadcast' && isDefault) ? 'not-allowed' : 'pointer',
+                  border: mode === m ? `1px solid ${BRAND}` : '1px solid #e2e8f0',
+                  background: mode === m ? `${BRAND}10` : '#fff', color: mode === m ? BRAND : '#64748b', opacity: (m === 'broadcast' && isDefault) ? .5 : 1 }}>
+                {m === 'single' ? 'Single / test' : "Partner's clients"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Approved template {tplLoading ? '(loading…)' : `(${templates.length})`}</label>
+        <select className="senda-input" style={{ width: '100%' }} value={tplIdx} onChange={e => onPickTpl(e.target.value)}>
+          <option value="">Select a template…</option>
+          {templates.map((t, i) => <option key={`${t.name}-${t.language}-${i}`} value={i}>{t.name} · {t.language}{t.category ? ` · ${t.category}` : ''}</option>)}
+        </select>
+        {tpl?.body_text && <div style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 8, padding: '8px 12px', marginTop: 8, whiteSpace: 'pre-wrap' }}>{tpl.body_text}</div>}
+      </div>
+
+      {variables.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Template variables</label>
+          {variables.map((v, i) => (
+            <input key={i} className="senda-input" style={{ width: '100%', marginBottom: 8 }} placeholder={`Value for {{${i + 1}}}`}
+              value={v} onChange={e => setVariables(prev => prev.map((x, j) => j === i ? e.target.value : x))} />
+          ))}
+        </div>
+      )}
+
+      {mode === 'single' ? (
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Recipients (E.164, comma or newline separated)</label>
+          <textarea className="senda-input" style={{ width: '100%', minHeight: 70, fontFamily: 'monospace', fontSize: 12 }}
+            placeholder={'+255700000001\n+255700000002'} value={recipients} onChange={e => setRecipients(e.target.value)} />
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
+          This sends the template to this partner's active client contacts. Admin sends are capped — for full broadcasts use the app's Campaigns.
+        </div>
+      )}
+
+      <button onClick={send} disabled={sending || !tpl}
+        style={{ height: 40, padding: '0 22px', border: 'none', borderRadius: 9, background: BRAND, color: '#fff', fontWeight: 700, fontSize: 13, cursor: (sending || !tpl) ? 'default' : 'pointer', opacity: (sending || !tpl) ? .6 : 1 }}>
+        {sending ? 'Sending…' : 'Send template'}
+      </button>
+
+      {result && (
+        <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+            Sent {result.sent}/{result.attempted} · Failed {result.failed}
+            {result.capped ? ` · audience ${result.total_audience}, capped at ${result.cap}` : ''}
+          </div>
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            {(result.results || []).map((r, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0', borderBottom: '1px solid #f8fafc' }}>
+                <code style={{ color: '#475569' }}>{r.to}</code>
+                <span style={{ color: r.success ? GREEN : RED, fontWeight: 700 }}>{r.success ? 'sent' : (r.error || 'failed')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WhatsAppTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [sub, setSub]         = useState('credentials');
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null); // partner_id currently being edited
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    adminFetch('/whatsapp-credentials', {}, onLogout)
+      .then(res => {
+        if (res.success) setData(res.data);
+        else showToast && showToast(res.error?.message || 'Failed to load WhatsApp credentials', 'error');
+      })
+      .catch(e => showToast && showToast(e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [onLogout, showToast]);
+  useEffect(() => { load(); }, [load]);
+
+  const partners = (data?.partners) || [];
+
+  const statusPill = (c) => {
+    if (!c?.configured) return { t: 'Not set', bg: '#f1f5f9', fg: '#94a3b8' };
+    if (!c?.is_active)  return { t: 'Disabled', bg: `${RED}12`, fg: RED };
+    if (c?.verified)    return { t: 'Verified', bg: `${GREEN}18`, fg: GREEN };
+    return { t: 'Unverified', bg: `${AMBER}18`, fg: AMBER };
+  };
+
+  return (
+    <div className="senda-fade-in">
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>WhatsApp</h2>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+          Save the Meta WhatsApp credentials used to send messages — the platform default for normal customers,
+          and each partner's own number for that partner and all of their clients — and send approved templates.
+        </p>
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+        {[{ id: 'credentials', label: 'Credentials' }, { id: 'send', label: 'Send Message' }].map(t => (
+          <button key={t.id} onClick={() => setSub(t.id)}
+            style={{ height: 36, padding: '0 16px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              border: sub === t.id ? `1px solid ${BRAND}` : '1px solid #e2e8f0',
+              background: sub === t.id ? `${BRAND}10` : '#fff', color: sub === t.id ? BRAND : '#64748b' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Loading…</div>
+      ) : sub === 'send' ? (
+        <WhatsAppSend partners={partners} />
+      ) : (
+        <>
+          {/* Platform default */}
+          <DefaultWhatsAppCredentials />
+
+          {/* Partners */}
+          <div className="senda-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
+              Partner Credentials <span style={{ color: '#94a3b8', fontWeight: 600 }}>· {partners.length}</span>
+            </div>
+            {partners.length === 0 && (
+              <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No partners found.</div>
+            )}
+            {partners.map(p => {
+              const pill = statusPill(p.credential);
+              const isEditing = editing === p.partner_id;
+              return (
+                <div key={p.partner_id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{p.name || p.owner_email}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.owner_email} · {p.customers_count} client{p.customers_count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: pill.bg, color: pill.fg }}>{pill.t}</span>
+                    <button onClick={() => setEditing(isEditing ? null : p.partner_id)}
+                      style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: BRAND, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                      {isEditing ? 'Close' : 'Edit'}
+                    </button>
+                  </div>
+                  {isEditing && (
+                    <div style={{ background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
+                      <PartnerWhatsAppCredentials partner={{ id: p.partner_id, name: p.name, owner: { email: p.owner_email } }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{ padding: '10px 18px' }}>
+              <button onClick={load} style={{ height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>↻ Refresh</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, adminInfo, showToast }) {
   const bp = useBreakpoint();
   const [active, setActive] = useState('overview');
@@ -7388,12 +9930,18 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     overview:     <OverviewTab/>,
     insights:     <InsightsTab/>,
     engagement:   <EngagementTab/>,
+    broadcast:    <BroadcastTab/>,
     users:        <UsersTab/>,
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
     partners:     <PartnersTab/>,
+    partnersenders: <PartnerSendersTab/>,
+    approvedsenders: <ApprovedSendersTab/>,
+    idleusers:    <RegisteredIdleTab/>,
+    whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
     packages:     <PackagesTab/>,
+    notifications:<PushNotificationsTab/>,
     operations:   <OperationsTab/>,
   };
 
@@ -7515,128 +10063,104 @@ function LoginPage({ onLogin }) {
 
   const isMobile = bp === 'mobile';
 
+  // Plain gray field styling, focus lifts to white + blue ring
+  const fieldStyle = {
+    width:'100%', height:46, borderRadius:6, border:'1px solid transparent',
+    background:'#e9ebee', color:'#1e293b', fontSize:14, fontFamily:'inherit',
+    outline:'none', transition:'background .18s, border-color .18s, box-shadow .18s',
+  };
+  const focusIn  = e => { e.target.style.background = '#fff'; e.target.style.borderColor = BRAND; e.target.style.boxShadow = `0 0 0 3px ${BRAND}22`; };
+  const focusOut = e => { e.target.style.background = '#e9ebee'; e.target.style.borderColor = 'transparent'; e.target.style.boxShadow = 'none'; };
+  const labelStyle = { display:'block', fontSize:11, fontWeight:700, color:'#94a3b8', marginBottom:7, letterSpacing:'.1em', textTransform:'uppercase' };
+
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
-      background:`radial-gradient(ellipse at 20% 50%, #1e3a8a 0%, #0f172a 50%, #1e1b4b 100%)`,
-      position:'relative',overflow:'hidden',padding:isMobile?'16px':'0',
+    <div style={{
+      minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center',
+      background:`linear-gradient(135deg, #3b82f6 0%, ${BRAND} 55%, ${BRAND2} 100%)`,
+      padding:'24px 16px', fontFamily:'inherit',
     }}>
-      <FloatingDots/>
+      <div className="senda-fade-up" style={{position:'relative', width:'100%', maxWidth:420}}>
+        {/* Decorative blue accent bar peeking behind the card */}
+        <div style={{position:'absolute', right:-10, top:24, bottom:24, width:16, borderRadius:8,
+          background:`linear-gradient(180deg,${BRAND},${BRAND2})`, zIndex:0}}/>
 
-      {/* Glow orbs */}
-      <div style={{position:'absolute',top:'15%',left:'10%',width:300,height:300,borderRadius:'50%',background:`${BRAND}22`,filter:'blur(80px)',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',bottom:'20%',right:'8%',width:250,height:250,borderRadius:'50%',background:`#7c3aed22`,filter:'blur(70px)',pointerEvents:'none'}}/>
+        {/* Card */}
+        <div style={{
+          position:'relative', zIndex:1, background:'#fff', borderRadius:8,
+          padding: isMobile ? '32px 24px' : '40px 38px',
+          boxShadow:'0 20px 50px rgba(0,0,0,.18)',
+        }}>
+          <h2 style={{fontSize:22, fontWeight:800, color:BRAND, letterSpacing:'.04em', margin:0, marginBottom:28, textTransform:'uppercase'}}>
+            Account Login
+          </h2>
 
-      {/* Card */}
-      <div className="senda-fade-up" style={{
-        width:'100%', maxWidth:420,
-        background:'rgba(255,255,255,0.05)',
-        backdropFilter:'blur(20px)',
-        border:'1px solid rgba(255,255,255,0.15)',
-        borderRadius:20,
-        padding:isMobile?'28px 20px':'40px 36px',
-        boxShadow:'0 24px 80px rgba(0,0,0,.5)',
-        position:'relative', zIndex:10,
-      }}>
-        {/* Logo */}
-        <div style={{textAlign:'center',marginBottom:28}}>
-          <div style={{display:'inline-flex',alignItems:'center',justifyContent:'center',
-            width:62,height:62,borderRadius:18,
-            background:`linear-gradient(135deg,${BRAND},${BRAND2})`,
-            boxShadow:`0 8px 24px ${BRAND}66`,marginBottom:14,
-          }}>
-            <Mail size={28} strokeWidth={2.4} color="#fff" />
-          </div>
-          <div style={{fontSize:24,fontWeight:800,color:'#fff',letterSpacing:'-.5px'}}>SENDA</div>
-          <div style={{fontSize:12,color:'rgba(255,255,255,0.5)',marginTop:2,letterSpacing:'.1em',textTransform:'uppercase',fontWeight:600}}>Admin Dashboard</div>
-        </div>
-
-        <h2 style={{fontSize:18,fontWeight:700,color:'#fff',marginBottom:6,textAlign:'center'}}>Welcome back</h2>
-        <p style={{fontSize:13,color:'rgba(255,255,255,0.5)',textAlign:'center',marginBottom:24}}>Sign in to manage SENDA platform</p>
-
-        {/* Error */}
-        {error && (
-          <div style={{
-            background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.3)',
-            borderRadius:10,padding:'10px 14px',marginBottom:16,
-            display:'flex',alignItems:'center',gap:8,
-          }}>
-            <AlertTriangle size={15} strokeWidth={2} color='#fca5a5' style={{flexShrink:0}}/>
-            <span style={{fontSize:13,color:'#fca5a5',fontWeight:500}}>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleLogin}>
-          {/* Email */}
-          <div style={{marginBottom:14}}>
-            <label style={{display:'block',fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',marginBottom:6,letterSpacing:'.08em',textTransform:'uppercase'}}>Email</label>
-            <div style={{position:'relative'}}>
-              <Mail size={15} strokeWidth={2} color='rgba(255,255,255,0.4)' style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
-              <input
-                type="email" value={email} onChange={e=>{setEmail(e.target.value);setError('');}} required
-                placeholder="admin@senda.co.tz"
-                style={{width:'100%',height:46,borderRadius:11,border:'1px solid rgba(255,255,255,0.15)',
-                  background:'rgba(255,255,255,0.08)',color:'#fff',fontSize:14,padding:'0 14px 0 40px',
-                  outline:'none',fontFamily:'inherit',transition:'border-color .18s,box-shadow .18s',
-                }}
-                onFocus={e=>{e.target.style.borderColor=`${BRAND}`;e.target.style.boxShadow=`0 0 0 3px ${BRAND}40`;}}
-                onBlur={e=>{e.target.style.borderColor='rgba(255,255,255,0.15)';e.target.style.boxShadow='none';}}
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div style={{marginBottom:16}}>
-            <label style={{display:'block',fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',marginBottom:6,letterSpacing:'.08em',textTransform:'uppercase'}}>Password</label>
-            <div style={{position:'relative'}}>
-              <ShieldCheck size={15} strokeWidth={2} color='rgba(255,255,255,0.4)' style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
-              <input
-                type={showPass?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value);setError('');}} required
-                placeholder="••••••••"
-                style={{width:'100%',height:46,borderRadius:11,border:'1px solid rgba(255,255,255,0.15)',
-                  background:'rgba(255,255,255,0.08)',color:'#fff',fontSize:14,padding:'0 42px 0 40px',
-                  outline:'none',fontFamily:'inherit',transition:'border-color .18s,box-shadow .18s',
-                }}
-                onFocus={e=>{e.target.style.borderColor=BRAND;e.target.style.boxShadow=`0 0 0 3px ${BRAND}40`;}}
-                onBlur={e=>{e.target.style.borderColor='rgba(255,255,255,0.15)';e.target.style.boxShadow='none';}}
-              />
-              <button type="button" onClick={()=>setShowPass(v=>!v)} style={{
-                position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',
-                background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,0.5)',fontSize:16,padding:4,
-              }}>{showPass?'🙈':'👁'}</button>
-            </div>
-          </div>
-
-          {/* Forgot + Remember */}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-            <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
-              <input type="checkbox" style={{accentColor:BRAND,width:14,height:14}}/>
-              <span style={{fontSize:12,color:'rgba(255,255,255,0.5)'}}>Remember me</span>
-            </label>
-            <a href="#" onClick={e=>e.preventDefault()} style={{fontSize:12,color:`${BRAND}cc`,textDecoration:'none',fontWeight:600}}
-              onMouseEnter={e=>e.target.style.color='#93c5fd'}
-              onMouseLeave={e=>e.target.style.color=`${BRAND}cc`}>
-              Forgot password?
-            </a>
-          </div>
-
-          {/* Submit */}
-          <button type="submit" className="senda-btn senda-btn-primary" disabled={loading}
-            style={{width:'100%',height:48,fontSize:15,borderRadius:12,
-              background:loading?'#3b82f6':`linear-gradient(135deg,${BRAND},${BRAND2})`,
-              boxShadow:`0 8px 20px ${BRAND}55`,
-              opacity:loading?.85:1,
+          {/* Error */}
+          {error && (
+            <div className="senda-fade-in" style={{
+              background:'#fee2e2', border:'1px solid #fecaca', borderRadius:6,
+              padding:'10px 13px', marginBottom:18, display:'flex', alignItems:'center', gap:8,
             }}>
-            {loading ? (
-              <><Spinner size={18} color="#fff"/> Authenticating...</>
-            ) : (
-              <>Sign In →</>
-            )}
-          </button>
-        </form>
+              <AlertTriangle size={15} strokeWidth={2} color='#dc2626' style={{flexShrink:0}}/>
+              <span style={{fontSize:13, color:'#b91c1c', fontWeight:500}}>{error}</span>
+            </div>
+          )}
 
-        <p style={{textAlign:'center',marginTop:20,fontSize:11,color:'rgba(255,255,255,0.25)'}}>
-          SENDA Admin Portal · Restricted Access
-        </p>
+          <form onSubmit={handleLogin}>
+            {/* Email */}
+            <div style={{marginBottom:18}}>
+              <label style={labelStyle}>Email</label>
+              <input
+                type="email" value={email} onChange={e=>{setEmail(e.target.value); setError('');}} required
+                placeholder="admin@senda.co.tz" autoComplete="username"
+                style={{...fieldStyle, padding:'0 14px'}}
+                onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+
+            {/* Password */}
+            <div style={{marginBottom:16}}>
+              <label style={labelStyle}>Password</label>
+              <div style={{position:'relative'}}>
+                <input
+                  type={showPass?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value); setError('');}} required
+                  placeholder="••••••••" autoComplete="current-password"
+                  style={{...fieldStyle, padding:'0 42px 0 14px'}}
+                  onFocus={focusIn} onBlur={focusOut}
+                />
+                <button type="button" onClick={()=>setShowPass(v=>!v)} aria-label={showPass?'Hide password':'Show password'} style={{
+                  position:'absolute', right:8, top:'50%', transform:'translateY(-50%)',
+                  background:'none', border:'none', cursor:'pointer', color:'#94a3b8',
+                  padding:6, display:'flex', alignItems:'center', borderRadius:6,
+                }}>
+                  {showPass ? <EyeOff size={16} strokeWidth={2}/> : <Eye size={16} strokeWidth={2}/>}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember + Forgot */}
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22}}>
+              <label style={{display:'flex', alignItems:'center', gap:7, cursor:'pointer'}}>
+                <input type="checkbox" style={{accentColor:BRAND, width:14, height:14, cursor:'pointer'}}/>
+                <span style={{fontSize:13, color:'#64748b'}}>Remember Me</span>
+              </label>
+              <a href="#" onClick={e=>e.preventDefault()} style={{fontSize:13, color:BRAND, textDecoration:'none', fontWeight:600}}
+                onMouseEnter={e=>e.target.style.textDecoration='underline'}
+                onMouseLeave={e=>e.target.style.textDecoration='none'}>
+                Forgot Password?
+              </a>
+            </div>
+
+            {/* Submit */}
+            <button type="submit" className="senda-btn senda-btn-primary" disabled={loading}
+              style={{width:'100%', height:46, fontSize:14, fontWeight:700, borderRadius:6, letterSpacing:'.05em',
+                background: loading ? '#3b82f6' : `linear-gradient(135deg,${BRAND},${BRAND2})`,
+                boxShadow:`0 8px 20px ${BRAND}40`, textTransform:'uppercase',
+                opacity: loading ? .85 : 1,
+              }}>
+              {loading ? (<><Spinner size={17} color="#fff"/> Logging in…</>) : 'Log In'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
