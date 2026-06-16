@@ -54,6 +54,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 import { parseExcelFile } from "@/utils/excelParser";
+import { SmsMessagePreview } from "@/components/sms/SmsMessagePreview";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -1069,7 +1070,12 @@ const SendSMS = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main data-sticky-bottom-bar className={`flex-1 overflow-y-auto overflow-x-hidden transition-colors duration-300 ${modeBgClass}`}>
-          <div className="max-w-2xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-36 sm:pb-32 space-y-5">
+          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl px-4 sm:px-6 pt-4 sm:pt-6 pb-36 sm:pb-32">
+            {/* Two-column on desktop: compose form (left) + live preview (right,
+                sticky). Collapses to a single column on mobile (preview below). */}
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,34%,380px)] lg:gap-6 lg:items-start">
+            {/* Left column: the compose form */}
+            <div className="space-y-5 min-w-0">
             {/* Page header — iOS-style large title */}
             <header>
               <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
@@ -1479,6 +1485,22 @@ const SendSMS = () => {
                     <Progress value={sendProgress} className="h-1.5" />
                   </div>
                 )}
+            </div>
+            </div>
+
+            {/* Right column: live message preview — sticky beside the form on
+                desktop, stacks below the form on mobile. */}
+            <div className="mt-5 lg:mt-0 lg:sticky lg:top-6">
+              <SmsMessagePreview
+                senderName={getSelectedSenderName()?.sender_id ?? ""}
+                message={message}
+                recipientCount={recipientCount}
+                segmentCount={segmentCount}
+                sampleRecipient={recipients[0] ?? ""}
+                mode={mode}
+                language={language === "sw" ? "sw" : "en"}
+              />
+            </div>
             </div>
           </div>
 

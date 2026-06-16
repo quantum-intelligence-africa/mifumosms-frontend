@@ -52,6 +52,13 @@ import { CreatePollDialog } from "@/components/whatsapp/CreatePollDialog";
 import { MetaTemplateMessenger } from "@/components/whatsapp/MetaTemplateMessenger";
 import { MetaTemplateStatus } from "@/components/whatsapp/MetaTemplateStatus";
 import { WhatsAppMessagePreview } from "@/components/whatsapp/WhatsAppMessagePreview";
+import { ImageMatchReview } from "@/components/whatsapp/ImageMatchReview";
+import {
+  buildFileMatchIndex,
+  matchFileForContact,
+  normalizeContactName,
+  stripExtension,
+} from "@/utils/contactImageMatch";
 import {
   useWhatsAppBulkImageSend,
   type WABulkContact,
@@ -224,11 +231,26 @@ function useMediaPoll() {
 }
 
 function MediaPollFields({
-  state, update,
+  state, update, requiredHeaderFormat = null,
+  multiple = false, files = [], onFilesChange, matchHint = null,
 }: {
   state: MediaPollState;
   update: <K extends keyof MediaPollState>(key: K, value: MediaPollState[K]) => void;
+  // When the selected template has a media header, pass its format (IMAGE /
+  // VIDEO / DOCUMENT). The section then makes the requirement obvious: it's
+  // labelled "<FORMAT> HEADER MEDIA (REQUIRED)" and drops the "No media" option.
+  requiredHeaderFormat?: string | null;
+  // When `multiple`, the Upload-file picker accepts many images — one per
+  // contact, matched by filename. `files`/`onFilesChange` own that list; the
+  // first file doubles as the shared header for single sends / unmatched
+  // contacts. `matchHint` shows match coverage under the picker. This is the
+  // single place to add images (no separate personalized-images section).
+  multiple?: boolean;
+  files?: File[];
+  onFilesChange?: (files: File[]) => void;
+  matchHint?: React.ReactNode;
 }) {
+  const mediaModes: MediaMode[] = requiredHeaderFormat ? ["url", "file"] : ["none", "url", "file"];
   const [pollDialogOpen, setPollDialogOpen] = useState(false);
   // Pulling polls inline so the user picks from a list instead of having to
   // remember/paste a name. The selected value is the poll title; the send
@@ -261,13 +283,21 @@ function MediaPollFields({
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Media & Poll (optional)
+            <FileText className="w-3.5 h-3.5" />
+            {requiredHeaderFormat ? (
+              <>
+                {requiredHeaderFormat} header media{" "}
+                <span className="text-destructive font-normal">(required)</span>
+              </>
+            ) : (
+              "Media & Poll (optional)"
+            )}
           </Label>
         </div>
 
         {/* Media mode toggle */}
         <div className="flex items-center gap-1 p-0.5 rounded-md bg-white dark:bg-gray-800 border border-border w-fit">
-          {(["none", "url", "file"] as MediaMode[]).map(m => (
+          {mediaModes.map(m => (
             <button
               key={m}
               type="button"
@@ -314,32 +344,66 @@ function MediaPollFields({
               </div>
             )}
 
-            {/* File picker */}
+            {/* File picker — single file, or many images (one per contact) when `multiple`. */}
             {state.mediaMode === "file" && (
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-[11px] font-medium text-muted-foreground">
-                  Pick a file (image / PDF / video)
+                  {multiple
+                    ? "Upload image(s) — one per contact (matched by filename), or a single shared image"
+                    : "Pick a file (image / PDF / video)"}
                 </Label>
                 <Input
                   type="file"
-                  accept="image/*,application/pdf,video/*"
+                  accept={multiple ? "image/*" : "image/*,application/pdf,video/*"}
+                  multiple={multiple}
                   onChange={e => {
-                    const f = e.target.files?.[0] ?? null;
-                    update("mediaFile", f);
-                    if (f && !state.filename) update("filename", f.name);
+                    const picked = Array.from(e.target.files ?? []);
+                    if (multiple) {
+                      const next = [...files, ...picked];
+                      onFilesChange?.(next);
+                      if (next[0]) {
+                        update("mediaFile", next[0]);
+                        if (!state.filename) update("filename", next[0].name);
+                      }
+                      e.target.value = "";
+                    } else {
+                      const f = picked[0] ?? null;
+                      update("mediaFile", f);
+                      if (f && !state.filename) update("filename", f.name);
+                    }
                   }}
                   className="h-8 text-xs border-border file:text-[11px] file:font-medium file:mr-2 file:border-0 file:rounded file:px-2 file:py-1 file:bg-gray-100 file:text-gray-900 dark:file:bg-gray-700 dark:file:text-gray-100"
                 />
-                {state.mediaFile && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {state.mediaFile.name} · {(state.mediaFile.size / 1024).toFixed(0)} KB
-                  </p>
+                {multiple ? (
+                  files.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-muted-foreground">
+                          {files.length} image{files.length === 1 ? "" : "s"} selected
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onFilesChange?.([])}
+                          className="text-[10px] font-semibold text-destructive hover:underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      {matchHint}
+                    </div>
+                  )
+                ) : (
+                  state.mediaFile && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {state.mediaFile.name} · {(state.mediaFile.size / 1024).toFixed(0)} KB
+                    </p>
+                  )
                 )}
               </div>
             )}
 
-            {/* Filename — only meaningful for documents */}
-            {(state.mediaMode === "file" || state.mediaType === "document") && (
+            {/* Filename — only meaningful for single documents (hidden for image sets) */}
+            {!multiple && (state.mediaMode === "file" || state.mediaType === "document") && (
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-[11px] font-medium text-muted-foreground">
                   Filename (shown to recipients on document tile)
@@ -469,7 +533,20 @@ const getTemplateVariableKeys = (tpl?: LocalTemplate | null): string[] => {
 
 // ─── Single Send Tab ──────────────────────────────────────────────────────────
 
-function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: string; prefillSearch?: string }) {
+function SingleSendTab({
+  waAccountId,
+  prefillSearch = "",
+  bulk = false,
+  prefillRecipients = [],
+}: {
+  waAccountId: string;
+  prefillSearch?: string;
+  // When true, the contacts table becomes multi-select and a single "Send to N"
+  // action sends to all selected recipients — identical layout to Single, the
+  // only difference being one-to-many delivery.
+  bulk?: boolean;
+  prefillRecipients?: string[];
+}) {
   const { sendSingle, sendApprovedTemplateBulk, getMessageTemplates, getUsers, isLoading } = useWhatsAppCloud();
   // Policy: WhatsApp proactive sends are template-only (WHATSAPP_REQUIRE_TEMPLATE).
   const [msgType] = useState<"text" | "template">("template");
@@ -483,6 +560,32 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
   const [metaTplName, setMetaTplName] = useState("");
   // token -> source ("name" | "phone" | "email" | "attr:<key>" | "static:<value>")
   const [paramSources, setParamSources] = useState<Record<string, string>>({});
+  // Optional per-contact image set: filenames matched to each recipient (phone
+  // digits or normalized name) so the IMAGE-header template carries that
+  // contact's own image instead of one shared file. Falls back to the shared
+  // Media image for contacts without a match.
+  const [matchImages, setMatchImages] = useState<File[]>([]);
+  const matchImageIndex = useMemo(() => buildFileMatchIndex(matchImages), [matchImages]);
+  // Bulk mode: selected recipient phones + send-to-many progress/summary.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(prefillRecipients));
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [bulkSummary, setBulkSummary] = useState<{ sent: number; failed: number } | null>(null);
+  const toggleSelect = (phone: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(phone)) next.delete(phone);
+      else next.add(phone);
+      return next;
+    });
+  // Full address book — loaded once in bulk mode so uploaded images can be
+  // matched against EVERY contact (not just the current page), and the matched
+  // contacts become the recipients automatically.
+  const { contacts: addressBook, fetchContacts: fetchAddressBook } = useContacts();
+  useEffect(() => {
+    if (bulk) void fetchAddressBook({ page: 1, page_size: 5000 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulk]);
   const [result, setResult] = useState<WASendSingleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Carries credit + attachment metadata from the most recent template send
@@ -496,6 +599,26 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
   } | null>(null);
 
   const [audience, setAudience] = useState<WAUser[]>([]);
+  // How many contacts on the current page have a matching uploaded image — shown
+  // as a hint so the user knows coverage before sending.
+  const matchedAudienceCount = useMemo(
+    () =>
+      matchImages.length === 0
+        ? 0
+        : audience.filter((u) => matchFileForContact(u.name || "", u.phone_number, matchImageIndex)).length,
+    [audience, matchImageIndex, matchImages.length],
+  );
+  // Bulk: contacts (from the full address book) that an uploaded image matched.
+  // These become the recipients automatically — no manual ticking needed.
+  const matchedContacts = useMemo(
+    () =>
+      matchImages.length === 0
+        ? []
+        : addressBook
+            .filter((c) => matchFileForContact(c.name || "", c.phone_e164, matchImageIndex))
+            .map((c) => ({ phone: c.phone_e164, name: c.name || "" })),
+    [addressBook, matchImageIndex, matchImages.length],
+  );
   const [audiencePage, setAudiencePage] = useState(1);
   const [audiencePageSize, setAudiencePageSize] = useState(25);
   const [audienceTotal, setAudienceTotal] = useState<number | null>(null);
@@ -570,6 +693,32 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
   const selectedMetaTpl = metaTpls.find((t) => t.name === metaTplName) || null;
   const metaHeaderFormat = (selectedMetaTpl?.components ?? []).find((c) => c.type === "HEADER")?.format;
   const metaNeedsImage = metaHeaderFormat === "IMAGE" || metaHeaderFormat === "VIDEO" || metaHeaderFormat === "DOCUMENT";
+
+  // Approved templates ship a sample header media handle in the HEADER example
+  // (Meta's `header_handle`). Surface it so the user immediately SEES the
+  // template's image and knows a header is required (they can replace it).
+  const metaSampleHeaderUrl: string = (() => {
+    const ex = (selectedMetaTpl?.components ?? []).find((c) => c.type === "HEADER")?.example as
+      | { header_handle?: unknown }
+      | undefined;
+    const handle = ex?.header_handle;
+    return Array.isArray(handle) && typeof handle[0] === "string" ? handle[0] : "";
+  })();
+
+  // When a media-header template is selected and no media has been supplied yet,
+  // default to URL mode prefilled with the template's sample so the requirement
+  // is visible at a glance (mirrors the Templates messenger).
+  useEffect(() => {
+    if (!metaNeedsImage || !metaSampleHeaderUrl) return;
+    if (mediaPoll.state.mediaMode !== "none") return;
+    mediaPoll.update("mediaMode", "url");
+    mediaPoll.update("mediaUrl", metaSampleHeaderUrl);
+    mediaPoll.update(
+      "mediaType",
+      metaHeaderFormat === "VIDEO" ? "video" : metaHeaderFormat === "DOCUMENT" ? "document" : "image",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metaTplName, metaNeedsImage, metaSampleHeaderUrl]);
   // Body placeholder tokens ({{1}}, {{name}}…) in order of first appearance.
   const metaBodyTokens: string[] = (() => {
     const body = (selectedMetaTpl?.components ?? []).find((c) => c.type === "BODY");
@@ -606,15 +755,31 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
         // comes from the Media section (for IMAGE/VIDEO/DOCUMENT-header templates).
         const extras = mediaPoll.toApiFields() as Record<string, unknown>;
 
+        // Per-contact image: if the user uploaded a matched image set, use this
+        // recipient's own image as the header; otherwise fall back to the shared
+        // Media image. The recipient's name (for name-based matching) comes from
+        // the audience row we're sending to.
+        const matched = matchImages.length
+          ? matchFileForContact(
+              audience.find((u) => u.phone_number === to)?.name ?? "",
+              to,
+              matchImageIndex,
+            )
+          : null;
+
         const data = await sendApprovedTemplateBulk(
           {
             template_name: selectedMetaTpl.name,
             language_code: (selectedMetaTpl.language as string) || "en",
             recipients: [to],
             param_map: buildParamMap(),
-            ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
-            ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
-            ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
+            ...(matched
+              ? { media_file: matched.file, media_type: "image" as const }
+              : {
+                  ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
+                  ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
+                  ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
+                }),
           },
           waAccountId || undefined,
         );
@@ -652,23 +817,121 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
     }
   };
 
+  // Bulk: send the approved template to every selected recipient. Reuses the
+  // exact single-send call per contact (so each gets their own matched image +
+  // param map), iterating with a progress counter. One-to-many is the only
+  // thing that differs from single send.
+  const sendSelected = async () => {
+    if (!selectedMetaTpl) {
+      setError("Pick an approved template first.");
+      return;
+    }
+    // Recipients: when per-contact images are uploaded, the matched contacts ARE
+    // the recipients (no manual ticking). Otherwise use the checkbox selection.
+    const targets: { phone: string; name: string }[] =
+      matchImages.length > 0
+        ? matchedContacts
+        : audience
+            .filter((u) => selected.has(u.phone_number))
+            .map((u) => ({ phone: u.phone_number, name: u.name || "" }));
+    if (targets.length === 0) return;
+    setError(null);
+    setResult(null);
+    setBulkSummary(null);
+    setBulkSending(true);
+    setBulkProgress({ done: 0, total: targets.length });
+    let sent = 0;
+    let failed = 0;
+    for (const u of targets) {
+      try {
+        const extras = mediaPoll.toApiFields() as Record<string, unknown>;
+        const matched = matchImages.length
+          ? matchFileForContact(u.name, u.phone, matchImageIndex)
+          : null;
+        const data = await sendApprovedTemplateBulk(
+          {
+            template_name: selectedMetaTpl.name,
+            language_code: (selectedMetaTpl.language as string) || "en",
+            recipients: [u.phone],
+            param_map: buildParamMap(),
+            ...(matched
+              ? { media_file: matched.file, media_type: "image" as const }
+              : {
+                  ...(extras.media_url ? { media_url: String(extras.media_url) } : {}),
+                  ...(extras.media_file instanceof File ? { media_file: extras.media_file } : {}),
+                  ...(extras.media_type ? { media_type: extras.media_type as "image" | "document" | "video" } : {}),
+                }),
+          },
+          waAccountId || undefined,
+        );
+        if (data.results?.[0]?.ok) sent += 1;
+        else failed += 1;
+      } catch {
+        failed += 1;
+      }
+      setBulkProgress((p) => ({ ...p, done: p.done + 1 }));
+    }
+    setBulkSending(false);
+    setBulkSummary({ sent, failed });
+  };
+
+  // Single send (per-match button or per-row Send) wrapped with the same live
+  // progress indicator as bulk — 0 → 100% for one message — while keeping the
+  // rich per-send result (delivered / credits) that sendTo sets.
+  const sendOne = async (phone: string) => {
+    setBulkSummary(null);
+    setBulkSending(true);
+    setBulkProgress({ done: 0, total: 1 });
+    try {
+      await sendTo(phone);
+    } finally {
+      setBulkProgress({ done: 1, total: 1 });
+      setBulkSending(false);
+    }
+  };
+
   // In text mode, sending is allowed if there's text OR media OR a poll
   const canSendText = !!(text.trim() || mediaPoll.state.pollId.trim() ||
     (mediaPoll.state.mediaMode === "url" && mediaPoll.state.mediaUrl.trim()) ||
     (mediaPoll.state.mediaMode === "file" && mediaPoll.state.mediaFile));
 
   // Approved template chosen, every body param mapped, and — if the template has
-  // a media header — a shared image/document attached from the Media section.
-  const metaMediaProvided =
+  // a media header — an image attached: either a shared image/document from the
+  // Media section, or a per-contact matched image set.
+  const sharedMediaProvided =
     (mediaPoll.state.mediaMode === "url" && !!mediaPoll.state.mediaUrl.trim()) ||
     (mediaPoll.state.mediaMode === "file" && !!mediaPoll.state.mediaFile);
+  const metaMediaProvided = sharedMediaProvided || matchImages.length > 0;
   const canSendTemplate =
     !!selectedMetaTpl &&
     metaBodyTokens.every((t) => (paramSources[t] || "name").length > 0) &&
     (!metaNeedsImage || metaMediaProvided);
 
+  // Per-row guard: when the template needs an image, a row can only send if it
+  // has its own matched image or a shared image is set. Prevents sending an
+  // image-header template to a contact who has neither (Meta would reject it).
+  const rowCanSend = (u: WAUser): boolean => {
+    if (msgType === "text") return canSendText;
+    if (!canSendTemplate) return false;
+    if (!metaNeedsImage) return true;
+    return sharedMediaProvided || !!matchFileForContact(u.name || "", u.phone_number, matchImageIndex);
+  };
+
+  // Bulk recipients: matched contacts when images are uploaded, else the manual
+  // checkbox selection.
+  const bulkRecipientCount = matchImages.length > 0 ? matchedContacts.length : selected.size;
+  // Send progress as a percentage (0–100) for the live indicator.
+  const bulkPct = bulkProgress.total ? Math.round((bulkProgress.done / bulkProgress.total) * 100) : 0;
+  // Show checkboxes only when the user must pick recipients manually — i.e. bulk
+  // with no uploaded images (a shared image/URL send to chosen contacts).
+  const showSelectBoxes = bulk && matchImages.length === 0;
+
   return (
-    <div className="space-y-4 p-1">
+    // Two-column on desktop: compose form + contacts (left), live preview
+    // (right, sticky). Single column on mobile (preview below the form).
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,32%,360px)] lg:gap-5 lg:items-start p-1">
+      {/* Left column: form + contacts */}
+      <div className="space-y-4 min-w-0">
       {/* Message type */}
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message Type</Label>
@@ -804,20 +1067,65 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
         </div>
       )}
 
-      {/* Media & Poll — shown in both modes so users can attach optional media/poll context */}
-      <MediaPollFields state={mediaPoll.state} update={mediaPoll.update} />
+      {/* Media & Poll — only meaningful when the selected template carries a
+          media header. The template itself defines the message: its media header
+          decides whether an image/video/document is needed, and its buttons act
+          as the poll (rendered in the preview). So we surface these controls only
+          for media-header templates and hide them otherwise. */}
+      {msgType === "template" && metaNeedsImage && (
+        <MediaPollFields
+          state={mediaPoll.state}
+          update={mediaPoll.update}
+          requiredHeaderFormat={metaHeaderFormat}
+          multiple
+          files={matchImages}
+          onFilesChange={setMatchImages}
+          matchHint={
+            matchImages.length > 0 ? (
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                Matched by filename — phone (e.g. <span className="font-mono">255712345678.png</span>) or
+                name (e.g. <span className="font-mono">john_magesa.jpg</span>).{" "}
+                <span className="font-semibold text-[#1ebe5d]">{matchedAudienceCount}</span> of{" "}
+                {audience.length} on this page matched · others use the first image.
+              </p>
+            ) : null
+          }
+        />
+      )}
 
-      {/* Live WhatsApp-style preview of the selected approved template. */}
-      {msgType === "template" && selectedMetaTpl && (
-        <WhatsAppMessagePreview
-          template={selectedMetaTpl}
-          paramSources={paramSources}
-          mediaUrl={mediaPoll.state.mediaMode === "url" ? mediaPoll.state.mediaUrl : ""}
-          mediaFile={mediaPoll.state.mediaMode === "file" ? mediaPoll.state.mediaFile : null}
+      {/* Visual image → contact review: thumbnails of each uploaded image next
+          to the contact it resolves to, so the user can confirm matching before
+          sending. */}
+      {msgType === "template" && metaNeedsImage && matchImages.length > 0 && (
+        <ImageMatchReview
+          files={matchImages}
+          contacts={
+            bulk
+              ? addressBook.map((c) => ({ name: c.name, phone_number: c.phone_e164 }))
+              : audience
+          }
+          onSend={(c) => sendOne(c.phone_number)}
+          sending={isLoading || bulkSending}
         />
       )}
 
       {/* Status */}
+      {/* Live send progress (% + bar) — shown for single/per-match sends here;
+          bulk shows the same indicator next to its "Send to N" button. */}
+      {!bulk && bulkSending && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-muted-foreground">Sending…</span>
+            <span className="tabular-nums">
+              <span className="font-bold text-foreground">{bulkPct}%</span>
+              <span className="text-muted-foreground"> · {bulkProgress.done}/{bulkProgress.total}</span>
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-[#25D366] transition-all duration-200" style={{ width: `${bulkPct}%` }} />
+          </div>
+        </div>
+      )}
       {error && (
         <Alert variant="destructive" className="py-2">
           <AlertCircle className="h-3.5 w-3.5" />
@@ -905,7 +1213,28 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
               <Th>Name</Th>
               <Th>Phone</Th>
               <Th className="hidden md:table-cell">Email</Th>
-              <Th>Action</Th>
+              <Th>
+                {showSelectBoxes ? (
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    checked={audience.length > 0 && audience.every((u) => selected.has(u.phone_number))}
+                    onChange={(e) =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) audience.forEach((u) => next.add(u.phone_number));
+                        else audience.forEach((u) => next.delete(u.phone_number));
+                        return next;
+                      })
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                ) : bulk ? (
+                  "Image"
+                ) : (
+                  "Action"
+                )}
+              </Th>
             </TableHead>
             <tbody className="divide-y divide-border">
               {audienceLoading ? (
@@ -913,23 +1242,55 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
               ) : audience.length === 0 ? (
                 <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">No contacts found.</td></tr>
               ) : (
-                audience.map((user) => (
+                audience.map((user) => {
+                  const imgMatch =
+                    matchImages.length > 0
+                      ? matchFileForContact(user.name || "", user.phone_number, matchImageIndex)
+                      : null;
+                  return (
                   <tr key={user.user_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <Td>{user.name || "—"}</Td>
+                    <Td>
+                      <span className="inline-flex items-center gap-1.5">
+                        {user.name || "—"}
+                        {matchImages.length > 0 && (
+                          <ImageIcon
+                            className={`w-3 h-3 flex-shrink-0 ${imgMatch ? "text-[#25D366]" : "text-muted-foreground/40"}`}
+                            aria-label={imgMatch ? "Has matching image" : "No matching image"}
+                          />
+                        )}
+                      </span>
+                    </Td>
                     <Td className="font-mono text-[10px] sm:text-[11px] max-w-[110px] truncate">{user.phone_number}</Td>
                     <Td className="hidden md:table-cell text-muted-foreground">{user.email || "—"}</Td>
                     <Td>
-                      <Button
-                        size="sm"
-                        className="h-7 px-3 text-[11px] bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-lg"
-                        onClick={() => sendTo(user.phone_number)}
-                        disabled={isLoading || (msgType === "text" ? !canSendText : !canSendTemplate)}
-                      >
-                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send"}
-                      </Button>
+                      {showSelectBoxes ? (
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${user.phone_number}`}
+                          checked={selected.has(user.phone_number)}
+                          onChange={() => toggleSelect(user.phone_number)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                      ) : bulk ? (
+                        imgMatch ? (
+                          <span className="text-[11px] font-semibold text-[#1ebe5d]">Matched</span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-[11px] bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-lg"
+                          onClick={() => sendOne(user.phone_number)}
+                          disabled={isLoading || bulkSending || !rowCanSend(user)}
+                        >
+                          {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send"}
+                        </Button>
+                      )}
                     </Td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -940,6 +1301,67 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
           hasNext={audienceHasNext} hasPrevious={audienceHasPrevious}
           loading={audienceLoading} count={audience.length}
           onPrev={() => loadAudience(audiencePage - 1)} onNext={() => loadAudience(audiencePage + 1)}
+        />
+
+        {/* Bulk send footer — one action sends the template to every selected
+            recipient (each with their own matched image + filled variables). */}
+        {bulk && (
+          <div className="space-y-2 pt-2 border-t border-border/60">
+            {bulkSending && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-muted-foreground">Sending…</span>
+                  <span className="tabular-nums">
+                    <span className="font-bold text-foreground">{bulkPct}%</span>
+                    <span className="text-muted-foreground"> · {bulkProgress.done}/{bulkProgress.total}</span>
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-[#25D366] transition-all duration-200"
+                    style={{ width: `${bulkPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {bulkSummary && !bulkSending && (
+              <Alert className="py-2 border-green-200 bg-green-50 dark:bg-green-950/30">
+                <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                <AlertDescription className="text-xs text-green-800 dark:text-green-300">
+                  Sent to {bulkSummary.sent} contact{bulkSummary.sent === 1 ? "" : "s"}
+                  {bulkSummary.failed > 0 && ` · ${bulkSummary.failed} failed`}.
+                </AlertDescription>
+              </Alert>
+            )}
+            {matchImages.length > 0 && (
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Recipients are the{" "}
+                <span className="font-semibold text-foreground/80">{matchedContacts.length}</span>{" "}
+                contact{matchedContacts.length === 1 ? "" : "s"} matched from your uploaded images —
+                no need to select them below.
+              </p>
+            )}
+            <Button
+              onClick={sendSelected}
+              disabled={bulkSending || bulkRecipientCount === 0 || !canSendTemplate}
+              className="w-full h-10 gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl"
+            >
+              {bulkSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send to {bulkRecipientCount} {matchImages.length > 0 ? "matched" : "selected"}
+            </Button>
+          </div>
+        )}
+      </div>
+      </div>
+
+      {/* Right column: live template preview — sticky beside the form on
+          desktop, stacks below the form on mobile. */}
+      <div className="mt-4 lg:mt-0 lg:sticky lg:top-4">
+        <WhatsAppMessagePreview
+          template={msgType === "template" ? selectedMetaTpl : null}
+          paramSources={paramSources}
+          mediaUrl={mediaPoll.state.mediaMode === "url" ? mediaPoll.state.mediaUrl : ""}
+          mediaFile={mediaPoll.state.mediaMode === "file" ? mediaPoll.state.mediaFile : null}
         />
       </div>
     </div>
@@ -3388,6 +3810,18 @@ function BulkImageSendTab({
     return out;
   })();
 
+  // Map each body token to a preview source so the review shows "Name"/"Phone"
+  // chips (filled per recipient) or fixed text — mirroring how the values
+  // resolve at send time. Used only for the WhatsApp-style review below.
+  const previewParamSources: Record<string, string> = Object.fromEntries(
+    bodyTokens.map((tok, i) => {
+      const v = tplVars[tok] ?? (i === 0 ? "{name}" : "");
+      if (/\{name\}/i.test(v)) return [tok, "name"];
+      if (/\{phone\}/i.test(v)) return [tok, "phone"];
+      return [tok, v ? `static:${v}` : "name"];
+    }),
+  );
+
   // Build the base `components` (BODY only — the image header is injected by the
   // server per contact). Empty when the template has no body variables.
   const buildTemplateComponents = (): unknown[] => {
@@ -3469,17 +3903,10 @@ function BulkImageSendTab({
 
   // ── Filename → contact auto-matching ───────────────────────────────────────
   // Mirrors the backend's matching rules so the user can see WHO will receive
-  // each uploaded image before sending. Normalization rules:
-  //   - lowercase, whitespace → underscores, strip non `[a-z0-9_]`
-  //   - collapse and trim underscores
-  const normalizeName = (s: string): string =>
-    s
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "")
-      .replace(/_+/g, "_")
-      .replace(/^_+|_+$/g, "");
-  const baseName = (filename: string): string => filename.replace(/\.[^.]+$/, "");
+  // each uploaded image before sending. Shares the exact normalization with the
+  // Single send flow via contactImageMatch so the two can never drift apart.
+  const normalizeName = normalizeContactName;
+  const baseName = stripExtension;
 
   // O(1) lookups: phone digits → contact id; normalized name → contact id.
   const contactIndex = (() => {
@@ -3680,7 +4107,11 @@ function BulkImageSendTab({
   };
 
   return (
-    <div className="space-y-4 p-1">
+    // Two-column on desktop: form (left) + live preview (right, sticky) —
+    // matching the Single tab. Single column on mobile (preview below).
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,32%,360px)] lg:gap-5 lg:items-start p-1">
+      {/* Left column: the bulk form */}
+      <div className="space-y-4 min-w-0">
       {/* Intro */}
       <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-3.5 py-2.5">
         <p className="text-[12.5px] font-semibold text-foreground leading-tight">
@@ -4347,6 +4778,17 @@ function BulkImageSendTab({
           </CardContent>
         </Card>
       )}
+      </div>
+
+      {/* Right column: live template preview — sticky beside the form on
+          desktop, stacks below on mobile (matches Single). */}
+      <div className="mt-4 lg:mt-0 lg:sticky lg:top-4">
+        <WhatsAppMessagePreview
+          template={selectedTpl}
+          paramSources={previewParamSources}
+          mediaFile={files[0] ?? null}
+        />
+      </div>
     </div>
   );
 }
@@ -4381,8 +4823,6 @@ function Stat({
 // underlying tab components are unchanged; this wrapper just picks which one to
 // render based on the local Text/Image toggle.
 
-type BulkMode = "text" | "image";
-
 function BulkSendCombined({
   waAccountId,
   prefillRecipients = [],
@@ -4390,77 +4830,12 @@ function BulkSendCombined({
   waAccountId: string;
   prefillRecipients?: string[];
 }) {
-  const [mode, setMode] = useState<BulkMode>("text");
-  // When the user picks an image-header template in the Text tab and chooses
-  // "one image per receiver", carry that template into the Image tab so the
-  // matched-image send continues with it already selected.
-  const [imageBulkPrefill, setImageBulkPrefill] = useState<{ templateName: string } | null>(null);
-
-  const tabs: Array<{ key: BulkMode; label: string; icon: typeof Send; activeClass: string }> = [
-    {
-      key: "text",
-      label: "Text",
-      icon: Send,
-      activeClass: "bg-blue-500 text-white shadow-[0_2px_8px_rgba(59,130,246,0.35)]",
-    },
-    {
-      key: "image",
-      label: "Image",
-      icon: ImageIcon,
-      activeClass: "bg-amber-500 text-white shadow-[0_2px_8px_rgba(245,158,11,0.35)]",
-    },
-  ];
-
-  return (
-    <div className="space-y-3 p-1">
-      {/* Sub-mode toggle — sits inline so it doesn't look like a top-level nav. */}
-      <div
-        role="tablist"
-        aria-label="Bulk send mode"
-        className="inline-grid grid-cols-2 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-xl"
-      >
-        {tabs.map(({ key, label, icon: Icon, activeClass }) => {
-          const isActive = mode === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setMode(key)}
-              className={[
-                "px-3.5 h-8 rounded-lg inline-flex items-center justify-center gap-1.5",
-                "text-[12px] font-semibold tracking-tight transition-all duration-200",
-                isActive
-                  ? activeClass
-                  : "text-foreground/70 dark:text-foreground/65 hover:bg-foreground/[0.04]",
-              ].join(" ")}
-            >
-              <Icon className="w-[13px] h-[13px]" strokeWidth={isActive ? 2.6 : 2} />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {mode === "text" ? (
-        <BulkSendTab
-          waAccountId={waAccountId}
-          prefillRecipients={prefillRecipients}
-          onUseImageBulkForTemplate={(templateName) => {
-            setImageBulkPrefill({ templateName });
-            setMode("image");
-          }}
-        />
-      ) : (
-        <BulkImageSendTab
-          waAccountId={waAccountId}
-          prefill={imageBulkPrefill}
-          onPrefillConsumed={() => setImageBulkPrefill(null)}
-        />
-      )}
-    </div>
-  );
+  // Bulk reuses the Single send UI (template select, parameters, image header,
+  // live preview) so the two are identical in arrangement. The only difference
+  // is the contacts table is multi-select and one "Send to N" action delivers
+  // the template to every selected recipient — each with their own matched
+  // image and filled-in variables.
+  return <SingleSendTab waAccountId={waAccountId} bulk prefillRecipients={prefillRecipients} />;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -4477,7 +4852,7 @@ interface Tab {
 
 const TABS: Tab[] = [
   { id: "single",      label: "Single Send",    description: "Send a message to one recipient",        icon: Send,       color: "bg-[#25D366]" },
-  { id: "bulk",        label: "Bulk Send",       description: "Broadcast text or personalized image",   icon: Users,      color: "bg-blue-500" },
+  { id: "bulk",        label: "Bulk Send",       description: "Broadcast personalized image templates",  icon: Users,      color: "bg-blue-500" },
   { id: "pollresults", label: "Poll Results",    description: "View RSVP & poll responses by name",     icon: BarChart3,  color: "bg-purple-500" },
 ];
 
