@@ -289,7 +289,9 @@ export default function CreateWhatsAppTemplate() {
     if (!canSubmit) return;
     try {
       await simpleCreateMetaTemplate(buildPayload(), effectiveAccountId || undefined);
-      navigate("/whatsapp");
+      // Land on the approval-tracking view so the user can watch this template
+      // go from PENDING → APPROVED / REJECTED.
+      navigate("/whatsapp?tab=templates&tmode=submitted");
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Failed to submit template");
     }

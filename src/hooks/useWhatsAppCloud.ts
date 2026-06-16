@@ -252,6 +252,8 @@ export interface WAMessageTemplate {
 	category?: WATemplateCategory | string;
 	language?: WATemplateLanguage | string;
 	components?: WATemplateComponent[];
+	/** Meta's reason when status === "REJECTED" (e.g. "INVALID_FORMAT"). */
+	rejected_reason?: string;
 }
 
 export interface WAGetTemplatesResponse {

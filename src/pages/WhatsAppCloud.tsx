@@ -50,12 +50,7 @@ import { useSubTabSwipe } from "@/hooks/useSubTabSwipe";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { CreatePollDialog } from "@/components/whatsapp/CreatePollDialog";
 import { MetaTemplateMessenger } from "@/components/whatsapp/MetaTemplateMessenger";
-import {
-  CreateTemplateDialog,
-  DeleteTemplateDialog,
-  EditTemplateDialog,
-  SendFromTemplateDialog,
-} from "@/components/whatsapp/TemplateDialogs";
+import { MetaTemplateStatus } from "@/components/whatsapp/MetaTemplateStatus";
 import {
   useWhatsAppBulkImageSend,
   type WABulkContact,
@@ -2546,52 +2541,43 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
 // ─── Templates Tab ────────────────────────────────────────────────────────────
 
 function TemplatesTab({ waAccountId }: { waAccountId: string }) {
-  // Two distinct template worlds live under this tab:
+  // Two Meta-backed views live under this tab:
   //   • "approved" — Meta-APPROVED templates synced live from the WhatsApp
   //     Business API, sent via the Cloud API with resolved {{1}},{{2}} params.
-  //   • "local" — messaging.Template rows authored here, rendered to plain text.
-  const [templateMode, setTemplateMode] = useState<"approved" | "local">("approved");
-
-  // Local WhatsApp templates (messaging.Template, channel=whatsapp).
-  // The send pipeline renders these into plain WhatsApp text under the hood.
-  const [templates, setTemplates] = useState<LocalTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState<string>("");
-  const [languageFilter, setLanguageFilter] = useState<string>("all");
+  //   • "submitted" — every template submitted to Meta, with its approval
+  //     status (PENDING / APPROVED / REJECTED) — the "wait for approval" view.
+  type TemplateMode = "approved" | "submitted";
+  // `?tmode=submitted` deep-links here (e.g. right after a Submit to Meta).
+  const [tmplParams] = useSearchParams();
+  const initialMode: TemplateMode =
+    tmplParams.get("tmode") === "submitted" ? "submitted" : "approved";
+  const [templateMode, setTemplateMode] = useState<TemplateMode>(initialMode);
 
   const navigate = useNavigate();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editTpl, setEditTpl] = useState<LocalTemplate | null>(null);
-  const [sendTpl, setSendTpl] = useState<LocalTemplate | null>(null);
-  const [deleteTpl, setDeleteTpl] = useState<LocalTemplate | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.getTemplates({
-        channel: "whatsapp",
-        language: languageFilter !== "all" ? languageFilter : undefined,
-        search: search.trim() || undefined,
-        page_size: 100,
-      });
-      if (!res.success || !res.data) {
-        throw new Error(res.error || res.message || "Failed to load templates");
-      }
-      setTemplates(res.data.results?.templates ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load templates");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(); }, [languageFilter]);
 
   return (
     <div className="space-y-4 p-1">
+      {/* Always-visible primary action: build a template and submit it to Meta.
+          Lives above the sub-tabs so it's reachable from every mode. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+            Templates
+          </Label>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Create a Meta template, preview it, and submit for approval.
+          </p>
+        </div>
+        <Button
+          onClick={() => navigate("/whatsapp/templates/new")}
+          className="h-9 gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white shadow-sm"
+          title="Build a template and submit it to Meta for approval"
+        >
+          <Plus className="w-4 h-4" strokeWidth={2.4} />
+          Create template
+        </Button>
+      </div>
+
       {/* Sub-mode toggle: Meta-approved sender vs local template manager */}
       <div
         role="tablist"
@@ -2600,7 +2586,7 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
       >
         {[
           { key: "approved" as const, label: "Approved (Meta)" },
-          { key: "local" as const, label: "Local" },
+          { key: "submitted" as const, label: "Submitted" },
         ].map(({ key, label }) => {
           const active = templateMode === key;
           return (
@@ -2623,179 +2609,10 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
         })}
       </div>
 
-      {templateMode === "approved" ? (
-        <MetaTemplateMessenger waAccountId={waAccountId} />
+      {templateMode === "submitted" ? (
+        <MetaTemplateStatus waAccountId={waAccountId} />
       ) : (
-        <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">WhatsApp Templates</Label>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Author locally with <code className="text-[10px] bg-muted px-1 rounded">{"{{name}}"}</code>-style placeholders.
-            Sent as a plain WhatsApp text — no Meta approval needed.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => navigate("/whatsapp/templates/new")}
-            variant="outline"
-            className="h-9 gap-1.5"
-            title="Author and submit a Meta-approved template"
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.4} />
-            Submit to Meta
-          </Button>
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="h-9 gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white"
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.4} />
-            New template
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Search</Label>
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
-            placeholder="name, body text, category…"
-            className="h-9 text-sm w-56 border-border"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Language</Label>
-          <Select value={languageFilter} onValueChange={setLanguageFilter}>
-            <SelectTrigger className="h-9 text-sm w-28 border-border"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="sw">Kiswahili</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={load} disabled={loading} variant="outline" className="gap-2 h-9">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Reload
-        </Button>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="py-2">
-          <AlertCircle className="h-3.5 w-3.5" />
-          <AlertDescription className="text-xs">{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {templates.length > 0 && (
-        <TableWrap>
-          <table className="w-full table-fixed">
-            <TableHead>
-              <Th>Name</Th>
-              <Th className="hidden md:table-cell">Category</Th>
-              <Th className="hidden sm:table-cell">Language</Th>
-              <Th className="hidden lg:table-cell">Used</Th>
-              <Th className="text-right">Actions</Th>
-            </TableHead>
-            <tbody className="divide-y divide-border">
-              {templates.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <Td className="font-medium">
-                    <div className="flex flex-col">
-                      <span>{t.name}</span>
-                      {t.preview_text && (
-                        <span className="text-[11px] text-muted-foreground truncate">{t.preview_text}</span>
-                      )}
-                    </div>
-                  </Td>
-                  <Td className="hidden md:table-cell text-muted-foreground">{t.category || "—"}</Td>
-                  <Td className="hidden sm:table-cell text-muted-foreground uppercase">{t.language || "—"}</Td>
-                  <Td className="hidden lg:table-cell text-muted-foreground tabular-nums">{t.usage_count ?? 0}</Td>
-                  <Td className="text-right">
-                    <div className="inline-flex items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[11px]"
-                        onClick={() => setSendTpl(t)}
-                      >
-                        <Send className="w-3 h-3 mr-1" />
-                        Send
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[11px]"
-                        onClick={() => setEditTpl(t)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[11px] text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTpl(t)}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
-      )}
-
-      {!loading && templates.length === 0 && !error && (
-        <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-          <FileText className="w-8 h-8 text-muted-foreground/30" />
-          <p className="text-xs text-muted-foreground">No templates yet.</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-[12px]"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            Create your first template
-          </Button>
-        </div>
-      )}
-
-      {/* Browse Meta-approved templates — each one can be imported as a local template */}
-      <MetaTemplateBrowser
-        waAccountId={waAccountId}
-        onUse={() => {
-          // Reload the local templates table once the import succeeds.
-          void load();
-        }}
-      />
-
-      <CreateTemplateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={load}
-      />
-      <EditTemplateDialog
-        template={editTpl}
-        onOpenChange={(o) => !o && setEditTpl(null)}
-        onEdited={load}
-      />
-      <DeleteTemplateDialog
-        template={deleteTpl}
-        onOpenChange={(o) => !o && setDeleteTpl(null)}
-        onDeleted={load}
-      />
-      <SendFromTemplateDialog
-        template={sendTpl}
-        onOpenChange={(o) => !o && setSendTpl(null)}
-        waAccountId={waAccountId || undefined}
-      />
-        </div>
+        <MetaTemplateMessenger waAccountId={waAccountId} />
       )}
     </div>
   );
@@ -4666,10 +4483,14 @@ export default function WhatsAppCloud() {
     ? prefillBulkContactsRaw.split(",").map((p) => p.trim()).filter(Boolean)
     : [];
 
-  // Default tab: Bulk if a contacts list came in from /contacts, otherwise Single.
+  // Default tab: an explicit `?tab=` (e.g. after Submit to Meta) wins, then Bulk
+  // if a contacts list came in from /contacts, otherwise Single.
   useEffect(() => {
     if (activeTab !== null) return;
-    if (prefillBulkContacts.length > 0) setActiveTab("bulk");
+    const requested = searchParams.get("tab") as TabId | null;
+    if (requested && VISIBLE_TABS.includes(requested as (typeof VISIBLE_TABS)[number])) {
+      setActiveTab(requested);
+    } else if (prefillBulkContacts.length > 0) setActiveTab("bulk");
     else setActiveTab("single");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
