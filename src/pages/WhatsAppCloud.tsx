@@ -51,6 +51,7 @@ import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { CreatePollDialog } from "@/components/whatsapp/CreatePollDialog";
 import { MetaTemplateMessenger } from "@/components/whatsapp/MetaTemplateMessenger";
 import { MetaTemplateStatus } from "@/components/whatsapp/MetaTemplateStatus";
+import { WhatsAppMessagePreview } from "@/components/whatsapp/WhatsAppMessagePreview";
 import {
   useWhatsAppBulkImageSend,
   type WABulkContact,
@@ -806,6 +807,16 @@ function SingleSendTab({ waAccountId, prefillSearch = "" }: { waAccountId: strin
       {/* Media & Poll — shown in both modes so users can attach optional media/poll context */}
       <MediaPollFields state={mediaPoll.state} update={mediaPoll.update} />
 
+      {/* Live WhatsApp-style preview of the selected approved template. */}
+      {msgType === "template" && selectedMetaTpl && (
+        <WhatsAppMessagePreview
+          template={selectedMetaTpl}
+          paramSources={paramSources}
+          mediaUrl={mediaPoll.state.mediaMode === "url" ? mediaPoll.state.mediaUrl : ""}
+          mediaFile={mediaPoll.state.mediaMode === "file" ? mediaPoll.state.mediaFile : null}
+        />
+      )}
+
       {/* Status */}
       {error && (
         <Alert variant="destructive" className="py-2">
@@ -1496,6 +1507,16 @@ function BulkSendTab({
       )}
 
       <MediaPollFields state={mediaPoll.state} update={mediaPoll.update} />
+
+      {/* Live WhatsApp-style preview of the selected approved template. */}
+      {selectedMetaTpl && (
+        <WhatsAppMessagePreview
+          template={selectedMetaTpl}
+          paramSources={paramSources}
+          mediaUrl={mediaPoll.state.mediaMode === "url" ? mediaPoll.state.mediaUrl : ""}
+          mediaFile={mediaPoll.state.mediaMode === "file" ? mediaPoll.state.mediaFile : null}
+        />
+      )}
 
       {/* Delay + Send mode (Selected/Page/All) + Group pill in one row.
           Group is split out as a separately-styled pill on the right so it
