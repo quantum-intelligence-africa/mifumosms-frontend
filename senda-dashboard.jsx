@@ -4713,6 +4713,8 @@ function smsSegments(text) {
 
 function BroadcastTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
 
   const [view, setView]               = useState('compose'); // 'compose' | 'history' | 'scheduled'
   const [audience, setAudience]       = useState('direct_users');
@@ -4734,6 +4736,17 @@ function BroadcastTab() {
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [schedules, setSchedules]     = useState([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+
+  // Single direct message (search a sender / type a number)
+  const [singleMode, setSingleMode]   = useState('search'); // 'search' | 'number'
+  const [senderQuery, setSenderQuery] = useState('');
+  const [senderResults, setSenderResults] = useState([]);
+  const [searchingSenders, setSearchingSenders] = useState(false);
+  const [selectedSender, setSelectedSender] = useState(null);
+  const [singlePhone, setSinglePhone] = useState('');
+  const [singleSenderId, setSingleSenderId] = useState('');
+  const [singleMessage, setSingleMessage] = useState('');
+  const [sendingSingle, setSendingSingle] = useState(false);
 
   const [preview, setPreview]         = useState(null);
   const [previewing, setPreviewing]   = useState(false);
@@ -4909,6 +4922,46 @@ function BroadcastTab() {
     } catch { showToast('Network error', 'error'); }
   }, [onLogout, showToast, loadSchedules]);
 
+  // ── Single direct message ──
+  // Debounced sender search (name / account / phone / email).
+  useEffect(() => {
+    if (singleMode !== 'search') return;
+    const q = senderQuery.trim();
+    if (q.length < 2) { setSenderResults([]); return; }
+    let cancelled = false;
+    setSearchingSenders(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await adminFetch(`${BROADCAST_API}/broadcasts/sender-search?search=${encodeURIComponent(q)}`, { method:'GET' }, onLogout);
+        if (!cancelled && res.success) setSenderResults(res.data || []);
+      } catch {} finally { if (!cancelled) setSearchingSenders(false); }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [senderQuery, singleMode, onLogout]);
+
+  const sendSingle = useCallback(async () => {
+    const body = { message: singleMessage };
+    if (singleMode === 'search') {
+      if (!selectedSender) { showToast('Pick a recipient from the search results', 'error'); return; }
+      body.sender_request_id = selectedSender.sender_request_id;
+    } else {
+      if (!singlePhone.trim()) { showToast('Enter a phone number', 'error'); return; }
+      body.phone = singlePhone.trim();
+      if (singleSenderId.trim()) body.sender_id = singleSenderId.trim();
+    }
+    setSendingSingle(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/send-single`, {
+        method:'POST', body: JSON.stringify(body),
+      }, onLogout);
+      if (res.success) {
+        showToast(`Sent to ${res.data.to} as “${res.data.sender_id}”`, 'success');
+        setSingleMessage(''); setSelectedSender(null); setSenderQuery(''); setSenderResults([]); setSinglePhone('');
+      } else showToast(res.error?.message || 'Failed to send', 'error');
+    } catch { showToast('Network error sending message', 'error'); }
+    finally { setSendingSingle(false); }
+  }, [singleMessage, singleMode, selectedSender, singlePhone, singleSenderId, onLogout, showToast]);
+
   const loadLogs = useCallback(async (b) => {
     try {
       const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?limit=100`, { method:'GET' }, onLogout);
@@ -4925,6 +4978,9 @@ function BroadcastTab() {
   const weekdaysOk = frequency !== 'weekly' || weekdays.length > 0;
   const canSchedule = message.trim().length > 0 && !partnerNeeded && !!sendTime && weekdaysOk && !savingSchedule;
   const toggleWeekday = (d) => setWeekdays(w => w.includes(d) ? w.filter(x=>x!==d) : [...w, d].sort((a,b)=>a-b));
+  const singleSeg = smsSegments(singleMessage);
+  const canSendSingle = singleMessage.trim().length > 0 && !sendingSingle &&
+    (singleMode === 'search' ? !!selectedSender : singlePhone.trim().length > 0);
 
   const Pill = ({ children, color }) => (
     <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11,
@@ -4937,7 +4993,7 @@ function BroadcastTab() {
     <div className="senda-fade-in">
       {/* Sub-nav */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[{id:'compose',label:'Compose'},{id:'scheduled',label:'Scheduled'},{id:'history',label:'History'}].map(t => (
+        {[{id:'compose',label:'Compose'},{id:'single',label:'Direct message'},{id:'scheduled',label:'Scheduled'},{id:'history',label:'History'}].map(t => (
           <button key={t.id} onClick={()=>setView(t.id)}
             className="senda-btn senda-btn-sm"
             style={{ background: view===t.id ? BRAND : '#fff', color: view===t.id ? '#fff' : '#475569',
@@ -4948,7 +5004,7 @@ function BroadcastTab() {
       </div>
 
       {view === 'compose' && (
-        <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+        <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'minmax(0,1.1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
           {/* Compose card */}
           <div className="senda-card" style={{ padding:22 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
@@ -5189,38 +5245,166 @@ function BroadcastTab() {
         </div>
       )}
 
-      {view === 'scheduled' && (
+      {view === 'single' && (
+        <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'minmax(0,1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
+          <div className="senda-card" style={{ padding:22 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+              <Send size={18} color={BRAND} strokeWidth={2.2}/>
+              <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>Send a direct message</h3>
+            </div>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:16 }}>Search a sender name to message its owner, or type any phone number.</div>
+
+            {/* Mode toggle */}
+            <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+              {[{id:'search',label:'Search sender / user'},{id:'number',label:'Type a number'}].map(m => (
+                <button key={m.id} onClick={()=>setSingleMode(m.id)}
+                  className="senda-btn senda-btn-sm"
+                  style={{ flex:1, height:36, fontWeight:700, fontSize:12.5,
+                    background: singleMode===m.id ? BRAND : '#fff', color: singleMode===m.id ? '#fff' : '#475569',
+                    border:`1.5px solid ${singleMode===m.id ? BRAND : '#e2e8f0'}` }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {singleMode === 'search' ? (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:8 }}>Search by sender name, business, phone or email</label>
+                <div style={{ position:'relative' }}>
+                  <Search size={15} color="#94a3b8" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)' }}/>
+                  <input value={senderQuery} onChange={e=>{ setSenderQuery(e.target.value); setSelectedSender(null); }}
+                    placeholder="e.g. SENDA, Kuza, 0712…" className="senda-input" style={{ paddingLeft:36 }}/>
+                </div>
+
+                {selectedSender ? (
+                  <div style={{ marginTop:12, padding:'12px 14px', borderRadius:11, border:`1.5px solid ${BRAND}`, background:`${BRAND}0d` }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>{selectedSender.account_name || '—'}</div>
+                        <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>
+                          <Pill color={BRAND}>{selectedSender.sender_id}</Pill> · {selectedSender.phone_masked || 'no phone'}{selectedSender.owner_email ? ` · ${selectedSender.owner_email}` : ''}
+                        </div>
+                      </div>
+                      <button onClick={()=>setSelectedSender(null)} className="senda-btn senda-btn-sm" style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>Change</button>
+                    </div>
+                    {!selectedSender.has_phone && <div style={{ fontSize:11, color:'#dc2626', marginTop:8 }}>This user has no phone on record — switch to “Type a number”.</div>}
+                  </div>
+                ) : (senderQuery.trim().length >= 2) && (
+                  <div style={{ marginTop:10, border:'1px solid #eef2f7', borderRadius:11, maxHeight:260, overflowY:'auto' }}>
+                    {searchingSenders ? <div style={{ padding:14, fontSize:12, color:'#94a3b8' }}>Searching…</div>
+                     : senderResults.length === 0 ? <div style={{ padding:14, fontSize:12, color:'#94a3b8' }}>No approved senders match “{senderQuery.trim()}”.</div>
+                     : senderResults.map(r => (
+                      <button key={r.sender_request_id} onClick={()=>{ setSelectedSender(r); }}
+                        style={{ display:'block', width:'100%', textAlign:'left', padding:'10px 14px', border:'none', borderBottom:'1px solid #f1f5f9', background:'#fff', cursor:'pointer' }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{r.account_name || '—'}</span>
+                          <Pill color={BRAND}>{r.sender_id}</Pill>
+                        </div>
+                        <div style={{ fontSize:11.5, color:'#64748b', marginTop:3 }}>
+                          {r.has_phone ? r.phone_masked : 'no phone'}{r.owner_email ? ` · ${r.owner_email}` : ''}{r.provider ? ` · ${r.provider}` : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:8 }}>Recipient phone number</label>
+                <input value={singlePhone} onChange={e=>setSinglePhone(e.target.value)}
+                  placeholder="+255…, 0712…, 0654… — any format" className="senda-input"/>
+                <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', margin:'14px 0 8px' }}>Sender name <span style={{ color:'#94a3b8', fontWeight:500 }}>(optional — defaults to SENDA)</span></label>
+                <input value={singleSenderId} onChange={e=>setSingleSenderId(e.target.value)} maxLength={11}
+                  placeholder="e.g. SENDA" className="senda-input"/>
+              </div>
+            )}
+
+            <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', marginBottom:8 }}>Message</label>
+            <textarea value={singleMessage} onChange={e=>setSingleMessage(e.target.value)} rows={5}
+              placeholder="Type the SMS…" className="senda-input" style={{ height:'auto', padding:'12px 14px', resize:'vertical', lineHeight:1.5 }}/>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>{singleSeg.len} chars · {singleSeg.segments} SMS segment{singleSeg.segments!==1?'s':''}</div>
+
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={sendSingle} disabled={!canSendSingle}
+              style={{ height:42, marginTop:18, width:'100%', fontWeight:700, opacity: canSendSingle ? 1 : .5, cursor: canSendSingle ? 'pointer':'not-allowed' }}>
+              <Send size={15} strokeWidth={2.2} style={{ marginRight:6 }}/>{sendingSingle ? 'Sending…' : 'Send message'}
+            </button>
+          </div>
+
+          <div className="senda-card" style={{ padding:20 }}>
+            <h3 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:10 }}>How it works</h3>
+            <ul style={{ margin:0, paddingLeft:18, fontSize:12.5, color:'#475569', lineHeight:1.7 }}>
+              <li><b>Search sender / user</b> — find an approved sender name (or its owner by business, phone or email) and the message goes to that user’s phone, sent under their own approved sender ID.</li>
+              <li><b>Type a number</b> — send to any phone in any format (<code style={{ background:'#f1f5f9', padding:'1px 5px', borderRadius:4 }}>+255…</code>, <code style={{ background:'#f1f5f9', padding:'1px 5px', borderRadius:4 }}>07…</code>, <code style={{ background:'#f1f5f9', padding:'1px 5px', borderRadius:4 }}>06…</code>, or bare). The number is normalised automatically.</li>
+              <li>Sends are recorded in the audit log under <i>admin_single_send</i>.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {view === 'scheduled' && (() => {
+        const repeatOf = (s) => s.frequency === 'once' ? 'Once'
+          : s.frequency === 'daily' ? `Daily · ${s.send_time}`
+          : `Weekly · ${(s.weekdays||[]).map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ')} · ${s.send_time}`;
+        const audienceOf = (s) => `${AUDIENCES.find(a=>a.id===s.audience)?.label || s.audience}${s.partner_name ? ` · ${s.partner_name}` : ''}`;
+        return (
         <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
-            <div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'16px 20px', borderBottom:'1px solid #eef2f7', flexWrap:'wrap' }}>
+            <div style={{ minWidth:0 }}>
               <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Scheduled broadcasts</h3>
               <div style={{ fontSize:12, color:'#94a3b8', marginTop:2 }}>Automatic recurring campaigns. Create one from the Compose tab.</div>
             </div>
-            <button className="senda-btn senda-btn-sm" onClick={loadSchedules} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>
+            <button className="senda-btn senda-btn-sm" onClick={loadSchedules} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', flexShrink:0 }}>
               <RefreshCw size={13} strokeWidth={2.2} style={{ marginRight:6 }}/>Refresh
             </button>
           </div>
           {loadingSchedules ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
            : schedules.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No schedules yet. Tick “Schedule this broadcast” in Compose to create one.</div>
-           : (
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+           : isMobile ? (
+            /* Mobile: stacked cards */
+            <div style={{ display:'flex', flexDirection:'column', gap:12, padding:16 }}>
+              {schedules.map(s => (
+                <div key={s.id} style={{ border:'1px solid #eef2f7', borderRadius:12, padding:14, opacity:s.is_active?1:.7 }}>
+                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+                    <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, minWidth:0, wordBreak:'break-word' }}>{s.name || 'Untitled schedule'}</div>
+                    <Pill color={s.is_active ? '#16a34a' : '#94a3b8'}>{s.is_active ? 'Active' : 'Paused'}</Pill>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'4px 10px', fontSize:12.5, color:'#475569', marginBottom:10 }}>
+                    <span style={{ color:'#94a3b8' }}>Audience</span><span>{audienceOf(s)}</span>
+                    <span style={{ color:'#94a3b8' }}>Repeat</span><span>{repeatOf(s)}</span>
+                    <span style={{ color:'#94a3b8' }}>Next run</span><span>{s.is_active && s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—'}</span>
+                    <span style={{ color:'#94a3b8' }}>Runs</span><span>{s.total_runs || 0}</span>
+                  </div>
+                  <div style={{ fontSize:12.5, color:'#475569', background:'#f8fafc', borderRadius:8, padding:'8px 10px', marginBottom:12, lineHeight:1.5, maxHeight:66, overflow:'hidden' }}>{s.message}</div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button className="senda-btn senda-btn-sm" onClick={()=>toggleSchedule(s)}
+                      style={{ flex:1, height:34, border:'1.5px solid #e2e8f0', background:'#fff', color:s.is_active ? '#d97706' : '#16a34a', fontWeight:700 }}>
+                      {s.is_active ? 'Pause' : 'Resume'}
+                    </button>
+                    <button className="senda-btn senda-btn-sm" onClick={()=>deleteSchedule(s)}
+                      style={{ flex:1, height:34, border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626', fontWeight:700 }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Tablet/desktop: table in a horizontal-scroll wrapper so actions never clip */
+            <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', minWidth:860, borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
                   {['Label','Audience','Repeat','Next run','Runs','Status','Message',''].map(h => (
-                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12 }}>{h}</th>
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12, whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {schedules.map(s => {
-                  const repeatLabel = s.frequency === 'once' ? 'Once'
-                    : s.frequency === 'daily' ? `Daily · ${s.send_time}`
-                    : `Weekly · ${(s.weekdays||[]).map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ')} · ${s.send_time}`;
-                  return (
+                {schedules.map(s => (
                   <tr key={s.id} style={{ borderTop:'1px solid #f1f5f9' }}>
                     <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{s.name || '—'}</td>
-                    <td style={{ padding:'10px 14px', color:'#475569' }}>{AUDIENCES.find(a=>a.id===s.audience)?.label || s.audience}{s.partner_name ? ` · ${s.partner_name}` : ''}</td>
-                    <td style={{ padding:'10px 14px', color:'#475569' }}>{repeatLabel}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{audienceOf(s)}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{repeatOf(s)}</td>
                     <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{s.is_active && s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—'}</td>
                     <td style={{ padding:'10px 14px', color:'#475569', fontWeight:700 }}>{s.total_runs || 0}</td>
                     <td style={{ padding:'10px 14px' }}><Pill color={s.is_active ? '#16a34a' : '#94a3b8'}>{s.is_active ? 'Active' : 'Paused'}</Pill></td>
@@ -5236,12 +5420,13 @@ function BroadcastTab() {
                       </button>
                     </td>
                   </tr>
-                );})}
+                ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
-      )}
+      );})()}
 
       {view === 'history' && (
         <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
@@ -5254,11 +5439,12 @@ function BroadcastTab() {
           {loadingHistory ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
            : history.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No broadcasts yet.</div>
            : (
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', minWidth:820, borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
                   {['Date','Audience','Target','Status','Sent','Failed','SMS used','Message',''].map(h => (
-                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12 }}>{h}</th>
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12, whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -5280,6 +5466,7 @@ function BroadcastTab() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}
