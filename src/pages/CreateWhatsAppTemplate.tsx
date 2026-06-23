@@ -147,7 +147,10 @@ export default function CreateWhatsAppTemplate() {
     setBodyExamples((cur) => {
       if (placeholderCount === cur.length) return cur;
       if (placeholderCount > cur.length)
-        return [...cur, ...Array(placeholderCount - cur.length).fill("")];
+        // Pre-fill new placeholder slots with a sample so the body is never sent
+        // without an example (Meta rejects placeholders with no sample). The user
+        // can edit these; they're only review samples, not the live values.
+        return [...cur, ...Array(placeholderCount - cur.length).fill("Sample")];
       return cur.slice(0, placeholderCount);
     });
   }, [placeholderCount]);
@@ -167,7 +170,11 @@ export default function CreateWhatsAppTemplate() {
       : {}),
     ...(headerType === "document" && filename ? { filename } : {}),
     body,
-    ...(placeholderCount > 0 ? { body_examples: bodyExamples } : {}),
+    // Always send a non-empty sample per placeholder — fall back to "Sample" for
+    // any field the user cleared, so Meta never rejects with "pass body_examples".
+    ...(placeholderCount > 0
+      ? { body_examples: bodyExamples.map((v) => v.trim() || "Sample") }
+      : {}),
     ...(footer ? { footer } : {}),
     ...(buttons.length > 0 ? { buttons } : {}),
   });

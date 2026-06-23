@@ -4714,7 +4714,7 @@ function smsSegments(text) {
 function BroadcastTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
 
-  const [view, setView]               = useState('compose'); // 'compose' | 'history'
+  const [view, setView]               = useState('compose'); // 'compose' | 'history' | 'scheduled'
   const [audience, setAudience]       = useState('direct_users');
   const [segment, setSegment]         = useState('all');
   const [partnerId, setPartnerId]     = useState('');
@@ -4724,6 +4724,16 @@ function BroadcastTab() {
   const [skipSent, setSkipSent]       = useState(true);
   const [templates, setTemplates]     = useState([]);
   const [savingTpl, setSavingTpl]     = useState(false);
+
+  // Scheduling (recurring/automatic broadcasts)
+  const [scheduleOn, setScheduleOn]   = useState(false);
+  const [frequency, setFrequency]     = useState('daily'); // 'once' | 'daily' | 'weekly'
+  const [sendTime, setSendTime]       = useState('09:00');
+  const [weekdays, setWeekdays]       = useState([]);       // ISO Mon=0..Sun=6
+  const [scheduleName, setScheduleName] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [schedules, setSchedules]     = useState([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
 
   const [preview, setPreview]         = useState(null);
   const [previewing, setPreviewing]   = useState(false);
@@ -4849,6 +4859,56 @@ function BroadcastTab() {
   }, [onLogout]);
   useEffect(() => { if (view === 'history') loadHistory(); }, [view, loadHistory]);
 
+  // ── Scheduled (recurring) broadcasts ──
+  const loadSchedules = useCallback(async () => {
+    setLoadingSchedules(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/schedules`, { method:'GET' }, onLogout);
+      if (res.success) setSchedules(res.data || []);
+    } catch {} finally { setLoadingSchedules(false); }
+  }, [onLogout]);
+  useEffect(() => { if (view === 'scheduled') loadSchedules(); }, [view, loadSchedules]);
+
+  const saveSchedule = useCallback(async () => {
+    setSavingSchedule(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/schedules`, {
+        method:'POST',
+        body: JSON.stringify({
+          name: scheduleName.trim() || undefined,
+          audience, partner_id: partnerId || undefined, segment, message,
+          skip_already_sent: skipSent,
+          frequency, send_time: sendTime, weekdays: frequency === 'weekly' ? weekdays : [],
+        }),
+      }, onLogout);
+      if (res.success) {
+        showToast('Schedule saved — it will run automatically', 'success');
+        setScheduleOn(false); setScheduleName('');
+        setView('scheduled'); loadSchedules();
+      } else showToast(res.error?.message || 'Failed to save schedule', 'error');
+    } catch { showToast('Network error saving schedule', 'error'); }
+    finally { setSavingSchedule(false); }
+  }, [scheduleName, audience, partnerId, segment, message, skipSent, frequency, sendTime, weekdays, onLogout, showToast, loadSchedules]);
+
+  const toggleSchedule = useCallback(async (s) => {
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/schedules/${s.id}`, {
+        method:'PATCH', body: JSON.stringify({ is_active: !s.is_active }),
+      }, onLogout);
+      if (res.success) loadSchedules();
+      else showToast(res.error?.message || 'Failed to update schedule', 'error');
+    } catch { showToast('Network error', 'error'); }
+  }, [onLogout, showToast, loadSchedules]);
+
+  const deleteSchedule = useCallback(async (s) => {
+    if (!window.confirm(`Delete schedule${s.name ? ` "${s.name}"` : ''}? It will stop running.`)) return;
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/schedules/${s.id}`, { method:'DELETE' }, onLogout);
+      if (res.success) { showToast('Schedule deleted', 'success'); loadSchedules(); }
+      else showToast(res.error?.message || 'Failed to delete', 'error');
+    } catch { showToast('Network error', 'error'); }
+  }, [onLogout, showToast, loadSchedules]);
+
   const loadLogs = useCallback(async (b) => {
     try {
       const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?limit=100`, { method:'GET' }, onLogout);
@@ -4862,6 +4922,9 @@ function BroadcastTab() {
   const partnerNeeded = audience === 'partners' && !partnerId;
   const canPreview = !partnerNeeded && !previewing && !live;
   const canSend = !!stats && stats.eligible > 0 && message.trim().length > 0 && !partnerNeeded && !sending;
+  const weekdaysOk = frequency !== 'weekly' || weekdays.length > 0;
+  const canSchedule = message.trim().length > 0 && !partnerNeeded && !!sendTime && weekdaysOk && !savingSchedule;
+  const toggleWeekday = (d) => setWeekdays(w => w.includes(d) ? w.filter(x=>x!==d) : [...w, d].sort((a,b)=>a-b));
 
   const Pill = ({ children, color }) => (
     <span style={{ display:'inline-block', padding:'2px 10px', borderRadius:99, fontSize:11,
@@ -4874,7 +4937,7 @@ function BroadcastTab() {
     <div className="senda-fade-in">
       {/* Sub-nav */}
       <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[{id:'compose',label:'Compose'},{id:'history',label:'History'}].map(t => (
+        {[{id:'compose',label:'Compose'},{id:'scheduled',label:'Scheduled'},{id:'history',label:'History'}].map(t => (
           <button key={t.id} onClick={()=>setView(t.id)}
             className="senda-btn senda-btn-sm"
             style={{ background: view===t.id ? BRAND : '#fff', color: view===t.id ? '#fff' : '#475569',
@@ -4961,18 +5024,78 @@ function BroadcastTab() {
               Skip recipients who already received this exact message
             </label>
 
+            {/* Schedule / automate */}
+            <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, cursor:'pointer', fontSize:13, color:'#334155' }}>
+              <input type="checkbox" checked={scheduleOn} onChange={e=>setScheduleOn(e.target.checked)} disabled={live}/>
+              <Clock size={14} color={scheduleOn ? BRAND : '#94a3b8'} strokeWidth={2.2}/>
+              Schedule this broadcast to run automatically (like a campaign)
+            </label>
+
+            {scheduleOn && (
+              <div style={{ marginTop:12, padding:'16px', borderRadius:12, border:`1.5px solid ${BRAND}33`, background:`${BRAND}08`, display:'flex', flexDirection:'column', gap:14 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 140px', gap:12 }}>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Repeat</label>
+                    <select value={frequency} onChange={e=>setFrequency(e.target.value)} className="senda-input" style={{ cursor:'pointer' }}>
+                      <option value="once">Once — at the chosen time</option>
+                      <option value="daily">Every day</option>
+                      <option value="weekly">Every week — on chosen days</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Time</label>
+                    <input type="time" value={sendTime} onChange={e=>setSendTime(e.target.value)} className="senda-input"/>
+                  </div>
+                </div>
+
+                {frequency === 'weekly' && (
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>On these days</label>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i) => (
+                        <button key={d} type="button" onClick={()=>toggleWeekday(i)}
+                          style={{ width:42, height:34, borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
+                            border:`1.5px solid ${weekdays.includes(i) ? BRAND : '#e2e8f0'}`,
+                            background: weekdays.includes(i) ? BRAND : '#fff', color: weekdays.includes(i) ? '#fff' : '#475569' }}>
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                    {weekdays.length === 0 && <div style={{ fontSize:11, color:'#d97706', marginTop:6 }}>Pick at least one day.</div>}
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:'#334155', display:'block', marginBottom:6 }}>Label (optional)</label>
+                  <input type="text" value={scheduleName} onChange={e=>setScheduleName(e.target.value)} placeholder="e.g. Daily welcome SMS" className="senda-input"/>
+                </div>
+
+                <div style={{ fontSize:11, color:'#64748b', lineHeight:1.5 }}>
+                  Recipients are re-checked each run, so new {audience === 'partners' ? 'partner clients' : 'users'} are picked up automatically. Times use the server timezone.
+                </div>
+              </div>
+            )}
+
             <div style={{ display:'flex', gap:10, marginTop:20 }}>
               <button className="senda-btn senda-btn-sm" onClick={doPreview} disabled={!canPreview}
                 style={{ height:40, border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700, opacity: canPreview ? 1 : .5, cursor: canPreview ? 'pointer':'not-allowed' }}>
                 {previewing ? 'Checking…' : 'Preview recipients'}
               </button>
-              <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>setConfirmOpen(true)}
-                disabled={!canSend}
-                style={{ height:40, fontWeight:700, opacity: canSend ? 1 : .5, cursor: canSend ? 'pointer':'not-allowed' }}>
-                <Send size={15} strokeWidth={2.2} style={{ marginRight:6 }}/>Send Broadcast
-              </button>
+              {scheduleOn ? (
+                <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={saveSchedule} disabled={!canSchedule}
+                  style={{ height:40, fontWeight:700, opacity: canSchedule ? 1 : .5, cursor: canSchedule ? 'pointer':'not-allowed' }}>
+                  <Clock size={15} strokeWidth={2.2} style={{ marginRight:6 }}/>{savingSchedule ? 'Saving…' : 'Save schedule'}
+                </button>
+              ) : (
+                <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>setConfirmOpen(true)}
+                  disabled={!canSend}
+                  style={{ height:40, fontWeight:700, opacity: canSend ? 1 : .5, cursor: canSend ? 'pointer':'not-allowed' }}>
+                  <Send size={15} strokeWidth={2.2} style={{ marginRight:6 }}/>Send Broadcast
+                </button>
+              )}
             </div>
-            {!stats && <div style={{ fontSize:12, color:'#94a3b8', marginTop:10 }}>Run a preview to see how many recipients are eligible before sending.</div>}
+            {!scheduleOn && !stats && <div style={{ fontSize:12, color:'#94a3b8', marginTop:10 }}>Run a preview to see how many recipients are eligible before sending.</div>}
+            {scheduleOn && <div style={{ fontSize:12, color:'#94a3b8', marginTop:10 }}>The schedule sends automatically — no preview needed. Manage saved schedules under the “Scheduled” tab.</div>}
           </div>
 
           {/* Right column: preview / live progress */}
@@ -5063,6 +5186,60 @@ function BroadcastTab() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {view === 'scheduled' && (
+        <div className="senda-card" style={{ padding:0, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+            <div>
+              <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Scheduled broadcasts</h3>
+              <div style={{ fontSize:12, color:'#94a3b8', marginTop:2 }}>Automatic recurring campaigns. Create one from the Compose tab.</div>
+            </div>
+            <button className="senda-btn senda-btn-sm" onClick={loadSchedules} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>
+              <RefreshCw size={13} strokeWidth={2.2} style={{ marginRight:6 }}/>Refresh
+            </button>
+          </div>
+          {loadingSchedules ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>Loading…</div>
+           : schedules.length === 0 ? <div style={{ padding:24, color:'#94a3b8', fontSize:13 }}>No schedules yet. Tick “Schedule this broadcast” in Compose to create one.</div>
+           : (
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {['Label','Audience','Repeat','Next run','Runs','Status','Message',''].map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 14px', color:'#64748b', fontWeight:700, fontSize:12 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {schedules.map(s => {
+                  const repeatLabel = s.frequency === 'once' ? 'Once'
+                    : s.frequency === 'daily' ? `Daily · ${s.send_time}`
+                    : `Weekly · ${(s.weekdays||[]).map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ')} · ${s.send_time}`;
+                  return (
+                  <tr key={s.id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{s.name || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{AUDIENCES.find(a=>a.id===s.audience)?.label || s.audience}{s.partner_name ? ` · ${s.partner_name}` : ''}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569' }}>{repeatLabel}</td>
+                    <td style={{ padding:'10px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{s.is_active && s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#475569', fontWeight:700 }}>{s.total_runs || 0}</td>
+                    <td style={{ padding:'10px 14px' }}><Pill color={s.is_active ? '#16a34a' : '#94a3b8'}>{s.is_active ? 'Active' : 'Paused'}</Pill></td>
+                    <td style={{ padding:'10px 14px', color:'#475569', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.message}</td>
+                    <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
+                      <button className="senda-btn senda-btn-sm" onClick={()=>toggleSchedule(s)}
+                        style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff', color:s.is_active ? '#d97706' : '#16a34a', fontWeight:700, marginRight:8 }}>
+                        {s.is_active ? 'Pause' : 'Resume'}
+                      </button>
+                      <button className="senda-btn senda-btn-sm" onClick={()=>deleteSchedule(s)}
+                        style={{ height:30, border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626', fontWeight:700 }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
