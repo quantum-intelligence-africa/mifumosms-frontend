@@ -39,6 +39,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Settings,
   ShieldCheck,
   Tag,
   UserCheck,
@@ -4628,6 +4629,680 @@ function DefaultWhatsAppCredentials() {
   );
 }
 
+// ─── Sender Approval SMS Settings ──────────────────────────────────────────────
+// Controls whether the approval SMS is sent when a sender name is approved AND the
+// message text used — independently for direct users and partner clients.
+// Backed by /api/admin/v1/sender-approval-notifications (GET + /update PATCH).
+const SMS_PLACEHOLDERS = ['{sender_name}', '{name}'];
+
+function renderSmsPreview(template) {
+  return (template || '')
+    .replace(/\{sender_name\}/g, 'ACME')
+    .replace(/\{name\}/g, 'Asha');
+}
+
+function SenderApprovalSmsSettings() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [settings, setSettings] = useState({
+    notify_direct_users: true, notify_partner_clients: true,
+    direct_users_message: '', partner_clients_message: '',
+    defaults: {}, placeholders: SMS_PLACEHOLDERS,
+  });
+  const [drafts, setDrafts]     = useState({ direct_users_message: '', partner_clients_message: '' });
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [savingKey, setSavingKey] = useState(null); // toggle currently saving
+  const [savingMsg, setSavingMsg] = useState(null); // message currently saving
+
+  const applyServer = (data) => {
+    setSettings(data || {});
+    setDrafts({
+      direct_users_message: (data && data.direct_users_message) || '',
+      partner_clients_message: (data && data.partner_clients_message) || '',
+    });
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/sender-approval-notifications', {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) applyServer(res.data);
+        else setError(res.error?.message || 'Failed to load settings.');
+      })
+      .catch(e => { if (alive) setError(e.message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = async (payload) => {
+    return adminFetch('/api/admin/v1/sender-approval-notifications/update', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }, onLogout);
+  };
+
+  const toggle = async (key) => {
+    if (savingKey) return;
+    const next = !settings[key];
+    setSavingKey(key);
+    setSettings(prev => ({ ...prev, [key]: next })); // optimistic
+    try {
+      const res = await patch({ [key]: next });
+      if (res.success) { applyServer(res.data); showToast('Approval SMS setting updated.', 'success'); }
+      else { setSettings(prev => ({ ...prev, [key]: !next })); showToast(res.error?.message || 'Failed to update setting.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, [key]: !next }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingKey(null); }
+  };
+
+  const saveMessage = async (msgKey, valueOverride) => {
+    if (savingMsg) return;
+    const value = (valueOverride !== undefined ? valueOverride : drafts[msgKey]).trim();
+    if (!value) { showToast('Message cannot be empty.', 'error'); return; }
+    setSavingMsg(msgKey);
+    try {
+      const res = await patch({ [msgKey]: value });
+      if (res.success) { applyServer(res.data); showToast('Message saved.', 'success'); }
+      else { showToast(res.error?.message || 'Failed to save message.', 'error'); }
+    } catch (e) {
+      showToast('Network error while saving.', 'error');
+    } finally { setSavingMsg(null); }
+  };
+
+  const resetMessage = (msgKey) => {
+    const def = (settings.defaults && settings.defaults[msgKey]) || '';
+    if (!def) { showToast('No default available.', 'error'); return; }
+    setDrafts(prev => ({ ...prev, [msgKey]: def }));
+    saveMessage(msgKey, def);
+  };
+
+  // Toggle switch markup (button has no focus-sensitive state → safe as a component).
+  const Switch = ({ on, busy, label, onClick }) => (
+    <button
+      role="switch" aria-checked={on} aria-label={label}
+      disabled={busy || loading} onClick={onClick}
+      style={{
+        position:'relative', width:46, height:26, borderRadius:13, flexShrink:0, border:'none',
+        cursor:(busy||loading)?'wait':'pointer', background: on ? BRAND : '#cbd5e1',
+        transition:'background .2s ease', opacity:(busy||loading)?0.7:1,
+      }}>
+      <span style={{
+        position:'absolute', top:3, left: on ? 23 : 3, width:20, height:20, borderRadius:'50%',
+        background:'#fff', transition:'left .2s ease', boxShadow:'0 1px 3px rgba(0,0,0,.25)',
+      }}/>
+    </button>
+  );
+
+  // Render a section inline (NOT as <Component/>) so the textarea keeps focus across renders.
+  const section = (toggleKey, msgKey, title, desc) => {
+    const on    = !!settings[toggleKey];
+    const draft = drafts[msgKey] || '';
+    const dirty = draft !== (settings[msgKey] || '');
+    const isDefault = draft === ((settings.defaults && settings.defaults[msgKey]) || '');
+    const busyMsg = savingMsg === msgKey;
+    const segs = smsSegments(draft).segments;
+
+    return (
+      <div key={msgKey} style={{padding:'18px 0', borderTop:'1px solid #f1f5f9'}}>
+        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16}}>
+          <div style={{minWidth:0}}>
+            <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>{title}</p>
+            <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>{desc}</p>
+          </div>
+          <Switch on={on} busy={savingKey===toggleKey} label={title} onClick={() => toggle(toggleKey)} />
+        </div>
+
+        <div style={{marginTop:12, opacity: on ? 1 : 0.55}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+            Message text
+          </label>
+          <textarea
+            value={draft}
+            onChange={e => setDrafts(prev => ({ ...prev, [msgKey]: e.target.value }))}
+            rows={3}
+            placeholder="Enter the approval SMS message…"
+            style={{
+              width:'100%', boxSizing:'border-box', resize:'vertical',
+              padding:'10px 12px', borderRadius:8, border:'1px solid #e2e8f0',
+              fontSize:13, lineHeight:1.5, color:'#0f172a', fontFamily:'inherit', outline:'none',
+            }}
+          />
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:6,flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+              <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+              {SMS_PLACEHOLDERS.map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setDrafts(prev => ({ ...prev, [msgKey]: (prev[msgKey] || '') + p }))}
+                  style={{
+                    fontSize:11, fontFamily:'monospace', color:BRAND, background:'#eff6ff',
+                    border:'1px solid #dbeafe', borderRadius:6, padding:'2px 6px', cursor:'pointer',
+                  }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <span style={{fontSize:11,color: draft.length>800?RED:'#94a3b8'}}>
+              {draft.length} chars · {segs} SMS{segs===1?'':'s'}
+            </span>
+          </div>
+
+          <div style={{
+            marginTop:10, padding:'10px 12px', background:'#f8fafc',
+            border:'1px solid #f1f5f9', borderRadius:8,
+          }}>
+            <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+            <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>
+              {renderSmsPreview(draft) || '—'}
+            </p>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10}}>
+            <button
+              className="senda-btn senda-btn-primary senda-btn-sm"
+              disabled={!dirty || busyMsg || !draft.trim()}
+              onClick={() => saveMessage(msgKey)}
+              style={{opacity:(!dirty || busyMsg || !draft.trim())?0.5:1}}>
+              {busyMsg ? 'Saving…' : 'Save message'}
+            </button>
+            {dirty && (
+              <button
+                className="senda-btn senda-btn-ghost senda-btn-sm"
+                disabled={busyMsg}
+                onClick={() => setDrafts(prev => ({ ...prev, [msgKey]: settings[msgKey] || '' }))}>
+                Cancel
+              </button>
+            )}
+            <button
+              className="senda-btn senda-btn-ghost senda-btn-sm"
+              disabled={busyMsg || isDefault}
+              onClick={() => resetMessage(msgKey)}
+              style={{marginLeft:'auto', opacity:(busyMsg||isDefault)?0.5:1}}>
+              Reset to default
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Sender Approval SMS</h3>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:'#eff6ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <Bell size={16} strokeWidth={2} color={BRAND}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
+        Control the confirmation SMS sent to a customer when their sender name is approved —
+        the on/off switch and the message text, separately for direct users and partner clients.
+        Turn the switch off to silently approve without notifying. Bonus credits are unaffected.
+      </p>
+
+      {loading ? (
+        <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+      ) : error ? (
+        <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
+      ) : (
+        <div style={{marginTop:8}}>
+          {section('notify_direct_users', 'direct_users_message', 'Direct users',
+            'Customers who registered directly on the platform.')}
+          {section('notify_partner_clients', 'partner_clients_message', 'Partner clients',
+            'Customers created via API by a partner / Partina.')}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── System SMS Log Tab ─────────────────────────────────────────────────────────
+// Browse every logged outbound SMS (SystemOutboundSMSLog) with search + filters.
+// Backed by /api/admin/v1/system-sms-logs (+ /categories for the dropdown).
+function SystemSmsLogTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [categories, setCategories] = useState([]);
+  const [search, setSearch]         = useState('');
+  const [debounced, setDebounced]   = useState('');
+  const [category, setCategory]     = useState('all');
+  const [statusF, setStatusF]       = useState('all');
+  const [dateFrom, setDateFrom]     = useState('');
+  const [dateTo, setDateTo]         = useState('');
+  const [page, setPage]             = useState(1);
+  const [items, setItems]           = useState([]);
+  const [meta, setMeta]             = useState({});
+  const [summary, setSummary]       = useState({ total:0, sent:0, failed:0 });
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [detail, setDetail]         = useState(null);
+  const PER = 20;
+
+  // Load category choices once for the dropdown.
+  useEffect(() => {
+    let alive = true;
+    adminFetch('/api/admin/v1/system-sms-logs/categories', {}, onLogout)
+      .then(res => { if (alive && res.success) setCategories(res.data || []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  // Debounce the free-text search.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page: String(page), limit: String(PER) });
+    if (category !== 'all') qs.set('category', category);
+    if (statusF !== 'all')  qs.set('status', statusF);
+    if (dateFrom)           qs.set('date_from', dateFrom);
+    if (dateTo)             qs.set('date_to', dateTo);
+    if (debounced.trim())   qs.set('search', debounced.trim());
+
+    adminFetch(`/api/admin/v1/system-sms-logs?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(res.data || []);
+          setMeta(res.meta || {});
+          setSummary(res.summary || { total:0, sent:0, failed:0 });
+        } else {
+          setError(res.error?.message || 'Failed to load SMS logs.');
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, category, statusF, dateFrom, dateTo, debounced, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const pages = meta.total_pages || 1;
+  const total = meta.total || 0;
+
+  const resetFilters = () => {
+    setSearch(''); setDebounced(''); setCategory('all'); setStatusF('all');
+    setDateFrom(''); setDateTo(''); setPage(1);
+  };
+
+  const StatChip = ({ label, value, color }) => (
+    <div className="senda-card" style={{padding:'12px 16px', flex:'1 1 120px', minWidth:120}}>
+      <p style={{fontSize:11,color:'#94a3b8',margin:0,fontWeight:600}}>{label}</p>
+      <p style={{fontSize:20,fontWeight:800,color:color||'#0f172a',margin:'2px 0 0'}}>{(value||0).toLocaleString()}</p>
+    </div>
+  );
+
+  return (
+    <div className="senda-fade-in">
+      {/* Summary chips */}
+      <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}}>
+        <StatChip label="Total (filtered)" value={summary.total} />
+        <StatChip label="Sent" value={summary.sent} color={GREEN} />
+        <StatChip label="Failed" value={summary.failed} color={RED} />
+      </div>
+
+      {/* Filters */}
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Search</label>
+            <input className="senda-input" placeholder="Phone, sender, message, email…"
+              value={search} onChange={e=>setSearch(e.target.value)}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Category</label>
+            <select className="senda-input" value={category}
+              onChange={e=>{ setCategory(e.target.value); setPage(1); }}
+              style={{height:38,fontSize:13}}>
+              <option value="all">All categories</option>
+              {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Status</label>
+            <select className="senda-input" value={statusF}
+              onChange={e=>{ setStatusF(e.target.value); setPage(1); }}
+              style={{height:38,fontSize:13}}>
+              <option value="all">All</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>From</label>
+            <input type="date" className="senda-input" value={dateFrom}
+              onChange={e=>{ setDateFrom(e.target.value); setPage(1); }}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>To</label>
+            <input type="date" className="senda-input" value={dateTo}
+              onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={resetFilters} style={{height:38}}>Reset</button>
+            <button className="senda-btn senda-btn-sm" onClick={fetchData}
+              style={{height:38,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',gap:6}}>
+              <RefreshCw size={14} strokeWidth={2.2}/> Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:900}}>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Category</th><th>Recipient</th><th>Sender ID</th>
+                  <th>Status</th><th>User / Tenant</th><th>Message</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(log => (
+                  <tr key={log.id}>
+                    <td style={{fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>
+                      {log.created_at ? new Date(log.created_at).toLocaleString() : '—'}
+                    </td>
+                    <td style={{fontSize:12,color:'#0f172a',fontWeight:600}}>{log.category_label || log.category}</td>
+                    <td style={{fontFamily:'monospace',fontSize:12}}>{log.recipient_phone || '—'}</td>
+                    <td style={{fontSize:12,color:'#475569'}}>{log.sender_id_used || '—'}</td>
+                    <td><Badge status={log.success ? 'success' : 'failed'}/></td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{log.related_user_email || log.tenant_name || '—'}</td>
+                    <td style={{fontSize:12,color:'#475569',maxWidth:280,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {log.message_body || '—'}
+                    </td>
+                    <td>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setDetail(log)} style={{height:30}}>View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {items.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No SMS logs found.</div>}
+
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {meta.page || page} of {pages} · {total} total</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={(meta.page||page)<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:(meta.page||page)<=1?.4:1}}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={(meta.page||page)>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:(meta.page||page)>=pages?.4:1}}>Next →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail drawer */}
+      {detail && createPortal(
+        <div onClick={()=>setDetail(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(640px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+              <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>SMS detail</h3>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setDetail(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'18px 20px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'8px 16px',fontSize:13,marginBottom:16}}>
+                <span style={{color:'#94a3b8'}}>Category</span><span style={{color:'#0f172a',fontWeight:600}}>{detail.category_label || detail.category}</span>
+                <span style={{color:'#94a3b8'}}>Recipient</span><span style={{color:'#0f172a',fontFamily:'monospace'}}>{detail.recipient_phone || '—'}</span>
+                <span style={{color:'#94a3b8'}}>Sender ID</span><span style={{color:'#0f172a'}}>{detail.sender_id_used || '—'}</span>
+                <span style={{color:'#94a3b8'}}>Status</span><span style={{color: detail.success ? '#16a34a' : '#dc2626',fontWeight:600}}>{detail.success ? 'Sent' : 'Failed'}</span>
+                <span style={{color:'#94a3b8'}}>User</span><span style={{color:'#0f172a'}}>{detail.related_user_email || '—'}</span>
+                <span style={{color:'#94a3b8'}}>Tenant</span><span style={{color:'#0f172a'}}>{detail.tenant_name || '—'}</span>
+                <span style={{color:'#94a3b8'}}>Date</span><span style={{color:'#0f172a'}}>{detail.created_at ? new Date(detail.created_at).toLocaleString() : '—'}</span>
+              </div>
+              <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>Message</div>
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.6,whiteSpace:'pre-wrap',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:'12px 14px',marginBottom:18}}>{detail.message_body || '—'}</div>
+              {detail.error_message && (
+                <div style={{fontSize:12,color:'#dc2626',marginBottom:18,whiteSpace:'pre-wrap'}}>Error: {detail.error_message}</div>
+              )}
+              {detail.metadata && Object.keys(detail.metadata).length > 0 && (
+                <>
+                  <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>Metadata</div>
+                  <pre style={{fontSize:12,color:'#334155',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:'12px 14px',overflowX:'auto',margin:0}}>
+{JSON.stringify(detail.metadata, null, 2)}
+                  </pre>
+                </>
+              )}
+            </div>
+          </div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
+// ─── Low SMS Credit Warning Settings ───────────────────────────────────────────
+// Admin control for the warning SMS sent when a tenant's credits fall to/below a
+// threshold. Backed by /api/admin/v1/low-credit-warning (GET + /update PATCH).
+const LOW_CREDIT_PLACEHOLDERS = ['{credits}', '{name}', '{threshold}'];
+
+function LowCreditWarningSettings() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [settings, setSettings] = useState({
+    enabled: true, threshold: 100, sender_id: '', message: '',
+    defaults: {}, placeholders: LOW_CREDIT_PLACEHOLDERS,
+  });
+  const [drafts, setDrafts]   = useState({ threshold: '100', sender_id: '', message: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [savingToggle, setSavingToggle] = useState(false);
+  const [savingForm, setSavingForm]     = useState(false);
+
+  const applyServer = (data) => {
+    const d = data || {};
+    setSettings(d);
+    setDrafts({
+      threshold: String(d.threshold ?? 100),
+      sender_id: d.sender_id || '',
+      message: d.message || '',
+    });
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/low-credit-warning', {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) applyServer(res.data);
+        else setError(res.error?.message || 'Failed to load settings.');
+      })
+      .catch(e => { if (alive) setError(e.message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = (payload) => adminFetch('/api/admin/v1/low-credit-warning/update', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  }, onLogout);
+
+  const toggleEnabled = async () => {
+    if (savingToggle) return;
+    const next = !settings.enabled;
+    setSavingToggle(true);
+    setSettings(prev => ({ ...prev, enabled: next })); // optimistic
+    try {
+      const res = await patch({ enabled: next });
+      if (res.success) { applyServer(res.data); showToast('Low credit warning ' + (next ? 'enabled.' : 'disabled.'), 'success'); }
+      else { setSettings(prev => ({ ...prev, enabled: !next })); showToast(res.error?.message || 'Failed to update.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, enabled: !next }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingToggle(false); }
+  };
+
+  const saveForm = async () => {
+    if (savingForm) return;
+    const threshold = parseInt(drafts.threshold, 10);
+    if (isNaN(threshold) || threshold < 0) { showToast('Threshold must be a number ≥ 0.', 'error'); return; }
+    const message = drafts.message.trim();
+    if (!message) { showToast('Message cannot be empty.', 'error'); return; }
+    setSavingForm(true);
+    try {
+      const res = await patch({ threshold, sender_id: drafts.sender_id.trim(), message });
+      if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
+      else { showToast(res.error?.message || 'Failed to save.', 'error'); }
+    } catch (e) {
+      showToast('Network error while saving.', 'error');
+    } finally { setSavingForm(false); }
+  };
+
+  const resetMessage = () => {
+    const def = (settings.defaults && settings.defaults.message) || '';
+    if (!def) { showToast('No default available.', 'error'); return; }
+    setDrafts(prev => ({ ...prev, message: def }));
+  };
+
+  const dirty = drafts.threshold !== String(settings.threshold ?? '')
+    || (drafts.sender_id || '') !== (settings.sender_id || '')
+    || (drafts.message || '') !== (settings.message || '');
+
+  const preview = (drafts.message || '')
+    .replace(/\{credits\}/g, '50')
+    .replace(/\{name\}/g, 'Asha')
+    .replace(/\{threshold\}/g, String(parseInt(drafts.threshold, 10) || 0));
+  const segs = smsSegments(drafts.message || '').segments;
+
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Low SMS Credit Warning</h3>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:'#fef2f2',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <AlertTriangle size={16} strokeWidth={2} color={RED}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
+        Warn a <strong>direct customer</strong> when their SMS credits drop to or below the threshold.
+        An <strong>SMS</strong> is sent <strong>once</strong> per downward threshold crossing; a
+        <strong> push / in-app</strong> notification is sent on each drop while low.
+        Partner clients are excluded.
+      </p>
+
+      {loading ? (
+        <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+      ) : error ? (
+        <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
+      ) : (
+        <div style={{marginTop:8}}>
+          {/* Enable toggle */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,padding:'16px 0',borderTop:'1px solid #f1f5f9'}}>
+            <div>
+              <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Enabled</p>
+              <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>Send the warning SMS automatically when credits run low.</p>
+            </div>
+            <button
+              role="switch" aria-checked={!!settings.enabled} aria-label="Enabled"
+              disabled={savingToggle} onClick={toggleEnabled}
+              style={{
+                position:'relative', width:46, height:26, borderRadius:13, flexShrink:0, border:'none',
+                cursor:savingToggle?'wait':'pointer', background: settings.enabled ? BRAND : '#cbd5e1',
+                transition:'background .2s ease', opacity:savingToggle?0.7:1,
+              }}>
+              <span style={{position:'absolute',top:3,left: settings.enabled ? 23 : 3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+            </button>
+          </div>
+
+          <div style={{paddingTop:16, borderTop:'1px solid #f1f5f9', opacity: settings.enabled ? 1 : 0.55}}>
+            {/* Threshold + sender id */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Threshold (credits)
+                </label>
+                <input
+                  type="number" min="0" className="senda-input" value={drafts.threshold}
+                  onChange={e => setDrafts(prev => ({ ...prev, threshold: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>Warn when remaining credits ≤ this number.</p>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Sender ID
+                </label>
+                <input
+                  className="senda-input" value={drafts.sender_id} placeholder="SENDA (default)"
+                  onChange={e => setDrafts(prev => ({ ...prev, sender_id: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>Leave blank to use the platform default.</p>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div style={{marginTop:14}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Message text</label>
+              <textarea
+                value={drafts.message} rows={3}
+                onChange={e => setDrafts(prev => ({ ...prev, message: e.target.value }))}
+                placeholder="Enter the low-credit warning message…"
+                style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:6,flexWrap:'wrap'}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                  {LOW_CREDIT_PLACEHOLDERS.map(p => (
+                    <button key={p} type="button"
+                      onClick={() => setDrafts(prev => ({ ...prev, message: (prev.message || '') + p }))}
+                      style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <span style={{fontSize:11,color:(drafts.message||'').length>800?RED:'#94a3b8'}}>
+                  {(drafts.message||'').length} chars · {segs} SMS{segs===1?'':'s'}
+                </span>
+              </div>
+
+              <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+                <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+                <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{preview || '—'}</p>
+              </div>
+
+              <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
+                <button className="senda-btn senda-btn-primary senda-btn-sm"
+                  disabled={!dirty || savingForm}
+                  onClick={saveForm}
+                  style={{opacity:(!dirty||savingForm)?0.5:1}}>
+                  {savingForm ? 'Saving…' : 'Save changes'}
+                </button>
+                {dirty && (
+                  <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                    onClick={() => applyServer(settings)}>
+                    Cancel
+                  </button>
+                )}
+                <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                  onClick={resetMessage} style={{marginLeft:'auto'}}>
+                  Reset message
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsTab() {
+  return (
+    <div className="senda-fade-in">
+      <SenderApprovalSmsSettings />
+      <LowCreditWarningSettings />
+    </div>
+  );
+}
+
 function OperationsTab() {
   return (
     <div className="senda-fade-in">
@@ -6155,24 +6830,44 @@ function RegisteredIdleTab() {
   );
 }
 
-const NAV = [
-  { id:'overview',     Icon:BarChart3,   label:'Overview'       },
-  { id:'insights',     Icon:Activity,    label:'Insights'       },
-  { id:'engagement',   Icon:MessageSquare, label:'Engagement'   },
-  { id:'broadcast',    Icon:Megaphone,   label:'Broadcast'      },
-  { id:'users',        Icon:Users,       label:'Users'          },
-  { id:'transactions', Icon:CreditCard,  label:'Transactions'   },
-  { id:'senderids',    Icon:Tag,         label:'Sender IDs'     },
-  { id:'partners',     Icon:Handshake,   label:'Partners'       },
-  { id:'partnersenders',Icon:Tag,        label:'Partner Clients' },
-  { id:'approvedsenders',Icon:ShieldCheck, label:'Approved Senders' },
-  { id:'idleusers',    Icon:Clock,       label:'Idle Users'     },
-  { id:'whatsapp',     Icon:Send,        label:'WhatsApp'       },
-  { id:'loginactivity',Icon:ShieldCheck, label:'Login Activity' },
-  { id:'packages',     Icon:Package,     label:'Packages'       },
-  { id:'notifications',Icon:Bell,        label:'Push Notifications' },
-  { id:'operations',   Icon:Globe,       label:'Operations'     },
+// Sidebar items grouped into labeled sections.
+const NAV_GROUPS = [
+  { title: 'Analytics', items: [
+    { id:'overview',      Icon:BarChart3,    label:'Overview'         },
+    { id:'insights',      Icon:Activity,     label:'Insights'         },
+  ]},
+  { title: 'Messaging', items: [
+    { id:'broadcast',     Icon:Megaphone,    label:'Broadcast'        },
+    { id:'whatsapp',      Icon:Send,         label:'WhatsApp'         },
+    { id:'notifications', Icon:Bell,         label:'Push Notifications' },
+    { id:'systemsms',     Icon:Mail,         label:'System SMS Log'   },
+  ]},
+  { title: 'Sender IDs', items: [
+    { id:'senderids',     Icon:Tag,          label:'Sender IDs'       },
+    { id:'approvedsenders', Icon:ShieldCheck, label:'Approved Senders' },
+  ]},
+  { title: 'Customers', items: [
+    { id:'users',         Icon:Users,        label:'Users'            },
+    { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
+    { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
+  ]},
+  { title: 'Partners', items: [
+    { id:'partners',      Icon:Handshake,    label:'Partners'         },
+    { id:'partnersenders', Icon:Tag,         label:'Partner Clients'  },
+  ]},
+  { title: 'Billing', items: [
+    { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
+    { id:'packages',      Icon:Package,      label:'Packages'         },
+  ]},
+  { title: 'System', items: [
+    { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
+    { id:'settings',      Icon:Settings,     label:'Settings'         },
+    { id:'operations',    Icon:Globe,        label:'Operations'       },
+  ]},
 ];
+
+// Flattened list for lookups (e.g. resolving the active tab's label/icon).
+const NAV = NAV_GROUPS.flatMap(g => g.items);
 
 function Sidebar({ active, setActive, onLogout, mode }) {
   // mode: 'full' | 'icon' | 'hidden'
@@ -6204,15 +6899,22 @@ function Sidebar({ active, setActive, onLogout, mode }) {
 
       {/* Nav */}
       <nav style={{flex:1,padding:'12px 8px',overflowY:'auto'}}>
-        {!collapsed && <div style={{fontSize:9,fontWeight:700,color:'#cbd5e1',letterSpacing:'.1em',textTransform:'uppercase',padding:'4px 8px 8px'}}>Navigation</div>}
-        {NAV.map(n=>(
-          <button key={n.id} className={`senda-nav-item${active===n.id?' active':''}`}
-            onClick={()=>setActive(n.id)}
-            title={collapsed?n.label:''}
-            style={{justifyContent:collapsed?'center':'flex-start', borderLeft:active===n.id&&!collapsed?`3px solid ${BRAND}`:'3px solid transparent', paddingLeft:collapsed?undefined:9}}>
-            <n.Icon className="senda-nav-icon" strokeWidth={2.2} />
-            {!collapsed && <span>{n.label}</span>}
-          </button>
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={group.title} style={{marginBottom: collapsed ? 4 : 8}}>
+            {!collapsed
+              ? <div style={{fontSize:9,fontWeight:700,color:'#cbd5e1',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 8px 6px'}}>{group.title}</div>
+              : (gi > 0 ? <div style={{height:1,background:'#f1f5f9',margin:'5px 10px'}}/> : null)
+            }
+            {group.items.map(n=>(
+              <button key={n.id} className={`senda-nav-item${active===n.id?' active':''}`}
+                onClick={()=>setActive(n.id)}
+                title={collapsed?n.label:''}
+                style={{justifyContent:collapsed?'center':'flex-start', borderLeft:active===n.id&&!collapsed?`3px solid ${BRAND}`:'3px solid transparent', paddingLeft:collapsed?undefined:9}}>
+                <n.Icon className="senda-nav-icon" strokeWidth={2.2} />
+                {!collapsed && <span>{n.label}</span>}
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -6292,9 +6994,12 @@ function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }
           </div>
         )}
 
-        {/* nav list — scrollable if needed; all NAV items shown */}
+        {/* nav list — scrollable if needed; all NAV items shown, grouped */}
         <nav style={{flex:1, overflowY:'auto', padding:'10px 8px'}}>
-          {NAV.map(n => {
+          {NAV_GROUPS.map(group => (
+          <div key={group.title} style={{marginBottom:6}}>
+            <div style={{fontSize:9,fontWeight:700,color:'#cbd5e1',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 12px 4px'}}>{group.title}</div>
+            {group.items.map(n => {
             const isActive = active === n.id;
             return (
               <button
@@ -6323,6 +7028,8 @@ function LeftDrawerNav({ open, onClose, active, setActive, onLogout, adminInfo }
               </button>
             );
           })}
+          </div>
+          ))}
         </nav>
 
         {/* logout pinned at bottom */}
@@ -10306,6 +11013,8 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     loginactivity:<LoginActivityTab/>,
     packages:     <PackagesTab/>,
     notifications:<PushNotificationsTab/>,
+    systemsms:    <SystemSmsLogTab/>,
+    settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
   };
 

@@ -2,6 +2,15 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { apiClient, User, AuthTokens, LoginRequest, RegisterRequest } from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
 import { useSMSVerification } from '@/hooks/useSMSVerification';
+import { emitAuthenticationError } from '@/utils/authErrorHandler';
+import {
+  setRememberMe,
+  markSessionActive,
+  recordActivity,
+  isIdleExpired,
+  shouldForceLogoutOnLoad,
+  clearAuthSession,
+} from '@/lib/authSession';
 import {
   isPartina,
   isOwnerInAnyTenant,
@@ -111,6 +120,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state on app load
   useEffect(() => {
+    // Enforce "remember me" (session ended on browser close) and the idle timeout
+    // before restoring any session. If either applies, clear everything and bail.
+    if (shouldForceLogoutOnLoad()) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('user_profile');
+      clearAuthSession();
+      apiClient.setToken(null);
+      setIsLoading(false);
+      return;
+    }
+    // Valid session continuing into this browser launch: re-arm the sentinel and
+    // count the load itself as activity.
+    if (localStorage.getItem('access_token')) {
+      markSessionActive();
+      recordActivity();
+    }
+
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -186,6 +214,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Inactivity (idle) auto-logout: sign the user out after 3 hours without activity.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Baseline the activity clock when a session becomes active (login/signup/restore).
+    recordActivity();
+
+    let throttleUntil = 0;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now < throttleUntil) return;
+      throttleUntil = now + 5000; // record at most once every 5s
+      recordActivity();
+    };
+
+    const events: (keyof WindowEventMap)[] = [
+      'mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click',
+    ];
+    events.forEach(e => window.addEventListener(e, onActivity, { passive: true }));
+
+    const checkIdle = () => {
+      if (isIdleExpired()) {
+        // Clears tokens and triggers the global handler → logout + redirect to /login.
+        emitAuthenticationError('inactivity');
+      }
+    };
+    const interval = window.setInterval(checkIdle, 60 * 1000); // every minute
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkIdle();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', checkIdle);
+
+    // Catch a session that was already idle when this effect mounted.
+    checkIdle();
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, onActivity));
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', checkIdle);
+    };
+  }, [isAuthenticated]);
+
   const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; email?: string; phoneNumber?: string }> => {
     try {
       const response = await apiClient.login(credentials);
@@ -202,6 +275,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (refresh) {
           localStorage.setItem('refresh_token', refresh);
         }
+
+        // Persist the "remember me" choice and start the activity clock.
+        setRememberMe(credentials.rememberMe ?? false);
 
         // Fetch complete profile to get all role/Partina information
         try {
@@ -426,6 +502,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      clearAuthSession();
       clearUserState();
     }
   };

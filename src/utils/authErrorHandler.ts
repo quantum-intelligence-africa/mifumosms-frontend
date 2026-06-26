@@ -27,7 +27,7 @@ export const onAuthenticationError = (callback: AuthErrorListener): (() => void)
  * Emit authentication error event
  * This triggers all registered listeners to redirect user to login
  */
-export const emitAuthenticationError = (reason: 'token-expired' | 'no-token' | 'invalid-token' | 'unauthorized') => {
+export const emitAuthenticationError = (reason: 'token-expired' | 'no-token' | 'invalid-token' | 'unauthorized' | 'inactivity') => {
 	console.warn(`[Auth Error] Authentication failed: ${reason}`);
 
 	// Clear authentication data

@@ -67,6 +67,8 @@ export interface AuthTokens {
 export interface LoginRequest {
   email: string;
   password: string;
+  /** Client-side only: controls session persistence (not sent to the backend). */
+  rememberMe?: boolean;
 }
 
 export interface RegisterRequest {
@@ -1319,9 +1321,11 @@ class ApiClient {
   // =============================================
 
   async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+    // rememberMe is a client-side concern only; don't forward it to the backend.
+    const { email, password } = credentials;
     return this.request<LoginResponse>('/auth/login/', {
       method: 'POST',
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({ email, password }),
     });
   }
 

@@ -120,6 +120,7 @@ const Login = () => {
       const result = await login({
         email: formData.email,
         password: formData.password,
+        rememberMe: formData.rememberMe,
       });
 
       if (result.success) {
