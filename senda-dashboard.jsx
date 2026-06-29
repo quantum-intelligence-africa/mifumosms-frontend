@@ -2009,6 +2009,7 @@ const KYC_FILTERS = [
 function KycReviewTab() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [filter, setFilter]   = useState('rejected');
+  const [kycFilter, setKycFilter] = useState('all'); // 'all' | 'yes' | 'no'
   const [search, setSearch]   = useState('');
   const [debounced, setDebounced] = useState('');
   const [page, setPage]       = useState(1);
@@ -2027,8 +2028,9 @@ function KycReviewTab() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Switching filter restarts at page 1.
+  // Switching a filter restarts at page 1.
   const selectFilter = (id) => { setFilter(id); setPage(1); };
+  const selectKyc = (id) => { setKycFilter(id); setPage(1); };
 
   // Server-side pagination — load only the current page (fast, scales to thousands).
   const fetchData = useCallback(async () => {
@@ -2036,6 +2038,8 @@ function KycReviewTab() {
     try {
       const qs = new URLSearchParams({ page: String(page), limit: String(PER) });
       if (filter !== 'all') qs.set('status', filter);
+      if (kycFilter === 'yes') qs.set('has_kyc', 'true');
+      else if (kycFilter === 'no') qs.set('has_kyc', 'false');
       if (debounced) qs.set('search', debounced);
       const res = await adminFetch(`/sender-ids?${qs.toString()}`, {}, onLogout);
       if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
@@ -2044,7 +2048,7 @@ function KycReviewTab() {
       if (res.summary) setSummary(res.summary);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-  }, [filter, page, debounced, onLogout]);
+  }, [filter, kycFilter, page, debounced, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -2097,6 +2101,28 @@ function KycReviewTab() {
           );
         })}
         <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+          {/* KYC presence toggle */}
+          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'}}>KYC</span>
+          {[
+            { id:'all', label:'All',      color:'#475569' },
+            { id:'yes', label:'Has KYC',  color:'#16a34a' },
+            { id:'no',  label:'No KYC',   color:'#dc2626' },
+          ].map(k => {
+            const on = kycFilter === k.id;
+            return (
+              <button key={k.id} onClick={()=>selectKyc(k.id)} className="senda-btn senda-btn-sm"
+                style={{height:34,padding:'0 12px',fontWeight:700,fontSize:12,
+                  background: on ? k.color : '#fff', color: on ? '#fff' : k.color,
+                  border:`1.5px solid ${on ? k.color : '#e2e8f0'}`}}>
+                {k.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14,justifyContent:'flex-end'}}>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <input className="senda-input" placeholder="Search name, owner, company…"
             value={search} onChange={e=>setSearch(e.target.value)} style={{height:34,fontSize:13,minWidth:220}}/>
           <button className="senda-btn senda-btn-sm" onClick={syncBeem} disabled={syncing}
@@ -2130,7 +2156,12 @@ function KycReviewTab() {
                     <td style={{fontSize:11,color:'#b91c1c',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.notes||''}>{s.notes || '—'}</td>
                     <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
                     <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }}>
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
+                      <div style={{display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap'}}>
+                        {s.kyc_count > 0
+                          ? <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:'#dcfce7',color:'#16a34a'}}>✓ {s.kyc_count} doc{s.kyc_count>1?'s':''}</span>
+                          : <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'2px 9px',borderRadius:99,fontSize:11,fontWeight:700,background:'#fee2e2',color:'#dc2626'}}>✕ None</span>}
+                        <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11}}>View</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
