@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  FileText,
   Globe,
   Handshake,
   Hourglass,
@@ -1540,6 +1541,81 @@ const STATUS_META = {
   require_changes: { label:'Require Changes', color:CYAN,    bg:'#cffafe', Icon:Clock,        desc:'Admin requested document changes' },
 };
 
+// Reusable right-side drawer showing a sender ID's KYC documents + rejection reason.
+// `detail` is { row, data, loading, error } or null. `data` comes from /sender-ids/<id>.
+function SenderKycDrawer({ detail, onClose }) {
+  if (!detail) return null;
+  const isImage = (n) => /\.(png|jpe?g|gif|webp|bmp)$/i.test(n || '');
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:'min(640px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+          <div>
+            <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>{detail.row.name}</h3>
+            <div style={{fontSize:11,color:'#94a3b8',fontFamily:'monospace',marginTop:2}}>{detail.row.id}</div>
+          </div>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'18px 20px'}}>
+          {detail.loading ? <div style={{color:'#94a3b8',fontSize:13}}>Loading…</div>
+           : detail.error ? <div style={{color:'#dc2626',fontSize:13}}>{detail.error}</div>
+           : (() => {
+              const d = detail.data || {};
+              const docs = d.documents || [];
+              return (
+              <>
+                <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'8px 16px',fontSize:13,marginBottom:18}}>
+                  <span style={{color:'#94a3b8'}}>Status</span><span><Badge status={detail.row.status}/></span>
+                  <span style={{color:'#94a3b8'}}>Type</span><span style={{color:'#0f172a'}}>{d.type || detail.row.type || '—'}</span>
+                  <span style={{color:'#94a3b8'}}>Company</span><span style={{color:'#0f172a'}}>{d.company || detail.row.company || '—'}</span>
+                  <span style={{color:'#94a3b8'}}>Owner</span><span style={{color:'#0f172a'}}>{d.owner_name || '—'}{d.owner_email ? ` · ${d.owner_email}` : ''}</span>
+                  <span style={{color:'#94a3b8'}}>Purpose</span><span style={{color:'#0f172a'}}>{d.purpose || detail.row.purpose || '—'}</span>
+                  <span style={{color:'#94a3b8'}}>Network</span><span style={{color:'#0f172a'}}>{d.network || detail.row.network || '—'}</span>
+                </div>
+
+                {/* Rejection / change reason — why KYC is needed */}
+                {(detail.row.status === 'rejected' || detail.row.status === 'require_changes') && (d.notes || detail.row.notes) && (
+                  <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 14px',marginBottom:18}}>
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4}}>Reason</div>
+                    {d.notes || detail.row.notes}
+                  </div>
+                )}
+
+                {/* KYC documents */}
+                <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:8}}>KYC documents ({docs.length})</div>
+                {docs.length === 0 ? (
+                  <div style={{fontSize:13,color:'#94a3b8',background:'#f8fafc',border:'1px dashed #e2e8f0',borderRadius:10,padding:'14px',marginBottom:18}}>
+                    No KYC documents uploaded for this sender name.
+                  </div>
+                ) : (
+                  <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:18}}>
+                    {docs.map((doc, i) => {
+                      const fname = (doc.name || '').split('/').pop() || `Document ${i+1}`;
+                      return (
+                        <div key={i} style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,padding:'10px 14px',background:'#f8fafc'}}>
+                            <span style={{fontSize:12,color:'#0f172a',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={fname}>{fname}</span>
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                              className="senda-btn senda-btn-sm" style={{height:28,fontSize:11,textDecoration:'none',border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',whiteSpace:'nowrap'}}>
+                              Open / Download
+                            </a>
+                          </div>
+                          {isImage(fname)
+                            ? <img src={doc.url} alt={fname} style={{display:'block',width:'100%',maxHeight:280,objectFit:'contain',background:'#fff'}}/>
+                            : <iframe title={fname} src={doc.url} style={{display:'block',width:'100%',height:320,border:'none',background:'#fff'}}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+              );
+           })()}
+        </div>
+      </div>
+    </div>, document.body);
+}
+
 
 function SenderIdsTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
@@ -1559,7 +1635,18 @@ function SenderIdsTab() {
   // Default: exclude partner-network applications (development@swahilies.com et al)
   // so the cards show "our customers". Toggle to include them at any time.
   const [excludePartner, setExcludePartner] = useState(true);
+  const [detail, setDetail]           = useState(null); // { row, data, loading, error }
   const PER_PAGE = 50;
+
+  // Open the detail drawer for one sender ID and fetch its KYC documents + history.
+  const openDetail = useCallback(async (row) => {
+    setDetail({ row, data:null, loading:true, error:null });
+    try {
+      const res = await adminFetch(`/sender-ids/${encodeURIComponent(row.id)}`, {}, onLogout);
+      if (res.success) setDetail({ row, data: res.data, loading:false, error:null });
+      else setDetail({ row, data:null, loading:false, error: res.error?.message || 'Failed to load details.' });
+    } catch (e) { setDetail({ row, data:null, loading:false, error: e.message }); }
+  }, [onLogout]);
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null);
@@ -1809,7 +1896,7 @@ function SenderIdsTab() {
                 <tr>
                   <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th><th>Phone</th>
                   <th>Type</th><th>Network</th><th>SMS Sent</th>
-                  <th>Status</th><th>Invoice</th><th>Created</th>
+                  <th>Status</th><th>Invoice</th><th>Created</th><th>KYC</th>
                 </tr>
               </thead>
               <tbody>
@@ -1817,7 +1904,7 @@ function SenderIdsTab() {
                   const owner    = resolveOwner(s);
                   const src      = owner?._source;
                   return (
-                  <tr key={s.id}>
+                  <tr key={s.id} onClick={()=>openDetail(s)} style={{cursor:'pointer'}}>
                     <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{s.id}</td>
                     <td>
                       <div style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{s.name}</div>
@@ -1847,6 +1934,9 @@ function SenderIdsTab() {
                     <td><Badge status={s.status}/></td>
                     <td style={{fontSize:11,color:s.invoice_no?ORANGE:'#cbd5e1',fontWeight:s.invoice_no?600:400}}>{s.invoice_no||'—'}</td>
                     <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
+                    <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }}>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
+                    </td>
                   </tr>
                 );})}
               </tbody>
@@ -1898,6 +1988,137 @@ function SenderIdsTab() {
         </div>
       )}
 
+      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)}/>
+
+    </div>
+  );
+}
+
+// ─── KYC Documents Tab ────────────────────────────────────────────────────────
+// Focused view for reviewing KYC: sender names that were rejected / need changes
+// (so you can request or check their KYC docs), plus an "all" view. Clicking any
+// row opens the shared KYC drawer with the uploaded documents + rejection reason.
+const KYC_FILTERS = [
+  { id:'rejected',        label:'Rejected',        color:RED   },
+  { id:'require_changes', label:'Require Changes', color:CYAN  },
+  { id:'all',             label:'All sender names', color:BRAND },
+];
+
+function KycReviewTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [filter, setFilter]   = useState('rejected');
+  const [search, setSearch]   = useState('');
+  const [items, setItems]     = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [detail, setDetail]   = useState(null); // { row, data, loading, error }
+
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null); setItems([]);
+    try {
+      const statusParam = filter === 'all' ? '' : `&status=${filter}`;
+      const res = await adminFetch(`/sender-ids?limit=100&page=1${statusParam}`, {}, onLogout);
+      if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
+      if (res.summary) setSummary(res.summary);
+      const pages = res.meta?.total_pages || 1;
+      let rows = res.data || [];
+      if (pages > 1) {
+        const extra = await Promise.all(
+          Array.from({ length: pages - 1 }, (_, i) =>
+            adminFetch(`/sender-ids?limit=100&page=${i + 2}${statusParam}`, {}, onLogout).catch(() => ({ success:false }))
+          )
+        );
+        rows = rows.concat(extra.flatMap(r => (r.success ? r.data || [] : [])));
+      }
+      setItems(rows);
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [filter, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const openDetail = useCallback(async (row) => {
+    setDetail({ row, data:null, loading:true, error:null });
+    try {
+      const res = await adminFetch(`/sender-ids/${encodeURIComponent(row.id)}`, {}, onLogout);
+      if (res.success) setDetail({ row, data: res.data, loading:false, error:null });
+      else setDetail({ row, data:null, loading:false, error: res.error?.message || 'Failed to load details.' });
+    } catch (e) { setDetail({ row, data:null, loading:false, error: e.message }); }
+  }, [onLogout]);
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(s =>
+      (s.name||'').toLowerCase().includes(q) ||
+      (s.owner_email||'').toLowerCase().includes(q) ||
+      (s.company||'').toLowerCase().includes(q) ||
+      (s.id||'').toLowerCase().includes(q));
+  }, [items, search]);
+
+  return (
+    <div className="senda-fade-in">
+      {/* Filter chips */}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+        {KYC_FILTERS.map(f => {
+          const count = f.id === 'all' ? (summary?.total ?? items.length)
+            : f.id === 'rejected' ? (summary?.rejected ?? 0)
+            : (summary?.require_changes ?? 0);
+          const on = filter === f.id;
+          return (
+            <button key={f.id} onClick={()=>setFilter(f.id)} className="senda-btn senda-btn-sm"
+              style={{height:34,padding:'0 14px',fontWeight:700,fontSize:12.5,
+                background: on ? f.color : '#fff', color: on ? '#fff' : f.color,
+                border:`1.5px solid ${on ? f.color : '#e2e8f0'}`}}>
+              {f.label}{summary ? ` (${count})` : ''}
+            </button>
+          );
+        })}
+        <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+          <input className="senda-input" placeholder="Search name, owner, company…"
+            value={search} onChange={e=>setSearch(e.target.value)} style={{height:34,fontSize:13,minWidth:220}}/>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{height:34,fontSize:12}}>↻ Refresh</button>
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:820}}>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th>
+                  <th>Status</th><th>Reason / Notes</th><th>Created</th><th>KYC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(s => (
+                  <tr key={s.id} onClick={()=>openDetail(s)} style={{cursor:'pointer'}}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{s.id}</td>
+                    <td style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{s.name}</td>
+                    <td style={{maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{s.company || '—'}</td>
+                    <td style={{fontSize:11,color:'#64748b',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.owner_email || '—'}</td>
+                    <td><Badge status={s.status}/></td>
+                    <td style={{fontSize:11,color:'#b91c1c',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={s.notes||''}>{s.notes || '—'}</td>
+                    <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
+                    <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }}>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length === 0 && (
+            <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
+              No sender names {filter === 'all' ? '' : `in "${KYC_FILTERS.find(f=>f.id===filter)?.label}"`} found.
+            </div>
+          )}
+        </div>
+      )}
+
+      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)}/>
     </div>
   );
 }
@@ -4873,6 +5094,10 @@ function SystemSmsLogTab() {
   const [debounced, setDebounced]   = useState('');
   const [category, setCategory]     = useState('all');
   const [statusF, setStatusF]       = useState('all');
+  const [tenantF, setTenantF]       = useState('');
+  const [userF, setUserF]           = useState('');
+  const [senderF, setSenderF]       = useState('');
+  const [recipientF, setRecipientF] = useState('');
   const [dateFrom, setDateFrom]     = useState('');
   const [dateTo, setDateTo]         = useState('');
   const [page, setPage]             = useState(1);
@@ -4899,11 +5124,25 @@ function SystemSmsLogTab() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Debounce the tenant / user / sender / recipient text filters together.
+  const [debFilters, setDebFilters] = useState({ tenant:'', user:'', sender:'', recipient:'' });
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebFilters({ tenant:tenantF, user:userF, sender:senderF, recipient:recipientF });
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [tenantF, userF, senderF, recipientF]);
+
   const fetchData = useCallback(() => {
     setLoading(true); setError(null);
     const qs = new URLSearchParams({ page: String(page), limit: String(PER) });
     if (category !== 'all') qs.set('category', category);
     if (statusF !== 'all')  qs.set('status', statusF);
+    if (debFilters.tenant.trim())    qs.set('tenant', debFilters.tenant.trim());
+    if (debFilters.user.trim())      qs.set('user', debFilters.user.trim());
+    if (debFilters.sender.trim())    qs.set('sender_id', debFilters.sender.trim());
+    if (debFilters.recipient.trim()) qs.set('recipient', debFilters.recipient.trim());
     if (dateFrom)           qs.set('date_from', dateFrom);
     if (dateTo)             qs.set('date_to', dateTo);
     if (debounced.trim())   qs.set('search', debounced.trim());
@@ -4920,7 +5159,7 @@ function SystemSmsLogTab() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [page, category, statusF, dateFrom, dateTo, debounced, onLogout]);
+  }, [page, category, statusF, debFilters, dateFrom, dateTo, debounced, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -4929,6 +5168,8 @@ function SystemSmsLogTab() {
 
   const resetFilters = () => {
     setSearch(''); setDebounced(''); setCategory('all'); setStatusF('all');
+    setTenantF(''); setUserF(''); setSenderF(''); setRecipientF('');
+    setDebFilters({ tenant:'', user:'', sender:'', recipient:'' });
     setDateFrom(''); setDateTo(''); setPage(1);
   };
 
@@ -4975,6 +5216,30 @@ function SystemSmsLogTab() {
               <option value="sent">Sent</option>
               <option value="failed">Failed</option>
             </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Tenant</label>
+            <input className="senda-input" placeholder="Business name or ID…"
+              value={tenantF} onChange={e=>setTenantF(e.target.value)}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>User</label>
+            <input className="senda-input" placeholder="Email, name or phone…"
+              value={userF} onChange={e=>setUserF(e.target.value)}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Sender ID</label>
+            <input className="senda-input" placeholder="e.g. SENDA"
+              value={senderF} onChange={e=>setSenderF(e.target.value)}
+              style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>Recipient phone</label>
+            <input className="senda-input" placeholder="e.g. 2557…"
+              value={recipientF} onChange={e=>setRecipientF(e.target.value)}
+              style={{height:38,fontSize:13}}/>
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4}}>From</label>
@@ -5434,8 +5699,11 @@ function BroadcastTab() {
 
   const [history, setHistory]         = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [logs, setLogs]               = useState(null); // { broadcast, rows }
+  const [logs, setLogs]               = useState(null); // { broadcast, rows, summary }
+  const [logsFilter, setLogsFilter]   = useState('all'); // 'all' | 'failed' | 'sent'
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [resending, setResending]     = useState({}); // { [rowKey]: 'sending' | 'sent' }
+  const [resendingAll, setResendingAll] = useState(false);
 
   const pollRef = useRef(null);
 
@@ -5652,12 +5920,56 @@ function BroadcastTab() {
     finally { setSendingSingle(false); }
   }, [singleMessage, singleMode, selectedSender, singlePhone, singleSenderId, onLogout, showToast, loadSingleHistory]);
 
-  const loadLogs = useCallback(async (b) => {
+  const loadLogs = useCallback(async (b, filter = 'all') => {
+    setLoadingLogs(true);
     try {
-      const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?limit=100`, { method:'GET' }, onLogout);
-      if (res.success) { setLogs({ broadcast:b, rows: res.data || [] }); setResending({}); }
+      const qs = new URLSearchParams({ limit: '100' });
+      if (filter !== 'all') qs.set('status', filter);
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?${qs.toString()}`, { method:'GET' }, onLogout);
+      if (res.success) {
+        setLogs({ broadcast:b, rows: res.data || [], summary: res.summary || null });
+        setLogsFilter(filter);
+        setResending({});
+      }
     } catch { showToast('Failed to load audit log', 'error'); }
+    finally { setLoadingLogs(false); }
   }, [onLogout, showToast]);
+
+  // Resend every failed recipient currently loaded in the audit log, one after another.
+  const resendAllFailed = useCallback(async () => {
+    if (!logs) return;
+    const failed = logs.rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.delivery_status === 'failed' && r.recipient_phone && r.message_body);
+    if (failed.length === 0) { showToast('No failed messages with a recorded body to resend', 'error'); return; }
+    setResendingAll(true);
+    let ok = 0, fail = 0;
+    for (const { r, i } of failed) {
+      const key = `${i}`;
+      setResending(s => ({ ...s, [key]: 'sending' }));
+      try {
+        const body = { phone: r.recipient_phone, message: r.message_body };
+        if (r.sender_name_used) body.sender_id = r.sender_name_used;
+        const res = await adminFetch(`${BROADCAST_API}/broadcasts/send-single`, {
+          method:'POST', body: JSON.stringify(body),
+        }, onLogout);
+        if (res.success) {
+          ok++;
+          setResending(s => ({ ...s, [key]: 'sent' }));
+          setLogs(l => l ? { ...l, rows: l.rows.map((row,idx) => idx === i
+            ? { ...row, delivery_status:'sent', error_message:null } : row) } : l);
+        } else {
+          fail++;
+          setResending(s => { const n = { ...s }; delete n[key]; return n; });
+        }
+      } catch {
+        fail++;
+        setResending(s => { const n = { ...s }; delete n[key]; return n; });
+      }
+    }
+    setResendingAll(false);
+    showToast(`Resend complete — ${ok} sent${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+  }, [logs, onLogout, showToast]);
 
   // Resend a single failed audit-log row, reusing the recipient, sender and message body.
   const resendRow = useCallback(async (row, key) => {
@@ -6266,7 +6578,45 @@ function BroadcastTab() {
               </div>
               <button className="senda-btn senda-btn-sm" onClick={()=>setLogs(null)} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={16}/></button>
             </div>
+
+            {/* Summary + filter + bulk resend toolbar */}
+            {logs.summary && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', padding:'12px 20px', borderBottom:'1px solid #eef2f7', background:'#f8fafc' }}>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[
+                    { id:'all',    label:`All ${logs.summary.total}`,        color:'#475569' },
+                    { id:'sent',   label:`Sent ${logs.summary.sent}`,        color:'#16a34a' },
+                    { id:'failed', label:`Failed ${logs.summary.failed}`,    color:'#dc2626' },
+                  ].map(f => (
+                    <button key={f.id} onClick={()=>loadLogs(logs.broadcast, f.id)} disabled={loadingLogs}
+                      className="senda-btn senda-btn-sm"
+                      style={{ height:30, padding:'0 12px', fontWeight:700, fontSize:12,
+                        background: logsFilter===f.id ? f.color : '#fff',
+                        color: logsFilter===f.id ? '#fff' : f.color,
+                        border:`1.5px solid ${logsFilter===f.id ? f.color : '#e2e8f0'}` }}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                {(() => {
+                  const loadedFailed = logs.rows.filter(r => r.delivery_status === 'failed').length;
+                  if (loadedFailed === 0) return null;
+                  return (
+                    <button onClick={resendAllFailed} disabled={resendingAll || loadingLogs}
+                      className="senda-btn senda-btn-sm"
+                      style={{ height:30, padding:'0 14px', fontWeight:700, fontSize:12,
+                        background: BRAND, color:'#fff', border:`1.5px solid ${BRAND}`,
+                        opacity: (resendingAll || loadingLogs) ? .6 : 1,
+                        cursor: (resendingAll || loadingLogs) ? 'default' : 'pointer' }}>
+                      {resendingAll ? 'Resending all…' : `Resend all failed (${loadedFailed})`}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
             <div style={{ flex:1, overflowY:'auto' }}>
+              {loadingLogs && <div style={{ padding:14, fontSize:12, color:'#94a3b8' }}>Loading…</div>}
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead>
                   <tr style={{ position:'sticky', top:0, background:'#f8fafc' }}>
@@ -6947,6 +7297,7 @@ const NAV_GROUPS = [
   ]},
   { title: 'Sender IDs', items: [
     { id:'senderids',     Icon:Tag,          label:'Sender IDs'       },
+    { id:'kyc',           Icon:FileText,     label:'KYC Documents'    },
     { id:'approvedsenders', Icon:ShieldCheck, label:'Approved Senders' },
   ]},
   { title: 'Customers', items: [
@@ -11108,6 +11459,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     users:        <UsersTab/>,
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
+    kyc:          <KycReviewTab/>,
     partners:     <PartnersTab/>,
     partnersenders: <PartnerSendersTab/>,
     approvedsenders: <ApprovedSendersTab/>,
