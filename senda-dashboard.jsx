@@ -1595,14 +1595,16 @@ function SenderKycDrawer({ detail, onClose }) {
                         <div key={i} style={{border:'1px solid #eef2f7',borderRadius:10,overflow:'hidden'}}>
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,padding:'10px 14px',background:'#f8fafc'}}>
                             <span style={{fontSize:12,color:'#0f172a',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={fname}>{fname}</span>
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                              className="senda-btn senda-btn-sm" style={{height:28,fontSize:11,textDecoration:'none',border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',whiteSpace:'nowrap'}}>
-                              Open / Download
-                            </a>
+                            {doc.url
+                              ? <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                                  className="senda-btn senda-btn-sm" style={{height:28,fontSize:11,textDecoration:'none',border:`1.5px solid ${BRAND}`,color:BRAND,background:'#fff',whiteSpace:'nowrap'}}>
+                                  Open / Download
+                                </a>
+                              : <span style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>File unavailable</span>}
                           </div>
-                          {isImage(fname)
+                          {doc.url && (isImage(fname)
                             ? <img src={doc.url} alt={fname} style={{display:'block',width:'100%',maxHeight:280,objectFit:'contain',background:'#fff'}}/>
-                            : <iframe title={fname} src={doc.url} style={{display:'block',width:'100%',height:320,border:'none',background:'#fff'}}/>}
+                            : <iframe title={fname} src={doc.url} style={{display:'block',width:'100%',height:320,border:'none',background:'#fff'}}/>)}
                         </div>
                       );
                     })}
@@ -2005,36 +2007,44 @@ const KYC_FILTERS = [
 ];
 
 function KycReviewTab() {
-  const { onLogout } = React.useContext(AppContext);
+  const { onLogout, showToast } = React.useContext(AppContext);
   const [filter, setFilter]   = useState('rejected');
   const [search, setSearch]   = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [page, setPage]       = useState(1);
+  const [syncing, setSyncing] = useState(false);
   const [items, setItems]     = useState([]);
+  const [meta, setMeta]       = useState({ total:0, page:1, total_pages:1 });
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [detail, setDetail]   = useState(null); // { row, data, loading, error }
+  const PER = 20;
 
+  // Debounce the search box; any new query restarts at page 1.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Switching filter restarts at page 1.
+  const selectFilter = (id) => { setFilter(id); setPage(1); };
+
+  // Server-side pagination — load only the current page (fast, scales to thousands).
   const fetchData = useCallback(async () => {
-    setLoading(true); setError(null); setItems([]);
+    setLoading(true); setError(null);
     try {
-      const statusParam = filter === 'all' ? '' : `&status=${filter}`;
-      const res = await adminFetch(`/sender-ids?limit=100&page=1${statusParam}`, {}, onLogout);
+      const qs = new URLSearchParams({ page: String(page), limit: String(PER) });
+      if (filter !== 'all') qs.set('status', filter);
+      if (debounced) qs.set('search', debounced);
+      const res = await adminFetch(`/sender-ids?${qs.toString()}`, {}, onLogout);
       if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
+      setItems(res.data || []);
+      setMeta(res.meta || { total:0, page, total_pages:1 });
       if (res.summary) setSummary(res.summary);
-      const pages = res.meta?.total_pages || 1;
-      let rows = res.data || [];
-      if (pages > 1) {
-        const extra = await Promise.all(
-          Array.from({ length: pages - 1 }, (_, i) =>
-            adminFetch(`/sender-ids?limit=100&page=${i + 2}${statusParam}`, {}, onLogout).catch(() => ({ success:false }))
-          )
-        );
-        rows = rows.concat(extra.flatMap(r => (r.success ? r.data || [] : [])));
-      }
-      setItems(rows);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-  }, [filter, onLogout]);
+  }, [filter, page, debounced, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -2047,15 +2057,26 @@ function KycReviewTab() {
     } catch (e) { setDetail({ row, data:null, loading:false, error: e.message }); }
   }, [onLogout]);
 
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(s =>
-      (s.name||'').toLowerCase().includes(q) ||
-      (s.owner_email||'').toLowerCase().includes(q) ||
-      (s.company||'').toLowerCase().includes(q) ||
-      (s.id||'').toLowerCase().includes(q));
-  }, [items, search]);
+  // Pull the latest sender-name statuses from Beem now: anything ACTIVE in Beem is
+  // auto-approved locally, anything REJECTED is rejected (same as the 5-min job).
+  const syncBeem = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const res = await adminFetch(`/sender-ids/sync-beem`, { method:'POST' }, onLogout);
+      if (res.success) {
+        showToast?.(res.message || 'Synced with Beem.', 'success');
+        fetchData();
+      } else {
+        showToast?.(res.error?.message || 'Beem sync failed.', 'error');
+      }
+    } catch (e) { showToast?.(e.message || 'Beem sync failed.', 'error'); }
+    finally { setSyncing(false); }
+  }, [onLogout, showToast, fetchData]);
+
+  const totalPages = meta.total_pages || 1;
+  const total = meta.total || 0;
+  const curPage = meta.page || page;
+  const filtered = items; // server already filtered by status + search
 
   return (
     <div className="senda-fade-in">
@@ -2067,7 +2088,7 @@ function KycReviewTab() {
             : (summary?.require_changes ?? 0);
           const on = filter === f.id;
           return (
-            <button key={f.id} onClick={()=>setFilter(f.id)} className="senda-btn senda-btn-sm"
+            <button key={f.id} onClick={()=>selectFilter(f.id)} className="senda-btn senda-btn-sm"
               style={{height:34,padding:'0 14px',fontWeight:700,fontSize:12.5,
                 background: on ? f.color : '#fff', color: on ? '#fff' : f.color,
                 border:`1.5px solid ${on ? f.color : '#e2e8f0'}`}}>
@@ -2078,6 +2099,12 @@ function KycReviewTab() {
         <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
           <input className="senda-input" placeholder="Search name, owner, company…"
             value={search} onChange={e=>setSearch(e.target.value)} style={{height:34,fontSize:13,minWidth:220}}/>
+          <button className="senda-btn senda-btn-sm" onClick={syncBeem} disabled={syncing}
+            title="Pull live statuses from Beem now — active sender names get auto-approved"
+            style={{height:34,fontSize:12,fontWeight:700,background:BRAND,color:'#fff',border:`1.5px solid ${BRAND}`,
+              opacity:syncing?.6:1,cursor:syncing?'default':'pointer',whiteSpace:'nowrap'}}>
+            {syncing ? 'Syncing…' : 'Sync from Beem'}
+          </button>
           <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{height:34,fontSize:12}}>↻ Refresh</button>
         </div>
       </div>
@@ -2113,6 +2140,47 @@ function KycReviewTab() {
           {filtered.length === 0 && (
             <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>
               No sender names {filter === 'all' ? '' : `in "${KYC_FILTERS.find(f=>f.id===filter)?.label}"`} found.
+            </div>
+          )}
+
+          {/* Pagination bar */}
+          {total > 0 && (
+            <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span style={{fontSize:12,color:'#94a3b8'}}>
+                {((curPage-1)*PER+1).toLocaleString()}–{Math.min(curPage*PER,total).toLocaleString()} of {total.toLocaleString()} · page {curPage} of {totalPages}
+              </span>
+              <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={curPage<=1} onClick={()=>setPage(1)}
+                  style={{opacity:curPage<=1?.4:1,minWidth:32}}>«</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={curPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}
+                  style={{opacity:curPage<=1?.4:1}}>‹ Prev</button>
+
+                {Array.from({length: totalPages}, (_,i)=>i+1)
+                  .filter(p => p===1 || p===totalPages || Math.abs(p-curPage)<=2)
+                  .reduce((acc,p,i,arr)=>{
+                    if(i>0 && p-arr[i-1]>1) acc.push('…');
+                    acc.push(p);
+                    return acc;
+                  },[])
+                  .map((p,i)=> p==='…'
+                    ? <span key={`gap-${i}`} style={{fontSize:12,color:'#94a3b8',padding:'0 4px'}}>…</span>
+                    : <button key={p} className="senda-btn senda-btn-sm"
+                        onClick={()=>setPage(p)}
+                        style={{minWidth:32,background:curPage===p?BRAND:'#f1f5f9',color:curPage===p?'#fff':'#64748b',border:'none',fontWeight:curPage===p?700:400}}>
+                        {p}
+                      </button>
+                  )
+                }
+
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={curPage>=totalPages} onClick={()=>setPage(p=>p+1)}
+                  style={{opacity:curPage>=totalPages?.4:1}}>Next ›</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost"
+                  disabled={curPage>=totalPages} onClick={()=>setPage(totalPages)}
+                  style={{opacity:curPage>=totalPages?.4:1,minWidth:32}}>»</button>
+              </div>
             </div>
           )}
         </div>
