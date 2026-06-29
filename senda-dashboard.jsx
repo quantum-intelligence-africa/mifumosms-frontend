@@ -5433,6 +5433,7 @@ function BroadcastTab() {
   const [history, setHistory]         = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [logs, setLogs]               = useState(null); // { broadcast, rows }
+  const [resending, setResending]     = useState({}); // { [rowKey]: 'sending' | 'sent' }
 
   const pollRef = useRef(null);
 
@@ -5640,8 +5641,34 @@ function BroadcastTab() {
   const loadLogs = useCallback(async (b) => {
     try {
       const res = await adminFetch(`${BROADCAST_API}/broadcasts/${b.broadcast_id}/logs?limit=100`, { method:'GET' }, onLogout);
-      if (res.success) setLogs({ broadcast:b, rows: res.data || [] });
+      if (res.success) { setLogs({ broadcast:b, rows: res.data || [] }); setResending({}); }
     } catch { showToast('Failed to load audit log', 'error'); }
+  }, [onLogout, showToast]);
+
+  // Resend a single failed audit-log row, reusing the recipient, sender and message body.
+  const resendRow = useCallback(async (row, key) => {
+    if (!row.recipient_phone) { showToast('No recipient number on this row', 'error'); return; }
+    if (!row.message_body) { showToast('No message body recorded — cannot resend', 'error'); return; }
+    setResending(s => ({ ...s, [key]: 'sending' }));
+    try {
+      const body = { phone: row.recipient_phone, message: row.message_body };
+      if (row.sender_name_used) body.sender_id = row.sender_name_used;
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/send-single`, {
+        method:'POST', body: JSON.stringify(body),
+      }, onLogout);
+      if (res.success) {
+        showToast(`Resent to ${res.data.to} as “${res.data.sender_id}”`, 'success');
+        setResending(s => ({ ...s, [key]: 'sent' }));
+        setLogs(l => l ? { ...l, rows: l.rows.map((r,i) => `${i}` === key
+          ? { ...r, delivery_status:'sent', error_message:null } : r) } : l);
+      } else {
+        showToast(res.error?.message || 'Resend failed', 'error');
+        setResending(s => { const n = { ...s }; delete n[key]; return n; });
+      }
+    } catch {
+      showToast('Network error resending message', 'error');
+      setResending(s => { const n = { ...s }; delete n[key]; return n; });
+    }
   }, [onLogout, showToast]);
 
   const seg = smsSegments(message);
@@ -6197,6 +6224,18 @@ function BroadcastTab() {
                       <td style={{ padding:'8px 14px' }}>
                         <Pill color={r.delivery_status==='sent' ? '#16a34a' : '#dc2626'}>{r.delivery_status}</Pill>
                         {r.error_message && <div style={{ color:'#dc2626', fontSize:11, marginTop:3 }}>{r.error_message}</div>}
+                        {r.delivery_status === 'failed' && (
+                          <button
+                            onClick={()=>resendRow(r, `${i}`)}
+                            disabled={resending[`${i}`] === 'sending'}
+                            className="senda-btn senda-btn-sm"
+                            style={{ height:26, marginTop:6, padding:'0 12px', fontWeight:700,
+                              border:`1.5px solid ${BRAND}`, background:'#fff', color:BRAND,
+                              cursor: resending[`${i}`] === 'sending' ? 'default' : 'pointer',
+                              opacity: resending[`${i}`] === 'sending' ? .6 : 1 }}>
+                            {resending[`${i}`] === 'sending' ? 'Resending…' : 'Resend'}
+                          </button>
+                        )}
                       </td>
                       <td style={{ padding:'8px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
                     </tr>
