@@ -5422,6 +5422,8 @@ function BroadcastTab() {
   const [singleSenderId, setSingleSenderId] = useState('');
   const [singleMessage, setSingleMessage] = useState('');
   const [sendingSingle, setSendingSingle] = useState(false);
+  const [singleHistory, setSingleHistory]       = useState([]);
+  const [loadingSingleHistory, setLoadingSingleHistory] = useState(false);
 
   const [preview, setPreview]         = useState(null);
   const [previewing, setPreviewing]   = useState(false);
@@ -5615,6 +5617,17 @@ function BroadcastTab() {
     return () => { cancelled = true; clearTimeout(t); };
   }, [senderQuery, singleMode, onLogout]);
 
+  // History of direct (single) messages — stored under the admin_single_send category.
+  const loadSingleHistory = useCallback(async () => {
+    setLoadingSingleHistory(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/system-sms-logs?category=admin_single_send&limit=50', { method:'GET' }, onLogout);
+      if (res.success) setSingleHistory(res.data || []);
+    } catch {} finally { setLoadingSingleHistory(false); }
+  }, [onLogout]);
+
+  useEffect(() => { if (view === 'single') loadSingleHistory(); }, [view, loadSingleHistory]);
+
   const sendSingle = useCallback(async () => {
     const body = { message: singleMessage };
     if (singleMode === 'search') {
@@ -5633,10 +5646,11 @@ function BroadcastTab() {
       if (res.success) {
         showToast(`Sent to ${res.data.to} as “${res.data.sender_id}”`, 'success');
         setSingleMessage(''); setSelectedSender(null); setSenderQuery(''); setSenderResults([]); setSinglePhone('');
+        loadSingleHistory();
       } else showToast(res.error?.message || 'Failed to send', 'error');
     } catch { showToast('Network error sending message', 'error'); }
     finally { setSendingSingle(false); }
-  }, [singleMessage, singleMode, selectedSender, singlePhone, singleSenderId, onLogout, showToast]);
+  }, [singleMessage, singleMode, selectedSender, singlePhone, singleSenderId, onLogout, showToast, loadSingleHistory]);
 
   const loadLogs = useCallback(async (b) => {
     try {
@@ -5948,6 +5962,7 @@ function BroadcastTab() {
       )}
 
       {view === 'single' && (
+       <>
         <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'minmax(0,1fr) minmax(0,1fr)', gap:18, alignItems:'start' }}>
           <div className="senda-card" style={{ padding:22 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
@@ -6041,6 +6056,55 @@ function BroadcastTab() {
             </ul>
           </div>
         </div>
+
+        {/* Direct message history */}
+        <div className="senda-card" style={{ padding:0, marginTop:18, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+            <div>
+              <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>Direct message history</h3>
+              <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>Your most recent direct (single) sends.</div>
+            </div>
+            <button onClick={loadSingleHistory} disabled={loadingSingleHistory}
+              className="senda-btn senda-btn-sm" style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}>
+              {loadingSingleHistory ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {['Recipient','Sender Used','Message','Status','Date/Time'].map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'10px 16px', color:'#64748b', fontWeight:700, whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loadingSingleHistory && singleHistory.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding:20, color:'#94a3b8' }}>Loading…</td></tr>
+                ) : singleHistory.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding:20, color:'#94a3b8' }}>No direct messages sent yet.</td></tr>
+                ) : singleHistory.map(r => (
+                  <tr key={r.id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <td style={{ padding:'10px 16px' }}>
+                      <div style={{ color:'#0f172a' }}>{r.tenant_name || '—'}</div>
+                      <div style={{ color:'#94a3b8', fontFamily:'monospace' }}>{r.recipient_phone}</div>
+                    </td>
+                    <td style={{ padding:'10px 16px' }}><Pill color={BRAND}>{r.sender_id_used || '—'}</Pill></td>
+                    <td style={{ padding:'10px 16px', color:'#475569', maxWidth:280 }}>
+                      <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={r.message_body || ''}>{r.message_body || '—'}</div>
+                    </td>
+                    <td style={{ padding:'10px 16px' }}>
+                      <Pill color={r.status==='sent' ? '#16a34a' : '#dc2626'}>{r.status}</Pill>
+                      {r.error_message && <div style={{ color:'#dc2626', fontSize:11, marginTop:3 }}>{r.error_message}</div>}
+                    </td>
+                    <td style={{ padding:'10px 16px', color:'#64748b', whiteSpace:'nowrap' }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+       </>
       )}
 
       {view === 'scheduled' && (() => {
