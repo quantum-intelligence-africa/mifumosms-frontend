@@ -21,6 +21,8 @@ import {
   Upload,
   Trash2,
   Search,
+  ClipboardCheck,
+  Download,
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -41,6 +43,7 @@ import {
   type WAMessageTemplate,
   type WAPollResultsResponse,
   type WAPollListItem,
+  type WATemplateRepliesResponse,
 } from "@/hooks/useWhatsAppCloud";
 import { BarChart3 } from "lucide-react";
 import { buildApiUrl, API_CONFIG } from "@/config/api";
@@ -4838,9 +4841,302 @@ function BulkSendCombined({
   return <SingleSendTab waAccountId={waAccountId} bulk prefillRecipients={prefillRecipients} />;
 }
 
+// ─── Template Replies (RSVP) Tab ─────────────────────────────────────────────
+// Reads back quick-reply button taps on APPROVED Meta templates — e.g. who tapped
+// "Asante Nitashiriki" / "Sitoweza Kushiriki" on an event-invitation template.
+// Capture happens server-side in the inbound webhook; this tab just visualises it.
+
+// A tap can only be attributed to a template send that we logged, so we surface
+// every reply and let the user narrow by template + button.
+function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
+  const { getMessageTemplates, getTemplateReplies, isLoading } = useWhatsAppCloud();
+
+  // Approved templates that carry quick-reply buttons — the picker source.
+  const [templates, setTemplates] = useState<WAMessageTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  // "" = all templates; otherwise a specific template name.
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  // "" = all buttons; otherwise narrow the responder list to one caption.
+  const [buttonFilter, setButtonFilter] = useState("");
+
+  const [data, setData] = useState<WATemplateRepliesResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Only APPROVED templates with at least one QUICK_REPLY button can gather RSVPs.
+  const hasQuickReply = (t: WAMessageTemplate) =>
+    (t.components ?? []).some(
+      (c) => c.type === "BUTTONS" && (c.buttons ?? []).some((b) => b.type === "QUICK_REPLY"),
+    );
+
+  const loadTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const res = await getMessageTemplates(waAccountId || undefined, {
+        status: "APPROVED",
+        limit: 200,
+      });
+      const all = res.data?.graph?.data ?? [];
+      // De-dupe by name (a template can exist in several languages) and keep only
+      // those with quick-reply buttons.
+      const seen = new Set<string>();
+      const rsvp = all.filter((t) => {
+        if (t.status !== "APPROVED" || !hasQuickReply(t) || seen.has(t.name)) return false;
+        seen.add(t.name);
+        return true;
+      });
+      setTemplates(rsvp);
+    } catch {
+      // Non-fatal: the picker just won't have named shortcuts. Replies still load.
+      setTemplates([]);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const load = async () => {
+    setError(null);
+    try {
+      const res = await getTemplateReplies({
+        all: true,
+        template_name: selectedTemplate || undefined,
+        button: buttonFilter || undefined,
+      });
+      setData(res);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load replies");
+      setData(null);
+    }
+  };
+
+  // Initial load: templates (for the picker) + replies (all templates).
+  useEffect(() => {
+    void loadTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload replies whenever the template or button filter changes.
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplate, buttonFilter]);
+
+  const counts = data?.counts ?? {};
+  const buttons = Object.keys(counts).sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0));
+  const items = data?.responses.items ?? [];
+  const truncated = data?.responses.truncated ?? false;
+
+  // Export the currently-shown responders as CSV (Excel-friendly).
+  const exportCsv = () => {
+    if (!items.length) return;
+    const header = ["Name", "Phone", "Email", "Button", "Template", "Responded at"];
+    const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = items.map((it) => [
+      it.name ?? "",
+      it.phone ?? "",
+      it.email ?? "",
+      it.button ?? "",
+      it.template_name ?? "",
+      it.at ?? "",
+    ]);
+    const csv = [header, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `template-replies-${selectedTemplate || "all"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const fmtTime = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  };
+
+  return (
+    <div className="space-y-4 p-1">
+      {/* Intro banner */}
+      <div className="rounded-2xl border border-teal-500/20 dark:border-teal-500/30 bg-teal-500/[0.04] dark:bg-teal-500/10 px-3.5 py-2.5">
+        <p className="text-[12.5px] font-semibold text-foreground leading-tight">Invitation replies (RSVP)</p>
+        <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">
+          Every time someone taps a quick-reply button on an approved template — like
+          <span className="font-medium"> “Asante Nitashiriki”</span> or
+          <span className="font-medium"> “Sitoweza Kushiriki”</span> — it shows up here.
+        </p>
+      </div>
+
+      {/* Template picker + actions */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+            Template
+          </Label>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={isLoading}
+            className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+          >
+            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Refresh
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => { setSelectedTemplate(""); setButtonFilter(""); }}
+            className={[
+              "px-2.5 py-1 rounded-lg text-[12px] font-semibold transition-colors border",
+              selectedTemplate === ""
+                ? "bg-teal-500 text-white border-teal-500"
+                : "bg-card text-foreground/70 border-border hover:bg-muted/50",
+            ].join(" ")}
+          >
+            All templates
+          </button>
+          {templates.map((t) => (
+            <button
+              key={t.name}
+              type="button"
+              onClick={() => { setSelectedTemplate(t.name); setButtonFilter(""); }}
+              className={[
+                "px-2.5 py-1 rounded-lg text-[12px] font-mono font-medium transition-colors border truncate max-w-[220px]",
+                selectedTemplate === t.name
+                  ? "bg-teal-500 text-white border-teal-500"
+                  : "bg-card text-foreground/70 border-border hover:bg-muted/50",
+              ].join(" ")}
+              title={t.name}
+            >
+              {t.name}
+            </button>
+          ))}
+          {templatesLoading && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground px-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> loading…
+            </span>
+          )}
+        </div>
+        {!templatesLoading && templates.length === 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            No approved templates with quick-reply buttons found — showing replies across all templates.
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="py-2">
+          <AlertCircle className="h-3.5 w-3.5" />
+          <AlertDescription className="text-xs">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Per-button count summary — click a card to filter the responder list. */}
+      {buttons.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {buttons.map((b) => {
+            const active = buttonFilter === b;
+            return (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setButtonFilter(active ? "" : b)}
+                className={[
+                  "rounded-xl border p-2.5 text-left transition-colors",
+                  active
+                    ? "border-teal-500 bg-teal-500/10 dark:bg-teal-500/15"
+                    : "border-border bg-card hover:bg-muted/40",
+                ].join(" ")}
+              >
+                <div className="text-[20px] font-bold text-foreground leading-none">{counts[b]}</div>
+                <div className="text-[11px] text-foreground/60 truncate mt-1" title={b}>{b}</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Responder list */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+            Responders{" "}
+            <span className="text-foreground/40 font-normal normal-case">
+              ({data?.responses.total ?? 0}{buttonFilter ? ` · ${buttonFilter}` : ""})
+            </span>
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={exportCsv}
+            disabled={items.length === 0}
+            className="h-8 px-2.5 rounded-lg text-[12px] gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </Button>
+        </div>
+
+        {truncated && (
+          <Alert className="py-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <AlertDescription className="text-xs">
+              Showing the first {data?.responses.max_items} replies — narrow by template or button to see the rest.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isLoading && items.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card/50 px-3 py-6 text-center text-xs text-muted-foreground">
+            <Loader2 className="w-4 h-4 mx-auto animate-spin mb-1" />
+            Loading replies…
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center">
+            <ClipboardCheck className="w-7 h-7 mx-auto text-muted-foreground/40 mb-2" />
+            <p className="text-[13px] font-semibold text-foreground">No replies yet</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs mx-auto">
+              Once recipients tap a quick-reply button on your sent invitation, their responses appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card divide-y divide-border max-h-[460px] overflow-y-auto">
+            {items.map((it, i) => (
+              <div key={`${it.phone}-${it.at}-${i}`} className="flex items-center gap-3 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-foreground truncate">
+                      {it.name || it.phone}
+                    </span>
+                    {it.name && (
+                      <span className="text-[11px] font-mono text-muted-foreground truncate">{it.phone}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-[10.5px] text-muted-foreground font-mono truncate max-w-[180px]" title={it.template_name}>
+                      {it.template_name || "—"}
+                    </span>
+                    <span className="text-[10.5px] text-muted-foreground/70">·</span>
+                    <span className="text-[10.5px] text-muted-foreground">{fmtTime(it.at)}</span>
+                  </div>
+                </div>
+                <Badge className="bg-teal-500/15 text-teal-700 dark:text-teal-300 hover:bg-teal-500/15 text-[10.5px] py-0.5 flex-shrink-0 max-w-[140px] truncate">
+                  {it.button}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type TabId = "single" | "bulk" | "category" | "userids" | "daterange" | "audience" | "templates" | "pollresults";
+type TabId = "single" | "bulk" | "category" | "userids" | "daterange" | "audience" | "templates" | "pollresults" | "replies";
 
 interface Tab {
   id: TabId;
@@ -4854,12 +5150,13 @@ const TABS: Tab[] = [
   { id: "single",      label: "Single Send",    description: "Send a message to one recipient",        icon: Send,       color: "bg-[#25D366]" },
   { id: "bulk",        label: "Bulk Send",       description: "Broadcast personalized image templates",  icon: Users,      color: "bg-blue-500" },
   { id: "pollresults", label: "Poll Results",    description: "View RSVP & poll responses by name",     icon: BarChart3,  color: "bg-purple-500" },
+  { id: "replies",     label: "Replies",         description: "Template quick-reply RSVPs (who's coming)", icon: ClipboardCheck, color: "bg-teal-500" },
 ];
 
 // Order of sub-tabs surfaced in the segmented control. Drives swipe navigation
 // (swipe left = next tab, swipe right = previous; edges spill into the adjacent
 // page in the sidebar).
-const VISIBLE_TABS = ["single", "bulk", "templates", "pollresults"] as const satisfies readonly TabId[];
+const VISIBLE_TABS = ["single", "bulk", "templates", "pollresults", "replies"] as const satisfies readonly TabId[];
 
 export default function WhatsAppCloud() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -4941,6 +5238,7 @@ export default function WhatsAppCloud() {
       case "templates": return <TemplatesTab waAccountId={waAccountId} />;
       case "audience":  return <AudienceTab waAccountId={waAccountId} />;
       case "pollresults": return <PollResultsTab />;
+      case "replies":   return <TemplateRepliesTab waAccountId={waAccountId} />;
       default:          return null;
     }
   };
@@ -4953,6 +5251,7 @@ export default function WhatsAppCloud() {
     single: "bg-gradient-to-b from-emerald-500/10 via-background to-emerald-500/10 dark:from-emerald-500/15 dark:via-background dark:to-emerald-500/15",
     bulk: "bg-gradient-to-b from-blue-500/10 via-background to-blue-500/10 dark:from-blue-500/15 dark:via-background dark:to-blue-500/15",
     pollresults: "bg-gradient-to-b from-purple-500/10 via-background to-purple-500/10 dark:from-purple-500/15 dark:via-background dark:to-purple-500/15",
+    replies: "bg-gradient-to-b from-teal-500/10 via-background to-teal-500/10 dark:from-teal-500/15 dark:via-background dark:to-teal-500/15",
     templates: "bg-gradient-to-b from-amber-500/10 via-background to-amber-500/10 dark:from-amber-500/15 dark:via-background dark:to-amber-500/15",
     // Fallbacks for inactive TABS (audience/category/etc.) — keep emerald.
     category: "bg-gradient-to-b from-emerald-500/10 via-background to-emerald-500/10 dark:from-emerald-500/15 dark:via-background dark:to-emerald-500/15",
@@ -5035,7 +5334,7 @@ export default function WhatsAppCloud() {
             <div
               role="tablist"
               aria-label="WhatsApp send mode"
-              className="grid grid-cols-4 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-2xl"
+              className="grid grid-cols-5 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-2xl"
             >
               {[
                 {
@@ -5061,6 +5360,12 @@ export default function WhatsAppCloud() {
                   icon: BarChart3,
                   label: "Polls",
                   activeClass: "bg-purple-500 text-white shadow-[0_2px_8px_rgba(168,85,247,0.35)]",
+                },
+                {
+                  key: "replies" as const,
+                  icon: ClipboardCheck,
+                  label: "Replies",
+                  activeClass: "bg-teal-500 text-white shadow-[0_2px_8px_rgba(20,184,166,0.35)]",
                 },
               ].map(({ key, icon: Icon, label, activeClass }) => {
                 const isActive = mode === key;

@@ -125,6 +125,60 @@ export interface WAPollResultsQuery {
 	all?: boolean;
 }
 
+// ─── Approved-template quick-reply captures (RSVP) ───────────────────────────
+// When a recipient taps a quick-reply button baked into an APPROVED Meta template
+// (e.g. an invitation's "Asante Nitashiriki" / "Sitoweza Kushiriki"), the inbound
+// webhook records it. This endpoint reads those taps back, grouped by button, and
+// enriches each responder with their contact name/email/tags.
+
+export interface WATemplateReplyItem {
+	phone: string;
+	name?: string;
+	email?: string;
+	tags?: string[];
+	/** The button caption that was tapped, e.g. "Asante Nitashiriki". */
+	button: string;
+	/** Developer-defined quick-reply payload, when the template set one. */
+	payload?: string;
+	template_name: string;
+	/** ISO timestamp of the tap, or null if unknown. */
+	at: string | null;
+}
+
+export interface WATemplateRepliesResponse {
+	success: boolean;
+	filters: { template_name: string | null; button: string | null };
+	/** Per-button tap counts over the whole (filtered) set: { [button]: count }. */
+	counts: Record<string, number>;
+	/** Sum of `counts` — total taps across all buttons. */
+	total: number;
+	responses: {
+		page: number;
+		page_size: number;
+		total: number;
+		has_next: boolean;
+		items: WATemplateReplyItem[];
+		/** Present when served via `?all=1` / `?page_size=all`. */
+		all_mode?: boolean;
+		/** True when the all-mode cap was hit; client should paginate the rest. */
+		truncated?: boolean;
+		/** The all-mode cap — only set when `truncated` is true. */
+		max_items?: number;
+	};
+}
+
+export interface WATemplateRepliesQuery {
+	/** Filter to one approved template by name. */
+	template_name?: string;
+	/** Filter by button caption (case-insensitive). */
+	button?: string;
+	page?: number;
+	/** Numeric page size or the literal "all". */
+	page_size?: number | "all";
+	/** Convenience for `page_size=all`. */
+	all?: boolean;
+}
+
 export interface WASendByCategoryPayload {
 	category: "active subscribers" | "expiring soon" | "inactive paid users";
 	text: string;
@@ -1498,6 +1552,36 @@ export const useWhatsAppCloud = () => {
 		}
 	};
 
+	// ── Get approved-template quick-reply captures (RSVP) ─────────────────────
+	// GET /whatsapp/cloud/template-replies/ — who tapped a quick-reply button on an
+	// approved Meta template, grouped by button with per-button counts. Reuses the
+	// same ?all=1 / page / page_size / button filter conventions as poll results.
+	const getTemplateReplies = async (
+		params?: WATemplateRepliesQuery,
+	): Promise<WATemplateRepliesResponse> => {
+		setIsLoading(true);
+		try {
+			const qs = new URLSearchParams();
+			const allMode = params?.all || params?.page_size === "all";
+			if (allMode) {
+				qs.set("all", "1");
+			} else {
+				if (params?.page !== undefined) qs.set("page", String(params.page));
+				if (params?.page_size !== undefined) qs.set("page_size", String(params.page_size));
+			}
+			if (params?.template_name) qs.set("template_name", params.template_name);
+			if (params?.button) qs.set("button", params.button);
+			const url = buildApiUrl(WA.TEMPLATE_REPLIES) + (qs.toString() ? `?${qs.toString()}` : "");
+			return await get<WATemplateRepliesResponse>(url);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Failed to load template replies";
+			toast({ title: "Replies load failed", description: msg, variant: "destructive" });
+			throw err;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	// ── Create a WhatsApp poll ────────────────────────────────────────────────
 	const createPoll = async (payload: WACreatePollPayload): Promise<WACreatePollResponse> => {
 		setIsLoading(true);
@@ -1690,6 +1774,7 @@ export const useWhatsAppCloud = () => {
 		sendTemplateMessage,
 		getPollResults,
 		getPollResultsByName,
+		getTemplateReplies,
 		resolvePollId,
 		createPoll,
 		listPolls,

@@ -211,6 +211,8 @@ export const API_CONFIG = {
 				POLL_LIST: '/messaging/whatsapp/cloud/polls/',
 				POLL_CREATE: '/messaging/whatsapp/cloud/polls/',
 				POLL_DETAIL: (pollId: string) => `/messaging/whatsapp/cloud/polls/${pollId}/`,
+				// Who tapped an approved-template quick-reply button (RSVP), grouped by button.
+				TEMPLATE_REPLIES: '/messaging/whatsapp/cloud/template-replies/',
 				BULK_IMAGE_SEND: '/whatsapp/bulk-image-send/',
 				BULK_IMAGE_SEND_DETAIL: (jobId: string) => `/whatsapp/bulk-image-send/${jobId}/`,
 			},
