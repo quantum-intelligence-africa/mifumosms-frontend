@@ -82,6 +82,17 @@ const normalizeToApi = (input: string): string | null => {
   return null;
 };
 
+// A template placeholder is "filled" only when its mapping yields a real value:
+// a contact field (name/phone/email — always resolvable), a non-blank fixed text
+// (static:…), or a non-blank attribute key (attr:…). A bare "static:"/"attr:" is an
+// unfinished mapping and would send an empty parameter, which Meta rejects — block it.
+const isTemplateTokenFilled = (source: string | undefined): boolean => {
+  const s = (source ?? "name").trim();
+  if (s.startsWith("static:")) return s.slice("static:".length).trim().length > 0;
+  if (s.startsWith("attr:")) return s.slice("attr:".length).trim().length > 0;
+  return s.length > 0;
+};
+
 // ─── Result Banner ────────────────────────────────────────────────────────────
 
 function BulkResultBanner({ result }: { result: WASendBulkResult | null }) {
@@ -907,7 +918,7 @@ function SingleSendTab({
   const metaMediaProvided = sharedMediaProvided || matchImages.length > 0;
   const canSendTemplate =
     !!selectedMetaTpl &&
-    metaBodyTokens.every((t) => (paramSources[t] || "name").length > 0) &&
+    metaBodyTokens.every((t) => isTemplateTokenFilled(paramSources[t])) &&
     (!metaNeedsImage || metaMediaProvided);
 
   // Per-row guard: when the template needs an image, a row can only send if it
@@ -1773,7 +1784,7 @@ function BulkSendTab({
     (mediaPoll.state.mediaMode === "file" && !!mediaPoll.state.mediaFile);
   const hasTemplateContent =
     !!selectedMetaTpl &&
-    metaBodyTokens.every((t) => (paramSources[t] || "name").length > 0) &&
+    metaBodyTokens.every((t) => isTemplateTokenFilled(paramSources[t])) &&
     (!metaNeedsImage || metaMediaProvided);
   const hasContent = msgType === "text" ? hasTextContent : hasTemplateContent;
   const sendDisabled =
