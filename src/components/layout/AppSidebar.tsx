@@ -26,7 +26,8 @@ import type { ComponentType, SVGAttributes } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -53,6 +54,7 @@ interface NavItem {
   href: string;
   icon: NavIcon;
   children?: NavItem[];
+  badge?: number;
 }
 
 interface AppSidebarProps {
@@ -64,7 +66,30 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [messagingOpen, setMessagingOpen] = useState(true);
+  const [outboxCount, setOutboxCount] = useState(0);
+  const [sentCount, setSentCount] = useState(0);
   const { user, logout, isLoading } = useAuth();
+
+  // Small live counts for the Outbox (failed) and Sent nav badges.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [failed, sent] = await Promise.all([
+          apiClient.getSMSMessages({ status: "failed", page: 1 }),
+          apiClient.getSMSMessages({ status__in: "sent,delivered", page: 1 }),
+        ]);
+        if (cancelled) return;
+        if (failed.success && failed.data) setOutboxCount(failed.data.count || 0);
+        if (sent.success && sent.data) setSentCount(sent.data.count || 0);
+      } catch {
+        /* non-fatal: badges just stay hidden */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { isPartina } = useRoles();
@@ -92,8 +117,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       icon: MessageSquare,
       children: [
         { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
-        { name: "Outbox", href: "/messaging/outbox", icon: Inbox },
-        { name: "Sent", href: "/messaging/sent", icon: CheckCircle2 },
+        { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
+        { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
         { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
         { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
         { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
@@ -250,6 +275,11 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                           >
                             <ChildIcon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
                             <span className="truncate">{child.name}</span>
+                            {typeof child.badge === "number" && child.badge > 0 && (
+                              <span className="ml-auto text-[9px] font-bold text-red-500 leading-none tabular-nums">
+                                {child.badge > 10 ? "10+" : child.badge}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
