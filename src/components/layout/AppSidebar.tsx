@@ -10,6 +10,8 @@ import {
   CreditCard,
   Tag,
   History,
+  Inbox,
+  CheckCircle2,
   X,
   LogOut,
   BookOpen,
@@ -90,6 +92,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       icon: MessageSquare,
       children: [
         { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
+        { name: "Outbox", href: "/messaging/outbox", icon: Inbox },
+        { name: "Sent", href: "/messaging/sent", icon: CheckCircle2 },
         { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
         { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
         { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },

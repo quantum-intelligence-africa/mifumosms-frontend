@@ -549,6 +549,12 @@ const SendSMS = () => {
     const modeParam = params.get("mode");
     const contactParam = params.get("contact");
     const contactsParam = params.get("contacts");
+    const messageParam = params.get("message");
+
+    // Prefill the message body (used by "Edit & resend" from the Outbox)
+    if (messageParam) {
+      setMessage(messageParam);
+    }
 
     // Handle single contact
     if (contactParam) {

@@ -824,6 +824,9 @@ const PurchaseSMS = () => {
               </div>
             </Card>
 
+            {/* Custom Amount shown first, packages below — flex-col-reverse flips
+                the display order of these two sections while keeping spacing. */}
+            <div className="flex flex-col-reverse gap-5">
             {/* Package Selection */}
             <div>
               <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
@@ -1031,6 +1034,7 @@ const PurchaseSMS = () => {
                 </p>
               )}
             </Card>
+            </div>
 
             {/* Payment Method - Only show when package or custom amount is selected */}
             {(selectedPackage || customCredits) && (

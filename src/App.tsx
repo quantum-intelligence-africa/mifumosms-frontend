@@ -37,6 +37,8 @@ const SendHub = lazy(() => import("./pages/SendHub"));
 const PurchaseSMS = lazy(() => import("./pages/sms/PurchaseSMS"));
 const SenderNames = lazy(() => import("./pages/sms/SenderNames"));
 const PurchaseHistory = lazy(() => import("./pages/sms/PurchaseHistory"));
+const Outbox = lazy(() => import("./pages/sms/Outbox"));
+const Sent = lazy(() => import("./pages/sms/Sent"));
 const IntegrationGuide = lazy(() => import("./pages/IntegrationGuide"));
 const PertinaIntegration = lazy(() => import("./pages/PertinaIntegration"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -253,6 +255,16 @@ const AppContent = () => {
               <Route path="/messaging/send" element={
                 <ProtectedRoute>
                   <SendSMS />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/outbox" element={
+                <ProtectedRoute>
+                  <Outbox />
+                </ProtectedRoute>
+              } />
+              <Route path="/messaging/sent" element={
+                <ProtectedRoute>
+                  <Sent />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/campaigns" element={

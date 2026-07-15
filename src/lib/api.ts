@@ -15,6 +15,26 @@ export interface ApiResponse<T = unknown> {
   errors?: Record<string, string[]>;
 }
 
+/** A single SMS message row (Outbox / Sent views). Mirrors SMSMessageSerializer. */
+export interface SMSMessageItem {
+  id: string;
+  status: string;
+  message: string | null;
+  recipient_number: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  sender_name: string | null;
+  provider_name: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  cost_amount: string | number;
+  cost_currency: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  failed_at: string | null;
+  created_at: string;
+}
+
 // Authentication Types
 // Role Types
 export type UserRole = 'owner' | 'admin' | 'agent';
@@ -2779,6 +2799,40 @@ class ApiClient {
 
     const endpoint = `${API_CONFIG.ENDPOINTS.MESSAGING.SMS.DELIVERY_REPORTS}?${queryParams.toString()}`;
     return this.request(endpoint);
+  }
+
+  /**
+   * List individual SMS messages for the Outbox / Sent views.
+   * `status` accepts a single value (e.g. "failed") or a comma-separated list
+   * via `status__in` (e.g. "sent,delivered"). Returns DRF page: { count, results }.
+   */
+  async getSMSMessages(params?: {
+    status?: string;
+    status__in?: string;
+    page?: number;
+    search?: string;
+  }): Promise<ApiResponse<{
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: SMSMessageItem[];
+  }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.status__in) queryParams.append('status__in', params.status__in);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.search) queryParams.append('search', params.search);
+
+    const qs = queryParams.toString();
+    const endpoint = `${API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGES}${qs ? `?${qs}` : ''}`;
+    return this.request(endpoint);
+  }
+
+  /** Re-queue a failed SMS message (Outbox retry). */
+  async retrySMSMessage(messageId: string): Promise<ApiResponse<{ id: string; status: string }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGE_RETRY(messageId), {
+      method: 'POST',
+    });
   }
 
   async getSMSBalanceIntegration(): Promise<ApiResponse<{
