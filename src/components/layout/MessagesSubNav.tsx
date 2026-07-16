@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Send as SendIcon, CheckCircle2, Inbox, Tag } from "lucide-react";
+import { Send as SendIcon, CheckCircle2, Inbox, Tag, CalendarClock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -28,21 +28,24 @@ export function MessagesSubNav() {
   const { language } = useLanguage();
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
+  const [scheduledCount, setScheduledCount] = useState(0);
 
-  // Live counts for the Outbox (failed) and Sent badges — same source the
-  // desktop sidebar uses. Refetched whenever the route changes so a send/retry
-  // is reflected when the user hops between tabs.
+  // Live counts for the Outbox (failed), Sent and Scheduled badges — same source
+  // the desktop sidebar uses. Refetched whenever the route changes so a
+  // send/retry/cancel is reflected when the user hops between tabs.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [failed, sent] = await Promise.all([
+        const [failed, sent, scheduled] = await Promise.all([
           apiClient.getSMSMessages({ status: "failed", page: 1 }),
           apiClient.getSMSMessages({ status__in: "sent,delivered", page: 1 }),
+          apiClient.getSMSMessages({ status: "scheduled", page: 1 }),
         ]);
         if (cancelled) return;
         if (failed.success && failed.data) setOutboxCount(failed.data.count || 0);
         if (sent.success && sent.data) setSentCount(sent.data.count || 0);
+        if (scheduled.success && scheduled.data) setScheduledCount(scheduled.data.count || 0);
       } catch {
         /* non-fatal: badges just stay hidden */
       }
@@ -55,6 +58,7 @@ export function MessagesSubNav() {
   const sw = language === "sw";
   const items: SubNavItem[] = [
     { key: "send", label: sw ? "Tuma" : "Send", href: "/messaging/send", icon: SendIcon, match: "/send" },
+    { key: "scheduled", label: sw ? "Zilizopangwa" : "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, match: "/scheduled", badge: scheduledCount },
     { key: "sent", label: sw ? "Zilizotumwa" : "Sent", href: "/messaging/sent", icon: CheckCircle2, match: "/sent", badge: sentCount },
     { key: "outbox", label: "Outbox", href: "/messaging/outbox", icon: Inbox, match: "/outbox", badge: outboxCount },
     { key: "sender", label: sw ? "Mtumaji" : "Sender", href: "/messaging/sender-names", icon: Tag, match: "/sender-names" },

@@ -12,6 +12,7 @@ import {
   History,
   Inbox,
   CheckCircle2,
+  CalendarClock,
   X,
   LogOut,
   BookOpen,
@@ -68,20 +69,23 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const [messagingOpen, setMessagingOpen] = useState(true);
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
+  const [scheduledCount, setScheduledCount] = useState(0);
   const { user, logout, isLoading } = useAuth();
 
-  // Small live counts for the Outbox (failed) and Sent nav badges.
+  // Small live counts for the Outbox (failed), Sent and Scheduled nav badges.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [failed, sent] = await Promise.all([
+        const [failed, sent, scheduled] = await Promise.all([
           apiClient.getSMSMessages({ status: "failed", page: 1 }),
           apiClient.getSMSMessages({ status__in: "sent,delivered", page: 1 }),
+          apiClient.getSMSMessages({ status: "scheduled", page: 1 }),
         ]);
         if (cancelled) return;
         if (failed.success && failed.data) setOutboxCount(failed.data.count || 0);
         if (sent.success && sent.data) setSentCount(sent.data.count || 0);
+        if (scheduled.success && scheduled.data) setScheduledCount(scheduled.data.count || 0);
       } catch {
         /* non-fatal: badges just stay hidden */
       }
@@ -117,6 +121,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       icon: MessageSquare,
       children: [
         { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
+        { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
         { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
         { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
         { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },

@@ -136,8 +136,9 @@ export const API_CONFIG = {
 				TEST_CONNECTION: '/messaging/sms/test-connection/',
 				DELIVERY_REPORTS: '/sms/delivery-reports/',
 				BALANCE: '/messaging/sms/balance/',
-				MESSAGES: '/messaging/sms/messages/', // Per-message log (Outbox/Sent)
+				MESSAGES: '/messaging/sms/messages/', // Per-message log (Outbox/Sent/Scheduled)
 				MESSAGE_RETRY: (messageId: string) => `/messaging/sms/messages/${messageId}/retry/`,
+				MESSAGE_CANCEL: (messageId: string) => `/messaging/sms/messages/${messageId}/cancel/`,
 			},
 			SENDER_ID_REQUESTS: {
 				BASE: '/messaging/sender-requests/',

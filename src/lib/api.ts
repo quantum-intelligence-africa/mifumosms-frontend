@@ -32,6 +32,7 @@ export interface SMSMessageItem {
   sent_at: string | null;
   delivered_at: string | null;
   failed_at: string | null;
+  scheduled_at: string | null;
   created_at: string;
 }
 
@@ -2831,6 +2832,13 @@ class ApiClient {
   /** Re-queue a failed SMS message (Outbox retry). */
   async retrySMSMessage(messageId: string): Promise<ApiResponse<{ id: string; status: string }>> {
     return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGE_RETRY(messageId), {
+      method: 'POST',
+    });
+  }
+
+  /** Cancel a not-yet-sent scheduled SMS message (Scheduled view). */
+  async cancelScheduledSMS(messageId: string): Promise<ApiResponse<{ id: string; status: string }>> {
+    return this.request(API_CONFIG.ENDPOINTS.MESSAGING.SMS.MESSAGE_CANCEL(messageId), {
       method: 'POST',
     });
   }
