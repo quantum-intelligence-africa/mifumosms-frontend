@@ -817,17 +817,25 @@ const SendSMS = () => {
       });
 
       if (response.success) {
+        // Scheduled ("Send later") sends come back with status "scheduled" and are
+        // not dispatched yet — reflect that in the toast instead of "sent".
+        const isScheduled =
+          (response.data && (response.data as Record<string, unknown>).status === "scheduled") ||
+          (scheduleType === "later" && Boolean(scheduledDate));
+
         // Extract provider message from nested response, prefer it over generic API message
-        let successMessage = `Sent to ${apiRecipients.length} recipient(s)`;
+        let successMessage = isScheduled
+          ? `Scheduled for ${apiRecipients.length} recipient(s) at ${new Date(scheduledDate).toLocaleString()}`
+          : `Sent to ${apiRecipients.length} recipient(s)`;
 
         // Try to get the provider's actual success message (Beem Africa format)
         const providerResponse = response.data?.provider_response?.response;
         const providerMsg = (providerResponse && typeof providerResponse === 'object' && 'message' in providerResponse)
           ? (providerResponse as Record<string, unknown>).message
           : null;
-        if (providerMsg && typeof providerMsg === 'string') {
+        if (!isScheduled && providerMsg && typeof providerMsg === 'string') {
           successMessage = providerMsg; // "Message Submitted Successfully"
-        } else if ('message' in response && typeof response.message === 'string' && response.message.trim()) {
+        } else if (!isScheduled && 'message' in response && typeof response.message === 'string' && response.message.trim()) {
           successMessage = response.message; // Fallback to API message
         }
 
@@ -838,7 +846,7 @@ const SendSMS = () => {
               clearInterval(interval);
               setSending(false);
               toast({
-                title: "SMS sent successfully",
+                title: isScheduled ? "SMS scheduled" : "SMS sent successfully",
                 description: successMessage,
               });
               // Reset form
@@ -1162,11 +1170,14 @@ const SendSMS = () => {
 
             {/* Form sections (iOS grouped style) — always visible (defaults to Quick).
                 Wrapped in a div so touch swipes here can drive sub-tab navigation. */}
-            <div ref={formBodyRef} className="space-y-5">
+            <div
+              ref={formBodyRef}
+              className="rounded-2xl bg-card dark:bg-card/70 ring-1 ring-border/50 dark:ring-border/25 shadow-[0_10px_34px_-16px_rgba(0,0,0,0.22)] dark:shadow-[0_10px_34px_-16px_rgba(0,0,0,0.6)] overflow-hidden divide-y divide-border/50 dark:divide-border/25"
+            >
                 {/* From section */}
                 <Section title={language === "sw" ? "Mtumaji" : "From"} subtitle={language === "sw" ? "Sender ID iliyoidhinishwa" : "Approved Sender ID"}>
                   <Select value={selectedSender} onValueChange={setSelectedSender}>
-                    <SelectTrigger className="w-full h-11 rounded-xl border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[14px]">
+                    <SelectTrigger className="w-full h-11 rounded-xl border-transparent bg-muted/60 dark:bg-muted/30 focus:!ring-1 focus:!ring-primary/30 focus:!ring-offset-0 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors text-[14px]">
                       <SelectValue placeholder={senderNamesLoading ? (language === "sw" ? "Inapakua…" : "Loading…") : (approvedSenderRequests.length === 0 ? (language === "sw" ? "Hakuna" : "No approved senders") : (language === "sw" ? "Chagua mtumaji" : "Select a sender ID"))} />
                     </SelectTrigger>
                     <SelectContent className="glass">
@@ -1204,7 +1215,7 @@ const SendSMS = () => {
                         onChange={(e) => setNewRecipient(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addRecipient())}
                         inputMode="tel"
-                        className="flex-1 h-11 rounded-xl border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[14px]"
+                        className="flex-1 h-11 rounded-xl border-transparent bg-muted/60 dark:bg-muted/30 focus:!ring-1 focus:!ring-primary/30 focus:!ring-offset-0 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors text-[14px]"
                       />
                       <Button onClick={addRecipient} disabled={!newRecipient.trim()} className="h-11 px-4 text-sm font-semibold rounded-xl">
                         {language === "sw" ? "Ongeza" : "Add"}
@@ -1335,7 +1346,7 @@ const SendSMS = () => {
                             {language === "sw" ? "Futa" : "Clear"}
                           </button>
                         </div>
-                        <div className="max-h-24 overflow-y-auto rounded-xl border border-border/50 dark:border-border/30 p-2 bg-muted/30 dark:bg-muted/15">
+                        <div className="max-h-24 overflow-y-auto rounded-xl p-2.5 bg-muted/50 dark:bg-muted/25">
                           <div className="flex flex-wrap gap-1">
                             {recipients.slice(0, 20).map((phone) => (
                               <span key={phone} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 dark:bg-primary/15 text-primary font-medium">
@@ -1364,7 +1375,7 @@ const SendSMS = () => {
                 {mode === "segment" && (
                   <Section title={language === "sw" ? "Kwa" : "To"} subtitle={selectedSegment ? `${segmentContacts.length} ${language === "sw" ? "wasilianaji" : "contacts"}` : (language === "sw" ? "Chagua kundi" : "Pick a contact group")}>
                     <Select value={selectedSegment} onValueChange={value => { setSelectedSegment(value); setSelectedTagGroup(""); }}>
-                      <SelectTrigger className="w-full h-11 rounded-xl border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[14px]">
+                      <SelectTrigger className="w-full h-11 rounded-xl border-transparent bg-muted/60 dark:bg-muted/30 focus:!ring-1 focus:!ring-primary/30 focus:!ring-offset-0 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors text-[14px]">
                         <SelectValue placeholder={language === "sw" ? "Chagua kundi la wasilianaji" : "Choose a contact group"} />
                       </SelectTrigger>
                       <SelectContent className="glass">
@@ -1398,7 +1409,7 @@ const SendSMS = () => {
                                     "px-3 py-2.5 rounded-xl text-left text-[13px] font-medium transition-colors active:scale-[0.99]",
                                     isSelected
                                       ? "bg-primary text-primary-foreground"
-                                      : "bg-muted/60 dark:bg-muted/30 text-foreground hover:bg-primary/10 dark:hover:bg-primary/15 border border-border/40 dark:border-border/25",
+                                      : "bg-muted/60 dark:bg-muted/30 text-foreground hover:bg-primary/10 dark:hover:bg-primary/15",
                                   ].join(" ")}
                                 >
                                   <span className="block truncate">{formatted}</span>
@@ -1423,7 +1434,7 @@ const SendSMS = () => {
                             {language === "sw" ? "Inapakia wasilianaji..." : "Loading contacts..."}
                           </div>
                         ) : segmentContacts.length > 0 ? (
-                          <div className="max-h-32 overflow-y-auto rounded-xl border border-border/50 dark:border-border/30 p-2 bg-muted/30 dark:bg-muted/15">
+                          <div className="max-h-32 overflow-y-auto rounded-xl p-2.5 bg-muted/50 dark:bg-muted/25">
                             <div className="flex flex-wrap gap-1">
                               {segmentContacts.slice(0, 20).map((contact) => (
                                 <span key={contact.id} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 dark:bg-primary/15 text-primary font-medium">
@@ -1453,8 +1464,8 @@ const SendSMS = () => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className={[
-                      "min-h-[120px] rounded-xl border-border/60 dark:border-border/40",
-                      "bg-background/60 dark:bg-background/40",
+                      "min-h-[120px] rounded-xl border-transparent",
+                      "bg-muted/60 dark:bg-muted/30 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors",
                       "text-[14px] leading-relaxed",
                       segmentInfo.isOverLimit ? "border-destructive focus-visible:border-destructive" : "",
                     ].join(" ")}
@@ -1475,7 +1486,7 @@ const SendSMS = () => {
                 {/* Schedule */}
                 <Section title={language === "sw" ? "Wakati" : "When"}>
                   <Tabs value={scheduleType} onValueChange={(v) => setScheduleType(v as "now" | "later")}>
-                    <TabsList className="w-full h-11 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl border border-border/40 dark:border-border/30">
+                    <TabsList className="w-full h-11 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl border-transparent">
                       <TabsTrigger
                         value="now"
                         className="flex-1 h-9 text-[13px] font-semibold rounded-lg data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
@@ -1494,7 +1505,7 @@ const SendSMS = () => {
                         type="datetime-local"
                         value={scheduledDate}
                         onChange={(e) => setScheduledDate(e.target.value)}
-                        className="h-11 rounded-xl border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[14px]"
+                        className="h-11 rounded-xl border-transparent bg-muted/60 dark:bg-muted/30 focus:!ring-1 focus:!ring-primary/30 focus:!ring-offset-0 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors text-[14px]"
                       />
                     </TabsContent>
                   </Tabs>
@@ -1502,7 +1513,7 @@ const SendSMS = () => {
 
                 {/* Send Progress */}
                 {sending && (
-                  <div className="space-y-1.5 px-1">
+                  <div className="space-y-1.5 p-4 sm:p-5">
                     <div className="flex items-center justify-between text-[12px] font-medium">
                       <span className="text-foreground/70">{language === "sw" ? "Inatumwa..." : "Sending..."}</span>
                       <span className="text-primary tabular-nums">{sendProgress}%</span>
@@ -1535,8 +1546,8 @@ const SendSMS = () => {
           <div
             className={[
               "fixed left-0 right-0 z-30 md:left-[240px]",
-              "bg-card/95 dark:bg-background/95 backdrop-blur-xl",
-              "border-t border-border/70 dark:border-border/40",
+              "bg-card/90 dark:bg-background/90 backdrop-blur-xl",
+              "border-t border-border/30 dark:border-border/20 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]",
               // Sit above the mobile tab bar; clear of the desktop layout.
               "bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom))] md:bottom-0",
               "pb-3 pt-3 px-4 sm:px-6",
@@ -1652,20 +1663,18 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <div className="flex items-end justify-between gap-2 px-1 mb-2">
-        <h2 className="text-[11px] font-bold tracking-wider uppercase text-foreground/65 dark:text-foreground/55">
+    <section className="p-4 sm:p-5">
+      <div className="flex items-end justify-between gap-2 mb-2.5">
+        <h2 className="text-[11px] font-bold tracking-wider uppercase text-foreground/60 dark:text-foreground/50">
           {title}
         </h2>
         {subtitle && (
-          <span className="text-[11px] font-medium text-foreground/55 dark:text-foreground/50 truncate">
+          <span className="text-[11px] font-medium text-foreground/50 dark:text-foreground/45 truncate">
             {subtitle}
           </span>
         )}
       </div>
-      <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] p-3.5 sm:p-4">
-        {children}
-      </div>
+      {children}
     </section>
   );
 }
