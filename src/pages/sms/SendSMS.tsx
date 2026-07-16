@@ -583,8 +583,10 @@ const SendSMS = () => {
     if (selectedSender) return;
     if (!approvedSenderRequests || approvedSenderRequests.length === 0) return;
 
-    // Prefer "Mifumosms" if available (it's the primary active sender), otherwise use first
-    const mifumosms = approvedSenderRequests.find(r => r.sender_id === "Mifumosms" && r.status === "active");
+    // approvedSenderRequests only ever contains approved senders (filtered above),
+    // so auto-selecting from it guarantees the default sender is approved.
+    // Prefer "Mifumosms" if available (it's the primary sender), otherwise use first.
+    const mifumosms = approvedSenderRequests.find(r => r.sender_id === "Mifumosms");
     const defaultSender = mifumosms || approvedSenderRequests[0];
 
     if (defaultSender?.id) {
@@ -727,6 +729,20 @@ const SendSMS = () => {
         toast({
           title: "Sender name required",
           description: "Please select an approved sender name",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Enforce approved-only sending: never send from a sender ID that is not
+      // approved (e.g. pending/verifying/active/rejected). This is the final
+      // gate — the dropdown already filters to approved, but we re-check here so
+      // no send can slip through if selection state ever holds another status.
+      if ((senderObj.status || '').toLowerCase() !== 'approved') {
+        setSending(false);
+        toast({
+          title: "Sender ID not approved",
+          description: "You can only send messages from an approved sender ID. Please select an approved sender name, or wait until your sender ID is approved.",
           variant: "destructive"
         });
         return;
