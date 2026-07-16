@@ -55,6 +55,7 @@ import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
 import { parseExcelFile } from "@/utils/excelParser";
 import { SmsMessagePreview } from "@/components/sms/SmsMessagePreview";
+import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
 
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
@@ -1098,6 +1099,8 @@ const SendSMS = () => {
             <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,34%,380px)] lg:gap-6 lg:items-start">
             {/* Left column: the compose form */}
             <div className="space-y-5 min-w-0">
+            {/* Mobile-only quick access to Sent / Outbox / Sender (desktop uses the sidebar). */}
+            <MessagesSubNav />
             {/* Page header — iOS-style large title */}
             <header>
               <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">

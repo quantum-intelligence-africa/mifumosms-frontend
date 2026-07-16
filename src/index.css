@@ -426,6 +426,12 @@ All colors MUST be HSL for consistency and theming.
     }
 }
 
+/* Hide scrollbar on horizontally-scrolling pill rows (e.g. mobile sub-nav). */
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
 /* ── Global text-color overrides: force full black/white for max readability ── */
 @layer utilities {
     /* Dark text shades → pure black in light mode */
