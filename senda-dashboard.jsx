@@ -1817,10 +1817,10 @@ function SenderIdsTab() {
   const tableRef = useRef(null);
   const [filter, setFilter]           = useState('all');
   const [search, setSearch]           = useState('');
+  const [debounced, setDebounced]     = useState('');
   const [items, setItems]             = useState([]);
   const [apiSummary, setApiSummary]   = useState(null);
-  const [loadedPages, setLoadedPages] = useState(0);
-  const [totalPages, setTotalPages]   = useState(1);
+  const [meta, setMeta]               = useState({ total:0, page:1, total_pages:1 });
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [page, setPage]               = useState(1);
@@ -1846,47 +1846,50 @@ function SenderIdsTab() {
     } catch (e) { setDetail({ row, data:null, loading:false, error: e.message }); }
   }, [onLogout]);
 
-  const fetchData = useCallback(() => {
-    setLoading(true); setError(null);
-    setItems([]); setApiSummary(null); setLoadedPages(0); setTotalPages(1);
-
+  // Owner-resolution lookups (users + partners) load once — independent of the
+  // table's paging so an outage there never blocks the sender list.
+  useEffect(() => {
     const optional = (p) => p.catch(() => ({ success:false }));
-
-    // Sender IDs (page 1) + the lookup feeds (users, partners) load in parallel —
-    // partners + users are optional so an outage doesn't break the table itself.
     Promise.all([
-      adminFetch(`/sender-ids?limit=100&page=1`, {}, onLogout),
       optional(adminFetch(`/users?limit=500&page=1`, {}, onLogout)),
       optional(adminFetch(`/partners`, {}, onLogout)),
-    ]).then(([res, uRes, pRes]) => {
-        if (uRes?.success) setUsers(uRes.data || []);
-        if (pRes?.success) setPartners(pRes.data || []);
-
-        if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
-        const rows  = res.data || [];
-        const meta  = res.meta || {};
-        const pages = meta.total_pages || 1;
-        if (res.summary) setApiSummary(res.summary);
-        setTotalPages(pages);
-        setLoadedPages(1);
-        setItems(rows);
-
-        // Fetch remaining pages in parallel
-        if (pages > 1) {
-          Promise.all(
-            Array.from({ length: pages - 1 }, (_, i) =>
-              adminFetch(`/sender-ids?limit=100&page=${i + 2}`, {}, onLogout)
-            )
-          ).then(responses => {
-            const extra = responses.flatMap(r => (r.success ? r.data || [] : []));
-            setItems(prev => [...prev, ...extra]);
-            setLoadedPages(pages);
-          }).catch(() => {/* partial data already shown */});
-        }
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+    ]).then(([uRes, pRes]) => {
+      if (uRes?.success) setUsers(uRes.data || []);
+      if (pRes?.success) setPartners(pRes.data || []);
+    });
   }, [onLogout]);
+
+  // Debounce the search box; any new query restarts at page 1.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+  // Switching status filter or audience also restarts at page 1.
+  useEffect(() => { setPage(1); }, [filter, excludePartner]);
+
+  // Server-side pagination: load only the current 50-row page. This replaces the
+  // old "fetch all 15 pages in parallel" approach that hammered the backend into
+  // 504s. Status / search / audience are all pushed to the server. The all-time
+  // summary + audience breakdown ride along on the first page and are reused.
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const qs = new URLSearchParams({ page: String(page), limit: String(PER_PAGE) });
+      if (filter !== 'all') qs.set('status', filter);
+      if (debounced) qs.set('search', debounced);
+      if (excludePartner) qs.set('audience', 'direct');
+      const res = await adminFetch(`/sender-ids?${qs.toString()}`, {}, onLogout);
+      if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
+      setItems(res.data || []);
+      setMeta(res.meta || { total:0, page, total_pages:1 });
+      // by_audience only rides along on page 1; keep it when paging deeper so the
+      // breakdown card + exclude-partner counts don't blank out on later pages.
+      if (res.summary) {
+        setApiSummary(prev => ({ ...res.summary, by_audience: res.summary.by_audience ?? prev?.by_audience }));
+      }
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [page, filter, debounced, excludePartner, onLogout]);
 
   // Single owner resolver shared by every row.
   const resolveOwner = React.useMemo(() => buildOwnerResolver(users, partners), [users, partners]);
@@ -1970,47 +1973,26 @@ function SenderIdsTab() {
   const bulkApprove = useCallback((providerId, notify) => runBulk('approved', { provider_id: providerId, notify }), [runBulk]);
   const bulkReject  = useCallback((notes) => runBulk('rejected', { notes }), [runBulk]);
 
-  // Apply the partner-exclude toggle once; everything downstream reads `visibleItems`.
-  const visibleItems = React.useMemo(() => {
-    if (!excludePartner) return items;
-    const blocked = new Set([...ENGAGEMENT_EXCLUDED_EMAILS]);
-    return items.filter(s => !blocked.has(String(s.owner_email || '').toLowerCase()));
-  }, [items, excludePartner]);
-
-  // Counts:
-  //  • Include partners → use the server's apiSummary (authoritative, includes pages
-  //    beyond what we've loaded).
-  //  • Exclude partners → recompute from visibleItems (server can't know about our filter).
+  // Status counts for the chart, cards and filter buttons come straight from the
+  // server summary (all-time, unaffected by the current page). When excluding
+  // partners we read the "direct" slice of the audience breakdown; otherwise the
+  // top-level totals.
   const counts = React.useMemo(() => {
-    if (apiSummary && !excludePartner) {
-      return {
-        all:             apiSummary.total            ?? items.length,
-        approved:        apiSummary.approved         ?? 0,
-        pending:         apiSummary.pending          ?? 0,
-        await_payment:   apiSummary.await_payment    ?? 0,
-        require_changes: apiSummary.require_changes  ?? 0,
-        rejected:        apiSummary.rejected         ?? 0,
-      };
-    }
-    return Object.fromEntries(
-      ['all', ...Object.keys(STATUS_META)].map(k => [
-        k, k === 'all' ? visibleItems.length : visibleItems.filter(s => s.status === k).length,
-      ])
-    );
-  }, [apiSummary, items, visibleItems, excludePartner]);
+    const src = (excludePartner ? apiSummary?.by_audience?.direct : apiSummary) || {};
+    return {
+      all:             src.total           ?? 0,
+      approved:        src.approved        ?? 0,
+      pending:         src.pending         ?? 0,
+      await_payment:   src.await_payment   ?? 0,
+      require_changes: src.require_changes ?? 0,
+      rejected:        src.rejected        ?? 0,
+    };
+  }, [apiSummary, excludePartner]);
 
-  const filtered = React.useMemo(() => {
-    setPage(1);
-    return visibleItems.filter(s => {
-      const m = filter === 'all' || s.status === filter;
-      const q = search.toLowerCase();
-      return m && (!q || (s.name||'').toLowerCase().includes(q) || (s.owner_email||'').toLowerCase().includes(q) || (s.company||'').toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleItems, filter, search]);
-
-  const totalFilteredPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  // Rows + paging are server-driven now; the table renders `items` (one page).
+  const paginated = items;
+  const totalFilteredPages = Math.max(1, meta.total_pages || 1);
+  const partinaHidden = apiSummary?.by_audience?.partina?.total ?? 0;
 
   const pieDist = Object.entries(STATUS_META).map(([k,v]) => ({ name:v.label, value:counts[k], color:v.color })).filter(d=>d.value>0);
 
@@ -2027,7 +2009,7 @@ function SenderIdsTab() {
           return (
             <button key={String(opt.id)} onClick={() => setExcludePartner(opt.id)}
               title={opt.id
-                ? `Hide senders owned by ${[...ENGAGEMENT_EXCLUDED_EMAILS].join(', ')}`
+                ? 'Show only direct customers — hide all Partina/partner senders (partner accounts + their clients)'
                 : 'Show every sender, including partner-owned ones'}
               style={{
                 height:28,padding:'0 11px',borderRadius:7,border:'none',cursor:'pointer',
@@ -2037,9 +2019,9 @@ function SenderIdsTab() {
               }}>{opt.label}</button>
           );
         })}
-        {excludePartner && items.length > 0 && (
+        {excludePartner && partinaHidden > 0 && (
           <span style={{fontSize:10,color:'#94a3b8',marginLeft:4}}>
-            {items.length - visibleItems.length} hidden
+            {partinaHidden.toLocaleString()} Partina hidden
           </span>
         )}
       </div>
@@ -2119,63 +2101,6 @@ function SenderIdsTab() {
         </div>
       )}
 
-      {/* ── Status lifecycle + Swahilis counts ── */}
-      {(() => {
-        const SWAHILIS = 'development@swahilies.com';
-        const swItems  = items.filter(s => (s.owner_email || '').toLowerCase() === SWAHILIS);
-        const swTotal  = swItems.length;
-        const swCounts = Object.fromEntries(
-          Object.keys(STATUS_META).map(k => [k, swItems.filter(s => s.status === k).length])
-        );
-        return (
-          <div className="senda-card" style={{padding:16,marginBottom:20}}>
-            <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:10}}>Swahilies Sender Ids</div>
-
-            <div style={{borderTop:'1px solid #f1f5f9',paddingTop:14}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:6}}>
-                <div>
-                  <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>Sender IDs by owner · </span>
-                  <span style={{fontFamily:'monospace',fontSize:11,fontWeight:700,color:BRAND}}>{SWAHILIS}</span>
-                </div>
-                <span style={{fontSize:11,color:'#94a3b8'}}>
-                  {loadedPages < totalPages
-                    ? <span style={{color:AMBER}}>loading… ({loadedPages}/{totalPages} pages)</span>
-                    : `${swTotal} total`}
-                </span>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8}}>
-                {Object.entries(STATUS_META).map(([k, v]) => (
-                  <button key={k}
-                    onClick={() => {
-                      setFilter(k);
-                      setSearch(SWAHILIS);
-                      // Scroll to the table itself, not to the top of the page.
-                      requestAnimationFrame(() => {
-                        tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      });
-                    }}
-                    style={{display:'flex',flexDirection:'column',alignItems:'flex-start',padding:'10px 12px',
-                      borderRadius:10,border:`1px solid ${v.color}22`,background:v.bg,cursor:'pointer',
-                      transition:'transform .15s,box-shadow .15s',textAlign:'left'}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 4px 12px ${v.color}22`;}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}
-                    title={`Filter table by ${v.label} for ${SWAHILIS}`}
-                  >
-                    <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:4}}>
-                      {React.createElement(v.Icon, {size:13,strokeWidth:2,color:v.color})}
-                      <span style={{fontSize:10,fontWeight:700,color:v.color,textTransform:'uppercase',letterSpacing:'.05em'}}>{v.label}</span>
-                    </div>
-                    <div style={{fontSize:26,fontWeight:800,color:'#0f172a',lineHeight:1}}>
-                      {loadedPages < totalPages ? '…' : swCounts[k]}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* ── Filters ── */}
       <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
         <input className="senda-input" placeholder="Search name, owner, company, ID…" value={search}
@@ -2194,12 +2119,9 @@ function SenderIdsTab() {
           ))}
         </div>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto',display:'flex',alignItems:'center',gap:6}}>
-          {filtered.length.toLocaleString()} record{filtered.length!==1?'s':''}
-          {loadedPages < totalPages && (
-            <>
-              <div style={{width:10,height:10,borderRadius:'50%',border:`2px solid ${BRAND}`,borderTopColor:'transparent',animation:'spin 0.7s linear infinite'}}/>
-              <span style={{color:AMBER}}>loading {loadedPages}/{totalPages}</span>
-            </>
+          {(meta.total||0).toLocaleString()} record{meta.total!==1?'s':''}
+          {loading && (
+            <div style={{width:10,height:10,borderRadius:'50%',border:`2px solid ${BRAND}`,borderTopColor:'transparent',animation:'spin 0.7s linear infinite'}}/>
           )}
         </span>
         <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
@@ -2286,13 +2208,13 @@ function SenderIdsTab() {
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs match the current filter.</div>}
+          {items.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs match the current filter.</div>}
 
           {/* Pagination bar */}
-          {filtered.length > PER_PAGE && (
+          {totalFilteredPages > 1 && (
             <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
               <span style={{fontSize:12,color:'#94a3b8'}}>
-                {((page-1)*PER_PAGE+1).toLocaleString()}–{Math.min(page*PER_PAGE,filtered.length).toLocaleString()} of {filtered.length.toLocaleString()}
+                {((page-1)*PER_PAGE+1).toLocaleString()}–{Math.min(page*PER_PAGE,meta.total||0).toLocaleString()} of {(meta.total||0).toLocaleString()}
               </span>
               <div style={{display:'flex',gap:4,alignItems:'center'}}>
                 <button className="senda-btn senda-btn-sm senda-btn-ghost"
