@@ -2076,6 +2076,49 @@ function SenderIdsTab() {
         </div>
       </div>
 
+      {/* ── Audience breakdown · Direct vs Partina (server totals, instant) ── */}
+      {apiSummary?.by_audience && (
+        <div className="senda-card" style={{padding:16,marginBottom:20}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:6,marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',letterSpacing:'.08em',textTransform:'uppercase'}}>Audience Breakdown · Direct vs Partina</div>
+            <span style={{fontSize:10,color:'#94a3b8'}}>All-time totals from the server — no need to wait for the table to load.</span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'1fr 1fr',gap:12}}>
+            {[
+              { key:'direct',  label:'Direct customers',  color:BRAND,   hint:'Registered directly on SENDA' },
+              { key:'partina', label:'Partina / partners', color:VIOLET, hint:'Partner accounts + their clients' },
+            ].map(g => {
+              const a = apiSummary.by_audience[g.key] || {};
+              return (
+                <div key={g.key} style={{border:`1px solid ${g.color}22`,borderRadius:12,padding:'14px 16px',background:`${g.color}08`}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>{g.label}</div>
+                      <div style={{fontSize:10,color:'#94a3b8'}}>{g.hint}</div>
+                    </div>
+                    <div style={{fontSize:30,fontWeight:800,color:g.color,lineHeight:1,whiteSpace:'nowrap'}}>{(a.total||0).toLocaleString()}</div>
+                  </div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                    {Object.entries(STATUS_META).map(([k,v]) => (
+                      <span key={k} title={v.label} style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:99,background:v.bg,color:v.color}}>
+                        {v.label}: {(a[k]||0).toLocaleString()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {apiSummary.by_audience.partina && (
+            <div style={{fontSize:11,color:'#94a3b8',marginTop:10}}>
+              Partina = {(apiSummary.by_audience.partner_accounts?.total||0).toLocaleString()} partner-account sender{(apiSummary.by_audience.partner_accounts?.total)===1?'':'s'}
+              {' + '}{(apiSummary.by_audience.partner_clients?.total||0).toLocaleString()} partner-client sender{(apiSummary.by_audience.partner_clients?.total)===1?'':'s'}.
+              Direct + Partina = {((apiSummary.by_audience.direct?.total||0)+(apiSummary.by_audience.partina?.total||0)).toLocaleString()} of {(apiSummary.total||0).toLocaleString()} total.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Status lifecycle + Swahilis counts ── */}
       {(() => {
         const SWAHILIS = 'development@swahilies.com';
