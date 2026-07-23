@@ -1,5 +1,6 @@
-import * as XLSX from 'xlsx';
 import { CSVContact, CSVParseResult } from './csvParser';
+// `xlsx` is ~330 kB (114 kB gzip). It's imported lazily inside parseExcelFile so it
+// only downloads when a user actually parses an Excel file, not on page load.
 
 // Phone number normalization helper (same as csvParser for consistency)
 function normalizePhoneNumber(phone: string): string | null {
@@ -48,8 +49,9 @@ function normalizeHeader(header: string): string {
 export async function parseExcelFile(file: File): Promise<CSVParseResult> {
 	return new Promise((resolve) => {
 		const reader = new FileReader();
-		reader.onload = (e) => {
+		reader.onload = async (e) => {
 			try {
+				const XLSX = await import('xlsx');
 				const data = new Uint8Array(e.target?.result as ArrayBuffer);
 				const workbook = XLSX.read(data, { type: 'array' });
 				const sheetName = workbook.SheetNames[0];

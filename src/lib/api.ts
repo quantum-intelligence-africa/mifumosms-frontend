@@ -940,6 +940,10 @@ export interface Usage {
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
+  // De-duplicates identical GET requests that are in flight at the same time.
+  // When several components mount and request the same endpoint at once (a common
+  // side-effect of re-renders), they share one network round-trip instead of N.
+  private inflightGets = new Map<string, Promise<ApiResponse<unknown>>>();
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -1083,7 +1087,29 @@ class ApiClient {
     }
   }
 
-  private async request<T>(
+  private request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    timeoutMs: number = 30000 // Default 30 second timeout
+  ): Promise<ApiResponse<T>> {
+    // Only GETs are safe to de-duplicate (idempotent, no side effects). Mutations
+    // (POST/PUT/PATCH/DELETE) always run on their own.
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET') {
+      return this._request<T>(endpoint, options, timeoutMs);
+    }
+    const token = localStorage.getItem('access_token') || this.token || '';
+    const key = `${endpoint}::${token}`;
+    const existing = this.inflightGets.get(key);
+    if (existing) return existing as Promise<ApiResponse<T>>;
+    const p = this._request<T>(endpoint, options, timeoutMs).finally(() => {
+      this.inflightGets.delete(key);
+    });
+    this.inflightGets.set(key, p as Promise<ApiResponse<unknown>>);
+    return p;
+  }
+
+  private async _request<T>(
     endpoint: string,
     options: RequestInit = {},
     timeoutMs: number = 30000 // Default 30 second timeout

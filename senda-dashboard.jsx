@@ -1541,11 +1541,57 @@ const STATUS_META = {
   require_changes: { label:'Require Changes', color:CYAN,    bg:'#cffafe', Icon:Clock,        desc:'Admin requested document changes' },
 };
 
-// Reusable right-side drawer showing a sender ID's KYC documents + rejection reason.
-// `detail` is { row, data, loading, error } or null. `data` comes from /sender-ids/<id>.
-function SenderKycDrawer({ detail, onClose }) {
+// Allowed status transitions (spec keys) — mirrors senda_admin VALID_TRANSITIONS on
+// the backend (PATCH /sender-ids/<id>/status). Keep the two in sync.
+const SENDER_TRANSITIONS = {
+  pending:         ['approved', 'require_changes', 'rejected'],
+  await_payment:   ['approved', 'rejected'],
+  approved:        ['await_payment', 'rejected'],
+  rejected:        ['approved', 'pending'],
+  require_changes: ['approved', 'rejected'],
+};
+
+// Button meta per target status (label + colour + icon).
+const SENDER_ACTION_META = {
+  approved:        { label:'Approve',         color:GREEN,  Icon:CheckCircle2 },
+  rejected:        { label:'Reject',          color:RED,    Icon:XCircle      },
+  require_changes: { label:'Request Changes', color:CYAN,   Icon:Clock        },
+  await_payment:   { label:'Await Payment',   color:ORANGE, Icon:CreditCard   },
+  pending:         { label:'Move to Pending', color:AMBER,  Icon:Hourglass    },
+};
+
+// Reusable right-side drawer showing a sender ID's KYC documents + rejection reason,
+// and — when `onProcess` is supplied — an action footer to accept / reject / change
+// the status. `detail` is { row, data, loading, error } or null.
+// `onProcess(spec, { notes, invoice_no, notify })` PATCHes the status; returns { ok }.
+function SenderKycDrawer({ detail, onClose, onProcess, processing }) {
+  const { onLogout } = React.useContext(AppContext);
+  const [action, setAction]   = useState(null); // chosen target status (spec key) or null
+  const [notes, setNotes]     = useState('');
+  const [invoice, setInvoice] = useState('');
+  const [notify, setNotify]   = useState(true);
+  const [providerId, setProviderId] = useState('');
+  const [providers, setProviders]   = useState([]);
+  // Reset the action panel whenever a different sender ID is opened; preselect the
+  // sender's currently-assigned provider (from the detail payload) if there is one.
+  const rowId = detail?.row?.id;
+  const assignedProviderId = detail?.data?.provider_id || '';
+  useEffect(() => {
+    setAction(null); setNotes(''); setInvoice(''); setNotify(true);
+    setProviderId(assignedProviderId);
+  }, [rowId, assignedProviderId]);
+  // Lazy-load the global provider list the first time an approval is started.
+  useEffect(() => {
+    if (action === 'approved' && providers.length === 0) {
+      adminFetch('/sms-providers', {}, onLogout)
+        .then(res => { if (res.success) setProviders(res.data || []); })
+        .catch(() => {});
+    }
+  }, [action, providers.length, onLogout]);
   if (!detail) return null;
   const isImage = (n) => /\.(png|jpe?g|gif|webp|bmp)$/i.test(n || '');
+  const curr    = detail.row.status;
+  const allowed = SENDER_TRANSITIONS[curr] || [];
   return createPortal(
     <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
       <div onClick={e=>e.stopPropagation()} style={{width:'min(640px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
@@ -1614,8 +1660,154 @@ function SenderKycDrawer({ detail, onClose }) {
               );
            })()}
         </div>
+
+        {/* ── Action footer: accept / reject / change status ── */}
+        {onProcess && (
+          <div style={{borderTop:'1px solid #eef2f7',padding:'14px 20px',background:'#fff',flexShrink:0}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:10}}>Process this sender ID</div>
+            {allowed.length === 0 ? (
+              <div style={{fontSize:12,color:'#94a3b8'}}>
+                No further actions available for “{STATUS_META[curr]?.label || curr || '—'}”.
+              </div>
+            ) : !action ? (
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {allowed.map(a => {
+                  const m = SENDER_ACTION_META[a];
+                  if (!m) return null;
+                  return (
+                    <button key={a} onClick={()=>setAction(a)} disabled={processing}
+                      style={{display:'flex',alignItems:'center',gap:6,height:38,padding:'0 16px',borderRadius:9,border:'none',
+                        cursor:processing?'default':'pointer',fontSize:13,fontWeight:700,background:m.color,color:'#fff',opacity:processing?.6:1}}>
+                      {React.createElement(m.Icon,{size:15,strokeWidth:2.5})}{m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (() => {
+              const m = SENDER_ACTION_META[action];
+              const needsNotes    = action === 'rejected' || action === 'require_changes';
+              const needsInvoice  = action === 'await_payment';
+              const needsProvider = action === 'approved';
+              const canSubmit     = !processing && (!needsNotes || notes.trim()) && (!needsInvoice || invoice.trim()) && (!needsProvider || providerId);
+              return (
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <div style={{fontSize:13,color:'#0f172a'}}>
+                    Set <b>{detail.row.name}</b> to <b style={{color:m.color}}>{m.label}</b>
+                  </div>
+                  {needsNotes && (
+                    <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
+                      placeholder={action==='rejected' ? 'Reason for rejection (required)…' : 'What the applicant must change (required)…'}
+                      className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
+                  )}
+                  {needsInvoice && (
+                    <input value={invoice} onChange={e=>setInvoice(e.target.value)}
+                      placeholder="Invoice number (required)…" className="senda-input" style={{height:38,fontSize:13}}/>
+                  )}
+                  {needsProvider && (
+                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                      <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>SMS provider to assign <span style={{color:RED}}>*</span></label>
+                      <select value={providerId} onChange={e=>setProviderId(e.target.value)}
+                        className="senda-input" style={{height:38,fontSize:13,cursor:'pointer'}}>
+                        <option value="">Select a provider…</option>
+                        {providers.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
+                      </select>
+                      {providers.length === 0 && <span style={{fontSize:11,color:'#94a3b8'}}>Loading providers…</span>}
+                      <span style={{fontSize:11,color:'#94a3b8'}}>The sender registers with this gateway; the approval SMS goes out from it.</span>
+                    </div>
+                  )}
+                  {action === 'approved' && (
+                    <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,color:'#475569',cursor:'pointer',lineHeight:1.4}}>
+                      <input type="checkbox" checked={notify} onChange={e=>setNotify(e.target.checked)} style={{marginTop:2}}/>
+                      <span>Send approval SMS &amp; add bonus credits. Uncheck for a silent re-approval (e.g. a sender auto-rejected by the Beem sync).</span>
+                    </label>
+                  )}
+                  <div style={{display:'flex',gap:8}}>
+                    <button disabled={!canSubmit}
+                      onClick={async () => {
+                        const opts = {};
+                        if (needsNotes)    opts.notes = notes.trim();
+                        if (needsInvoice)  opts.invoice_no = invoice.trim();
+                        if (needsProvider) opts.provider_id = providerId;
+                        if (action === 'approved') opts.notify = notify;
+                        const r = await onProcess(action, opts);
+                        if (r?.ok) { setAction(null); setNotes(''); setInvoice(''); setNotify(true); }
+                      }}
+                      style={{display:'flex',alignItems:'center',gap:6,height:38,padding:'0 18px',borderRadius:9,border:'none',
+                        cursor:canSubmit?'pointer':'default',fontSize:13,fontWeight:700,background:m.color,color:'#fff',opacity:canSubmit?1:.5}}>
+                      {processing ? 'Working…' : <>Confirm {m.label}</>}
+                    </button>
+                    <button onClick={()=>setAction(null)} disabled={processing}
+                      style={{height:38,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',
+                        fontWeight:600,fontSize:13,cursor:processing?'default':'pointer',opacity:processing?.6:1}}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
     </div>, document.body);
+}
+
+
+// Sticky bulk-action bar for the Sender IDs table. Lets an admin approve (with one
+// shared provider) or reject (with one shared reason) every selected sender at once.
+// The backend validates each transition independently and skips any whose current
+// status doesn't allow it.
+function SenderBulkBar({ count, providers, busy, onApprove, onReject, onClear }) {
+  const [mode, setMode]             = useState(null); // 'approve' | 'reject' | null
+  const [providerId, setProviderId] = useState('');
+  const [notify, setNotify]         = useState(true);
+  const [notes, setNotes]           = useState('');
+  useEffect(() => { if (count === 0) { setMode(null); setNotes(''); } }, [count]);
+  if (count === 0) return null;
+  return (
+    <div className="senda-card" style={{padding:'12px 16px',marginBottom:12,border:`1.5px solid ${BRAND}55`,background:`${BRAND}0a`}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <span style={{fontSize:13,fontWeight:800,color:BRAND,whiteSpace:'nowrap'}}>{count} selected</span>
+        {!mode ? (
+          <>
+            <button onClick={()=>setMode('approve')} disabled={busy} className="senda-btn senda-btn-sm"
+              style={{background:GREEN,color:'#fff',border:'none'}}>Approve selected</button>
+            <button onClick={()=>setMode('reject')} disabled={busy} className="senda-btn senda-btn-sm"
+              style={{background:RED,color:'#fff',border:'none'}}>Reject selected</button>
+            <button onClick={onClear} disabled={busy} className="senda-btn senda-btn-sm senda-btn-ghost">Clear</button>
+          </>
+        ) : mode === 'approve' ? (
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <select value={providerId} onChange={e=>setProviderId(e.target.value)} className="senda-input"
+              style={{height:34,fontSize:12,width:'auto',minWidth:180,cursor:'pointer'}}>
+              <option value="">Select provider…</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
+            </select>
+            <label style={{fontSize:11,color:'#475569',display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
+              <input type="checkbox" checked={notify} onChange={e=>setNotify(e.target.checked)}/> Notify + credits
+            </label>
+            <button disabled={busy || !providerId} onClick={()=>onApprove(providerId, notify)} className="senda-btn senda-btn-sm"
+              style={{background:GREEN,color:'#fff',border:'none',opacity:(busy||!providerId)?.5:1}}>
+              {busy ? 'Working…' : `Approve ${count}`}
+            </button>
+            <button onClick={()=>setMode(null)} disabled={busy} className="senda-btn senda-btn-sm senda-btn-ghost">Cancel</button>
+          </div>
+        ) : (
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',flex:1,minWidth:240}}>
+            <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Rejection reason (applies to all)…"
+              className="senda-input" style={{height:34,fontSize:12,flex:1,minWidth:200}}/>
+            <button disabled={busy || !notes.trim()} onClick={()=>onReject(notes.trim())} className="senda-btn senda-btn-sm"
+              style={{background:RED,color:'#fff',border:'none',opacity:(busy||!notes.trim())?.5:1}}>
+              {busy ? 'Working…' : `Reject ${count}`}
+            </button>
+            <button onClick={()=>setMode(null)} disabled={busy} className="senda-btn senda-btn-sm senda-btn-ghost">Cancel</button>
+          </div>
+        )}
+      </div>
+      <div style={{fontSize:11,color:'#94a3b8',marginTop:6}}>
+        Senders whose current status doesn't allow the change are skipped automatically.
+      </div>
+    </div>
+  );
 }
 
 
@@ -1638,6 +1830,10 @@ function SenderIdsTab() {
   // so the cards show "our customers". Toggle to include them at any time.
   const [excludePartner, setExcludePartner] = useState(true);
   const [detail, setDetail]           = useState(null); // { row, data, loading, error }
+  const [processing, setProcessing]   = useState(false);
+  const [selected, setSelected]       = useState(() => new Set()); // selected row ids for bulk
+  const [providers, setProviders]     = useState([]);
+  const [bulkBusy, setBulkBusy]       = useState(false);
   const PER_PAGE = 50;
 
   // Open the detail drawer for one sender ID and fetch its KYC documents + history.
@@ -1696,6 +1892,83 @@ function SenderIdsTab() {
   const resolveOwner = React.useMemo(() => buildOwnerResolver(users, partners), [users, partners]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Accept / reject / change the status of the sender ID open in the drawer.
+  // `spec` is a status spec key (approved | rejected | require_changes | await_payment | pending).
+  const processSender = useCallback(async (spec, opts = {}) => {
+    const row = detail?.row;
+    if (!row?.id) return { ok:false };
+    setProcessing(true);
+    try {
+      const body = { status: spec };
+      if (opts.notes)      body.notes = opts.notes;
+      if (opts.invoice_no) body.invoice_no = opts.invoice_no;
+      if ('notify' in opts) body.notify = opts.notify;
+      if (opts.provider_id) body.provider_id = opts.provider_id;
+      const res = await adminFetch(
+        `/sender-ids/${encodeURIComponent(row.id)}/status`,
+        { method:'PATCH', body: JSON.stringify(body) },
+        onLogout,
+      );
+      if (!res.success) {
+        const msg = res.error?.message || 'Failed to update sender ID status.';
+        showToast(msg, 'error');
+        return { ok:false, error: msg };
+      }
+      const label = SENDER_ACTION_META[spec]?.label || spec;
+      showToast(`“${row.name}” → ${label}.`, 'success');
+      // Reflect the change locally so the table + open drawer update immediately…
+      const patch = {
+        status: spec,
+        notes: opts.notes ?? row.notes,
+        invoice_no: res.data?.invoice_no ?? row.invoice_no,
+      };
+      setItems(prev => prev.map(it => it.id === row.id ? { ...it, ...patch } : it));
+      setDetail(d => (d && d.row.id === row.id) ? { ...d, row: { ...d.row, ...patch } } : d);
+      // …then refetch for authoritative counts / server-side derived fields.
+      fetchData();
+      return { ok:true };
+    } catch (e) {
+      showToast(e.message, 'error');
+      return { ok:false, error: e.message };
+    } finally {
+      setProcessing(false);
+    }
+  }, [detail, onLogout, showToast, fetchData]);
+
+  // Load the global provider list once, for the bulk-approve dropdown.
+  useEffect(() => {
+    adminFetch('/sms-providers', {}, onLogout)
+      .then(res => { if (res.success) setProviders(res.data || []); })
+      .catch(() => {});
+  }, [onLogout]);
+
+  // ── Bulk selection helpers ──
+  const toggleSelect = useCallback((id) => {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  // Apply one status change to every selected sender via the bulk endpoint.
+  const runBulk = useCallback(async (spec, extra = {}) => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await adminFetch('/sender-ids/bulk-status', {
+        method:'POST', body: JSON.stringify({ ids, status: spec, ...extra }),
+      }, onLogout);
+      if (!res.success) { showToast(res.error?.message || 'Bulk update failed.', 'error'); return; }
+      const { updated = 0, failed = 0 } = res.data || {};
+      showToast(`${updated} updated${failed ? `, ${failed} skipped` : ''}.`, updated > 0 ? 'success' : 'info');
+      clearSelection();
+      fetchData();
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { setBulkBusy(false); }
+  }, [selected, onLogout, showToast, fetchData, clearSelection]);
+
+  const bulkApprove = useCallback((providerId, notify) => runBulk('approved', { provider_id: providerId, notify }), [runBulk]);
+  const bulkReject  = useCallback((notes) => runBulk('rejected', { notes }), [runBulk]);
 
   // Apply the partner-exclude toggle once; everything downstream reads `visibleItems`.
   const visibleItems = React.useMemo(() => {
@@ -1889,13 +2162,36 @@ function SenderIdsTab() {
         <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{fontSize:12}}>↻ Refresh</button>
       </div>
 
+      {/* ── Bulk action bar (appears when rows are selected) ── */}
+      <SenderBulkBar
+        count={selected.size}
+        providers={providers}
+        busy={bulkBusy}
+        onApprove={bulkApprove}
+        onReject={bulkReject}
+        onClear={clearSelection}
+      />
+
       {/* ── Table ── */}
-      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (() => {
+        const pageIds = paginated.map(s => s.id);
+        const allPageSelected = pageIds.length > 0 && pageIds.every(id => selected.has(id));
+        const toggleSelectAllPage = () => setSelected(prev => {
+          const n = new Set(prev);
+          if (allPageSelected) pageIds.forEach(id => n.delete(id));
+          else pageIds.forEach(id => n.add(id));
+          return n;
+        });
+        return (
         <div ref={tableRef} className="senda-card senda-table-wrap" style={{overflow:'hidden',scrollMarginTop:80}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:980}}>
+            <table className="senda-table" style={{minWidth:1020}}>
               <thead>
                 <tr>
+                  <th style={{width:34}}>
+                    <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAllPage}
+                      title="Select all on this page" style={{cursor:'pointer'}}/>
+                  </th>
                   <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th><th>Phone</th>
                   <th>Type</th><th>Network</th><th>SMS Sent</th>
                   <th>Status</th><th>Invoice</th><th>Created</th><th>KYC</th>
@@ -1906,7 +2202,10 @@ function SenderIdsTab() {
                   const owner    = resolveOwner(s);
                   const src      = owner?._source;
                   return (
-                  <tr key={s.id} onClick={()=>openDetail(s)} style={{cursor:'pointer'}}>
+                  <tr key={s.id} onClick={()=>openDetail(s)} style={{cursor:'pointer',background:selected.has(s.id)?`${BRAND}0d`:undefined}}>
+                    <td onClick={(e)=>e.stopPropagation()} style={{width:34}}>
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={()=>toggleSelect(s.id)} style={{cursor:'pointer'}}/>
+                    </td>
                     <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{s.id}</td>
                     <td>
                       <div style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{s.name}</div>
@@ -1988,9 +2287,10 @@ function SenderIdsTab() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
-      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)}/>
+      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)} onProcess={processSender} processing={processing}/>
 
     </div>
   );
@@ -2020,6 +2320,7 @@ function KycReviewTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [detail, setDetail]   = useState(null); // { row, data, loading, error }
+  const [processing, setProcessing] = useState(false);
   const PER = 20;
 
   // Debounce the search box; any new query restarts at page 1.
@@ -2076,6 +2377,46 @@ function KycReviewTab() {
     } catch (e) { showToast?.(e.message || 'Beem sync failed.', 'error'); }
     finally { setSyncing(false); }
   }, [onLogout, showToast, fetchData]);
+
+  // Accept / reject / change status for the sender ID open in the drawer.
+  const processSender = useCallback(async (spec, opts = {}) => {
+    const row = detail?.row;
+    if (!row?.id) return { ok:false };
+    setProcessing(true);
+    try {
+      const body = { status: spec };
+      if (opts.notes)       body.notes = opts.notes;
+      if (opts.invoice_no)  body.invoice_no = opts.invoice_no;
+      if ('notify' in opts) body.notify = opts.notify;
+      if (opts.provider_id) body.provider_id = opts.provider_id;
+      const res = await adminFetch(
+        `/sender-ids/${encodeURIComponent(row.id)}/status`,
+        { method:'PATCH', body: JSON.stringify(body) },
+        onLogout,
+      );
+      if (!res.success) {
+        const msg = res.error?.message || 'Failed to update sender ID status.';
+        showToast?.(msg, 'error');
+        return { ok:false, error: msg };
+      }
+      const label = SENDER_ACTION_META[spec]?.label || spec;
+      showToast?.(`“${row.name}” → ${label}.`, 'success');
+      const patch = {
+        status: spec,
+        notes: opts.notes ?? row.notes,
+        invoice_no: res.data?.invoice_no ?? row.invoice_no,
+      };
+      setItems(prev => prev.map(it => it.id === row.id ? { ...it, ...patch } : it));
+      setDetail(d => (d && d.row.id === row.id) ? { ...d, row: { ...d.row, ...patch } } : d);
+      fetchData();
+      return { ok:true };
+    } catch (e) {
+      showToast?.(e.message, 'error');
+      return { ok:false, error: e.message };
+    } finally {
+      setProcessing(false);
+    }
+  }, [detail, onLogout, showToast, fetchData]);
 
   const totalPages = meta.total_pages || 1;
   const total = meta.total || 0;
@@ -2217,7 +2558,7 @@ function KycReviewTab() {
         </div>
       )}
 
-      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)}/>
+      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)} onProcess={processSender} processing={processing}/>
     </div>
   );
 }
@@ -7476,8 +7817,10 @@ function PartnerSendersTab() {
 
 // ─── Approved Senders Tab (by audience: partners vs direct users) ────────────
 function ApprovedSendersTab() {
-  const { onLogout } = React.useContext(AppContext);
+  const { onLogout, showToast } = React.useContext(AppContext);
 
+  const [detail, setDetail]         = useState(null); // { row, data, loading, error }
+  const [processing, setProcessing] = useState(false);
   const [audience, setAudience]   = useState('partners');
   const [partinas, setPartinas]   = useState([]);
   const [partnerId, setPartnerId] = useState('');
@@ -7538,6 +7881,54 @@ function ApprovedSendersTab() {
     } catch {} finally { setDownloading(false); }
   }, [buildParams, audience]);
 
+  // Open the shared KYC/detail drawer for one approved sender. Rows carry the
+  // SenderIDRequest UUID in `sender_id_request_id`, which /sender-ids/<id> resolves.
+  const openDetail = useCallback(async (row) => {
+    setDetail({ row, data:null, loading:true, error:null });
+    try {
+      const res = await adminFetch(`/sender-ids/${encodeURIComponent(row.id)}`, {}, onLogout);
+      if (res.success) setDetail({ row, data: res.data, loading:false, error:null });
+      else setDetail({ row, data:null, loading:false, error: res.error?.message || 'Failed to load details.' });
+    } catch (e) { setDetail({ row, data:null, loading:false, error: e.message }); }
+  }, [onLogout]);
+
+  // Reject / move-to-await-payment (i.e. revoke) the approved sender in the drawer.
+  const processSender = useCallback(async (spec, opts = {}) => {
+    const row = detail?.row;
+    if (!row?.id) return { ok:false };
+    setProcessing(true);
+    try {
+      const body = { status: spec };
+      if (opts.notes)       body.notes = opts.notes;
+      if (opts.invoice_no)  body.invoice_no = opts.invoice_no;
+      if ('notify' in opts) body.notify = opts.notify;
+      if (opts.provider_id) body.provider_id = opts.provider_id;
+      const res = await adminFetch(
+        `/sender-ids/${encodeURIComponent(row.id)}/status`,
+        { method:'PATCH', body: JSON.stringify(body) },
+        onLogout,
+      );
+      if (!res.success) {
+        const msg = res.error?.message || 'Failed to update sender ID status.';
+        showToast?.(msg, 'error');
+        return { ok:false, error: msg };
+      }
+      const label = SENDER_ACTION_META[spec]?.label || spec;
+      showToast?.(`“${row.name}” → ${label}.`, 'success');
+      // Reflect the new status in the open drawer, then drop the row from this
+      // (approved-only) list and refresh the counts.
+      setDetail(d => (d && d.row.id === row.id) ? { ...d, row: { ...d.row, status: spec } } : d);
+      setRows(prev => prev.filter(it => it.sender_id_request_id !== row.id));
+      load();
+      return { ok:true };
+    } catch (e) {
+      showToast?.(e.message, 'error');
+      return { ok:false, error: e.message };
+    } finally {
+      setProcessing(false);
+    }
+  }, [detail, onLogout, showToast, load]);
+
   useEffect(() => { setPage(1); }, [audience, partnerId, search, noProvider, usage, loginFrom, loginTo]);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
 
@@ -7573,6 +7964,7 @@ function ApprovedSendersTab() {
             {isPartners
               ? "All approved sender names belonging to partners' clients."
               : 'All approved sender names belonging to directly-registered customers.'}
+            <span style={{ color:'#94a3b8' }}> Click a row to review KYC or change its status.</span>
           </div>
 
           <div style={{ display:'flex', gap:10, marginTop:12 }}>
@@ -7632,7 +8024,9 @@ function ApprovedSendersTab() {
               </thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.sender_id_request_id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                  <tr key={r.sender_id_request_id} style={{ borderTop:'1px solid #f1f5f9', cursor:'pointer' }}
+                    onClick={()=>openDetail({ id:r.sender_id_request_id, name:r.sender_id, status:'approved',
+                      company:r.account_name, network:r.partner_name || '', owner_email:r.owner_email })}>
                     {isPartners && <td style={{ padding:'10px 14px', color:'#0f172a', fontWeight:600 }}>{r.partner_name || '—'}</td>}
                     <td style={{ padding:'10px 14px' }}>
                       <div style={{ color:'#0f172a' }}>{r.account_name || '—'}</div>
@@ -7668,6 +8062,8 @@ function ApprovedSendersTab() {
           </div>
         )}
       </div>
+
+      <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)} onProcess={processSender} processing={processing}/>
     </div>
   );
 }

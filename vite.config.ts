@@ -42,6 +42,10 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
           if (id.includes("qrcode")) return "qrcode";
           if (id.includes("@radix-ui")) return "radix";
+          // `motion` (framer-motion) is ~37 kB and only used on 5 routes. Splitting
+          // it out keeps it off the every-page `vendor` chunk. It's a one-directional
+          // consumer of React, so it's safe to split (unlike React core — see below).
+          if (id.includes("/motion/") || id.includes("framer-motion")) return "motion";
           // NOTE: React core is intentionally NOT split into its own chunk.
           // react/react-dom are CommonJS, so Rollup's interop helpers get
           // hoisted into `vendor`; a separate react chunk then imports those

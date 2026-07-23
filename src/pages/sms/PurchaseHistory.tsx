@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import jsPDF from 'jspdf';
+// `jspdf` is loaded lazily inside downloadReceipt so the ~540 kB (158 kB gzip) PDF
+// bundle only downloads when a user actually downloads a receipt, not on page load.
 import {
   Download,
   FileText,
@@ -197,7 +198,7 @@ const PurchaseHistory = () => {
   };
 
   // Handle receipt download - generates secure PDF
-  const downloadReceipt = (purchase: Omit<PurchaseRecord, 'unit_price' | 'payment_method' | 'completed_at'> & { unit_price?: number; payment_method?: string; completed_at?: string | null }) => {
+  const downloadReceipt = async (purchase: Omit<PurchaseRecord, 'unit_price' | 'payment_method' | 'completed_at'> & { unit_price?: number; payment_method?: string; completed_at?: string | null }) => {
     try {
       if (!purchase || !purchase.invoice_number) {
         toast({
@@ -208,7 +209,8 @@ const PurchaseHistory = () => {
         return;
       }
 
-      // Create PDF document
+      // Create PDF document (jspdf loaded on demand to keep it out of the page bundle)
+      const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

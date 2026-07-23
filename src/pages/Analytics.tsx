@@ -42,8 +42,8 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+// jspdf + html2canvas together are ~540 kB (158 kB gzip). They are imported lazily
+// inside handleExportToPDF so they only download when the user clicks "Export PDF".
 
 ChartJS.register(
   CategoryScale,
@@ -312,6 +312,10 @@ const Analytics = () => {
 
     setIsExporting(true);
     try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
       const element = analyticsContentRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
