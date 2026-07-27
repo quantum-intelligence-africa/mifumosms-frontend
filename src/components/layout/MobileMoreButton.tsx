@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { MoreVertical } from "lucide-react";
+import { Menu } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MobileOverflowMenu } from "@/components/layout/MobileOverflowMenu";
 
 /**
- * Floating 3-dot menu trigger for non-home, non-settings pages.
+ * Floating hamburger (☰) menu trigger for non-home, non-settings pages.
  * Pinned to the top-right corner with safe-area awareness.
  */
 export function MobileMoreButton() {
@@ -33,7 +33,7 @@ export function MobileMoreButton() {
           right: "calc(env(safe-area-inset-right) + 8px)",
         }}
       >
-        <MoreVertical className="w-[22px] h-[22px]" strokeWidth={2.2} />
+        <Menu className="w-[22px] h-[22px]" strokeWidth={2.2} />
       </button>
 
       <MobileOverflowMenu open={open} onClose={() => setOpen(false)} />

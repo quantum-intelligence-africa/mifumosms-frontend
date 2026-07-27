@@ -15,10 +15,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
-import { Search, RefreshCw, AlertCircle, Send, Pencil, Inbox } from "lucide-react";
+import { Search, RefreshCw, AlertCircle, Send, Pencil, Inbox, Copy, Check } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -30,10 +37,27 @@ const Outbox = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied", description: "Message copied to clipboard." });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Could not copy the message.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -203,7 +227,8 @@ const Outbox = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
+                      {/* Desktop / tablet table */}
+                      <div className="hidden md:block overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -217,12 +242,19 @@ const Outbox = () => {
                           </TableHeader>
                           <TableBody>
                             {messages.map((m) => (
-                              <TableRow key={m.id}>
+                              <TableRow
+                                key={m.id}
+                                onClick={() => m.message && setViewMessage(m)}
+                                title={m.message ? "Click to view and copy the full message" : undefined}
+                                className={m.message ? "cursor-pointer" : undefined}
+                              >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
                                 </TableCell>
-                                <TableCell className="text-xs max-w-[220px] truncate" title={m.message || ""}>
-                                  {m.message || "—"}
+                                <TableCell className="text-xs max-w-[220px]">
+                                  <span className="block max-w-full truncate">
+                                    {m.message || "—"}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
                                   {m.sender_name || "—"}
@@ -239,7 +271,10 @@ const Outbox = () => {
                                   <div className="flex items-center justify-end gap-1.5">
                                     <Button
                                       size="sm"
-                                      onClick={() => handleRetry(m)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRetry(m);
+                                      }}
                                       disabled={retryingId === m.id}
                                       className="text-xs h-7"
                                     >
@@ -251,7 +286,10 @@ const Outbox = () => {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleEditResend(m)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditResend(m);
+                                      }}
                                       className="text-xs h-7"
                                     >
                                       <Pencil className="w-3 h-3 mr-1.5" />
@@ -263,6 +301,65 @@ const Outbox = () => {
                             ))}
                           </TableBody>
                         </Table>
+                      </div>
+
+                      {/* Mobile card list */}
+                      <div className="md:hidden space-y-3">
+                        {messages.map((m) => (
+                          <Card
+                            key={m.id}
+                            onClick={() => m.message && setViewMessage(m)}
+                            className={`glass-subtle border-0 ${m.message ? "cursor-pointer active:opacity-80" : ""}`}
+                          >
+                            <CardContent className="p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-sm font-medium break-all">
+                                  {recipientOf(m)}
+                                </span>
+                                <Badge variant="destructive" className="text-xs flex-shrink-0">
+                                  failed
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-text-subtle line-clamp-2 break-words">
+                                {m.message || "—"}
+                              </p>
+                              <p className="text-[11px] text-destructive break-words">
+                                {m.error_message || m.error_code || "Unknown error"}
+                              </p>
+                              <span className="block text-[11px] text-text-subtle truncate">
+                                {m.sender_name || "—"} · {formatDate(m.failed_at || m.created_at)}
+                              </span>
+                              <div className="flex items-center gap-1.5 pt-1">
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRetry(m);
+                                  }}
+                                  disabled={retryingId === m.id}
+                                  className="text-xs h-7 flex-1"
+                                >
+                                  <Send
+                                    className={`w-3 h-3 mr-1.5 ${retryingId === m.id ? "animate-pulse" : ""}`}
+                                  />
+                                  {retryingId === m.id ? "Sending..." : "Retry"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditResend(m);
+                                  }}
+                                  className="text-xs h-7 flex-1"
+                                >
+                                  <Pencil className="w-3 h-3 mr-1.5" />
+                                  Edit
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
 
                       {totalPages > 1 && (
@@ -298,6 +395,40 @@ const Outbox = () => {
           </div>
         </div>
       </div>
+
+      {/* View & copy message */}
+      <Dialog open={!!viewMessage} onOpenChange={(open) => !open && setViewMessage(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Message</DialogTitle>
+            <DialogDescription>
+              To {viewMessage ? recipientOf(viewMessage) : ""}
+              {viewMessage?.sender_name ? ` · from ${viewMessage.sender_name}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-sm">
+            {viewMessage?.message}
+          </div>
+          {viewMessage?.error_message && (
+            <p className="text-xs text-destructive">
+              Reason: {viewMessage.error_message}
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => viewMessage?.message && handleCopy(viewMessage.message)}
+              className="text-xs"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 mr-2" />
+              ) : (
+                <Copy className="w-3 h-3 mr-2" />
+              )}
+              {copied ? "Copied" : "Copy message"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -5493,9 +5493,348 @@ function SenderApprovalSmsSettings() {
 // Browse every logged outbound SMS (SystemOutboundSMSLog) with search + filters.
 // Backed by /api/admin/v1/system-sms-logs (+ /categories for the dropdown).
 // ─── SMS by Sender ───────────────────────────────────────────────────────────
-// Pick an approved sender name, then see every SMS sent under it: recipient +
-// time. Backed by GET /api/admin/v1/sender-ids/<sid>/messages (SMSMessage rows
-// linked by sender_id FK — catches bulk sends, not just campaign-labelled ones).
+// Two sub-tabs inside one page:
+//   • "By sender ID" — every partner/tenant sender ID with sent/failed totals
+//     (GET /api/admin/v1/system-sms-logs/by-sender), for at-a-glance monitoring.
+//   • "Browse messages" — pick one sender and read its individual messages.
+function SmsBySenderPage() {
+  const [tab, setTab] = useState('summary'); // 'summary' | 'browse'
+  const TabBtn = ({ id, label }) => (
+    <button
+      type="button"
+      onClick={() => setTab(id)}
+      className="senda-btn senda-btn-sm"
+      style={{
+        height: 34, border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13,
+        background: tab === id ? BRAND : 'transparent',
+        color: tab === id ? '#fff' : '#475569',
+      }}
+    >{label}</button>
+  );
+  return (
+    <div className="senda-fade-in">
+      <div style={{display:'flex',gap:4,marginBottom:16,padding:4,background:'#f1f5f9',borderRadius:10,width:'fit-content'}}>
+        <TabBtn id="summary" label="By sender ID" />
+        <TabBtn id="browse"  label="Browse messages" />
+      </div>
+      {tab === 'summary' ? <SmsBySenderSummary/> : <SmsBySenderTab/>}
+    </div>
+  );
+}
+
+// Aggregate: one row per sender ID with total / sent / failed, so admins can
+// monitor all partner sender IDs at once. Backed by the by-sender aggregation
+// over SystemOutboundSMSLog (which now records every partner/tenant API send).
+function SmsBySenderSummary() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [detailSender, setDetailSender] = useState(null); // sender row opened in drawer
+  const [batches, setBatches]   = useState([]);
+  const [bLoading, setBLoading] = useState(false);
+  const [bError, setBError]     = useState(null);
+  const [busy, setBusy]         = useState(''); // message_id being resent/notified
+  const [search, setSearch]     = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [statusF, setStatusF]   = useState('all');
+  const [userType, setUserType] = useState('all'); // all | direct | partner
+  const [tenantF, setTenantF]   = useState('');
+  const [debTenant, setDebTenant] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+  const [page, setPage]         = useState(1);
+  const [items, setItems]       = useState([]);
+  const [meta, setMeta]         = useState({});
+  const [summary, setSummary]   = useState({ senders:0, total:0, sent:0, failed:0 });
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const PER = 20;
+
+  useEffect(() => { const t=setTimeout(()=>{ setDebounced(search); setPage(1); },350); return ()=>clearTimeout(t); }, [search]);
+  useEffect(() => { const t=setTimeout(()=>{ setDebTenant(tenantF); setPage(1); },400); return ()=>clearTimeout(t); }, [tenantF]);
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page:String(page), limit:String(PER) });
+    if (statusF !== 'all')   qs.set('status', statusF);
+    if (userType !== 'all')  qs.set('user_type', userType);
+    if (debounced.trim())    qs.set('sender_id', debounced.trim());
+    if (debTenant.trim())    qs.set('tenant', debTenant.trim());
+    if (dateFrom)            qs.set('date_from', dateFrom);
+    if (dateTo)              qs.set('date_to', dateTo);
+    adminFetch(`/api/admin/v1/system-sms-logs/by-sender?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(res.data || []);
+          setMeta(res.meta || {});
+          setSummary(res.summary || { senders:0, total:0, sent:0, failed:0 });
+        } else {
+          setError(res.error?.message || 'Failed to load sender summary.');
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, statusF, userType, debounced, debTenant, dateFrom, dateTo, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const pages = meta.total_pages || 1;
+  const total = meta.total || 0;
+
+  const resetFilters = () => {
+    setSearch(''); setDebounced(''); setStatusF('all'); setUserType('all');
+    setTenantF(''); setDebTenant(''); setDateFrom(''); setDateTo(''); setPage(1);
+  };
+
+  // Open the failed-batches drawer for a sender and load its failed sends.
+  const openSender = (sender) => {
+    setDetailSender(sender);
+    setBatches([]); setBError(null); setBLoading(true);
+    const qs = new URLSearchParams({ sender, limit:'50' });
+    if (debTenant.trim()) qs.set('tenant', debTenant.trim());
+    if (dateFrom) qs.set('date_from', dateFrom);
+    if (dateTo)   qs.set('date_to', dateTo);
+    adminFetch(`/api/admin/v1/system-sms-logs/sender-failures?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) setBatches(res.data || []);
+        else setBError(res.error?.message || 'Failed to load failed batches.');
+      })
+      .catch(e => setBError(e.message))
+      .finally(() => setBLoading(false));
+  };
+  const refreshBatches = () => { if (detailSender) openSender(detailSender); };
+
+  const doResend = (mid) => {
+    if (!window.confirm("Resend the failed recipients of this batch?\n\nThis re-sends only the numbers that failed (never the ones already sent) and charges the tenant's SMS balance.")) return;
+    setBusy(mid);
+    adminFetch('/api/admin/v1/system-sms-logs/resend-batch',
+      { method:'POST', body: JSON.stringify({ message_id: mid }) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          showToast(res.message || 'Batch resent.', 'success');
+          refreshBatches(); fetchData();
+        } else {
+          showToast(res.error?.message || 'Resend failed.', 'error');
+        }
+      })
+      .catch(e => showToast(e.message, 'error'))
+      .finally(() => setBusy(''));
+  };
+
+  const doNotify = (mid) => {
+    setBusy(mid);
+    adminFetch('/api/admin/v1/system-sms-logs/notify-resend',
+      { method:'POST', body: JSON.stringify({ message_id: mid }) }, onLogout)
+      .then(res => showToast(
+        res.success ? (res.message || 'User notified.') : (res.error?.message || 'Notify failed.'),
+        res.success ? 'success' : 'error'))
+      .catch(e => showToast(e.message, 'error'))
+      .finally(() => setBusy(''));
+  };
+
+  const StatChip = ({ label, value, color }) => (
+    <div className="senda-card" style={{padding:'12px 16px', flex:'1 1 120px', minWidth:120}}>
+      <p style={{fontSize:11,color:'#94a3b8',margin:0,fontWeight:600}}>{label}</p>
+      <p style={{fontSize:20,fontWeight:800,color:color||'#0f172a',margin:'2px 0 0'}}>{(value||0).toLocaleString()}</p>
+    </div>
+  );
+
+  const lbl = {fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4};
+
+  return (
+    <div>
+      {/* Summary chips */}
+      <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}}>
+        <StatChip label="Sender IDs" value={summary.senders} />
+        <StatChip label="Total SMS" value={summary.total} />
+        <StatChip label="Sent" value={summary.sent} color={GREEN} />
+        <StatChip label="Failed" value={summary.failed} color={RED} />
+        <StatChip label="Credits used" value={summary.credits_used} color={BRAND} />
+      </div>
+
+      {summary.truncated && (
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16,padding:'10px 14px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,fontSize:12.5,color:'#92400e'}}>
+          <AlertTriangle size={15}/>
+          Showing partial data — the newest sends only (older history exceeds the scan limit). Totals here may under-count very high-volume senders.
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+          <div>
+            <label style={lbl}>User type</label>
+            <select className="senda-input" value={userType}
+              onChange={e=>{ setUserType(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="all">All users</option>
+              <option value="direct">Direct users</option>
+              <option value="partner">Partner users</option>
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Sender ID</label>
+            <input className="senda-input" placeholder="e.g. Alemmachine"
+              value={search} onChange={e=>setSearch(e.target.value)} style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={lbl}>Status counted</label>
+            <select className="senda-input" value={statusF}
+              onChange={e=>{ setStatusF(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="all">All</option>
+              <option value="sent">Sent only</option>
+              <option value="failed">Failed only</option>
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Tenant</label>
+            <input className="senda-input" placeholder="Business name or ID…"
+              value={tenantF} onChange={e=>setTenantF(e.target.value)} style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={lbl}>From</label>
+            <input type="date" className="senda-input" value={dateFrom}
+              onChange={e=>{ setDateFrom(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={lbl}>To</label>
+            <input type="date" className="senda-input" value={dateTo}
+              onChange={e=>{ setDateTo(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}/>
+          </div>
+          <div style={{display:'flex',alignItems:'flex-end',gap:8}}>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={resetFilters} style={{height:38}}>Reset</button>
+            <button className="senda-btn senda-btn-sm" onClick={fetchData}
+              style={{height:38,background:BRAND,color:'#fff',border:'none',display:'inline-flex',alignItems:'center',gap:6}}>
+              <RefreshCw size={14} strokeWidth={2.2}/> Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:760}}>
+              <thead>
+                <tr>
+                  <th>Sender ID</th><th>Type</th><th>Provider</th><th>Total</th><th>Sent</th><th>Failed</th>
+                  <th>Credits used</th><th>Success rate</th><th>Tenants</th><th>Last activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r, i) => (
+                  <tr key={r.sender_id || i}
+                      onClick={()=>openSender(r.sender_id || '(no sender ID)')}
+                      title="Click to view and resend failed messages"
+                      style={{cursor:'pointer'}}>
+                    <td style={{fontWeight:700,color:'#0f172a'}}>{r.sender_id || '(no sender ID)'}</td>
+                    <td>
+                      <span style={{
+                        fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999,
+                        color: r.user_type==='partner' ? '#7c3aed' : r.user_type==='direct' ? '#0369a1' : '#64748b',
+                        background: r.user_type==='partner' ? '#f3e8ff' : r.user_type==='direct' ? '#e0f2fe' : '#f1f5f9',
+                      }}>
+                        {r.user_type==='partner' ? 'Partner' : r.user_type==='direct' ? 'Direct' : 'Mixed'}
+                      </span>
+                    </td>
+                    <td style={{fontSize:12,color: r.provider ? '#334155' : '#cbd5e1',fontWeight:600}} title={(r.providers||[]).join(', ')}>
+                      {r.provider || '—'}
+                    </td>
+                    <td style={{fontWeight:600}}>{(r.total||0).toLocaleString()}</td>
+                    <td style={{color:GREEN,fontWeight:700}}>{(r.sent||0).toLocaleString()}</td>
+                    <td style={{color:(r.failed>0?RED:'#94a3b8'),fontWeight:700}}>{(r.failed||0).toLocaleString()}</td>
+                    <td style={{fontWeight:700,color:'#0a5cdb'}} title="Credits charged (successful recipients × message segments) — reconciles with billing">{(r.credits_used||0).toLocaleString()}</td>
+                    <td style={{fontSize:12,color:(r.success_rate>=90?GREEN:r.success_rate>=50?'#d97706':RED),fontWeight:700}}>
+                      {(r.success_rate ?? 0)}%
+                    </td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.tenant_count ?? 0}</td>
+                    <td style={{fontSize:12,color:'#64748b',whiteSpace:'nowrap'}}>
+                      {r.last_created_at ? new Date(r.last_created_at).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {items.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender activity found for these filters.</div>}
+
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+            <span style={{fontSize:12,color:'#94a3b8'}}>Page {meta.page || page} of {pages} · {total} sender IDs</span>
+            <div style={{display:'flex',gap:4}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={(meta.page||page)<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:(meta.page||page)<=1?.4:1}}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={(meta.page||page)>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:(meta.page||page)>=pages?.4:1}}>Next →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Failed-batches drawer for a clicked sender */}
+      {detailSender && createPortal(
+        <div onClick={()=>setDetailSender(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(680px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+              <div style={{minWidth:0}}>
+                <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>Failed batches — {detailSender}</h3>
+                <p style={{fontSize:12,color:'#94a3b8',margin:'2px 0 0'}}>Review a send that had failures, then resend just the failed numbers or ask the user to.</p>
+              </div>
+              <button className="senda-btn senda-btn-sm" onClick={()=>setDetailSender(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
+              {bLoading ? <LoadingState/> : bError ? <ErrorState message={bError} onRetry={refreshBatches}/> :
+               batches.length === 0 ? (
+                 <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No failed batches for this sender. 🎉</div>
+               ) : batches.map(b => (
+                <div key={b.message_id} className="senda-card" style={{padding:14,marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',gap:10,marginBottom:8,flexWrap:'wrap'}}>
+                    <div style={{fontSize:12,color:'#64748b'}}>
+                      <b style={{color:'#0f172a'}}>{b.tenant_name || '—'}</b>
+                      {b.is_partner ? <span style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#7c3aed',background:'#f3e8ff',padding:'1px 6px',borderRadius:999}}>Partner</span> : null}
+                      <span style={{marginLeft:8}}>{b.created_at ? new Date(b.created_at).toLocaleString() : ''}</span>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap'}}>
+                      <span style={{color:GREEN}}>{b.sent_count} sent</span>
+                      <span style={{color:'#cbd5e1',margin:'0 6px'}}>·</span>
+                      <span style={{color:RED}}>{b.failed_count} failed</span>
+                      <span style={{color:'#94a3b8',fontWeight:500}}> / {b.total_recipients}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12.5,color:'#334155',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:8,padding:'8px 10px',marginBottom:8,whiteSpace:'pre-wrap',maxHeight:90,overflow:'auto'}}>
+                    {b.message || '—'}
+                  </div>
+                  {b.failed_recipients && b.failed_recipients.length > 0 && (
+                    <details style={{marginBottom:10}}>
+                      <summary style={{fontSize:12,color:'#475569',cursor:'pointer',fontWeight:600}}>
+                        Failed recipients ({b.failed_count}{b.failed_truncated ? '+' : ''})
+                      </summary>
+                      <div style={{marginTop:6,maxHeight:160,overflow:'auto',border:'1px solid #f1f5f9',borderRadius:8}}>
+                        {b.failed_recipients.map((f, idx) => (
+                          <div key={idx} style={{display:'flex',justifyContent:'space-between',gap:8,padding:'5px 10px',borderBottom:'1px solid #f8fafc',fontSize:12}}>
+                            <span style={{fontFamily:'monospace',color:'#0f172a'}}>{f.phone || '—'}</span>
+                            <span style={{color:'#b91c1c',textAlign:'right',maxWidth:'60%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={f.error}>{f.error || 'failed'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="senda-btn senda-btn-sm" disabled={busy===b.message_id}
+                      onClick={()=>doResend(b.message_id)}
+                      style={{height:34,background:BRAND,color:'#fff',border:'none',opacity:busy===b.message_id?.6:1}}>
+                      {busy===b.message_id ? 'Working…' : `Resend ${b.failed_count} failed`}
+                    </button>
+                    <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={busy===b.message_id}
+                      onClick={()=>doNotify(b.message_id)} style={{height:34}}>
+                      Notify user
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 function SmsBySenderTab() {
   const { onLogout } = React.useContext(AppContext);
 
@@ -5793,7 +6132,7 @@ function SmsBySenderTab() {
               </div>
 
               <div style={{fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:6}}>
-                Failure reason {detail.provider ? `— straight from ${detail.provider}` : 'from provider'}
+                Failure reason {detail.provider ? `(${detail.provider} response)` : ''}
               </div>
               {detail.error ? (
                 <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 14px'}}>
@@ -12344,7 +12683,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     packages:     <PackagesTab/>,
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
-    smsbysender:  <SmsBySenderTab/>,
+    smsbysender:  <SmsBySenderPage/>,
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
   };

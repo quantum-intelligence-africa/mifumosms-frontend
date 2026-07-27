@@ -69,9 +69,11 @@ export function MessagesSubNav() {
   return (
     <nav
       aria-label="Messaging sections"
-      className="md:hidden mb-4 overflow-x-auto no-scrollbar"
+      className="md:hidden mb-4"
     >
-      <div className="flex items-center gap-2 min-w-max py-0.5">
+      {/* pr-11 keeps the first row of tabs clear of the floating ☰ button
+          (MobileMoreButton), which is fixed to the top-right corner. */}
+      <div className="flex flex-wrap items-center gap-1.5 py-0.5 pr-11">
         {items.map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
@@ -86,7 +88,7 @@ export function MessagesSubNav() {
               }}
               aria-current={active ? "page" : undefined}
               className={[
-                "inline-flex items-center gap-1.5 h-9 pl-3 pr-3 rounded-full whitespace-nowrap",
+                "inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full whitespace-nowrap",
                 "text-[13px] font-semibold tracking-tight transition-colors duration-150 border",
                 active
                   ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_rgba(10,92,219,0.30)]"

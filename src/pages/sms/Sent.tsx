@@ -14,10 +14,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
-import { Search, RefreshCw, CheckCircle2, MessageSquare } from "lucide-react";
+import { Search, RefreshCw, CheckCircle2, MessageSquare, Copy, Check } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -28,9 +35,26 @@ const Sent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied", description: "Message copied to clipboard." });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Could not copy the message.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -164,7 +188,8 @@ const Sent = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
+                      {/* Desktop / tablet table */}
+                      <div className="hidden md:block overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -177,12 +202,19 @@ const Sent = () => {
                           </TableHeader>
                           <TableBody>
                             {messages.map((m) => (
-                              <TableRow key={m.id}>
+                              <TableRow
+                                key={m.id}
+                                onClick={() => m.message && setViewMessage(m)}
+                                title={m.message ? "Click to view and copy the full message" : undefined}
+                                className={m.message ? "cursor-pointer" : undefined}
+                              >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
                                 </TableCell>
-                                <TableCell className="text-xs max-w-[280px] truncate" title={m.message || ""}>
-                                  {m.message || "—"}
+                                <TableCell className="text-xs max-w-[280px]">
+                                  <span className="block max-w-full truncate">
+                                    {m.message || "—"}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
                                   {m.sender_name || "—"}
@@ -199,6 +231,34 @@ const Sent = () => {
                             ))}
                           </TableBody>
                         </Table>
+                      </div>
+
+                      {/* Mobile card list */}
+                      <div className="md:hidden space-y-3">
+                        {messages.map((m) => (
+                          <Card
+                            key={m.id}
+                            onClick={() => m.message && setViewMessage(m)}
+                            className={`glass-subtle border-0 ${m.message ? "cursor-pointer active:opacity-80" : ""}`}
+                          >
+                            <CardContent className="p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-sm font-medium break-all">
+                                  {recipientOf(m)}
+                                </span>
+                                <Badge variant={statusVariant(m.status)} className="text-xs flex-shrink-0">
+                                  {m.status}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-text-subtle line-clamp-2 break-words">
+                                {m.message || "—"}
+                              </p>
+                              <span className="block text-[11px] text-text-subtle truncate">
+                                {m.sender_name || "—"} · {formatDate(m.sent_at || m.created_at)}
+                              </span>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
 
                       {totalPages > 1 && (
@@ -234,6 +294,35 @@ const Sent = () => {
           </div>
         </div>
       </div>
+
+      {/* View & copy message */}
+      <Dialog open={!!viewMessage} onOpenChange={(open) => !open && setViewMessage(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Message</DialogTitle>
+            <DialogDescription>
+              To {viewMessage ? recipientOf(viewMessage) : ""}
+              {viewMessage?.sender_name ? ` · from ${viewMessage.sender_name}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-sm">
+            {viewMessage?.message}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => viewMessage?.message && handleCopy(viewMessage.message)}
+              className="text-xs"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 mr-2" />
+              ) : (
+                <Copy className="w-3 h-3 mr-2" />
+              )}
+              {copied ? "Copied" : "Copy message"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, MoreVertical } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -116,7 +116,7 @@ export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
             aria-label="More options"
             className="w-10 h-10 -mr-1 inline-flex items-center justify-center rounded-full text-primary-foreground active:bg-white/15 transition-colors"
           >
-            <MoreVertical className="w-[22px] h-[22px]" strokeWidth={2.4} />
+            <Menu className="w-[22px] h-[22px]" strokeWidth={2.4} />
           </button>
         </div>
 
