@@ -21,6 +21,7 @@ export interface SMSMessageItem {
   status: string;
   message: string | null;
   recipient_number: string | null;
+  recipient_count?: number;
   contact_name: string | null;
   contact_phone: string | null;
   sender_name: string | null;

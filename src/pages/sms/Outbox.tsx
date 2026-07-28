@@ -98,6 +98,11 @@ const Outbox = () => {
   const recipientOf = (m: SMSMessageItem) =>
     m.recipient_number || m.contact_phone || m.contact_name || "—";
 
+  // Bulk sends carry every recipient on one row; show "+N more" so a big blast
+  // isn't mistaken for a single failed message.
+  const extraRecipients = (m: SMSMessageItem) =>
+    m.recipient_count && m.recipient_count > 1 ? m.recipient_count - 1 : 0;
+
   const handleRetry = async (m: SMSMessageItem) => {
     setRetryingId(m.id);
     try {
@@ -235,7 +240,6 @@ const Outbox = () => {
                               <TableHead className="text-xs">Recipient</TableHead>
                               <TableHead className="text-xs">Message</TableHead>
                               <TableHead className="text-xs">Sender</TableHead>
-                              <TableHead className="text-xs">Reason</TableHead>
                               <TableHead className="text-xs">Failed at</TableHead>
                               <TableHead className="text-xs text-right">Actions</TableHead>
                             </TableRow>
@@ -250,6 +254,11 @@ const Outbox = () => {
                               >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
+                                  {extraRecipients(m) > 0 && (
+                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                      +{extraRecipients(m)} more
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-xs max-w-[220px]">
                                   <span className="block max-w-full truncate">
@@ -258,11 +267,6 @@ const Outbox = () => {
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
                                   {m.sender_name || "—"}
-                                </TableCell>
-                                <TableCell className="text-xs max-w-[240px]">
-                                  <span className="text-destructive" title={m.error_message || ""}>
-                                    {m.error_message || m.error_code || "Unknown error"}
-                                  </span>
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
                                   {formatDate(m.failed_at || m.created_at)}
@@ -315,6 +319,11 @@ const Outbox = () => {
                               <div className="flex items-start justify-between gap-2">
                                 <span className="text-sm font-medium break-all">
                                   {recipientOf(m)}
+                                  {extraRecipients(m) > 0 && (
+                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                      +{extraRecipients(m)} more
+                                    </span>
+                                  )}
                                 </span>
                                 <Badge variant="destructive" className="text-xs flex-shrink-0">
                                   failed
@@ -322,9 +331,6 @@ const Outbox = () => {
                               </div>
                               <p className="text-xs text-text-subtle line-clamp-2 break-words">
                                 {m.message || "—"}
-                              </p>
-                              <p className="text-[11px] text-destructive break-words">
-                                {m.error_message || m.error_code || "Unknown error"}
                               </p>
                               <span className="block text-[11px] text-text-subtle truncate">
                                 {m.sender_name || "—"} · {formatDate(m.failed_at || m.created_at)}
@@ -409,11 +415,6 @@ const Outbox = () => {
           <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-sm">
             {viewMessage?.message}
           </div>
-          {viewMessage?.error_message && (
-            <p className="text-xs text-destructive">
-              Reason: {viewMessage.error_message}
-            </p>
-          )}
           <div className="flex justify-end">
             <Button
               onClick={() => viewMessage?.message && handleCopy(viewMessage.message)}

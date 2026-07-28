@@ -29,6 +29,7 @@ import {
   Globe,
   Handshake,
   Hourglass,
+  Key,
   LogOut,
   Mail,
   Megaphone,
@@ -2303,6 +2304,10 @@ function KycReviewTab() {
     setLoading(true); setError(null);
     try {
       const qs = new URLSearchParams({ page: String(page), limit: String(PER) });
+      // Always show the most recently REQUESTED sender IDs first, regardless of
+      // the backend's default ordering.
+      qs.set('sort', 'created_at');
+      qs.set('order', 'desc');
       if (filter !== 'all') qs.set('status', filter);
       if (kycFilter === 'yes') qs.set('has_kyc', 'true');
       else if (kycFilter === 'no') qs.set('has_kyc', 'false');
@@ -5489,6 +5494,218 @@ function SenderApprovalSmsSettings() {
   );
 }
 
+// ─── API Keys & external sends ───────────────────────────────────────────────
+// Every external-API account: which USER owns it, which API keys it holds, and
+// how many SMS it has pushed through our public APIs. Backed by
+// GET /api/admin/v1/api-accounts (SMS volume from the outbound audit, counted by
+// account owner so historical sends are included). Provider/network stays admin
+// -only and is never exposed to partners.
+function ApiAccountsTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [search, setSearch]     = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [userType, setUserType] = useState('all'); // all | direct | partner
+  const [statusF, setStatusF]   = useState('all');
+  const [page, setPage]         = useState(1);
+  const [items, setItems]       = useState([]);
+  const [meta, setMeta]         = useState({});
+  const [summary, setSummary]   = useState({ total_accounts:0, api_sms_sent:0, api_sms_failed:0 });
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [expanded, setExpanded] = useState(null); // account id whose keys are shown
+  const PER = 20;
+
+  useEffect(() => { const t=setTimeout(()=>{ setDebounced(search); setPage(1); },350); return ()=>clearTimeout(t); }, [search]);
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page:String(page), limit:String(PER) });
+    if (debounced.trim()) qs.set('search', debounced.trim());
+    if (userType !== 'all') qs.set('user_type', userType);
+    if (statusF !== 'all')  qs.set('status', statusF);
+    adminFetch(`/api/admin/v1/api-accounts?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(res.data || []);
+          setMeta(res.meta || {});
+          setSummary(res.summary || { total_accounts:0, api_sms_sent:0, api_sms_failed:0 });
+        } else {
+          setError(res.error?.message || 'Failed to load API accounts.');
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, debounced, userType, statusF, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const pages = meta.total_pages || 1;
+  const total = meta.total || 0;
+  const lbl = {fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:4};
+
+  const StatChip = ({ label, value, color }) => (
+    <div className="senda-card" style={{padding:'12px 16px', flex:'1 1 140px', minWidth:140}}>
+      <p style={{fontSize:11,color:'#94a3b8',margin:0,fontWeight:600}}>{label}</p>
+      <p style={{fontSize:20,fontWeight:800,color:color||'#0f172a',margin:'2px 0 0'}}>{(value||0).toLocaleString()}</p>
+    </div>
+  );
+
+  const th = {textAlign:'left',padding:'10px 12px',fontSize:11,fontWeight:700,color:'#64748b',whiteSpace:'nowrap'};
+  const td = {padding:'10px 12px',fontSize:13,color:'#0f172a',verticalAlign:'top'};
+
+  return (
+    <div>
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:800,color:'#0f172a',margin:0}}>API Keys &amp; external sends</h2>
+        <p style={{fontSize:13,color:'#64748b',margin:'4px 0 0'}}>
+          Every account that sends SMS through our public APIs — the owning user, its API keys, and how much it has sent.
+        </p>
+      </div>
+
+      {/* Summary chips */}
+      <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}}>
+        <StatChip label="API accounts" value={summary.total_accounts} />
+        <StatChip label="SMS sent via API" value={summary.api_sms_sent} color={GREEN} />
+        <StatChip label="Failed via API" value={summary.api_sms_failed} color={RED} />
+      </div>
+
+      {/* Filters */}
+      <div className="senda-card" style={{padding:16, marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+          <div>
+            <label style={lbl}>User type</label>
+            <select className="senda-input" value={userType}
+              onChange={e=>{ setUserType(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="all">All users</option>
+              <option value="direct">Direct users</option>
+              <option value="partner">Partner (white-label) users</option>
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Search</label>
+            <input className="senda-input" placeholder="Owner email, account or company"
+              value={search} onChange={e=>setSearch(e.target.value)} style={{height:38,fontSize:13}}/>
+          </div>
+          <div>
+            <label style={lbl}>Account status</label>
+            <select className="senda-input" value={statusF}
+              onChange={e=>{ setStatusF(e.target.value); setPage(1); }} style={{height:38,fontSize:13}}>
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{padding:'10px 14px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,fontSize:13,color:'#b91c1c',marginBottom:16}}>{error}</div>
+      )}
+
+      {/* Table */}
+      <div className="senda-card" style={{padding:0, overflow:'hidden'}}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',minWidth:820}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid #e2e8f0',background:'#f8fafc'}}>
+                <th style={th}>Owner (user)</th>
+                <th style={th}>Company</th>
+                <th style={th}>Type</th>
+                <th style={th}>API keys</th>
+                <th style={{...th,textAlign:'right'}}>API calls</th>
+                <th style={{...th,textAlign:'right'}}>SMS sent</th>
+                <th style={{...th,textAlign:'right'}}>Failed</th>
+                <th style={th}>Last activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} style={{...td,textAlign:'center',padding:'32px',color:'#94a3b8'}}>Loading…</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={8} style={{...td,textAlign:'center',padding:'32px',color:'#94a3b8'}}>No API accounts found.</td></tr>
+              ) : items.map(a => (
+                <React.Fragment key={a.id}>
+                  <tr style={{borderBottom:'1px solid #f1f5f9',cursor:'pointer'}}
+                      onClick={()=>setExpanded(expanded===a.id?null:a.id)}>
+                    <td style={td}>
+                      <div style={{fontWeight:700}}>{a.owner_email || '—'}</div>
+                      <div style={{fontSize:11,color:'#94a3b8'}}>{a.owner_name || a.account_name}</div>
+                    </td>
+                    <td style={td}>{a.company || '—'}</td>
+                    <td style={td}>
+                      <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:20,
+                        background:a.is_white_label?'#eff6ff':'#f0fdf4',
+                        color:a.is_white_label?'#1d4ed8':'#15803d'}}>
+                        {a.is_white_label?'Partner':'Direct'}
+                      </span>
+                    </td>
+                    <td style={td}>
+                      <span style={{fontWeight:700}}>{a.keys_count}</span>
+                      <span style={{fontSize:11,color:'#94a3b8'}}> key{a.keys_count===1?'':'s'} · {expanded===a.id?'hide':'view'}</span>
+                    </td>
+                    <td style={{...td,textAlign:'right'}}>{(a.api_calls||0).toLocaleString()}</td>
+                    <td style={{...td,textAlign:'right',fontWeight:700,color:GREEN}}>{(a.sms_sent||0).toLocaleString()}</td>
+                    <td style={{...td,textAlign:'right',fontWeight:700,color:a.sms_failed?RED:'#94a3b8'}}>{(a.sms_failed||0).toLocaleString()}</td>
+                    <td style={{...td,fontSize:12,color:'#64748b'}}>{a.last_activity?new Date(a.last_activity).toLocaleString():'—'}</td>
+                  </tr>
+                  {expanded===a.id && (
+                    <tr style={{background:'#f8fafc'}}>
+                      <td colSpan={8} style={{padding:'6px 12px 14px'}}>
+                        {(a.keys||[]).length === 0 ? (
+                          <div style={{fontSize:12,color:'#94a3b8',padding:'8px 0'}}>No API keys on this account.</div>
+                        ) : (
+                          <table style={{width:'100%',borderCollapse:'collapse'}}>
+                            <thead>
+                              <tr>
+                                <th style={{...th,fontSize:10}}>Key name</th>
+                                <th style={{...th,fontSize:10}}>Key</th>
+                                <th style={{...th,fontSize:10}}>Status</th>
+                                <th style={{...th,fontSize:10,textAlign:'right'}}>Uses</th>
+                                <th style={{...th,fontSize:10}}>Last used</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {a.keys.map(k => (
+                                <tr key={k.id} style={{borderTop:'1px solid #eef2f7'}}>
+                                  <td style={{...td,fontSize:12}}>{k.name || '—'}</td>
+                                  <td style={{...td,fontSize:12,fontFamily:'monospace',color:'#475569'}}>{k.key_preview || '—'}</td>
+                                  <td style={{...td,fontSize:12}}>
+                                    <span style={{color:k.is_active?'#15803d':'#b91c1c',fontWeight:600}}>{k.status}</span>
+                                  </td>
+                                  <td style={{...td,fontSize:12,textAlign:'right'}}>{(k.total_uses||0).toLocaleString()}</td>
+                                  <td style={{...td,fontSize:12,color:'#64748b'}}>{k.last_used?new Date(k.last_used).toLocaleString():'—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {pages > 1 && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:16}}>
+          <span style={{fontSize:12,color:'#64748b'}}>{total.toLocaleString()} account{total===1?'':'s'} · page {page} of {pages}</span>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-sm" disabled={page<=1||loading}
+              onClick={()=>setPage(p=>Math.max(1,p-1))}>Previous</button>
+            <button className="senda-btn senda-btn-sm" disabled={page>=pages||loading}
+              onClick={()=>setPage(p=>Math.min(pages,p+1))}>Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── System SMS Log Tab ─────────────────────────────────────────────────────────
 // Browse every logged outbound SMS (SystemOutboundSMSLog) with search + filters.
 // Backed by /api/admin/v1/system-sms-logs (+ /categories for the dropdown).
@@ -8508,6 +8725,7 @@ const NAV_GROUPS = [
     { id:'notifications', Icon:Bell,         label:'Push Notifications' },
     { id:'systemsms',     Icon:Mail,         label:'System SMS Log'   },
     { id:'smsbysender',   Icon:MessageSquare, label:'SMS by Sender'   },
+    { id:'apiaccounts',   Icon:Key,          label:'API Keys & Sends' },
   ]},
   { title: 'Sender IDs', items: [
     { id:'senderids',     Icon:Tag,          label:'Sender IDs'       },
@@ -12684,6 +12902,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
     smsbysender:  <SmsBySenderPage/>,
+    apiaccounts:  <ApiAccountsTab/>,
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
   };

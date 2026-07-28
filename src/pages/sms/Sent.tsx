@@ -95,6 +95,11 @@ const Sent = () => {
   const recipientOf = (m: SMSMessageItem) =>
     m.recipient_number || m.contact_phone || m.contact_name || "—";
 
+  // Bulk sends are stored as one row carrying every recipient. Show the first
+  // number plus a "+N more" hint so a 240-recipient blast doesn't look like one.
+  const extraRecipients = (m: SMSMessageItem) =>
+    m.recipient_count && m.recipient_count > 1 ? m.recipient_count - 1 : 0;
+
   const statusVariant = (status: string) =>
     status === "delivered" ? "default" : "secondary";
 
@@ -210,6 +215,11 @@ const Sent = () => {
                               >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
+                                  {extraRecipients(m) > 0 && (
+                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                      +{extraRecipients(m)} more
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-xs max-w-[280px]">
                                   <span className="block max-w-full truncate">
@@ -245,6 +255,11 @@ const Sent = () => {
                               <div className="flex items-start justify-between gap-2">
                                 <span className="text-sm font-medium break-all">
                                   {recipientOf(m)}
+                                  {extraRecipients(m) > 0 && (
+                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                      +{extraRecipients(m)} more
+                                    </span>
+                                  )}
                                 </span>
                                 <Badge variant={statusVariant(m.status)} className="text-xs flex-shrink-0">
                                   {m.status}
