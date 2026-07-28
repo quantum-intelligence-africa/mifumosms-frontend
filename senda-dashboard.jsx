@@ -2267,10 +2267,165 @@ function SenderIdsTab() {
 // (so you can request or check their KYC docs), plus an "all" view. Clicking any
 // row opens the shared KYC drawer with the uploaded documents + rejection reason.
 const KYC_FILTERS = [
-  { id:'rejected',        label:'Rejected',        color:RED   },
-  { id:'require_changes', label:'Require Changes', color:CYAN  },
-  { id:'all',             label:'All sender names', color:BRAND },
+  { id:'rejected',        label:'Rejected',        color:RED,       countKey:'rejected'        },
+  { id:'require_changes', label:'Require Changes', color:CYAN,      countKey:'require_changes' },
+  { id:'pending',         label:'Pending',         color:'#f59e0b', countKey:'pending'         },
+  { id:'await_payment',   label:'Awaiting Payment',color:'#f97316', countKey:'await_payment'   },
+  { id:'approved',        label:'Approved',        color:GREEN,     countKey:'approved'        },
+  { id:'all',             label:'All sender names', color:BRAND,    countKey:'total'           },
 ];
+
+// Wrapper: two sub-tabs — the sender-centric review list, and a flat list of
+// every uploaded KYC document (mirrors the Django admin allattachmentskyc page).
+function KycPage() {
+  const [tab, setTab] = useState('senders'); // 'senders' | 'documents'
+  const TabBtn = ({ id, label }) => (
+    <button type="button" onClick={()=>setTab(id)} className="senda-btn senda-btn-sm"
+      style={{ height:36, border:'none', borderRadius:8, fontWeight:700, fontSize:13,
+        background: tab===id ? BRAND : 'transparent', color: tab===id ? '#fff' : '#475569' }}>
+      {label}
+    </button>
+  );
+  return (
+    <div className="senda-fade-in">
+      <div style={{marginBottom:14}}>
+        <h1 style={{fontSize:22,fontWeight:800,color:'#0f172a',margin:0}}>KYC Documents</h1>
+        <p style={{fontSize:13,color:'#64748b',margin:'2px 0 0'}}>Review sender-name KYC, or browse every uploaded document.</p>
+      </div>
+      <div style={{display:'inline-flex',gap:4,padding:4,background:'#f1f5f9',borderRadius:10,marginBottom:16}}>
+        <TabBtn id="senders" label="Sender IDs" />
+        <TabBtn id="documents" label="All documents" />
+      </div>
+      {tab === 'senders' ? <KycReviewTab/> : <KycDocumentsList/>}
+    </div>
+  );
+}
+
+// Flat, document-centric list: every uploaded KYC file with search / status /
+// date filters and a download link. Backed by GET /kyc-documents.
+function KycDocumentsList() {
+  const { onLogout } = React.useContext(AppContext);
+  const [search, setSearch]     = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [statusF, setStatusF]   = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
+  const [page, setPage]         = useState(1);
+  const [items, setItems]       = useState([]);
+  const [meta, setMeta]         = useState({ total:0, page:1, total_pages:1 });
+  const [summary, setSummary]   = useState({ total:0 });
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const PER = 20;
+
+  useEffect(() => { const t=setTimeout(()=>{ setDebounced(search.trim()); setPage(1); },350); return ()=>clearTimeout(t); }, [search]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const qs = new URLSearchParams({ page:String(page), limit:String(PER) });
+      if (statusF !== 'all') qs.set('status', statusF);
+      if (debounced) qs.set('search', debounced);
+      if (dateFrom) qs.set('date_from', dateFrom);
+      if (dateTo) qs.set('date_to', dateTo);
+      const res = await adminFetch(`/kyc-documents?${qs.toString()}`, {}, onLogout);
+      if (!res.success) { setError(res.error?.message || 'Failed to load KYC documents.'); return; }
+      setItems(res.data || []);
+      setMeta(res.meta || { total:0, page, total_pages:1 });
+      setSummary(res.summary || { total:0 });
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [statusF, page, debounced, dateFrom, dateTo, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const totalPages = meta.total_pages || 1;
+  const total = meta.total || 0;
+  const curPage = meta.page || page;
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14,alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search sender, owner, company, file…"
+          value={search} onChange={e=>setSearch(e.target.value)} style={{height:34,fontSize:13,minWidth:240}}/>
+        <select className="senda-input" value={statusF}
+          onChange={e=>{ setStatusF(e.target.value); setPage(1); }} style={{height:34,fontSize:13}}>
+          <option value="all">All statuses</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="await_payment">Awaiting Payment</option>
+          <option value="require_changes">Require Changes</option>
+          <option value="rejected">Rejected</option>
+          <option value="active">Active</option>
+        </select>
+        <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>Uploaded</span>
+        <input type="date" className="senda-input" title="Uploaded from"
+          value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }} style={{height:34,fontSize:12}}/>
+        <span style={{fontSize:12,color:'#94a3b8'}}>–</span>
+        <input type="date" className="senda-input" title="Uploaded to"
+          value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }} style={{height:34,fontSize:12}}/>
+        {(dateFrom || dateTo) && (
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:34,fontSize:12}}
+            onClick={()=>{ setDateFrom(''); setDateTo(''); setPage(1); }}>Clear dates</button>
+        )}
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchData} style={{height:34,fontSize:12,marginLeft:'auto'}}>↻ Refresh</button>
+      </div>
+
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{padding:'10px 15px',background:'#f8fafc',borderBottom:'1px solid #e2e8f0',fontSize:12.5,color:'#64748b'}}>
+            {(summary.total||0).toLocaleString()} document{summary.total===1?'':'s'}
+          </div>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:820}}>
+              <thead>
+                <tr>
+                  <th>Sender ID</th><th>Sender Name</th><th>Owner</th><th>Company</th>
+                  <th>Status</th><th>File</th><th>Uploaded</th><th>Download</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(d => (
+                  <tr key={d.id}>
+                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{d.sender_id || '—'}</td>
+                    <td style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{d.sender_name || '—'}</td>
+                    <td style={{fontSize:11,color:'#64748b',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={d.owner_email||''}>{d.owner_email || '—'}</td>
+                    <td style={{maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{d.company || '—'}</td>
+                    <td><Badge status={d.status}/></td>
+                    <td style={{fontFamily:'monospace',fontSize:11,color:'#475569',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={d.file_name}>{d.file_name || '—'}</td>
+                    <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{d.uploaded_at ? new Date(d.uploaded_at).toLocaleString() : '—'}</td>
+                    <td>
+                      {d.file_url
+                        ? <a href={d.file_url} target="_blank" rel="noreferrer" className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,textDecoration:'none'}}>Download</a>
+                        : <span style={{color:'#94a3b8',fontSize:12}}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {items.length === 0 && (
+            <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No KYC documents found.</div>
+          )}
+          {total > 0 && (
+            <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span style={{fontSize:12,color:'#94a3b8'}}>
+                {((curPage-1)*PER+1).toLocaleString()}–{Math.min(curPage*PER,total).toLocaleString()} of {total.toLocaleString()} · page {curPage} of {totalPages}
+              </span>
+              <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={curPage<=1}
+                  onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:curPage<=1?.4:1}}>‹ Prev</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={curPage>=totalPages}
+                  onClick={()=>setPage(p=>Math.min(totalPages,p+1))} style={{opacity:curPage>=totalPages?.4:1}}>Next ›</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function KycReviewTab() {
   const { onLogout, showToast } = React.useContext(AppContext);
@@ -2278,6 +2433,8 @@ function KycReviewTab() {
   const [kycFilter, setKycFilter] = useState('all'); // 'all' | 'yes' | 'no'
   const [search, setSearch]   = useState('');
   const [debounced, setDebounced] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo]     = useState('');
   const [page, setPage]       = useState(1);
   const [syncing, setSyncing] = useState(false);
   const [items, setItems]     = useState([]);
@@ -2312,6 +2469,8 @@ function KycReviewTab() {
       if (kycFilter === 'yes') qs.set('has_kyc', 'true');
       else if (kycFilter === 'no') qs.set('has_kyc', 'false');
       if (debounced) qs.set('search', debounced);
+      if (dateFrom) qs.set('date_from', dateFrom);
+      if (dateTo) qs.set('date_to', dateTo);
       const res = await adminFetch(`/sender-ids?${qs.toString()}`, {}, onLogout);
       if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
       setItems(res.data || []);
@@ -2319,7 +2478,7 @@ function KycReviewTab() {
       if (res.summary) setSummary(res.summary);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-  }, [filter, kycFilter, page, debounced, onLogout]);
+  }, [filter, kycFilter, page, debounced, dateFrom, dateTo, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -2398,9 +2557,7 @@ function KycReviewTab() {
       {/* Filter chips */}
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
         {KYC_FILTERS.map(f => {
-          const count = f.id === 'all' ? (summary?.total ?? items.length)
-            : f.id === 'rejected' ? (summary?.rejected ?? 0)
-            : (summary?.require_changes ?? 0);
+          const count = summary ? (summary[f.countKey] ?? 0) : 0;
           const on = filter === f.id;
           return (
             <button key={f.id} onClick={()=>selectFilter(f.id)} className="senda-btn senda-btn-sm"
@@ -2433,9 +2590,21 @@ function KycReviewTab() {
       </div>
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14,justifyContent:'flex-end'}}>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
           <input className="senda-input" placeholder="Search name, owner, company…"
             value={search} onChange={e=>setSearch(e.target.value)} style={{height:34,fontSize:13,minWidth:220}}/>
+          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>Requested</span>
+          <input type="date" className="senda-input" title="Requested from"
+            value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }}
+            style={{height:34,fontSize:12}}/>
+          <span style={{fontSize:12,color:'#94a3b8'}}>–</span>
+          <input type="date" className="senda-input" title="Requested to"
+            value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
+            style={{height:34,fontSize:12}}/>
+          {(dateFrom || dateTo) && (
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:34,fontSize:12}}
+              onClick={()=>{ setDateFrom(''); setDateTo(''); setPage(1); }}>Clear dates</button>
+          )}
           <button className="senda-btn senda-btn-sm" onClick={syncBeem} disabled={syncing}
             title="Pull live statuses from Beem now — active sender names get auto-approved"
             style={{height:34,fontSize:12,fontWeight:700,background:BRAND,color:'#fff',border:`1.5px solid ${BRAND}`,
@@ -12891,7 +13060,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     users:        <UsersTab/>,
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
-    kyc:          <KycReviewTab/>,
+    kyc:          <KycPage/>,
     partners:     <PartnersTab/>,
     partnersenders: <PartnerSendersTab/>,
     approvedsenders: <ApprovedSendersTab/>,
