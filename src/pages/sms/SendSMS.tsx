@@ -625,7 +625,7 @@ const SendSMS = () => {
     } else {
       toast({
         title: "Invalid phone number",
-        description: "Enter a valid Tanzanian number — you can use 07XX…, 06XX…, +255… or 255… (e.g., 0712345678)",
+        description: "Enter a valid Tanzanian number — you can use 0712…, 712…, 06XX…, 6XX…, +255… or 255… (e.g., 0712345678)",
         variant: "destructive"
       });
     }
@@ -1223,8 +1223,8 @@ const SendSMS = () => {
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
                       {language === "sw"
-                        ? "Unaweza kutumia 07…, 06…, +255… au 255… — tutazibadilisha kiotomatiki."
-                        : "You can enter 07…, 06…, +255… or 255… — we normalize them automatically."}
+                        ? "Unaweza kuandika ikiwa na 0 au bila — 0712…, 712…, 06…, 6…, +255… au 255… — tutazibadilisha kiotomatiki."
+                        : "Enter it with or without the 0 — 0712…, 712…, 06…, 6…, +255… or 255… — we normalize automatically."}
                     </p>
                     {recipients.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3">

@@ -266,11 +266,17 @@ function isValidEmail(email: string): boolean {
 }
 
 export function generateSampleCSV(): string {
-	const headers = ['name', 'email', 'phone', 'tags', 'company', 'department'];
+	// Only the columns the importer actually saves are included.
+	//   phone  -> REQUIRED (the only mandatory column)
+	//   name, email, tags -> OPTIONAL (leave blank to skip)
+	// The phone examples deliberately show the different accepted formats — all are
+	// converted to +255… automatically, so users can see they don't need one strict shape.
+	const headers = ['name', 'phone', 'email', 'tags'];
 	const sampleData = [
-		['John Doe', 'john@example.com', '255700000001', 'vip,customer', 'Acme Corp', 'Sales'],
-		['Jane Smith', 'jane@example.com', '255700000002', 'premium', 'Tech Inc', 'Marketing'],
-		['Bob Johnson', 'bob@example.com', '255700000003', 'regular', 'Startup Ltd', 'Engineering']
+		['John Doe', '0712345678', 'john@example.com', 'vip,customer'], // leading 0
+		['Jane Smith', '255754000002', 'jane@example.com', 'premium'],  // 255…
+		['Bob Johnson', '+255620000003', '', 'regular'],                // +255, no email
+		['Asha Ally', '700000004', '', '']                              // bare 9-digit, no email/tags
 	];
 
 	const csvContent = [headers, ...sampleData]

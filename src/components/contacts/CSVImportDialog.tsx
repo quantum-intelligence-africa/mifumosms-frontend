@@ -297,32 +297,35 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   <div className="mt-2 p-2 sm:p-4 bg-muted/10 rounded-lg border text-xs sm:text-sm">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <div>
-                        <h4 className="font-medium text-primary mb-1 sm:mb-2 text-xs sm:text-sm">Required:</h4>
+                        <h4 className="font-medium text-primary mb-1 sm:mb-2 text-xs sm:text-sm">Required</h4>
                         <div className="space-y-0.5 sm:space-y-1 text-xs">
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <Phone className="w-3 h-3 text-primary" />
-                            <span>phone, mobile</span>
+                          <div className="flex items-start gap-1 sm:gap-2">
+                            <Phone className="w-3 h-3 text-primary mt-0.5 shrink-0" />
+                            <span><strong>phone</strong> — the only required column. Accepts 0712…, 712…, 06…, +255… or 255….</span>
                           </div>
                         </div>
                       </div>
                       <div>
-                        <h4 className="font-medium text-text-subtle mb-1 sm:mb-2 text-xs sm:text-sm">Optional:</h4>
+                        <h4 className="font-medium text-text-subtle mb-1 sm:mb-2 text-xs sm:text-sm">Optional</h4>
                         <div className="space-y-0.5 sm:space-y-1 text-xs">
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <Users className="w-3 h-3 text-text-subtle" />
-                            <span>name, full_name</span>
+                          <div className="flex items-start gap-1 sm:gap-2">
+                            <Users className="w-3 h-3 text-text-subtle mt-0.5 shrink-0" />
+                            <span><strong>name</strong> — contact's full name</span>
                           </div>
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <Mail className="w-3 h-3 text-text-subtle" />
-                            <span>email</span>
+                          <div className="flex items-start gap-1 sm:gap-2">
+                            <Mail className="w-3 h-3 text-text-subtle mt-0.5 shrink-0" />
+                            <span><strong>email</strong> — leave blank if none</span>
                           </div>
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <Tag className="w-3 h-3 text-text-subtle" />
-                            <span>tags, company</span>
+                          <div className="flex items-start gap-1 sm:gap-2">
+                            <Tag className="w-3 h-3 text-text-subtle mt-0.5 shrink-0" />
+                            <span><strong>tags</strong> — separate multiple with commas (e.g. vip,customer)</span>
                           </div>
                         </div>
                       </div>
                     </div>
+                    <p className="mt-2 sm:mt-3 text-[11px] text-text-subtle leading-snug">
+                      Column order doesn't matter and headers are case-insensitive. Duplicate numbers are skipped automatically. Anything other than name, phone, email and tags is ignored — download the sample above for a ready-to-fill template.
+                    </p>
                   </div>
                 </details>
               </div>

@@ -291,15 +291,15 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
             <div className="space-y-2">
               <Label>CSV Data</Label>
               <Textarea
-                placeholder="name,phone,local_number,email,tags&#10;John Mkumbo,+255672883530,672883530,john@example.com,vip&#10;Fatma Mbwana,+255771978307,771978307,fatma@example.com,customer"
+                placeholder="name,phone,email,tags&#10;John Mkumbo,0712345678,john@example.com,vip&#10;Fatma Mbwana,+255771978307,,customer"
                 value={csvData}
                 onChange={(e) => setCsvData(e.target.value)}
                 rows={8}
                 className="font-mono text-sm"
               />
               <div className="text-xs text-text-subtle">
-                <strong>Required columns:</strong> name, phone<br />
-                <strong>Optional columns:</strong> local_number, email, tags
+                <strong>Required:</strong> phone — accepts 0712…, 712…, 06…, +255… or 255….<br />
+                <strong>Optional:</strong> name, email, tags (separate multiple tags with commas). Other columns are ignored.
               </div>
             </div>
           )}
