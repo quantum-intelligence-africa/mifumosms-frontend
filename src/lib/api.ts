@@ -2130,8 +2130,11 @@ class ApiClient {
 
   // Helper method to convert contacts to CSV format
   private convertContactsToCSV(contacts: CreateContactRequest[]): string {
-    // Use standard column names that the backend expects
-    const headers = ['name', 'phone', 'email'];
+    // Use standard column names that the backend expects. `tags` is included so
+    // labels parsed from the uploaded file survive the round-trip (the backend
+    // splits this column on commas). company/department are not persisted by the
+    // contact-import backend, so they are intentionally not emitted here.
+    const headers = ['name', 'phone', 'email', 'tags'];
     const rows = contacts.map(contact => {
       // Ensure phone number has + prefix for E.164 format
       let phone = contact.phone_e164 || '';
@@ -2139,10 +2142,13 @@ class ApiClient {
         phone = '+' + phone;
       }
 
+      const tags = Array.isArray(contact.tags) ? contact.tags.join(',') : '';
+
       return [
         contact.name || '',
         phone,
-        contact.email || ''
+        contact.email || '',
+        tags
       ];
     });
 

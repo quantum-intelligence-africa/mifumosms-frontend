@@ -226,7 +226,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   Upload {importType === 'excel' ? 'Excel' : 'CSV'} File
                 </h3>
                 <p className="text-xs text-text-subtle mb-2 sm:mb-4">
-                  Phone column required (name & email optional)
+                  Phone column required (name, email &amp; tags optional)
                 </p>
                 <input
                   ref={fileInputRef}
@@ -238,6 +238,17 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                 <Button onClick={() => fileInputRef.current?.click()} size="sm" className="text-xs sm:text-sm h-8 sm:h-10">
                   Choose File
                 </Button>
+                <p className="text-xs text-text-subtle mt-2 sm:mt-3">
+                  Not sure about the format?{' '}
+                  <button
+                    type="button"
+                    onClick={handleDownloadSample}
+                    className="text-primary font-medium underline underline-offset-2 hover:opacity-80"
+                  >
+                    Download the sample file
+                  </button>
+                  , fill in your contacts, then upload it{importType === 'excel' ? ' (open the sample in Excel and Save As .xlsx)' : ''}.
+                </p>
               </div>
 
               {/* Options & Requirements in Tabs/Accordion Style */}
