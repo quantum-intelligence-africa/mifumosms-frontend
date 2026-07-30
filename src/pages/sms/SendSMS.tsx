@@ -625,7 +625,7 @@ const SendSMS = () => {
     } else {
       toast({
         title: "Invalid phone number",
-        description: "Use 12 digits starting with 255 (e.g., 255700000000)",
+        description: "Enter a valid Tanzanian number — you can use 07XX…, 06XX…, +255… or 255… (e.g., 0712345678)",
         variant: "destructive"
       });
     }
@@ -1210,7 +1210,7 @@ const SendSMS = () => {
                   <Section title={language === "sw" ? "Kwa" : "To"} subtitle={recipients.length > 0 ? `${recipients.length} ${language === "sw" ? "wapokeaji" : "recipients"}` : (language === "sw" ? "Ongeza nambari za simu" : "Add phone numbers")}>
                     <div className="flex gap-2">
                       <Input
-                        placeholder={language === "sw" ? "+255 7XX XXX XXX" : "+255 7XX XXX XXX"}
+                        placeholder={language === "sw" ? "07XX XXX XXX au +255…" : "07XX XXX XXX or +255…"}
                         value={newRecipient}
                         onChange={(e) => setNewRecipient(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addRecipient())}
@@ -1221,6 +1221,11 @@ const SendSMS = () => {
                         {language === "sw" ? "Ongeza" : "Add"}
                       </Button>
                     </div>
+                    <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+                      {language === "sw"
+                        ? "Unaweza kutumia 07…, 06…, +255… au 255… — tutazibadilisha kiotomatiki."
+                        : "You can enter 07…, 06…, +255… or 255… — we normalize them automatically."}
+                    </p>
                     {recipients.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {recipients.map((phone) => (
