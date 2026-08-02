@@ -229,6 +229,27 @@ export interface ImportContactsResponse {
   }>;
 }
 
+// Shape returned by /messaging/contacts/bulk-import/. The counters are `imported`,
+// `updated` and `skipped` — code that read `imported_count`/`skipped_count` here always
+// got undefined, which is why every import reported "0 contacts imported".
+export interface BulkImportContactsResponse {
+  success: boolean;
+  message: string;
+  imported: number;
+  updated: number;
+  skipped: number;
+  /** Part of `skipped`: rows whose phone already exists in the tenant. */
+  already_existed?: number;
+  /** Part of `skipped`: rows whose phone repeats earlier in the same file. */
+  duplicate_rows?: number;
+  total_processed: number;
+  errors: Array<{
+    row?: number;
+    contact?: CreateContactRequest;
+    error: string;
+  }>;
+}
+
 // Segment Types
 export interface Segment {
   id: string;
@@ -2063,19 +2084,7 @@ class ApiClient {
     contacts?: CreateContactRequest[];
     skip_duplicates?: boolean;
     update_existing?: boolean;
-  }): Promise<ApiResponse<{
-    success: boolean;
-    message: string;
-    imported_count: number;
-    updated_count: number;
-    skipped_count: number;
-    total_processed: number;
-    errors: Array<{
-      row?: number;
-      contact?: CreateContactRequest;
-      error: string;
-    }>;
-  }>> {
+  }): Promise<ApiResponse<BulkImportContactsResponse>> {
     if (data.import_type === 'excel' && data.file) {
       // Excel file upload
       const formData = new FormData();
@@ -2174,19 +2183,7 @@ class ApiClient {
     update_existing?: boolean;
     chunkSize?: number; // Default: 1000 contacts per chunk
     onProgress?: (progress: { chunk: number; total: number; imported: number; updated: number; skipped: number }) => void;
-  }): Promise<ApiResponse<{
-    success: boolean;
-    message: string;
-    imported_count: number;
-    updated_count: number;
-    skipped_count: number;
-    total_processed: number;
-    errors: Array<{
-      row?: number;
-      contact?: CreateContactRequest;
-      error: string;
-    }>;
-  }>> {
+  }): Promise<ApiResponse<BulkImportContactsResponse>> {
     const { chunkSize = 1000, onProgress } = data;
 
     // For Excel/file uploads, use standard import (files are handled on backend)
@@ -2218,6 +2215,8 @@ class ApiClient {
     let totalImported = 0;
     let totalUpdated = 0;
     let totalSkipped = 0;
+    let totalExisted = 0;
+    let totalDuplicateRows = 0;
     let totalProcessed = 0;
     const allErrors: Array<{ row?: number; contact?: CreateContactRequest; error: string }> = [];
 
@@ -2231,9 +2230,11 @@ class ApiClient {
         });
 
         if (response.success && response.data) {
-          totalImported += response.data.imported_count || 0;
-          totalUpdated += response.data.updated_count || 0;
-          totalSkipped += response.data.skipped_count || 0;
+          totalImported += response.data.imported || 0;
+          totalUpdated += response.data.updated || 0;
+          totalSkipped += response.data.skipped || 0;
+          totalExisted += response.data.already_existed || 0;
+          totalDuplicateRows += response.data.duplicate_rows || 0;
           totalProcessed += response.data.total_processed || 0;
 
           // Collect errors from this chunk
@@ -2278,9 +2279,11 @@ class ApiClient {
       data: {
         success: allErrors.length === 0,
         message: `Imported ${totalImported} contacts across ${chunks.length} chunks`,
-        imported_count: totalImported,
-        updated_count: totalUpdated,
-        skipped_count: totalSkipped,
+        imported: totalImported,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        already_existed: totalExisted,
+        duplicate_rows: totalDuplicateRows,
         total_processed: totalProcessed,
         errors: allErrors
       },

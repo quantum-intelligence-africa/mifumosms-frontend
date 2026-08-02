@@ -718,9 +718,9 @@ const handleCSVImport = async (data: {
     if (apiErrors.length > 0) {
       return {
         success: true,
-        imported: response.data?.imported_count || 0,
-        updated: response.data?.updated_count || 0,
-        skipped: response.data?.skipped_count || 0,
+        imported: response.data?.imported || 0,
+        updated: response.data?.updated || 0,
+        skipped: response.data?.skipped || 0,
         total_processed: response.data?.total_processed || 0,
         errors: apiErrors.map((e: Record<string, unknown>, idx: number) => {
           // Extract error message from various possible formats
@@ -765,9 +765,18 @@ const handleCSVImport = async (data: {
       if (isMobile) {
         await fetchAllContactsForMobile();
       }
+      const imported = response.data?.imported || 0;
+      const updated = response.data?.updated || 0;
+      const skipped = response.data?.skipped || 0;
+      const chunkNote = shouldUseChunked ? ' (processed in chunks)' : '';
+
+      // Nothing imported and nothing failed means every row was a duplicate — say so,
+      // instead of the old "0 contacts imported" that read like a broken import.
       toast({
-        title: "Import completed successfully",
-        description: `${response.data?.imported_count || 0} contacts imported${shouldUseChunked ? ' (processed in chunks)' : ''}`,
+        title: imported || updated ? "Import completed successfully" : "Nothing to import",
+        description: imported || updated
+          ? `${imported} imported${updated ? `, ${updated} updated` : ''}${skipped ? `, ${skipped} skipped as duplicates` : ''}${chunkNote}`
+          : response.data?.message || `All ${skipped} contacts already exist in your list.`,
       });
     } catch (refreshError) {
       console.error('Error refreshing contacts:', refreshError);
@@ -779,9 +788,9 @@ const handleCSVImport = async (data: {
 
     return {
       success: true,
-      imported: response.data?.imported_count || 0,
-      updated: response.data?.updated_count || 0,
-      skipped: response.data?.skipped_count || 0,
+      imported: response.data?.imported || 0,
+      updated: response.data?.updated || 0,
+      skipped: response.data?.skipped || 0,
       total_processed: response.data?.total_processed || 0,
       errors: []
     };
