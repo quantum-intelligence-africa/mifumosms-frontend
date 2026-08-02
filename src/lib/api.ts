@@ -242,6 +242,10 @@ export interface BulkImportContactsResponse {
   already_existed?: number;
   /** Part of `skipped`: rows whose phone repeats earlier in the same file. */
   duplicate_rows?: number;
+  /** Part of `imported`: ownerless auto-created contacts claimed for this user. */
+  adopted?: number;
+  /** Part of `skipped`: rows owned by another user in the same tenant. */
+  owned_by_others?: number;
   total_processed: number;
   errors: Array<{
     row?: number;
