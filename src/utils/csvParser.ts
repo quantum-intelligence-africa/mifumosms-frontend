@@ -13,6 +13,49 @@ export interface CSVParseResult {
 	warnings: string[];
 }
 
+// Excel silently retypes a long phone number as a float and writes it back in
+// scientific notation ("255700000001" -> "2.56E+11"). Expanding that only recovers the
+// number when every digit survived: Excel's 3-significant-digit form has already
+// destroyed the last 9, and padding it with zeros would fabricate a plausible-looking
+// wrong number, so those rows are rejected instead of guessed at.
+const SCIENTIFIC_NOTATION = /^[+-]?(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/;
+
+export const SCIENTIFIC_NOTATION_ERROR_NAME = 'ScientificNotationPhoneError';
+
+export const SCIENTIFIC_NOTATION_FIX_HINT =
+	'Excel saved the phone column as numbers (e.g. "2.56E+11"), which permanently drops digits. ' +
+	'Open the original file, format the phone column as Text (select the column → Format Cells → Text, ' +
+	'or type an apostrophe before each number), save it again and re-upload. ' +
+	'Uploading the .xlsx file itself instead of a CSV export also avoids this.';
+
+export function expandScientificNotation(raw: string): { value: string; digitsLost: boolean } {
+	const match = raw.trim().match(SCIENTIFIC_NOTATION);
+	if (!match) {
+		return { value: raw, digitsLost: false };
+	}
+
+	const [, intDigits, fracDigits = '', exponent] = match;
+	const zerosToAppend = parseInt(exponent, 10) - fracDigits.length;
+	if (zerosToAppend < 0) {
+		// Fractional value — never a phone number, and rounding it would invent digits.
+		return { value: raw, digitsLost: true };
+	}
+
+	return {
+		value: `${intDigits}${fracDigits}${'0'.repeat(zerosToAppend)}`,
+		// Every appended zero is a digit we invented rather than one Excel preserved.
+		digitsLost: zerosToAppend > 0
+	};
+}
+
+export function scientificNotationPhoneError(raw: string): Error {
+	const error = new Error(
+		`Phone number "${raw}" was saved by Excel as a number, so its real digits are gone and cannot be recovered.`
+	);
+	error.name = SCIENTIFIC_NOTATION_ERROR_NAME;
+	return error;
+}
+
 export function parseCSVFile(file: File): Promise<CSVParseResult> {
 	return new Promise((resolve) => {
 		const reader = new FileReader();
@@ -57,6 +100,7 @@ export function parseCSVText(text: string): CSVParseResult {
 	const contacts: CSVContact[] = [];
 	const errors: string[] = [];
 	const warnings: string[] = [];
+	let scientificNotationRows = 0;
 
 	// Find column indices
 	const nameIndex = findColumnIndex(headers, ['name', 'full_name', 'fullname', 'contact_name']);
@@ -95,8 +139,18 @@ export function parseCSVText(text: string): CSVParseResult {
 				contacts.push(contact);
 			}
 		} catch (error) {
+			if (error instanceof Error && error.name === SCIENTIFIC_NOTATION_ERROR_NAME) {
+				scientificNotationRows++;
+			}
 			errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Invalid data'}`);
 		}
+	}
+
+	// One actionable explanation up front beats repeating the fix on every broken row.
+	if (scientificNotationRows > 0) {
+		errors.unshift(
+			`${scientificNotationRows} phone number${scientificNotationRows === 1 ? '' : 's'} could not be read. ${SCIENTIFIC_NOTATION_FIX_HINT}`
+		);
 	}
 
 	// Add warnings for missing optional columns
@@ -177,13 +231,13 @@ function parseContactFromValues(
 		throw new Error('Missing phone number. Every contact must have a phone number in the "phone" column.');
 	}
 
-	// Handle scientific notation for phone numbers (e.g., 2.55700000001e+11)
-	if (typeof phone === 'string' && /e\+/.test(phone)) {
-		const num = Number(phone);
-		if (!isNaN(num)) {
-			phone = num.toLocaleString('fullwide', { useGrouping: false });
-		}
+	// Recover phone numbers written in scientific notation (e.g., 2.55700000001E+11),
+	// but only when the notation kept every digit — see expandScientificNotation.
+	const expanded = expandScientificNotation(phone);
+	if (expanded.digitsLost) {
+		throw scientificNotationPhoneError(phone);
 	}
+	phone = expanded.value;
 
 	// Validate and normalize phone number
 	const normalizedPhone = normalizePhoneNumber(phone);

@@ -1,4 +1,11 @@
-import { CSVContact, CSVParseResult } from './csvParser';
+import {
+	CSVContact,
+	CSVParseResult,
+	SCIENTIFIC_NOTATION_ERROR_NAME,
+	SCIENTIFIC_NOTATION_FIX_HINT,
+	expandScientificNotation,
+	scientificNotationPhoneError
+} from './csvParser';
 // `xlsx` is ~330 kB (114 kB gzip). It's imported lazily inside parseExcelFile so it
 // only downloads when a user actually parses an Excel file, not on page load.
 
@@ -60,6 +67,7 @@ export async function parseExcelFile(file: File): Promise<CSVParseResult> {
 				const contacts: CSVContact[] = [];
 				const errors: string[] = [];
 				const warnings: string[] = [];
+				let scientificNotationRows = 0;
 
 				if (json.length === 0) {
 					errors.push('Excel file is empty');
@@ -112,21 +120,20 @@ export async function parseExcelFile(file: File): Promise<CSVParseResult> {
 							phone = phone.toString();
 						}
 
-						// Convert scientific notation
-						if (typeof phone === 'string' && /e\+/.test(phone)) {
-							const num = Number(phone);
-							if (!isNaN(num)) {
-								phone = num.toLocaleString('fullwide', { useGrouping: false });
-							}
-						}
-
 						const phoneStr = String(phone || '').trim();
 						if (!phoneStr) {
 							throw new Error('Phone number is required');
 						}
 
+						// Expand scientific notation, but reject values Excel already rounded
+						// away (e.g. "2.56E+11") instead of inventing the missing digits.
+						const expanded = expandScientificNotation(phoneStr);
+						if (expanded.digitsLost) {
+							throw scientificNotationPhoneError(phoneStr);
+						}
+
 						// Normalize phone number
-						const normalizedPhone = normalizePhoneNumber(phoneStr);
+						const normalizedPhone = normalizePhoneNumber(expanded.value);
 						if (!normalizedPhone) {
 							throw new Error(`Invalid phone number format: ${phoneStr}`);
 						}
@@ -154,9 +161,19 @@ export async function parseExcelFile(file: File): Promise<CSVParseResult> {
 							department: department || undefined
 						});
 					} catch (error) {
+						if (error instanceof Error && error.name === SCIENTIFIC_NOTATION_ERROR_NAME) {
+							scientificNotationRows++;
+						}
 						errors.push(`Row ${idx + 2}: ${error instanceof Error ? error.message : 'Invalid data'}`);
 					}
 				});
+
+				// One actionable explanation up front beats repeating the fix on every broken row.
+				if (scientificNotationRows > 0) {
+					errors.unshift(
+						`${scientificNotationRows} phone number${scientificNotationRows === 1 ? '' : 's'} could not be read. ${SCIENTIFIC_NOTATION_FIX_HINT}`
+					);
+				}
 
 				// Add warnings for missing optional columns
 				if (!emailCol) {
