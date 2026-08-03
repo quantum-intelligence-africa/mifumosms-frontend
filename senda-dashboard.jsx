@@ -755,6 +755,7 @@ function Badge({ status }) {
     rejected:        ['badge-red',    'Rejected'],
     suspended:       ['badge-red',    'Suspended'],
     pending:         ['badge-amber',  'Pending'],
+    processing:      ['badge-blue',   'Processing'],
     await_payment:   ['badge-orange', 'Await Payment'],
     require_changes: ['badge-cyan',   'Require Changes'],
     promotional:     ['badge-violet', 'Promo'],
@@ -1537,28 +1538,34 @@ function TransactionsTab() {
 const STATUS_META = {
   approved:        { label:'Approved',        color:GREEN,   bg:'#d1fae5', Icon:CheckCircle2, desc:'Active & live on network'         },
   pending:         { label:'Pending Review',  color:AMBER,   bg:'#fef3c7', Icon:Hourglass,    desc:'Awaiting admin review'            },
+  processing:      { label:'Processing',      color:BRAND,   bg:'#dbeafe', Icon:RefreshCw,    desc:'An admin is working on it now'    },
   await_payment:   { label:'Await Payment',   color:ORANGE,  bg:'#ffedd5', Icon:CreditCard,   desc:'Invoice issued, payment pending'  },
   rejected:        { label:'Rejected',        color:RED,     bg:'#fee2e2', Icon:XCircle,      desc:'Declined — policy violation'      },
   require_changes: { label:'Require Changes', color:CYAN,    bg:'#cffafe', Icon:Clock,        desc:'Admin requested document changes' },
 };
 
-// Allowed status transitions (spec keys) — mirrors senda_admin VALID_TRANSITIONS on
-// the backend (PATCH /sender-ids/<id>/status). Keep the two in sync.
-const SENDER_TRANSITIONS = {
-  pending:         ['approved', 'require_changes', 'rejected'],
-  await_payment:   ['approved', 'rejected'],
-  approved:        ['await_payment', 'rejected'],
-  rejected:        ['approved', 'pending'],
-  require_changes: ['approved', 'rejected'],
-};
+// Every status a sender ID can be moved to. The backend allows any status to follow
+// any other (review is not linear: KYC lands late, rejections get reopened), so the
+// drawer offers all of them bar the one the sender is already on.
+const SENDER_STATUSES = ['pending', 'processing', 'approved', 'await_payment', 'require_changes', 'rejected'];
+
+// Mirrors senda_admin VALID_TRANSITIONS on the backend (PATCH /sender-ids/<id>/status).
+// 'active' and 'cancelled' are listed as sources only — a sender can be moved out of
+// them, but the portal doesn't offer them as targets.
+const SENDER_TRANSITIONS = Object.fromEntries(
+  [...SENDER_STATUSES, 'active', 'cancelled'].map(
+    from => [from, SENDER_STATUSES.filter(to => to !== from)]
+  )
+);
 
 // Button meta per target status (label + colour + icon).
 const SENDER_ACTION_META = {
-  approved:        { label:'Approve',         color:GREEN,  Icon:CheckCircle2 },
-  rejected:        { label:'Reject',          color:RED,    Icon:XCircle      },
-  require_changes: { label:'Request Changes', color:CYAN,   Icon:Clock        },
-  await_payment:   { label:'Await Payment',   color:ORANGE, Icon:CreditCard   },
-  pending:         { label:'Move to Pending', color:AMBER,  Icon:Hourglass    },
+  approved:        { label:'Approve',            color:GREEN,  Icon:CheckCircle2 },
+  rejected:        { label:'Reject',             color:RED,    Icon:XCircle      },
+  require_changes: { label:'Request Changes',    color:CYAN,   Icon:Clock        },
+  processing:      { label:'Move to Processing', color:BRAND,  Icon:RefreshCw    },
+  await_payment:   { label:'Await Payment',      color:ORANGE, Icon:CreditCard   },
+  pending:         { label:'Move to Pending',    color:AMBER,  Icon:Hourglass    },
 };
 
 // Reusable right-side drawer showing a sender ID's KYC documents + rejection reason,
@@ -1686,23 +1693,27 @@ function SenderKycDrawer({ detail, onClose, onProcess, processing }) {
               </div>
             ) : (() => {
               const m = SENDER_ACTION_META[action];
-              const needsNotes    = action === 'rejected' || action === 'require_changes';
-              const needsInvoice  = action === 'await_payment';
+              // A provider is the only hard requirement (approval registers the name
+              // with it and sends the approval SMS from it). Notes and the invoice
+              // number are offered on every action but never block the move.
               const needsProvider = action === 'approved';
-              const canSubmit     = !processing && (!needsNotes || notes.trim()) && (!needsInvoice || invoice.trim()) && (!needsProvider || providerId);
+              const notePlaceholder = {
+                rejected:        'Reason for rejection — shown to the customer (optional)…',
+                require_changes: 'What the applicant must change — shown to the customer (optional)…',
+                processing:      'Where this request stands, e.g. “Submitted to Beem, awaiting provider approval” (optional)…',
+              }[action] || 'Internal note about this change (optional)…';
+              const canSubmit     = !processing && (!needsProvider || providerId);
               return (
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   <div style={{fontSize:13,color:'#0f172a'}}>
                     Set <b>{detail.row.name}</b> to <b style={{color:m.color}}>{m.label}</b>
                   </div>
-                  {needsNotes && (
-                    <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
-                      placeholder={action==='rejected' ? 'Reason for rejection (required)…' : 'What the applicant must change (required)…'}
-                      className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
-                  )}
-                  {needsInvoice && (
+                  <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3}
+                    placeholder={notePlaceholder}
+                    className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
+                  {action === 'await_payment' && (
                     <input value={invoice} onChange={e=>setInvoice(e.target.value)}
-                      placeholder="Invoice number (required)…" className="senda-input" style={{height:38,fontSize:13}}/>
+                      placeholder="Invoice number (optional)…" className="senda-input" style={{height:38,fontSize:13}}/>
                   )}
                   {needsProvider && (
                     <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -1726,9 +1737,9 @@ function SenderKycDrawer({ detail, onClose, onProcess, processing }) {
                     <button disabled={!canSubmit}
                       onClick={async () => {
                         const opts = {};
-                        if (needsNotes)    opts.notes = notes.trim();
-                        if (needsInvoice)  opts.invoice_no = invoice.trim();
-                        if (needsProvider) opts.provider_id = providerId;
+                        if (notes.trim())   opts.notes = notes.trim();
+                        if (invoice.trim()) opts.invoice_no = invoice.trim();
+                        if (needsProvider)  opts.provider_id = providerId;
                         if (action === 'approved') opts.notify = notify;
                         const r = await onProcess(action, opts);
                         if (r?.ok) { setAction(null); setNotes(''); setInvoice(''); setNotify(true); }
@@ -1898,7 +1909,8 @@ function SenderIdsTab() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Accept / reject / change the status of the sender ID open in the drawer.
-  // `spec` is a status spec key (approved | rejected | require_changes | await_payment | pending).
+  // `spec` is a status spec key (approved | rejected | require_changes | processing |
+  // await_payment | pending); any of them may follow any current status.
   const processSender = useCallback(async (spec, opts = {}) => {
     const row = detail?.row;
     if (!row?.id) return { ok:false };
@@ -1984,6 +1996,7 @@ function SenderIdsTab() {
       all:             src.total           ?? 0,
       approved:        src.approved        ?? 0,
       pending:         src.pending         ?? 0,
+      processing:      src.processing      ?? 0,
       await_payment:   src.await_payment   ?? 0,
       require_changes: src.require_changes ?? 0,
       rejected:        src.rejected        ?? 0,
@@ -2270,6 +2283,7 @@ const KYC_FILTERS = [
   { id:'rejected',        label:'Rejected',        color:RED,       countKey:'rejected'        },
   { id:'require_changes', label:'Require Changes', color:CYAN,      countKey:'require_changes' },
   { id:'pending',         label:'Pending',         color:'#f59e0b', countKey:'pending'         },
+  { id:'processing',      label:'Processing',      color:BRAND,     countKey:'processing'      },
   { id:'await_payment',   label:'Awaiting Payment',color:'#f97316', countKey:'await_payment'   },
   { id:'approved',        label:'Approved',        color:GREEN,     countKey:'approved'        },
   { id:'all',             label:'All sender names', color:BRAND,    countKey:'total'           },
@@ -2354,6 +2368,7 @@ function KycDocumentsList() {
           <option value="all">All statuses</option>
           <option value="approved">Approved</option>
           <option value="pending">Pending</option>
+          <option value="processing">Processing</option>
           <option value="await_payment">Awaiting Payment</option>
           <option value="require_changes">Require Changes</option>
           <option value="rejected">Rejected</option>
