@@ -1,5 +1,5 @@
 import React from "react";
-import { Key, Webhook, Plus, MoreVertical, Eye, EyeOff, Copy, RefreshCw, Trash2, Link2 } from "lucide-react";
+import { Key, Webhook, Plus, MoreVertical, Copy, RefreshCw, Trash2, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,8 +33,7 @@ interface ApiAccount {
 interface ApiKey {
   id: string;
   key_name: string;
-  api_key: string;
-  secret_key: string;
+  api_key_preview: string;
   status: string;
   permissions: Record<string, string[]>;
   total_uses: number;
@@ -215,20 +214,12 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <code className="text-xs bg-gradient-surface px-2 py-1 rounded flex-1 font-mono break-all">
-                      {showApiKey[key.id] ? key.api_key : `mif_${'•'.repeat(40)}`}
+                      {key.api_key_preview}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setShowApiKey({ ...showApiKey, [key.id]: !showApiKey[key.id] })}
-                      className="h-6 w-6"
-                    >
-                      {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => copyToClipboard(key.api_key)}
+                      onClick={() => copyToClipboard(key.api_key_preview)}
                       className="h-6 w-6"
                     >
                       <Copy className="w-3 h-3" />
