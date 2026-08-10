@@ -751,6 +751,7 @@ function Badge({ status }) {
     approved:        ['badge-green',  'Approved'],
     success:         ['badge-green',  'Success'],
     active:          ['badge-green',  'Active'],
+    sent:            ['badge-green',  'Sent'],
     failed:          ['badge-red',    'Failed'],
     rejected:        ['badge-red',    'Rejected'],
     suspended:       ['badge-red',    'Suspended'],
