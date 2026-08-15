@@ -13,6 +13,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/layout/PullToRefreshIndicator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PWAManager } from "@/components/pwa/PWAManager";
+import { PendingPaymentReminder } from "@/components/sms/PendingPaymentReminder";
 
 // Pages are lazily loaded so each route ships as its own chunk. This keeps the
 // initial bundle small — heavy deps (charts, xlsx, pdf) only download when a
@@ -149,6 +150,7 @@ const AppContent = () => {
         threshold={pull.threshold}
       />
       <PWAManager />
+      <PendingPaymentReminder />
       <RouteAnimator>
       <Suspense fallback={<RouteFallback />}>
       <Routes>

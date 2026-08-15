@@ -7034,11 +7034,396 @@ function LowCreditWarningSettings() {
   );
 }
 
+const PENDING_PAYMENT_PLACEHOLDERS = ['{name}', '{credits}', '{amount}'];
+
+function PendingPaymentReminderSettingsCard() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [settings, setSettings] = useState({
+    enabled: true, wait_hours: 5, remind_interval_hours: 12, message: '',
+    defaults: {}, placeholders: PENDING_PAYMENT_PLACEHOLDERS,
+  });
+  const [drafts, setDrafts]   = useState({ wait_hours: '5', remind_interval_hours: '12', message: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [savingToggle, setSavingToggle] = useState(false);
+  const [savingForm, setSavingForm]     = useState(false);
+
+  const applyServer = (data) => {
+    const d = data || {};
+    setSettings(d);
+    setDrafts({
+      wait_hours: String(d.wait_hours ?? 5),
+      remind_interval_hours: String(d.remind_interval_hours ?? 12),
+      message: d.message || '',
+    });
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/pending-payment-reminder', {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) applyServer(res.data);
+        else setError(res.error?.message || 'Failed to load settings.');
+      })
+      .catch(e => { if (alive) setError(e.message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = (payload) => adminFetch('/api/admin/v1/pending-payment-reminder/update', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  }, onLogout);
+
+  const toggleEnabled = async () => {
+    if (savingToggle) return;
+    const next = !settings.enabled;
+    setSavingToggle(true);
+    setSettings(prev => ({ ...prev, enabled: next })); // optimistic
+    try {
+      const res = await patch({ enabled: next });
+      if (res.success) { applyServer(res.data); showToast('Pending payment reminder ' + (next ? 'enabled.' : 'disabled.'), 'success'); }
+      else { setSettings(prev => ({ ...prev, enabled: !next })); showToast(res.error?.message || 'Failed to update.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, enabled: !next }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingToggle(false); }
+  };
+
+  const saveForm = async () => {
+    if (savingForm) return;
+    const waitHours = parseInt(drafts.wait_hours, 10);
+    if (isNaN(waitHours) || waitHours < 0) { showToast('Wait hours must be a number ≥ 0.', 'error'); return; }
+    const remindInterval = parseInt(drafts.remind_interval_hours, 10);
+    if (isNaN(remindInterval) || remindInterval < 1) { showToast('Repeat interval must be a number ≥ 1.', 'error'); return; }
+    const message = drafts.message.trim();
+    if (!message) { showToast('Message cannot be empty.', 'error'); return; }
+    setSavingForm(true);
+    try {
+      const res = await patch({ wait_hours: waitHours, remind_interval_hours: remindInterval, message });
+      if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
+      else { showToast(res.error?.message || 'Failed to save.', 'error'); }
+    } catch (e) {
+      showToast('Network error while saving.', 'error');
+    } finally { setSavingForm(false); }
+  };
+
+  const resetMessage = () => {
+    const def = (settings.defaults && settings.defaults.message) || '';
+    if (!def) { showToast('No default available.', 'error'); return; }
+    setDrafts(prev => ({ ...prev, message: def }));
+  };
+
+  const dirty = drafts.wait_hours !== String(settings.wait_hours ?? '')
+    || drafts.remind_interval_hours !== String(settings.remind_interval_hours ?? '')
+    || (drafts.message || '') !== (settings.message || '');
+
+  const preview = (drafts.message || '')
+    .replace(/\{name\}/g, 'Asha')
+    .replace(/\{credits\}/g, '1,000')
+    .replace(/\{amount\}/g, '18,000');
+  const segs = smsSegments(drafts.message || '').segments;
+
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Pending Payment Reminder</h3>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:'#eff6ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <CreditCard size={16} strokeWidth={2} color={BRAND}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
+        Sent (SMS, from the platform's <strong>SENDA</strong> sender ID) to a customer who started a
+        mobile-money payment for SMS/WhatsApp credits but never completed it — covers both package
+        and custom-amount purchases. Also drives the in-app "complete your payment" popup.
+      </p>
+
+      {loading ? (
+        <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+      ) : error ? (
+        <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
+      ) : (
+        <div style={{marginTop:8}}>
+          {/* Enable toggle */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,padding:'16px 0',borderTop:'1px solid #f1f5f9'}}>
+            <div>
+              <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Enabled</p>
+              <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>Send the reminder (SMS + in-app popup) for unpaid orders.</p>
+            </div>
+            <button
+              role="switch" aria-checked={!!settings.enabled} aria-label="Enabled"
+              disabled={savingToggle} onClick={toggleEnabled}
+              style={{
+                position:'relative', width:46, height:26, borderRadius:13, flexShrink:0, border:'none',
+                cursor:savingToggle?'wait':'pointer', background: settings.enabled ? BRAND : '#cbd5e1',
+                transition:'background .2s ease', opacity:savingToggle?0.7:1,
+              }}>
+              <span style={{position:'absolute',top:3,left: settings.enabled ? 23 : 3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+            </button>
+          </div>
+
+          <div style={{paddingTop:16, borderTop:'1px solid #f1f5f9', opacity: settings.enabled ? 1 : 0.55}}>
+            {/* Wait hours + repeat interval */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Wait before first reminder (hours)
+                </label>
+                <input
+                  type="number" min="0" className="senda-input" value={drafts.wait_hours}
+                  onChange={e => setDrafts(prev => ({ ...prev, wait_hours: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>Give the mobile money prompt time to complete first.</p>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Repeat every (hours)
+                </label>
+                <input
+                  type="number" min="1" className="senda-input" value={drafts.remind_interval_hours}
+                  onChange={e => setDrafts(prev => ({ ...prev, remind_interval_hours: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>12h ≈ twice a day, until paid.</p>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div style={{marginTop:14}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Message text</label>
+              <textarea
+                value={drafts.message} rows={3}
+                onChange={e => setDrafts(prev => ({ ...prev, message: e.target.value }))}
+                placeholder="Enter the pending-payment reminder message…"
+                style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:6,flexWrap:'wrap'}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                  {PENDING_PAYMENT_PLACEHOLDERS.map(p => (
+                    <button key={p} type="button"
+                      onClick={() => setDrafts(prev => ({ ...prev, message: (prev.message || '') + p }))}
+                      style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <span style={{fontSize:11,color:(drafts.message||'').length>800?RED:'#94a3b8'}}>
+                  {(drafts.message||'').length} chars · {segs} SMS{segs===1?'':'s'}
+                </span>
+              </div>
+
+              <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+                <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+                <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{preview || '—'}</p>
+              </div>
+
+              <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
+                <button className="senda-btn senda-btn-primary senda-btn-sm"
+                  disabled={!dirty || savingForm}
+                  onClick={saveForm}
+                  style={{opacity:(!dirty||savingForm)?0.5:1}}>
+                  {savingForm ? 'Saving…' : 'Save changes'}
+                </button>
+                {dirty && (
+                  <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                    onClick={() => applyServer(settings)}>
+                    Cancel
+                  </button>
+                )}
+                <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                  onClick={resetMessage} style={{marginLeft:'auto'}}>
+                  Reset message
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SENDER_ID_NUDGE_PLACEHOLDERS = ['{name}'];
+
+function SenderIdNudgeSettingsCard() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [settings, setSettings] = useState({
+    enabled: true, message: '', defaults: {}, placeholders: SENDER_ID_NUDGE_PLACEHOLDERS,
+  });
+  const [drafts, setDrafts]   = useState({ message: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [savingToggle, setSavingToggle] = useState(false);
+  const [savingForm, setSavingForm]     = useState(false);
+
+  const applyServer = (data) => {
+    const d = data || {};
+    setSettings(d);
+    setDrafts({ message: d.message || '' });
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/sender-id-nudge', {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) applyServer(res.data);
+        else setError(res.error?.message || 'Failed to load settings.');
+      })
+      .catch(e => { if (alive) setError(e.message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = (payload) => adminFetch('/api/admin/v1/sender-id-nudge/update', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  }, onLogout);
+
+  const toggleEnabled = async () => {
+    if (savingToggle) return;
+    const next = !settings.enabled;
+    setSavingToggle(true);
+    setSettings(prev => ({ ...prev, enabled: next })); // optimistic
+    try {
+      const res = await patch({ enabled: next });
+      if (res.success) { applyServer(res.data); showToast('Sender ID nudge ' + (next ? 'enabled.' : 'disabled.'), 'success'); }
+      else { setSettings(prev => ({ ...prev, enabled: !next })); showToast(res.error?.message || 'Failed to update.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, enabled: !next }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingToggle(false); }
+  };
+
+  const saveForm = async () => {
+    if (savingForm) return;
+    const message = drafts.message.trim();
+    if (!message) { showToast('Message cannot be empty.', 'error'); return; }
+    setSavingForm(true);
+    try {
+      const res = await patch({ message });
+      if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
+      else { showToast(res.error?.message || 'Failed to save.', 'error'); }
+    } catch (e) {
+      showToast('Network error while saving.', 'error');
+    } finally { setSavingForm(false); }
+  };
+
+  const resetMessage = () => {
+    const def = (settings.defaults && settings.defaults.message) || '';
+    if (!def) { showToast('No default available.', 'error'); return; }
+    setDrafts(prev => ({ ...prev, message: def }));
+  };
+
+  const dirty = (drafts.message || '') !== (settings.message || '');
+
+  const preview = (drafts.message || '').replace(/\{name\}/g, 'Asha');
+  const segs = smsSegments(drafts.message || '').segments;
+
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Register Sender ID Nudge</h3>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:'#ecfeff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <Tag size={16} strokeWidth={2} color={CYAN}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
+        One-time SMS (from the platform's <strong>SENDA</strong> sender ID) sent right after a new user
+        verifies their phone number, telling them to register a Sender ID (their business name) so
+        their messages don't send under the shared default.
+      </p>
+
+      {loading ? (
+        <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+      ) : error ? (
+        <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
+      ) : (
+        <div style={{marginTop:8}}>
+          {/* Enable toggle */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,padding:'16px 0',borderTop:'1px solid #f1f5f9'}}>
+            <div>
+              <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Enabled</p>
+              <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>Send the nudge SMS right after phone verification.</p>
+            </div>
+            <button
+              role="switch" aria-checked={!!settings.enabled} aria-label="Enabled"
+              disabled={savingToggle} onClick={toggleEnabled}
+              style={{
+                position:'relative', width:46, height:26, borderRadius:13, flexShrink:0, border:'none',
+                cursor:savingToggle?'wait':'pointer', background: settings.enabled ? BRAND : '#cbd5e1',
+                transition:'background .2s ease', opacity:savingToggle?0.7:1,
+              }}>
+              <span style={{position:'absolute',top:3,left: settings.enabled ? 23 : 3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+            </button>
+          </div>
+
+          <div style={{paddingTop:16, borderTop:'1px solid #f1f5f9', opacity: settings.enabled ? 1 : 0.55}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Message text</label>
+            <textarea
+              value={drafts.message} rows={3}
+              onChange={e => setDrafts(prev => ({ ...prev, message: e.target.value }))}
+              placeholder="Enter the Sender ID registration nudge message…"
+              style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:6,flexWrap:'wrap'}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                {SENDER_ID_NUDGE_PLACEHOLDERS.map(p => (
+                  <button key={p} type="button"
+                    onClick={() => setDrafts(prev => ({ ...prev, message: (prev.message || '') + p }))}
+                    style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <span style={{fontSize:11,color:(drafts.message||'').length>800?RED:'#94a3b8'}}>
+                {(drafts.message||'').length} chars · {segs} SMS{segs===1?'':'s'}
+              </span>
+            </div>
+
+            <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+              <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+              <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{preview || '—'}</p>
+            </div>
+
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
+              <button className="senda-btn senda-btn-primary senda-btn-sm"
+                disabled={!dirty || savingForm}
+                onClick={saveForm}
+                style={{opacity:(!dirty||savingForm)?0.5:1}}>
+                {savingForm ? 'Saving…' : 'Save changes'}
+              </button>
+              {dirty && (
+                <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                  onClick={() => applyServer(settings)}>
+                  Cancel
+                </button>
+              )}
+              <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                onClick={resetMessage} style={{marginLeft:'auto'}}>
+                Reset message
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsTab() {
   return (
     <div className="senda-fade-in">
       <SenderApprovalSmsSettings />
       <LowCreditWarningSettings />
+      <PendingPaymentReminderSettingsCard />
+      <SenderIdNudgeSettingsCard />
     </div>
   );
 }

@@ -231,6 +231,8 @@ export const API_CONFIG = {
 			OVERVIEW: '/billing/overview/',
 			PAYMENTS: {
 				PROVIDERS: '/billing/payments/providers/',
+				PENDING_REMINDER_SETTINGS: '/billing/payments/pending-reminder-settings/',
+				PENDING_FOR_ME: '/billing/payments/pending-for-me/',
 				INITIATE: '/billing/payments/initiate/',
 				VERIFY: (orderId: string) => `/billing/payments/verify/${orderId}/`,
 				STATUS: '/billing/payment-status/',

@@ -3145,6 +3145,70 @@ class ApiClient {
     }
   }
 
+  // 1b. Get admin-configured pending payment reminder popup settings
+  async getPendingPaymentReminderSettings(): Promise<ApiResponse<{
+    enabled: boolean;
+    wait_hours: number;
+    remind_interval_hours: number;
+    message: string;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PENDING_REMINDER_SETTINGS}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        enabled: boolean;
+        wait_hours: number;
+        remind_interval_hours: number;
+        message: string;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
+  // 1c. Get the current user's most recent unpaid payment attempt, if any.
+  // Covers both package purchases and custom-amount purchases (they're
+  // backed by separate DB models on the backend, but this endpoint unifies them).
+  async getMyPendingPayment(): Promise<ApiResponse<{
+    purchase: {
+      id: string;
+      invoice_number: string;
+      amount: string;
+      credits: number;
+      purchase_type: "sms" | "whatsapp";
+      created_at: string;
+    } | null;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.PAYMENTS.PENDING_FOR_ME}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<{
+        purchase: {
+          id: string;
+          invoice_number: string;
+          amount: string;
+          credits: number;
+          purchase_type: "sms" | "whatsapp";
+          created_at: string;
+        } | null;
+      }>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
   // 2. Initiate Payment for Package
   async initiatePayment(data: {
     package_id: string;

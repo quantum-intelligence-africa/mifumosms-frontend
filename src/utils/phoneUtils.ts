@@ -260,6 +260,27 @@ export function getPhoneMask(countryCode: string = 'TANZANIA'): string {
 }
 
 /**
+ * Tanzania mobile money network prefixes (national number, no country code)
+ */
+const TZ_MOBILE_MONEY_PREFIXES: Record<string, string> = {
+  '74': 'vodacom', '75': 'vodacom', '76': 'vodacom',
+  '65': 'tigo', '67': 'tigo', '71': 'tigo',
+  '68': 'airtel', '69': 'airtel', '78': 'airtel',
+  '61': 'halotel', '62': 'halotel',
+};
+
+/**
+ * Detects the mobile money provider (vodacom/tigo/airtel/halotel) from a
+ * Tanzanian phone number's prefix, so the user never has to pick a network
+ * themselves. Returns '' if the number isn't a recognized Tanzania mobile number.
+ */
+export function detectMobileMoneyProvider(phoneNumber: string): string {
+  const info = normalizePhoneNumber(phoneNumber);
+  if (!info.isValid || info.countryCode !== '255') return '';
+  return TZ_MOBILE_MONEY_PREFIXES[info.nationalNumber.substring(0, 2)] || '';
+}
+
+/**
  * Converts phone number to backend format (0XXXXXXXXX)
  * This is the format the backend expects for verification requests
  */

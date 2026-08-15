@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -34,15 +33,16 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient, SMSPackage, SMSBalance, WhatsAppCreditBalance, PaymentInitiationRequest, PaymentProgress, MobileMoneyProvider, CustomSMSCalculation } from "@/lib/api";
+import { apiClient, SMSPackage, SMSBalance, WhatsAppCreditBalance, PaymentInitiationRequest, PaymentProgress, CustomSMSCalculation } from "@/lib/api";
 import { useLanguage } from "@/hooks/useLanguage";
+import { detectMobileMoneyProvider, validatePhoneNumber } from "@/utils/phoneUtils";
 
-interface PaymentMethod {
-  id: string;
-  name: string;
-  icon: string;
-  fee?: string;
-}
+const MOBILE_MONEY_PROVIDER_NAMES: Record<string, string> = {
+  vodacom: "Vodacom M-Pesa",
+  tigo: "Tigo Pesa",
+  airtel: "Airtel Money",
+  halotel: "Halotel Money",
+};
 
 interface PaymentState {
   transactionId?: string;
@@ -80,7 +80,6 @@ const PurchaseSMS = () => {
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [customCredits, setCustomCredits] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [userPaymentNumber, setUserPaymentNumber] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("");
@@ -89,13 +88,11 @@ const PurchaseSMS = () => {
   const [loading, setLoading] = useState(false);
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [balanceLoading, setBalanceLoading] = useState(true);
-  const [providersLoading, setProvidersLoading] = useState(true);
   const [packages, setPackages] = useState<SMSPackage[]>([]);
   const [waPackages, setWaPackages] = useState<SMSPackage[]>([]);
   const [balance, setBalance] = useState<SMSBalance | WhatsAppCreditBalance | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>({ isActive: false });
   const [paymentPolling, setPaymentPolling] = useState<NodeJS.Timeout | null>(null);
-  const [mobileMoneyProviders, setMobileMoneyProviders] = useState<MobileMoneyProvider[]>([]);
   const [customSMSState, setCustomSMSState] = useState<CustomSMSState | null>(null);
   const [isCalculatingCustom, setIsCalculatingCustom] = useState(false);
   const [customCreditsError, setCustomCreditsError] = useState<string>("");
@@ -310,24 +307,7 @@ const PurchaseSMS = () => {
       }
     };
 
-    // Fetch providers
-    const fetchProviders = async () => {
-      try {
-        setProvidersLoading(true);
-        const providersResponse = await apiClient.getPaymentProviders();
-        if (providersResponse.success && providersResponse.data) {
-          setMobileMoneyProviders(providersResponse.data.providers);
-        }
-      } catch (error) {
-        logger.warn('Error fetching providers');
-      } finally {
-        setProvidersLoading(false);
-      }
-    };
-
-    // Start all requests in parallel (non-blocking)
     fetchPackages();
-    fetchProviders();
   }, [defaultPackages, defaultWhatsAppPackages]);
 
   // Fetch balance on mount and whenever the service type changes
@@ -344,26 +324,8 @@ const PurchaseSMS = () => {
     };
   }, [paymentPolling]);
 
-  // Dynamic payment methods from API
-  const paymentMethods: PaymentMethod[] = useMemo(() => {
-    if (mobileMoneyProviders.length > 0) {
-      return mobileMoneyProviders.map(provider => ({
-        id: provider.code,
-        name: provider.name,
-        icon: provider.code === 'vodacom' ? '📱' :
-              provider.code === 'tigo' ? '📱' :
-              provider.code === 'airtel' ? '📱' :
-              provider.code === 'halotel' ? '📱' : '🏦'
-      }));
-    }
-    // Fallback to default methods
-    return [
-      { id: "vodacom", name: "Vodacom M-Pesa", icon: "📱" },
-      { id: "tigo", name: "Tigo Pesa", icon: "📱" },
-      { id: "airtel", name: "Airtel Money", icon: "📱" },
-      { id: "halotel", name: "Halotel Money", icon: "📱" },
-    ];
-  }, [mobileMoneyProviders]);
+  // Mobile money provider is detected from the number itself — the user never picks a network
+  const detectedProvider = useMemo(() => detectMobileMoneyProvider(userPaymentNumber), [userPaymentNumber]);
 
   // Payment details for each method
   const paymentDetails = {
@@ -490,7 +452,6 @@ const PurchaseSMS = () => {
     setSelectedPackageId("");
     setCustomCredits("");
     setCustomSMSState(null);
-    setPaymentMethod("");
   }, [serviceType]);
 
   // Payment polling function
@@ -528,7 +489,6 @@ const PurchaseSMS = () => {
           setSelectedPackage("");
           setSelectedPackageId("");
           setCustomCredits("");
-          setPaymentMethod("");
           setUserPaymentNumber("");
           setUserEmail("");
           setUserName("");
@@ -574,19 +534,10 @@ const PurchaseSMS = () => {
       return;
     }
 
-    if (!paymentMethod) {
+    if (!userPaymentNumber.trim() || !validatePhoneNumber(userPaymentNumber)) {
       toast({
-        title: "Payment method required",
-        description: "Please select a payment method",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!userPaymentNumber.trim()) {
-      toast({
-        title: "Payment details required",
-        description: "Please enter your mobile money number",
+        title: "Mobile number required",
+        description: "Please enter a valid mobile money number",
         variant: "destructive"
       });
       return;
@@ -622,6 +573,9 @@ const PurchaseSMS = () => {
 
     try {
       let response;
+      // Fall back to vodacom if the number's prefix isn't in our known list —
+      // the backend still needs a provider value, and this covers rare prefixes.
+      const provider = detectedProvider || 'vodacom';
 
       if (selectedPackage) {
         // Package purchase
@@ -641,7 +595,7 @@ const PurchaseSMS = () => {
             buyer_email: userEmail,
             buyer_name: userName,
             buyer_phone: userPaymentNumber,
-            mobile_money_provider: paymentMethod,
+            mobile_money_provider: provider,
           });
         } else {
           logger.debug('Processing package purchase', { packageId, serviceType });
@@ -652,7 +606,7 @@ const PurchaseSMS = () => {
             buyer_email: userEmail,
             buyer_name: userName,
             buyer_phone: userPaymentNumber,
-            mobile_money_provider: paymentMethod,
+            mobile_money_provider: provider,
           };
           response = await apiClient.initiatePayment(paymentData);
         }
@@ -664,7 +618,7 @@ const PurchaseSMS = () => {
           buyer_email: userEmail,
           buyer_name: userName,
           buyer_phone: userPaymentNumber,
-          mobile_money_provider: paymentMethod
+          mobile_money_provider: provider
         });
       } else {
         toast({
@@ -824,103 +778,6 @@ const PurchaseSMS = () => {
               </div>
             </Card>
 
-            {/* Custom Amount shown first, packages below — flex-col-reverse flips
-                the display order of these two sections while keeping spacing. */}
-            <div className="flex flex-col-reverse gap-5">
-            {/* Package Selection */}
-            <div>
-              <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
-              <div className="flex justify-center">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-6xl w-full">
-                {serviceType === "sms" && packagesLoading ? (
-                  Array.from({ length: 3 }).map((_, index) => (
-                    <Card key={index} className="p-3 sm:p-4 glass h-full">
-                      <Skeleton className="h-5 w-16 mb-2" />
-                      <Skeleton className="h-7 w-24 mb-3" />
-                      <div className="space-y-2 mb-3 flex-1">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                      </div>
-                      <Skeleton className="h-5 w-full" />
-                    </Card>
-                  ))
-                ) : (
-                  (serviceType === "whatsapp"
-                    // Always use local WhatsApp defaults — the backend's `?type=whatsapp`
-                    // doesn't always return WhatsApp-specific tiers, so we guarantee the
-                    // user sees real WhatsApp pricing here.
-                    ? defaultWhatsAppPackages
-                    : (packages.length > 0 ? packages : defaultPackages).slice(0, 3)
-                  ).map((pkg) => {
-                    const isWhatsApp = serviceType === "whatsapp";
-                    return (
-                    <Card
-                      key={pkg.id}
-                      className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
-                        selectedPackage === pkg.id
-                          ? isWhatsApp
-                            ? "ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20"
-                            : "ring-2 ring-primary shadow-lg"
-                          : "hover:shadow-lg"
-                      }`}
-                      onClick={() => {
-                        setSelectedPackage(pkg.id);
-                        setSelectedPackageId(pkg.id);
-                        setCustomCredits("");
-                        setPaymentMethod("");
-                      }}
-                    >
-                      {pkg.is_popular && (
-                        <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
-                          <Badge className={`${isWhatsApp ? "bg-emerald-500 text-white" : "bg-primary text-primary-foreground"} text-xs px-3 py-1 font-semibold whitespace-nowrap`}>
-                            Most Popular
-                          </Badge>
-                        </div>
-                      )}
-                      {/* Channel pill — makes it obvious which service this card is for */}
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className={`text-[9.5px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full ${
-                          isWhatsApp
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-primary/10 text-primary"
-                        }`}>
-                          {isWhatsApp ? "WhatsApp" : "SMS"}
-                        </span>
-                      </div>
-                      <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
-                      <div className="mb-3">
-                        <p className={`text-xl sm:text-2xl font-bold mb-1 ${isWhatsApp ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>
-                          TZS {pkg.unit_price}/{isWhatsApp ? "msg" : "SMS"}
-                        </p>
-                        <p className="text-xs text-text-subtle">
-                          {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
-                           pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
-                           pkg.id === 'pro' ? '250,000 SMS and above' :
-                           'Custom')}
-                        </p>
-                      </div>
-                      <div className="space-y-2 mb-3 flex-1">
-                        {pkg.features?.map((feature, i) => (
-                          <div key={i} className="flex items-start text-xs text-foreground">
-                            <Check className={`w-3 h-3 ${isWhatsApp ? "text-emerald-500" : "text-green-500"} mr-2 flex-shrink-0 mt-0.5`} />
-                            <span>{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {selectedPackage === pkg.id && (
-                        <Badge variant="secondary" className={`w-full justify-center text-[10px] mt-auto ${isWhatsApp ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : ""}`}>
-                          Selected
-                        </Badge>
-                      )}
-                    </Card>
-                  );
-                  })
-                )}
-              </div>
-              </div>
-            </div>
-
             {/* Custom Amount */}
             <Card className="p-4 sm:p-6 glass">
               <h3 className="font-heading text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
@@ -943,7 +800,6 @@ const PurchaseSMS = () => {
                         setSelectedPackage("");
                         setSelectedPackageId("");
                       }
-                      setPaymentMethod("");
                     }}
                     onFocus={() => {
                       if (selectedPackage && customCredits === "") {
@@ -1034,132 +890,75 @@ const PurchaseSMS = () => {
                 </p>
               )}
             </Card>
-            </div>
 
-            {/* Payment Method - Only show when package or custom amount is selected */}
+            {/* Payment Details - shown once the user has picked an amount */}
             {(selectedPackage || customCredits) && (
-              <Card className="p-4 sm:p-6 glass">
-                <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">{t('select_payment_method')}</h3>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {providersLoading ? (
-                      // Skeleton loaders for payment methods
-                      Array.from({ length: 4 }).map((_, index) => (
-                        <div key={index} className="flex items-center space-x-2 p-2 sm:p-3 rounded-lg glass-subtle">
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                          <div className="flex-1">
-                            <Skeleton className="h-4 w-24 mb-1" />
-                            <Skeleton className="h-3 w-32" />
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      paymentMethods.map((method) => (
-                      <div
-                        key={method.id}
-                        className={`flex items-center space-x-2 p-2 sm:p-3 rounded-lg glass-subtle cursor-pointer transition-smooth ${
-                          paymentMethod === method.id ? "ring-2 ring-primary" : ""
-                        }`}
-                        onClick={() => setPaymentMethod(method.id)}
-                      >
-                        <RadioGroupItem value={method.id} id={method.id} className="h-4 w-4" />
-                        <Label htmlFor={method.id} className="flex-1 cursor-pointer flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                            method.id === 'mpesa' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
-                            method.id === 'tigopesa' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                            method.id === 'airtel' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
-                            method.id === 'bank' ? 'bg-muted text-foreground' :
-                            'bg-primary/10 text-primary'
-                          }`}>
-                            {method.id === 'bank' ? (
-                              <CreditCard className="w-4 h-4" />
-                            ) : (
-                              <Smartphone className="w-4 h-4" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{method.name}</p>
-                            <p className="text-xs text-text-subtle">
-                              {method.id === 'mpesa' ? 'Vodacom Tanzania' :
-                               method.id === 'tigopesa' ? 'Tigo Tanzania' :
-                               method.id === 'airtel' ? 'Airtel Tanzania' :
-                               method.id === 'bank' ? 'Halo Pesa Transfer' :
-                               'Mobile Money'}
-                            </p>
-                          </div>
-                        </Label>
-                      </div>
-                      ))
-                    )}
-                  </div>
-                </RadioGroup>
+            <Card className="p-4 sm:p-6 glass">
+              <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">{t('select_payment_method')}</h3>
 
-                {/* Payment Number Input */}
-                {paymentMethod && (
-                  <div className="mt-3 space-y-1">
-                    <Label htmlFor="paymentNumber" className="text-sm">
-                      {paymentMethod === 'vodacom' ? 'M-Pesa Number (Vodacom)' :
-                       paymentMethod === 'tigo' ? 'Tigo Pesa Number' :
-                       paymentMethod === 'airtel' ? 'Airtel Money Number' :
-                       paymentMethod === 'halotel' ? 'Halotel Money Number' :
-                       'Mobile Money Number'}
-                    </Label>
-                    <Input
-                      id="paymentNumber"
-                      type="text"
-                      placeholder={
-                        paymentMethod === 'vodacom' ? 'e.g., 0762 123 456' :
-                        paymentMethod === 'tigo' ? 'e.g., 0652 123 456' :
-                        paymentMethod === 'airtel' ? 'e.g., 0682 123 456' :
-                        paymentMethod === 'halotel' ? 'e.g., 0682 123 456' :
-                        'e.g., 0762 123 456'
-                      }
-                      value={userPaymentNumber}
-                      onChange={(e) => setUserPaymentNumber(e.target.value)}
-                      className="glass-subtle border-0 h-9 text-sm"
-                    />
-                    <p className="text-xs text-text-subtle">
-                      {t('enter_phone_number_mobile_money')}
-                    </p>
-                  </div>
-                )}
-
-                {/* Email Field */}
-                <div className="space-y-1">
-                  <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
-                    {t('email_address')}
-                  </Label>
+              {/* Payment Number Input — the network (Vodacom/Tigo/Airtel/Halotel) is
+                  detected automatically from the number, so there's nothing to pick. */}
+              <div className="space-y-1">
+                <Label htmlFor="paymentNumber" className="text-sm">
+                  Mobile Money Number
+                </Label>
+                <div className="relative">
+                  <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
-                    id="userEmail"
-                    type="email"
-                    placeholder="e.g., sway@example.com"
-                    value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
-                    className="glass-subtle border-0 h-9 text-sm"
+                    id="paymentNumber"
+                    type="tel"
+                    placeholder="e.g., 0762 123 456"
+                    value={userPaymentNumber}
+                    onChange={(e) => setUserPaymentNumber(e.target.value)}
+                    className="glass-subtle border-0 h-10 text-sm pl-9"
                   />
-                  <p className="text-xs text-text-subtle">
-                    {t('receipt_and_confirmation')}
-                  </p>
+                  {detectedProvider && (
+                    <Badge variant="secondary" className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                      {MOBILE_MONEY_PROVIDER_NAMES[detectedProvider]}
+                    </Badge>
+                  )}
                 </div>
+                <p className="text-xs text-text-subtle">
+                  {t('enter_phone_number_mobile_money')}
+                </p>
+              </div>
 
-                {/* Name Field */}
-                <div className="space-y-1">
-                  <Label htmlFor="userName" className="text-sm font-medium text-foreground">
-                    {t('full_name')}
-                  </Label>
-                  <Input
-                    id="userName"
-                    type="text"
-                    placeholder="Enter Full Name"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    className="glass-subtle border-0 h-9 text-sm"
-                  />
-                  <p className="text-xs text-text-subtle">
-                    {t('full_name_account')}
-                  </p>
-                </div>
-              </Card>
+              {/* Email Field */}
+              <div className="mt-3 space-y-1">
+                <Label htmlFor="userEmail" className="text-sm font-medium text-foreground">
+                  {t('email_address')}
+                </Label>
+                <Input
+                  id="userEmail"
+                  type="email"
+                  placeholder="e.g., sway@example.com"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  className="glass-subtle border-0 h-9 text-sm"
+                />
+                <p className="text-xs text-text-subtle">
+                  {t('receipt_and_confirmation')}
+                </p>
+              </div>
+
+              {/* Name Field */}
+              <div className="mt-3 space-y-1">
+                <Label htmlFor="userName" className="text-sm font-medium text-foreground">
+                  {t('full_name')}
+                </Label>
+                <Input
+                  id="userName"
+                  type="text"
+                  placeholder="Enter Full Name"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="glass-subtle border-0 h-9 text-sm"
+                />
+                <p className="text-xs text-text-subtle">
+                  {t('full_name_account')}
+                </p>
+              </div>
+            </Card>
             )}
 
             {/* Proceed Button */}
@@ -1176,6 +975,99 @@ const PurchaseSMS = () => {
                 </Button>
               </div>
             )}
+
+            {/* Package Selection — shown last, as an optional preset alternative to the custom amount above */}
+            <div>
+              <h2 className="font-heading text-base sm:text-lg font-semibold mb-2">{t('choose_package')}</h2>
+              <div className="flex justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-6xl w-full">
+                {serviceType === "sms" && packagesLoading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="p-3 sm:p-4 glass h-full">
+                      <Skeleton className="h-5 w-16 mb-2" />
+                      <Skeleton className="h-7 w-24 mb-3" />
+                      <div className="space-y-2 mb-3 flex-1">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                      <Skeleton className="h-5 w-full" />
+                    </Card>
+                  ))
+                ) : (
+                  (serviceType === "whatsapp"
+                    // Always use local WhatsApp defaults — the backend's `?type=whatsapp`
+                    // doesn't always return WhatsApp-specific tiers, so we guarantee the
+                    // user sees real WhatsApp pricing here.
+                    ? defaultWhatsAppPackages
+                    : (packages.length > 0 ? packages : defaultPackages).slice(0, 3)
+                  ).map((pkg) => {
+                    const isWhatsApp = serviceType === "whatsapp";
+                    return (
+                    <Card
+                      key={pkg.id}
+                      className={`p-3 sm:p-4 cursor-pointer transition-smooth glass relative overflow-visible h-full flex flex-col ${
+                        selectedPackage === pkg.id
+                          ? isWhatsApp
+                            ? "ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20"
+                            : "ring-2 ring-primary shadow-lg"
+                          : "hover:shadow-lg"
+                      }`}
+                      onClick={() => {
+                        setSelectedPackage(pkg.id);
+                        setSelectedPackageId(pkg.id);
+                        setCustomCredits("");
+                      }}
+                    >
+                      {pkg.is_popular && (
+                        <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
+                          <Badge className={`${isWhatsApp ? "bg-emerald-500 text-white" : "bg-primary text-primary-foreground"} text-xs px-3 py-1 font-semibold whitespace-nowrap`}>
+                            Most Popular
+                          </Badge>
+                        </div>
+                      )}
+                      {/* Channel pill — makes it obvious which service this card is for */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className={`text-[9.5px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full ${
+                          isWhatsApp
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "bg-primary/10 text-primary"
+                        }`}>
+                          {isWhatsApp ? "WhatsApp" : "SMS"}
+                        </span>
+                      </div>
+                      <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
+                      <div className="mb-3">
+                        <p className={`text-xl sm:text-2xl font-bold mb-1 ${isWhatsApp ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>
+                          TZS {pkg.unit_price}/{isWhatsApp ? "msg" : "SMS"}
+                        </p>
+                        <p className="text-xs text-text-subtle">
+                          {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
+                           pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
+                           pkg.id === 'pro' ? '250,000 SMS and above' :
+                           'Custom')}
+                        </p>
+                      </div>
+                      <div className="space-y-2 mb-3 flex-1">
+                        {pkg.features?.map((feature, i) => (
+                          <div key={i} className="flex items-start text-xs text-foreground">
+                            <Check className={`w-3 h-3 ${isWhatsApp ? "text-emerald-500" : "text-green-500"} mr-2 flex-shrink-0 mt-0.5`} />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {selectedPackage === pkg.id && (
+                        <Badge variant="secondary" className={`w-full justify-center text-[10px] mt-auto ${isWhatsApp ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : ""}`}>
+                          Selected
+                        </Badge>
+                      )}
+                    </Card>
+                  );
+                  })
+                )}
+              </div>
+              </div>
+            </div>
 
             {/* Invoice Dialog */}
             <Dialog
@@ -1260,7 +1152,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-subtle text-xs sm:text-sm">{t('payment_method')}</span>
                       <span className="font-medium text-xs sm:text-sm">
-                        {paymentMethods.find(m => m.id === paymentMethod)?.name || 'Mobile Money'}
+                        {MOBILE_MONEY_PROVIDER_NAMES[detectedProvider] || 'Mobile Money'}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
@@ -1272,7 +1164,7 @@ const PurchaseSMS = () => {
                   </div>
 
                   {/* Payment Instructions */}
-                  {paymentMethod && !paymentState.isActive && (
+                  {userPaymentNumber && !paymentState.isActive && (
                     <div className="mt-2 p-2 bg-primary/5 rounded-lg border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-1 flex items-center gap-2 text-xs sm:text-sm">
                         <Smartphone className="w-3 h-3" />
