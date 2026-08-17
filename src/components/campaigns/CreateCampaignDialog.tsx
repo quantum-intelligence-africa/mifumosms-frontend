@@ -29,6 +29,7 @@ import { useSenderNames } from '@/hooks/useSenderNames';
 import {
   calculateCampaignCost,
   calculateRecurringWeeklyCost,
+  calculateSMSSegments,
   validateRecurringSchedule,
   formatScheduleDescription,
   estimateCampaignSummary
@@ -497,7 +498,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <div className="flex items-center gap-2">
                     <Info className="w-4 h-4 text-blue-600" />
                     <span className="text-xs sm:text-sm text-blue-800 font-medium">
-                      {Math.ceil(formData.message_text.length / 160)} SMS { formData.message_text.length > 0 ? `(${formData.message_text.length} chars)` : ''}
+                      {calculateSMSSegments(formData.message_text)} SMS { formData.message_text.length > 0 ? `(${formData.message_text.length} chars)` : ''}
                     </span>
                   </div>
                   <span className={`text-xs font-bold ${formData.message_text.length > 140 ? 'text-amber-600' : 'text-green-600'}`}>
@@ -716,7 +717,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between bg-white rounded-lg p-2.5 sm:p-3">
                       <span className="text-gray-700">Message Length</span>
-                      <span className="font-bold text-gray-900">{formData.message_text.length} chars ({Math.ceil(formData.message_text.length / 160)} SMS)</span>
+                      <span className="font-bold text-gray-900">{formData.message_text.length} chars ({calculateSMSSegments(formData.message_text)} SMS)</span>
                     </div>
                     <div className="flex items-center justify-between bg-white rounded-lg p-2.5 sm:p-3">
                       <span className="text-gray-700">Recipients</span>

@@ -5,14 +5,18 @@
  * recurring schedule validation, and SMS segmentation.
  */
 
+import { calculateSMSegments } from './smsUtils';
+
 /**
- * Calculate number of SMS segments required for a message
+ * Calculate number of SMS segments required for a message.
+ * Delegates to smsUtils so campaign estimates always match the single-source
+ * segment rule (GSM 03.38: 160/part single, 153/part once multi-part) that the
+ * backend bills against.
  * @param message - Message text
- * @returns Number of SMS segments (160 chars per segment)
+ * @returns Number of SMS segments
  */
 export function calculateSMSSegments(message: string): number {
-	if (!message || message.length === 0) return 0;
-	return Math.ceil(message.length / 160);
+	return calculateSMSegments(message);
 }
 
 /**

@@ -12483,7 +12483,7 @@ function MessageComposerModal({ recipients, onClose, onSent }) {
   const overCap = recipients.length > MAX_RECIPIENTS;
   const withPhone = recipients.filter(r => r.phone).length;
   const withEmail = recipients.filter(r => r.email).length;
-  const smsSegments = Math.max(1, Math.ceil((body.length || 0) / 160));
+  const segments = Math.max(1, smsSegments(body).segments);
 
   const submit = async () => {
     if (overCap) { showToast(`Select at most ${MAX_RECIPIENTS} recipients per send.`, 'error'); return; }
@@ -12570,7 +12570,7 @@ function MessageComposerModal({ recipients, onClose, onSent }) {
           {useSms && (
             <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'9px 12px',marginBottom:14,fontSize:11,color:'#92400e',display:'flex',gap:7}}>
               <AlertTriangle size={13} strokeWidth={2} style={{flexShrink:0,marginTop:1}}/>
-              <span>SMS sends through the platform provider (sender “SENDA”) and uses platform credits — ~{smsSegments} segment{smsSegments>1?'s':''} per message.</span>
+              <span>SMS sends through the platform provider (sender “SENDA”) and uses platform credits — ~{segments} segment{segments>1?'s':''} per message.</span>
             </div>
           )}
 
@@ -12585,7 +12585,7 @@ function MessageComposerModal({ recipients, onClose, onSent }) {
           <textarea value={body} onChange={e=>setBody(e.target.value)} rows={5} placeholder="Write your message…"
             className="senda-input" style={{height:'auto',fontSize:13.5,borderRadius:10,padding:'10px 14px',resize:'vertical',lineHeight:1.55}}/>
           <div style={{fontSize:10.5,color:'#94a3b8',marginTop:5}}>
-            {body.length} chars{useSms ? ` · ~${smsSegments} SMS segment${smsSegments>1?'s':''}` : ''}
+            {body.length} chars{useSms ? ` · ~${segments} SMS segment${segments>1?'s':''}` : ''}
           </div>
         </div>
 

@@ -1,20 +1,49 @@
 /**
  * SMS Segment Calculation Utilities
  *
- * SMS segments are calculated based on the following rules:
- * - Plain text only: 160 characters per segment
- * - Maximum characters: 800 (5 segments maximum)
- * - Formula: (message_length + 159) // 160
+ * Mirrors the backend's billing rule (messaging/sms_segments.py, GSM 03.38):
+ * a single part holds 160 GSM-7 septets (or 70 UCS-2 units for non-GSM-7 text),
+ * but once a message needs more than one part, each part only holds 153 septets
+ * (or 67 UCS-2 units) because concatenation headers eat into the budget.
+ * Maximum: 5 segments (see MAX_SEGMENTS below).
  */
 
+const GSM_7BIT_BASIC = new Set(
+	"@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?" +
+	"¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"
+);
+const GSM_7BIT_EXTENDED = new Set("^{}\\[~]|€");
+
+function gsmSeptetCount(text: string): number | null {
+	let total = 0;
+	for (const ch of text) {
+		if (GSM_7BIT_EXTENDED.has(ch)) total += 2;
+		else if (GSM_7BIT_BASIC.has(ch)) total += 1;
+		else return null;
+	}
+	return total;
+}
+
+function utf16CodeUnitCount(text: string): number {
+	// UTF-16 code units, matching Python's len(text.encode("utf-16-le")) // 2
+	return text.length;
+}
+
 /**
- * Calculate the number of SMS segments required for a message
+ * Calculate the number of billable SMS segments required for a message.
  * @param message - The message text to calculate segments for
- * @returns The number of segments required
+ * @returns The number of segments required (0 for empty message)
  */
 export function calculateSMSegments(message: string): number {
 	if (!message || message.length === 0) return 0;
-	return Math.ceil(message.length / 160);
+	const septets = gsmSeptetCount(message);
+	if (septets !== null) {
+		if (septets <= 160) return 1;
+		return Math.max(1, Math.ceil(septets / 153));
+	}
+	const units = utf16CodeUnitCount(message);
+	if (units <= 70) return 1;
+	return Math.max(1, Math.ceil(units / 67));
 }
 
 /**
