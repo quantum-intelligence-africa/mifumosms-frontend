@@ -112,7 +112,7 @@ export async function handlePickFromPhone(): Promise<{
 }> {
 	if (!isContactPickerSupported()) {
 		throw new Error(
-			"Phone contact import isn't supported on this device/browser. Try Chrome on Android or use CSV upload instead."
+			"Phone contact import isn't supported on this device/browser. Try Chrome on Android, or export contacts as a vCard (.vcf) and upload it instead."
 		);
 	}
 
@@ -174,11 +174,11 @@ export const getContactPickerSupportMessage = (): string => {
 
 	const userAgent = navigator.userAgent.toLowerCase();
 	if (userAgent.includes("iphone") || userAgent.includes("ipad")) {
-		return "Not supported on iOS Safari. Use CSV upload or manual entry.";
+		return "Not supported on iOS Safari. Export contacts as a vCard (.vcf) and upload it instead.";
 	}
 	if (userAgent.includes("android")) {
-		return "Not supported on this browser. Try Chrome or Edge on Android.";
+		return "Not supported on this browser. Try Chrome/Edge on Android, or export contacts as a vCard (.vcf) and upload it instead.";
 	}
 
-	return "Not supported on this device. Use CSV upload or manual entry.";
+	return "Not supported on this device. Export contacts as a vCard (.vcf) and upload it instead.";
 };

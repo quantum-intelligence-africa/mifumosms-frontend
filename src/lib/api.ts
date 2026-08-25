@@ -2149,8 +2149,13 @@ class ApiClient {
     // contact-import backend, so they are intentionally not emitted here.
     const headers = ['name', 'phone', 'email', 'tags'];
     const rows = contacts.map(contact => {
-      // Ensure phone number has + prefix for E.164 format
-      let phone = contact.phone_e164 || '';
+      // Accept both the canonical CreateContactRequest shape (name/phone_e164) and
+      // the plain {name|full_name, phone, email} shape produced by the CSV/Excel/
+      // vCard parsers and the manual "Phone Contacts" form -- callers here aren't
+      // always type-checked against CreateContactRequest, so this must not silently
+      // drop a phone number just because it arrived under a different field name.
+      const c = contact as any;
+      let phone = c.phone_e164 || c.phone || '';
       if (phone && !phone.startsWith('+')) {
         phone = '+' + phone;
       }
@@ -2158,7 +2163,7 @@ class ApiClient {
       const tags = Array.isArray(contact.tags) ? contact.tags.join(',') : '';
 
       return [
-        contact.name || '',
+        c.name || c.full_name || '',
         phone,
         contact.email || '',
         tags

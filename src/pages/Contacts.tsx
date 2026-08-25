@@ -2762,7 +2762,9 @@ Your contacts remain private and are only stored in your SENDA account.
 <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
 <p className="text-xs text-blue-700 dark:text-blue-300">
 <strong>Tip:</strong> You can add more contacts after the initial selection by tapping "Add More Contacts" in the review dialog.
-If direct access doesn't work, you can export your contacts from your phone's contact app and use CSV upload instead.
+If direct access doesn't work (Samsung Internet, Safari, Firefox and most non-Chrome browsers don't support it), open your
+phone's Contacts app, select contacts, choose Share → vCard / .vcf file, then use the "From Phone" option in the Import
+dialog to upload it — that works on any browser.
 </p>
 </div>
 </div>

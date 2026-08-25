@@ -14,13 +14,14 @@ import { useToast } from '@/hooks/use-toast';
 import { isContactPickerSupported, isMobileDevice, MobileContact } from '@/utils/mobileContactPicker';
 import { parseCSVFile } from '@/utils/csvParser';
 import { parseExcelFile } from '@/utils/excelParser';
+import { parseVCardFile } from '@/utils/vcardParser';
 import { MobileContactsDialog } from './MobileContactsDialog';
 
 interface ContactImportDialogProps {
   children: React.ReactNode;
 }
 
-type ImportType = 'csv' | 'excel' | 'phone_contacts' | 'mobile_contacts';
+type ImportType = 'csv' | 'excel' | 'vcard' | 'phone_contacts' | 'mobile_contacts';
 
 interface ImportResult {
   success: boolean;
@@ -82,6 +83,20 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         errors: result.errors,
         message: result.warnings.join('\n')
       });
+    } else if (extension === 'vcf') {
+      setImportType('vcard');
+      // Parse vCard and show preview/analysis
+      const result = await parseVCardFile(selectedFile);
+      setCsvData('');
+      setImportResult({
+        success: result.errors.length === 0,
+        imported: result.contacts.length,
+        updated: 0,
+        skipped: 0,
+        total_processed: result.contacts.length,
+        errors: result.errors,
+        message: result.warnings.join('\n')
+      });
     }
   };
 
@@ -104,7 +119,9 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
       setIsImporting(true);
 
       const importData = {
-        import_type: 'mobile_contacts',
+        // The backend only recognizes 'csv' | 'excel' | 'phone_contacts' -- 'mobile_contacts'
+        // is a frontend-only label for where these came from, not a valid API import_type.
+        import_type: 'phone_contacts' as const,
         contacts: selectedContacts.map(contact => ({
           name: contact.full_name || 'Unknown',
           phone_e164: contact.phone,
@@ -175,6 +192,10 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         } else if (importType === 'excel' && file) {
           // Parse Excel again for import
           const result = await parseExcelFile(file);
+          importData.contacts = result.contacts;
+        } else if (importType === 'vcard' && file) {
+          // Parse vCard again for import
+          const result = await parseVCardFile(file);
           importData.contacts = result.contacts;
         } else {
           if (!csvData.trim()) {
@@ -249,6 +270,12 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     Phone Contacts
                   </div>
                 </SelectItem>
+                <SelectItem value="vcard">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" />
+                    Contacts File (.vcf)
+                  </div>
+                </SelectItem>
                 <SelectItem
                   value="mobile_contacts"
                   disabled={!isContactPickerSupported() || !isMobileDevice()}
@@ -283,6 +310,31 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   {file.name}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* vCard Upload — works in every browser (plain file input), unlike the
+              native device-contacts picker below which only a few browsers support */}
+          {importType === 'vcard' && (
+            <div className="space-y-2">
+              <Label>Upload Contacts File (.vcf)</Label>
+              <Input
+                type="file"
+                accept=".vcf,text/vcard,text/x-vcard"
+                onChange={handleFileUpload}
+                className="cursor-pointer"
+              />
+              {file && (
+                <div className="flex items-center gap-2 text-sm text-text-subtle">
+                  <FileText className="w-4 h-4" />
+                  {file.name}
+                </div>
+              )}
+              <div className="text-xs text-text-subtle">
+                Works on any phone and any browser (Samsung Internet, Safari, Chrome, Firefox...).
+                Open your phone's Contacts app, select the contacts to send, choose <strong>Share</strong> →{' '}
+                <strong>vCard / .vcf file</strong>, then upload the file here.
+              </div>
             </div>
           )}
 

@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { parseCSVFile, generateSampleCSV, CSVContact, CSVParseResult } from '@/utils/csvParser';
 import { parseExcelFile } from '@/utils/excelParser';
+import { parseVCardFile } from '@/utils/vcardParser';
 import { CreateContactRequest } from '@/lib/api';
 
 interface CSVImportDialogProps {
@@ -39,7 +40,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<CSVContact[]>([]);
   const [importProgress, setImportProgress] = useState(0);
-  const [importType, setImportType] = useState<'csv' | 'excel'>('csv');
+  const [importType, setImportType] = useState<'csv' | 'excel' | 'vcard'>('csv');
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [updateExisting, setUpdateExisting] = useState(false);
   const [importResult, setImportResult] = useState<{
@@ -64,6 +65,11 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
       if (importType === 'excel') {
         // For Excel files, parse locally like CSV
         const result = await parseExcelFile(file);
+        setParseResult(result);
+        setSelectedContacts(result.contacts);
+      } else if (importType === 'vcard') {
+        // For vCard (.vcf) files exported from a phone's Contacts app
+        const result = await parseVCardFile(file);
         setParseResult(result);
         setSelectedContacts(result.contacts);
       } else {
@@ -91,8 +97,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
   };
 
   const handleImport = async () => {
-    if (importType === 'excel' && selectedContacts.length === 0) return;
-    if (importType === 'csv' && selectedContacts.length === 0) return;
+    if (selectedContacts.length === 0) return;
 
     try {
       setImportProgress(0);
@@ -110,7 +115,10 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
       }));
 
       const importData = {
-        import_type: importType as 'csv' | 'excel',
+        // vCard contacts are already parsed into the same shape as CSV/Excel --
+        // 'phone_contacts' sends them as a plain contacts array instead of raw
+        // csv_data/file, which is what the backend expects for this import_type.
+        import_type: (importType === 'vcard' ? 'phone_contacts' : importType) as 'csv' | 'excel' | 'phone_contacts',
         contacts: contactsToImport,
         skip_duplicates: skipDuplicates,
         update_existing: updateExisting
@@ -198,7 +206,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
             // File Upload Section - Compact Design
             <div className="space-y-4">
               {/* File Type & Upload in One Section */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <Button
                   variant={importType === 'csv' ? 'default' : 'outline'}
                   size="sm"
@@ -217,38 +225,56 @@ export function CSVImportDialog({ open, onOpenChange, onImport, isImporting = fa
                   <FileSpreadsheet className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Excel
                 </Button>
+                <Button
+                  variant={importType === 'vcard' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImportType('vcard')}
+                  className="h-9 sm:h-12 text-xs sm:text-sm"
+                >
+                  <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  From Phone
+                </Button>
               </div>
 
               {/* Upload Area - Compact */}
               <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-6 text-center hover:border-primary/50 transition-colors">
                 <Upload className="w-7 h-7 sm:w-10 sm:h-10 mx-auto mb-2 sm:mb-3 text-text-subtle" />
                 <h3 className="font-semibold text-xs sm:text-base mb-1 sm:mb-2">
-                  Upload {importType === 'excel' ? 'Excel' : 'CSV'} File
+                  {importType === 'vcard' ? 'Upload Contacts File (.vcf)' : `Upload ${importType === 'excel' ? 'Excel' : 'CSV'} File`}
                 </h3>
                 <p className="text-xs text-text-subtle mb-2 sm:mb-4">
-                  Phone column required (name, email &amp; tags optional)
+                  {importType === 'vcard'
+                    ? 'Works on any phone and any browser — Samsung Internet, Safari, Chrome, Firefox...'
+                    : 'Phone column required (name, email & tags optional)'}
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={importType === 'excel' ? '.xlsx,.xls' : '.csv'}
+                  accept={importType === 'excel' ? '.xlsx,.xls' : importType === 'vcard' ? '.vcf,text/vcard,text/x-vcard' : '.csv,text/csv'}
                   onChange={handleFileSelect}
                   className="hidden"
                 />
                 <Button onClick={() => fileInputRef.current?.click()} size="sm" className="text-xs sm:text-sm h-8 sm:h-10">
                   Choose File
                 </Button>
-                <p className="text-xs text-text-subtle mt-2 sm:mt-3">
-                  Not sure about the format?{' '}
-                  <button
-                    type="button"
-                    onClick={handleDownloadSample}
-                    className="text-primary font-medium underline underline-offset-2 hover:opacity-80"
-                  >
-                    Download the sample file
-                  </button>
-                  , fill in your contacts, then upload it{importType === 'excel' ? ' (open the sample in Excel and Save As .xlsx)' : ''}.
-                </p>
+                {importType === 'vcard' ? (
+                  <p className="text-xs text-text-subtle mt-2 sm:mt-3">
+                    Open your phone's <strong>Contacts</strong> app, select the contacts to send, choose{' '}
+                    <strong>Share</strong> → <strong>vCard / .vcf file</strong>, save it, then upload it here.
+                  </p>
+                ) : (
+                  <p className="text-xs text-text-subtle mt-2 sm:mt-3">
+                    Not sure about the format?{' '}
+                    <button
+                      type="button"
+                      onClick={handleDownloadSample}
+                      className="text-primary font-medium underline underline-offset-2 hover:opacity-80"
+                    >
+                      Download the sample file
+                    </button>
+                    , fill in your contacts, then upload it{importType === 'excel' ? ' (open the sample in Excel and Save As .xlsx)' : ''}.
+                  </p>
+                )}
               </div>
 
               {/* Options & Requirements in Tabs/Accordion Style */}

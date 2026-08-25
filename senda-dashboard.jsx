@@ -26,6 +26,7 @@ import {
   EyeOff,
   ExternalLink,
   FileText,
+  Gift,
   Globe,
   Handshake,
   Hourglass,
@@ -767,6 +768,9 @@ function Badge({ status }) {
     platinum:        ['badge-violet', 'Platinum'],
     gold:            ['badge-amber',  'Gold'],
     silver:          ['badge-gray',   'Silver'],
+    expired:         ['badge-red',    'Expired'],
+    expiring_soon:   ['badge-amber',  'Expiring Soon'],
+    skipped:         ['badge-gray',   'Skipped'],
   };
   const [cls, label] = map[status?.toLowerCase()] || ['badge-gray', status];
   return <span className={`senda-badge ${cls}`}><span style={{width:5,height:5,borderRadius:'50%',background:'currentColor',display:'inline-block'}}></span>{label}</span>;
@@ -6828,14 +6832,17 @@ const LOW_CREDIT_PLACEHOLDERS = ['{credits}', '{name}', '{threshold}'];
 function LowCreditWarningSettings() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [settings, setSettings] = useState({
-    enabled: true, threshold: 100, sender_id: '', message: '',
+    enabled: true, threshold: 100, sender_id: '', message: '', resend_cooldown_days: 2,
+    campaign: { enabled: true, last_run_at: null, last_checked: 0, last_sent: 0 },
     defaults: {}, placeholders: LOW_CREDIT_PLACEHOLDERS,
   });
-  const [drafts, setDrafts]   = useState({ threshold: '100', sender_id: '', message: '' });
+  const [drafts, setDrafts]   = useState({ threshold: '100', sender_id: '', message: '', resend_cooldown_days: '2' });
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [savingToggle, setSavingToggle] = useState(false);
   const [savingForm, setSavingForm]     = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  const [runningNow, setRunningNow] = useState(false);
 
   const applyServer = (data) => {
     const d = data || {};
@@ -6844,6 +6851,7 @@ function LowCreditWarningSettings() {
       threshold: String(d.threshold ?? 100),
       sender_id: d.sender_id || '',
       message: d.message || '',
+      resend_cooldown_days: String(d.resend_cooldown_days ?? 2),
     });
   };
 
@@ -6880,15 +6888,50 @@ function LowCreditWarningSettings() {
     } finally { setSavingToggle(false); }
   };
 
+  const toggleCampaign = async () => {
+    if (savingCampaign) return;
+    const next = !settings.campaign?.enabled;
+    setSavingCampaign(true);
+    setSettings(prev => ({ ...prev, campaign: { ...prev.campaign, enabled: next } })); // optimistic
+    try {
+      const res = await patch({ campaign_enabled: next });
+      if (res.success) { applyServer(res.data); showToast('Recurring campaign ' + (next ? 'resumed.' : 'paused.'), 'success'); }
+      else { setSettings(prev => ({ ...prev, campaign: { ...prev.campaign, enabled: !next } })); showToast(res.error?.message || 'Failed to update.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, campaign: { ...prev.campaign, enabled: !next } }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingCampaign(false); }
+  };
+
+  const runCampaignNow = async () => {
+    if (runningNow) return;
+    setRunningNow(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/low-credit-warning/campaign/run-now', { method: 'POST', body: '{}' }, onLogout);
+      if (res.success) {
+        showToast(`Checked ${res.data.checked}, sent ${res.data.sent}.`, 'success');
+        setSettings(prev => ({ ...prev, campaign: {
+          ...prev.campaign, last_run_at: new Date().toISOString(),
+          last_checked: res.data.checked, last_sent: res.data.sent,
+        } }));
+      } else {
+        showToast(res.error?.message || 'Failed to run campaign.', 'error');
+      }
+    } catch (e) { showToast('Network error while running campaign.', 'error'); }
+    finally { setRunningNow(false); }
+  };
+
   const saveForm = async () => {
     if (savingForm) return;
     const threshold = parseInt(drafts.threshold, 10);
     if (isNaN(threshold) || threshold < 0) { showToast('Threshold must be a number ≥ 0.', 'error'); return; }
+    const resendCooldownDays = parseInt(drafts.resend_cooldown_days, 10);
+    if (isNaN(resendCooldownDays) || resendCooldownDays < 1) { showToast('Resend interval must be a number ≥ 1.', 'error'); return; }
     const message = drafts.message.trim();
     if (!message) { showToast('Message cannot be empty.', 'error'); return; }
     setSavingForm(true);
     try {
-      const res = await patch({ threshold, sender_id: drafts.sender_id.trim(), message });
+      const res = await patch({ threshold, sender_id: drafts.sender_id.trim(), message, resend_cooldown_days: resendCooldownDays });
       if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
       else { showToast(res.error?.message || 'Failed to save.', 'error'); }
     } catch (e) {
@@ -6904,7 +6947,8 @@ function LowCreditWarningSettings() {
 
   const dirty = drafts.threshold !== String(settings.threshold ?? '')
     || (drafts.sender_id || '') !== (settings.sender_id || '')
-    || (drafts.message || '') !== (settings.message || '');
+    || (drafts.message || '') !== (settings.message || '')
+    || drafts.resend_cooldown_days !== String(settings.resend_cooldown_days ?? '');
 
   const preview = (drafts.message || '')
     .replace(/\{credits\}/g, '50')
@@ -6924,10 +6968,17 @@ function LowCreditWarningSettings() {
         </div>
       </div>
       <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
-        Warn a <strong>direct customer</strong> when their SMS credits drop to or below the threshold.
-        An <strong>SMS</strong> is sent <strong>once</strong> per downward threshold crossing; a
-        <strong> push / in-app</strong> notification is sent on each drop while low.
-        Partner clients are excluded.
+        Warn <strong>any tenant</strong> — direct customers and partner/white-label clients alike —
+        when their SMS credits drop to or below the threshold, always using the tenant's own
+        approved sender ID when they have one (never a generic sender for a white-label client).
+        The first SMS goes out on the downward threshold crossing; while the tenant stays at/below
+        the threshold it's <strong>resent automatically</strong> every "Resend every" days below
+        (checked at least once a day) so a customer isn't only ever notified once and forgotten.
+        A <strong>push / in-app</strong> notification is also sent on each drop while low, for tenants
+        with a dashboard login (partner/white-label clients don't have one, so SMS-only for them).
+        The list below shows only tenants that <strong>already have an approved sender ID</strong> and have
+        <strong> received credits before</strong> — a tenant that never purchased or received any credits
+        isn't "running low," it simply never engaged, so it's left out entirely.
       </p>
 
       {loading ? (
@@ -6976,6 +7027,46 @@ function LowCreditWarningSettings() {
                   onChange={e => setDrafts(prev => ({ ...prev, sender_id: e.target.value }))}
                   style={{height:40,fontSize:13}}/>
                 <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>Leave blank to use the platform default.</p>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Resend every (days)
+                </label>
+                <input
+                  type="number" min="1" className="senda-input" value={drafts.resend_cooldown_days}
+                  onChange={e => setDrafts(prev => ({ ...prev, resend_cooldown_days: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>While still at/below threshold, resend the SMS this often (checked at least once a day).</p>
+              </div>
+            </div>
+
+            {/* Recurring campaign controls */}
+            <div style={{marginTop:16,padding:'12px 14px',background: settings.campaign?.enabled ? '#f0fdf4' : '#fef2f2',border:`1px solid ${settings.campaign?.enabled ? '#dcfce7' : '#fee2e2'}`,borderRadius:10}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                <div>
+                  <p style={{fontSize:13,fontWeight:700,color:'#0f172a',margin:0,display:'flex',alignItems:'center',gap:6}}>
+                    Recurring reminder campaign
+                    <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:6,color:'#fff',background:settings.campaign?.enabled?'#16a34a':'#94a3b8'}}>
+                      {settings.campaign?.enabled ? 'Running' : 'Paused'}
+                    </span>
+                  </p>
+                  <p style={{fontSize:11,color:'#64748b',margin:'4px 0 0'}}>
+                    {settings.campaign?.last_run_at
+                      ? `Last checked ${new Date(settings.campaign.last_run_at).toLocaleString()} — ${settings.campaign.last_checked} checked, ${settings.campaign.last_sent} sent.`
+                      : 'Has not run yet.'}
+                  </p>
+                </div>
+                <div style={{display:'flex',gap:8,flexShrink:0}}>
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={runningNow || !settings.campaign?.enabled}
+                    onClick={runCampaignNow} style={{opacity:(runningNow||!settings.campaign?.enabled)?0.5:1}}>
+                    {runningNow ? 'Running…' : 'Run now'}
+                  </button>
+                  <button className="senda-btn senda-btn-sm" disabled={savingCampaign}
+                    onClick={toggleCampaign}
+                    style={{background:settings.campaign?.enabled?'#fee2e2':'#dcfce7',color:settings.campaign?.enabled?RED:'#16a34a',border:'none',opacity:savingCampaign?0.6:1}}>
+                    {savingCampaign ? 'Saving…' : settings.campaign?.enabled ? 'Pause campaign' : 'Resume campaign'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -7417,11 +7508,775 @@ function SenderIdNudgeSettingsCard() {
   );
 }
 
+// ─── Free Credit Expiry Settings ────────────────────────────────────────────
+// Admin control for the 200-free-SMS trial grant (given once per direct
+// customer when their sender ID is first approved) and its 21-day expiry.
+// Backed by /api/admin/v1/free-credit-expiry (GET + /update PATCH).
+const FREE_CREDIT_WARNING_PLACEHOLDERS = ['{name}', '{remaining_credits}', '{days_left}', '{expiry_date}'];
+const FREE_CREDIT_EXPIRED_PLACEHOLDERS = ['{name}'];
+
+function FreeCreditExpirySettings() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const empty = {
+    warning_enabled: true, expired_enabled: true,
+    period_days: 21, warning_days_before: 3,
+    warning_sender_id: '', warning_message: '',
+    expired_sender_id: '', expired_message: '',
+    campaign: {
+      warning: { last_run_at: null, last_checked: 0, last_sent: 0 },
+      expired: { last_run_at: null, last_checked: 0, last_sent: 0 },
+    },
+    defaults: {},
+  };
+  const [settings, setSettings] = useState(empty);
+  const [drafts, setDrafts]     = useState({
+    period_days: '21', warning_days_before: '3',
+    warning_sender_id: '', warning_message: '',
+    expired_sender_id: '', expired_message: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [savingToggle, setSavingToggle] = useState(null); // 'warning' | 'expired' | null
+  const [savingForm, setSavingForm]     = useState(false);
+  const [runningNow, setRunningNow]     = useState(false);
+
+  const applyServer = (data) => {
+    const d = data || {};
+    setSettings(d);
+    setDrafts({
+      period_days: String(d.period_days ?? 21),
+      warning_days_before: String(d.warning_days_before ?? 3),
+      warning_sender_id: d.warning_sender_id || '',
+      warning_message: d.warning_message || '',
+      expired_sender_id: d.expired_sender_id || '',
+      expired_message: d.expired_message || '',
+    });
+  };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/free-credit-expiry', {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) applyServer(res.data);
+        else setError(res.error?.message || 'Failed to load settings.');
+      })
+      .catch(e => { if (alive) setError(e.message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = (payload) => adminFetch('/api/admin/v1/free-credit-expiry/update', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  }, onLogout);
+
+  const toggle = async (key, label) => {
+    if (savingToggle) return;
+    const next = !settings[key];
+    setSavingToggle(key);
+    setSettings(prev => ({ ...prev, [key]: next })); // optimistic
+    try {
+      const res = await patch({ [key]: next });
+      if (res.success) { applyServer(res.data); showToast(`${label} ${next ? 'enabled.' : 'disabled.'}`, 'success'); }
+      else { setSettings(prev => ({ ...prev, [key]: !next })); showToast(res.error?.message || 'Failed to update.', 'error'); }
+    } catch (e) {
+      setSettings(prev => ({ ...prev, [key]: !next }));
+      showToast('Network error while updating.', 'error');
+    } finally { setSavingToggle(null); }
+  };
+
+  const runCampaignNow = async () => {
+    if (runningNow) return;
+    setRunningNow(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/free-credit-expiry/campaign/run-now', { method: 'POST', body: '{}' }, onLogout);
+      if (res.success) {
+        showToast(res.message || 'Campaign checked.', 'success');
+        const now = new Date().toISOString();
+        setSettings(prev => ({ ...prev, campaign: {
+          warning: { last_run_at: now, last_checked: res.data.warning.checked, last_sent: res.data.warning.sent },
+          expired: { last_run_at: now, last_checked: res.data.expired.checked, last_sent: res.data.expired.sent },
+        } }));
+      } else {
+        showToast(res.error?.message || 'Failed to run campaign.', 'error');
+      }
+    } catch (e) { showToast('Network error while running campaign.', 'error'); }
+    finally { setRunningNow(false); }
+  };
+
+  const saveForm = async () => {
+    if (savingForm) return;
+    const period_days = parseInt(drafts.period_days, 10);
+    const warning_days_before = parseInt(drafts.warning_days_before, 10);
+    if (isNaN(period_days) || period_days < 1) { showToast('Expiry period must be a number ≥ 1 day.', 'error'); return; }
+    if (isNaN(warning_days_before) || warning_days_before < 0) { showToast('Warning days-before must be a number ≥ 0.', 'error'); return; }
+    if (!drafts.warning_message.trim()) { showToast('Warning message cannot be empty.', 'error'); return; }
+    if (!drafts.expired_message.trim()) { showToast('Expired message cannot be empty.', 'error'); return; }
+
+    setSavingForm(true);
+    try {
+      const res = await patch({
+        period_days, warning_days_before,
+        warning_sender_id: drafts.warning_sender_id.trim(),
+        warning_message: drafts.warning_message,
+        expired_sender_id: drafts.expired_sender_id.trim(),
+        expired_message: drafts.expired_message,
+      });
+      if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
+      else { showToast(res.error?.message || 'Failed to save.', 'error'); }
+    } catch (e) {
+      showToast('Network error while saving.', 'error');
+    } finally { setSavingForm(false); }
+  };
+
+  const dirty = drafts.period_days !== String(settings.period_days ?? '')
+    || drafts.warning_days_before !== String(settings.warning_days_before ?? '')
+    || (drafts.warning_sender_id || '') !== (settings.warning_sender_id || '')
+    || (drafts.warning_message || '') !== (settings.warning_message || '')
+    || (drafts.expired_sender_id || '') !== (settings.expired_sender_id || '')
+    || (drafts.expired_message || '') !== (settings.expired_message || '');
+
+  const warningPreview = (drafts.warning_message || '')
+    .replace(/\{name\}/g, 'Asha')
+    .replace(/\{remaining_credits\}/g, '120')
+    .replace(/\{days_left\}/g, String(parseInt(drafts.warning_days_before, 10) || 0))
+    .replace(/\{expiry_date\}/g, new Date().toISOString().slice(0, 10));
+  const expiredPreview = (drafts.expired_message || '').replace(/\{name\}/g, 'Asha');
+
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+          <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Free Credit Expiry</h3>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:'#eff6ff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <Gift size={16} strokeWidth={2} color={BRAND}/>
+        </div>
+      </div>
+      <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
+        Direct customers get a one-time free SMS credit grant when their (first) sender ID is
+        approved, expiring after the period below. A warning is sent before expiry, and a
+        final notice once credits become unavailable.
+      </p>
+
+      {loading ? (
+        <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+      ) : error ? (
+        <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
+      ) : (
+        <div style={{marginTop:8}}>
+          {/* Amount (fixed) + period */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,padding:'16px 0',borderTop:'1px solid #f1f5f9'}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Free credits granted</label>
+              <input type="text" disabled value="200 (fixed on sender ID approval)" className="senda-input"
+                style={{height:40,fontSize:13,color:'#94a3b8',cursor:'not-allowed'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Expires after (days)</label>
+              <input type="number" min="1" className="senda-input" value={drafts.period_days}
+                onChange={e => setDrafts(prev => ({ ...prev, period_days: e.target.value }))}
+                style={{height:40,fontSize:13}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Warn (days before expiry)</label>
+              <input type="number" min="0" className="senda-input" value={drafts.warning_days_before}
+                onChange={e => setDrafts(prev => ({ ...prev, warning_days_before: e.target.value }))}
+                style={{height:40,fontSize:13}}/>
+            </div>
+          </div>
+
+          {/* Campaign status — both checks run automatically every 30 minutes (Celery beat) */}
+          <div style={{padding:'12px 14px',background:'#f0fdf4',border:'1px solid #dcfce7',borderRadius:10,marginBottom:4}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+              <div>
+                <p style={{fontSize:13,fontWeight:700,color:'#0f172a',margin:0}}>Automatic campaign</p>
+                <p style={{fontSize:11,color:'#64748b',margin:'4px 0 0'}}>
+                  Runs every 30 minutes. Warning: {settings.campaign?.warning?.last_run_at
+                    ? `checked ${new Date(settings.campaign.warning.last_run_at).toLocaleString()} — ${settings.campaign.warning.last_checked} checked, ${settings.campaign.warning.last_sent} sent`
+                    : 'has not run yet'}.
+                  {' '}Expired: {settings.campaign?.expired?.last_run_at
+                    ? `checked ${new Date(settings.campaign.expired.last_run_at).toLocaleString()} — ${settings.campaign.expired.last_checked} checked, ${settings.campaign.expired.last_sent} sent`
+                    : 'has not run yet'}.
+                </p>
+                <p style={{fontSize:11,color:'#64748b',margin:'4px 0 0'}}>Use the toggles below to pause/resume each notice type independently.</p>
+              </div>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={runningNow}
+                onClick={runCampaignNow} style={{opacity:runningNow?0.5:1,flexShrink:0}}>
+                {runningNow ? 'Running…' : 'Run now'}
+              </button>
+            </div>
+          </div>
+
+          {/* Expiry warning */}
+          <div style={{paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+              <div>
+                <p style={{fontSize:13,fontWeight:700,color:'#0f172a',margin:0}}>Expiry warning</p>
+                <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0'}}>Sent once, before free credits expire.</p>
+              </div>
+              <button role="switch" aria-checked={!!settings.warning_enabled} aria-label="Expiry warning enabled"
+                disabled={savingToggle==='warning_enabled'} onClick={() => toggle('warning_enabled', 'Expiry warning')}
+                style={{position:'relative',width:46,height:26,borderRadius:13,flexShrink:0,border:'none',
+                  cursor:savingToggle==='warning_enabled'?'wait':'pointer', background: settings.warning_enabled ? BRAND : '#cbd5e1',
+                  transition:'background .2s ease', opacity:savingToggle==='warning_enabled'?0.7:1}}>
+                <span style={{position:'absolute',top:3,left: settings.warning_enabled ? 23 : 3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+              </button>
+            </div>
+
+            <div style={{marginTop:12,opacity:settings.warning_enabled?1:0.55}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+                <div>
+                  <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Sender ID</label>
+                  <input className="senda-input" value={drafts.warning_sender_id} placeholder="SENDA (default)"
+                    onChange={e => setDrafts(prev => ({ ...prev, warning_sender_id: e.target.value }))}
+                    style={{height:40,fontSize:13}}/>
+                </div>
+              </div>
+              <div style={{marginTop:14}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Message text</label>
+                <textarea value={drafts.warning_message} rows={3}
+                  onChange={e => setDrafts(prev => ({ ...prev, warning_message: e.target.value }))}
+                  placeholder="Enter the expiry-warning message…"
+                  style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginTop:6}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                  {FREE_CREDIT_WARNING_PLACEHOLDERS.map(p => (
+                    <button key={p} type="button"
+                      onClick={() => setDrafts(prev => ({ ...prev, warning_message: (prev.warning_message || '') + p }))}
+                      style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+                  <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+                  <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{warningPreview || '—'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Expired notice */}
+          <div style={{paddingTop:16,marginTop:16,borderTop:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+              <div>
+                <p style={{fontSize:13,fontWeight:700,color:'#0f172a',margin:0}}>Expired notice</p>
+                <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0'}}>Sent once free credits become unavailable.</p>
+              </div>
+              <button role="switch" aria-checked={!!settings.expired_enabled} aria-label="Expired notice enabled"
+                disabled={savingToggle==='expired_enabled'} onClick={() => toggle('expired_enabled', 'Expired notice')}
+                style={{position:'relative',width:46,height:26,borderRadius:13,flexShrink:0,border:'none',
+                  cursor:savingToggle==='expired_enabled'?'wait':'pointer', background: settings.expired_enabled ? BRAND : '#cbd5e1',
+                  transition:'background .2s ease', opacity:savingToggle==='expired_enabled'?0.7:1}}>
+                <span style={{position:'absolute',top:3,left: settings.expired_enabled ? 23 : 3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+              </button>
+            </div>
+
+            <div style={{marginTop:12,opacity:settings.expired_enabled?1:0.55}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+                <div>
+                  <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Sender ID</label>
+                  <input className="senda-input" value={drafts.expired_sender_id} placeholder="SENDA (default)"
+                    onChange={e => setDrafts(prev => ({ ...prev, expired_sender_id: e.target.value }))}
+                    style={{height:40,fontSize:13}}/>
+                </div>
+              </div>
+              <div style={{marginTop:14}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Message text</label>
+                <textarea value={drafts.expired_message} rows={3}
+                  onChange={e => setDrafts(prev => ({ ...prev, expired_message: e.target.value }))}
+                  placeholder="Enter the expired-credits message…"
+                  style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginTop:6}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                  {FREE_CREDIT_EXPIRED_PLACEHOLDERS.map(p => (
+                    <button key={p} type="button"
+                      onClick={() => setDrafts(prev => ({ ...prev, expired_message: (prev.expired_message || '') + p }))}
+                      style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+                  <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+                  <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{expiredPreview || '—'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
+            <button className="senda-btn senda-btn-primary senda-btn-sm"
+              disabled={!dirty || savingForm}
+              onClick={saveForm}
+              style={{opacity:(!dirty||savingForm)?0.5:1}}>
+              {savingForm ? 'Saving…' : 'Save changes'}
+            </button>
+            {dirty && (
+              <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                onClick={() => applyServer(settings)}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Credit Alerts Tab ───────────────────────────────────────────────────────
+// Low-balance customers, free-credit expiry customers, and notification
+// history/delivery-status — backed by /api/admin/v1/low-credit-warning/customers,
+// /api/admin/v1/free-credit-expiry/customers and /api/admin/v1/system-sms-logs.
+// Matches the SendaAdminPagination envelope: {success, data: [...], meta: {total, has_next, ...}}.
+function usePagedList(basePath, extraParams, onLogout) {
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [page, setPage]       = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [count, setCount]     = useState(0);
+  const [summary, setSummary] = useState(null);
+  const paramsKey = JSON.stringify(extraParams);
+
+  const fetchPage = useCallback((p) => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ ...extraParams, page: String(p), limit: '20' });
+    return adminFetch(`${basePath}?${qs.toString()}`, {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          setRows(Array.isArray(res.data) ? res.data : []);
+          setHasNext(!!res.meta?.has_next);
+          setCount(res.meta?.total || 0);
+          setSummary(res.summary || null);
+        } else {
+          setError(res.error?.message || 'Failed to load data.');
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basePath, paramsKey, onLogout]);
+
+  useEffect(() => { setPage(1); }, [paramsKey]);
+  useEffect(() => { fetchPage(page); }, [fetchPage, page]);
+
+  return { rows, loading, error, page, setPage, hasNext, count, summary, reload: () => fetchPage(page) };
+}
+
+function PagerFooter({ page, setPage, hasNext, count, label }) {
+  if (count === 0 && page === 1) return null;
+  return (
+    <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+      <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} · {count.toLocaleString()} {label}</span>
+      <div style={{display:'flex',gap:4}}>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:page<=1?0.5:1}}>‹ Prev</button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!hasNext} onClick={()=>setPage(p=>p+1)} style={{opacity:!hasNext?0.5:1}}>Next ›</button>
+      </div>
+    </div>
+  );
+}
+
+function AllBalancesPanel() {
+  const { onLogout } = React.useContext(AppContext);
+  const [search, setSearch] = useState('');
+  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+    usePagedList('/api/admin/v1/sms-balances/customers', { search }, onLogout);
+
+  return (
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search customer…" value={search}
+          onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
+          <RefreshCw size={13}/> Refresh
+        </button>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>Every tenant with an approved sender ID — no threshold filter.</span>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:1080}}>
+              <thead>
+                <tr>
+                  <th>Customer</th><th>Type</th><th>Email</th><th>Phone</th><th>Purchased</th><th>Used</th>
+                  <th>Remaining</th><th>Sender ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.tenant_id}>
+                    <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.tenant_name}</td>
+                    <td><Badge status={r.customer_type === 'partner_client' ? 'partner' : 'user'}/></td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.email || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.phone || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.total_purchased ?? '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.total_used ?? '—'}</td>
+                    <td style={{fontSize:12,fontWeight:700,color: r.sms_balance<=50?RED:'#0f172a'}}>{r.sms_balance}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers with an approved sender ID yet.</div>}
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LowBalanceCustomersPanel() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [resending, setResending] = useState(null);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
+    usePagedList('/api/admin/v1/low-credit-warning/customers', { search, status: statusFilter }, onLogout);
+
+  const resend = async (tenantId) => {
+    if (resending) return;
+    setResending(tenantId);
+    try {
+      const res = await adminFetch(`/api/admin/v1/low-credit-warning/customers/${tenantId}/resend`, { method: 'POST', body: '{}' }, onLogout);
+      if (res.success) { showToast(res.data?.sent ? 'Low-balance SMS resent.' : 'Notification logged (SMS not sent — check delivery status).', res.data?.sent ? 'success' : 'info'); reload(); }
+      else showToast(res.error?.message || 'Failed to resend.', 'error');
+    } catch (e) { showToast('Network error while resending.', 'error'); }
+    finally { setResending(null); }
+  };
+
+  const sendToAll = async () => {
+    if (broadcasting || count === 0) return;
+    const label = statusFilter==='all' ? 'all' : statusFilter==='low' ? 'the "Still has credits"' : 'the "Used it all"';
+    if (!window.confirm(`Send the low-balance SMS to ${label} ${count} customer${count===1?'':'s'} shown by this filter${search?` matching "${search}"`:''}?\n\nEach customer is notified through their own approved sender ID.`)) return;
+    setBroadcasting(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/low-credit-warning/customers/broadcast', {
+        method: 'POST', body: JSON.stringify({ status: statusFilter, search }),
+      }, onLogout);
+      if (res.success) {
+        const d = res.data || {};
+        showToast(`Sent to ${d.sent ?? 0} of ${d.total ?? 0}${d.skipped_no_phone ? ` — ${d.skipped_no_phone} skipped (no phone)` : ''}${d.failed ? ` — ${d.failed} failed` : ''}.`, 'success');
+        reload();
+      } else {
+        showToast(res.error?.message || 'Failed to send.', 'error');
+      }
+    } catch (e) { showToast('Network error while sending.', 'error'); }
+    finally { setBroadcasting(false); }
+  };
+
+  return (
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search customer…" value={search}
+          onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <div style={{display:'flex',gap:4}}>
+          {['all','low','exhausted'].map(f=>(
+            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setStatusFilter(f)}
+              style={{background:statusFilter===f?BRAND:'#f1f5f9',color:statusFilter===f?'#fff':'#64748b',border:'none'}}>
+              {f==='all'?'All':f==='low'?`Still has credits${summary?.low!=null?` (${summary.low})`:''}`:`Used it all${summary?.exhausted!=null?` (${summary.exhausted})`:''}`}
+            </button>
+          ))}
+        </div>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
+          <RefreshCw size={13}/> Refresh
+        </button>
+        <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={broadcasting || count===0}
+          onClick={sendToAll} style={{marginLeft:'auto',opacity:(broadcasting||count===0)?0.6:1}}>
+          {broadcasting ? 'Sending…' : `Send to All (${count})`}
+        </button>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:1220}}>
+              <thead>
+                <tr>
+                  <th>Customer</th><th>Type</th><th>Email</th><th>Phone</th><th>Purchased</th><th>Used</th>
+                  <th>Remaining</th><th>Status</th><th>Threshold</th><th>Sender ID</th><th>Last Notified</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.tenant_id}>
+                    <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.tenant_name}</td>
+                    <td><Badge status={r.customer_type === 'partner_client' ? 'partner' : 'user'}/></td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.email || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.phone || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.total_purchased ?? '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.total_used ?? '—'}</td>
+                    <td style={{fontSize:12,fontWeight:700,color:RED}}>{r.sms_balance}</td>
+                    <td>
+                      <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:6,
+                        background:r.status==='exhausted'?'#fef2f2':'#fffbeb',
+                        color:r.status==='exhausted'?RED:'#b45309'}}>
+                        {r.status==='exhausted'?'Used it all':'Still has credits'}
+                      </span>
+                    </td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.threshold}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id || '—'}</td>
+                    <td style={{fontSize:11,color:'#94a3b8'}}>{r.last_notified_at ? new Date(r.last_notified_at).toLocaleString() : 'never'}</td>
+                    <td>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={resending===r.tenant_id}
+                        onClick={()=>resend(r.tenant_id)} style={{fontSize:11}}>
+                        {resending===r.tenant_id ? 'Sending…' : 'Resend'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers at or below the low-balance threshold.</div>}
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FreeCreditExpiryCustomersPanel() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [status, setStatus] = useState('all');
+  const [search, setSearch] = useState('');
+  const [resending, setResending] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
+    usePagedList('/api/admin/v1/free-credit-expiry/customers', { search, status }, onLogout);
+
+  const resend = async (grantId, type) => {
+    const key = `${grantId}:${type}`;
+    if (resending) return;
+    setResending(key);
+    try {
+      const res = await adminFetch(`/api/admin/v1/free-credit-expiry/customers/${grantId}/resend`, {
+        method: 'POST', body: JSON.stringify({ type }),
+      }, onLogout);
+      if (res.success) { showToast(res.data?.sent ? 'Notice resent.' : 'Notification logged (SMS not sent — check delivery status).', res.data?.sent ? 'success' : 'info'); reload(); }
+      else showToast(res.error?.message || 'Failed to resend.', 'error');
+    } catch (e) { showToast('Network error while resending.', 'error'); }
+    finally { setResending(null); }
+  };
+
+  const revoke = async (grantId, tenantName, remaining) => {
+    const key = `${grantId}:revoke`;
+    if (resending) return;
+    if (!window.confirm(`Take back the free credits from "${tenantName}" now?\n\nThis deducts the remaining ${remaining} free credits from their SMS balance immediately, instead of waiting for the natural expiry date.`)) return;
+    setResending(key);
+    try {
+      const res = await adminFetch(`/api/admin/v1/free-credit-expiry/customers/${grantId}/revoke`, { method: 'POST', body: '{}' }, onLogout);
+      if (res.success) { showToast(res.message || `Took back ${res.data?.deducted ?? 0} credits.`, 'success'); reload(); }
+      else showToast(res.error?.message || 'Failed to take back credits.', 'error');
+    } catch (e) { showToast('Network error while taking back credits.', 'error'); }
+    finally { setResending(null); }
+  };
+
+  const sync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/free-credit-expiry/customers/sync', { method: 'POST', body: '{}' }, onLogout);
+      if (res.success) { showToast(res.message || 'Synced.', 'success'); reload(); }
+      else showToast(res.error?.message || 'Failed to sync.', 'error');
+    } catch (e) { showToast('Network error while syncing.', 'error'); }
+    finally { setSyncing(false); }
+  };
+
+  return (
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search customer…" value={search}
+          onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <div style={{display:'flex',gap:4}}>
+          {['all','active','expiring_soon','expired'].map(f=>(
+            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setStatus(f)}
+              style={{background:status===f?BRAND:'#f1f5f9',color:status===f?'#fff':'#64748b',border:'none'}}>
+              {f==='all'?'All':f==='expiring_soon'?'Expiring Soon':f.charAt(0).toUpperCase()+f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
+          <RefreshCw size={13}/> Refresh
+        </button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={syncing} onClick={sync}
+          style={{marginLeft:'auto',opacity:syncing?0.6:1}} title="Create a tracking row for any direct customer with an approved sender ID that's missing one — use this if the list looks incomplete.">
+          {syncing ? 'Syncing…' : 'Sync missing grants'}
+        </button>
+      </div>
+      {summary && (
+        <div style={{display:'flex',gap:16,marginBottom:14,flexWrap:'wrap'}}>
+          <div className="senda-card" style={{padding:'10px 16px'}}>
+            <div style={{fontSize:11,color:'#94a3b8'}}>Total granted</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.total}</div>
+          </div>
+          <div className="senda-card" style={{padding:'10px 16px'}}>
+            <div style={{fontSize:11,color:'#94a3b8'}}>Have used some free credits</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.used_any} <span style={{fontSize:12,fontWeight:400,color:'#94a3b8'}}>of {summary.total}</span></div>
+          </div>
+          <div className="senda-card" style={{padding:'10px 16px'}}>
+            <div style={{fontSize:11,color:'#94a3b8'}}>Total free credits used</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.total_credits_used}</div>
+          </div>
+        </div>
+      )}
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:1220}}>
+              <thead>
+                <tr>
+                  <th>Customer</th><th>Email</th><th>Free Credits Left</th><th>Used</th><th>SMS Balance</th><th>Sender ID</th>
+                  <th>Granted</th><th>Expires</th><th>Status</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.grant_id}>
+                    <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.tenant_name}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.email || '—'}</td>
+                    <td style={{fontSize:12,fontWeight:700,color:'#0f172a'}}>{r.free_credits_remaining}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.free_credits_used} / {r.free_credits_initial}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sms_balance}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id || '—'}</td>
+                    <td style={{fontSize:11,color:'#94a3b8'}}>{r.granted_at ? new Date(r.granted_at).toLocaleDateString() : '—'}</td>
+                    <td style={{fontSize:11,color:'#94a3b8'}}>{r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}</td>
+                    <td><Badge status={r.status}/></td>
+                    <td style={{whiteSpace:'nowrap'}}>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!!resending}
+                        onClick={()=>resend(r.grant_id, 'warning')} style={{fontSize:11}}>
+                        {resending===`${r.grant_id}:warning` ? '…' : 'Resend warning'}
+                      </button>
+                      {' '}
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!!resending || r.status !== 'expired'}
+                        onClick={()=>resend(r.grant_id, 'expired')} style={{fontSize:11, opacity: r.status !== 'expired' ? 0.5 : 1}}
+                        title={r.status !== 'expired' ? 'Only available once this grant has expired.' : undefined}>
+                        {resending===`${r.grant_id}:expired` ? '…' : 'Resend expired'}
+                      </button>
+                      {' '}
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!!resending || r.status === 'expired'}
+                        onClick={()=>revoke(r.grant_id, r.tenant_name, r.free_credits_remaining)}
+                        style={{fontSize:11, color:RED, opacity: r.status === 'expired' ? 0.5 : 1}}
+                        title={r.status === 'expired' ? 'Already expired — nothing left to take back.' : 'Deduct the remaining free credits now, before the natural expiry date.'}>
+                        {resending===`${r.grant_id}:revoke` ? '…' : 'Take back'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers match this filter. If you expect direct customers here, try "Sync missing grants" above.</div>}
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="grants"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Reuses the existing system-wide outbound SMS audit log (same source as the
+// "System SMS Log" page), scoped to the three credit-alert categories this
+// tab cares about — the endpoint only filters by one category at a time.
+const CREDIT_ALERT_CATEGORIES = [
+  { value: 'low_credit_warning', label: 'Low balance warning' },
+  { value: 'free_credit_expiry_warning', label: 'Free credit expiring soon' },
+  { value: 'free_credit_expired', label: 'Free credit expired' },
+];
+
+function SmsAlertsHistoryPanel() {
+  const { onLogout } = React.useContext(AppContext);
+  const [category, setCategory] = useState(CREDIT_ALERT_CATEGORIES[0].value);
+  const [status, setStatus] = useState('');
+  const params = { category };
+  if (status) params.status = status;
+  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+    usePagedList('/api/admin/v1/system-sms-logs', params, onLogout);
+
+  return (
+    <div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <select className="senda-input" value={category} onChange={e=>setCategory(e.target.value)} style={{height:38,fontSize:13,width:220}}>
+          {CREDIT_ALERT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <select className="senda-input" value={status} onChange={e=>setStatus(e.target.value)} style={{height:38,fontSize:13,width:160}}>
+          <option value="">All statuses</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
+          <RefreshCw size={13}/> Refresh
+        </button>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:900}}>
+              <thead>
+                <tr>
+                  <th>Customer</th><th>Recipient</th><th>Sender ID</th>
+                  <th>Status</th><th>Error</th><th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.id}>
+                    <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.tenant_name || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.recipient_phone || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id_used || '—'}</td>
+                    <td><Badge status={r.status}/></td>
+                    <td style={{fontSize:11,color:RED,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.error_message || ''}</td>
+                    <td style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No notifications logged yet.</div>}
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="notifications"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreditAlertsTab() {
+  const [sub, setSub] = useState('all_balances');
+  const tabs = [
+    { id:'all_balances', label:'All Customers', Icon:Users },
+    { id:'low_balance', label:'Low Balance', Icon:Wallet },
+    { id:'free_credit',  label:'Free Credit Expiry', Icon:Gift },
+    { id:'history',      label:'Notification History', Icon:Clock },
+  ];
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader title="Credit Alerts" subtitle="Low-balance notifications for every tenant with an approved sender ID; free-credit-expiry notifications for direct customers only"/>
+      <div style={{display:'flex',gap:4,marginBottom:16,flexWrap:'wrap'}}>
+        {tabs.map(t => (
+          <button key={t.id} className="senda-btn senda-btn-sm" onClick={()=>setSub(t.id)}
+            style={{background:sub===t.id?BRAND:'#f1f5f9',color:sub===t.id?'#fff':'#64748b',border:'none',display:'flex',alignItems:'center',gap:6}}>
+            <t.Icon size={13}/> {t.label}
+          </button>
+        ))}
+      </div>
+      {sub === 'all_balances' && <AllBalancesPanel/>}
+      {sub === 'low_balance' && <LowBalanceCustomersPanel/>}
+      {sub === 'free_credit' && <FreeCreditExpiryCustomersPanel/>}
+      {sub === 'history' && <SmsAlertsHistoryPanel/>}
+    </div>
+  );
+}
+
 function SettingsTab() {
   return (
     <div className="senda-fade-in">
       <SenderApprovalSmsSettings />
       <LowCreditWarningSettings />
+      <FreeCreditExpirySettings />
       <PendingPaymentReminderSettingsCard />
       <SenderIdNudgeSettingsCard />
     </div>
@@ -9314,6 +10169,7 @@ const NAV_GROUPS = [
   { title: 'Billing', items: [
     { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
     { id:'packages',      Icon:Package,      label:'Packages'         },
+    { id:'creditalerts',  Icon:Wallet,       label:'Credit Alerts'    },
   ]},
   { title: 'System', items: [
     { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
@@ -13469,6 +14325,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
     packages:     <PackagesTab/>,
+    creditalerts: <CreditAlertsTab/>,
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
     smsbysender:  <SmsBySenderPage/>,
