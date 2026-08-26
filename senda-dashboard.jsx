@@ -770,6 +770,7 @@ function Badge({ status }) {
     silver:          ['badge-gray',   'Silver'],
     expired:         ['badge-red',    'Expired'],
     expiring_soon:   ['badge-amber',  'Expiring Soon'],
+    exhausted:       ['badge-orange', 'Exhausted'],
     skipped:         ['badge-gray',   'Skipped'],
   };
   const [cls, label] = map[status?.toLowerCase()] || ['badge-gray', status];
@@ -8108,7 +8109,7 @@ function FreeCreditExpiryCustomersPanel() {
         <input className="senda-input" placeholder="Search customer…" value={search}
           onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
         <div style={{display:'flex',gap:4}}>
-          {['all','active','expiring_soon','expired'].map(f=>(
+          {['all','active','expiring_soon','exhausted','expired'].map(f=>(
             <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setStatus(f)}
               style={{background:status===f?BRAND:'#f1f5f9',color:status===f?'#fff':'#64748b',border:'none'}}>
               {f==='all'?'All':f==='expiring_soon'?'Expiring Soon':f.charAt(0).toUpperCase()+f.slice(1)}
