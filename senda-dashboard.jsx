@@ -8142,10 +8142,10 @@ function FreeCreditExpiryCustomersPanel() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:1220}}>
+            <table className="senda-table" style={{minWidth:1320}}>
               <thead>
                 <tr>
-                  <th>Customer</th><th>Email</th><th>Free Credits Left</th><th>Used</th><th>SMS Balance</th><th>Sender ID</th>
+                  <th>Customer</th><th>Email</th><th>Free Credits Left</th><th>Used</th><th>SMS Used</th><th>SMS Balance</th><th>Sender ID</th>
                   <th>Granted</th><th>Expires</th><th>Status</th><th></th>
                 </tr>
               </thead>
@@ -8156,6 +8156,7 @@ function FreeCreditExpiryCustomersPanel() {
                     <td style={{fontSize:12,color:'#64748b'}}>{r.email || '—'}</td>
                     <td style={{fontSize:12,fontWeight:700,color:'#0f172a'}}>{r.free_credits_remaining}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{r.free_credits_used} / {r.free_credits_initial}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.sms_used}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{r.sms_balance}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id || '—'}</td>
                     <td style={{fontSize:11,color:'#94a3b8'}}>{r.granted_at ? new Date(r.granted_at).toLocaleDateString() : '—'}</td>
