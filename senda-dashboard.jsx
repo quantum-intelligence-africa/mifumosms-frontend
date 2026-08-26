@@ -7130,10 +7130,10 @@ const PENDING_PAYMENT_PLACEHOLDERS = ['{name}', '{credits}', '{amount}'];
 function PendingPaymentReminderSettingsCard() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [settings, setSettings] = useState({
-    enabled: true, wait_hours: 5, remind_interval_hours: 12, message: '',
+    enabled: true, wait_hours: 5, remind_interval_hours: 12, max_age_days: 2, message: '',
     defaults: {}, placeholders: PENDING_PAYMENT_PLACEHOLDERS,
   });
-  const [drafts, setDrafts]   = useState({ wait_hours: '5', remind_interval_hours: '12', message: '' });
+  const [drafts, setDrafts]   = useState({ wait_hours: '5', remind_interval_hours: '12', max_age_days: '2', message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [savingToggle, setSavingToggle] = useState(false);
@@ -7145,6 +7145,7 @@ function PendingPaymentReminderSettingsCard() {
     setDrafts({
       wait_hours: String(d.wait_hours ?? 5),
       remind_interval_hours: String(d.remind_interval_hours ?? 12),
+      max_age_days: String(d.max_age_days ?? 2),
       message: d.message || '',
     });
   };
@@ -7188,11 +7189,13 @@ function PendingPaymentReminderSettingsCard() {
     if (isNaN(waitHours) || waitHours < 0) { showToast('Wait hours must be a number ≥ 0.', 'error'); return; }
     const remindInterval = parseInt(drafts.remind_interval_hours, 10);
     if (isNaN(remindInterval) || remindInterval < 1) { showToast('Repeat interval must be a number ≥ 1.', 'error'); return; }
+    const maxAgeDays = parseInt(drafts.max_age_days, 10);
+    if (isNaN(maxAgeDays) || maxAgeDays < 1) { showToast('Max age (days) must be a number ≥ 1.', 'error'); return; }
     const message = drafts.message.trim();
     if (!message) { showToast('Message cannot be empty.', 'error'); return; }
     setSavingForm(true);
     try {
-      const res = await patch({ wait_hours: waitHours, remind_interval_hours: remindInterval, message });
+      const res = await patch({ wait_hours: waitHours, remind_interval_hours: remindInterval, max_age_days: maxAgeDays, message });
       if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
       else { showToast(res.error?.message || 'Failed to save.', 'error'); }
     } catch (e) {
@@ -7208,6 +7211,7 @@ function PendingPaymentReminderSettingsCard() {
 
   const dirty = drafts.wait_hours !== String(settings.wait_hours ?? '')
     || drafts.remind_interval_hours !== String(settings.remind_interval_hours ?? '')
+    || drafts.max_age_days !== String(settings.max_age_days ?? '')
     || (drafts.message || '') !== (settings.message || '');
 
   const preview = (drafts.message || '')
@@ -7279,6 +7283,16 @@ function PendingPaymentReminderSettingsCard() {
                   onChange={e => setDrafts(prev => ({ ...prev, remind_interval_hours: e.target.value }))}
                   style={{height:40,fontSize:13}}/>
                 <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>12h ≈ twice a day, until paid.</p>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                  Stop reminding after (days)
+                </label>
+                <input
+                  type="number" min="1" className="senda-input" value={drafts.max_age_days}
+                  onChange={e => setDrafts(prev => ({ ...prev, max_age_days: e.target.value }))}
+                  style={{height:40,fontSize:13}}/>
+                <p style={{fontSize:11,color:'#94a3b8',margin:'4px 0 0'}}>Don't nag orders older than this — they're probably abandoned.</p>
               </div>
             </div>
 
@@ -8244,12 +8258,66 @@ function SmsAlertsHistoryPanel() {
   );
 }
 
+function PendingPaymentCustomersPanel() {
+  const { onLogout } = React.useContext(AppContext);
+  const [search, setSearch] = useState('');
+  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+    usePagedList('/api/admin/v1/pending-payment-reminder/customers', { search }, onLogout);
+
+  return (
+    <div>
+      <p style={{fontSize:12,color:'#64748b',margin:'0 0 14px',lineHeight:1.5}}>
+        Customers who were actually sent the "complete your payment" SMS reminder for a still-pending
+        order, within the configured max-age window — not every unpaid order, just the ones nagged so far.
+      </p>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <input className="senda-input" placeholder="Search customer…" value={search}
+          onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
+          <RefreshCw size={13}/> Refresh
+        </button>
+      </div>
+      {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
+        <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:1100}}>
+              <thead>
+                <tr>
+                  <th>Customer</th><th>Email</th><th>Phone</th><th>Order</th><th>Amount</th>
+                  <th>Credits</th><th>Order age</th><th>Reminder sent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.transaction_id}>
+                    <td style={{fontSize:12,fontWeight:600,color:'#0f172a'}}>{r.buyer_name || r.tenant_name}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.buyer_email || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.buyer_phone || '—'}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.invoice_number}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>TZS {Number(r.amount).toLocaleString()}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>{r.credits ?? '—'} <span style={{color:'#cbd5e1'}}>{r.purchase_type}</span></td>
+                    <td style={{fontSize:11,color:'#94a3b8'}}>{r.age_hours}h</td>
+                    <td style={{fontSize:11,color:'#94a3b8'}}>{r.last_reminder_sms_at ? new Date(r.last_reminder_sms_at).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No reminders sent yet within the current max-age window.</div>}
+          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CreditAlertsTab() {
   const [sub, setSub] = useState('all_balances');
   const tabs = [
     { id:'all_balances', label:'All Customers', Icon:Users },
     { id:'low_balance', label:'Low Balance', Icon:Wallet },
     { id:'free_credit',  label:'Free Credit Expiry', Icon:Gift },
+    { id:'pending_payment', label:'Pending Payments', Icon:CreditCard },
     { id:'history',      label:'Notification History', Icon:Clock },
   ];
   return (
@@ -8266,6 +8334,7 @@ function CreditAlertsTab() {
       {sub === 'all_balances' && <AllBalancesPanel/>}
       {sub === 'low_balance' && <LowBalanceCustomersPanel/>}
       {sub === 'free_credit' && <FreeCreditExpiryCustomersPanel/>}
+      {sub === 'pending_payment' && <PendingPaymentCustomersPanel/>}
       {sub === 'history' && <SmsAlertsHistoryPanel/>}
     </div>
   );

@@ -3155,6 +3155,7 @@ class ApiClient {
     enabled: boolean;
     wait_hours: number;
     remind_interval_hours: number;
+    max_age_days: number;
     message: string;
   }>> {
     try {
@@ -3166,6 +3167,7 @@ class ApiClient {
         enabled: boolean;
         wait_hours: number;
         remind_interval_hours: number;
+        max_age_days: number;
         message: string;
       }>(response);
     } catch (error) {

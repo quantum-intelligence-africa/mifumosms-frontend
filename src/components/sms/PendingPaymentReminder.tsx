@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 // (Messaging → Pending Payment Reminder), stored in PendingPaymentReminderSettings.
 const DEFAULT_WAIT_HOURS = 5;
 const DEFAULT_REMIND_INTERVAL_HOURS = 12;
+const DEFAULT_MAX_AGE_DAYS = 2;
 const DEFAULT_MESSAGE =
   "Habari {name}, bado hujakamilisha malipo ya {credits} za salio (TZS {amount}). " +
   "Tafadhali ingia kwenye akaunti yako na ukamilishe malipo ili salio lako liongezwe.";
@@ -111,6 +112,7 @@ export function PendingPaymentReminder() {
 
         const waitHours = settings?.wait_hours ?? DEFAULT_WAIT_HOURS;
         const remindIntervalHours = settings?.remind_interval_hours ?? DEFAULT_REMIND_INTERVAL_HOURS;
+        const maxAgeDays = settings?.max_age_days ?? DEFAULT_MAX_AGE_DAYS;
         const template = settings?.message || DEFAULT_MESSAGE;
 
         const purchase = pendingResponse.success ? pendingResponse.data?.purchase : undefined;
@@ -118,6 +120,7 @@ export function PendingPaymentReminder() {
 
         const ageMs = Date.now() - new Date(purchase.created_at).getTime();
         if (ageMs < waitHours * 60 * 60 * 1000) return;
+        if (ageMs > maxAgeDays * 24 * 60 * 60 * 1000) return;
 
         const throttle = readThrottle(userId);
         const dueForReminder =
