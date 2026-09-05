@@ -31,13 +31,21 @@ export default defineConfig(({ mode }) => ({
         // bundle stays small and vendors cache independently across deploys.
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (
-            id.includes("recharts") ||
-            id.includes("chart.js") ||
-            id.includes("react-chartjs-2") ||
-            id.includes("/d3-")
-          )
-            return "charts";
+          // `charts` used to be its own chunk (recharts/chart.js/d3-*), but
+          // recharts pulls in a wide, tangled web of its own runtime deps
+          // (victory-vendor -> real d3-shape/d3-scale, plus react-smooth,
+          // lodash, clsx, tiny-invariant, react-is, eventemitter3...). Some
+          // of those are leaf utilities used all over the app (clsx via
+          // `lib/utils.ts`'s `cn()`, in particular), so catching all of them
+          // into a `charts` bucket would drag that chunk onto every page's
+          // initial load — worse than the bug it would fix. Only a couple
+          // of them were actually being caught, splitting the library's
+          // internals across the chunk boundary and producing a
+          // `ReferenceError: Cannot access 'X' before initialization` from
+          // a circular chunk-init order with `vendor` (same failure mode as
+          // the React note below, just for charts). Simplest fix: let charts
+          // fall through to `vendor` with everything else it needs, same as
+          // React does.
           if (id.includes("xlsx")) return "xlsx";
           if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
           if (id.includes("qrcode")) return "qrcode";
