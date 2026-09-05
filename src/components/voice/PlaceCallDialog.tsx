@@ -126,6 +126,11 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
   const [muted, setMuted] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Africa's Talking's SDK sometimes never fires its own "hangup" event back
+  // (seen in production: the button click does nothing, forever, with no
+  // error) — this force-releases our side of the UI if that ack doesn't show
+  // up, so an agent is never stuck starting back at a live-looking timer.
+  const hangupAckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const account = useMemo(() => accounts.find((a) => a.id === accountId), [accounts, accountId]);
   const dialable = normalise(number, account?.phone_number);
@@ -144,6 +149,8 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     }
     clientRef.current = null;
     stopTimer(tickTimer);
+    if (hangupAckTimer.current) clearTimeout(hangupAckTimer.current);
+    hangupAckTimer.current = null;
     setCallSeconds(0);
     setMuted(false);
     setBrowserState("idle");
@@ -207,6 +214,8 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
       client.on("hangup", (cause) => {
         if (cancelled) return;
         stopTimer(tickTimer);
+        if (hangupAckTimer.current) clearTimeout(hangupAckTimer.current);
+        hangupAckTimer.current = null;
         const c = (cause || {}) as HangupCause;
         setBrowserState("ended");
         setBrowserNote(
@@ -263,9 +272,19 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
   const browserHangup = () => {
     try {
       clientRef.current?.hangup();
-    } catch {
-      /* nothing to hang up */
+    } catch (e) {
+      console.error("africastalking-client hangup() threw", e);
     }
+    // Give the SDK's own "hangup" event a few seconds to arrive (it clears
+    // this timer when it does); if it never does, release the UI ourselves
+    // rather than leave the agent staring at a call that looks stuck live.
+    if (hangupAckTimer.current) clearTimeout(hangupAckTimer.current);
+    hangupAckTimer.current = setTimeout(() => {
+      hangupAckTimer.current = null;
+      stopTimer(tickTimer);
+      setBrowserState("ended");
+      setBrowserNote("Tumefunga upande wetu. Ikiwa mteja bado yuko mstarini, itakatika yenyewe hivi karibuni.");
+    }, 4000);
   };
   const toggleMute = () => {
     if (!clientRef.current) return;
