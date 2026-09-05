@@ -3,7 +3,7 @@
 // a scrubber and the time — the way a call-centre console does it, rather
 // than a browser <audio> widget squeezed into every row.
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, X, Download, PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { Pause, Play, X, Download, Loader2, PhoneIncoming, PhoneOutgoing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,37 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+
+  // A plain <a href> to a cross-origin URL (the recording lives on the
+  // voice backend's own domain, not this app's) opens a new tab in most
+  // browsers instead of downloading, since the `download` attribute is
+  // unreliable across origins. Fetching the bytes ourselves and saving from
+  // a same-origin blob: URL keeps the user on this page and always saves.
+  const downloadTrack = async () => {
+    if (!track || downloading) return;
+    setDownloading(true);
+    try {
+      const response = await fetch(track.url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const ext = track.url.split(".").pop()?.split("?")[0] || "mp3";
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${track.title.replace(/[^\w+-]+/g, "_")}_${track.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Last resort: let the browser handle it its own way rather than
+      // silently doing nothing on a failed fetch (e.g. blocked by CORS).
+      window.open(track.url, "_blank", "noreferrer");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Stop dead: pause and unload, so nothing keeps playing once the bar is
   // closed, another track replaces this one, or the page is left.
@@ -150,16 +181,16 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
             {track.subtitle && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{track.subtitle}</p>}
           </div>
 
-          <a
-            href={track.url}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground sm:flex"
+          <button
+            type="button"
+            onClick={downloadTrack}
+            disabled={downloading}
+            className="hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60 sm:flex"
             aria-label="Pakua rekodi"
             title="Pakua"
           >
-            <Download className="h-4 w-4" />
-          </a>
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          </button>
           <Button
             variant="ghost"
             size="icon"
