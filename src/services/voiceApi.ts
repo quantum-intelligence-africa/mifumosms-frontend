@@ -2,17 +2,9 @@
 // Deliberately separate from `src/lib/api.ts`'s ApiClient: that class's request
 // internals are private and hardwired to one base URL, so a second backend gets
 // its own small client instead of being bolted onto it.
-import { logger } from '@/utils/logger';
 import { apiClient, type ApiResponse } from '@/lib/api';
 
-// No working default exists yet for the voice backend (brand new service) — fall
-// back to a same-origin placeholder path and warn in dev so misconfiguration is
-// obvious instead of silently hitting the wrong host.
-const VOICE_API_URL = import.meta.env.VITE_VOICE_API_URL || '/voice-api';
-
-if (import.meta.env.DEV && !import.meta.env.VITE_VOICE_API_URL) {
-  logger.warn('VITE_VOICE_API_URL is not set — voiceApi is falling back to same-origin path "/voice-api"');
-}
+const VOICE_API_URL = 'https://voice-app.duckdns.org/api';
 
 class VoiceApiClient {
   constructor(private baseURL: string) {}

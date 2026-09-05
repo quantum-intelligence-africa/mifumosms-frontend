@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local dev overrides — never commit, so a local .env can't ship to
+# Netlify/Vercel and override their dashboard-configured env vars.
+.env
+.env.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
