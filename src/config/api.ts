@@ -1,7 +1,7 @@
 // API Configuration - Updated to match backend API documentation
 export const API_CONFIG = {
 	// BASE_URL: 'https://mifumosms.servehttp.com/api',
-	BASE_URL: 'https://mifumosms.mifumolabs.com/api',
+	BASE_URL: import.meta.env.VITE_CORE_API_URL || 'https://mifumosms.mifumolabs.com/api',
 	ENDPOINTS: {
 		AUTH: {
 			LOGIN: '/auth/login/',
@@ -229,6 +229,7 @@ export const API_CONFIG = {
 			SUBSCRIPTION: '/billing/subscription/',
 			USAGE: '/billing/usage/',
 			OVERVIEW: '/billing/overview/',
+			FEATURES: '/billing/features/',
 			PAYMENTS: {
 				PROVIDERS: '/billing/payments/providers/',
 				PENDING_REMINDER_SETTINGS: '/billing/payments/pending-reminder-settings/',

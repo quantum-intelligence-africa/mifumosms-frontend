@@ -12,6 +12,7 @@ import {
   LogOut,
   Mic,
   Moon,
+  PhoneOutgoing,
   Send as SendIcon,
   Server,
   Sun,
@@ -25,6 +26,7 @@ import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDialer } from "@/contexts/DialerContext";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -58,6 +60,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const { language, setLanguage, t } = useLanguage();
   const { updateTheme } = usePreferences();
   const { isPartina } = useRoles();
+  const { openDialer } = useDialer();
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -105,6 +108,15 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const automationSection: MenuSection = {
     title: "Automation",
     items: [
+      {
+        key: "dial",
+        label: "Piga simu",
+        icon: PhoneOutgoing,
+        onClick: () => {
+          onClose();
+          setTimeout(() => openDialer(), 50);
+        },
+      },
       { key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots") },
       { key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") },
     ],

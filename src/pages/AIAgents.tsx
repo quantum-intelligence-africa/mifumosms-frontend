@@ -1310,22 +1310,22 @@ export default function AIAgents() {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
+          <div className="max-w-4xl mx-auto w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-6">
             {/* Header — iOS large title */}
-            <header className="mb-5">
-              <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+            <header className="mb-4">
+              <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                 AI Copilots
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+              <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 Build and deploy intelligent copilots for automated customer engagement
               </p>
             </header>
 
-            <div className="relative bg-card dark:bg-card/95 rounded-xl sm:rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-5 sm:mb-6 md:mb-8">
+            <div className="relative bg-card dark:bg-card/95 rounded-xl sm:rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-4 sm:mb-5 md:mb-6">
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-500 via-violet-500 to-indigo-500" />
 
               <div className="flex flex-col lg:flex-row">
-                <div className="flex-1 px-3.5 sm:px-6 pt-4 sm:pt-8 pb-4 sm:pb-6 lg:py-8 lg:pr-0">
+                <div className="flex-1 px-3 sm:px-5 pt-3.5 sm:pt-6 pb-3.5 sm:pb-5 lg:py-6 lg:pr-0">
                   <div className="flex items-center gap-2.5 mb-5">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/15 border border-primary/30 dark:border-primary/40 flex items-center justify-center">
                       <Bot className="w-[18px] h-[18px] text-primary" strokeWidth={1.8} />
@@ -1355,7 +1355,7 @@ export default function AIAgents() {
 
                 <div className="hidden lg:block w-px bg-border dark:bg-border/60 my-6" />
 
-                <div className="lg:w-[340px] px-3.5 sm:px-6 py-4 sm:py-6 lg:py-8">
+                <div className="lg:w-[340px] px-3 sm:px-5 py-3.5 sm:py-5 lg:py-6">
                   {submitted ? (
                     <div className="h-full flex flex-col items-center justify-center text-center py-4">
                       <div className="w-11 h-11 rounded-full bg-success/10 dark:bg-success/20 border border-success/30 dark:border-success/40 flex items-center justify-center mb-3">
@@ -1425,7 +1425,7 @@ export default function AIAgents() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-3">
               <p className="text-[11px] font-semibold text-foreground/40 dark:text-foreground/30 uppercase tracking-widest whitespace-nowrap">
                 Feature Preview
               </p>

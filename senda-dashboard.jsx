@@ -39,11 +39,13 @@ import {
   MoonStar,
   MoreHorizontal,
   Package,
+  Phone,
   RefreshCw,
   Search,
   Send,
   Settings,
   ShieldCheck,
+  Sparkles,
   Tag,
   UserCheck,
   UserX,
@@ -424,6 +426,59 @@ async function adminFetch(path, options = {}, onLogout) {
   }
 
   return res.json();
+}
+
+// ─── Voice/IVR backend (senda_voice_backend) — a separate Django service from
+// the one `adminFetch` above talks to, sharing only the JWT (Droplet #1 issues
+// and refreshes it; Droplet #2 only verifies), so `voiceAdminFetch` mirrors
+// `adminFetch` but sends the actual request to VOICE_BASE_URL while still
+// refreshing via BASE_URL/auth/admin/refresh.
+const VOICE_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_VOICE_API_URL)
+  || 'https://voice.mifumolabs.com/api';
+
+async function voiceAdminFetch(path, options = {}, onLogout) {
+  const token = getToken();
+  const res = await fetch(`${VOICE_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
+  if (res.status === 401) {
+    try {
+      const refreshed = await fetch(`${BASE_URL}/auth/admin/refresh`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (refreshed.ok) {
+        const { data } = await refreshed.json();
+        const existing = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          ...existing, token: data.access_token,
+          expires_at: Date.now() + data.expires_in * 1000,
+        }));
+        return voiceAdminFetch(path, options, onLogout);
+      }
+    } catch {}
+    if (onLogout) onLogout();
+    return { success: false, error: { code: 'TOKEN_EXPIRED', message: 'Session expired. Please log in again.' } };
+  }
+
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return { success: res.ok };
+  }
+
+  // Unlike Droplet #1's admin API, this Django REST Framework backend returns
+  // plain JSON (a list, an object, or a DRF error shape) rather than an
+  // already-wrapped {success, data} envelope — normalize it here so callers
+  // can use res.success/res.data/res.error like every other adminFetch call.
+  const body = await res.json();
+  if (res.ok) return { success: true, data: body, status: res.status };
+  const error = typeof body?.detail === 'string' ? body.detail
+    : Object.values(body || {}).flat().join(' ') || 'Request failed.';
+  return { success: false, error, errors: body, status: res.status };
 }
 
 // ─── App Context ───────────────────────────────────────────────────────────────
@@ -8342,6 +8397,492 @@ function CreditAlertsTab() {
   );
 }
 
+// ─── Voice Providers (senda_voice_backend) ─────────────────────────────────────
+// Global, admin-managed telephony provider credentials — assignable to any
+// tenant's VoiceAccount. Credentials are stored server-side as an encrypted
+// JSON blob (see voice/models.py::VoiceProviderCredential), so adding a new
+// provider type here is just adding an entry to CREDENTIAL_FIELDS — no backend
+// migration needed unless the provider needs genuinely new server-side logic.
+const PROVIDER_TYPES = [
+  { value: 'africas_talking', label: "Africa's Talking" },
+  { value: 'twilio',          label: 'Twilio' },
+  { value: 'generic_sip',     label: 'Generic SIP trunk' },
+];
+
+const CREDENTIAL_FIELDS = {
+  africas_talking: [
+    { key: 'username',      label: 'Username',                  required: true },
+    { key: 'api_key',       label: 'API Key',                    required: true, secret: true },
+    { key: 'sender_number', label: 'Sender / Virtual Number',    required: false },
+  ],
+  twilio: [
+    { key: 'account_sid', label: 'Account SID',  required: true },
+    { key: 'auth_token',  label: 'Auth Token',    required: true, secret: true },
+    { key: 'from_number', label: 'From Number',   required: false },
+  ],
+  generic_sip: [],
+};
+
+function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const isNew = !row;
+  const [name, setName]                 = useState(row?.name || '');
+  const [providerType, setProviderType] = useState(row?.provider_type || 'africas_talking');
+  const [isActive, setIsActive]         = useState(row ? row.is_active : true);
+  const [isDefault, setIsDefault]       = useState(row?.is_default || false);
+  const [creds, setCreds]               = useState({});
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState(null);
+
+  const fields = CREDENTIAL_FIELDS[providerType] || [];
+  const setCred = (key, value) => setCreds(prev => ({ ...prev, [key]: value }));
+  const canSubmit = name.trim() && !saving;
+
+  const save = async () => {
+    setSaving(true); setError(null);
+
+    let credentials;
+    if (providerType === 'generic_sip') {
+      if (creds.__raw && creds.__raw.trim()) {
+        try { credentials = JSON.parse(creds.__raw); }
+        catch { setSaving(false); setError('Credentials must be valid JSON.'); return; }
+      } else {
+        credentials = {};
+      }
+    } else {
+      credentials = Object.fromEntries(Object.entries(creds).filter(([, v]) => v !== '' && v !== undefined));
+    }
+
+    const payload = { name: name.trim(), provider_type: providerType, is_active: isActive, is_default: isDefault };
+    // Editing: only send credentials the admin actually typed (the backend merges
+    // rather than replaces on update, so blank fields keep their saved value).
+    if (isNew || Object.keys(credentials).length > 0) payload.credentials = credentials;
+
+    const res = isNew
+      ? await voiceAdminFetch('/voice/provider-credentials/', { method: 'POST', body: JSON.stringify(payload) }, onLogout)
+      : await voiceAdminFetch(`/voice/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
+
+    setSaving(false);
+    if (res.success) { showToast?.('Voice provider saved.', 'success'); onSaved(); }
+    else setError(res.error || 'Failed to save.');
+  };
+
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:'min(480px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+          <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>{isNew ? 'Add voice provider' : `Edit ${row.name}`}</h3>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'18px 20px',display:'flex',flexDirection:'column',gap:14}}>
+          {error && <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Name</label>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Africa's Talking — Production"
+              className="senda-input" style={{height:38,fontSize:13}}/>
+          </div>
+
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Provider type</label>
+            <select value={providerType} disabled={!isNew}
+              onChange={e=>{ setProviderType(e.target.value); setCreds({}); }}
+              className="senda-input" style={{height:38,fontSize:13,cursor:isNew?'pointer':'not-allowed'}}>
+              {PROVIDER_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
+
+          {!isNew && (row.configured_fields||[]).length > 0 && (
+            <div style={{fontSize:11,color:'#94a3b8'}}>
+              Currently configured: {row.configured_fields.map(f=>`${f.key} (${f.preview})`).join(', ')}.
+              Leave a field below blank to keep its current value.
+            </div>
+          )}
+
+          {fields.map(f => (
+            <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>
+                {f.label}{f.required && isNew ? <span style={{color:RED}}> *</span> : ''}
+              </label>
+              <input type={f.secret ? 'password' : 'text'} value={creds[f.key] || ''} onChange={e=>setCred(f.key, e.target.value)}
+                placeholder={isNew ? '' : '••••••••'} className="senda-input" style={{height:38,fontSize:13}}/>
+            </div>
+          ))}
+
+          {providerType === 'africas_talking' && (
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+              <input type="checkbox" checked={!!creds.sandbox} onChange={e=>setCred('sandbox', e.target.checked)}/>
+              Use Africa's Talking sandbox endpoint
+            </label>
+          )}
+
+          {providerType === 'generic_sip' && (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Credentials (raw JSON)</label>
+              <textarea rows={5} value={creds.__raw || ''} onChange={e=>setCred('__raw', e.target.value)}
+                placeholder='{"sip_domain": "...", "sip_username": "...", "sip_password": "..."}'
+                className="senda-input" style={{fontSize:12,fontFamily:'monospace',resize:'vertical',padding:'8px 10px'}}/>
+            </div>
+          )}
+
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+            <input type="checkbox" checked={isActive} onChange={e=>setIsActive(e.target.checked)}/>
+            Active
+          </label>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+            <input type="checkbox" checked={isDefault} onChange={e=>setIsDefault(e.target.checked)}/>
+            Default provider for its type
+          </label>
+        </div>
+
+        <div style={{borderTop:'1px solid #eef2f7',padding:'14px 20px',display:'flex',gap:8}}>
+          <button disabled={!canSubmit} onClick={save}
+            style={{height:38,padding:'0 18px',borderRadius:9,border:'none',cursor:canSubmit?'pointer':'default',
+              fontSize:13,fontWeight:700,background:BRAND,color:'#fff',opacity:canSubmit?1:.5}}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button onClick={onClose} disabled={saving}
+            style={{height:38,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',
+              fontWeight:600,fontSize:13,cursor:saving?'default':'pointer'}}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>, document.body);
+}
+
+function VoiceProvidersTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
+
+  const fetchAll = useCallback(() => {
+    setLoading(true); setError(null);
+    voiceAdminFetch('/voice/provider-credentials/', {}, onLogout)
+      .then(res => {
+        if (res.success) setRows(res.data?.results || res.data || []);
+        else setError(res.error || 'Failed to load voice providers.');
+      })
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const td = {padding:'12px 16px',verticalAlign:'middle'};
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Voice Providers</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Global telephony credentials (Africa's Talking, Twilio, …) — assignable to any tenant's IVR flow.
+          </p>
+        </div>
+        <button onClick={()=>setEditing({})}
+          style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>
+          + Add provider
+        </button>
+      </div>
+
+      {error && (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
+          {error}
+        </div>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead>
+            <tr style={{background:'#f8fafc',textAlign:'left'}}>
+              <th style={th}>Name</th>
+              <th style={th}>Type</th>
+              <th style={th}>Configured fields</th>
+              <th style={th}>Active</th>
+              <th style={th}>Default</th>
+              <th style={th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice providers configured yet.</td></tr>
+            ) : rows.map(row => (
+              <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
+                <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
+                <td style={td}>{PROVIDER_TYPES.find(p=>p.value===row.provider_type)?.label || row.provider_type}</td>
+                <td style={td}>
+                  {(row.configured_fields||[]).length === 0
+                    ? <span style={{color:'#94a3b8'}}>—</span>
+                    : row.configured_fields.map(f => (
+                        <span key={f.key} style={{display:'inline-block',fontSize:11,fontFamily:'monospace',background:'#f1f5f9',borderRadius:6,padding:'2px 6px',marginRight:4}}>
+                          {f.key}: {f.preview}
+                        </span>
+                      ))}
+                </td>
+                <td style={td}>{row.is_active ? <CheckCircle2 size={15} color={GREEN}/> : <XCircle size={15} color={'#cbd5e1'}/>}</td>
+                <td style={td}>{row.is_default ? <span style={{fontSize:11,fontWeight:700,color:BRAND}}>Default</span> : '—'}</td>
+                <td style={td}>
+                  <button onClick={()=>setEditing(row)}
+                    style={{height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <VoiceProviderEditDrawer
+          row={editing.id ? editing : null}
+          onClose={()=>setEditing(null)}
+          onSaved={()=>{ setEditing(null); fetchAll(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ─── AI Provider (senda_voice_backend / audioanalysis) ─────────────────────────
+// Global, admin-managed AI credential — used for *every* tenant's post-call
+// analysis (transcription, sentiment, summary) and any AI-assisted flow step.
+// Mirrors VoiceProvidersTab above exactly: a tenant never sees or configures
+// this key — their own "AI & Call Intelligence" page is only an on/off
+// preference plus which result fields to keep (see audioanalysis.AICallAnalysisSettings).
+// Configuring one here is what makes AI analysis actually work platform-wide.
+const AI_PROVIDER_TYPES = [
+  { value: 'openai', label: 'OpenAI' },
+];
+
+const AI_CREDENTIAL_FIELDS = {
+  openai: [
+    { key: 'api_key', label: 'API Key',                required: true, secret: true },
+    { key: 'model',   label: 'Chat model (optional)',   required: false, placeholder: 'gpt-4o-mini' },
+  ],
+};
+
+function AIProviderEditDrawer({ row, onClose, onSaved }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const isNew = !row;
+  const [name, setName]                 = useState(row?.name || '');
+  const [providerType, setProviderType] = useState(row?.provider_type || 'openai');
+  const [isActive, setIsActive]         = useState(row ? row.is_active : true);
+  const [isDefault, setIsDefault]       = useState(row?.is_default || false);
+  const [creds, setCreds]               = useState({});
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState(null);
+
+  const fields = AI_CREDENTIAL_FIELDS[providerType] || [];
+  const setCred = (key, value) => setCreds(prev => ({ ...prev, [key]: value }));
+  const canSubmit = name.trim() && !saving;
+
+  const save = async () => {
+    setSaving(true); setError(null);
+
+    const credentials = Object.fromEntries(Object.entries(creds).filter(([, v]) => v !== '' && v !== undefined));
+    const payload = { name: name.trim(), provider_type: providerType, is_active: isActive, is_default: isDefault };
+    // Editing: only send credentials the admin actually typed (the backend
+    // merges rather than replaces on update, so a blank field keeps its saved value).
+    if (isNew || Object.keys(credentials).length > 0) payload.credentials = credentials;
+
+    const res = isNew
+      ? await voiceAdminFetch('/audio/provider-credentials/', { method: 'POST', body: JSON.stringify(payload) }, onLogout)
+      : await voiceAdminFetch(`/audio/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
+
+    setSaving(false);
+    if (res.success) { showToast?.('AI provider saved.', 'success'); onSaved(); }
+    else setError(res.error || 'Failed to save.');
+  };
+
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',justifyContent:'flex-end',zIndex:1000}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:'min(480px,100%)',height:'100%',background:'#fff',display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 20px',borderBottom:'1px solid #eef2f7'}}>
+          <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>{isNew ? 'Add AI provider' : `Edit ${row.name}`}</h3>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'18px 20px',display:'flex',flexDirection:'column',gap:14}}>
+          {error && <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>{error}</div>}
+
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Name</label>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. OpenAI — Production"
+              className="senda-input" style={{height:38,fontSize:13}}/>
+          </div>
+
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Provider type</label>
+            <select value={providerType} disabled={!isNew}
+              onChange={e=>{ setProviderType(e.target.value); setCreds({}); }}
+              className="senda-input" style={{height:38,fontSize:13,cursor:isNew?'pointer':'not-allowed'}}>
+              {AI_PROVIDER_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
+
+          {!isNew && (row.configured_fields||[]).length > 0 && (
+            <div style={{fontSize:11,color:'#94a3b8'}}>
+              Currently configured: {row.configured_fields.map(f=>`${f.key} (${f.preview})`).join(', ')}.
+              Leave a field below blank to keep its current value.
+            </div>
+          )}
+
+          {fields.map(f => (
+            <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>
+                {f.label}{f.required && isNew ? <span style={{color:RED}}> *</span> : ''}
+              </label>
+              <input type={f.secret ? 'password' : 'text'} value={creds[f.key] || ''} onChange={e=>setCred(f.key, e.target.value)}
+                placeholder={isNew ? (f.placeholder || '') : '••••••••'} className="senda-input" style={{height:38,fontSize:13}}/>
+            </div>
+          ))}
+
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+            <input type="checkbox" checked={isActive} onChange={e=>setIsActive(e.target.checked)}/>
+            Active
+          </label>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+            <input type="checkbox" checked={isDefault} onChange={e=>setIsDefault(e.target.checked)}/>
+            Default provider for its type
+          </label>
+        </div>
+
+        <div style={{borderTop:'1px solid #eef2f7',padding:'14px 20px',display:'flex',gap:8}}>
+          <button disabled={!canSubmit} onClick={save}
+            style={{height:38,padding:'0 18px',borderRadius:9,border:'none',cursor:canSubmit?'pointer':'default',
+              fontSize:13,fontWeight:700,background:BRAND,color:'#fff',opacity:canSubmit?1:.5}}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button onClick={onClose} disabled={saving}
+            style={{height:38,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',
+              fontWeight:600,fontSize:13,cursor:saving?'default':'pointer'}}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>, document.body);
+}
+
+function AIProvidersTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [editing, setEditing] = useState(null); // null = closed, {} = new, row = edit
+
+  const fetchAll = useCallback(() => {
+    setLoading(true); setError(null);
+    voiceAdminFetch('/audio/provider-credentials/', {}, onLogout)
+      .then(res => {
+        if (res.success) setRows(res.data?.results || res.data || []);
+        else setError(res.error || 'Failed to load AI providers.');
+      })
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const td = {padding:'12px 16px',verticalAlign:'middle'};
+
+  const remove = async (row) => {
+    if (!window.confirm(`Delete AI provider "${row.name}"? Any tenant relying on it for analysis will fall back to another active credential, or stop analyzing calls if none remain.`)) return;
+    const res = await voiceAdminFetch(`/audio/provider-credentials/${row.id}/`, { method: 'DELETE' }, onLogout);
+    if (res.success) { showToast?.('AI provider deleted.', 'success'); fetchAll(); }
+    else showToast?.(res.error || 'Failed to delete.', 'error');
+  };
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>AI Provider</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            One global AI credential, used for every tenant's post-call analysis and AI-assisted flow steps.
+            Tenants only switch analysis on or off for themselves — they never see or manage this key.
+          </p>
+        </div>
+        <button onClick={()=>setEditing({})}
+          style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>
+          + Add provider
+        </button>
+      </div>
+
+      {error && (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
+          {error}
+        </div>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead>
+            <tr style={{background:'#f8fafc',textAlign:'left'}}>
+              <th style={th}>Name</th>
+              <th style={th}>Type</th>
+              <th style={th}>Configured fields</th>
+              <th style={th}>Active</th>
+              <th style={th}>Default</th>
+              <th style={th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>
+                No AI provider configured yet — post-call analysis will do nothing until one is added.
+              </td></tr>
+            ) : rows.map(row => (
+              <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
+                <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
+                <td style={td}>{AI_PROVIDER_TYPES.find(p=>p.value===row.provider_type)?.label || row.provider_type}</td>
+                <td style={td}>
+                  {(row.configured_fields||[]).length === 0
+                    ? <span style={{color:'#94a3b8'}}>—</span>
+                    : row.configured_fields.map(f => (
+                        <span key={f.key} style={{display:'inline-block',fontSize:11,fontFamily:'monospace',background:'#f1f5f9',borderRadius:6,padding:'2px 6px',marginRight:4}}>
+                          {f.key}: {f.preview}
+                        </span>
+                      ))}
+                </td>
+                <td style={td}>{row.is_active ? <CheckCircle2 size={15} color={GREEN}/> : <XCircle size={15} color={'#cbd5e1'}/>}</td>
+                <td style={td}>{row.is_default ? <span style={{fontSize:11,fontWeight:700,color:BRAND}}>Default</span> : '—'}</td>
+                <td style={td}>
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>setEditing(row)}
+                      style={{height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                      Edit
+                    </button>
+                    <button onClick={()=>remove(row)}
+                      style={{height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #fecaca',background:'#fff',color:RED,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <AIProviderEditDrawer
+          row={editing.id ? editing : null}
+          onClose={()=>setEditing(null)}
+          onSaved={()=>{ setEditing(null); fetchAll(); }}
+        />
+      )}
+    </div>
+  );
+}
+
 function SettingsTab() {
   return (
     <div className="senda-fade-in">
@@ -10246,6 +10787,10 @@ const NAV_GROUPS = [
     { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
     { id:'settings',      Icon:Settings,     label:'Settings'         },
     { id:'operations',    Icon:Globe,        label:'Operations'       },
+  ]},
+  { title: 'Voice / IVR', items: [
+    { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
+    { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
   ]},
 ];
 
@@ -14403,6 +14948,8 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     apiaccounts:  <ApiAccountsTab/>,
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
+    voiceproviders: <VoiceProvidersTab/>,
+    aiproviders:    <AIProvidersTab/>,
   };
 
   return (

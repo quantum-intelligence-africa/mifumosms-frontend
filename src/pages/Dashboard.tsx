@@ -69,13 +69,13 @@ function Metric({ title, value, description, icon: Icon, accentBg, accentText }:
         "shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
         "hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5",
         "transition-all duration-200",
-        "p-3 md:p-4 flex flex-col gap-1.5 md:gap-2 min-h-[110px] md:min-h-[128px]",
+        "p-2.5 md:p-3.5 flex flex-col gap-1.5 md:gap-2 min-h-[110px] md:min-h-[128px]",
       ].join(" ")}
     >
       {/* Row 1: icon + title side-by-side */}
       <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
-        <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-90`}>
-          <Icon className={`w-[16px] h-[16px] md:w-[18px] md:h-[18px] ${accentText}`} strokeWidth={2.2} />
+        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${accentBg} dark:opacity-90`}>
+          <Icon className={`w-[14px] h-[14px] md:w-[16px] md:h-[16px] ${accentText}`} strokeWidth={2.2} />
         </div>
         <span className="flex-1 min-w-0 text-[11.5px] md:text-xs font-semibold text-foreground/70 dark:text-foreground/60 leading-tight tracking-tight truncate">
           {title}
@@ -247,8 +247,8 @@ const Dashboard = () => {
               <div className="md:hidden h-3" />
             )}
 
-            <div className="p-2 sm:p-3 md:p-4 w-full overflow-x-hidden">
-              <div className="max-w-full px-1 mx-auto space-y-2.5 sm:space-y-3">
+            <div className="p-1.5 sm:p-2.5 md:p-3.5 w-full overflow-x-hidden">
+              <div className="max-w-full px-1 mx-auto space-y-2 sm:space-y-2.5">
 
                 {isNewUser ? (
                   /* Onboarding wizard only — Quick Actions / Activity Feed appear
@@ -263,15 +263,15 @@ const Dashboard = () => {
                 ) : (
                   <>
                     {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
-                    <h1 className="hidden md:block text-base sm:text-lg font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
+                    <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
 
                     {/* Desktop: full metrics grid (4 cards). */}
-                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 overflow-x-hidden">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-2.5 overflow-x-hidden">
                       {metricCards.map((card) => <Metric key={card.title} {...card} />)}
                     </div>
 
                     {/* Mobile: remaining 2 metric cards below the hero. */}
-                    <div className="md:hidden grid grid-cols-2 gap-2.5 overflow-x-hidden">
+                    <div className="md:hidden grid grid-cols-2 gap-2 overflow-x-hidden">
                       {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
 

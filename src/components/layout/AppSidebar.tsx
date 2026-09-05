@@ -19,6 +19,14 @@ import {
   Server,
   Bot,
   Mic,
+  Workflow,
+  Phone,
+  PhoneCall,
+  PhoneOutgoing,
+  Sparkles,
+  Voicemail,
+  Users2,
+  MessageSquareText,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
@@ -30,6 +38,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
@@ -66,11 +75,15 @@ interface AppSidebarProps {
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [messagingOpen, setMessagingOpen] = useState(true);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Messaging: true,
+    "Voice / IVR": location.pathname.startsWith("/voice"),
+  });
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
   const [scheduledCount, setScheduledCount] = useState(0);
   const { user, logout, isLoading } = useAuth();
+  const { openDialer } = useDialer();
 
   // Small live counts for the Outbox (failed), Sent and Scheduled nav badges.
   useEffect(() => {
@@ -113,27 +126,50 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     if (isMobile && onClose) onClose();
   };
 
+  // While working inside Voice/IVR, hide the unrelated top-level sections
+  // (Messaging, AI Copilots, Voice Copilots) so the sidebar stays focused —
+  // Dashboard and Voice/IVR itself always stay visible.
+  const inVoiceSection = location.pathname.startsWith("/voice");
+
   const navigation: NavItem[] = [
     { name: t("nav.dashboard"), href: "/dashboard", icon: Home },
+    ...(inVoiceSection
+      ? []
+      : [
+          {
+            name: "Messaging",
+            href: "#",
+            icon: MessageSquare,
+            children: [
+              { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
+              { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
+              { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
+              { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
+              { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
+              { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
+              { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
+              { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
+              { name: t("nav.purchase_sms"), href: "/messaging/purchase", icon: CreditCard },
+              { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
+            ],
+          },
+          { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
+          { name: "Voice Copilots", href: "/voice-copilots", icon: Mic },
+        ]),
     {
-      name: "Messaging",
-      href: "#",
-      icon: MessageSquare,
+      name: "Voice / IVR",
+      href: "/voice",
+      icon: Workflow,
       children: [
-        { name: t("nav.send_sms"), href: "/messaging/send", icon: Send },
-        { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
-        { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
-        { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
-        { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
-        { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
-        { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
-        { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
-        { name: t("nav.purchase_sms"), href: "/messaging/purchase", icon: CreditCard },
-        { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
+        { name: "IVR Flows", href: "/voice/ivr", icon: Workflow },
+        { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
+        { name: "Call History", href: "/voice/calls", icon: PhoneCall },
+        { name: "Recordings", href: "/voice/recordings", icon: Voicemail },
+        { name: "Audio Prompts", href: "/voice/prompts", icon: MessageSquareText },
+        { name: "Agents", href: "/voice/agents", icon: Users2 },
+        { name: "AI & Call Intelligence", href: "/voice/ai-settings", icon: Sparkles },
       ],
     },
-    { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
-    { name: "Voice Copilots", href: "/voice-copilots", icon: Mic },
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },
@@ -206,14 +242,23 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           )}
         </div>
 
-        {/* ── Buy credits CTA ──────────────────────────── */}
-        <div className="px-3 pb-3">
+        {/* ── Global CTAs: buy credits, place a call ─────── */}
+        <div className="px-3 pb-3 space-y-2">
           <button
             onClick={() => handleNavigation("/messaging/purchase")}
             className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             Buy SMS Credits
+          </button>
+          {/* The dialer lives at the app root (DialerProvider), so this opens
+              it over whatever page is showing — no navigation needed. */}
+          <button
+            onClick={() => openDialer()}
+            className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-primary/40 bg-primary/10 text-primary text-[13px] font-semibold tracking-tight hover:bg-primary/15 active:scale-[0.98] transition-all duration-100"
+          >
+            <PhoneOutgoing className="w-3.5 h-3.5" strokeWidth={2.2} />
+            Piga simu
           </button>
         </div>
 
@@ -228,18 +273,19 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             const hasChildren = !!item.children?.length;
 
             if (hasChildren) {
-              const anyChildActive = item.children!.some(
-                (c) => location.pathname === c.href
-              );
+              const anyChildActive =
+                isActive || item.children!.some((c) => location.pathname === c.href);
+              const groupOpen = openGroups[item.name] ?? true;
 
               return (
                 <Collapsible
                   key={item.name}
-                  open={messagingOpen}
-                  onOpenChange={setMessagingOpen}
+                  open={groupOpen}
+                  onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [item.name]: v }))}
                 >
                   <CollapsibleTrigger asChild>
                     <button
+                      onClick={() => item.href !== "#" && handleNavigation(item.href)}
                       className={[
                         "w-full flex items-center gap-3 px-3 h-9 rounded-lg text-left",
                         "text-[13px] font-medium tracking-tight",
@@ -253,7 +299,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                       <span className="flex-1 truncate">{item.name}</span>
                       <ChevronDown
                         className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
-                          messagingOpen ? "" : "-rotate-90"
+                          groupOpen ? "" : "-rotate-90"
                         }`}
                         strokeWidth={2}
                       />

@@ -169,20 +169,20 @@ export default function VoiceAgents() {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
+          <div className="max-w-3xl mx-auto w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-6">
 
             {/* iOS large-title header */}
-            <header className="mb-5">
-              <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+            <header className="mb-4">
+              <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                 Voice Copilots
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+              <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 Deploy AI-powered voice copilots to automate inbound and outbound calls
               </p>
             </header>
 
             {/* ── Hero Card: Value prop + Waitlist form ────── */}
-            <div className="relative bg-card dark:bg-card/95 rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-8">
+            <div className="relative bg-card dark:bg-card/95 rounded-2xl border border-border dark:border-border/60 shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] overflow-hidden mb-6">
               {/* Top accent line — blue only */}
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500" />
 
@@ -293,7 +293,7 @@ export default function VoiceAgents() {
             </div>
 
             {/* ── Feature Preview ──────────────────────────── */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-3">
               <p className="text-[11px] font-semibold text-foreground/50 dark:text-foreground/40 uppercase tracking-widest whitespace-nowrap">
                 Feature Preview
               </p>

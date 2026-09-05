@@ -381,13 +381,13 @@ const PertinaIntegrationContent = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main px-4 sm:px-6 pt-4 sm:pt-6 pb-8 text-sm text-foreground">
-          <div className="max-w-4xl mx-auto w-full space-y-5">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main px-3 sm:px-5 pt-3 sm:pt-4 pb-6 text-sm text-foreground">
+          <div className="max-w-4xl mx-auto w-full space-y-3.5">
             <header>
-              <h1 className="font-heading text-[24px] sm:text-3xl font-bold leading-tight tracking-tight">
+              <h1 className="font-heading text-[20px] sm:text-2xl font-bold leading-tight tracking-tight">
                 {language === "sw" ? "Rejea ya Ujumuishaji wa Mshirika" : "Partner Integration Reference"}
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/65 mt-1 max-w-2xl">
+              <p className="text-[12.5px] sm:text-sm text-foreground/65 mt-0.5 max-w-2xl">
                 {language === "sw"
                   ? "Kila kitu unachohitaji kuunganisha endpoints za Mshirika kwenye dashibodi, kuanzia mipangilio ya API hadi mifano ya maombi ya salio na takwimu za matumizi."
                   : "Everything you need to wire the Partner integration endpoints into the dashboard, from API configuration to example requests for credit balance and usage statistics."}
@@ -400,7 +400,7 @@ const PertinaIntegrationContent = () => {
               </div> */}
             </header>
 
-            <Card className="glass p-3 sm:p-4">
+            <Card className="glass p-2.5 sm:p-3.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="w-4 h-4" />
@@ -444,7 +444,7 @@ const PertinaIntegrationContent = () => {
             </Card>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <Card className="glass p-3 sm:p-4 overflow-hidden">
+              <Card className="glass p-2.5 sm:p-3.5 overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Server className="w-4 h-4" />
@@ -467,7 +467,7 @@ const PertinaIntegrationContent = () => {
                 </CardContent>
               </Card>
 
-              <Card className="glass p-3 sm:p-4">
+              <Card className="glass p-2.5 sm:p-3.5">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <LinkIcon className="w-4 h-4" />
@@ -484,7 +484,7 @@ const PertinaIntegrationContent = () => {
               </Card>
             </div>
 
-            <Card className="glass p-3 sm:p-4">
+            <Card className="glass p-2.5 sm:p-3.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Code className="w-4 h-4" />
@@ -504,7 +504,7 @@ const PertinaIntegrationContent = () => {
               </CardContent>
             </Card>
 
-            <Card className="glass p-3 sm:p-4">
+            <Card className="glass p-2.5 sm:p-3.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Zap className="w-4 h-4" />

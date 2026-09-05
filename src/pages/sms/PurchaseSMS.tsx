@@ -717,13 +717,13 @@ const PurchaseSMS = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main">
-          <div className="max-w-3xl lg:max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 space-y-5">
+          <div className="max-w-3xl lg:max-w-6xl mx-auto w-full px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 pb-6 space-y-3.5">
             {/* Header — iOS large title */}
             <header>
-              <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+              <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                 {serviceType === "whatsapp" ? "Purchase WhatsApp Credits" : t('purchase_sms_credits')}
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+              <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 {t('top_up_account')}
               </p>
             </header>
@@ -755,7 +755,7 @@ const PurchaseSMS = () => {
             </div>
 
             {/* Balance Card */}
-            <Card className="p-4 sm:p-6 glass">
+            <Card className="p-3 sm:p-4 glass">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-text-subtle mb-1">{t('current_balance')}</p>
@@ -779,7 +779,7 @@ const PurchaseSMS = () => {
             </Card>
 
             {/* Custom Amount */}
-            <Card className="p-4 sm:p-6 glass">
+            <Card className="p-3 sm:p-4 glass">
               <h3 className="font-heading text-base sm:text-lg font-semibold mb-3 flex items-center gap-2">
                 <Calculator className="w-4 h-4" />
                 {t('enter_custom_amount')}
@@ -893,7 +893,7 @@ const PurchaseSMS = () => {
 
             {/* Payment Details - shown once the user has picked an amount */}
             {(selectedPackage || customCredits) && (
-            <Card className="p-4 sm:p-6 glass">
+            <Card className="p-3 sm:p-4 glass">
               <h3 className="font-heading text-base sm:text-lg font-semibold mb-3">{t('select_payment_method')}</h3>
 
               {/* Payment Number Input — the network (Vodacom/Tigo/Airtel/Halotel) is

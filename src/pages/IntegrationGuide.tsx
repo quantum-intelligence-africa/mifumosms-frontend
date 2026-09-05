@@ -81,18 +81,18 @@ const IntegrationGuide = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium px-4 sm:px-6 pt-4 sm:pt-6 pb-8">
-          <div className="max-w-4xl mx-auto w-full space-y-4 sm:space-y-5">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-premium px-3 sm:px-5 pt-3 sm:pt-4 pb-6">
+          <div className="max-w-4xl mx-auto w-full space-y-3 sm:space-y-3.5">
             <Card className="glass border border-border-subtle overflow-hidden">
               <CardContent className="p-0">
-                <div className="p-4 sm:p-6 lg:p-7 bg-gradient-to-br from-primary/10 via-background to-violet-500/10">
-                  <h1 className="font-heading text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
+                <div className="p-3 sm:p-4 lg:p-5 bg-gradient-to-br from-primary/10 via-background to-violet-500/10">
+                  <h1 className="font-heading text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">
                     External Integration API Reference
                   </h1>
-                  <p className="mt-2 text-sm sm:text-base text-foreground/80 max-w-4xl">
+                  <p className="mt-1.5 text-xs sm:text-sm text-foreground/80 max-w-4xl">
                     Documentation for standard external users, Partner/Pertina resellers, Auth, Notifications, and AI/Voice Copilots. Excludes internal admin flows.
                   </p>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <div className="rounded-lg border border-border-subtle bg-card/70 px-3 py-2">
                       <p className="text-[11px] uppercase tracking-wide text-foreground/65">Base URL</p>
                       <code className="text-xs break-all">https://mifumosms.mifumolabs.com</code>
@@ -110,10 +110,10 @@ const IntegrationGuide = () => {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-3.5">
               <aside className="lg:col-span-3">
                 <Card className="glass border border-border-subtle lg:sticky lg:top-4">
-                  <CardContent className="p-4 space-y-2.5">
+                  <CardContent className="p-3 space-y-2.5">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/75">On This Page</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 text-sm">
                       <div className="space-y-1.5">
@@ -181,9 +181,9 @@ const IntegrationGuide = () => {
                 </Card>
               </aside>
 
-              <section className="lg:col-span-9 space-y-4 sm:space-y-5">
+              <section className="lg:col-span-9 space-y-3 sm:space-y-3.5">
                 <Card id="integration-normal" className="glass border border-blue-200/60 dark:border-blue-800/60">
-                  <CardContent className="p-4 sm:p-6 space-y-4">
+                  <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="space-y-1.5">
                       <p className="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-300 font-semibold">Section 1</p>
                       <h2 className="text-lg sm:text-xl font-semibold">External User Integration (v1)</h2>
@@ -332,7 +332,7 @@ const IntegrationGuide = () => {
                 </Card>
 
                 <Card id="integration-partina" className="glass border border-violet-200/60 dark:border-violet-800/60">
-                  <CardContent className="p-4 sm:p-6 space-y-4">
+                  <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="space-y-1.5">
                       <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-300 font-semibold">Section 2</p>
                       <h2 className="text-lg sm:text-xl font-semibold">Partina and whitelabel integration</h2>
@@ -384,7 +384,7 @@ const IntegrationGuide = () => {
 
                 {/* ── Authentication ─────────────────────────── */}
                 <Card id="integration-auth" className="glass border border-emerald-200/60 dark:border-emerald-800/60">
-                  <CardContent className="p-4 sm:p-6 space-y-4">
+                  <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="space-y-1.5">
                       <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300 font-semibold">Section 3</p>
                       <h2 className="text-lg sm:text-xl font-semibold">Authentication</h2>
@@ -443,7 +443,7 @@ const IntegrationGuide = () => {
 
                 {/* ── AI & Voice Copilots ─────────────────────── */}
                 <Card id="integration-copilots" className="glass border border-indigo-200/60 dark:border-indigo-800/60">
-                  <CardContent className="p-4 sm:p-6 space-y-4">
+                  <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="space-y-1.5">
                       <p className="text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300 font-semibold">Section 4</p>
                       <h2 className="text-lg sm:text-xl font-semibold">AI Copilots & Voice Copilots</h2>
@@ -554,7 +554,7 @@ kyc_file=<file: pdf/png/jpg>`} />
             </div>
 
             <Card className="glass border border-border-subtle">
-              <CardContent className="p-4 sm:p-5 text-sm text-foreground/75">
+              <CardContent className="p-3 sm:p-4 text-sm text-foreground/75">
                 Examples mirror live integration responses and may vary by provider and tenant permissions. Configure webhooks and API keys from your API dashboard.
               </CardContent>
             </Card>

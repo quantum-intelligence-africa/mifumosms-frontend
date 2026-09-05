@@ -1120,11 +1120,11 @@ const SenderNames = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
+            <div className="max-w-7xl mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
-                  <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                  <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground mb-1 sm:mb-1.5">
                     {t('sender_names')}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
@@ -1151,7 +1151,7 @@ const SenderNames = () => {
               </div>
 
               {/* Loading Card */}
-              <Card className="p-6 glass">
+              <Card className="p-4 glass">
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin" />
@@ -1190,11 +1190,11 @@ const SenderNames = () => {
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
-            <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6">
+            <div className="max-w-7xl mx-auto space-y-2.5 sm:space-y-3 lg:space-y-3.5 xl:space-y-4">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
                 <div>
-                  <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                  <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground mb-1 sm:mb-1.5">
                     {t('sender_names')}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
@@ -1221,10 +1221,10 @@ const SenderNames = () => {
               </div>
 
               {/* Animated Stats Section */}
-              <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
+              <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
+                <Card className="p-2 sm:p-3 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4">
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-primary/10 flex items-center justify-center">
                       <Hash className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
                     </div>
                     <div className="text-center sm:text-left">
@@ -1242,9 +1242,9 @@ const SenderNames = () => {
                   </div>
                 </Card>
 
-                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-100">
+                <Card className="p-2 sm:p-3 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-100">
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-warning/10 flex items-center justify-center">
+                    <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-warning/10 flex items-center justify-center">
                       <Clock className="w-3 h-3 sm:w-5 sm:h-5 text-warning" />
                     </div>
                     <div className="text-center sm:text-left">
@@ -1262,9 +1262,9 @@ const SenderNames = () => {
                   </div>
                 </Card>
 
-                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-200">
+                <Card className="p-2 sm:p-3 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-200">
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-success/10 flex items-center justify-center">
+                    <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-success/10 flex items-center justify-center">
                       <Check className="w-3 h-3 sm:w-5 sm:h-5 text-success" />
                     </div>
                     <div className="text-center sm:text-left">
@@ -1282,9 +1282,9 @@ const SenderNames = () => {
                   </div>
                 </Card>
 
-                <Card className="p-2 sm:p-4 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-300">
+                <Card className="p-2 sm:p-3 glass hover:shadow-lg transition-all duration-300 animate-in slide-in-from-top-4 delay-300">
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-destructive/10 flex items-center justify-center">
                       <X className="w-3 h-3 sm:w-5 sm:h-5 text-destructive" />
                     </div>
                     <div className="text-center sm:text-left">
@@ -1304,7 +1304,7 @@ const SenderNames = () => {
               </div>
 
               {/* Error Card */}
-              <Card className="p-6 glass border-l-4 border-destructive">
+              <Card className="p-4 glass border-l-4 border-destructive">
                 <div className="flex gap-3">
                   <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
                    <div>
@@ -1364,15 +1364,15 @@ const SenderNames = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-3xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-5">
+          <div className="max-w-3xl mx-auto w-full max-w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-6 space-y-3.5">
 
             {/* Page header */}
             <header className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+                <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                   {t('sender_names')}
                 </h1>
-                <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+                <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                   {t('manage_sender_ids')}
                 </p>
               </div>
@@ -1390,14 +1390,14 @@ const SenderNames = () => {
             {/* Primary CTA - Request button */}
             <Button
               onClick={() => setShowRequestDialog(true)}
-              className="w-full h-12 rounded-2xl text-[14px] font-semibold shadow-md"
+              className="w-full h-11 rounded-2xl text-[14px] font-semibold shadow-md"
             >
               <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
               Request new sender ID
             </Button>
 
             {/* Stats — 2x2 mini grid with brand colors */}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               <StatCard
                 label="Total"
                 value={statsTotal}
@@ -1438,7 +1438,7 @@ const SenderNames = () => {
                   "absolute -right-12 -top-12 w-40 h-40 rounded-full blur-3xl pointer-events-none",
                   canRequestDefaultSender?.() ? "bg-primary/10 dark:bg-primary/15" : "bg-emerald-500/10 dark:bg-emerald-500/15",
                 ].join(" ")} />
-                <div className="relative p-4 sm:p-5">
+                <div className="relative p-3 sm:p-4">
                   <div className="flex items-start gap-3">
                     <div className={[
                       "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
@@ -1487,7 +1487,7 @@ const SenderNames = () => {
                       <Button
                         onClick={handleRequestDefaultSender}
                         disabled={isRequesting}
-                        className="w-full h-11 rounded-xl text-[13px] font-semibold"
+                        className="w-full h-10 rounded-xl text-[13px] font-semibold"
                       >
                         {isRequesting ? (
                           <>
@@ -1534,7 +1534,7 @@ const SenderNames = () => {
 
             {/* Requirements — show until first sender is approved */}
             {!hasAnyApprovedSender && (
-              <div className="rounded-2xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 p-4 sm:p-5">
+              <div className="rounded-2xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 p-3 sm:p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-primary/15 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <AlertTriangle className="w-[18px] h-[18px] text-primary" strokeWidth={2.2} />
@@ -2924,16 +2924,16 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+    <div className="relative overflow-hidden rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
       <div className="flex items-center gap-2.5">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${toneClass.iconBg}`}>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${toneClass.iconBg}`}>
           <Icon className={`w-[16px] h-[16px] ${toneClass.iconColor}`} strokeWidth={2.2} />
         </div>
         <span className="text-[11px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 line-clamp-1">
           {label}
         </span>
       </div>
-      <p className="mt-2 text-[22px] sm:text-2xl font-bold text-foreground tabular-nums tracking-tight leading-none">
+      <p className="mt-1.5 text-[22px] sm:text-2xl font-bold text-foreground tabular-nums tracking-tight leading-none">
         {loading ? (
           <span className="inline-block w-5 h-5 align-middle border-2 border-current border-t-transparent rounded-full animate-spin opacity-50" />
         ) : (

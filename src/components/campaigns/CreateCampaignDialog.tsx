@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, MessageSquare, AlertCircle, DollarSign, Info, Trash2, Tag, ArrowRight, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Plus, MessageSquare, AlertCircle, DollarSign, Info, Tag, ArrowRight, CheckCircle, Repeat, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,13 +26,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useContacts } from '@/hooks/useContacts';
 import { useSenderNames } from '@/hooks/useSenderNames';
+import { useToast } from '@/hooks/use-toast';
+import { useCampaignDraftAutosave, type CampaignDraftFormData } from '@/hooks/useCampaignDraftAutosave';
 import {
   calculateCampaignCost,
   calculateRecurringWeeklyCost,
   calculateSMSSegments,
   validateRecurringSchedule,
   formatScheduleDescription,
-  estimateCampaignSummary
 } from '@/utils/campaignUtils';
 import { apiClient, SenderNameRequest, UnifiedSenderName } from '@/lib/api';
 
@@ -41,85 +42,139 @@ interface CreateCampaignDialogProps {
   onSuccess?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When set, the dialog resumes an existing (usually draft) campaign instead of starting a new one. */
+  draftId?: string | null;
 }
 
-export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange }: CreateCampaignDialogProps) {
+type CampaignFormData = {
+  name: string;
+  description: string;
+  campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
+  sender_id: string;
+  message_text: string;
+  template: string | null;
+  scheduled_at: string | null;
+  target_contact_ids: string[];
+  target_segment_ids: string[];
+  target_criteria: { tags: string[]; opt_in_status: string };
+  newTag: string;
+  settings: { send_time: string; timezone: string };
+  is_recurring: boolean;
+  recurring_schedule: {
+    type: 'single' | 'daily' | 'weekly' | 'monthly';
+    time: string;
+    days: string[];
+    day_of_month: number;
+    end_date: string | null;
+  };
+};
+
+function blankFormData(): CampaignFormData {
+  return {
+    name: '',
+    description: '',
+    campaign_type: 'sms',
+    sender_id: '',
+    message_text: '',
+    template: null,
+    scheduled_at: null,
+    target_contact_ids: [],
+    target_segment_ids: [],
+    target_criteria: { tags: [], opt_in_status: 'opted_in' },
+    newTag: '',
+    settings: { send_time: '09:00', timezone: 'Africa/Dar_es_Salaam' },
+    is_recurring: false,
+    recurring_schedule: { type: 'daily', time: '09:00', days: [], day_of_month: 1, end_date: null },
+  };
+}
+
+// --- Local (per-browser) draft mirror ---------------------------------------
+// A lightweight offline backstop: the dialog's form state is mirrored to
+// localStorage as the user types, keyed by campaign id once one exists (or a
+// per-open session token before that). This is a convenience layer on top of
+// the real autosave (useCampaignDraftAutosave) — it lets a resumed draft warn
+// about locally-newer unsynced edits, and gives the dialog something to fall
+// back to if the initial resume fetch fails while offline. It is not a
+// substitute for the server copy, which remains the source of truth.
+interface LocalDraftSnapshot {
+  formData: Partial<CampaignFormData>;
+  updatedAt: string;
+}
+
+function localDraftKey(id: string) {
+  return `campaign_draft:${id}`;
+}
+
+function readLocalDraft(key: string): LocalDraftSnapshot | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as LocalDraftSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalDraft(key: string, snapshot: LocalDraftSnapshot) {
+  try {
+    localStorage.setItem(key, JSON.stringify(snapshot));
+  } catch {
+    // Storage full/unavailable — the offline mirror is a nice-to-have, not required.
+  }
+}
+
+export function clearLocalCampaignDraft(id: string) {
+  try {
+    localStorage.removeItem(localDraftKey(id));
+  } catch {
+    // ignore
+  }
+}
+
+export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange, draftId }: CreateCampaignDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [smsBalance, setSmsBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
+  const { toast } = useToast();
 
   // Use external open state if provided, otherwise use internal state
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
 
-  // Form data
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    campaign_type: 'sms' as 'sms' | 'whatsapp' | 'email' | 'mixed',
-    sender_id: '' as string,
-    message_text: '',
-    template: null as string | null,
-    scheduled_at: null as string | null,
-    target_contact_ids: [] as string[],
-    target_segment_ids: [] as string[],
-    target_criteria: {
-      tags: [] as string[],
-      opt_in_status: 'opted_in' as string
-    },
-    newTag: '' as string,
-    settings: {
-      send_time: '09:00',
-      timezone: 'Africa/Dar_es_Salaam'
-    },
-    is_recurring: false,
-    recurring_schedule: {
-      // default to daily, user can choose single/weekly/monthly
-      type: 'daily' as 'single' | 'daily' | 'weekly' | 'monthly',
-      time: '09:00',
-      days: [] as string[],
-      day_of_month: 1,
-      end_date: null as string | null
-    },
-  });
+  const [formData, setFormData] = useState<CampaignFormData>(blankFormData());
 
-  const { createCampaign } = useCampaigns();
+  // The draft this dialog is currently backed by — null until autosave (or a
+  // `draftId` resume prop) gives it a real server id.
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId ?? null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+  const [localRestore, setLocalRestore] = useState<LocalDraftSnapshot | null>(null);
+  const sessionTokenRef = useRef<string>(crypto.randomUUID());
+
+  const { createCampaign, updateCampaign, startCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
   const { senderNames, loading: sendersLoading } = useSenderNames();
   const showContactsEmptyState = !contactsLoading && contacts.length === 0;
 
   // Filter usable sender names - handle both SenderNameRequest and UnifiedSenderName response types.
-  // The unified endpoint returns provider-registered senders with status "active" and internal
-  // request-flow senders with status "approved". Both are ready to send from, so include both.
   const approvedSenders = useMemo(() => {
-    if (!senderNames || senderNames.length === 0) {
-      return [];
-    }
+    if (!senderNames || senderNames.length === 0) return [];
 
     const mapped = (senderNames || [])
       .filter((req: SenderNameRequest | UnifiedSenderName) => {
         const status = (req.status || '').toLowerCase();
         const senderName = ('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null);
-
         const isUsable = status === "approved" || status === "active";
         const hasValidName = senderName && senderName.trim() !== "";
-
         return isUsable && hasValidName;
       })
       .map((req: SenderNameRequest | UnifiedSenderName) => {
         const name = (('sender_id' in req ? req.sender_id : null) || ('sender_name' in req ? req.sender_name : null) || '').trim();
-        return {
-          id: req.id,
-          sender_name: name,
-          status: (req.status || '').toLowerCase(),
-        };
+        return { id: req.id, sender_name: name, status: (req.status || '').toLowerCase() };
       });
 
-    // Deduplicate by sender_name — the same sender can appear from multiple sources
-    // (provider + internal request) and would otherwise produce duplicate Select items.
     const seen = new Map<string, typeof mapped[0]>();
     for (const entry of mapped) {
       if (!seen.has(entry.sender_name)) seen.set(entry.sender_name, entry);
@@ -129,20 +184,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
   // Fetch SMS balance when dialog opens
   useEffect(() => {
-    if (open) {
-      fetchSmsBalance();
-    }
+    if (open) fetchSmsBalance();
   }, [open]);
 
   const fetchSmsBalance = async () => {
     setLoadingBalance(true);
     try {
       const response = await apiClient.getSMSBalance();
-      if (response.success && response.data) {
-        setSmsBalance(response.data.credits || 0);
-      } else {
-        setSmsBalance(0);
-      }
+      setSmsBalance(response.success && response.data ? response.data.credits || 0 : 0);
     } catch (error) {
       console.error('Error fetching SMS balance:', error);
       setSmsBalance(0);
@@ -151,11 +200,138 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     }
   };
 
-  const estimatedCost = calculateCampaignCost(
-    formData.message_text,
-    formData.target_contact_ids.length,
-    25
-  );
+  // Reset (fresh create) or fetch-and-prefill (resume) whenever the dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    sessionTokenRef.current = crypto.randomUUID();
+    setLocalRestore(null);
+    setDraftLoadError(null);
+    setScheduleErrors([]);
+    setStep(1);
+
+    if (!draftId) {
+      setCurrentDraftId(null);
+      setFormData(blankFormData());
+      return;
+    }
+
+    setCurrentDraftId(draftId);
+    setIsLoadingDraft(true);
+    apiClient.getCampaign(draftId).then((res) => {
+      if (res.success && res.data) {
+        const d = res.data;
+        const criteria = (d.target_criteria || {}) as { tags?: string[]; opt_in_status?: string };
+        const settings = (d.settings || {}) as { send_time?: string; timezone?: string };
+        setFormData((prev) => ({
+          ...prev,
+          name: d.name || '',
+          description: d.description || '',
+          campaign_type: (d.campaign_type as CampaignFormData['campaign_type']) || 'sms',
+          sender_id: d.sender_name || '',
+          message_text: d.message_text || '',
+          template: d.template || null,
+          scheduled_at: d.scheduled_at || null,
+          target_contact_ids: d.target_contact_ids || [],
+          target_segment_ids: d.target_segment_ids || [],
+          target_criteria: { tags: criteria.tags || [], opt_in_status: criteria.opt_in_status || 'opted_in' },
+          settings: { send_time: settings.send_time || '09:00', timezone: settings.timezone || 'Africa/Dar_es_Salaam' },
+          is_recurring: d.is_recurring || false,
+          recurring_schedule: (d.recurring_schedule as CampaignFormData['recurring_schedule']) || prev.recurring_schedule,
+        }));
+
+        const local = readLocalDraft(localDraftKey(draftId));
+        if (local && new Date(local.updatedAt).getTime() > new Date(d.updated_at).getTime()) {
+          setLocalRestore(local);
+        }
+      } else {
+        const local = readLocalDraft(localDraftKey(draftId));
+        if (local) {
+          setFormData((prev) => ({ ...prev, ...local.formData }));
+          setDraftLoadError('offline');
+        } else {
+          setDraftLoadError(res.error || 'Failed to load draft');
+        }
+      }
+      setIsLoadingDraft(false);
+    });
+  }, [open, draftId]);
+
+  // Mirror form state to localStorage as a lightweight offline backstop.
+  useEffect(() => {
+    if (!open) return;
+    const key = currentDraftId ? localDraftKey(currentDraftId) : `campaign_draft:new:${sessionTokenRef.current}`;
+    const timer = setTimeout(() => {
+      writeLocalDraft(key, { formData, updatedAt: new Date().toISOString() });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [formData, open, currentDraftId]);
+
+  const handleDraftCreated = useCallback((id: string) => {
+    try {
+      localStorage.removeItem(`campaign_draft:new:${sessionTokenRef.current}`);
+    } catch {
+      // ignore
+    }
+    setCurrentDraftId(id);
+  }, []);
+
+  // Subset of formData that's safe to autosave on every debounce tick.
+  // scheduled_at is deliberately excluded — scheduling a draft is only ever
+  // triggered by an explicit user action (Save Draft / Continue), never by a
+  // background timer, so the backend's draft-completeness promotion guard
+  // is only ever exercised deliberately.
+  const autosaveFormData = useMemo<CampaignDraftFormData>(() => ({
+    name: formData.name,
+    description: formData.description,
+    campaign_type: formData.campaign_type,
+    sender_id: formData.sender_id || undefined,
+    message_text: formData.message_text,
+    template: formData.template,
+    target_contact_ids: formData.target_contact_ids,
+    target_segment_ids: formData.target_segment_ids,
+    target_criteria: formData.target_criteria,
+    settings: formData.settings,
+    is_recurring: formData.is_recurring,
+    recurring_schedule: formData.recurring_schedule,
+  }), [formData]);
+
+  const {
+    isSaving: isAutosaving,
+    lastSavedAt,
+    hasUnsavedChanges,
+    saveError: autosaveError,
+    saveNow,
+    dismissError: dismissAutosaveError,
+  } = useCampaignDraftAutosave({
+    formData: autosaveFormData,
+    draftId: currentDraftId,
+    enabled: open && !isSubmitting,
+    onDraftCreated: handleDraftCreated,
+  });
+
+  const requestClose = useCallback(() => {
+    if (hasUnsavedChanges && !isSubmitting) {
+      const confirmed = window.confirm(
+        "You have unsaved changes.\n\nYour latest changes haven't finished saving. Leave anyway?"
+      );
+      if (!confirmed) return;
+    }
+    setOpen(false);
+  }, [hasUnsavedChanges, isSubmitting, setOpen]);
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) setOpen(true);
+    else requestClose();
+  };
+
+  const handleSaveDraftClick = () => {
+    saveNow().then(() => {
+      toast({ title: 'Draft saved', description: 'Find it later under the Draft filter on Campaigns.' });
+    });
+    requestClose();
+  };
+
+  const estimatedCost = calculateCampaignCost(formData.message_text, formData.target_contact_ids.length, 25);
 
   const weeklyCost = formData.is_recurring
     ? calculateRecurringWeeklyCost(
@@ -172,64 +348,52 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     if (field === 'description' || field === 'message_text') {
       finalValue = typeof value === 'string' ? value.slice(0, 160) : value;
     }
-
-    setFormData(prev => ({
-      ...prev,
-      [field]: finalValue
-    }));
+    setFormData((prev) => ({ ...prev, [field]: finalValue }));
   };
 
   const handleRecurringScheduleChange = (field: string, value: unknown): void => {
-    const newSchedule = {
-      ...formData.recurring_schedule,
-      [field]: value
-    };
-
-    // Validate schedule whenever it changes
+    const newSchedule = { ...formData.recurring_schedule, [field]: value };
     if (formData.is_recurring) {
       const validation = validateRecurringSchedule(newSchedule);
       setScheduleErrors(validation.errors);
     }
-
-    setFormData(prev => ({
-      ...prev,
-      recurring_schedule: newSchedule
-    }));
+    setFormData((prev) => ({ ...prev, recurring_schedule: newSchedule }));
   };
 
   const handleDayToggle = (day: string) => {
     const newDays = formData.recurring_schedule.days?.includes(day)
-      ? formData.recurring_schedule.days.filter(d => d !== day)
+      ? formData.recurring_schedule.days.filter((d) => d !== day)
       : [...(formData.recurring_schedule.days || []), day];
-
     handleRecurringScheduleChange('days', newDays);
   };
 
   const handleContactToggle = (contactId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       target_contact_ids: prev.target_contact_ids.includes(contactId)
-        ? prev.target_contact_ids.filter(id => id !== contactId)
-        : [...prev.target_contact_ids, contactId]
+        ? prev.target_contact_ids.filter((id) => id !== contactId)
+        : [...prev.target_contact_ids, contactId],
     }));
   };
 
   const handleSelectAllContacts = () => {
     if (contacts.length === 0) return;
-
-    const allContactIds = contacts.map(contact => contact.id);
-    setFormData(prev => ({
+    const allContactIds = contacts.map((contact) => contact.id);
+    setFormData((prev) => ({
       ...prev,
-      target_contact_ids: prev.target_contact_ids.length === allContactIds.length ? [] : allContactIds
+      target_contact_ids: prev.target_contact_ids.length === allContactIds.length ? [] : allContactIds,
     }));
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.message_text.trim()) {
-      return;
-    }
+  const resetForm = () => {
+    setFormData(blankFormData());
+    setStep(1);
+    setScheduleErrors([]);
+  };
 
-    // Validate recurring schedule if enabled
+  const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.message_text.trim()) return;
+
     if (formData.is_recurring) {
       const validation = validateRecurringSchedule(formData.recurring_schedule);
       if (!validation.isValid) {
@@ -238,83 +402,59 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       }
     }
 
-    // Check if user has enough credits
     if (smsBalance !== null && estimatedCost > smsBalance) {
       console.warn('Insufficient SMS credits');
-      // Show warning but allow submission (backend will handle)
     }
 
     setIsSubmitting(true);
 
     try {
-      // recurring_schedule is required by API - always send non-null
       const recurringScheduleData: Record<string, unknown> = {
         type: formData.recurring_schedule.type,
         time: formData.recurring_schedule.time,
         ...(formData.recurring_schedule.type === 'weekly' && { days: formData.recurring_schedule.days || [] }),
         ...(formData.recurring_schedule.type === 'monthly' && { day_of_month: formData.recurring_schedule.day_of_month ?? 1 }),
-        ...(formData.recurring_schedule.end_date && { end_date: formData.recurring_schedule.end_date })
+        ...(formData.recurring_schedule.end_date && { end_date: formData.recurring_schedule.end_date }),
       };
 
-      // Create campaign first and wait for completion
-      const success = await createCampaign({
+      const targetCriteria = {
+        tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
+        opt_in_status: formData.target_criteria.opt_in_status,
+      };
+      const commonFields = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
-        campaign_type: formData.campaign_type,
         sender_id: formData.sender_id || undefined,
         message_text: formData.message_text.trim(),
         template: formData.template || null,
         scheduled_at: formData.scheduled_at || null,
         target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
         target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
-        target_criteria: {
-          tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
-          opt_in_status: formData.target_criteria.opt_in_status
-        },
-        settings: {
-          send_time: formData.settings.send_time,
-          timezone: formData.settings.timezone
-        },
+        target_criteria: targetCriteria,
+        settings: { send_time: formData.settings.send_time, timezone: formData.settings.timezone },
         is_recurring: formData.is_recurring,
         recurring_schedule: recurringScheduleData,
-      });
+      };
+
+      let success: boolean;
+      if (currentDraftId) {
+        // Finish the draft this dialog has been autosaving into — update it in
+        // place rather than creating a second campaign. Scheduling a future
+        // send is handled by the update itself (the backend promotes
+        // draft -> scheduled once scheduled_at is set and the draft is
+        // complete); an immediate send still needs the dedicated start call.
+        success = await updateCampaign(currentDraftId, commonFields);
+        if (success && !formData.scheduled_at) {
+          success = await startCampaign(currentDraftId);
+        }
+      } else {
+        success = await createCampaign({ ...commonFields, campaign_type: formData.campaign_type });
+      }
 
       if (success) {
-        // Close dialog and reset form after successful creation
+        if (currentDraftId) clearLocalCampaignDraft(currentDraftId);
         setOpen(false);
-        setStep(1);
-        setScheduleErrors([]);
-        setFormData({
-          name: '',
-          description: '',
-          campaign_type: 'sms',
-          sender_id: '',
-          message_text: '',
-          template: null,
-          scheduled_at: null,
-          target_contact_ids: [],
-          target_segment_ids: [],
-          target_criteria: {
-            tags: [],
-            opt_in_status: 'opted_in'
-          },
-          settings: {
-            send_time: '09:00',
-            timezone: 'Africa/Dar_es_Salaam'
-          },
-          is_recurring: false,
-          recurring_schedule: {
-            type: 'daily',
-            time: '09:00',
-            days: [],
-            day_of_month: 1,
-            end_date: null
-          },
-          newTag: '',
-        });
-
-        // Parent refetches campaigns via React Query, so the new row appears
-        // without a hard reload — that reload was wiping the success toast.
+        resetForm();
         onSuccess?.();
       }
     } catch (error) {
@@ -327,129 +467,153 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const canProceedToStep2 = formData.name.trim() && formData.message_text.trim() && formData.sender_id;
   const canSubmit = canProceedToStep2 && formData.target_contact_ids.length > 0;
 
+  const saveStatusLabel = (() => {
+    if (autosaveError) return null; // shown separately, as a dismissible inline alert
+    if (isAutosaving) return 'Saving…';
+    if (hasUnsavedChanges) return 'Unsaved changes';
+    if (lastSavedAt) return `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return null;
+  })();
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         {children || (
-          <Button className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Button className="gap-2">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Add New Campaign</span>
             <span className="sm:hidden">New</span>
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl lg:max-w-4xl p-0 gap-0 rounded-2xl sm:rounded-2xl flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-blue-100">
-          <div className="flex flex-col gap-3 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-2 sm:p-3 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Create Campaign
-                </DialogTitle>
-                <DialogDescription className="text-xs sm:text-sm text-gray-600 mt-0.5">
-                  Reach your audience with smart, targeted messaging
-                </DialogDescription>
-              </div>
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-xl p-0 gap-0 rounded-2xl flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0 px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-primary" />
             </div>
-
-            {/* SMS Balance Display - Modern Card */}
-            {loadingBalance ? (
-              <div className="mt-2 animate-pulse h-16 sm:h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg" />
-            ) : smsBalance !== null && (
-              <div className={`mt-2 rounded-lg p-3 sm:p-4 border-2 transition-all duration-300 ${
-                smsBalance < 100
-                  ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 shadow-lg shadow-amber-100/50'
-                  : 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-lg shadow-emerald-100/50'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${smsBalance < 100 ? 'bg-amber-100' : 'bg-emerald-100'}`}>
-                    <DollarSign className={`w-5 h-5 sm:w-6 sm:h-6 ${smsBalance < 100 ? 'text-amber-600' : 'text-emerald-600'}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className={`text-xs sm:text-sm font-semibold ${smsBalance < 100 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                      SMS Balance
-                    </p>
-                    <p className={`text-sm sm:text-base font-bold ${smsBalance < 100 ? 'text-amber-900' : 'text-emerald-900'}`}>
-                      TZS {smsBalance.toLocaleString()}
-                    </p>
-                  </div>
-                  {smsBalance >= 100 ? (
-                    <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 flex-shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 animate-pulse" />
-                  )}
-                </div>
-                {smsBalance < 100 && (
-                  <p className="text-xs sm:text-sm text-amber-700 mt-2 font-medium">
-                    ⚠️ Low balance. Consider purchasing more credits.
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="min-w-0">
+              <DialogTitle className="text-base font-semibold text-foreground">
+                {draftId ? 'Edit Draft' : 'Create Campaign'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Reach your audience with targeted SMS
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-6">
+        {isLoadingDraft ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading draft…
+          </div>
+        ) : (
+        <>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
+          {draftLoadError === 'offline' && (
+            <Alert className="border-warning/40 bg-warning/10 py-2">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-xs text-foreground/80">
+                Couldn't reach the server — showing your last locally saved changes.
+              </AlertDescription>
+            </Alert>
+          )}
+          {draftLoadError && draftLoadError !== 'offline' && (
+            <Alert className="border-destructive/40 bg-destructive/10 py-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-xs text-destructive">{draftLoadError}</AlertDescription>
+            </Alert>
+          )}
+          {localRestore && (
+            <Alert className="border-primary/30 bg-primary/5 py-2">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-xs text-foreground/80 flex items-center justify-between gap-2 flex-wrap">
+                <span>You have unsaved local changes to this draft.</span>
+                <span className="flex gap-2">
+                  <button
+                    type="button"
+                    className="font-semibold text-primary"
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, ...localRestore.formData }));
+                      setLocalRestore(null);
+                    }}
+                  >
+                    Restore
+                  </button>
+                  <button
+                    type="button"
+                    className="font-semibold text-muted-foreground"
+                    onClick={() => {
+                      if (currentDraftId) clearLocalCampaignDraft(currentDraftId);
+                      setLocalRestore(null);
+                    }}
+                  >
+                    Discard
+                  </button>
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Step 1: Basic Information */}
           {step === 1 && (
-            <div className="space-y-4 sm:space-y-5">
-              {/* Campaign Name and Type Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="name" className="text-sm sm:text-base font-semibold text-gray-800">
-                    Campaign Name <span className="text-red-500">*</span>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <Label htmlFor="name" className="text-xs font-medium text-foreground">
+                    Campaign Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
                     placeholder="E.g., Summer Sale Campaign"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                    className="h-9"
                   />
-                  <p className="text-xs text-gray-500">Give your campaign a memorable name</p>
+                  <p className="text-[11px] text-muted-foreground">Give your campaign a memorable name</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm sm:text-base font-semibold text-gray-800">Campaign Type</Label>
-                  <div className="h-10 sm:h-12 flex items-center justify-center rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
-                    <span className="text-sm sm:text-base font-bold text-blue-600">📱 SMS</span>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-foreground">Campaign Type</Label>
+                  <div className="h-9 flex items-center justify-center rounded-md border border-primary/30 bg-primary/5">
+                    <span className="text-xs font-semibold text-primary">SMS</span>
                   </div>
                 </div>
               </div>
 
-              {/* Sender ID Section - Modern Select */}
-              <div className="space-y-2">
-                <Label htmlFor="sender_id" className="text-sm sm:text-base font-semibold text-gray-800">
-                  Sender ID <span className="text-red-500">*</span>
-                </Label>
-                <p className="text-xs text-gray-500">Select your approved sender name</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="sender_id" className="text-xs font-medium text-foreground">
+                    Sender ID <span className="text-destructive">*</span>
+                  </Label>
+                  {!loadingBalance && smsBalance !== null && (
+                    <span className={`text-[11px] font-medium ${smsBalance < 100 ? 'text-warning' : 'text-muted-foreground'}`}>
+                      Balance: TZS {smsBalance.toLocaleString()}{smsBalance < 100 ? ' · Low' : ''}
+                    </span>
+                  )}
+                </div>
                 {approvedSenders.length > 0 ? (
                   <Select value={formData.sender_id} onValueChange={(value) => handleInputChange('sender_id', value)}>
-                    <SelectTrigger id="sender_id" className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 transition-all duration-200">
+                    <SelectTrigger id="sender_id" className="h-9">
                       <SelectValue placeholder="Choose a sender..." />
                     </SelectTrigger>
-                    <SelectContent className="rounded-lg">
+                    <SelectContent>
                       {approvedSenders.map((sender) => (
-                        <SelectItem key={sender.id} value={sender.sender_name} className="text-sm sm:text-base">
-                          <span className="font-medium">{sender.sender_name}</span>
+                        <SelectItem key={sender.id} value={sender.sender_name}>
+                          {sender.sender_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : sendersLoading ? (
-                  <div className="h-10 sm:h-12 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg animate-pulse" />
+                  <div className="h-9 bg-muted rounded-md animate-pulse" />
                 ) : (
-                  <div className="rounded-lg border-2 border-red-200 bg-gradient-to-r from-red-50 to-pink-50 p-3 sm:p-4 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm sm:text-base font-semibold text-red-700">No Approved Senders</p>
-                      <p className="text-xs text-red-600 mt-1">
-                        You need to request and get approval for a sender name first.
-                      </p>
-                      <Link to="/dashboard/sms/sender-names" className="text-xs font-bold text-red-700 hover:text-red-800 underline mt-2 inline-block">
+                      <p className="text-xs font-semibold text-destructive">No approved senders</p>
+                      <Link to="/dashboard/sms/sender-names" className="text-[11px] font-semibold text-destructive underline">
                         Request Sender Approval →
                       </Link>
                     </div>
@@ -457,10 +621,33 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 )}
               </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm sm:text-base font-semibold text-gray-800">
-                  Description <span className="text-gray-400">(Optional)</span>
+              {/* Message Text */}
+              <div className="space-y-1.5">
+                <Label htmlFor="message_text" className="text-xs font-medium text-foreground">
+                  Message Text <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="message_text"
+                  placeholder="Type your message here. Keep it clear and concise..."
+                  value={formData.message_text}
+                  onChange={(e) => handleInputChange('message_text', e.target.value)}
+                  rows={3}
+                  className="text-sm resize-none"
+                  maxLength={160}
+                />
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">
+                    {calculateSMSSegments(formData.message_text)} SMS {formData.message_text.length > 0 ? `(${formData.message_text.length} chars)` : ''}
+                  </span>
+                  <span className={formData.message_text.length > 140 ? 'text-warning font-semibold' : 'text-muted-foreground'}>
+                    {formData.message_text.length}/160
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-medium text-foreground">
+                  Description <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
                 <Textarea
                   id="description"
@@ -468,55 +655,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={2}
-                  className="text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 resize-none"
+                  className="text-sm resize-none"
                   maxLength={160}
                 />
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500">Brief description of your campaign</p>
-                  <span className={`text-xs font-medium ${formData.description.length > 140 ? 'text-amber-600' : 'text-gray-500'}`}>
-                    {formData.description.length}/160
-                  </span>
-                </div>
               </div>
 
-              {/* Message Text */}
-              <div className="space-y-2">
-                <Label htmlFor="message_text" className="text-sm sm:text-base font-semibold text-gray-800">
-                  Message Text <span className="text-red-500">*</span>
-                </Label>
-                <p className="text-xs text-gray-500">Craft your message carefully (max 160 characters)</p>
-                <Textarea
-                  id="message_text"
-                  placeholder="Type your message here. Keep it clear and concise..."
-                  value={formData.message_text}
-                  onChange={(e) => handleInputChange('message_text', e.target.value)}
-                  rows={3}
-                  className="text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 resize-none"
-                  maxLength={160}
-                />
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 sm:p-3">
-                  <div className="flex items-center gap-2">
-                    <Info className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs sm:text-sm text-blue-800 font-medium">
-                      {calculateSMSSegments(formData.message_text)} SMS { formData.message_text.length > 0 ? `(${formData.message_text.length} chars)` : ''}
-                    </span>
-                  </div>
-                  <span className={`text-xs font-bold ${formData.message_text.length > 140 ? 'text-amber-600' : 'text-green-600'}`}>
-                    {formData.message_text.length}/160
-                  </span>
-                </div>
-              </div>
-
-              {/* Schedule Section */}
-              <div className="space-y-3 sm:space-y-4">
-                <div>
-                  <Label className="text-sm sm:text-base font-semibold text-gray-800">
-                    Schedule <span className="text-red-500">*</span>
-                  </Label>
-                  <p className="text-xs text-gray-500 mt-1">When and how often your campaign runs</p>
-                </div>
-
-                {/* Recurring Toggle - Modern Card */}
+              {/* Schedule */}
+              <div className="space-y-2 pt-1 border-t border-border">
                 <div
                   role="button"
                   tabIndex={0}
@@ -525,28 +670,17 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     if (!formData.is_recurring) setScheduleErrors([]);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && (handleInputChange('is_recurring', !formData.is_recurring), !formData.is_recurring && setScheduleErrors([]))}
-                  className={`
-                    flex items-center justify-between gap-3 rounded-xl border-2 p-3 sm:p-4 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md
-                    ${formData.is_recurring
-                      ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg shadow-blue-100/50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
-                    }
-                  `}
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+                    formData.is_recurring ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/50'
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`
-                      flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg font-bold text-lg
-                      ${formData.is_recurring
-                        ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-600'}
-                    `}>
-                      🔄
+                  <div className="flex items-center gap-2.5">
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${formData.is_recurring ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      <Repeat className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-sm sm:text-base font-semibold text-gray-900 block">
-                        Recurring Campaign
-                      </span>
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs font-semibold text-foreground block">Recurring Campaign</span>
+                      <span className="text-[11px] text-muted-foreground">
                         {formData.is_recurring ? 'Runs automatically on a schedule' : 'Run once or repeat automatically'}
                       </span>
                     </div>
@@ -559,99 +693,71 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       if (checked) setScheduleErrors([]);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className="h-5 w-5 sm:h-6 sm:w-6 shrink-0 rounded border-2 border-gray-300 cursor-pointer"
                   />
                 </div>
 
-                {/* One-time schedule (when not recurring) */}
                 {!formData.is_recurring && (
-                  <div className="space-y-2 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50 p-3 sm:p-4 border border-gray-200">
-                    <Label htmlFor="scheduled_at" className="text-sm sm:text-base font-semibold text-gray-800">
-                      Run at <span className="text-gray-400 font-normal">(Optional)</span>
+                  <div className="space-y-1.5 rounded-lg bg-muted/40 p-2.5">
+                    <Label htmlFor="scheduled_at" className="text-xs font-medium text-foreground">
+                      Run at <span className="text-muted-foreground font-normal">(optional)</span>
                     </Label>
                     <Input
                       id="scheduled_at"
                       type="datetime-local"
                       value={formData.scheduled_at || ''}
                       onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
-                      className="h-10 sm:h-12 text-sm sm:text-base bg-white border-2 border-gray-200 focus:border-blue-500 rounded-lg transition-all"
+                      className="h-9"
                     />
-                    <p className="text-xs text-gray-600">Leave empty to send immediately</p>
+                    <p className="text-[11px] text-muted-foreground">Leave empty to send immediately</p>
                   </div>
                 )}
               </div>
 
-              {/* Recurring Schedule Configuration */}
               {formData.is_recurring && (
-                <div className="rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 sm:p-5 space-y-4 shadow-lg shadow-blue-100/30">
-                  <div className="flex items-center gap-2 text-base font-semibold text-gray-900">
-                    <Info className="w-5 h-5 text-blue-600" />
-                    Configure Recurring Schedule
-                  </div>
+                <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-2.5">
+                  <Select
+                    value={formData.recurring_schedule.type}
+                    onValueChange={(value) => handleRecurringScheduleChange('type', value as 'single' | 'daily' | 'weekly' | 'monthly')}
+                  >
+                    <SelectTrigger className="h-9 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single day — one-time at a specific time</SelectItem>
+                      <SelectItem value="daily">Daily — every day at a specific time</SelectItem>
+                      <SelectItem value="weekly">Weekly — specific days each week</SelectItem>
+                      <SelectItem value="monthly">Monthly — specific day each month</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                  {/* Schedule Type */}
-                  <div className="space-y-2">
-                    <Label className="text-sm sm:text-base font-semibold text-gray-800">Schedule Type <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={formData.recurring_schedule.type}
-                      onValueChange={(value) =>
-                        handleRecurringScheduleChange('type', value as 'single' | 'daily' | 'weekly' | 'monthly')
-                      }
-                    >
-                      <SelectTrigger className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-lg">
-                        <SelectItem value="single" className="text-sm">📅 Single day - One-time at a specific time</SelectItem>
-                        <SelectItem value="daily" className="text-sm">📆 Daily - Every day at a specific time</SelectItem>
-                        <SelectItem value="weekly" className="text-sm">📊 Weekly - Specific days each week</SelectItem>
-                        <SelectItem value="monthly" className="text-sm">📅 Monthly - Specific day each month</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Execution Time */}
-                  <div className="space-y-2">
-                    <Label htmlFor="recurring_time" className="text-sm sm:text-base font-semibold text-gray-800">
-                      Execution Time <span className="text-red-500">*</span>
-                    </Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="recurring_time" className="text-xs font-medium text-foreground">Execution Time</Label>
                     <Input
                       id="recurring_time"
                       type="time"
                       value={formData.recurring_schedule.time}
                       onChange={(e) => handleRecurringScheduleChange('time', e.target.value)}
-                      className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 bg-white"
+                      className="h-9 bg-background"
                     />
                   </div>
 
-                  {/* Days Selection for Weekly */}
                   {formData.recurring_schedule.type === 'weekly' && (
-                    <div className="space-y-2">
-                      <Label className="text-sm sm:text-base font-semibold text-gray-800">Select Days <span className="text-red-500">*</span></Label>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                          <div key={day} className="flex items-center space-x-2 bg-white rounded-lg p-2 border-2 border-gray-200 hover:border-blue-300 transition-all cursor-pointer">
-                            <Checkbox
-                              id={`day-${day}`}
-                              checked={formData.recurring_schedule.days?.includes(day) || false}
-                              onCheckedChange={() => handleDayToggle(day)}
-                              className="h-4 w-4 rounded border-2"
-                            />
-                            <Label htmlFor={`day-${day}`} className="text-xs sm:text-sm font-semibold cursor-pointer capitalize text-gray-700">
-                              {day.slice(0, 3)}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                        <label key={day} className="flex items-center gap-1.5 bg-background rounded-md p-1.5 border border-border text-[11px] font-medium capitalize cursor-pointer">
+                          <Checkbox
+                            checked={formData.recurring_schedule.days?.includes(day) || false}
+                            onCheckedChange={() => handleDayToggle(day)}
+                          />
+                          {day.slice(0, 3)}
+                        </label>
+                      ))}
                     </div>
                   )}
 
-                  {/* Day of Month for Monthly */}
                   {formData.recurring_schedule.type === 'monthly' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="day_of_month" className="text-sm sm:text-base font-semibold text-gray-800">
-                        Day of Month
-                      </Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="day_of_month" className="text-xs font-medium text-foreground">Day of Month</Label>
                       <Input
                         id="day_of_month"
                         type="number"
@@ -659,85 +765,66 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                         max="31"
                         value={formData.recurring_schedule.day_of_month || 1}
                         onChange={(e) => handleRecurringScheduleChange('day_of_month', parseInt(e.target.value))}
-                        className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 bg-white"
+                        className="h-9 bg-background"
                       />
-                      <p className="text-xs sm:text-sm text-gray-700">Runs on this day each month (1-31)</p>
                     </div>
                   )}
 
-                  {/* End Date */}
-                  <div className="space-y-2">
-                    <Label htmlFor="end_date" className="text-sm sm:text-base font-semibold text-gray-800">
-                      End Date <span className="text-gray-400 font-normal">(Optional)</span>
-                    </Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="end_date" className="text-xs font-medium text-foreground">End Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
                     <Input
                       id="end_date"
                       type="date"
                       value={formData.recurring_schedule.end_date?.split('T')[0] || ''}
                       onChange={(e) => handleRecurringScheduleChange('end_date', e.target.value ? `${e.target.value}T23:59:59Z` : null)}
-                      className="h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 bg-white"
+                      className="h-9 bg-background"
                     />
-                    <p className="text-xs sm:text-sm text-gray-700">Leave empty to continue indefinitely</p>
                   </div>
 
-                  {/* Schedule Preview */}
-                  {!scheduleErrors.length && (
-                    <div className="rounded-lg border-2 border-emerald-300 bg-white p-3 sm:p-4 shadow-sm">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        📅 {formatScheduleDescription(formData.recurring_schedule)}
-                      </p>
+                  {!scheduleErrors.length ? (
+                    <div className="rounded-md bg-background p-2 text-xs font-medium text-foreground">
+                      {formatScheduleDescription(formData.recurring_schedule)}
                     </div>
-                  )}
-
-                  {/* Errors */}
-                  {scheduleErrors.length > 0 && (
-                    <div className="rounded-lg border-2 border-red-400 bg-gradient-to-r from-red-50 to-pink-50 p-3 sm:p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div className="space-y-1">
-                          {scheduleErrors.map((error, i) => (
-                            <p key={i} className="text-xs sm:text-sm text-red-700 font-medium">
-                              • {error}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
+                  ) : (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 space-y-1">
+                      {scheduleErrors.map((error, i) => (
+                        <p key={i} className="text-[11px] text-destructive font-medium">• {error}</p>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Cost Estimation - Modern Card */}
               {formData.message_text && formData.target_contact_ids.length > 0 && (
-                <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-5 shadow-lg shadow-emerald-100/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <DollarSign className="w-5 h-5 text-emerald-600" />
-                    <h4 className="text-base sm:text-lg font-bold text-gray-900">Cost Estimation</h4>
+                <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <DollarSign className="w-4 h-4 text-success" />
+                    <h4 className="text-xs font-semibold text-foreground">Cost Estimation</h4>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between bg-white rounded-lg p-2.5 sm:p-3">
-                      <span className="text-gray-700">Message Length</span>
-                      <span className="font-bold text-gray-900">{formData.message_text.length} chars ({calculateSMSSegments(formData.message_text)} SMS)</span>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between bg-background rounded-md px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Message Length</span>
+                      <span className="font-semibold text-foreground">{formData.message_text.length} chars ({calculateSMSSegments(formData.message_text)} SMS)</span>
                     </div>
-                    <div className="flex items-center justify-between bg-white rounded-lg p-2.5 sm:p-3">
-                      <span className="text-gray-700">Recipients</span>
-                      <span className="font-bold text-gray-900">{formData.target_contact_ids.length} contacts</span>
+                    <div className="flex items-center justify-between bg-background rounded-md px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Recipients</span>
+                      <span className="font-semibold text-foreground">{formData.target_contact_ids.length} contacts</span>
                     </div>
-                    <div className="flex items-center justify-between bg-gradient-to-r from-emerald-100 to-teal-100 rounded-lg p-2.5 sm:p-3 border-2 border-emerald-300">
-                      <span className="text-gray-900 font-bold">Total Cost</span>
-                      <span className="text-lg sm:text-xl font-bold text-emerald-700">TZS {estimatedCost.toLocaleString()}</span>
+                    <div className="flex items-center justify-between bg-success/10 rounded-md px-2.5 py-1.5 border border-success/30">
+                      <span className="font-semibold text-foreground">Total Cost</span>
+                      <span className="text-sm font-bold text-success">TZS {estimatedCost.toLocaleString()}</span>
                     </div>
                     {formData.is_recurring && (
-                      <div className="flex items-center justify-between bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg p-2.5 sm:p-3 border-2 border-blue-300">
-                        <span className="text-gray-900 font-bold">Weekly Cost</span>
-                        <span className="text-lg sm:text-xl font-bold text-blue-700">TZS {weeklyCost.toLocaleString()}</span>
+                      <div className="flex items-center justify-between bg-primary/5 rounded-md px-2.5 py-1.5 border border-primary/25">
+                        <span className="font-semibold text-foreground">Weekly Cost</span>
+                        <span className="text-sm font-bold text-primary">TZS {weeklyCost.toLocaleString()}</span>
                       </div>
                     )}
                     {smsBalance !== null && estimatedCost > smsBalance && (
-                      <div className="rounded-lg border-2 border-red-400 bg-gradient-to-r from-red-50 to-pink-50 p-2.5 sm:p-3 flex items-start gap-2">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs sm:text-sm text-red-700 font-semibold">
-                          ⚠️ Insufficient credits! You need TZS {(estimatedCost - smsBalance).toLocaleString()} more.
+                      <div className="rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 flex items-start gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-destructive font-medium">
+                          Insufficient credits — you need TZS {(estimatedCost - smsBalance).toLocaleString()} more.
                         </p>
                       </div>
                     )}
@@ -749,221 +836,186 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
           {/* Step 2: Target Audience */}
           {step === 2 && (
-            <div className="space-y-4 sm:space-y-5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">Select Target Audience</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Choose who will receive this campaign</p>
+                  <h3 className="text-sm font-semibold text-foreground">Select Target Audience</h3>
+                  <p className="text-[11px] text-muted-foreground">Choose who will receive this campaign</p>
                 </div>
-                <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-bold rounded-full shadow-lg">
-                  {formData.target_contact_ids.length} selected
-                </Badge>
+                <Badge className="text-[11px] font-semibold">{formData.target_contact_ids.length} selected</Badge>
               </div>
 
               {contactsLoading ? (
-                <div className="text-center py-8 sm:py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-600 mt-3">Loading your contacts...</p>
+                <div className="text-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                  <p className="text-xs text-muted-foreground mt-2">Loading your contacts...</p>
                 </div>
               ) : showContactsEmptyState ? (
-                <div className="text-center py-8 sm:py-12 px-4 border-2 border-dashed border-gray-300 rounded-xl bg-gradient-to-br from-gray-50 to-blue-50 space-y-4">
-                  <div className="inline-block p-3 sm:p-4 rounded-xl bg-blue-100">
-                    <AlertCircle className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" />
+                <div className="text-center py-8 px-4 border border-dashed border-border rounded-lg bg-muted/30 space-y-3">
+                  <AlertCircle className="w-8 h-8 text-primary mx-auto" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">No Contacts Found</p>
+                    <p className="text-xs text-muted-foreground">Create at least one contact before launching a campaign.</p>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-base sm:text-lg font-bold text-gray-900">No Contacts Found</p>
-                    <p className="text-xs sm:text-sm text-gray-600">
-                      You haven't added any contacts yet. Create at least one contact before launching a campaign.
-                    </p>
-                  </div>
-                  <Button
-                    asChild
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold h-10 sm:h-12 px-6 shadow-lg"
-                    onClick={() => {
-                      setStep(1);
-                      setOpen(false);
-                    }}
-                  >
-                    <Link to="/contacts" className="flex items-center gap-2">
-                      Add Contacts <ArrowRight className="w-4 h-4" />
+                  <Button asChild size="sm" onClick={() => { setStep(1); requestClose(); }}>
+                    <Link to="/contacts" className="flex items-center gap-1.5">
+                      Add Contacts <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3 sm:space-y-4">
-                  {/* Select/Deselect All */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border-2 border-blue-200">
-                    <Button
-                      variant="outline"
-                      onClick={handleSelectAllContacts}
-                      className="flex-1 sm:flex-none h-10 text-sm font-semibold border-2 border-blue-300 hover:bg-blue-100 rounded-lg transition-all"
-                    >
-                      {formData.target_contact_ids.length === contacts.length ? '✓ Deselect All' : '◯ Select All'}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2.5 bg-muted/40 rounded-lg p-2.5 border border-border">
+                    <Button variant="outline" size="sm" onClick={handleSelectAllContacts} className="h-8">
+                      {formData.target_contact_ids.length === contacts.length ? 'Deselect All' : 'Select All'}
                     </Button>
-                    <p className="text-xs sm:text-sm font-medium text-gray-700">
-                      {contacts.length} total contacts
-                    </p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{contacts.length} total contacts</p>
                   </div>
 
-                  {/* Contacts List */}
-                  <div className="rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm">
-                    <div className="max-h-80 sm:max-h-96 overflow-y-auto">
-                      <div className="divide-y divide-gray-200">
-                        {contacts.map((contact, index) => (
-                          <div
-                            key={contact.id || `contact-${index}`}
-                            className="flex items-center gap-3 p-3 sm:p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 cursor-pointer"
-                            onClick={() => handleContactToggle(contact.id)}
-                          >
-                            <Checkbox
-                              id={`contact-${contact.id}`}
-                              checked={formData.target_contact_ids.includes(contact.id)}
-                              onCheckedChange={() => handleContactToggle(contact.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="h-5 w-5 sm:h-6 sm:w-6 rounded border-2 border-gray-300 cursor-pointer"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                                {contact.name}
-                              </p>
-                              <p className="text-xs sm:text-sm text-gray-500 truncate font-mono">
-                                {contact.phone_e164}
-                              </p>
-                            </div>
-                            {formData.target_contact_ids.includes(contact.id) && (
-                              <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                            )}
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border">
+                      {contacts.map((contact, index) => (
+                        <div
+                          key={contact.id || `contact-${index}`}
+                          className="flex items-center gap-2.5 p-2.5 hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => handleContactToggle(contact.id)}
+                        >
+                          <Checkbox
+                            checked={formData.target_contact_ids.includes(contact.id)}
+                            onCheckedChange={() => handleContactToggle(contact.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs text-foreground truncate">{contact.name}</p>
+                            <p className="text-[11px] text-muted-foreground truncate font-mono">{contact.phone_e164}</p>
                           </div>
-                        ))}
-                      </div>
+                          {formData.target_contact_ids.includes(contact.id) && (
+                            <Check className="w-4 h-4 text-success flex-shrink-0" />
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Target Criteria Section */}
-              <div className="space-y-3 rounded-xl border-2 border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+              <div className="space-y-2 rounded-lg border border-border p-3">
                 <div>
-                  <h4 className="text-base sm:text-lg font-bold text-gray-900">Target Criteria</h4>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Add tags to further refine your audience</p>
+                  <h4 className="text-xs font-semibold text-foreground">Target Criteria</h4>
+                  <p className="text-[11px] text-muted-foreground">Add tags to further refine your audience</p>
                 </div>
-
-                {/* Tags Input */}
-                <div className="space-y-3">
-                  {/* Tag Input Field */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <Input
-                        placeholder="Enter a tag (e.g., VIP, Premium, Newsletter)"
-                        value={formData.newTag}
-                        onChange={(e) => handleInputChange('newTag', e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
-                            handleInputChange('target_criteria', { ...formData.target_criteria, tags: [...formData.target_criteria.tags, formData.newTag.trim()] });
-                            handleInputChange('newTag', '');
-                          }
-                        }}
-                        className="pl-10 h-10 sm:h-12 text-sm sm:text-base rounded-lg border-2 border-gray-200 focus:border-blue-500 transition-all"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        if (formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
+                    <Input
+                      placeholder="Enter a tag (e.g., VIP, Premium)"
+                      value={formData.newTag}
+                      onChange={(e) => handleInputChange('newTag', e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
                           handleInputChange('target_criteria', { ...formData.target_criteria, tags: [...formData.target_criteria.tags, formData.newTag.trim()] });
                           handleInputChange('newTag', '');
                         }
                       }}
-                      disabled={!formData.newTag.trim() || formData.target_criteria.tags.includes(formData.newTag.trim())}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold h-10 sm:h-12 px-4 sm:px-6 rounded-lg transition-all shadow-md hover:shadow-lg"
-                    >
-                      Add Tag
-                    </Button>
+                      className="pl-8 h-9"
+                    />
                   </div>
-
-                  {/* Display Selected Tags */}
-                  {formData.target_criteria.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {formData.target_criteria.tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 text-xs sm:text-sm font-bold rounded-full flex items-center gap-2 shadow-md"
-                        >
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => handleInputChange('target_criteria', { ...formData.target_criteria, tags: formData.target_criteria.tags.filter(t => t !== tag) })}
-                            className="ml-1 hover:opacity-80 font-bold"
-                          >
-                            ✕
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (formData.newTag.trim() && !formData.target_criteria.tags.includes(formData.newTag.trim())) {
+                        handleInputChange('target_criteria', { ...formData.target_criteria, tags: [...formData.target_criteria.tags, formData.newTag.trim()] });
+                        handleInputChange('newTag', '');
+                      }
+                    }}
+                    disabled={!formData.newTag.trim() || formData.target_criteria.tags.includes(formData.newTag.trim())}
+                    className="h-9"
+                  >
+                    Add
+                  </Button>
                 </div>
+                {formData.target_criteria.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {formData.target_criteria.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-[11px] font-medium gap-1">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('target_criteria', { ...formData.target_criteria, tags: formData.target_criteria.tags.filter((t) => t !== tag) })}
+                          className="hover:opacity-70"
+                        >
+                          ✕
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
-
         </div>
 
-        {/* Navigation - Sticky Footer.
-            On mobile we stack: compact step row on top, full-width action buttons below.
-            On sm+ we keep the original side-by-side layout. */}
-        <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-5 border-t border-gray-200 bg-background">
-            {/* Step Indicators */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 1 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
-              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 shadow-sm ${step >= 2 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/50' : 'bg-gray-300'}`} />
-              <span className="text-[11px] sm:text-sm text-gray-600 font-medium">Step {step} of 2</span>
-            </div>
+        {autosaveError && (
+          <div className="flex-shrink-0 px-4 py-2 border-t border-destructive/20 bg-destructive/5 flex items-center justify-between gap-2">
+            <span className="text-[11px] text-destructive">{autosaveError}</span>
+            <button type="button" onClick={() => { dismissAutosaveError(); saveNow(); }} className="text-[11px] font-semibold text-destructive underline flex-shrink-0">
+              Retry
+            </button>
+          </div>
+        )}
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-              {step > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-6 text-[13px] sm:text-base font-semibold border-2 border-gray-300 hover:bg-gray-100 rounded-lg transition-all"
-                >
-                  ← Previous
-                </Button>
-              )}
-
-              {step < 2 ? (
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!canProceedToStep2}
-                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-6 text-[13px] sm:text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
-                >
-                  Next →
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!canSubmit || isSubmitting}
-                  className="flex-1 sm:flex-none h-10 sm:h-12 px-3 sm:px-8 text-[13px] sm:text-base font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-1.5 sm:gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-transparent border-t-white"></div>
-                      <span>Creating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                      <span className="truncate">
-                        <span className="sm:hidden">Create</span>
-                        <span className="hidden sm:inline">Create Campaign</span>
-                      </span>
-                    </>
-                  )}
-                </Button>
-              )}
+        {/* Navigation footer */}
+        <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-border bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1.5 h-1.5 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+              <span className="text-[11px] text-muted-foreground font-medium">Step {step} of 2</span>
             </div>
+            {saveStatusLabel && (
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                {isAutosaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                {saveStatusLabel}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {step > 1 && (
+              <Button variant="ghost" onClick={() => setStep(step - 1)} className="h-9 px-3">
+                ← Previous
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleSaveDraftClick} disabled={!formData.name.trim()} className="h-9 px-3">
+              Save Draft
+            </Button>
+            {step < 2 ? (
+              <Button onClick={() => setStep(2)} disabled={!canProceedToStep2} className="flex-1 sm:flex-none h-9 px-4">
+                Next →
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting} className="flex-1 sm:flex-none h-9 px-4 gap-1.5">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="truncate">
+                      <span className="sm:hidden">Create</span>
+                      <span className="hidden sm:inline">Create Campaign</span>
+                    </span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

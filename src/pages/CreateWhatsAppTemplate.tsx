@@ -314,14 +314,14 @@ export default function CreateWhatsAppTemplate() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-24">
+          <div className="max-w-6xl mx-auto w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-24">
             {/* Page header — close (×) lives inside the form card now, not here */}
-            <header className="flex items-center gap-3 mb-4 sm:mb-6">
+            <header className="flex items-center gap-3 mb-3 sm:mb-5">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#25D366]/15 flex items-center justify-center flex-shrink-0">
                 <WhatsAppIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#25D366]" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold leading-tight">Create Template</h1>
+                <h1 className="text-lg sm:text-xl font-bold leading-tight">Create Template</h1>
                 <p className="text-[12px] sm:text-sm text-foreground/60 leading-snug">
                   Build a Meta-approved WhatsApp message template.
                 </p>
@@ -329,7 +329,7 @@ export default function CreateWhatsAppTemplate() {
             </header>
 
             {accountError && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-3">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-sm">{accountError}</AlertDescription>
               </Alert>
@@ -337,7 +337,7 @@ export default function CreateWhatsAppTemplate() {
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 sm:gap-6">
               {/* ── Form column ───────────────────────────────────────────── */}
-              <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm p-4 sm:p-6 space-y-5">
+              <div className="relative rounded-2xl border border-border/60 bg-card shadow-sm p-3 sm:p-4 space-y-3.5">
                 {/* Close × — pinned to the form card's top-right corner so it's
                     always visible inside the card chrome (was getting clipped
                     when it lived in the page header). */}
@@ -909,7 +909,7 @@ function WhatsAppChatPreview({
   const renderedFooter = rendered?.footer ?? footer;
 
   return (
-    <aside className="lg:sticky lg:top-4 h-fit rounded-2xl border border-border/60 bg-card shadow-sm p-3 sm:p-4 space-y-3">
+    <aside className="lg:sticky lg:top-4 h-fit rounded-2xl border border-border/60 bg-card shadow-sm p-2.5 sm:p-3.5 space-y-2.5">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />

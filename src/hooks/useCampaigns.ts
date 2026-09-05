@@ -212,6 +212,7 @@ export const useCampaigns = () => {
     };
     is_recurring?: boolean;
     recurring_schedule?: any;
+    save_as_draft?: boolean;
   }): Promise<boolean> => {
     try {
       const response = await apiClient.createCampaign(data);
@@ -251,6 +252,7 @@ export const useCampaigns = () => {
     name?: string;
     description?: string;
     message_text?: string;
+    sender_id?: string;
     template?: string;
     scheduled_at?: string;
     target_contact_ids?: string[];

@@ -4033,6 +4033,23 @@ class ApiClient {
     }
   }
 
+  // Get feature access map for the caller's active tenant (billing/features/)
+  async getFeatureAccess(): Promise<ApiResponse<Record<string, boolean>>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.FEATURES}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<Record<string, boolean>>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
   // Get Billing Balance (new endpoint)
   async getBillingBalance(): Promise<ApiResponse<{
     credits: number;
@@ -5304,12 +5321,17 @@ class ApiClient {
     is_recurring: boolean;
     recurring_schedule: Record<string, unknown>;
     settings: Record<string, unknown>;
+    target_criteria: { tags?: string[]; opt_in_status?: string } | Record<string, unknown>;
     created_by: string;
     created_by_name: string;
     created_at: string;
     updated_at: string;
     target_contact_count: number;
     target_segment_names: string[];
+    target_contact_ids: string[];
+    target_segment_ids: string[];
+    sender_id: string | null;
+    sender_name: string | null;
   }>> {
     return this.request(`/messaging/campaigns/${id}/`);
   }
@@ -5319,6 +5341,7 @@ class ApiClient {
     description?: string;
     campaign_type: 'sms' | 'whatsapp' | 'email' | 'mixed';
     message_text: string;
+    sender_id?: string;
     template?: string | null;
     scheduled_at?: string | null;
     target_contact_ids?: string[];
@@ -5333,6 +5356,7 @@ class ApiClient {
     };
     is_recurring?: boolean;
     recurring_schedule?: Record<string, unknown>;
+    save_as_draft?: boolean;
   }): Promise<ApiResponse<{
     id: string;
     name: string;
@@ -5354,6 +5378,7 @@ class ApiClient {
     name?: string;
     description?: string;
     message_text?: string;
+    sender_id?: string;
     template?: string | null;
     scheduled_at?: string | null;
     target_contact_ids?: string[];
@@ -5379,8 +5404,11 @@ class ApiClient {
     target_contact_count: number;
     target_segment_names: string[];
   }>> {
+    // PATCH (not PUT) — every field here is optional so a caller can send a
+    // genuinely partial payload (e.g. autosaving just `name`) without the
+    // backend rejecting it for missing unrelated required fields.
     return this.request(`/messaging/campaigns/${id}/`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
   }

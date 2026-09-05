@@ -5277,7 +5277,7 @@ export default function WhatsAppCloud() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className={`flex-1 overflow-y-auto overflow-x-hidden transition-colors duration-300 ${modeBgClass}`}>
-          <div className="max-w-3xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-5">
+          <div className="max-w-3xl mx-auto w-full max-w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-6 space-y-3.5">
 
             {/* iOS large-title header */}
             <header className="flex items-start justify-between gap-3">
@@ -5328,7 +5328,7 @@ export default function WhatsAppCloud() {
             {/* ── Manual ID input ── */}
             {!loadingAccount && !waAccountId && (
               <Card className="border border-border shadow-sm">
-                <CardContent className="p-4 space-y-2">
+                <CardContent className="p-3 space-y-2">
                   <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">WhatsApp Account ID</Label>
                   <p className="text-[11px] text-muted-foreground">Paste your copilot ID (cb_…) or configure credentials in Settings</p>
                   <Input
@@ -5407,7 +5407,7 @@ export default function WhatsAppCloud() {
                 sidebar page (Send SMS ↔ Campaigns). */}
             <div
               ref={tabBodyRef}
-              className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] p-4 sm:p-5"
+              className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] p-3 sm:p-4"
             >
               {loadingAccount ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-foreground/60">

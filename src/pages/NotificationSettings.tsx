@@ -96,12 +96,12 @@ const NotificationSettingsPage = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 xl:p-8">
-          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <main className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4 xl:p-6">
+          <div className="max-w-4xl mx-auto space-y-3 sm:space-y-5">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">Notification Settings</h1>
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold text-foreground">Notification Settings</h1>
                 <p className="text-xs sm:text-sm text-text-subtle">
                   Manage your notification preferences and thresholds
                 </p>

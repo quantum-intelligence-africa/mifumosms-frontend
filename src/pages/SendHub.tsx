@@ -33,7 +33,7 @@ function ChannelCard({
         "w-full text-left",
         "rounded-2xl border border-border/70 dark:border-border/50",
         "bg-card dark:bg-card/95 active:scale-[0.99] transition-transform",
-        "p-3.5 flex items-center gap-3",
+        "p-3 flex items-center gap-3",
       ].join(" ")}
     >
       <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -73,18 +73,18 @@ const SendHub = () => {
             vertically center in the remaining space on phones/tablets. On lg+
             screens everything top-aligns so longer content scrolls naturally. */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-3 sm:p-4 md:p-6 max-w-3xl mx-auto w-full min-h-full flex flex-col">
-            <div className="mb-3 sm:mb-4">
-              <h2 className="text-[16px] sm:text-lg font-bold text-foreground dark:text-foreground leading-tight">
+          <div className="p-2.5 sm:p-3.5 md:p-5 max-w-3xl mx-auto w-full min-h-full flex flex-col">
+            <div className="mb-2.5 sm:mb-3">
+              <h2 className="text-[14px] sm:text-base font-bold text-foreground dark:text-foreground leading-tight">
                 How do you want to send?
               </h2>
-              <p className="text-[12px] sm:text-sm text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5">
+              <p className="text-[11.5px] sm:text-sm text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5">
                 Pick a channel to compose a new message.
               </p>
             </div>
 
             <div className="flex-1 flex flex-col justify-center lg:justify-start lg:flex-none">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
                 <ChannelCard
                   title="Send an SMS"
                   description="Reach any mobile number. Branded with your approved Sender ID."
@@ -109,7 +109,7 @@ const SendHub = () => {
               <button
                 type="button"
                 onClick={() => navigate("/messaging/campaigns")}
-                className="mt-3 w-full flex items-center gap-3 rounded-2xl border border-border/70 dark:border-border/50 bg-muted/30 dark:bg-muted/15 p-3 text-left active:scale-[0.99] transition-transform"
+                className="mt-2.5 w-full flex items-center gap-3 rounded-2xl border border-border/70 dark:border-border/50 bg-muted/30 dark:bg-muted/15 p-2.5 text-left active:scale-[0.99] transition-transform"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/15 text-primary flex items-center justify-center flex-shrink-0">
                   <BarChart3 className="w-[18px] h-[18px]" strokeWidth={2.2} />

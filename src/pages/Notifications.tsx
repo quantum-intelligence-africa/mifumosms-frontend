@@ -178,31 +178,31 @@ const NotificationsPage = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-3 sm:p-4 lg:p-6 max-w-3xl mx-auto w-full">
+          <div className="p-2.5 sm:p-3.5 lg:p-5 max-w-3xl mx-auto w-full">
             {/* Desktop header (mobile header lives in the top bar context) */}
-            <div className="hidden md:block mb-4">
-              <h1 className="font-heading text-xl lg:text-2xl font-bold text-foreground leading-tight">
+            <div className="hidden md:block mb-3">
+              <h1 className="font-heading text-lg lg:text-xl font-bold text-foreground leading-tight">
                 Notifications
               </h1>
-              <p className="text-sm text-foreground/60 mt-1">
+              <p className="text-sm text-foreground/60 mt-0.5">
                 Activity across messages, campaigns and contacts.
               </p>
             </div>
 
             {/* Mobile: simple count line */}
-            <div className="md:hidden mb-3">
-              <p className="text-[13px] text-foreground/60">
+            <div className="md:hidden mb-2.5">
+              <p className="text-[12.5px] text-foreground/60">
                 {filtered.length === 0 ? "Nothing to show" : `${filtered.length} notification${filtered.length === 1 ? "" : "s"}`}
               </p>
             </div>
 
             {/* Push notification settings */}
-            <div className="mb-4">
+            <div className="mb-3">
               <PushSettingsCard />
             </div>
 
             {/* Search */}
-            <div className="relative mb-3">
+            <div className="relative mb-2.5">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
               <Input
                 value={searchTerm}
@@ -224,7 +224,7 @@ const NotificationsPage = () => {
 
             {/* Filter chips */}
             <div
-              className="flex gap-1.5 overflow-x-auto pb-1.5 mb-3 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none"
+              className="flex gap-1.5 overflow-x-auto pb-1.5 mb-2.5 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none"
               style={{ scrollbarWidth: "none" }}
             >
               {FILTERS.map((f) => {

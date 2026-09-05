@@ -1312,13 +1312,13 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4" />
                   Profile Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="flex flex-col items-center gap-4">
                     <Avatar className="w-20 h-20">
@@ -1425,13 +1425,13 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4" />
                   Preferences
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 {preferencesLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <p className="text-sm text-text-subtle">Loading preferences...</p>
@@ -1550,13 +1550,13 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Bell className="w-4 h-4" />
                   Notification Preferences
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between py-2">
                     <div>
@@ -1620,14 +1620,14 @@ const Settings = () => {
             {/*
             {securitySummary && (
               <Card className="glass border-0">
-                <CardHeader className="p-4">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Shield className="w-4 h-4" />
                     Security Overview
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <CardContent className="p-3 pt-0">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-foreground">{securitySummary.security_score}</div>
                       <div className="text-xs text-text-subtle">Security Score</div>
@@ -1654,13 +1654,13 @@ const Settings = () => {
 
             {/* Change Password */}
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Key className="w-4 h-4" />
                   Change Password
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
@@ -1737,13 +1737,13 @@ const Settings = () => {
             {/* Two-Factor Authentication - Coming Soon */}
             {/*
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Shield className="w-4 h-4" />
                   Two-Factor Authentication
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium text-foreground text-sm">2FA Status</h4>
@@ -1892,13 +1892,13 @@ const Settings = () => {
             {/* SMS Verification */}
             {!user?.phone_verified && (
               <Card className="glass border-0">
-                <CardHeader className="p-4">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Phone className="w-4 h-4" />
                     SMS Account Verification
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 p-4 pt-0">
+                <CardContent className="space-y-4 p-3 pt-0">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium text-foreground text-sm">Verification Status</h4>
@@ -1997,7 +1997,7 @@ const Settings = () => {
             {/* Active Sessions - Coming Soon */}
             {/*
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <Globe className="w-4 h-4" />
@@ -2014,7 +2014,7 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               {showSessions && (
-                <CardContent className="p-4 pt-0">
+                <CardContent className="p-3 pt-0">
                   <div className="space-y-3">
                     {activeSessions.length === 0 ? (
                       <p className="text-sm text-text-subtle text-center py-4">No active sessions</p>
@@ -2067,7 +2067,7 @@ const Settings = () => {
             </Card>
 
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4" />
@@ -2084,7 +2084,7 @@ const Settings = () => {
                 </CardTitle>
               </CardHeader>
               {showSecurityEvents && (
-                <CardContent className="p-4 pt-0">
+                <CardContent className="p-3 pt-0">
                   <div className="space-y-3">
                     {securityEvents.length === 0 ? (
                       <p className="text-sm text-text-subtle text-center py-4">No security events</p>
@@ -2225,7 +2225,7 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
@@ -2237,7 +2237,7 @@ const Settings = () => {
                   </Button>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
+              <CardContent className="p-3 pt-0">
                 <div className="space-y-3">
                   {Array.isArray(team.members) && team.members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-gradient-surface border border-border-subtle">
@@ -2354,7 +2354,7 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <CreditCard className="w-4 h-4" />
@@ -2372,7 +2372,7 @@ const Settings = () => {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 {billingData.isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-5 h-5 animate-spin text-text-subtle" />
@@ -2603,13 +2603,13 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <Card className="glass border-0">
-              <CardHeader className="p-4">
+              <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <MessageCircle className="w-4 h-4 text-emerald-600" />
                   WhatsApp Cloud API Credentials
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4 pt-0">
+              <CardContent className="space-y-4 p-3 pt-0">
                 <p className="text-xs text-text-subtle">
                   Store Meta WhatsApp Cloud API credentials for your AI Copilot. The backend
                   automatically selects your latest active copilot.
@@ -2775,7 +2775,7 @@ const Settings = () => {
                 </div>
 
                 <Card className="glass border-0 bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500">
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="space-y-2 text-xs text-text-subtle">
                       <p><strong>Save Credentials (PUT):</strong> Replaces ALL credentials. All three required fields (Phone ID, Access Token, Verify Token) must be present.</p>
                       <p><strong>Patch:</strong> Updates only the fields you enter. Omit fields to leave them unchanged. Useful for updating WABA ID or Graph API base without re-entering tokens.</p>
@@ -2807,7 +2807,7 @@ const Settings = () => {
       return (
         <div className="space-y-4">
           <Card className="glass border-0 border-l-4 border-green-500">
-            <CardContent className="p-4">
+            <CardContent className="p-3">
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <div>
@@ -2835,13 +2835,13 @@ const Settings = () => {
     return (
       <div className="space-y-4">
         <Card className="glass border-0">
-          <CardHeader className="p-4">
+          <CardHeader className="p-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="w-4 h-4" />
               Become a Partner
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 p-4 pt-0">
+          <CardContent className="space-y-4 p-3 pt-0">
             {submitted ? (
               <div className="p-4 rounded-lg bg-green-50 border border-green-200">
                 <div className="flex items-start gap-3">
@@ -2922,7 +2922,7 @@ const Settings = () => {
         </Card>
 
         <Card className="glass border-0 bg-blue-50/50">
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <p className="text-xs text-text-subtle">
               <strong>Note:</strong> After submitting your request, our admin team will review your application and contact you within 2-3 business days with a decision.
             </p>
@@ -2940,11 +2940,11 @@ const Settings = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-3 sm:p-4 lg:p-4 xl:p-6 w-full max-w-full">
+          <div className="p-2.5 sm:p-3 lg:p-3 xl:p-4 w-full max-w-full">
             <div className="max-w-7xl mx-auto flex flex-col">
               {/* Header — desktop only; mobile uses the per-page context */}
-              <div className="hidden md:block mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
-                <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
+              <div className="hidden md:block mb-2.5 sm:mb-3 lg:mb-4 xl:mb-5">
+                <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground">
                   Settings
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
@@ -3063,7 +3063,7 @@ const Settings = () => {
                             }`}
                             onClick={() => setCurrentCategory(category.id)}
                           >
-                            <CardContent className="p-4">
+                            <CardContent className="p-3">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg ${category.color} flex items-center justify-center`}>
                                   <category.icon className="w-4 h-4 text-white" />

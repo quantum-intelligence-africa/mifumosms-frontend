@@ -36,8 +36,8 @@ const SenderIDKYCUpload = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 xl:p-6">
-          <div className="max-w-3xl mx-auto space-y-4 sm:space-y-5 lg:space-y-6">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-2.5 lg:p-3.5 xl:p-4">
+          <div className="max-w-3xl mx-auto space-y-3 sm:space-y-3.5 lg:space-y-4">
             {/* Back Button */}
             <Button
               variant="ghost"
@@ -53,7 +53,7 @@ const SenderIDKYCUpload = () => {
               <>
                 {/* Header */}
                 <div>
-                  <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
+                  <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground mb-1 sm:mb-1.5">
                     {t('sender_id_request') || 'Sender ID KYC Upload'}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
@@ -62,8 +62,8 @@ const SenderIDKYCUpload = () => {
                 </div>
 
                 {/* Info Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Card className="p-3 sm:p-4 glass">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <Card className="p-2.5 sm:p-3.5 glass">
                     <div className="flex items-start gap-2">
                       <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
@@ -73,7 +73,7 @@ const SenderIDKYCUpload = () => {
                     </div>
                   </Card>
 
-                  <Card className="p-3 sm:p-4 glass">
+                  <Card className="p-2.5 sm:p-3.5 glass">
                     <div className="flex items-start gap-2">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
@@ -83,7 +83,7 @@ const SenderIDKYCUpload = () => {
                     </div>
                   </Card>
 
-                  <Card className="p-3 sm:p-4 glass">
+                  <Card className="p-2.5 sm:p-3.5 glass">
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
@@ -95,7 +95,7 @@ const SenderIDKYCUpload = () => {
                 </div>
 
                 {/* Requirements */}
-                <Card className="p-4 sm:p-6 glass">
+                <Card className="p-3 sm:p-4 glass">
                   <h2 className="font-semibold text-sm sm:text-base mb-3">Required Information</h2>
                   <div className="space-y-2">
                     <div className="flex gap-2">
@@ -140,7 +140,7 @@ const SenderIDKYCUpload = () => {
                   </p>
 
                   {successData && (
-                    <Card className="w-full max-w-md p-4 sm:p-6 glass mb-6">
+                    <Card className="w-full max-w-md p-3 sm:p-4 glass mb-6">
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
                           <span className="text-xs sm:text-sm text-text-subtle">Request ID</span>

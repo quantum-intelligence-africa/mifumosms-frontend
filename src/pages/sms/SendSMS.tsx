@@ -1101,20 +1101,20 @@ const SendSMS = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main data-sticky-bottom-bar className={`flex-1 overflow-y-auto overflow-x-hidden transition-colors duration-300 ${modeBgClass}`}>
-          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl px-4 sm:px-6 pt-4 sm:pt-6 pb-36 sm:pb-32">
+          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl px-3 sm:px-5 pt-3 sm:pt-4 pb-36 sm:pb-32">
             {/* Two-column on desktop: compose form (left) + live preview (right,
                 sticky). Collapses to a single column on mobile (preview below). */}
-            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,34%,380px)] lg:gap-6 lg:items-start">
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(300px,34%,380px)] lg:gap-5 lg:items-start">
             {/* Left column: the compose form */}
-            <div className="space-y-5 min-w-0">
+            <div className="space-y-3.5 min-w-0">
             {/* Mobile-only quick access to Sent / Outbox / Sender (desktop uses the sidebar). */}
             <MessagesSubNav />
             {/* Page header — iOS-style large title */}
             <header>
-              <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+              <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                 {language === "sw" ? "Tuma SMS" : "Send SMS"}
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+              <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 {language === "sw" ? "SMS moja kwa moja, wengi, au sehemu" : "Choose how you'd like to send."}
               </p>
             </header>
@@ -1518,7 +1518,7 @@ const SendSMS = () => {
 
                 {/* Send Progress */}
                 {sending && (
-                  <div className="space-y-1.5 p-4 sm:p-5">
+                  <div className="space-y-1.5 p-3 sm:p-4">
                     <div className="flex items-center justify-between text-[12px] font-medium">
                       <span className="text-foreground/70">{language === "sw" ? "Inatumwa..." : "Sending..."}</span>
                       <span className="text-primary tabular-nums">{sendProgress}%</span>
@@ -1555,7 +1555,7 @@ const SendSMS = () => {
               "border-t border-border/30 dark:border-border/20 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]",
               // Sit above the mobile tab bar; clear of the desktop layout.
               "bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom))] md:bottom-0",
-              "pb-3 pt-3 px-4 sm:px-6",
+              "pb-2.5 pt-2.5 px-3 sm:px-5",
             ].join(" ")}
           >
             <div className="max-w-2xl mx-auto flex items-center gap-3">
@@ -1668,8 +1668,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="p-4 sm:p-5">
-      <div className="flex items-end justify-between gap-2 mb-2.5">
+    <section className="p-3 sm:p-4">
+      <div className="flex items-end justify-between gap-2 mb-2">
         <h2 className="text-[11px] font-bold tracking-wider uppercase text-foreground/60 dark:text-foreground/50">
           {title}
         </h2>

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import React, { useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DialerProvider } from "@/contexts/DialerContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -50,6 +51,15 @@ const PertinaInsights = lazy(() => import("./pages/PertinaInsights"));
 const Developer = lazy(() => import("./pages/Developer"));
 const AIAgents = lazy(() => import("./pages/AIAgents"));
 const VoiceAgents = lazy(() => import("./pages/VoiceAgents"));
+const IvrFlowList = lazy(() => import("./pages/voice/IvrFlowList"));
+const VoiceNumbers = lazy(() => import("./pages/voice/VoiceNumbers"));
+const CallHistory = lazy(() => import("./pages/voice/CallHistory"));
+const Recordings = lazy(() => import("./pages/voice/Recordings"));
+const VoiceAgentDirectory = lazy(() => import("./pages/voice/Agents"));
+const AudioPrompts = lazy(() => import("./pages/voice/AudioPrompts"));
+const AISettings = lazy(() => import("./pages/voice/AISettings"));
+const VoiceOverview = lazy(() => import("./pages/voice/VoiceOverview"));
+const IvrFlowBuilder = lazy(() => import("./pages/voice/IvrFlowBuilder"));
 const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
 const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
 const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
@@ -321,6 +331,51 @@ const AppContent = () => {
                   <VoiceAgents />
                 </ProtectedRoute>
               } />
+              <Route path="/voice" element={
+                <ProtectedRoute>
+                  <VoiceOverview />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/ivr" element={
+                <ProtectedRoute>
+                  <IvrFlowList />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/numbers" element={
+                <ProtectedRoute>
+                  <VoiceNumbers />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/calls" element={
+                <ProtectedRoute>
+                  <CallHistory />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/agents" element={
+                <ProtectedRoute>
+                  <VoiceAgentDirectory />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/prompts" element={
+                <ProtectedRoute>
+                  <AudioPrompts />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/recordings" element={
+                <ProtectedRoute>
+                  <Recordings />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/ai-settings" element={
+                <ProtectedRoute>
+                  <AISettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/ivr/:flowId" element={
+                <ProtectedRoute>
+                  <IvrFlowBuilder />
+                </ProtectedRoute>
+              } />
         {/* ── SENDA Admin Dashboard (standalone, no auth guard) ── */}
         <Route path="/admin" element={<SendaAdmin />} />
         <Route path="*" element={<NotFound />} />
@@ -345,14 +400,16 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
-            >
-              <AppContent />
-            </BrowserRouter>
+            <DialerProvider>
+              <BrowserRouter
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
+                <AppContent />
+              </BrowserRouter>
+            </DialerProvider>
           </TooltipProvider>
         </LanguageProvider>
       </AuthProvider>

@@ -231,19 +231,19 @@ const PertinaInsights = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-6 pt-4 sm:pt-6 pb-8 text-sm">
-          <div className="max-w-4xl mx-auto w-full space-y-5">
-            <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-6 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-5 pt-3 sm:pt-4 pb-6 text-sm">
+          <div className="max-w-4xl mx-auto w-full space-y-3.5">
+            <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/20 to-primary/5 p-4 shadow-xl shadow-primary/20 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">
                   {language === "sw" ? "Maarifa ya Mshirika" : "Partner Insights"}
                 </p>
-                <h1 className="font-heading text-lg sm:text-xl font-bold text-foreground">
+                <h1 className="font-heading text-base sm:text-lg font-bold text-foreground">
                   {language === "sw"
                     ? "Fuatilia afya ya salio la washirika wako sehemu moja."
                     : "Monitor your partners' credit health in one place."}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">
                   {language === "sw"
                     ? "Pata salio za hivi karibuni na takwimu za matumizi kwa mshirika mmoja au wote kwa bonyezo moja."
                     : "Fetch the latest balances and usage stats per partner or across all partners with a single click."}
@@ -331,7 +331,7 @@ const PertinaInsights = () => {
             </section>
             */}
 
-            <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-4">
+            <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-4 space-y-3">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-muted-foreground">All Tenants Balance</p>
@@ -353,7 +353,7 @@ const PertinaInsights = () => {
               <Separator />
 
               {allBalance ? (
-                <div className="space-y-5">
+                <div className="space-y-3.5">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -514,7 +514,7 @@ const PertinaInsights = () => {
             </section>
             */}
 
-            <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-6 space-y-5">
+            <section className="rounded-3xl border border-border bg-card shadow-sm shadow-border/20 p-4 space-y-3.5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-muted-foreground">
@@ -566,7 +566,7 @@ const PertinaInsights = () => {
               <Separator />
 
               {allUsage ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">

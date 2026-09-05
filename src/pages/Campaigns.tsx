@@ -55,7 +55,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CreateCampaignDialog } from "@/components/campaigns/CreateCampaignDialog";
+import { CreateCampaignDialog, clearLocalCampaignDraft } from "@/components/campaigns/CreateCampaignDialog";
+import { formatDistanceToNow } from "date-fns";
 import CampaignDetailsModal from "@/components/campaigns/CampaignDetailsModal";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useContacts } from "@/hooks/useContacts";
@@ -142,6 +143,11 @@ const Campaigns = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedCampaignForDetails, setSelectedCampaignForDetails] = useState<Campaign | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  // Drafts reopen through the compact Create Campaign dialog (which knows how
+  // to resume a draft) instead of the older inline edit modal used below for
+  // non-draft (scheduled) campaigns.
+  const [draftDialogId, setDraftDialogId] = useState<string | null>(null);
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -234,6 +240,16 @@ const Campaigns = () => {
   }, [performWithRefreshing, fetchCampaigns, refetch]);
 
   const handleCampaignClick = useCallback((campaign: Campaign) => {
+    // A draft has no delivery stats yet — clicking it should resume editing,
+    // not open the (mostly empty) analytics-style details view.
+    if (campaign.status === "draft") {
+      setDraftDialogId(campaign.id);
+      setIsDraftDialogOpen(true);
+      setSearchParam("campaign", campaign.id);
+      setSearchParam("mode", "edit");
+      removeSearchParamMemoized("action");
+      return;
+    }
     setSelectedCampaignForDetails(campaign);
     setIsDetailsModalOpen(true);
     setSearchParam("campaign", campaign.id);
@@ -266,15 +282,29 @@ const Campaigns = () => {
   };
 
   const openEditDialog = useCallback((campaign: Campaign): void => {
-    setSelectedCampaign(campaign);
-    populateEditForm(campaign);
-    setIsEditMode(true);
-    setIsCampaignDetailsOpen(true);
     setIsDetailsModalOpen(false);
     setSearchParam("campaign", campaign.id);
     setSearchParam("mode", "edit");
     removeSearchParamMemoized("action");
+
+    if (campaign.status === "draft") {
+      setDraftDialogId(campaign.id);
+      setIsDraftDialogOpen(true);
+      return;
+    }
+
+    setSelectedCampaign(campaign);
+    populateEditForm(campaign);
+    setIsEditMode(true);
+    setIsCampaignDetailsOpen(true);
   }, [removeSearchParamMemoized, setSearchParam]);
+
+  const closeDraftDialog = useCallback((): void => {
+    setIsDraftDialogOpen(false);
+    setDraftDialogId(null);
+    removeSearchParamMemoized("mode");
+    removeSearchParamMemoized("campaign");
+  }, [removeSearchParamMemoized]);
 
   const closeCampaignDialog = useCallback((): void => {
     setIsCampaignDetailsOpen(false);
@@ -332,6 +362,7 @@ const Campaigns = () => {
           }
         if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
             await runActionWithRefresh(() => deleteCampaign(campaignId));
+            clearLocalCampaignDraft(campaignId);
           }
           break;
         case 'view_analytics':
@@ -638,79 +669,91 @@ const Campaigns = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-3xl mx-auto w-full max-w-full px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-5">
-              {/* iOS large-title header */}
-            <header className="flex items-end justify-between gap-3">
+          <div className="max-w-3xl mx-auto w-full max-w-full px-3 sm:px-5 pt-3 sm:pt-4 pb-6 space-y-3.5">
+              {/* Compact header */}
+            <header className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+                <h1 className="text-[16px] sm:text-lg font-semibold text-foreground leading-tight tracking-tight">
                   {language === "sw" ? "Kampeni" : "Campaigns"}
                 </h1>
-                <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+                <p className="text-[12px] text-foreground/60 mt-0.5">
                   {language === "sw" ? "Dhibiti na fuatilia kampeni zako" : "Track and manage your campaigns"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={refreshCampaignData}
-                disabled={isRefreshing}
-                aria-label="Refresh"
-                className="flex-shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-full text-foreground/65 active:bg-foreground/[0.06] disabled:opacity-50 transition-colors mr-11 md:mr-0"
-              >
-                <RefreshCw className={`w-[18px] h-[18px] ${isRefreshing ? "animate-spin" : ""}`} strokeWidth={2.2} />
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0 mr-11 md:mr-0">
+                <CreateCampaignDialog
+                  open={isNewCampaignOpen}
+                  onOpenChange={handleDialogClose}
+                  onSuccess={refreshCampaignData}
+                >
+                  <Button size="sm" className="gap-1.5">
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
+                    <span className="hidden sm:inline">{language === "sw" ? "Kampeni mpya" : "New campaign"}</span>
+                    <span className="sm:hidden">{language === "sw" ? "Mpya" : "New"}</span>
+                  </Button>
+                </CreateCampaignDialog>
+                <button
+                  type="button"
+                  onClick={refreshCampaignData}
+                  disabled={isRefreshing}
+                  aria-label="Refresh"
+                  className="w-8 h-8 inline-flex items-center justify-center rounded-full text-foreground/65 active:bg-foreground/[0.06] disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} strokeWidth={2.2} />
+                </button>
+              </div>
             </header>
 
-            {/* Primary CTA */}
+            {/* Resume-a-draft dialog — no visible trigger, opened programmatically
+                from a draft row's "Open" action via openEditDialog above. */}
             <CreateCampaignDialog
-              open={isNewCampaignOpen}
-              onOpenChange={handleDialogClose}
+              open={isDraftDialogOpen}
+              onOpenChange={(o) => { if (!o) closeDraftDialog(); }}
+              draftId={draftDialogId}
               onSuccess={refreshCampaignData}
             >
-              <Button className="w-full h-12 rounded-2xl text-[14px] font-semibold shadow-md">
-                <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
-                {language === "sw" ? "Tengeneza kampeni mpya" : "Create new campaign"}
-              </Button>
+              <span className="hidden" aria-hidden="true" />
             </CreateCampaignDialog>
 
             {/* Stats — 3-up mini grid */}
             {summary && (
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-primary/15 flex items-center justify-center mb-2">
-                    <Send className="w-[15px] h-[15px] text-primary" strokeWidth={2.2} />
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card p-2.5 shadow-sm">
+                  <div className="w-6 h-6 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center mb-1.5">
+                    <Send className="w-[14px] h-[14px] text-primary" strokeWidth={2.2} />
                   </div>
                   <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
                     {language === "sw" ? "Jumla" : "Total"}
                   </p>
-                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.total_campaigns}</p>
+                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums leading-none">{summary.summary.total_campaigns}</p>
                 </div>
 
-                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-2">
-                    <Play className="w-[15px] h-[15px] text-emerald-600 dark:text-emerald-400" strokeWidth={2.2} />
+                <div className="rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card p-2.5 shadow-sm">
+                  <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-1.5">
+                    <Play className="w-[14px] h-[14px] text-emerald-600 dark:text-emerald-400" strokeWidth={2.2} />
                   </div>
                   <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
                     {language === "sw" ? "Hai" : "Active"}
                   </p>
-                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.active_campaigns}</p>
+                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums leading-none">{summary.summary.active_campaigns}</p>
                 </div>
 
-                <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card p-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mb-2">
-                    <Users className="w-[15px] h-[15px] text-amber-600 dark:text-amber-400" strokeWidth={2.2} />
+                <div className="rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card p-2.5 shadow-sm">
+                  <div className="w-6 h-6 rounded-md bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mb-1.5">
+                    <Users className="w-[14px] h-[14px] text-amber-600 dark:text-amber-400" strokeWidth={2.2} />
                   </div>
                   <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
                     {language === "sw" ? "Wapokeaji" : "Recipients"}
                   </p>
-                  <p className="mt-1 text-[20px] font-bold text-foreground tabular-nums leading-none">{summary.summary.total_recipients.toLocaleString()}</p>
+                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums leading-none">{summary.summary.total_recipients.toLocaleString()}</p>
                 </div>
               </div>
             )}
 
             {/* Campaign Management Info */}
-            <Alert className="border-blue-200 bg-blue-50">
+            <Alert className="border-blue-200 bg-blue-50 p-3">
               <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-xs sm:text-sm text-blue-900">
+              <AlertDescription className="text-[12px] sm:text-[13px] text-blue-900">
                 <span className="font-semibold">Campaign Management:</span> Create single or recurring campaigns. SMS costs 18 TZS per segment (160 characters).
                 <span className="ml-2 font-semibold">Recurring campaigns</span> execute on your schedule and deduct credits each time.
                 <span className="ml-2">
@@ -726,7 +769,7 @@ const Campaigns = () => {
 
               {/* Filters */}
             <Card>
-              <CardContent className="p-2 sm:p-3 lg:p-6">
+              <CardContent className="p-2 sm:p-2.5 lg:p-3.5">
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
                   <div className="flex-1">
                     <div className="relative">
@@ -768,9 +811,9 @@ const Campaigns = () => {
                   </div>
                 </div>
               )}
-              <CardHeader className="p-3 lg:p-6">
+              <CardHeader className="p-3 lg:p-4">
                 <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-base lg:text-xl">{language === "sw" ? "Kampeni" : "Campaigns"}</span>
+                  <span className="text-base lg:text-lg">{language === "sw" ? "Kampeni" : "Campaigns"}</span>
                   <span className="text-xs lg:text-sm font-normal text-text-subtle">
                     {filteredCampaigns.length} {filteredCampaigns.length === 1 ? (language === "sw" ? "kampeni" : "campaign") : (language === "sw" ? "kampeni" : "campaigns")}
                   </span>
@@ -817,7 +860,16 @@ const Campaigns = () => {
                                  >
                                    {campaign.name}
                                  </h3>
-                                 {campaign.description && (
+                                 {campaign.status === "draft" ? (
+                                   <>
+                                     <p className="text-xs text-text-subtle truncate mt-0.5 leading-tight">
+                                       {campaign.message_text?.slice(0, 60) || "No message yet"}
+                                     </p>
+                                     <p className="text-[11px] text-text-subtle/70 mt-0.5">
+                                       Edited {formatDistanceToNow(new Date(campaign.updated_at), { addSuffix: true })}
+                                     </p>
+                                   </>
+                                 ) : campaign.description && (
                                    <p className="text-xs text-text-subtle truncate mt-0.5 leading-tight">
                                      {campaign.description}
                                    </p>
@@ -994,7 +1046,16 @@ const Campaigns = () => {
                                 >
                                   {campaign.name}
                                 </h3>
-                                {campaign.description && (
+                                {campaign.status === "draft" ? (
+                                  <>
+                                    <p className="text-xs text-text-subtle truncate mt-0.5">
+                                      {campaign.message_text?.slice(0, 60) || "No message yet"}
+                                    </p>
+                                    <p className="text-[11px] text-text-subtle/70 mt-0.5">
+                                      Edited {formatDistanceToNow(new Date(campaign.updated_at), { addSuffix: true })}
+                                    </p>
+                                  </>
+                                ) : campaign.description && (
                                   <p className="text-xs text-text-subtle truncate mt-0.5">
                                     {campaign.description}
                                   </p>

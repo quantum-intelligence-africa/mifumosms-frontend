@@ -363,21 +363,21 @@ const PurchaseHistory = () => {
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden app-shell-main">
-          <div className="max-w-3xl lg:max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 space-y-5">
+          <div className="max-w-3xl lg:max-w-7xl mx-auto w-full px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 pb-6 space-y-3.5">
             {/* Header — iOS large title */}
             <header>
-              <h1 className="font-heading text-[24px] sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+              <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
                 {t('purchase_history')}
               </h1>
-              <p className="text-[13px] sm:text-sm text-foreground/60 mt-1">
+              <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 {t('view_all_credit_purchases')}
               </p>
             </header>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-3">
-              <Card className="p-2 sm:p-3 lg:p-4 glass">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+              <Card className="p-2 sm:p-2.5 lg:p-3 glass">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-xs text-text-subtle font-medium">Total Spent</p>
                   <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-primary flex-shrink-0" />
                 </div>
@@ -387,8 +387,8 @@ const PurchaseHistory = () => {
                 </p>
               </Card>
 
-              <Card className="p-2 sm:p-3 lg:p-4 glass">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+              <Card className="p-2 sm:p-2.5 lg:p-3 glass">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-xs text-text-subtle font-medium">Total Credits</p>
                   <Package className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
@@ -398,8 +398,8 @@ const PurchaseHistory = () => {
                 </p>
               </Card>
 
-              <Card className="p-2 sm:p-3 lg:p-4 glass">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+              <Card className="p-2 sm:p-2.5 lg:p-3 glass">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-xs text-text-subtle font-medium">Total Purchases</p>
                   <TrendingUp className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-warning flex-shrink-0" />
                 </div>
@@ -409,8 +409,8 @@ const PurchaseHistory = () => {
                 </p>
               </Card>
 
-              <Card className="p-2 sm:p-3 lg:p-4 glass">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+              <Card className="p-2 sm:p-2.5 lg:p-3 glass">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-xs text-text-subtle font-medium">Completed</p>
                   <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-600 flex-shrink-0" />
                 </div>
@@ -420,8 +420,8 @@ const PurchaseHistory = () => {
                 </p>
               </Card>
 
-              <Card className="p-2 sm:p-3 lg:p-4 glass hidden md:block">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+              <Card className="p-2 sm:p-2.5 lg:p-3 glass hidden md:block">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-xs text-text-subtle font-medium">Success Rate</p>
                   <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
@@ -435,8 +435,8 @@ const PurchaseHistory = () => {
             </div>
 
             {/* Filters */}
-            <Card className="p-3 sm:p-4 glass">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+            <Card className="p-2.5 sm:p-3 glass">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
                 <div className="space-y-2">
                   <Label className="text-sm">Search</Label>
                   <div className="relative">
@@ -613,7 +613,7 @@ const PurchaseHistory = () => {
               {/* Mobile View (below md) */}
 
               {/* Mobile Card View */}
-              <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4">
+              <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 sm:p-3">
                 {filteredPurchases.map((purchase) => (
                   <Card key={purchase.id} className="p-3 sm:p-4 glass-subtle hover:shadow-md transition-all">
                     <div className="space-y-3">
@@ -707,7 +707,7 @@ const PurchaseHistory = () => {
 
               {/* Pagination Controls */}
               {pagination && filteredPurchases.length > 0 && (
-                <div className="p-4 border-t border-border-subtle flex items-center justify-between flex-wrap gap-4">
+                <div className="p-3 border-t border-border-subtle flex items-center justify-between flex-wrap gap-3">
                   <div className="text-xs sm:text-sm text-text-subtle">
                     Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, pagination.total_count)} of {pagination.total_count} purchases
                   </div>
