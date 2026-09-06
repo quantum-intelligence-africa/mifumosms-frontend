@@ -93,9 +93,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">IVR Access Required</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Voice / IVR Access Required</h2>
           <p className="text-text-subtle mb-6">
-            You don't have access to the Voice/IVR flow builder yet. Ask a workspace admin
+            You don't have access to Voice / IVR yet. Ask a workspace admin
             or SENDA support to enable it for your account.
           </p>
         </div>

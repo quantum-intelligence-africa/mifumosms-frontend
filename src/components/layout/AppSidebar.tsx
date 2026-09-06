@@ -157,20 +157,24 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
           { name: "Voice Copilots", href: "/voice-copilots", icon: Mic },
         ]),
-    {
-      name: "Voice / IVR",
-      href: "/voice",
-      icon: Workflow,
-      children: [
-        ...(hasIvrAccess(user) ? [{ name: "IVR Flows", href: "/voice/ivr", icon: Workflow }] : []),
-        { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
-        { name: "Call History", href: "/voice/calls", icon: PhoneCall },
-        { name: "Recordings", href: "/voice/recordings", icon: Voicemail },
-        { name: "Audio Prompts", href: "/voice/prompts", icon: MessageSquareText },
-        { name: "Agents", href: "/voice/agents", icon: Users2 },
-        { name: "AI & Call Intelligence", href: "/voice/ai-settings", icon: Sparkles },
-      ],
-    },
+    ...(hasIvrAccess(user)
+      ? [
+          {
+            name: "Voice / IVR",
+            href: "/voice",
+            icon: Workflow,
+            children: [
+              { name: "IVR Flows", href: "/voice/ivr", icon: Workflow },
+              { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
+              { name: "Call History", href: "/voice/calls", icon: PhoneCall },
+              { name: "Recordings", href: "/voice/recordings", icon: Voicemail },
+              { name: "Audio Prompts", href: "/voice/prompts", icon: MessageSquareText },
+              { name: "Agents", href: "/voice/agents", icon: Users2 },
+              { name: "AI & Call Intelligence", href: "/voice/ai-settings", icon: Sparkles },
+            ],
+          },
+        ]
+      : []),
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },

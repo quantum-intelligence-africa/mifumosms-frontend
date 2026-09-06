@@ -332,7 +332,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <VoiceOverview />
                 </ProtectedRoute>
               } />
@@ -342,32 +342,32 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice/numbers" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <VoiceNumbers />
                 </ProtectedRoute>
               } />
               <Route path="/voice/calls" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <CallHistory />
                 </ProtectedRoute>
               } />
               <Route path="/voice/agents" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <VoiceAgentDirectory />
                 </ProtectedRoute>
               } />
               <Route path="/voice/prompts" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <AudioPrompts />
                 </ProtectedRoute>
               } />
               <Route path="/voice/recordings" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <Recordings />
                 </ProtectedRoute>
               } />
               <Route path="/voice/ai-settings" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <AISettings />
                 </ProtectedRoute>
               } />

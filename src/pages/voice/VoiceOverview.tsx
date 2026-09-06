@@ -5,16 +5,16 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
-import { hasIvrAccess } from "@/utils/roleUtils";
 
+// This whole page sits behind requireIvrAccess (see App.tsx's /voice route),
+// so every card here is safe to show unconditionally — reaching this page at
+// all already means the user has Voice/IVR access.
 const SECTIONS = [
   {
     href: "/voice/ivr",
     icon: Workflow,
     title: "IVR Flows",
     description: "Build and publish call flows — menus, transfers, business hours, voicemail.",
-    requiresIvrAccess: true,
   },
   {
     href: "/voice/numbers",
@@ -46,8 +46,6 @@ export default function VoiceOverview() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
-  const sections = SECTIONS.filter((s) => !s.requiresIvrAccess || hasIvrAccess(user));
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -62,7 +60,7 @@ export default function VoiceOverview() {
             </header>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {sections.map((section) => (
+              {SECTIONS.map((section) => (
                 <Card
                   key={section.href}
                   className="cursor-pointer transition-shadow hover:shadow-md"
