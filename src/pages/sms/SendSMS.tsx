@@ -66,23 +66,55 @@ interface Segment {
   contact_count: number;
 }
 
+// Persists the in-progress compose form across navigation and refresh — a
+// dropped connection or an accidental back-swipe shouldn't lose a typed
+// message or an already-entered recipient list. Cleared once a send actually
+// succeeds (see handleSendSMS's success branch).
+const SMS_DRAFT_KEY = "senda:sendsms:draft:v1";
+
+interface SmsDraft {
+  message?: string;
+  recipients?: string[];
+  selectedSender?: string;
+  selectedMode?: "single" | "bulk" | "segment" | null;
+  scheduleType?: "now" | "later";
+  scheduledDate?: string;
+}
+
+function readSmsDraft(): SmsDraft {
+  try {
+    const raw = localStorage.getItem(SMS_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function clearSmsDraft() {
+  try {
+    localStorage.removeItem(SMS_DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 const SendSMS = () => {
   const isMobile = useIsMobile();
   const { language } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
-  const [selectedMode, setSelectedMode] = useState<"single" | "bulk" | "segment" | null>(null);
+  const [selectedMode, setSelectedMode] = useState<"single" | "bulk" | "segment" | null>(() => readSmsDraft().selectedMode ?? null);
   // Container for the form body. Touch swipes here cycle Quick ↔ Bulk ↔ Group,
   // and spill into the adjacent sidebar page (Dashboard ↔ WhatsApp) at the edges.
   const formBodyRef = useRef<HTMLDivElement>(null);
-  const [recipients, setRecipients] = useState<string[]>([]);
+  const [recipients, setRecipients] = useState<string[]>(() => readSmsDraft().recipients ?? []);
   const [newRecipient, setNewRecipient] = useState("");
-  const [message, setMessage] = useState("");
-  const [selectedSender, setSelectedSender] = useState("");
+  const [message, setMessage] = useState(() => readSmsDraft().message ?? "");
+  const [selectedSender, setSelectedSender] = useState(() => readSmsDraft().selectedSender ?? "");
   const [selectedSegment, setSelectedSegment] = useState("");
   const [selectedTagGroup, setSelectedTagGroup] = useState("");
-  const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
-  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduleType, setScheduleType] = useState<"now" | "later">(() => readSmsDraft().scheduleType ?? "now");
+  const [scheduledDate, setScheduledDate] = useState(() => readSmsDraft().scheduledDate ?? "");
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
   const [segmentContacts, setSegmentContacts] = useState<Contact[]>([]);
@@ -495,7 +527,11 @@ const SendSMS = () => {
 
   const location = useLocation();
 
-  // Immediate cleanup when navigating away from this page
+  // Immediate cleanup when navigating away from this page. Only cancels
+  // in-flight work — it deliberately leaves `message`/`recipients`/
+  // `selectedMode` alone so the draft (restored from localStorage on next
+  // mount) survives the trip, instead of being wiped the instant the user
+  // taps away to check something else.
   useEffect(() => {
     // This runs whenever the pathname changes
     const isLeavingPage = !location.pathname.includes('/sms/send');
@@ -509,8 +545,6 @@ const SendSMS = () => {
       setPageReady(false);
       setIsLoadingSegmentContacts(false);
       setSegmentContacts([]);
-      setRecipients([]);
-      setSelectedMode(null);
     }
   }, [location.pathname]);
 
@@ -595,6 +629,22 @@ const SendSMS = () => {
       logger.debug('Default sender selected', { sender_id: defaultSender.sender_id, status: defaultSender.status });
     }
   }, [selectedSender, approvedSenderRequests]);
+
+  // Debounced draft autosave — keeps the compose form usable across a page
+  // refresh or a trip to another page without needing a server-side draft.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          SMS_DRAFT_KEY,
+          JSON.stringify({ message, recipients, selectedSender, selectedMode, scheduleType, scheduledDate })
+        );
+      } catch {
+        // Storage full/unavailable — losing autosave is fine, sending still works.
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [message, recipients, selectedSender, selectedMode, scheduleType, scheduledDate]);
 
   // Fetch purchase history on component mount to get pricing
   useEffect(() => {
@@ -850,6 +900,7 @@ const SendSMS = () => {
                 description: successMessage,
               });
               // Reset form
+              clearSmsDraft();
               setRecipients([]);
               setMessage("");
               setSelectedMode(null);
