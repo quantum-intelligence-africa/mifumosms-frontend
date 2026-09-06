@@ -337,7 +337,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice/ivr" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <IvrFlowList />
                 </ProtectedRoute>
               } />
@@ -372,7 +372,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice/ivr/:flowId" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <IvrFlowBuilder />
                 </ProtectedRoute>
               } />

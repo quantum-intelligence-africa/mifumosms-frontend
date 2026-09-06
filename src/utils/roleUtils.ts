@@ -161,6 +161,19 @@ export const canAccessAdmin = (user: User | null | undefined): boolean => {
 };
 
 /**
+ * Check if user can access the Voice/IVR flow builder.
+ * Deny-by-default for everyone, including tenant owners/admins and platform
+ * staff — the only way in is an explicit per-user grant from a SENDA admin
+ * (`ivr_access_enabled`), set from the admin dashboard's IVR Access tab.
+ * @param user - The user object
+ * @returns True if user can access IVR flows
+ */
+export const hasIvrAccess = (user: User | null | undefined): boolean => {
+	if (!user) return false;
+	return user.ivr_access_enabled === true;
+};
+
+/**
  * Get Partina status info
  * @param user - The user object
  * @returns Object with Partina status details

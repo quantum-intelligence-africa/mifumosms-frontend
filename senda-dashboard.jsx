@@ -51,6 +51,7 @@ import {
   UserX,
   Users,
   Wallet,
+  Workflow,
   X,
   XCircle,
   Zap,
@@ -4739,6 +4740,25 @@ function UsersTab() {
   const total = meta.total || 0;
   const pages = meta.total_pages || 1;
 
+  // Admin-granted per-user IVR access (independent of tenant role/plan) —
+  // optimistic toggle with rollback on failure, mirrors senda_voice_backend's
+  // `ivr_access_enabled` column read through its shared.User shadow model.
+  const toggleIvrAccess = (u) => {
+    const next = !u.ivr_access_enabled;
+    setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: next } : x));
+    adminFetch(`/users/${u.id}/ivr-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
+          showToast?.(res.error?.message || 'Failed to update IVR access.', 'error');
+        }
+      })
+      .catch(() => {
+        setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
+        showToast?.('Failed to update IVR access.', 'error');
+      });
+  };
+
   return (
     <div className="senda-fade-in">
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
@@ -4766,9 +4786,9 @@ function UsersTab() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:780}}>
+            <table className="senda-table" style={{minWidth:960}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>Joined</th></tr>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>IVR Access</th><th>Joined</th></tr>
               </thead>
               <tbody>
                 {items.map(u=>(
@@ -4781,6 +4801,18 @@ function UsersTab() {
                     <td style={{fontWeight:600}}>{(u.sms_sent||0).toLocaleString()}</td>
                     <td style={{fontWeight:600,color:GREEN}}>{(u.balance||0).toLocaleString()}</td>
                     <td><Badge status={u.status}/></td>
+                    <td>
+                      <button
+                        onClick={()=>toggleIvrAccess(u)}
+                        title={u.ivr_access_enabled ? 'Click to revoke Voice/IVR flow access' : 'Click to grant Voice/IVR flow access'}
+                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                          border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
+                          background:u.ivr_access_enabled?'#d1fae5':'#f1f5f9',
+                          color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
+                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                        {u.ivr_access_enabled ? 'Granted' : 'Off'}
+                      </button>
+                    </td>
                     <td style={{fontSize:12,color:'#64748b'}}>{u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
@@ -8397,6 +8429,247 @@ function CreditAlertsTab() {
   );
 }
 
+// ─── IVR Flows (senda_voice_backend) ───────────────────────────────────────────
+// Read-only, cross-tenant view of actual IVR flow *content* — kept as its own
+// tab (separate from the Messaging group's SMS/message-content tabs above) so
+// admins can review call-flow structure without it being mixed in with SMS.
+const IVR_STATUS_STYLE = {
+  draft:     { bg:'#f1f5f9', color:'#475569', label:'Draft' },
+  published: { bg:'#d1fae5', color:'#065f46', label:'Published' },
+  archived:  { bg:'#fef2f2', color:'#991b1b', label:'Archived' },
+};
+
+function IvrFlowsTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [search, setSearch]   = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const fetchAll = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams();
+    if (search.trim()) qs.set('search', search.trim());
+    if (statusFilter !== 'all') qs.set('status', statusFilter);
+    voiceAdminFetch(`/voice/ivr/admin/all/?${qs}`, {}, onLogout)
+      .then(res => {
+        // This endpoint (like the rest of senda_voice_backend's DRF views)
+        // returns a bare array on success, not a {success, data} envelope —
+        // only the 401/refresh path above manufactures that shape.
+        if (Array.isArray(res)) { setRows(res); return; }
+        if (res?.results) { setRows(res.results); return; }
+        const msg = res?.detail
+          || (typeof res?.error === 'string' ? res.error : res?.error?.message)
+          || 'Failed to load IVR flows.';
+        setError(msg);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout, search, statusFilter]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const td = {padding:'12px 16px',verticalAlign:'middle'};
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>IVR Flows</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Call-flow content across every tenant — separate from SMS/message content in Messaging.
+          </p>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <input className="senda-input" placeholder="Search by flow name..." value={search}
+            onChange={e=>setSearch(e.target.value)} style={{width:220,height:36,fontSize:13}}/>
+          <div style={{display:'flex',gap:4}}>
+            {['all','draft','published','archived'].map(f=>(
+              <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setStatusFilter(f)}
+                style={{background:statusFilter===f?BRAND:'#f1f5f9',color:statusFilter===f?'#fff':'#64748b',border:'none'}}>
+                {f.charAt(0).toUpperCase()+f.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
+          {error}
+        </div>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead>
+            <tr style={{background:'#f8fafc',textAlign:'left'}}>
+              <th style={th}>Flow name</th>
+              <th style={th}>Tenant</th>
+              <th style={th}>Status</th>
+              <th style={th}>Language</th>
+              <th style={th}>Business name</th>
+              <th style={th}>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No IVR flows found.</td></tr>
+            ) : rows.map(row => {
+              const s = IVR_STATUS_STYLE[row.status] || { bg:'#f1f5f9', color:'#475569', label:row.status || '—' };
+              return (
+                <tr key={row.id}>
+                  <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.tenant_name || '—'}</td>
+                  <td style={td}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,
+                      fontSize:11,fontWeight:600,background:s.bg,color:s.color}}>
+                      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{s.label}
+                    </span>
+                  </td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.language || '—'}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.company_name || '—'}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── IVR Access (mifumosms_backend) ────────────────────────────────────────────
+// Where a SENDA admin actually grants/revokes a user's access to the
+// Voice/IVR flow builder — lives under "Voice / IVR" (not buried in the
+// Customers > Users tab) since that's where an admin looks for it.
+// `ivr_access_enabled` lives on the shared `users` table (mifumosms_backend
+// is the writer; senda_voice_backend enforces it read-only via `HasIvrAccess`).
+function IvrAccessTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [search, setSearch]   = useState('');
+  const [items, setItems]     = useState([]);
+  const [meta, setMeta]       = useState({});
+  const [page, setPage]       = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const PER = 15;
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page, limit: PER });
+    if (search.trim()) qs.set('search', search.trim());
+    adminFetch(`/users?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setItems(res.data || []); setMeta(res.meta || {}); }
+        else setError(res.error?.message || 'Failed to load users.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [page, search, onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const toggleIvrAccess = (u) => {
+    const next = !u.ivr_access_enabled;
+    setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: next } : x));
+    adminFetch(`/users/${u.id}/ivr-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
+          showToast?.(res.error?.message || 'Failed to update IVR access.', 'error');
+        } else {
+          showToast?.(next ? `IVR access granted to ${u.name}.` : `IVR access revoked from ${u.name}.`, 'success');
+        }
+      })
+      .catch(() => {
+        setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
+        showToast?.('Failed to update IVR access.', 'error');
+      });
+  };
+
+  const total = meta.total || 0;
+  const pages = meta.total_pages || 1;
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const td = {padding:'12px 16px',verticalAlign:'middle'};
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>IVR Access</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Grant or revoke each user's access to the Voice/IVR flow builder. Tenant owners/admins and
+            platform staff always have access; everyone else needs to be switched on here.
+          </p>
+        </div>
+        <input className="senda-input" placeholder="Search by name, email..." value={search}
+          onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{width:260,height:38,fontSize:13}}/>
+      </div>
+
+      {error ? (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>
+          {error}
+        </div>
+      ) : (
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:640}}>
+              <thead>
+                <tr style={{background:'#f8fafc',textAlign:'left'}}>
+                  <th style={th}>Name</th>
+                  <th style={th}>Email</th>
+                  <th style={th}>Role</th>
+                  <th style={th}>IVR Access</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+                ) : items.length === 0 ? (
+                  <tr><td colSpan={4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No users found.</td></tr>
+                ) : items.map(u => (
+                  <tr key={u.id}>
+                    <td style={{...td,fontWeight:600,color:'#0f172a'}}>{u.name}</td>
+                    <td style={{...td,fontSize:12,color:'#64748b'}}>{u.email}</td>
+                    <td style={td}><Badge status={u.role}/></td>
+                    <td style={td}>
+                      <button
+                        onClick={()=>toggleIvrAccess(u)}
+                        title={u.ivr_access_enabled ? 'Click to revoke Voice/IVR flow access' : 'Click to grant Voice/IVR flow access'}
+                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                          border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
+                          background:u.ivr_access_enabled?'#d1fae5':'#f1f5f9',
+                          color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
+                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                        {u.ivr_access_enabled ? 'Granted' : 'Off'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!loading && items.length > 0 && (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexWrap:'wrap',gap:8}}>
+              <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} of {pages} · {total} total</span>
+              <div style={{display:'flex',gap:4}}>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page===1} onClick={()=>setPage(p=>p-1)} style={{opacity:page===1?.4:1}}>← Prev</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page>=pages} onClick={()=>setPage(p=>p+1)} style={{opacity:page>=pages?.4:1}}>Next →</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Voice Providers (senda_voice_backend) ─────────────────────────────────────
 // Global, admin-managed telephony provider credentials — assignable to any
 // tenant's VoiceAccount. Credentials are stored server-side as an encrypted
@@ -10789,6 +11062,8 @@ const NAV_GROUPS = [
     { id:'operations',    Icon:Globe,        label:'Operations'       },
   ]},
   { title: 'Voice / IVR', items: [
+    { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
+    { id:'ivraccess',      Icon:UserCheck,   label:'IVR Access'       },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
   ]},
@@ -14948,6 +15223,8 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     apiaccounts:  <ApiAccountsTab/>,
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
+    ivrflows:       <IvrFlowsTab/>,
+    ivraccess:      <IvrAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,
   };

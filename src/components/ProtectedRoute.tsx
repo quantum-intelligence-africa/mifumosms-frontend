@@ -2,14 +2,16 @@ import React, { useContext } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useFeatures } from '@/hooks/useFeatures';
+import { hasIvrAccess } from '@/utils/roleUtils';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requirePartner?: boolean;
   requireFeature?: string;
+  requireIvrAccess?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePartner = false, requireFeature }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePartner = false, requireFeature, requireIvrAccess = false }) => {
   const authContext = useContext(AuthContext);
   const location = useLocation();
   const { hasFeature, isLoading: featuresLoading } = useFeatures();
@@ -76,6 +78,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
           <a href="/settings" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
             Request Partina Status
           </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Check per-user IVR access grant - admin-controlled, independent of plan/billing
+  if (requireIvrAccess && !hasIvrAccess(authContext.user)) {
+    return (
+      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">IVR Access Required</h2>
+          <p className="text-text-subtle mb-6">
+            You don't have access to the Voice/IVR flow builder yet. Ask a workspace admin
+            or SENDA support to enable it for your account.
+          </p>
         </div>
       </div>
     );

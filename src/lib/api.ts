@@ -77,6 +77,8 @@ export interface User {
   is_partina?: boolean;
   // Owner field - if true, user is account owner
   is_owner?: boolean;
+  // Admin-granted per-user access to the Voice/IVR flow builder
+  ivr_access_enabled?: boolean;
   // Memberships - user's tenant memberships with roles
   memberships?: Membership[];
 }
