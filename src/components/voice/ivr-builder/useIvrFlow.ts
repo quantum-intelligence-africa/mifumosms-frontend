@@ -289,11 +289,11 @@ export function useIvrFlow(flowId: string | undefined) {
           const isPathEdge =
             pathNodeIds != null &&
             pathNodeIds.some((id, i) => i < pathNodeIds.length - 1 && id === e.source && pathNodeIds[i + 1] === e.target);
-          return {
-            ...e,
-            animated: isPathEdge,
-            style: isPathEdge ? { stroke: "hsl(var(--primary))", strokeWidth: 2.5 } : undefined,
-          };
+          // Only toggle `animated` here — FlowCanvas derives each edge's
+          // stroke color from its source handle on every render, so leaving
+          // `style` alone keeps that color instead of flattening every
+          // highlighted branch to the same primary hue.
+          return { ...e, animated: isPathEdge };
         }),
       );
     },

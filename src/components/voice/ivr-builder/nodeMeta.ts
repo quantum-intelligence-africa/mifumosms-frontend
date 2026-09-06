@@ -42,6 +42,10 @@ export interface NodeOutput {
   icon?: LucideIcon;
   dotClass?: string; // border/bg classes for the connector dot
   textClass?: string; // classes for the label/icon
+  /** Real CSS color (hex or hsl()) matching dotClass — Tailwind classes can't
+   * be read back out of the DOM to color an SVG edge stroke, so every output
+   * that has a dotClass carries the same color here for FlowCanvas to use. */
+  color?: string;
 }
 
 export type FieldType =
@@ -81,7 +85,7 @@ export interface NodeMeta {
   fields: NodeField[];
 }
 
-const singleOutput: NodeOutput[] = [{ id: "out", label: "" }];
+const singleOutput: NodeOutput[] = [{ id: "out", label: "", color: "hsl(var(--primary))" }];
 
 // Repeated on every node that speaks. Kept as one constant so the guidance
 // on writing natural, branded prompts is identical everywhere it appears.
@@ -120,9 +124,9 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
     iconClass: "text-blue-600",
     description: "Msomee mteja huduma zilizopo, kisha usubiri achague",
     outputs: [
-      { id: "match", label: "Amechagua", icon: CheckCircle2, dotClass: "bg-green-500 border-green-600", textClass: "text-green-600" },
-      { id: "timeout", label: "Hakujibu", icon: Clock, dotClass: "bg-yellow-400 border-yellow-500", textClass: "text-yellow-600" },
-      { id: "no_match", label: "Chaguo si sahihi", icon: AlertTriangle, dotClass: "bg-red-500 border-red-600", textClass: "text-red-600" },
+      { id: "match", label: "Amechagua", icon: CheckCircle2, dotClass: "bg-green-500 border-green-600", textClass: "text-green-600", color: "#16a34a" },
+      { id: "timeout", label: "Hakujibu", icon: Clock, dotClass: "bg-yellow-400 border-yellow-500", textClass: "text-yellow-600", color: "#eab308" },
+      { id: "no_match", label: "Chaguo si sahihi", icon: AlertTriangle, dotClass: "bg-red-500 border-red-600", textClass: "text-red-600", color: "#dc2626" },
     ],
     fields: [
       {
@@ -165,8 +169,8 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
     iconClass: "text-purple-600",
     description: "Chagua njia kulingana na taarifa uliyohifadhi",
     outputs: [
-      { id: "true", label: "Ndiyo", icon: CheckCircle2, dotClass: "bg-green-500 border-green-600", textClass: "text-green-600" },
-      { id: "false", label: "Hapana", icon: XCircle, dotClass: "bg-red-500 border-red-600", textClass: "text-red-600" },
+      { id: "true", label: "Ndiyo", icon: CheckCircle2, dotClass: "bg-green-500 border-green-600", textClass: "text-green-600", color: "#16a34a" },
+      { id: "false", label: "Hapana", icon: XCircle, dotClass: "bg-red-500 border-red-600", textClass: "text-red-600", color: "#dc2626" },
     ],
     fields: [
       { key: "variable", label: "Taarifa ya kuangalia", type: "text", required: true, placeholder: "mf. ni_saa_za_kazi" },
@@ -412,7 +416,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
     iconClass: "text-violet-600",
     description: "Peleka mteja mahali tofauti kulingana na alichochagua",
     dynamicOutputs: true,
-    outputs: [{ id: "default", label: "Nyingine", dotClass: "bg-slate-400 border-slate-500", textClass: "text-slate-600" }],
+    outputs: [{ id: "default", label: "Nyingine", dotClass: "bg-slate-400 border-slate-500", textClass: "text-slate-600", color: "#64748b" }],
     fields: [
       { key: "variable", label: "Taarifa ya kuangalia", type: "text", required: true, placeholder: "mf. chaguo_kuu" },
       {
@@ -508,6 +512,18 @@ export const PALETTE_NODE_TYPES: IvrNodeType[] = [
   "hangup",
 ];
 
+// Cycled per case index so a switch with several cases (e.g. "1", "2", "0")
+// gets a visually distinct dot — and matching edge color — per branch,
+// instead of every case reading as the same undifferentiated blue.
+const CASE_PALETTE: Array<{ dotClass: string; textClass: string; color: string }> = [
+  { dotClass: "bg-blue-500 border-blue-600", textClass: "text-blue-600", color: "#2563eb" },
+  { dotClass: "bg-violet-500 border-violet-600", textClass: "text-violet-600", color: "#7c3aed" },
+  { dotClass: "bg-cyan-500 border-cyan-600", textClass: "text-cyan-600", color: "#0891b2" },
+  { dotClass: "bg-pink-500 border-pink-600", textClass: "text-pink-600", color: "#db2777" },
+  { dotClass: "bg-orange-500 border-orange-600", textClass: "text-orange-600", color: "#ea580c" },
+  { dotClass: "bg-teal-500 border-teal-600", textClass: "text-teal-600", color: "#0d9488" },
+];
+
 /** Resolves a switch node's outputs given its current `cases` field, so the
  * node component and the inspector agree on what ports exist. */
 export function resolveOutputs(type: IvrNodeType, fields: Record<string, unknown>): NodeOutput[] {
@@ -516,11 +532,10 @@ export function resolveOutputs(type: IvrNodeType, fields: Record<string, unknown
   const cases = Array.isArray(fields.cases) ? (fields.cases as string[]) : [];
   const caseOutputs: NodeOutput[] = cases
     .filter((c) => String(c).trim().length > 0)
-    .map((c) => ({
+    .map((c, i) => ({
       id: `case_${c}`,
       label: String(c),
-      dotClass: "bg-blue-500 border-blue-600",
-      textClass: "text-blue-600",
+      ...CASE_PALETTE[i % CASE_PALETTE.length],
     }));
   return [...caseOutputs, ...meta.outputs];
 }
