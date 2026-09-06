@@ -27,7 +27,6 @@ import {
   Voicemail,
   Users2,
   MessageSquareText,
-  Lock,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
@@ -67,7 +66,6 @@ interface NavItem {
   icon: NavIcon;
   children?: NavItem[];
   badge?: number;
-  locked?: boolean;
 }
 
 interface AppSidebarProps {
@@ -164,7 +162,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       href: "/voice",
       icon: Workflow,
       children: [
-        { name: "IVR Flows", href: "/voice/ivr", icon: Workflow, locked: !hasIvrAccess(user) },
+        ...(hasIvrAccess(user) ? [{ name: "IVR Flows", href: "/voice/ivr", icon: Workflow }] : []),
         { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
         { name: "Call History", href: "/voice/calls", icon: PhoneCall },
         { name: "Recordings", href: "/voice/recordings", icon: Voicemail },
@@ -329,12 +327,6 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                           >
                             <ChildIcon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
                             <span className="truncate">{child.name}</span>
-                            {child.locked && (
-                              <Lock
-                                className="ml-auto w-3 h-3 flex-shrink-0 text-foreground/40"
-                                strokeWidth={2}
-                              />
-                            )}
                             {typeof child.badge === "number" && child.badge > 0 && (
                               <span className="ml-auto text-[9px] font-bold text-red-500 leading-none tabular-nums">
                                 {child.badge > 10 ? "10+" : child.badge}
