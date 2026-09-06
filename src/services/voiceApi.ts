@@ -4,7 +4,11 @@
 // its own small client instead of being bolted onto it.
 import { apiClient, type ApiResponse } from '@/lib/api';
 
-const VOICE_API_URL = 'https://voice-app.duckdns.org/api';
+// In dev, go through Vite's proxy (see vite.config.ts) so requests stay
+// same-origin on localhost:8080 and never hit the live server's CORS check.
+const VOICE_API_URL = import.meta.env.DEV
+  ? '/voice-api'
+  : 'https://voice-app.duckdns.org/api';
 
 class VoiceApiClient {
   constructor(private baseURL: string) {}

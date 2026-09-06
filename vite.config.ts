@@ -8,6 +8,17 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      // Forward the SENDA Voice/IVR API through the dev server so browser
+      // requests stay same-origin on localhost:8080 — the live backend's
+      // CORS allowlist only permits localhost:3000, not 8080. See voiceApi.ts.
+      "/voice-api": {
+        target: "https://voice-app.duckdns.org",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/voice-api/, "/api"),
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
