@@ -31,6 +31,7 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useRoles } from "@/hooks/useRoles";
+import { hasIvrAccess } from "@/utils/roleUtils";
 
 interface MobileOverflowMenuProps {
   open: boolean;
@@ -108,17 +109,23 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const automationSection: MenuSection = {
     title: "Automation",
     items: [
-      {
-        key: "dial",
-        label: "Piga simu",
-        icon: PhoneOutgoing,
-        onClick: () => {
-          onClose();
-          setTimeout(() => openDialer(), 50);
-        },
-      },
+      ...(hasIvrAccess(user)
+        ? [
+            {
+              key: "dial",
+              label: "Piga simu",
+              icon: PhoneOutgoing,
+              onClick: () => {
+                onClose();
+                setTimeout(() => openDialer(), 50);
+              },
+            },
+          ]
+        : []),
       { key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots") },
-      { key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") },
+      ...(hasIvrAccess(user)
+        ? [{ key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") }]
+        : []),
     ],
   };
 

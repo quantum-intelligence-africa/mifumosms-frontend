@@ -327,7 +327,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice-copilots" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireIvrAccess>
                   <VoiceAgents />
                 </ProtectedRoute>
               } />

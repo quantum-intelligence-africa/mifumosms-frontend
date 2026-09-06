@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Search,
   Send,
-  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -128,18 +127,14 @@ const NotificationsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
 
   const activities: ActivityItem[] = useMemo(() => {
     if (!recentActivity) return [];
-    return [...(recentActivity as ActivityItem[])]
-      .filter((a) => !hiddenIds.has(a.id))
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      );
-  }, [recentActivity, hiddenIds]);
+    return [...(recentActivity as ActivityItem[])].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [recentActivity]);
 
   const filtered: ActivityItem[] = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -163,11 +158,6 @@ const NotificationsPage = () => {
     }
     return buckets;
   }, [filtered]);
-
-  const removeActivity = (id: string) => {
-    setHiddenIds((s) => new Set(s).add(id));
-    setSelectedActivity((prev) => (prev?.id === id ? null : prev));
-  };
 
   const orderedBuckets: DateBucket[] = ["Today", "Yesterday", "Earlier"];
 
@@ -269,16 +259,32 @@ const NotificationsPage = () => {
                       <p className="px-2.5 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-foreground/45 dark:text-foreground/40">
                         {bucket}
                       </p>
-                      <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden">
-                        {items.map((item, idx) => (
-                          <NotificationRow
-                            key={item.id}
-                            item={item}
-                            isLast={idx === items.length - 1}
-                            onOpen={() => setSelectedActivity(item)}
-                            onDelete={() => removeActivity(item.id)}
-                          />
-                        ))}
+                      <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden overflow-x-auto">
+                        <table className="w-full table-fixed border-collapse text-left">
+                          <thead>
+                            <tr className="border-b border-border/50 dark:border-border/30">
+                              <th className="w-[52px] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
+                                Type
+                              </th>
+                              <th className="px-1 py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
+                                Message
+                              </th>
+                              <th className="w-20 sm:w-28 whitespace-nowrap px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
+                                Time
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((item, idx) => (
+                              <NotificationRow
+                                key={item.id}
+                                item={item}
+                                isLast={idx === items.length - 1}
+                                onOpen={() => setSelectedActivity(item)}
+                              />
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </section>
                   );
@@ -294,7 +300,6 @@ const NotificationsPage = () => {
         <DetailSheet
           item={selectedActivity}
           onClose={() => setSelectedActivity(null)}
-          onDelete={() => removeActivity(selectedActivity.id)}
         />
       )}
     </div>
@@ -305,10 +310,9 @@ interface RowProps {
   item: ActivityItem;
   isLast: boolean;
   onOpen: () => void;
-  onDelete: () => void;
 }
 
-function NotificationRow({ item, isLast, onOpen, onDelete }: RowProps) {
+function NotificationRow({ item, isLast, onOpen }: RowProps) {
   const style = getTypeStyle(item.type);
   const Icon = style.Icon;
   const date = new Date(item.timestamp);
@@ -316,45 +320,32 @@ function NotificationRow({ item, isLast, onOpen, onDelete }: RowProps) {
     item.time_ago ||
     date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return (
-    <div
+    <tr
+      onClick={onOpen}
       className={[
-        "flex items-start gap-3 px-3.5 py-3 active:bg-accent/60 dark:active:bg-accent/40 transition-colors",
+        "cursor-pointer align-top active:bg-accent/60 dark:active:bg-accent/40 hover:bg-accent/40 dark:hover:bg-accent/25 transition-colors",
         !isLast ? "border-b border-border/40 dark:border-border/25" : "",
       ].join(" ")}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex-1 flex items-start gap-3 min-w-0 text-left"
-      >
+      <td className="px-3 py-3">
         <div
-          className={`w-10 h-10 rounded-xl ${style.iconBg} flex items-center justify-center flex-shrink-0`}
+          className={`w-9 h-9 rounded-xl ${style.iconBg} flex items-center justify-center flex-shrink-0`}
         >
           <Icon className={`w-[18px] h-[18px] ${style.iconColor}`} strokeWidth={2.2} />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="flex-1 min-w-0 text-[14px] font-semibold text-foreground dark:text-foreground leading-tight truncate">
-              {item.title}
-            </p>
-            <span className="flex-shrink-0 text-[11px] text-foreground/50 dark:text-foreground/45 tabular-nums">
-              {timeLabel}
-            </span>
-          </div>
-          <p className="text-[12.5px] text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5 line-clamp-2">
-            {item.description}
-          </p>
-        </div>
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label="Dismiss"
-        className="flex-shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-full text-foreground/40 dark:text-foreground/35 active:bg-destructive/10 active:text-destructive transition-colors -mr-1"
-      >
-        <X className="w-4 h-4" strokeWidth={2.2} />
-      </button>
-    </div>
+      </td>
+      <td className="px-1 py-3 min-w-0">
+        <p className="text-[14px] font-semibold text-foreground dark:text-foreground leading-tight truncate">
+          {item.title}
+        </p>
+        <p className="text-[12.5px] text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5 line-clamp-2">
+          {item.description}
+        </p>
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right text-[11px] text-foreground/50 dark:text-foreground/45 tabular-nums">
+        {timeLabel}
+      </td>
+    </tr>
   );
 }
 
@@ -420,10 +411,9 @@ function EmptyState({ hasFilter, onClear }: EmptyStateProps) {
 interface DetailSheetProps {
   item: ActivityItem;
   onClose: () => void;
-  onDelete: () => void;
 }
 
-function DetailSheet({ item, onClose, onDelete }: DetailSheetProps) {
+function DetailSheet({ item, onClose }: DetailSheetProps) {
   const style = getTypeStyle(item.type);
   const Icon = style.Icon;
   const statusTone = getStatusTone(item.type);
@@ -497,17 +487,6 @@ function DetailSheet({ item, onClose, onDelete }: DetailSheetProps) {
             className="flex-1 h-10 text-sm font-semibold"
           >
             Close
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onDelete();
-              onClose();
-            }}
-            className="flex-1 h-10 text-sm font-semibold"
-          >
-            <Trash2 className="w-4 h-4 mr-1.5" />
-            Dismiss
           </Button>
         </div>
       </div>

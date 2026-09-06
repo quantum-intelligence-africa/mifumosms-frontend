@@ -22,6 +22,7 @@ import {
   CreditCard,
   DollarSign,
   Download,
+  Edit2,
   Eye,
   EyeOff,
   ExternalLink,
@@ -41,13 +42,16 @@ import {
   Package,
   Phone,
   RefreshCw,
+  RotateCcw,
   Search,
   Send,
   Settings,
   ShieldCheck,
   Sparkles,
   Tag,
+  Trash2,
   UserCheck,
+  UserPlus,
   UserX,
   Users,
   Wallet,
@@ -483,7 +487,7 @@ async function voiceAdminFetch(path, options = {}, onLogout) {
 }
 
 // ─── App Context ───────────────────────────────────────────────────────────────
-const AppContext = React.createContext({ showToast: () => {}, onLogout: () => {} });
+const AppContext = React.createContext({ showToast: () => {}, onLogout: () => {}, adminInfo: null });
 
 // ─── CSS Injection ────────────────────────────────────────────────────────────
 const CSS = `
@@ -818,9 +822,11 @@ function Badge({ status }) {
     require_changes: ['badge-cyan',   'Require Changes'],
     promotional:     ['badge-violet', 'Promo'],
     transactional:   ['badge-blue',   'Trans'],
+    super_admin:     ['badge-red',    'Super Admin'],
     admin:           ['badge-violet', 'Admin'],
     partner:         ['badge-cyan',   'Partner'],
     user:            ['badge-blue',   'User'],
+    deleted:         ['badge-gray',   'Deleted'],
     platinum:        ['badge-violet', 'Platinum'],
     gold:            ['badge-amber',  'Gold'],
     silver:          ['badge-gray',   'Silver'],
@@ -4707,9 +4713,15 @@ function PartnersTab() {
 }
 
 // ─── Users Management Tab ─────────────────────────────────────────────────────
+// Full CRUD lives here for a super_admin: create, edit profile, change role,
+// suspend/activate, grant/revoke IVR access, reset password, and soft-delete
+// (+ restore from the "Deleted" filter) — mirrors what Django admin can do,
+// gated per the role matrix in ../permissions.py (super_admin: everything
+// including delete/role-change; admin: read/write profile+status+IVR only).
 function UsersTab() {
-  const { showToast, onLogout } = React.useContext(AppContext);
+  const { showToast, onLogout, adminInfo } = React.useContext(AppContext);
   const bp = useBreakpoint();
+  const isSuperAdmin = adminInfo?.role === 'super_admin';
   const [search, setSearch]       = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -4718,6 +4730,9 @@ function UsersTab() {
   const [page, setPage]           = useState(1);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
+  const [formModal, setFormModal] = useState(null); // null | 'create' | <user row> (edit)
+  const [busyId, setBusyId]       = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null); // row whose full detail drawer is open
   const PER = 15;
 
   const fetchData = useCallback(() => {
@@ -4742,7 +4757,7 @@ function UsersTab() {
 
   // Admin-granted per-user IVR access (independent of tenant role/plan) —
   // optimistic toggle with rollback on failure, mirrors senda_voice_backend's
-  // `ivr_access_enabled` column read through its shared.User shadow model.
+  // `ivr_access_enabled` column read through its shadow model.
   const toggleIvrAccess = (u) => {
     const next = !u.ivr_access_enabled;
     setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: next } : x));
@@ -4759,6 +4774,82 @@ function UsersTab() {
       });
   };
 
+  const toggleStatus = (u) => {
+    const next = u.status === 'active' ? 'suspended' : 'active';
+    if (next === 'suspended' && !window.confirm(`Suspend ${u.name}? They will be signed out immediately.`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: next }) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, status: next } : x));
+          showToast?.(next === 'active' ? `${u.name} reactivated.` : `${u.name} suspended.`, 'success');
+        } else {
+          showToast?.(res.error?.message || 'Failed to update status.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Failed to update status.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const changeRole = (u, role) => {
+    if (role === u.role) return;
+    if (!window.confirm(`Change ${u.name}'s role to "${role.replace('_', ' ')}"?`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, role } : x));
+          showToast?.(`${u.name} is now ${role.replace('_', ' ')}.`, 'success');
+        } else {
+          showToast?.(res.error?.message || 'Failed to update role.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Failed to update role.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const deleteUser = (u) => {
+    if (!window.confirm(`Move ${u.name} to trash? They'll be signed out and unable to log in. This can be undone from the "Deleted" filter.`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/delete`, { method: 'DELETE' }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${u.name} moved to trash.`, 'success'); fetchData(); }
+        else showToast?.(res.error?.message || 'Failed to delete user.', 'error');
+      })
+      .catch(() => showToast?.('Failed to delete user.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const restoreUser = (u) => {
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/restore`, { method: 'PATCH' }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${u.name} restored.`, 'success'); fetchData(); }
+        else showToast?.(res.error?.message || 'Failed to restore user.', 'error');
+      })
+      .catch(() => showToast?.('Failed to restore user.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const resetPassword = (u) => {
+    if (!window.confirm(`Generate a new password for ${u.name}? Their current password stops working immediately.`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) }, onLogout)
+      .then(res => {
+        if (res.success && res.data?.password) {
+          window.prompt(`New password for ${u.name} — copy it now, it won't be shown again:`, res.data.password);
+        } else if (res.success) {
+          showToast?.('Password updated.', 'success');
+        } else {
+          showToast?.(res.error?.message || 'Failed to reset password.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Failed to reset password.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const iconBtn = { border:'none', background:'#f1f5f9', borderRadius:8, width:28, height:28, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#64748b' };
+
   return (
     <div className="senda-fade-in">
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
@@ -4773,40 +4864,79 @@ function UsersTab() {
           ))}
         </div>
         <div style={{display:'flex',gap:4}}>
-          {['all','active','suspended'].map(f=>(
+          {['all','active','suspended','deleted'].map(f=>(
             <button key={f} className="senda-btn senda-btn-sm" onClick={()=>{setFilterStatus(f);setPage(1);}}
-              style={{background:filterStatus===f?(f==='suspended'?RED:f==='active'?GREEN:BRAND):'#f1f5f9',color:filterStatus===f?'#fff':'#64748b',border:'none'}}>
+              style={{background:filterStatus===f?(f==='suspended'||f==='deleted'?RED:f==='active'?GREEN:BRAND):'#f1f5f9',color:filterStatus===f?'#fff':'#64748b',border:'none'}}>
               {f.charAt(0).toUpperCase()+f.slice(1)}
             </button>
           ))}
         </div>
-        <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{total} users</span>
+        <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users</span>
+        {isSuperAdmin && (
+          <button className="senda-btn senda-btn-primary senda-btn-sm" style={{marginLeft:'auto'}} onClick={()=>setFormModal('create')}>
+            <UserPlus size={14} strokeWidth={2.3}/> Add user
+          </button>
+        )}
       </div>
 
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:960}}>
+            <table className="senda-table" style={{minWidth:1080}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>IVR Access</th><th>Joined</th></tr>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>IVR Access</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
-                {items.map(u=>(
-                  <tr key={u.id}>
-                    <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{u.id}</td>
-                    <td style={{fontWeight:600,color:'#0f172a'}}>{u.name}</td>
+                {items.map(u=>{
+                  const busy = busyId === u.id;
+                  const trashed = !!u.is_deleted;
+                  return (
+                  <tr key={u.id} style={trashed ? {opacity:.55} : undefined}>
+                    <td
+                      style={{fontWeight:600,color:BRAND,fontSize:12,cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}
+                      title="Click to view full details"
+                      onClick={()=>setSelectedUser(u)}
+                    >{u.id}</td>
+                    <td
+                      style={{fontWeight:600,color:'#0f172a',cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}
+                      title="Click to view full details"
+                      onClick={()=>setSelectedUser(u)}
+                    >{u.name}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{u.email}</td>
                     <td style={{fontFamily:'monospace',fontSize:12}}>{u.phone}</td>
-                    <td><Badge status={u.role}/></td>
+                    <td>
+                      {isSuperAdmin && !trashed ? (
+                        <select value={u.role} disabled={busy} onChange={e=>changeRole(u, e.target.value)}
+                          style={{fontSize:11,fontWeight:700,padding:'4px 6px',borderRadius:8,border:'1px solid #e2e8f0',background:'#fff',color:'#0f172a',cursor:'pointer'}}>
+                          <option value="user">User</option>
+                          <option value="partner">Partner</option>
+                          <option value="admin">Admin</option>
+                          <option value="super_admin">Super Admin</option>
+                        </select>
+                      ) : <Badge status={u.role}/>}
+                    </td>
                     <td style={{fontWeight:600}}>{(u.sms_sent||0).toLocaleString()}</td>
                     <td style={{fontWeight:600,color:GREEN}}>{(u.balance||0).toLocaleString()}</td>
-                    <td><Badge status={u.status}/></td>
+                    <td>
+                      {trashed ? <Badge status="deleted"/> : (
+                        <button onClick={()=>toggleStatus(u)} disabled={busy}
+                          title={u.status==='active' ? 'Click to suspend' : 'Click to reactivate'}
+                          style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                            border:'none',cursor:busy?'default':'pointer',fontSize:11,fontWeight:700,opacity:busy?.6:1,
+                            background:u.status==='active'?'#d1fae5':'#fee2e2',
+                            color:u.status==='active'?'#065f46':'#dc2626'}}>
+                          <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                          {u.status==='active' ? 'Active' : 'Suspended'}
+                        </button>
+                      )}
+                    </td>
                     <td>
                       <button
                         onClick={()=>toggleIvrAccess(u)}
+                        disabled={trashed}
                         title={u.ivr_access_enabled ? 'Click to revoke Voice/IVR flow access' : 'Click to grant Voice/IVR flow access'}
                         style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
-                          border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
+                          border:'none',cursor:trashed?'default':'pointer',fontSize:11,fontWeight:700,opacity:trashed?.5:1,
                           background:u.ivr_access_enabled?'#d1fae5':'#f1f5f9',
                           color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
                         <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
@@ -4814,8 +4944,36 @@ function UsersTab() {
                       </button>
                     </td>
                     <td style={{fontSize:12,color:'#64748b'}}>{u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</td>
+                    <td>
+                      <div style={{display:'flex',gap:5}}>
+                        {trashed ? (
+                          isSuperAdmin && (
+                            <button style={iconBtn} disabled={busy} onClick={()=>restoreUser(u)} title="Restore user">
+                              <RotateCcw size={13} strokeWidth={2.2}/>
+                            </button>
+                          )
+                        ) : (
+                          <>
+                            <button style={iconBtn} disabled={busy} onClick={()=>setFormModal(u)} title="Edit user">
+                              <Edit2 size={13} strokeWidth={2.2}/>
+                            </button>
+                            {isSuperAdmin && (
+                              <>
+                                <button style={iconBtn} disabled={busy} onClick={()=>resetPassword(u)} title="Reset password">
+                                  <Key size={13} strokeWidth={2.2}/>
+                                </button>
+                                <button style={{...iconBtn,background:'#fee2e2',color:'#dc2626'}} disabled={busy} onClick={()=>deleteUser(u)} title="Delete user">
+                                  <Trash2 size={13} strokeWidth={2.2}/>
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -4836,8 +4994,501 @@ function UsersTab() {
           </div>
         </div>
       )}
+
+      {formModal && (
+        <UserFormModal
+          user={formModal === 'create' ? null : formModal}
+          onClose={()=>setFormModal(null)}
+          onSaved={fetchData}
+        />
+      )}
+
+      {selectedUser && (
+        <UserDetailView
+          user={selectedUser}
+          onClose={()=>setSelectedUser(null)}
+          onChanged={fetchData}
+          isSuperAdmin={isSuperAdmin}
+        />
+      )}
     </div>
   );
+}
+
+// Shared create/edit form for UsersTab — POSTs /users/create (super_admin
+// only; the "+ Add user" entry point) or PATCHes /users/:id/profile (name,
+// email, phone). Role/status/IVR are changed inline in the table instead,
+// since those need a confirm step and shouldn't block saving a name typo.
+function UserFormModal({ user, onClose, onSaved }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const editing = !!user;
+  const [fullName, setFullName] = useState(user?.name || '');
+  const [email, setEmail]       = useState(user?.email || '');
+  const [phone, setPhone]       = useState(user?.phone || '');
+  const [role, setRole]         = useState('user');
+  const [password, setPassword] = useState('');
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const submit = async () => {
+    if (!fullName.trim() || !email.trim()) {
+      showToast('Name and email are required', 'error');
+      return;
+    }
+    const [first_name, ...rest] = fullName.trim().split(/\s+/);
+    const last_name = rest.join(' ');
+
+    setSaving(true);
+    try {
+      if (editing) {
+        const res = await adminFetch(`/users/${user.id}/profile`, {
+          method: 'PATCH',
+          body: JSON.stringify({ first_name, last_name, email: email.trim(), phone_number: phone.trim() }),
+        }, onLogout);
+        if (res.success) {
+          showToast(`${fullName.trim()} updated.`, 'success');
+          onSaved && onSaved(); onClose();
+        } else {
+          showToast(res.error?.message || 'Failed to update user.', 'error');
+        }
+      } else {
+        const res = await adminFetch('/users/create', {
+          method: 'POST',
+          body: JSON.stringify({
+            first_name, last_name, email: email.trim(), phone_number: phone.trim(), role,
+            ...(password.trim() ? { password: password.trim() } : {}),
+          }),
+        }, onLogout);
+        if (res.success) {
+          showToast(`${fullName.trim()} created.`, 'success');
+          if (res.data?.generated_password) {
+            window.prompt(`Generated password for ${fullName.trim()} — copy it now, it won't be shown again:`, res.data.generated_password);
+          }
+          onSaved && onSaved(); onClose();
+        } else {
+          showToast(res.error?.message || 'Failed to create user.', 'error');
+        }
+      }
+    } catch {
+      showToast('Network error saving user.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputSm = { height:42, fontSize:13.5, borderRadius:10 };
+
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',
+      backdropFilter:'blur(3px)',display:'flex',alignItems:'flex-start',justifyContent:'center',
+      padding:'24px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up"
+        style={{width:'100%',maxWidth:420,margin:'auto',background:'#fff',borderRadius:18,
+          boxShadow:'0 24px 70px rgba(15,23,42,.28)',display:'flex',flexDirection:'column',
+          maxHeight:'calc(100vh - 48px)',overflow:'hidden'}}>
+
+        <div style={{display:'flex',alignItems:'center',gap:13,padding:'20px 22px',borderBottom:'1px solid #eef2f7',flexShrink:0}}>
+          <div style={{width:42,height:42,borderRadius:12,flexShrink:0,
+            background:`linear-gradient(135deg,${BRAND},${BRAND2})`,boxShadow:`0 6px 16px ${BRAND}40`,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <UserPlus size={19} strokeWidth={2.3} color="#fff"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:'#0f172a',letterSpacing:'-.2px'}}>{editing ? 'Edit user' : 'Add user'}</h3>
+            <p style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{editing ? `Editing ${user.id}` : 'Create a new account'}</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{border:'none',background:'#f1f5f9',borderRadius:9,
+            width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748b',flexShrink:0}}>
+            <X size={16}/>
+          </button>
+        </div>
+
+        <div style={{padding:'18px 22px',overflowY:'auto',flex:1}}>
+          <label style={FIELD_LABEL}>Full name</label>
+          <input className="senda-input" value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="e.g. Jane Mwakalinga" style={{...inputSm,marginBottom:14}}/>
+
+          <label style={FIELD_LABEL}>Email</label>
+          <input type="email" className="senda-input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="jane@example.com" style={{...inputSm,marginBottom:14}}/>
+
+          <label style={FIELD_LABEL}>Phone <span style={{color:'#cbd5e1',fontWeight:500}}>· optional</span></label>
+          <input className="senda-input" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+255700000000" style={{...inputSm,marginBottom:14}}/>
+
+          {!editing && (
+            <>
+              <label style={FIELD_LABEL}>Role</label>
+              <select className="senda-input" value={role} onChange={e=>setRole(e.target.value)} style={{...inputSm,background:'#fff',marginBottom:14}}>
+                <option value="user">User</option>
+                <option value="partner">Partner</option>
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+
+              <label style={FIELD_LABEL}>Password <span style={{color:'#cbd5e1',fontWeight:500}}>· leave blank to auto-generate</span></label>
+              <input type="text" className="senda-input" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Leave blank to auto-generate" style={{...inputSm}}/>
+            </>
+          )}
+        </div>
+
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'14px 22px',borderTop:'1px solid #eef2f7',flexShrink:0,background:'#fff'}}>
+          <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={submit} disabled={saving}>
+            {saving ? <><Spinner size={14} color="#fff"/> Saving…</> : editing ? 'Save changes' : 'Create user'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <p style={{fontSize:10.5,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:3}}>{label}</p>
+      <p style={{fontSize:13,color:'#0f172a',fontWeight:600}}>{value}</p>
+    </div>
+  );
+}
+
+// ─── User Detail Drawer ─────────────────────────────────────────────────────────
+// Opened by clicking a user's name/ID in UsersTab. One full-page view for
+// "everything concerning that user" — profile, balance, sender IDs,
+// transactions — with every action (edit, role, status, IVR, reset password,
+// delete/restore) available right here instead of only in the table row.
+function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [detail, setDetail]         = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [activeView, setActiveView] = useState('overview'); // overview | senderids | transactions
+  const [senderIds, setSenderIds]           = useState([]);
+  const [senderIdsLoading, setSenderIdsLoading] = useState(true);
+  const [transactions, setTransactions]         = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [busy, setBusy]     = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const fetchDetail = useCallback(() => {
+    setLoading(true); setError(null);
+    adminFetch(`/users/${user.id}`, {}, onLogout)
+      .then(res => {
+        if (res.success) setDetail(res.data);
+        else setError(res.error?.message || 'Failed to load user.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [user.id, onLogout]);
+
+  useEffect(() => { fetchDetail(); }, [fetchDetail]);
+
+  useEffect(() => {
+    setSenderIdsLoading(true);
+    adminFetch(`/sender-ids?user_id=${encodeURIComponent(user.id)}&limit=50`, {}, onLogout)
+      .then(res => { if (res.success) setSenderIds(res.data || []); })
+      .catch(() => {})
+      .finally(() => setSenderIdsLoading(false));
+  }, [user.id, onLogout]);
+
+  useEffect(() => {
+    setTransactionsLoading(true);
+    adminFetch(`/transactions?user_id=${encodeURIComponent(user.id)}&limit=50`, {}, onLogout)
+      .then(res => { if (res.success) setTransactions(res.data || []); })
+      .catch(() => {})
+      .finally(() => setTransactionsLoading(false));
+  }, [user.id, onLogout]);
+
+  // Lock background scroll while the drawer is open.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, []);
+
+  const d = detail || user; // fall back to the row data while detail loads
+  const refreshAll = () => { fetchDetail(); onChanged && onChanged(); };
+
+  const toggleStatus = () => {
+    const next = d.status === 'active' ? 'suspended' : 'active';
+    if (next === 'suspended' && !window.confirm(`Suspend ${d.name}? They will be signed out immediately.`)) return;
+    setBusy(true);
+    adminFetch(`/users/${user.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: next }) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(next === 'active' ? `${d.name} reactivated.` : `${d.name} suspended.`, 'success'); refreshAll(); }
+        else showToast?.(res.error?.message || 'Failed to update status.', 'error');
+      })
+      .catch(() => showToast?.('Failed to update status.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const changeRole = (role) => {
+    if (role === d.role) return;
+    if (!window.confirm(`Change ${d.name}'s role to "${role.replace('_', ' ')}"?`)) return;
+    setBusy(true);
+    adminFetch(`/users/${user.id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${d.name} is now ${role.replace('_', ' ')}.`, 'success'); refreshAll(); }
+        else showToast?.(res.error?.message || 'Failed to update role.', 'error');
+      })
+      .catch(() => showToast?.('Failed to update role.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const toggleIvr = () => {
+    const next = !d.ivr_access_enabled;
+    setBusy(true);
+    adminFetch(`/users/${user.id}/ivr-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(next ? 'IVR access granted.' : 'IVR access revoked.', 'success'); refreshAll(); }
+        else showToast?.(res.error?.message || 'Failed to update IVR access.', 'error');
+      })
+      .catch(() => showToast?.('Failed to update IVR access.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const resetPassword = () => {
+    if (!window.confirm(`Generate a new password for ${d.name}? Their current password stops working immediately.`)) return;
+    setBusy(true);
+    adminFetch(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) }, onLogout)
+      .then(res => {
+        if (res.success && res.data?.password) {
+          window.prompt(`New password for ${d.name} — copy it now, it won't be shown again:`, res.data.password);
+        } else if (res.success) {
+          showToast?.('Password updated.', 'success');
+        } else {
+          showToast?.(res.error?.message || 'Failed to reset password.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Failed to reset password.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const deleteUser = () => {
+    if (!window.confirm(`Move ${d.name} to trash? They'll be signed out and unable to log in. This can be undone from the "Deleted" filter.`)) return;
+    setBusy(true);
+    adminFetch(`/users/${user.id}/delete`, { method: 'DELETE' }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${d.name} moved to trash.`, 'success'); onChanged && onChanged(); onClose(); }
+        else showToast?.(res.error?.message || 'Failed to delete user.', 'error');
+      })
+      .catch(() => showToast?.('Failed to delete user.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const restoreUser = () => {
+    setBusy(true);
+    adminFetch(`/users/${user.id}/restore`, { method: 'PATCH' }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(`${d.name} restored.`, 'success'); refreshAll(); }
+        else showToast?.(res.error?.message || 'Failed to restore user.', 'error');
+      })
+      .catch(() => showToast?.('Failed to restore user.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const actionBtn = { border:'none', borderRadius:8, height:32, padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:12, fontWeight:700 };
+
+  return createPortal((
+    <div style={{position:'fixed',inset:0,zIndex:9000,background:'#f8fafc',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+
+      {/* ── Top bar ── */}
+      <div style={{minHeight:64,background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',alignItems:'center',padding:'10px 24px',gap:16,flexShrink:0,boxShadow:'0 1px 4px rgba(0,0,0,.04)',flexWrap:'wrap'}}>
+        <button onClick={onClose} style={{display:'flex',alignItems:'center',gap:6,border:'none',background:'#f1f5f9',borderRadius:8,height:34,padding:'0 12px',cursor:'pointer',fontSize:13,fontWeight:600,color:'#475569',flexShrink:0}}>
+          ← Back
+        </button>
+        <div style={{flex:'1 1 240px',minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:16,fontWeight:800,color:'#0f172a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.name}</span>
+            <Badge status={d.is_deleted ? 'deleted' : d.role}/>
+            {!d.is_deleted && <Badge status={d.status}/>}
+          </div>
+          <div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{d.email} · {d.phone || '—'} · {d.id}</div>
+        </div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {!d.is_deleted && (
+            <button style={{...actionBtn,background:'#f1f5f9',color:'#475569'}} disabled={busy} onClick={()=>setEditing(true)}>
+              <Edit2 size={13} strokeWidth={2.2}/> Edit
+            </button>
+          )}
+          {!d.is_deleted && (
+            <button style={{...actionBtn,background:d.status==='active'?'#fee2e2':'#d1fae5',color:d.status==='active'?'#dc2626':'#065f46'}} disabled={busy} onClick={toggleStatus}>
+              {d.status==='active' ? <Ban size={13} strokeWidth={2.2}/> : <CheckCircle2 size={13} strokeWidth={2.2}/>}
+              {d.status==='active' ? 'Suspend' : 'Activate'}
+            </button>
+          )}
+          {!d.is_deleted && (
+            <button style={{...actionBtn,background:d.ivr_access_enabled?'#fee2e2':'#d1fae5',color:d.ivr_access_enabled?'#dc2626':'#065f46'}} disabled={busy} onClick={toggleIvr}>
+              {d.ivr_access_enabled ? 'Revoke IVR' : 'Grant IVR'}
+            </button>
+          )}
+          {isSuperAdmin && !d.is_deleted && (
+            <button style={{...actionBtn,background:'#f1f5f9',color:'#475569'}} disabled={busy} onClick={resetPassword}>
+              <Key size={13} strokeWidth={2.2}/> Reset password
+            </button>
+          )}
+          {isSuperAdmin && (
+            d.is_deleted ? (
+              <button style={{...actionBtn,background:'#d1fae5',color:'#065f46'}} disabled={busy} onClick={restoreUser}>
+                <RotateCcw size={13} strokeWidth={2.2}/> Restore
+              </button>
+            ) : (
+              <button style={{...actionBtn,background:'#fee2e2',color:'#dc2626'}} disabled={busy} onClick={deleteUser}>
+                <Trash2 size={13} strokeWidth={2.2}/> Delete
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ── Tab switcher ── */}
+      <div style={{background:'#fff',borderBottom:'1px solid #e2e8f0',padding:'0 24px',display:'flex',gap:0,flexShrink:0,overflowX:'auto'}}>
+        {[
+          { id:'overview',     label:'Overview' },
+          { id:'senderids',    label:'Sender IDs',   count: senderIds.length },
+          { id:'transactions', label:'Transactions', count: transactions.length },
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setActiveView(t.id)}
+            style={{height:42,padding:'0 18px',border:'none',background:'transparent',cursor:'pointer',
+              fontSize:13,fontWeight:activeView===t.id?700:500,
+              color:activeView===t.id?BRAND:'#64748b',
+              borderBottom:activeView===t.id?`2px solid ${BRAND}`:'2px solid transparent',
+              display:'flex',alignItems:'center',gap:7,transition:'all .15s',flexShrink:0,
+            }}>
+            {t.label}
+            {t.count != null && (
+              <span style={{padding:'1px 7px',borderRadius:99,fontSize:10,fontWeight:700,
+                background:activeView===t.id?`${BRAND}18`:'#f1f5f9',
+                color:activeView===t.id?BRAND:'#94a3b8'}}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Body ── */}
+      <div style={{flex:1,overflowY:'auto',padding:24}}>
+        {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchDetail}/> : (
+          <>
+            {activeView === 'overview' && (
+              <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                  {[
+                    { label:'SMS Sent',        value:(d.sms_sent||0).toLocaleString() },
+                    { label:'Balance (TZS)',   value:(d.balance||0).toLocaleString() },
+                    { label:'Sender IDs',      value:(d.sender_ids_count ?? senderIds.length).toLocaleString() },
+                    { label:'Transactions',    value:(d.transactions_count ?? transactions.length).toLocaleString() },
+                    { label:'Total Spent',     value:(d.total_spent||0).toLocaleString() },
+                  ].map(k=>(
+                    <div key={k.label} className="senda-card" style={{padding:'14px 18px',minWidth:140,flex:'1 1 140px'}}>
+                      <p style={{fontSize:11,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em'}}>{k.label}</p>
+                      <p style={{fontSize:20,fontWeight:800,color:'#0f172a',marginTop:4}}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="senda-card" style={{padding:20}}>
+                  <h3 style={{fontSize:14,fontWeight:700,color:'#0f172a',marginBottom:12}}>Profile</h3>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14}}>
+                    <Field label="Full name" value={d.name}/>
+                    <Field label="Email" value={d.email}/>
+                    <Field label="Phone" value={d.phone || '—'}/>
+                    <Field label="Role" value={(d.role||'').replace('_',' ')}/>
+                    <Field label="Status" value={d.is_deleted ? 'Deleted' : d.status}/>
+                    <Field label="Tenant" value={d.tenant_name || '—'}/>
+                    <Field label="Email verified" value={d.is_verified ? 'Yes' : 'No'}/>
+                    <Field label="Phone verified" value={d.phone_verified ? 'Yes' : 'No'}/>
+                    <Field label="IVR access" value={d.ivr_access_enabled ? 'Granted' : 'Off'}/>
+                    <Field label="Joined" value={d.joined_at ? new Date(d.joined_at).toLocaleString() : '—'}/>
+                    <Field label="Last seen" value={d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}/>
+                  </div>
+                </div>
+
+                {isSuperAdmin && !d.is_deleted && (
+                  <div className="senda-card" style={{padding:20}}>
+                    <h3 style={{fontSize:14,fontWeight:700,color:'#0f172a',marginBottom:10}}>Role</h3>
+                    <select value={d.role} disabled={busy} onChange={e=>changeRole(e.target.value)}
+                      style={{fontSize:13,fontWeight:600,padding:'8px 12px',borderRadius:10,border:'1px solid #e2e8f0',background:'#fff',color:'#0f172a',cursor:'pointer'}}>
+                      <option value="user">User</option>
+                      <option value="partner">Partner</option>
+                      <option value="admin">Admin</option>
+                      <option value="super_admin">Super Admin</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeView === 'senderids' && (
+              senderIdsLoading ? <LoadingState/> : senderIds.length === 0 ? (
+                <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No sender IDs for this user.</div>
+              ) : (
+                <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="senda-table" style={{minWidth:640}}>
+                      <thead>
+                        <tr><th>Sender ID</th><th>Type</th><th>Status</th><th>Requested</th></tr>
+                      </thead>
+                      <tbody>
+                        {senderIds.map(s=>(
+                          <tr key={s.id}>
+                            <td style={{fontWeight:600,color:'#0f172a'}}>{s.name || s.sender_name || s.requested_sender_id || s.sender_id}</td>
+                            <td style={{fontSize:12,color:'#64748b'}}>{s.request_type || s.type || '—'}</td>
+                            <td><Badge status={s.status}/></td>
+                            <td style={{fontSize:12,color:'#64748b'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            )}
+
+            {activeView === 'transactions' && (
+              transactionsLoading ? <LoadingState/> : transactions.length === 0 ? (
+                <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No transactions for this user.</div>
+              ) : (
+                <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="senda-table" style={{minWidth:640}}>
+                      <thead>
+                        <tr><th>ID</th><th>Package</th><th style={{textAlign:'right'}}>Amount (TZS)</th><th>Method</th><th>Status</th><th>Date</th></tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map(t=>(
+                          <tr key={t.id}>
+                            <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{t.id}</td>
+                            <td style={{fontSize:12}}>{t.package}</td>
+                            <td style={{textAlign:'right',fontWeight:600}}>{(t.amount||0).toLocaleString()}</td>
+                            <td style={{fontSize:12,color:'#64748b'}}>{t.method}</td>
+                            <td><Badge status={t.status}/></td>
+                            <td style={{fontSize:12,color:'#64748b'}}>{t.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            )}
+          </>
+        )}
+      </div>
+
+      {editing && (
+        <UserFormModal user={d} onClose={()=>setEditing(false)} onSaved={refreshAll}/>
+      )}
+    </div>
+  ), document.body);
 }
 
 // ─── Operations Tab ───────────────────────────────────────────────────────────
@@ -15230,7 +15881,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   };
 
   return (
-    <AppContext.Provider value={{ showToast: showToast || (()=>{}), onLogout }}>
+    <AppContext.Provider value={{ showToast: showToast || (()=>{}), onLogout, adminInfo }}>
     <div style={{display:'flex',height:'100vh',background:'#f8fafc',overflow:'hidden'}}>
       <Sidebar active={active} setActive={setActive} onLogout={onLogout} mode={sidebarMode}/>
 

@@ -128,8 +128,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   };
 
   // While working inside Voice/IVR, hide the unrelated top-level sections
-  // (Messaging, AI Copilots, Voice Copilots) so the sidebar stays focused —
-  // Dashboard and Voice/IVR itself always stay visible.
+  // (Messaging, AI Copilots) and "Voice Copilots" so the sidebar stays
+  // focused — Dashboard and Voice/IVR itself always stay visible.
   const inVoiceSection = location.pathname.startsWith("/voice");
 
   const navigation: NavItem[] = [
@@ -155,10 +155,10 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
           { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
-          { name: "Voice Copilots", href: "/voice-copilots", icon: Mic },
         ]),
     ...(hasIvrAccess(user)
       ? [
+          ...(inVoiceSection ? [] : [{ name: "Voice Copilots", href: "/voice-copilots", icon: Mic }]),
           {
             name: "Voice / IVR",
             href: "/voice",
@@ -258,13 +258,15 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           </button>
           {/* The dialer lives at the app root (DialerProvider), so this opens
               it over whatever page is showing — no navigation needed. */}
-          <button
-            onClick={() => openDialer()}
-            className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-primary/40 bg-primary/10 text-primary text-[13px] font-semibold tracking-tight hover:bg-primary/15 active:scale-[0.98] transition-all duration-100"
-          >
-            <PhoneOutgoing className="w-3.5 h-3.5" strokeWidth={2.2} />
-            Piga simu
-          </button>
+          {hasIvrAccess(user) && (
+            <button
+              onClick={() => openDialer()}
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-primary/40 bg-primary/10 text-primary text-[13px] font-semibold tracking-tight hover:bg-primary/15 active:scale-[0.98] transition-all duration-100"
+            >
+              <PhoneOutgoing className="w-3.5 h-3.5" strokeWidth={2.2} />
+              Piga simu
+            </button>
+          )}
         </div>
 
         {/* ── Divider ──────────────────────────────────── */}
