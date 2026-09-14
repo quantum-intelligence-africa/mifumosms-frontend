@@ -1234,7 +1234,7 @@ const Settings = () => {
       if (result.success) {
         toast({
           title: "Verification code sent",
-          description: `Code sent to ${targetPhone}. Please check your messages.`
+          description: `Code sent to ${targetPhone} and your email. Use whichever arrives first.`
         });
         setCodeSent(true);
       } else {

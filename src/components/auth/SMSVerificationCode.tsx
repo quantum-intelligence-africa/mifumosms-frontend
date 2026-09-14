@@ -102,9 +102,9 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
   const getMessageText = () => {
     switch (messageType) {
       case 'password_reset':
-        return 'Enter the verification code sent to your phone to reset your password';
+        return 'Enter the verification code sent to your phone and email to reset your password';
       default:
-        return 'Enter the verification code sent to your phone';
+        return 'Enter the verification code sent to your phone and email';
     }
   };
 

@@ -155,8 +155,8 @@ const Login = () => {
           }
 
           const toastMessage = phoneNumber
-            ? `A new 6-digit verification code has been sent to your phone (${phoneNumber}). Please check your SMS messages and use the code to verify your account.`
-            : "A new 6-digit verification code has been sent to your phone. Please check your SMS messages and use the code to verify your account.";
+            ? `A new 6-digit verification code has been sent to your phone (${phoneNumber}) and your email. Use whichever arrives first to verify your account.`
+            : "A new 6-digit verification code has been sent to your phone and your email. Use whichever arrives first to verify your account.";
 
           toast({
             title: "Account not activated",

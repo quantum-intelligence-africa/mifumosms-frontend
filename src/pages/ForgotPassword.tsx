@@ -75,7 +75,7 @@ const ForgotPassword = () => {
         setStep('verification');
         toast({
           title: "Reset code sent",
-          description: `Reset code sent to ${phoneInfo.formatted}`,
+          description: `Reset code sent to ${phoneInfo.formatted} and your email. Use whichever arrives first.`,
         });
       } else {
         // Check for insufficient balance error
@@ -370,7 +370,7 @@ const ForgotPassword = () => {
       case 'phone':
         return 'No worries! Enter your phone number and we\'ll send you a reset code';
       case 'verification':
-        return 'Enter the verification code sent to your phone';
+        return 'Enter the verification code sent to your phone and email';
       case 'reset':
         return 'Enter your new password below';
       default:

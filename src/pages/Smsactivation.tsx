@@ -112,7 +112,7 @@ const Smsactivation = () => {
     const hasAccessToken = !!localStorage.getItem('access_token');
 
     if (!cleanedToken) {
-      const codeSource = verificationMethod === 'sms' ? 'your phone' : 'your email';
+      const codeSource = verificationMethod === 'sms' ? 'your phone or email' : 'your email';
       toast({
         title: "Code required",
         description: `Please enter the 6-digit verification code from ${codeSource}.`,
@@ -318,11 +318,11 @@ const Smsactivation = () => {
       }
 
       if (result.success) {
-        // SMS only - no email codes
+        // Backend also emails the same code as a backup channel — mention both.
         const displayPhone = result.phoneNumber || phoneNumber;
         toast({
-          title: "SMS verification code sent",
-          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''}. Please check your SMS messages.`,
+          title: "Verification code sent",
+          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''} and your email. Use whichever arrives first.`,
           duration: 10000
         });
         setVerificationMethod('sms');
@@ -380,11 +380,11 @@ const Smsactivation = () => {
       }
 
       if (result.success) {
-        // SMS only - no email codes
+        // Backend also emails the same code as a backup channel — mention both.
         const displayPhone = result.phoneNumber || phoneNumber;
         toast({
-          title: "SMS verification code sent",
-          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''}. Please check your SMS messages.`,
+          title: "Verification code sent",
+          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''} and your email. Use whichever arrives first.`,
           duration: 10000
         });
         setVerificationMethod('sms');
@@ -531,7 +531,7 @@ const Smsactivation = () => {
               </motion.h2>
               <p className="text-sm text-gray-600">
                 {verificationMethod === 'sms'
-                  ? `Enter the 6-digit code sent to your phone`
+                  ? `Enter the 6-digit code sent to your phone and email`
                   : "Enter the 6-digit code from the email we sent you"}
               </p>
             </div>
@@ -597,7 +597,7 @@ const Smsactivation = () => {
                   </div>
                   <p className="text-xs text-gray-500 text-center">
                     {verificationMethod === 'sms'
-                      ? `Check your phone for the 6-digit code`
+                      ? `Check your phone or email inbox (and spam folder) for the 6-digit code`
                       : "Check your email inbox for the 6-digit code"}
                   </p>
                 </div>
@@ -730,7 +730,7 @@ const Smsactivation = () => {
                   : activationStatus === "error"
                   ? errorMessage
                   : verificationMethod === 'sms'
-                  ? `Enter the 6-digit verification code sent to your phone (${phoneNumber || 'your number'})`
+                  ? `Enter the 6-digit verification code sent to your phone (${phoneNumber || 'your number'}) and email`
                   : "Enter the 6-digit verification code from the email we sent you"}
               </p>
 
@@ -798,7 +798,7 @@ const Smsactivation = () => {
                   </div>
                   <p className="text-xs text-gray-500 text-center">
                     {verificationMethod === 'sms'
-                        ? `Check your phone (${phoneNumber || 'your number'}) for the 6-digit verification code`
+                        ? `Check your phone (${phoneNumber || 'your number'}) or email inbox (and spam folder) for the 6-digit verification code`
                         : "Check your email inbox (and spam folder) for the 6-digit verification code"}
                     </p>
                   </div>
