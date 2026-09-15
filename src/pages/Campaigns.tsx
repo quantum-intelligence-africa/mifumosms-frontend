@@ -148,6 +148,8 @@ const Campaigns = () => {
   // non-draft (scheduled) campaigns.
   const [draftDialogId, setDraftDialogId] = useState<string | null>(null);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -469,6 +471,53 @@ const Campaigns = () => {
 
     return matchesSearch && matchesStatus && matchesType;
   }) : [];
+
+  const deletableSelectableCampaigns = filteredCampaigns.filter(c => c.can_delete);
+  const allFilteredSelected = deletableSelectableCampaigns.length > 0 &&
+    deletableSelectableCampaigns.every(c => selectedCampaignIds.has(c.id));
+
+  const toggleCampaignSelected = useCallback((campaignId: string, checked: boolean) => {
+    setSelectedCampaignIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(campaignId);
+      else next.delete(campaignId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllFiltered = useCallback((checked: boolean) => {
+    if (!checked) {
+      setSelectedCampaignIds(new Set());
+      return;
+    }
+    setSelectedCampaignIds(new Set(deletableSelectableCampaigns.map(c => c.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletableSelectableCampaigns]);
+
+  const clearSelection = useCallback(() => setSelectedCampaignIds(new Set()), []);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedCampaignIds);
+    if (ids.length === 0) return;
+    if (!window.confirm(
+      `Delete ${ids.length} selected campaign${ids.length === 1 ? '' : 's'}? This action cannot be undone.`
+    )) {
+      return;
+    }
+    setIsBulkDeleting(true);
+    try {
+      const results = await Promise.all(ids.map(id => deleteCampaign(id)));
+      results.forEach((ok, i) => { if (ok) clearLocalCampaignDraft(ids[i]); });
+      const failedCount = results.filter(ok => !ok).length;
+      if (failedCount > 0) {
+        console.error(`${failedCount} of ${ids.length} campaigns failed to delete`);
+      }
+      setSelectedCampaignIds(new Set());
+      await Promise.all([fetchCampaigns(), refetch()]);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [selectedCampaignIds, deleteCampaign, fetchCampaigns, refetch]);
 
   // Handle form input changes
   const handleFormChange = (field: string, value: unknown): void => {
@@ -812,12 +861,35 @@ const Campaigns = () => {
                 </div>
               )}
               <CardHeader className="p-3 lg:p-4">
+                {selectedCampaignIds.size > 0 ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs lg:text-sm font-medium text-foreground">
+                      {selectedCampaignIds.size} selected
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={handleBulkDelete}
+                        disabled={isBulkDeleting}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {isBulkDeleting ? 'Deleting…' : 'Delete selected'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
                 <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span className="text-base lg:text-lg">{language === "sw" ? "Kampeni" : "Campaigns"}</span>
                   <span className="text-xs lg:text-sm font-normal text-text-subtle">
                     {filteredCampaigns.length} {filteredCampaigns.length === 1 ? (language === "sw" ? "kampeni" : "campaign") : (language === "sw" ? "kampeni" : "campaigns")}
                   </span>
                 </CardTitle>
+                )}
               </CardHeader>
               <CardContent className="p-0">
               {filteredCampaigns.length === 0 ? (
@@ -836,8 +908,16 @@ const Campaigns = () => {
                   <div className="space-y-0">
                     {/* Table Header */}
                     <div className="px-2 lg:px-6 py-2 bg-muted/50 border-b border-border-subtle">
-                      <div className="grid grid-cols-12 gap-1 lg:gap-4 text-xs font-medium text-text-subtle">
-                        <div className="col-span-6 sm:col-span-4">{language === "sw" ? "Kampeni" : "Campaign"}</div>
+                      <div className="grid grid-cols-12 gap-1 lg:gap-4 text-xs font-medium text-text-subtle items-center">
+                        <div className="col-span-6 sm:col-span-4 flex items-center gap-2">
+                          <Checkbox
+                            checked={allFilteredSelected}
+                            onCheckedChange={(checked) => toggleSelectAllFiltered(checked === true)}
+                            disabled={deletableSelectableCampaigns.length === 0}
+                            aria-label="Select all campaigns"
+                          />
+                          {language === "sw" ? "Kampeni" : "Campaign"}
+                        </div>
                         <div className="col-span-3 sm:col-span-2 hidden sm:block">{language === "sw" ? "Hali" : "Status"}</div>
                         <div className="col-span-3 sm:col-span-2 hidden md:block">{language === "sw" ? "Aina" : "Type"}</div>
                         <div className="col-span-0 sm:col-span-2 hidden lg:block">{language === "sw" ? "Wapokeaji" : "Recipients"}</div>
@@ -853,7 +933,15 @@ const Campaigns = () => {
                            <div className="block sm:hidden p-2">
                              {/* Header Row */}
                              <div className="flex items-start justify-between mb-2">
-                               <div className="flex-1 min-w-0 pr-2">
+                               <div className="flex items-start gap-2 flex-1 min-w-0 pr-2">
+                                 <Checkbox
+                                   className="mt-0.5 flex-shrink-0"
+                                   checked={selectedCampaignIds.has(campaign.id)}
+                                   onCheckedChange={(checked) => toggleCampaignSelected(campaign.id, checked === true)}
+                                   disabled={!campaign.can_delete}
+                                   aria-label={`Select ${campaign.name}`}
+                                 />
+                                 <div className="flex-1 min-w-0">
                                  <h3
                                    className="text-xs font-semibold text-foreground truncate leading-tight cursor-pointer hover:text-blue-600 transition-colors"
                                    onClick={() => handleCampaignClick(campaign)}
@@ -874,6 +962,7 @@ const Campaigns = () => {
                                      {campaign.description}
                                    </p>
                                  )}
+                                 </div>
                                </div>
                                <DropdownMenu>
                                  <DropdownMenuTrigger asChild>
@@ -1038,8 +1127,15 @@ const Campaigns = () => {
                           {/* Desktop Layout */}
                           <div className="hidden sm:grid grid-cols-12 gap-1 lg:gap-4 items-center">
                             {/* Campaign Column */}
-                            <div className="col-span-4">
-                              <div className="flex flex-col">
+                            <div className="col-span-4 flex items-start gap-2">
+                              <Checkbox
+                                className="mt-0.5 flex-shrink-0"
+                                checked={selectedCampaignIds.has(campaign.id)}
+                                onCheckedChange={(checked) => toggleCampaignSelected(campaign.id, checked === true)}
+                                disabled={!campaign.can_delete}
+                                aria-label={`Select ${campaign.name}`}
+                              />
+                              <div className="flex flex-col min-w-0">
                                 <h3
                                   className="text-xs font-semibold text-foreground truncate cursor-pointer hover:text-blue-600 transition-colors"
                                   onClick={() => handleCampaignClick(campaign)}
