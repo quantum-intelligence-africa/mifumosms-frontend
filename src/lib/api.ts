@@ -1193,7 +1193,16 @@ class ApiClient {
         logger.error('API request failed', { status: response.status, method: config.method || 'GET' });
       }
 
-      const data = await response.json();
+      // A 204 (or any other empty body, e.g. some DELETE responses) has
+      // nothing for response.json() to parse — calling it unconditionally
+      // throws a SyntaxError that lands in the catch below and gets
+      // reported as a network failure, even though the request succeeded.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any = null;
+      if (response.status !== 204) {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : null;
+      }
 
       // Log error response data for debugging
       // Skip logging for login 400 errors (expected for unverified accounts requiring SMS activation)
