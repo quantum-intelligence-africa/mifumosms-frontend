@@ -130,6 +130,32 @@ export function clearLocalCampaignDraft(id: string) {
   }
 }
 
+// Which draft the "New Campaign" (no draftId prop) flow has in progress, if
+// any. Persisted (not just an in-memory ref) because Campaigns.tsx renders
+// this component behind two different routes (/campaigns and
+// /messaging/campaigns) that both fully unmount/remount it, and a plain
+// reload does too — an in-memory-only pointer gets lost on any of those,
+// and the next "New Campaign" open would silently spawn a duplicate row
+// instead of resuming the one autosave already created.
+const PENDING_NEW_DRAFT_KEY = 'campaign_draft:pending_new_id';
+
+function readPendingNewDraftId(): string | null {
+  try {
+    return localStorage.getItem(PENDING_NEW_DRAFT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writePendingNewDraftId(id: string | null) {
+  try {
+    if (id) localStorage.setItem(PENDING_NEW_DRAFT_KEY, id);
+    else localStorage.removeItem(PENDING_NEW_DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange, draftId }: CreateCampaignDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,13 +179,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const [localRestore, setLocalRestore] = useState<LocalDraftSnapshot | null>(null);
   const sessionTokenRef = useRef<string>(crypto.randomUUID());
   // Tracks a draft this dialog itself autosave-created (as opposed to one
-  // resumed via the `draftId` prop). Kept in a ref — not just the
-  // `currentDraftId` state — because this instance stays mounted across
-  // open/close (Campaigns.tsx toggles it via `open`, not conditional
-  // rendering): without this, reopening "New Campaign" after autosave
-  // already created a row would re-run the blank-slate branch below and
-  // silently orphan that row, spawning a fresh duplicate on every reopen.
-  const pendingNewDraftIdRef = useRef<string | null>(null);
+  // resumed via the `draftId` prop) — see readPendingNewDraftId's comment
+  // for why this is backed by localStorage rather than being a plain ref.
+  const pendingNewDraftIdRef = useRef<string | null>(readPendingNewDraftId());
 
   const { createCampaign, updateCampaign, startCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
@@ -255,6 +277,16 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         if (local && new Date(local.updatedAt).getTime() > new Date(d.updated_at).getTime()) {
           setLocalRestore(local);
         }
+      } else if (!draftId) {
+        // Resuming our own auto-created draft, not an explicit user-facing
+        // resume — most likely it was deleted (e.g. via bulk delete) since
+        // we last saw it. Don't surface a scary load error for a draft the
+        // user never explicitly asked to open; just drop the stale pointer
+        // and fall back to a blank form.
+        pendingNewDraftIdRef.current = null;
+        writePendingNewDraftId(null);
+        setCurrentDraftId(null);
+        setFormData(blankFormData());
       } else {
         const local = readLocalDraft(localDraftKey(resumeId));
         if (local) {
@@ -285,6 +317,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       // ignore
     }
     pendingNewDraftIdRef.current = id;
+    writePendingNewDraftId(id);
     setCurrentDraftId(id);
   }, []);
 
@@ -470,6 +503,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         // background autosave scratch row — the next "New Campaign" open
         // should start blank rather than resuming it.
         pendingNewDraftIdRef.current = null;
+        writePendingNewDraftId(null);
         setOpen(false);
         resetForm();
         onSuccess?.();
