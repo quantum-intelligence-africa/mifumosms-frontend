@@ -152,6 +152,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
   const [localRestore, setLocalRestore] = useState<LocalDraftSnapshot | null>(null);
   const sessionTokenRef = useRef<string>(crypto.randomUUID());
+  // Tracks a draft this dialog itself autosave-created (as opposed to one
+  // resumed via the `draftId` prop). Kept in a ref — not just the
+  // `currentDraftId` state — because this instance stays mounted across
+  // open/close (Campaigns.tsx toggles it via `open`, not conditional
+  // rendering): without this, reopening "New Campaign" after autosave
+  // already created a row would re-run the blank-slate branch below and
+  // silently orphan that row, spawning a fresh duplicate on every reopen.
+  const pendingNewDraftIdRef = useRef<string | null>(null);
 
   const { createCampaign, updateCampaign, startCampaign } = useCampaigns();
   const { contacts, isLoading: contactsLoading } = useContacts();
@@ -209,15 +217,19 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     setScheduleErrors([]);
     setStep(1);
 
-    if (!draftId) {
+    // Resume either an explicitly-passed draft, or one this same dialog
+    // instance already autosave-created earlier in the browser session.
+    const resumeId = draftId ?? pendingNewDraftIdRef.current;
+
+    if (!resumeId) {
       setCurrentDraftId(null);
       setFormData(blankFormData());
       return;
     }
 
-    setCurrentDraftId(draftId);
+    setCurrentDraftId(resumeId);
     setIsLoadingDraft(true);
-    apiClient.getCampaign(draftId).then((res) => {
+    apiClient.getCampaign(resumeId).then((res) => {
       if (res.success && res.data) {
         const d = res.data;
         const criteria = (d.target_criteria || {}) as { tags?: string[]; opt_in_status?: string };
@@ -239,12 +251,12 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           recurring_schedule: (d.recurring_schedule as CampaignFormData['recurring_schedule']) || prev.recurring_schedule,
         }));
 
-        const local = readLocalDraft(localDraftKey(draftId));
+        const local = readLocalDraft(localDraftKey(resumeId));
         if (local && new Date(local.updatedAt).getTime() > new Date(d.updated_at).getTime()) {
           setLocalRestore(local);
         }
       } else {
-        const local = readLocalDraft(localDraftKey(draftId));
+        const local = readLocalDraft(localDraftKey(resumeId));
         if (local) {
           setFormData((prev) => ({ ...prev, ...local.formData }));
           setDraftLoadError('offline');
@@ -272,6 +284,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     } catch {
       // ignore
     }
+    pendingNewDraftIdRef.current = id;
     setCurrentDraftId(id);
   }, []);
 
@@ -453,6 +466,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
       if (success) {
         if (currentDraftId) clearLocalCampaignDraft(currentDraftId);
+        // This draft is now a real campaign (started/scheduled), not a
+        // background autosave scratch row — the next "New Campaign" open
+        // should start blank rather than resuming it.
+        pendingNewDraftIdRef.current = null;
         setOpen(false);
         resetForm();
         onSuccess?.();
@@ -613,7 +630,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-semibold text-destructive">No approved senders</p>
-                      <Link to="/dashboard/sms/sender-names" className="text-[11px] font-semibold text-destructive underline">
+                      <Link to="/sms/sender-names?action=request" className="text-[11px] font-semibold text-destructive underline">
                         Request Sender Approval →
                       </Link>
                     </div>
