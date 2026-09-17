@@ -25,6 +25,7 @@ import { useContacts } from '@/hooks/useContacts';
 import { ContactImportDialog } from './ContactImportDialog';
 import { ContactAddDialog } from './ContactAddDialog';
 import { Pagination } from '@/components/ui/pagination';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface ContactListProps {
   contacts: any[];
@@ -53,6 +54,7 @@ export function ContactList({
   onNextPage,
   onPreviousPage
 }: ContactListProps) {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -79,9 +81,9 @@ export function ContactList({
 
   const getStatusBadge = (contact: any) => {
     if (contact.is_active) {
-      return <Badge variant="outline" className="text-green-600 border-green-200">Active</Badge>;
+      return <Badge variant="outline" className="text-green-600 border-green-200">{t('voice.numbers.status_active')}</Badge>;
     }
-    return <Badge variant="outline" className="text-red-600 border-red-200">Inactive</Badge>;
+    return <Badge variant="outline" className="text-red-600 border-red-200">{t('voice.numbers.status_inactive')}</Badge>;
   };
 
   const handleViewDetails = (contact: any) => {
@@ -90,7 +92,7 @@ export function ContactList({
   };
 
   const handleDelete = async (contactId: string) => {
-    if (window.confirm('Are you sure you want to delete this contact?')) {
+    if (window.confirm(t('contacts.list.confirm_delete'))) {
       await onDelete(contactId);
     }
   };
@@ -101,7 +103,7 @@ export function ContactList({
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Users className="w-12 h-12 text-text-subtle mx-auto mb-4 animate-pulse" />
-            <p className="text-text-subtle">Loading contacts...</p>
+            <p className="text-text-subtle">{t('contacts.list.loading')}</p>
           </div>
         </div>
       </Card>
@@ -113,27 +115,27 @@ export function ContactList({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">Contacts</h2>
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">{t('contacts')}</h2>
           <p className="text-xs sm:text-sm text-text-subtle">
-            {totalCount} total contacts
+            {t('contacts.list.total_contacts', { count: totalCount })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ContactAddDialog onContactAdded={onRefresh}>
             <Button className="bg-primary hover:bg-primary-dark text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
               <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Add Contact
+              {t('add_contact')}
             </Button>
           </ContactAddDialog>
           <ContactImportDialog>
             <Button variant="outline" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
               <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Import
+              {t('contacts.list.import_button')}
             </Button>
           </ContactImportDialog>
           <Button onClick={onRefresh} variant="outline" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
             <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            Refresh
+            {t('contacts.list.refresh')}
           </Button>
         </div>
       </div>
@@ -142,7 +144,7 @@ export function ContactList({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-3 h-3 sm:w-4 sm:h-4" />
         <Input
-          placeholder="Search contacts by name, phone, or email..."
+          placeholder={t('contacts.list.search_placeholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-8 sm:pl-10 text-xs sm:text-sm h-8 sm:h-9"
@@ -155,12 +157,12 @@ export function ContactList({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Name</TableHead>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Phone</TableHead>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">Email</TableHead>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">Tags</TableHead>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">Status</TableHead>
-              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden sm:table-cell">Created</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">{t('contacts.list.col_name')}</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">{t('contacts.list.col_phone')}</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">{t('integration.email')}</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">{t('tags')}</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3">{t('status')}</TableHead>
+              <TableHead className="text-xs sm:text-sm px-2 py-2 sm:px-4 sm:py-3 hidden sm:table-cell">{t('contacts.list.col_created')}</TableHead>
               <TableHead className="w-10 sm:w-12 px-2 py-2 sm:px-4 sm:py-3"></TableHead>
             </TableRow>
           </TableHeader>
@@ -207,7 +209,7 @@ export function ContactList({
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-text-subtle text-xs">No tags</span>
+                        <span className="text-text-subtle text-xs">{t('contacts.list.no_tags')}</span>
                       )}
                     </div>
                   </TableCell>
@@ -230,14 +232,14 @@ export function ContactList({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleViewDetails(contact)}>
                           <Edit className="w-4 h-4 mr-2" />
-                          View Details
+                          {t('contacts.list.view_details')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(contact.id)}
                           className="text-red-600"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          {t('contacts.list.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -250,20 +252,20 @@ export function ContactList({
                   <div className="text-center">
                     <Users className="w-12 h-12 text-text-subtle mx-auto mb-4" />
                     <p className="text-text-subtle mb-2">
-                      {searchTerm ? 'No contacts found matching your search' : 'No contacts found'}
+                      {searchTerm ? t('contacts.list.no_contacts_search') : t('contacts.list.no_contacts_found')}
                     </p>
                     {!searchTerm && (
                       <div className="flex gap-3 justify-center">
                         <ContactAddDialog onContactAdded={onRefresh}>
                           <Button className="bg-primary hover:bg-primary-dark">
                             <Plus className="w-4 h-4 mr-2" />
-                            Add Contact
+                            {t('add_contact')}
                           </Button>
                         </ContactAddDialog>
                         <ContactImportDialog>
                           <Button variant="outline">
                             <Users className="w-4 h-4 mr-2" />
-                            Import Contacts
+                            {t('import_contacts')}
                           </Button>
                         </ContactImportDialog>
                       </div>
@@ -297,25 +299,25 @@ export function ContactList({
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Contact Details</DialogTitle>
+            <DialogTitle>{t('contacts.list.details_title')}</DialogTitle>
           </DialogHeader>
           {selectedContact && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Name</Label>
+                  <Label>{t('contacts.list.col_name')}</Label>
                   <div className="text-sm font-medium">{selectedContact.name}</div>
                 </div>
                 <div>
-                  <Label>Phone</Label>
+                  <Label>{t('contacts.list.col_phone')}</Label>
                   <div className="text-sm font-medium">{selectedContact.phone_e164}</div>
                 </div>
                 <div>
-                  <Label>Email</Label>
+                  <Label>{t('integration.email')}</Label>
                   <div className="text-sm font-medium">{selectedContact.email || '—'}</div>
                 </div>
                 <div>
-                  <Label>Status</Label>
+                  <Label>{t('status')}</Label>
                   <div className="mt-1">
                     {getStatusBadge(selectedContact)}
                   </div>
@@ -323,7 +325,7 @@ export function ContactList({
               </div>
 
               <div>
-                <Label>Tags</Label>
+                <Label>{t('tags')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {selectedContact.tags.length > 0 ? (
                     selectedContact.tags.map((tag: string, index: number) => (
@@ -332,13 +334,13 @@ export function ContactList({
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-text-subtle text-sm">No tags</span>
+                    <span className="text-text-subtle text-sm">{t('contacts.list.no_tags')}</span>
                   )}
                 </div>
               </div>
 
               <div>
-                <Label>Attributes</Label>
+                <Label>{t('additional_info')}</Label>
                 <div className="mt-2">
                   {Object.keys(selectedContact.attributes).filter(key => !key.toLowerCase().includes('opt')).length > 0 ? (
                     <div className="space-y-2">
@@ -352,20 +354,20 @@ export function ContactList({
                         ))}
                     </div>
                   ) : (
-                    <span className="text-text-subtle text-sm">No attributes</span>
+                    <span className="text-text-subtle text-sm">{t('contacts.list.no_attributes')}</span>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Created</Label>
+                  <Label>{t('contacts.list.col_created')}</Label>
                   <div className="text-sm text-text-subtle">
                     {formatDate(selectedContact.created_at)}
                   </div>
                 </div>
                 <div>
-                  <Label>Last Updated</Label>
+                  <Label>{t('contacts.list.last_updated')}</Label>
                   <div className="text-sm text-text-subtle">
                     {formatDate(selectedContact.updated_at)}
                   </div>

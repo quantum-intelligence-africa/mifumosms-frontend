@@ -8,8 +8,10 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getImageSrc, encodeImagePath } from "@/utils/imageFallback";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Privacy = () => {
+  const { t } = useLanguage();
   // Force light theme on marketing surfaces
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -73,13 +75,13 @@ const Privacy = () => {
           {/* Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <button onClick={() => navigate('/#features')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              Features
+              {t('legal.nav.features')}
             </button>
             <button onClick={() => navigate('/#pricing')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              Pricing
+              {t('legal.nav.pricing')}
             </button>
             <Link to="/developer" className="transition-colors duration-300 text-gray-900 hover:text-gray-700">
-              Developer
+              {t('legal.nav.developer')}
             </Link>
           </div>
 
@@ -87,12 +89,12 @@ const Privacy = () => {
           <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
               <Link to="/login">
                 <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  Login
+                  {t('legal.nav.login')}
                 </button>
               </Link>
               <Link to="/signup">
                 <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer inline-flex items-center justify-center leading-tight whitespace-nowrap border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  Get started
+                  {t('legal.nav.get_started')}
                 </button>
               </Link>
           </div>
@@ -117,250 +119,204 @@ const Privacy = () => {
       />
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16" style={{ paddingTop: '120px' }}>
         <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-4">Privacy Policy</h1>
-          <p className="text-gray-700 text-base sm:text-lg">Last updated: January 22, 2026</p>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-4">{t('legal.privacy.title')}</h1>
+          <p className="text-gray-700 text-base sm:text-lg">{t('legal.privacy.last_updated')}</p>
         </div>
         <div className="p-6 sm:p-8 lg:p-12 text-black min-h-[80vh] overflow-y-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">1. Introduction</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-            Welcome to SENDA ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our SMS communication platform.
-          </p>
-          <p className="text-gray-800 text-lg mb-8 leading-relaxed">
-            By using our services, you agree to the collection and use of information in accordance with this policy. We comply with Tanzanian and Kenyan data protection laws, including the Data Protection Act and any applicable telecommunications regulations.
-          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.privacy.s1_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.privacy.s1_p1')}</p>
+          <p className="text-gray-800 text-lg mb-8 leading-relaxed">{t('legal.privacy.s1_p2')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">2. Information We Collect</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.privacy.s2_title')}</h2>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">2.1 Personal Information</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s2_1_title')}</h3>
           <ul className="text-gray-800 text-lg mb-8 space-y-2">
-            <li><strong className="text-black">Account Information:</strong> Name, email address, phone number, company details, and billing information</li>
-            <li><strong className="text-black">Contact Lists:</strong> Phone numbers and contact details you upload for SMS campaigns</li>
-            <li><strong className="text-black">Profile Information:</strong> Business details, preferences, and communication settings</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_1_item1_label')}</strong> {t('legal.privacy.s2_1_item1_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_1_item2_label')}</strong> {t('legal.privacy.s2_1_item2_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_1_item3_label')}</strong> {t('legal.privacy.s2_1_item3_desc')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">2.2 Usage and Technical Data</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s2_2_title')}</h3>
           <ul className="text-gray-800 mb-6 space-y-1">
-            <li><strong className="text-black">Device Information:</strong> IP address, browser type, operating system, and device identifiers</li>
-            <li><strong className="text-black">Usage Logs:</strong> SMS delivery status, campaign performance, login times, and feature usage</li>
-            <li><strong className="text-black">Cookies and Tracking:</strong> Session data and analytics information (see our Cookie Policy)</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_2_item1_label')}</strong> {t('legal.privacy.s2_2_item1_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_2_item2_label')}</strong> {t('legal.privacy.s2_2_item2_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s2_2_item3_label')}</strong> {t('legal.privacy.s2_2_item3_desc')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">2.3 Message Content</h3>
-          <p className="text-gray-800 mb-6">
-            We process SMS message content solely for delivery purposes. Message content is encrypted in transit and at rest, and we do not read, analyze, or store message content beyond what's necessary for service delivery and compliance.
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s2_3_title')}</h3>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s2_3_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">3. How We Use Your Information</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.privacy.s3_title')}</h2>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">3.1 Service Provision</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s3_1_title')}</h3>
           <ul className="text-gray-800 text-lg mb-6 space-y-2">
-            <li>Deliver SMS messages to intended recipients</li>
-            <li>Process payments and manage billing</li>
-            <li>Provide customer support and technical assistance</li>
-            <li>Maintain service availability and performance</li>
+            <li>{t('legal.privacy.s3_1_item1')}</li>
+            <li>{t('legal.privacy.s3_1_item2')}</li>
+            <li>{t('legal.privacy.s3_1_item3')}</li>
+            <li>{t('legal.privacy.s3_1_item4')}</li>
           </ul>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">3.2 Communication</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s3_2_title')}</h3>
           <ul className="text-gray-800 text-lg mb-6 space-y-2">
-            <li>Send service updates, billing notifications, and account alerts</li>
-            <li>Respond to customer inquiries and support requests</li>
-            <li>Provide marketing communications (with your consent)</li>
+            <li>{t('legal.privacy.s3_2_item1')}</li>
+            <li>{t('legal.privacy.s3_2_item2')}</li>
+            <li>{t('legal.privacy.s3_2_item3')}</li>
           </ul>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">3.3 Compliance and Security</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s3_3_title')}</h3>
           <ul className="text-gray-800 text-lg mb-6 space-y-2">
-            <li>Prevent fraud, abuse, and unauthorized access</li>
-            <li>Comply with legal obligations and regulatory requirements</li>
-            <li>Conduct security monitoring and incident response</li>
-            <li>Enforce our Terms of Service</li>
+            <li>{t('legal.privacy.s3_3_item1')}</li>
+            <li>{t('legal.privacy.s3_3_item2')}</li>
+            <li>{t('legal.privacy.s3_3_item3')}</li>
+            <li>{t('legal.privacy.s3_3_item4')}</li>
           </ul>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">3.4 Service Improvement</h3>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s3_4_title')}</h3>
           <ul className="text-gray-800 text-lg mb-8 space-y-2">
-            <li>Analyze usage patterns and service performance</li>
-            <li>Develop new features and improve existing services</li>
-            <li>Conduct research and analytics (in aggregated, anonymized form)</li>
+            <li>{t('legal.privacy.s3_4_item1')}</li>
+            <li>{t('legal.privacy.s3_4_item2')}</li>
+            <li>{t('legal.privacy.s3_4_item3')}</li>
           </ul>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">4. Information Sharing and Disclosure</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s4_title')}</h2>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">4.1 Service Providers</h3>
-          <p className="text-gray-800 mb-2">
-            We work with trusted third-party service providers who assist us in operating our platform, including:
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s4_1_title')}</h3>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s4_1_p1')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>SMS gateway providers and telecommunications companies</li>
-            <li>Payment processors and financial institutions</li>
-            <li>Cloud hosting and infrastructure providers</li>
-            <li>Customer support and analytics platforms</li>
+            <li>{t('legal.privacy.s4_1_item1')}</li>
+            <li>{t('legal.privacy.s4_1_item2')}</li>
+            <li>{t('legal.privacy.s4_1_item3')}</li>
+            <li>{t('legal.privacy.s4_1_item4')}</li>
           </ul>
-          <p className="text-gray-800 mb-6">
-            These providers are contractually obligated to maintain confidentiality and security of your data.
-          </p>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s4_1_p2')}</p>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">4.2 Legal Requirements</h3>
-          <p className="text-gray-800 mb-2">
-            We may disclose information when required by law, including:
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s4_2_title')}</h3>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s4_2_p1')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>Response to legal process or government requests</li>
-            <li>Compliance with telecommunications regulations</li>
-            <li>Protection of our rights, property, or safety</li>
-            <li>Investigation of fraud or security incidents</li>
+            <li>{t('legal.privacy.s4_2_item1')}</li>
+            <li>{t('legal.privacy.s4_2_item2')}</li>
+            <li>{t('legal.privacy.s4_2_item3')}</li>
+            <li>{t('legal.privacy.s4_2_item4')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">4.3 Business Transfers</h3>
-          <p className="text-gray-800 mb-6">
-            In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of the transaction, subject to the same privacy protections.
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s4_3_title')}</h3>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s4_3_p')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">5. Data Retention and Deletion</h2>
-          <p className="text-gray-800 mb-2">
-            We retain personal information for as long as necessary to provide our services and comply with legal obligations. Specific retention periods include:
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s5_title')}</h2>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s5_p1')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li><strong className="text-black">Account Data:</strong> Retained while your account is active and for 7 years thereafter for tax and regulatory compliance</li>
-            <li><strong className="text-black">Message Logs:</strong> Retained for 90 days for delivery verification and support purposes</li>
-            <li><strong className="text-black">Billing Records:</strong> Retained for 7 years for financial compliance</li>
-            <li><strong className="text-black">Support Communications:</strong> Retained for 2 years to maintain service quality</li>
+            <li><strong className="text-black">{t('legal.privacy.s5_item1_label')}</strong> {t('legal.privacy.s5_item1_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s5_item2_label')}</strong> {t('legal.privacy.s5_item2_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s5_item3_label')}</strong> {t('legal.privacy.s5_item3_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s5_item4_label')}</strong> {t('legal.privacy.s5_item4_desc')}</li>
           </ul>
-          <p className="text-gray-800 mb-6">
-            You may request deletion of your account and associated data at any time. Some information may be retained in anonymized form for analytics and legal compliance.
-          </p>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s5_p2')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">6. International Data Transfers</h2>
-          <p className="text-gray-800 mb-2">
-            As an East African service provider, your data is primarily stored in secure data centers within Tanzania and Kenya. For global service delivery and backup purposes, data may be transferred to other jurisdictions with appropriate safeguards, including:
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s6_title')}</h2>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s6_p1')}</p>
           <ul className="text-gray-800 mb-6 space-y-1">
-            <li>Standard contractual clauses and data processing agreements</li>
-            <li>Adequacy decisions by relevant data protection authorities</li>
-            <li>Industry-standard encryption and security measures</li>
+            <li>{t('legal.privacy.s6_item1')}</li>
+            <li>{t('legal.privacy.s6_item2')}</li>
+            <li>{t('legal.privacy.s6_item3')}</li>
           </ul>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">7. Your Rights and Choices</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s7_title')}</h2>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">7.1 Access and Control</h3>
-          <p className="text-gray-800 mb-2">
-            Depending on your location, you may have the following rights:
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s7_1_title')}</h3>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s7_1_p')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li><strong className="text-black">Access:</strong> Request a copy of your personal information</li>
-            <li><strong className="text-black">Correction:</strong> Update or correct inaccurate information</li>
-            <li><strong className="text-black">Deletion:</strong> Request deletion of your data (subject to legal requirements)</li>
-            <li><strong className="text-black">Portability:</strong> Receive your data in a structured, machine-readable format</li>
-            <li><strong className="text-black">Restriction:</strong> Limit how we process your information</li>
-            <li><strong className="text-black">Objection:</strong> Object to certain types of processing</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item1_label')}</strong> {t('legal.privacy.s7_1_item1_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item2_label')}</strong> {t('legal.privacy.s7_1_item2_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item3_label')}</strong> {t('legal.privacy.s7_1_item3_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item4_label')}</strong> {t('legal.privacy.s7_1_item4_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item5_label')}</strong> {t('legal.privacy.s7_1_item5_desc')}</li>
+            <li><strong className="text-black">{t('legal.privacy.s7_1_item6_label')}</strong> {t('legal.privacy.s7_1_item6_desc')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">7.2 Marketing Communications</h3>
-          <p className="text-gray-800 mb-2">
-            You can opt out of marketing communications at any time by:
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s7_2_title')}</h3>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s7_2_p')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>Using the unsubscribe link in our emails</li>
-            <li>Contacting our support team</li>
-            <li>Updating your preferences in your account settings</li>
+            <li>{t('legal.privacy.s7_2_item1')}</li>
+            <li>{t('legal.privacy.s7_2_item2')}</li>
+            <li>{t('legal.privacy.s7_2_item3')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">7.3 Cookies and Tracking</h3>
-          <p className="text-gray-800 mb-6">
-            You can control cookie preferences through your browser settings. Please note that disabling certain cookies may affect service functionality.
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s7_3_title')}</h3>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s7_3_p')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">8. Security Measures</h2>
-          <p className="text-gray-800 mb-4">
-            We implement comprehensive security measures to protect your information:
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s8_title')}</h2>
+          <p className="text-gray-800 mb-4">{t('legal.privacy.s8_p')}</p>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">8.1 Technical Security</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s8_1_title')}</h3>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>End-to-end encryption for data in transit and at rest</li>
-            <li>Multi-factor authentication for account access</li>
-            <li>Regular security audits and penetration testing</li>
-            <li>Automated monitoring and threat detection</li>
+            <li>{t('legal.privacy.s8_1_item1')}</li>
+            <li>{t('legal.privacy.s8_1_item2')}</li>
+            <li>{t('legal.privacy.s8_1_item3')}</li>
+            <li>{t('legal.privacy.s8_1_item4')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">8.2 Organizational Security</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s8_2_title')}</h3>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>Employee background checks and security training</li>
-            <li>Access controls and role-based permissions</li>
-            <li>Incident response and breach notification procedures</li>
-            <li>Regular security awareness programs</li>
+            <li>{t('legal.privacy.s8_2_item1')}</li>
+            <li>{t('legal.privacy.s8_2_item2')}</li>
+            <li>{t('legal.privacy.s8_2_item3')}</li>
+            <li>{t('legal.privacy.s8_2_item4')}</li>
             </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">8.3 Physical Security</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s8_3_title')}</h3>
           <ul className="text-gray-800 mb-6 space-y-1">
-            <li>Secure data center facilities with 24/7 monitoring</li>
-            <li>Controlled access and surveillance systems</li>
-            <li>Backup and disaster recovery systems</li>
+            <li>{t('legal.privacy.s8_3_item1')}</li>
+            <li>{t('legal.privacy.s8_3_item2')}</li>
+            <li>{t('legal.privacy.s8_3_item3')}</li>
             </ul>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">9. Children's Privacy</h2>
-          <p className="text-gray-800 mb-6">
-            Our services are not intended for children under 18 years of age. We do not knowingly collect personal information from children. If we become aware that we have collected information from a child, we will take steps to delete such information.
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s9_title')}</h2>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s9_p')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">10. Third-Party Services</h2>
-          <p className="text-gray-800 mb-6">
-            Our platform may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review the privacy policies of any third-party services you use.
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s10_title')}</h2>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s10_p')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">11. SMS-Specific Privacy Considerations</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s11_title')}</h2>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">11.1 Message Delivery</h3>
-          <p className="text-gray-800 mb-4">
-            For SMS delivery, we work with licensed telecommunications providers in Tanzania and Kenya. Message content is processed only for routing and delivery purposes and is not stored or analyzed.
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s11_1_title')}</h3>
+          <p className="text-gray-800 mb-4">{t('legal.privacy.s11_1_p')}</p>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">11.2 Regulatory Compliance</h3>
-          <p className="text-gray-800 mb-2">
-            We comply with telecommunications regulations in East Africa, including:
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s11_2_title')}</h3>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s11_2_p')}</p>
           <ul className="text-gray-800 mb-4 space-y-1">
-            <li>Tanzania Communications Regulatory Authority (TCRA) requirements</li>
-            <li>Communications Authority of Kenya (CA) guidelines</li>
-            <li>Anti-spam and consumer protection regulations</li>
-            <li>Data protection and privacy laws</li>
+            <li>{t('legal.privacy.s11_2_item1')}</li>
+            <li>{t('legal.privacy.s11_2_item2')}</li>
+            <li>{t('legal.privacy.s11_2_item3')}</li>
+            <li>{t('legal.privacy.s11_2_item4')}</li>
           </ul>
 
-          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">11.3 Opt-Out and Consent</h3>
-          <p className="text-gray-800 mb-6">
-            We respect recipient preferences and provide opt-out mechanisms. You are responsible for obtaining proper consent for SMS communications in accordance with applicable laws.
-          </p>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-2">{t('legal.privacy.s11_3_title')}</h3>
+          <p className="text-gray-800 mb-6">{t('legal.privacy.s11_3_p')}</p>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">12. Changes to This Privacy Policy</h2>
-          <p className="text-gray-800 mb-2">
-            We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. We will:
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-black mb-4">{t('legal.privacy.s12_title')}</h2>
+          <p className="text-gray-800 mb-2">{t('legal.privacy.s12_p')}</p>
           <ul className="text-gray-800 mb-6 space-y-1">
-            <li>Post the updated policy on our website</li>
-            <li>Update the "Last updated" date at the top of this page</li>
-            <li>Send email notifications for material changes</li>
-            <li>Provide a summary of key changes</li>
+            <li>{t('legal.privacy.s12_item1')}</li>
+            <li>{t('legal.privacy.s12_item2')}</li>
+            <li>{t('legal.privacy.s12_item3')}</li>
+            <li>{t('legal.privacy.s12_item4')}</li>
           </ul>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">13. Contact Information</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.privacy.s13_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.privacy.s13_p')}</p>
+
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s13_dpo_title')}</h3>
           <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-            If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
+            {t('legal.privacy.label_email')} support@mifumosms.com<br/>
+            {t('legal.privacy.label_phone')} +255 614 459 923<br/>
+            {t('legal.privacy.label_address')} Dar es Salaam, Tanzania
           </p>
 
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">Data Protection Officer</h3>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-            Email: support@mifumosms.com<br/>
-            Phone: +255 614 459 923<br/>
-            Address: Dar es Salaam, Tanzania
-          </p>
-
-          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">Response Time</h3>
-          <p className="text-gray-800 text-lg mb-8 leading-relaxed">
-            We will respond to privacy-related inquiries within 30 days. For urgent data protection matters, we aim to respond within 72 hours.
-          </p>
+          <h3 className="text-xl sm:text-2xl font-semibold text-black mb-4">{t('legal.privacy.s13_response_title')}</h3>
+          <p className="text-gray-800 text-lg mb-8 leading-relaxed">{t('legal.privacy.s13_response_p')}</p>
 
           <div className="bg-black/10 rounded-xl p-6 mt-8">
-            <p className="text-gray-700 text-center font-medium">
-              This privacy policy is designed to comply with Tanzanian and Kenyan data protection laws, including the Data Protection Act 2022 (Tanzania) and the Data Protection Act 2019 (Kenya).
-            </p>
+            <p className="text-gray-700 text-center font-medium">{t('legal.privacy.footer_note')}</p>
           </div>
         </div>
       </div>
@@ -390,10 +346,10 @@ const Privacy = () => {
 
             {/* Nav */}
             <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <a className="hover:underline hover:text-white" href="/#about">About</a>
-              <a className="hover:underline hover:text-white" href="/#features">Features</a>
-              <a className="hover:underline hover:text-white" href="/#pricing">Pricing</a>
-              <a href="/developer" className="hover:underline hover:text-white">Developer</a>
+              <a className="hover:underline hover:text-white" href="/#about">{t('legal.nav.about')}</a>
+              <a className="hover:underline hover:text-white" href="/#features">{t('legal.nav.features')}</a>
+              <a className="hover:underline hover:text-white" href="/#pricing">{t('legal.nav.pricing')}</a>
+              <a href="/developer" className="hover:underline hover:text-white">{t('legal.nav.developer')}</a>
             </nav>
 
             {/* Contact */}
@@ -411,7 +367,7 @@ const Privacy = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">{t('legal.footer.copyright')}</p>
           </div>
         </div>
       </footer>

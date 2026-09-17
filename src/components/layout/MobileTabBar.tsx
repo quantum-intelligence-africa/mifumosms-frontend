@@ -2,6 +2,7 @@ import { Home, Send as SendIcon, Tag, Users, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePageMeta, TabKey } from "@/hooks/usePageMeta";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface Tab {
   key: TabKey;
@@ -12,23 +13,25 @@ interface Tab {
   accent?: boolean;
 }
 
-const TABS: Tab[] = [
-  { key: "home", label: "Home", icon: Home, href: "/dashboard" },
-  { key: "sender", label: "Sender", icon: Tag, href: "/messaging/sender-names" },
-  { key: "send", label: "Send", icon: SendIcon, href: "/send", accent: true },
-  { key: "contacts", label: "Contacts", icon: Users, href: "/messaging/contacts" },
-  { key: "settings", label: "Settings", icon: Settings, href: "/settings" },
+const getTabs = (t: (key: any, params?: any) => string): Tab[] => [
+  { key: "home", label: t("layout.mobile_tab_bar.home"), icon: Home, href: "/dashboard" },
+  { key: "sender", label: t("layout.mobile_tab_bar.sender"), icon: Tag, href: "/messaging/sender-names" },
+  { key: "send", label: t("layout.mobile_tab_bar.send"), icon: SendIcon, href: "/send", accent: true },
+  { key: "contacts", label: t("nav.contacts"), icon: Users, href: "/messaging/contacts" },
+  { key: "settings", label: t("nav.settings"), icon: Settings, href: "/settings" },
 ];
 
 export function MobileTabBar() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { tab, showTabBar, isPublicRoute } = usePageMeta();
+  const TABS = getTabs(t);
 
   if (isPublicRoute || !showTabBar) return null;
 
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t("layout.mobile_tab_bar.primary_nav")}
       className={[
         "md:hidden fixed left-0 right-0 bottom-0 z-[80]",
         "bg-card dark:bg-background",

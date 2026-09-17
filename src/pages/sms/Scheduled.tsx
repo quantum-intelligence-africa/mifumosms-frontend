@@ -17,6 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, Clock, CalendarClock, X } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -30,6 +31,7 @@ const Scheduled = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -51,14 +53,14 @@ const Scheduled = () => {
     } catch (error) {
       logger.warn("Failed to load scheduled messages");
       toast({
-        title: "Failed to load scheduled messages",
-        description: "Could not fetch scheduled messages.",
+        title: t("sms.scheduled.load_error_title"),
+        description: t("sms.scheduled.load_error_desc"),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast]);
+  }, [currentPage, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
@@ -78,14 +80,14 @@ const Scheduled = () => {
       const response = await apiClient.cancelScheduledSMS(m.id);
       if (response.success) {
         toast({
-          title: "Scheduled SMS cancelled",
-          description: `Will no longer send to ${recipientOf(m)}.`,
+          title: t("sms.scheduled.cancel_success_title"),
+          description: t("sms.scheduled.cancel_success_desc", { recipient: recipientOf(m) }),
         });
         loadMessages();
       } else {
         toast({
-          title: "Could not cancel",
-          description: response.error || "It may have already been sent.",
+          title: t("sms.scheduled.cancel_error_title"),
+          description: response.error || t("sms.scheduled.cancel_error_fallback_desc"),
           variant: "destructive",
         });
         loadMessages();
@@ -93,8 +95,8 @@ const Scheduled = () => {
     } catch (error) {
       logger.warn("Cancel scheduled failed");
       toast({
-        title: "Could not cancel",
-        description: "Please try again.",
+        title: t("sms.scheduled.cancel_error_title"),
+        description: t("common.try_again_desc"),
         variant: "destructive",
       });
     } finally {
@@ -119,13 +121,13 @@ const Scheduled = () => {
     if (!dateString) return "";
     const diffMs = new Date(dateString).getTime() - Date.now();
     if (Number.isNaN(diffMs)) return "";
-    if (diffMs <= 0) return "due now";
+    if (diffMs <= 0) return t("sms.scheduled.due_now");
     const mins = Math.round(diffMs / 60000);
-    if (mins < 60) return `in ${mins}m`;
+    if (mins < 60) return t("sms.scheduled.in_minutes", { mins });
     const hrs = Math.round(mins / 60);
-    if (hrs < 24) return `in ${hrs}h`;
+    if (hrs < 24) return t("sms.scheduled.in_hours", { hrs });
     const days = Math.round(hrs / 24);
-    return `in ${days}d`;
+    return t("sms.scheduled.in_days", { days });
   };
 
   return (
@@ -142,10 +144,10 @@ const Scheduled = () => {
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                  Scheduled
+                  {t("status.scheduled")}
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Messages queued to send later. Each one moves to Sent automatically at its scheduled time.
+                  {t("sms.scheduled.subtitle")}
                 </p>
               </div>
 
@@ -156,7 +158,7 @@ const Scheduled = () => {
                     <div className="relative flex-1">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-subtle" />
                       <Input
-                        placeholder="Search by recipient or message ID..."
+                        placeholder={t("sms.common.search_placeholder")}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -166,7 +168,7 @@ const Scheduled = () => {
                     <div className="flex items-center gap-2">
                       <Button onClick={handleSearch} disabled={isLoading} className="text-xs">
                         <Search className="w-3 h-3 mr-2" />
-                        Search
+                        {t("sms.common.search")}
                       </Button>
                       <Button
                         variant="outline"
@@ -175,7 +177,7 @@ const Scheduled = () => {
                         className="text-xs"
                       >
                         <RefreshCw className={`w-3 h-3 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                        Refresh
+                        {t("sms.common.refresh")}
                       </Button>
                     </div>
                   </div>
@@ -187,7 +189,7 @@ const Scheduled = () => {
                 <CardHeader className="p-4">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <CalendarClock className="w-4 h-4 text-primary" />
-                    Scheduled messages
+                    {t("sms.scheduled.list_title")}
                     <Badge variant="secondary" className="text-xs ml-1">
                       {total}
                     </Badge>
@@ -197,13 +199,13 @@ const Scheduled = () => {
                   {isLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                      <p className="text-xs text-text-subtle">Loading scheduled messages...</p>
+                      <p className="text-xs text-text-subtle">{t("sms.scheduled.loading")}</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-center py-10">
                       <CalendarClock className="w-12 h-12 mx-auto text-text-subtle mb-3" />
                       <p className="text-sm text-text-subtle">
-                        No scheduled messages. Use "Send later" on the Send screen to schedule one.
+                        {t("sms.scheduled.empty")}
                       </p>
                     </div>
                   ) : (
@@ -212,12 +214,12 @@ const Scheduled = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Recipient</TableHead>
-                              <TableHead className="text-xs">Message</TableHead>
-                              <TableHead className="text-xs">Sender</TableHead>
-                              <TableHead className="text-xs">Status</TableHead>
-                              <TableHead className="text-xs">Scheduled for</TableHead>
-                              <TableHead className="text-xs text-right">Actions</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_recipient")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_message")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_sender")}</TableHead>
+                              <TableHead className="text-xs">{t("status")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.scheduled.col_scheduled_for")}</TableHead>
+                              <TableHead className="text-xs text-right">{t("sms.common.col_actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -235,7 +237,7 @@ const Scheduled = () => {
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
                                     <Clock className="w-3 h-3" />
-                                    Scheduled
+                                    {t("status.scheduled")}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
@@ -255,7 +257,7 @@ const Scheduled = () => {
                                     <X
                                       className={`w-3 h-3 mr-1.5 ${cancellingId === m.id ? "animate-pulse" : ""}`}
                                     />
-                                    {cancellingId === m.id ? "Cancelling..." : "Cancel"}
+                                    {cancellingId === m.id ? t("sms.scheduled.cancelling") : t("cancel")}
                                   </Button>
                                 </TableCell>
                               </TableRow>
@@ -273,10 +275,10 @@ const Scheduled = () => {
                             disabled={currentPage === 1 || isLoading}
                             className="text-xs"
                           >
-                            Previous
+                            {t("sms.common.previous")}
                           </Button>
                           <span className="text-xs text-text-subtle">
-                            Page {currentPage} of {totalPages}
+                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
                           </span>
                           <Button
                             variant="outline"
@@ -285,7 +287,7 @@ const Scheduled = () => {
                             disabled={currentPage === totalPages || isLoading}
                             className="text-xs"
                           >
-                            Next
+                            {t("sms.common.next")}
                           </Button>
                         </div>
                       )}

@@ -36,6 +36,7 @@ import {
   FileText,
   Zap
 } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface Campaign {
   id: string;
@@ -95,6 +96,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
   onClose,
   onAction
 }) => {
+  const { t } = useLanguage();
   if (!campaign) return null;
 
   const getStatusColor = (status: string) => {
@@ -122,7 +124,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Not set';
+    if (!dateString) return t('campaigns.details_modal.not_set');
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -149,7 +151,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
         <DialogHeader className="pb-1">
           <DialogTitle className="text-xs sm:text-sm flex items-center gap-1">
             <MessageSquare className="w-3 h-3 sm:w-3 sm:h-3" />
-            Campaign Details
+            {t('campaigns.details_modal.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -186,7 +188,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Recipients</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.recipients')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{formatNumber(campaign.total_recipients)}</p>
               </CardContent>
             </Card>
@@ -194,7 +196,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <Send className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Sent</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.sent')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{formatNumber(campaign.sent_count)}</p>
               </CardContent>
             </Card>
@@ -202,7 +204,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Delivered</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.delivered')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{formatNumber(campaign.delivered_count)}</p>
               </CardContent>
             </Card>
@@ -210,7 +212,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Read</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.read')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{formatNumber(campaign.read_count)}</p>
               </CardContent>
             </Card>
@@ -218,7 +220,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Rate</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.rate')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{campaign.delivery_rate.toFixed(1)}%</p>
               </CardContent>
             </Card>
@@ -226,7 +228,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <Card>
               <CardContent className="p-1.5 text-center">
                 <DollarSign className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500 mx-auto mb-0.5" />
-                <p className="text-[8px] text-text-subtle">Cost</p>
+                <p className="text-[8px] text-text-subtle">{t('campaigns.details_modal.cost')}</p>
                 <p className="text-[9px] sm:text-xs font-semibold">{formatCurrency(campaign.actual_cost)}</p>
               </CardContent>
             </Card>
@@ -238,33 +240,33 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
               <CardHeader className="pb-1">
                 <CardTitle className="text-[9px] sm:text-xs flex items-center gap-1">
                   <BarChart3 className="w-2.5 h-2.5" />
-                  Campaign Progress
+                  {t('campaigns.details_modal.campaign_progress')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-1">
                 <div className="space-y-1">
                   <div>
                     <div className="flex justify-between text-[8px] mb-0.5">
-                      <span>Progress</span>
+                      <span>{t('campaigns.details_modal.progress')}</span>
                       <span>{campaign.progress_percentage.toFixed(1)}%</span>
                     </div>
                     <Progress value={campaign.progress_percentage} className="h-1" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[8px]">
                     <div>
-                      <p className="text-text-subtle">Sent</p>
+                      <p className="text-text-subtle">{t('campaigns.details_modal.sent')}</p>
                       <p className="font-semibold">{formatNumber(campaign.sent_count)}</p>
                     </div>
                     <div>
-                      <p className="text-text-subtle">Delivered</p>
+                      <p className="text-text-subtle">{t('campaigns.details_modal.delivered')}</p>
                       <p className="font-semibold">{formatNumber(campaign.delivered_count)}</p>
                     </div>
                     <div>
-                      <p className="text-text-subtle">Read</p>
+                      <p className="text-text-subtle">{t('campaigns.details_modal.read')}</p>
                       <p className="font-semibold">{formatNumber(campaign.read_count)}</p>
                     </div>
                     <div>
-                      <p className="text-text-subtle">Failed</p>
+                      <p className="text-text-subtle">{t('campaigns.details_modal.failed')}</p>
                       <p className="font-semibold">{formatNumber(campaign.failed_count)}</p>
                     </div>
                   </div>
@@ -278,7 +280,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
             <CardHeader className="pb-1">
               <CardTitle className="text-[9px] sm:text-xs flex items-center gap-1">
                 <MessageSquare className="w-2.5 h-2.5" />
-                Message Content
+                {t('campaigns.details_modal.message_content')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-1">
@@ -289,7 +291,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
                 <div className="mt-0.5 text-[8px] text-text-subtle">
                   <span className="flex items-center gap-0.5">
                     <Hash className="w-1.5 h-1.5" />
-                    {campaign.message_text.length} chars
+                    {t('campaigns.details_modal.chars_count', { count: campaign.message_text.length })}
                   </span>
                 </div>
               </div>
@@ -303,34 +305,34 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
               <CardHeader className="pb-1">
                 <CardTitle className="text-[9px] sm:text-xs flex items-center gap-1">
                   <Clock className="w-2.5 h-2.5" />
-                  Timing Information
+                  {t('campaigns.details_modal.timing_information')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-text-subtle">Created</span>
+                  <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.created')}</span>
                   <span className="text-[8px] font-medium">{formatDate(campaign.created_at)}</span>
                 </div>
                 {campaign.scheduled_at && (
                   <div className="flex justify-between items-center">
-                    <span className="text-[8px] text-text-subtle">Scheduled</span>
+                    <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.scheduled')}</span>
                     <span className="text-[8px] font-medium">{formatDate(campaign.scheduled_at)}</span>
                   </div>
                 )}
                 {campaign.started_at && (
                   <div className="flex justify-between items-center">
-                    <span className="text-[8px] text-text-subtle">Started</span>
+                    <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.started')}</span>
                     <span className="text-[8px] font-medium">{formatDate(campaign.started_at)}</span>
                   </div>
                 )}
                 {campaign.completed_at && (
                   <div className="flex justify-between items-center">
-                    <span className="text-[8px] text-text-subtle">Completed</span>
+                    <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.completed')}</span>
                     <span className="text-[8px] font-medium">{formatDate(campaign.completed_at)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-text-subtle">Updated</span>
+                  <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.updated')}</span>
                   <span className="text-[8px] font-medium">{formatDate(campaign.updated_at)}</span>
                 </div>
               </CardContent>
@@ -341,25 +343,25 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
               <CardHeader className="pb-1">
                 <CardTitle className="text-[9px] sm:text-xs flex items-center gap-1">
                   <Target className="w-2.5 h-2.5" />
-                  Target Audience
+                  {t('campaigns.details_modal.target_audience')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-text-subtle">Total Recipients</span>
+                  <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.total_recipients')}</span>
                   <span className="text-[8px] font-medium">{formatNumber(campaign.total_recipients)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-text-subtle">Contact IDs</span>
+                  <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.contact_ids')}</span>
                   <span className="text-[8px] font-medium">{campaign.target_contact_ids?.length || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-text-subtle">Segment IDs</span>
+                  <span className="text-[8px] text-text-subtle">{t('campaigns.details_modal.segment_ids')}</span>
                   <span className="text-[8px] font-medium">{campaign.target_segment_ids?.length || 0}</span>
                 </div>
                 {campaign.target_criteria?.tags && campaign.target_criteria.tags.length > 0 && (
                   <div>
-                    <span className="text-[8px] text-text-subtle block mb-0.5">Target Tags</span>
+                    <span className="text-[8px] text-text-subtle block mb-0.5">{t('campaigns.details_modal.target_tags')}</span>
                     <div className="flex flex-wrap gap-0.5">
                       {campaign.target_criteria.tags.map((tag: string, index: number) => (
                         <Badge key={index} variant="secondary" className="text-[7px] px-1 py-0.5">
@@ -381,7 +383,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
               onClick={onClose}
               className="text-[9px] h-6 sm:h-7"
             >
-              Close
+              {t('close')}
             </Button>
             {campaign.can_duplicate && (
               <Button
@@ -391,7 +393,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
                 className="text-[9px] h-6 sm:h-7"
               >
                 <Repeat className="w-2.5 h-2.5 mr-0.5" />
-                Duplicate
+                {t('dashboard.recent_campaigns.menu.duplicate')}
               </Button>
             )}
           </div>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { apiClient } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion } from "framer-motion";
@@ -16,6 +17,7 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const Signup = () => {
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +59,8 @@ const Signup = () => {
 
     if (!verificationCode || verificationCode.length !== 6) {
       toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit verification code.",
+        title: t("auth.common.invalid_code_title"),
+        description: t("auth.common.invalid_code_desc"),
         variant: "destructive"
       });
       return;
@@ -84,31 +86,31 @@ const Signup = () => {
           localStorage.setItem('user', JSON.stringify(updatedUser));
 
           toast({
-            title: "Account activated successfully!",
-            description: message || "Welcome to SENDA! You are now logged in and being redirected to your dashboard.",
+            title: t("auth.common.account_activated_title"),
+            description: message || t("auth.signup.toast_account_activated_desc"),
             duration: 5000
           });
 
           navigate('/dashboard', { replace: true });
         } else {
           toast({
-            title: "Phone verified successfully!",
-            description: message || "Your phone has been verified. Please log in to access your account.",
+            title: t("auth.signup.toast_phone_verified_title"),
+            description: message || t("auth.signup.toast_phone_verified_desc"),
             duration: 5000
           });
           navigate('/login');
         }
       } else {
         toast({
-          title: "Verification failed",
-          description: result.error || result.message || "Invalid verification code. Please try again.",
+          title: t("auth.common.verification_failed_title"),
+          description: result.error || result.message || t("auth.signup.toast_verification_failed_desc_default"),
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Verification failed",
-        description: "An error occurred. Please try again.",
+        title: t("auth.common.verification_failed_title"),
+        description: t("auth.common.generic_error"),
         variant: "destructive"
       });
     } finally {
@@ -143,8 +145,8 @@ const Signup = () => {
 
     if (!formData.password || formData.password.length < 8) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: t("auth.common.password_too_short_title"),
+        description: t("auth.common.password_too_short_desc"),
         variant: "destructive"
       });
       return;
@@ -152,8 +154,8 @@ const Signup = () => {
 
     if (!passwordsMatch) {
       toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords are identical.",
+        title: t("auth.common.passwords_mismatch_title"),
+        description: t("auth.common.passwords_mismatch_desc"),
         variant: "destructive"
       });
       return;
@@ -161,8 +163,8 @@ const Signup = () => {
 
     if (!formData.phone || !formData.phone.trim()) {
       toast({
-        title: "Phone number required",
-        description: "Please provide a phone number.",
+        title: t("auth.common.phone_required_title"),
+        description: t("auth.signup.toast_phone_required_desc"),
         variant: "destructive"
       });
       return;
@@ -173,8 +175,8 @@ const Signup = () => {
 
     if (phoneDigitsOnly.length < 8) {
       toast({
-        title: "Phone number too short",
-        description: "Please enter a complete phone number with at least 8 digits.",
+        title: t("auth.signup.toast_phone_short_title"),
+        description: t("auth.signup.toast_phone_short_desc"),
         variant: "destructive"
       });
       return;
@@ -185,8 +187,8 @@ const Signup = () => {
 
     if (digitsOnly.length < 9) {
       toast({
-        title: "Invalid phone number",
-        description: "Please enter a complete phone number with at least 9 digits.",
+        title: t("auth.signup.toast_phone_invalid_title"),
+        description: t("auth.signup.toast_phone_invalid_desc"),
         variant: "destructive"
       });
       return;
@@ -202,8 +204,8 @@ const Signup = () => {
 
     if (!processedPhone || processedPhone.trim() === '') {
       toast({
-        title: "Phone processing error",
-        description: "Failed to process phone number. Please try again.",
+        title: t("auth.signup.toast_phone_process_error_title"),
+        description: t("auth.signup.toast_phone_process_error_desc"),
         variant: "destructive"
       });
       return;
@@ -239,9 +241,9 @@ const Signup = () => {
 
       if (result.stayOnPage || (!result.success && (result.errors || result.error))) {
         if (result.error) {
-          const safeErrorMessage = typeof result.error === 'string' ? result.error : 'Validation failed';
+          const safeErrorMessage = typeof result.error === 'string' ? result.error : t("auth.signup.toast_validation_failed_default");
           toast({
-            title: "Validation failed",
+            title: t("auth.signup.toast_validation_failed_title"),
             description: safeErrorMessage,
             variant: "destructive",
             duration: 10000
@@ -251,10 +253,10 @@ const Signup = () => {
         if (result.errors && Object.keys(result.errors).length > 0) {
           Object.entries(result.errors).forEach(([field, errors]) => {
             const errorMessage = Array.isArray(errors) ? errors[0] : errors;
-            const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : 'Validation error occurred';
+            const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : t("auth.signup.toast_validation_error_default");
             if (safeErrorMessage !== result.error) {
               toast({
-                title: `${field.charAt(0).toUpperCase() + field.slice(1)} error`,
+                title: t("auth.signup.toast_field_error_title", { field: field.charAt(0).toUpperCase() + field.slice(1) }),
                 description: safeErrorMessage,
                 variant: "destructive",
                 duration: 8000
@@ -274,36 +276,36 @@ const Signup = () => {
 
           if (result.smsFailed) {
             toast({
-              title: "Account created successfully!",
-              description: `Your account has been created, but we encountered an issue sending the verification SMS. Please contact support for assistance with account activation.`,
+              title: t("auth.common.account_created_title"),
+              description: t("auth.signup.toast_account_created_sms_issue"),
               duration: 10000
             });
           } else {
             toast({
-              title: "Account created successfully!",
-              description: result.message || `Please check your phone (${phoneNumber}) for the 6-digit verification code to activate your account.`,
+              title: t("auth.common.account_created_title"),
+              description: result.message || t("auth.signup.toast_account_created_check_phone", { phone: phoneNumber }),
               duration: 10000
             });
           }
         } else {
           toast({
-            title: "Account created successfully!",
-            description: result.message || "Welcome to SENDA! You can now access your dashboard."
+            title: t("auth.common.account_created_title"),
+            description: result.message || t("auth.signup.toast_account_created_dashboard")
           });
           const from = location.state?.from?.pathname || "/dashboard";
           navigate(from, { replace: true });
         }
       } else {
         toast({
-          title: "Registration failed",
-          description: result.error || "Please check your information and try again.",
+          title: t("auth.signup.toast_registration_failed_title"),
+          description: result.error || t("auth.signup.toast_registration_failed_desc"),
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Registration failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("auth.signup.toast_registration_failed_title"),
+        description: t("auth.common.unexpected_error"),
         variant: "destructive"
       });
     } finally {
@@ -420,10 +422,10 @@ const Signup = () => {
                   transition={{ duration: 0.5, delay: 0.3 }}
                   className="text-xl font-bold text-gray-800 mb-1"
                 >
-                  Create your account
+                  {t("auth.signup.create_account_title")}
                 </motion.h2>
                 <p className="text-xs text-gray-600">
-                  Join SENDA today
+                  {t("auth.signup.join_senda_subtitle")}
                 </p>
               </div>
 
@@ -435,7 +437,7 @@ const Signup = () => {
                     <User className="w-4 h-4" />
                   </div>
                   <Input
-                    placeholder="First Name"
+                    placeholder={t("auth.signup.first_name")}
                     value={formData.firstName}
                     onChange={(e) => handleInputChange("firstName", e.target.value)}
                     required
@@ -444,7 +446,7 @@ const Signup = () => {
                 </div>
                 <div className="relative">
                   <Input
-                    placeholder="Last Name"
+                    placeholder={t("auth.signup.last_name")}
                     value={formData.lastName}
                     onChange={(e) => handleInputChange("lastName", e.target.value)}
                     required
@@ -460,7 +462,7 @@ const Signup = () => {
                 </div>
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("auth.signup.email_placeholder_mobile")}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
@@ -475,7 +477,7 @@ const Signup = () => {
                 </div>
                 <Input
                   type="tel"
-                  placeholder="Phone (+255...)"
+                  placeholder={t("auth.signup.phone_placeholder_mobile")}
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   required
@@ -488,7 +490,7 @@ const Signup = () => {
                 <div className="relative">
                   <Select onValueChange={(value) => handleInputChange("country", value)}>
                     <SelectTrigger className="h-10 pl-3 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm">
-                      <SelectValue placeholder="Country" />
+                      <SelectValue placeholder={t("auth.signup.country_label")} />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200 shadow-lg">
                       {countries.map((country) => (
@@ -502,7 +504,7 @@ const Signup = () => {
                 <div className="relative">
                   <Input
                     name="company"
-                    placeholder="Company"
+                    placeholder={t("auth.signup.company_placeholder_mobile")}
                     value={formData.company}
                     onChange={(e) => handleInputChange("company", e.target.value)}
                     required
@@ -518,7 +520,7 @@ const Signup = () => {
                 </div>
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder={t("auth.common.password_label")}
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
                   required
@@ -540,7 +542,7 @@ const Signup = () => {
                 </div>
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm Password"
+                  placeholder={t("auth.signup.confirm_password_label")}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                   required
@@ -559,10 +561,10 @@ const Signup = () => {
               <div className="flex items-start space-x-2 pt-1">
                 <Checkbox id="terms" required className="mt-0.5" />
                 <label htmlFor="terms" className="text-xs text-gray-500 leading-tight">
-                  I agree to the{" "}
-                  <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">Terms</Link>
-                  {" "}and{" "}
-                  <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</Link>
+                  {t("auth.signup.agree_prefix")}{" "}
+                  <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">{t("auth.signup.terms_short")}</Link>
+                  {" "}{t("auth.signup.and")}{" "}
+                  <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">{t("auth.signup.privacy_policy")}</Link>
                 </label>
               </div>
 
@@ -577,7 +579,7 @@ const Signup = () => {
                   className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creating account..." : "SIGN UP"}
+                  {isLoading ? t("auth.common.creating_account") : t("auth.signup.sign_up_button_mobile")}
                 </Button>
               </motion.div>
             </form>
@@ -592,18 +594,18 @@ const Signup = () => {
                   transition={{ duration: 0.5, delay: 0.3 }}
                   className="text-xl font-bold text-gray-800 mb-1"
                 >
-                  Verify your phone
+                  {t("auth.signup.verify_phone_title")}
                 </motion.h2>
                 <p className="text-xs text-gray-600">
-                  Enter the 6-digit code sent to your phone
+                  {t("auth.signup.enter_code_subtitle")}
                 </p>
               </div>
 
               <form onSubmit={handleVerifyPhone} className="space-y-4">
                 <p className="text-center text-gray-600 text-xs">
                 {smsFailed
-                  ? `We encountered an issue sending your verification code. Please contact support.`
-                  : `Enter the 6-digit code sent to ${registeredPhone}`
+                  ? t("auth.signup.sms_failed_message")
+                  : t("auth.signup.code_sent_message", { phone: registeredPhone })
                 }
               </p>
 
@@ -611,7 +613,7 @@ const Signup = () => {
                 <div className="space-y-2">
                     <Input
                       type="text"
-                      placeholder="Enter 6-digit code"
+                      placeholder={t("auth.common.enter_6digit_code")}
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
@@ -628,7 +630,7 @@ const Signup = () => {
                     className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg"
                     disabled={isLoading || verificationCode.length !== 6}
                   >
-                    {isLoading ? "Verifying..." : "Verify Phone"}
+                    {isLoading ? t("auth.common.verifying") : t("auth.signup.verify_phone_button")}
                   </Button>
                 </motion.div>
               ) : (
@@ -637,7 +639,7 @@ const Signup = () => {
                   onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
                   className="w-full h-12 text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg"
                 >
-                  Contact Support
+                  {t("auth.signup.contact_support_button")}
                 </Button>
               )}
 
@@ -647,7 +649,7 @@ const Signup = () => {
                   onClick={() => setShowVerification(false)}
                   className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                  Back to registration
+                  {t("auth.signup.back_to_registration")}
                 </button>
               </div>
             </form>
@@ -661,16 +663,16 @@ const Signup = () => {
                 to="/"
                 className="text-xs text-blue-600 font-semibold hover:text-blue-700 hover:underline"
               >
-                Home
+                {t("auth.common.home")}
               </Link>
               <span className="text-gray-400">|</span>
               <p className="text-gray-500 text-xs">
-                Already have account?{" "}
+                {t("auth.common.already_have_account")}{" "}
                 <Link
                   to="/login"
                   className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
                 >
-                  Sign in
+                  {t("auth.common.sign_in")}
                 </Link>
               </p>
             </div>
@@ -697,7 +699,7 @@ const Signup = () => {
                     SENDA
                   </span>
                   <p className="text-base text-black mt-1">
-                    Reliable SMS solutions for businesses
+                    {t("auth.common.tagline")}
                   </p>
                 </div>
               </div>
@@ -705,23 +707,23 @@ const Signup = () => {
 
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">Why Choose SENDA?</h3>
+                <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
                 <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Reliable delivery across all networks</span>
+                    <span>{t("auth.common.benefit_reliable_delivery")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Competitive pricing with bulk discounts</span>
+                    <span>{t("auth.common.benefit_competitive_pricing")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Advanced analytics and reporting</span>
+                    <span>{t("auth.common.benefit_advanced_analytics")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>24/7 customer support</span>
+                    <span>{t("auth.common.benefit_support")}</span>
                   </li>
                 </ul>
               </div>
@@ -755,13 +757,13 @@ const Signup = () => {
               </div>
 
               <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                {showVerification ? "Verify your phone" : "Create your account"}
+                {showVerification ? t("auth.signup.verify_phone_title") : t("auth.signup.create_account_title")}
               </h2>
               {showVerification && (
                 <p className="text-xs text-gray-600">
                   {smsFailed
-                    ? `We encountered an issue sending your verification code. Please contact support for assistance with account activation.`
-                    : `Enter the 6-digit code sent to ${registeredPhone}. After verification, you'll be automatically logged in and redirected to your dashboard.`
+                    ? t("auth.signup.sms_failed_message_support")
+                    : t("auth.signup.code_sent_message_redirect", { phone: registeredPhone })
                   }
                 </p>
               )}
@@ -771,10 +773,10 @@ const Signup = () => {
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">
-                    <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">First name</Label>
+                    <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">{t("auth.signup.first_name")}</Label>
                     <Input
                       id="firstName"
-                      placeholder="First name"
+                      placeholder={t("auth.signup.first_name")}
                       value={formData.firstName}
                       onChange={(e) => handleInputChange("firstName", e.target.value)}
                       required
@@ -782,10 +784,10 @@ const Signup = () => {
                     />
                   </div>
                   <div className="space-y-0.5 sm:space-y-1">
-                    <Label htmlFor="lastName" className="text-xs font-medium text-gray-700">Last name</Label>
+                    <Label htmlFor="lastName" className="text-xs font-medium text-gray-700">{t("auth.signup.last_name")}</Label>
                     <Input
                       id="lastName"
-                      placeholder="Last name"
+                      placeholder={t("auth.signup.last_name")}
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
                       required
@@ -795,11 +797,11 @@ const Signup = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs font-medium text-gray-700">Email address</Label>
+                  <Label htmlFor="email" className="text-xs font-medium text-gray-700">{t("email_address")}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="example@company.com"
+                    placeholder={t("auth.signup.email_placeholder_desktop")}
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     required
@@ -810,12 +812,12 @@ const Signup = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
-                      Phone {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
+                      {t("phone_number")} {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
                     </Label>
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+255 700 000 001"
+                      placeholder={t("auth.signup.phone_placeholder_desktop")}
                       value={formData.phone || ''}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       required
@@ -827,10 +829,10 @@ const Signup = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="country" className="text-xs font-medium text-gray-700">Country</Label>
+                    <Label htmlFor="country" className="text-xs font-medium text-gray-700">{t("auth.signup.country_label")}</Label>
                     <Select onValueChange={(value) => handleInputChange("country", value)}>
                       <SelectTrigger className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder={t("auth.signup.select_placeholder")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white border border-gray-200 shadow-lg">
                         {countries.map((country) => (
@@ -844,10 +846,10 @@ const Signup = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="company" className="text-xs font-medium text-gray-700">Company name</Label>
+                  <Label htmlFor="company" className="text-xs font-medium text-gray-700">{t("auth.signup.company_label")}</Label>
                   <Input
                     id="company"
-                    placeholder="Your Company Ltd"
+                    placeholder={t("auth.signup.company_placeholder_desktop")}
                     value={formData.company}
                     onChange={(e) => handleInputChange("company", e.target.value)}
                     required
@@ -856,12 +858,12 @@ const Signup = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="password" className="text-xs font-medium text-gray-700">Password</Label>
+                  <Label htmlFor="password" className="text-xs font-medium text-gray-700">{t("auth.common.password_label")}</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create password"
+                      placeholder={t("auth.signup.password_placeholder_desktop")}
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       required
@@ -884,12 +886,12 @@ const Signup = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">Confirm password</Label>
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-gray-700">{t("auth.signup.confirm_password_label")}</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm password"
+                      placeholder={t("auth.signup.confirm_password_label")}
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                       required
@@ -914,13 +916,13 @@ const Signup = () => {
                 <div className="flex items-start space-x-2">
                   <Checkbox id="terms" required className="mt-0.5" />
                   <label htmlFor="terms" className="text-xs text-gray-600 leading-tight">
-                    I agree to the{" "}
+                    {t("auth.signup.agree_prefix")}{" "}
                     <Link to="/terms" className="text-blue-600 hover:text-blue-700 hover:underline">
-                      Terms of Service
+                      {t("auth.signup.terms_full")}
                     </Link>{" "}
-                    and{" "}
+                    {t("auth.signup.and")}{" "}
                     <Link to="/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">
-                      Privacy Policy
+                      {t("auth.signup.privacy_policy")}
                     </Link>
                   </label>
                 </div>
@@ -930,7 +932,7 @@ const Signup = () => {
                   className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creating account..." : "Sign up"}
+                  {isLoading ? t("auth.common.creating_account") : t("auth.common.sign_up")}
                 </Button>
               </form>
             ) : (
@@ -938,12 +940,12 @@ const Signup = () => {
                 {!smsFailed && (
                   <div className="space-y-2">
                     <Label htmlFor="verificationCode" className="text-xs font-medium text-gray-700">
-                      Verification Code
+                      {t("auth.common.verification_code_label")}
                     </Label>
                     <Input
                       id="verificationCode"
                       type="text"
-                      placeholder="Enter 6-digit code"
+                      placeholder={t("auth.common.enter_6digit_code")}
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
@@ -959,7 +961,7 @@ const Signup = () => {
                     className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                     disabled={isLoading || verificationCode.length !== 6}
                   >
-                    {isLoading ? "Verifying..." : "Verify Phone"}
+                    {isLoading ? t("auth.common.verifying") : t("auth.signup.verify_phone_button")}
                   </Button>
                 ) : (
                   <Button
@@ -967,7 +969,7 @@ const Signup = () => {
                     onClick={() => window.open('mailto:support@mifumosms.com?subject=SMS Verification Issue', '_blank')}
                     className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                   >
-                    Contact Support
+                    {t("auth.signup.contact_support_button")}
                   </Button>
                 )}
 
@@ -977,7 +979,7 @@ const Signup = () => {
                     onClick={() => setShowVerification(false)}
                     className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
                   >
-                    Back to registration
+                    {t("auth.signup.back_to_registration")}
                   </button>
                 </div>
               </form>
@@ -986,13 +988,13 @@ const Signup = () => {
             <div className="text-center space-y-1">
               <div className="flex items-center justify-center gap-3">
                 <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">
-                  Home
+                  {t("auth.common.home")}
                 </Link>
                 <span className="text-gray-400 text-xs">|</span>
                 <p className="text-xs text-gray-600">
-                  Already have an account?{" "}
+                  {t("auth.common.already_have_account")}{" "}
                   <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
-                    Sign in
+                    {t("auth.common.sign_in")}
                   </Link>
                 </p>
               </div>

@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 import { PlayButton, RecordingPlayerBar, formatSize, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,6 @@ export interface AudioPrompt {
 }
 
 const SW_VOICE = "sw-KE-Chirp3-HD-Aoede";
-const PLACEHOLDER_HELP = "Unaweza kutumia {company_name}, {customer_name}, {agent_name}, {business_hours}.";
 
 type Mode = "text" | "audio";
 interface Draft {
@@ -65,15 +65,16 @@ export default function AudioPrompts() {
 
   const { toast } = useToast();
   const player = useRecordingPlayer();
+  const { t } = useLanguage();
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     const res = await voiceApi.get<AudioPrompt[]>("/voice/ivr/prompts/");
     if (res.success && res.data) setPrompts(res.data);
-    else setError(res.error || "Failed to load prompts");
+    else setError(res.error || t("voice.audio_prompts.error_loading"));
     setIsLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -100,7 +101,7 @@ export default function AudioPrompts() {
 
   const save = async () => {
     if (!draft.name.trim()) {
-      setFormError("Andika jina la ujumbe.");
+      setFormError(t("voice.audio_prompts.err_name_required"));
       return;
     }
     setSaving(true);
@@ -108,7 +109,7 @@ export default function AudioPrompts() {
 
     if (mode === "text") {
       if (!draft.text.trim()) {
-        setFormError("Andika maandishi ya kusomwa.");
+        setFormError(t("voice.audio_prompts.err_text_required"));
         setSaving(false);
         return;
       }
@@ -118,11 +119,11 @@ export default function AudioPrompts() {
         : await voiceApi.post<AudioPrompt>("/voice/ivr/prompts/", body);
       setSaving(false);
       if (!res.success) {
-        setFormError(res.error || "Haikuweza kuhifadhiwa.");
+        setFormError(res.error || t("voice.forms.save_failed"));
         return;
       }
       setOpen(false);
-      toast({ title: editing ? "Ujumbe umesasishwa" : "Ujumbe umeongezwa", description: draft.name });
+      toast({ title: editing ? t("voice.audio_prompts.updated_toast") : t("voice.audio_prompts.added_toast"), description: draft.name });
       load();
       return;
     }
@@ -131,18 +132,18 @@ export default function AudioPrompts() {
     // a chosen file goes through the multipart upload endpoint.
     if (!file) {
       if (!editing) {
-        setFormError("Chagua faili la sauti.");
+        setFormError(t("voice.audio_prompts.err_file_required"));
         setSaving(false);
         return;
       }
       const res = await voiceApi.patch<AudioPrompt>(`/voice/ivr/prompts/${editing.id}/`, { name: draft.name.trim() });
       setSaving(false);
       if (!res.success) {
-        setFormError(res.error || "Haikuweza kuhifadhiwa.");
+        setFormError(res.error || t("voice.forms.save_failed"));
         return;
       }
       setOpen(false);
-      toast({ title: "Ujumbe umesasishwa", description: draft.name });
+      toast({ title: t("voice.audio_prompts.updated_toast"), description: draft.name });
       load();
       return;
     }
@@ -153,22 +154,22 @@ export default function AudioPrompts() {
     const res = await voiceApi.postForm<AudioPrompt>("/voice/ivr/prompts/upload/", form);
     setSaving(false);
     if (!res.success) {
-      setFormError(res.error || "Upakiaji haukufanikiwa.");
+      setFormError(res.error || t("voice.audio_prompts.err_upload_failed"));
       return;
     }
     setOpen(false);
-    toast({ title: editing ? "Sauti imesasishwa" : "Sauti imepakiwa", description: draft.name });
+    toast({ title: editing ? t("voice.audio_prompts.audio_updated_toast") : t("voice.audio_prompts.audio_uploaded_toast"), description: draft.name });
     load();
   };
 
   const remove = async (prompt: AudioPrompt) => {
-    if (!window.confirm(`Futa ujumbe "${prompt.name}"? Mtiririko yoyote unaoutumia utabaki na maandishi/kiungo cha zamani.`)) return;
+    if (!window.confirm(t("voice.audio_prompts.remove_confirm", { name: prompt.name }))) return;
     const res = await voiceApi.delete(`/voice/ivr/prompts/${prompt.id}/`);
     if (res.success) {
       setPrompts((prev) => prev.filter((p) => p.id !== prompt.id));
-      toast({ title: "Ujumbe umefutwa", description: prompt.name });
+      toast({ title: t("voice.audio_prompts.deleted_toast"), description: prompt.name });
     } else {
-      toast({ title: "Haikuweza kufutwa", description: res.error, variant: "destructive" });
+      toast({ title: t("voice.audio_prompts.delete_failed_toast"), description: res.error, variant: "destructive" });
     }
   };
 
@@ -186,26 +187,24 @@ export default function AudioPrompts() {
           <div className="mx-auto max-w-5xl space-y-3.5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Audio Prompts</h1>
-                <p className="mt-0.5 text-sm text-foreground/60">
-                  Maktaba ya ujumbe — tengeneza mara moja, tumia kwenye mtiririko wowote kwa jina.
-                </p>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.audio_prompts")}</h1>
+                <p className="mt-0.5 text-sm text-foreground/60">{t("voice.audio_prompts.subtitle")}</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => startAdd("audio")}>
                   <Upload className="mr-1.5 h-4 w-4" />
-                  Pakia sauti
+                  {t("voice.audio_prompts.upload")}
                 </Button>
                 <Button onClick={() => startAdd("text")}>
                   <Plus className="mr-1.5 h-4 w-4" />
-                  Andika ujumbe
+                  {t("voice.audio_prompts.write")}
                 </Button>
               </div>
             </header>
 
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search prompts…" className="h-10 pl-9" aria-label="Search prompts" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("voice.audio_prompts.search_placeholder")} className="h-10 pl-9" aria-label={t("voice.audio_prompts.search_placeholder")} />
             </div>
 
             {error && (
@@ -215,7 +214,7 @@ export default function AudioPrompts() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={load}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    {t("common.try_again")}
                   </Button>
                 </CardContent>
               </Card>
@@ -233,21 +232,19 @@ export default function AudioPrompts() {
               <Card>
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <MessageSquareText className="h-10 w-10 text-muted-foreground" />
-                  <h3 className="text-base font-semibold text-foreground">{query ? "Hakuna kinacholingana" : "Hakuna ujumbe bado"}</h3>
+                  <h3 className="text-base font-semibold text-foreground">{query ? t("voice.audio_prompts.no_match_title") : t("voice.audio_prompts.empty_title")}</h3>
                   <p className="max-w-md text-sm text-muted-foreground">
-                    {query
-                      ? "Jaribu jina lingine."
-                      : 'Ongeza ujumbe wa kwanza — andika maandishi ya kusomwa na mfumo, au pakia faili la sauti. Kisha uchague kwenye kisanduku cha "Ujumbe wa Sauti" katika mtiririko wowote.'}
+                    {query ? t("voice.audio_prompts.no_match_desc") : t("voice.audio_prompts.empty_desc")}
                   </p>
                   {!query && (
                     <div className="mt-2 flex gap-2">
                       <Button variant="outline" onClick={() => startAdd("audio")}>
                         <Upload className="mr-1.5 h-4 w-4" />
-                        Pakia sauti
+                        {t("voice.audio_prompts.upload")}
                       </Button>
                       <Button onClick={() => startAdd("text")}>
                         <Plus className="mr-1.5 h-4 w-4" />
-                        Andika ujumbe
+                        {t("voice.audio_prompts.write")}
                       </Button>
                     </div>
                   )}
@@ -262,11 +259,11 @@ export default function AudioPrompts() {
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-10" />
-                        <TableHead>Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="min-w-[280px]">Content</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{t("voice.audio_prompts.col_name")}</TableHead>
+                        <TableHead>{t("voice.audio_prompts.col_type")}</TableHead>
+                        <TableHead className="min-w-[280px]">{t("voice.audio_prompts.col_content")}</TableHead>
+                        <TableHead>{t("voice.recordings.col_size")}</TableHead>
+                        <TableHead className="text-right">{t("voice.recordings.col_actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -288,7 +285,7 @@ export default function AudioPrompts() {
                             <TableCell>
                               <Badge variant={prompt.kind === "audio" ? "secondary" : "outline"} className="gap-1">
                                 {prompt.kind === "audio" ? <FileAudio className="h-3 w-3" /> : <Type className="h-3 w-3" />}
-                                {prompt.kind === "audio" ? "Audio" : "Text"}
+                                {prompt.kind === "audio" ? t("voice.audio_prompts.kind_audio") : t("voice.audio_prompts.kind_text")}
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-md">
@@ -303,10 +300,10 @@ export default function AudioPrompts() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(prompt)} aria-label="Hariri">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(prompt)} aria-label={t("voice.audio_prompts.edit_aria")}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(prompt)} aria-label="Futa">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(prompt)} aria-label={t("voice.audio_prompts.delete_aria")}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
@@ -326,11 +323,9 @@ export default function AudioPrompts() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "Hariri ujumbe" : mode === "audio" ? "Pakia sauti" : "Andika ujumbe"}</DialogTitle>
+            <DialogTitle>{editing ? t("voice.audio_prompts.edit_title") : mode === "audio" ? t("voice.audio_prompts.upload") : t("voice.audio_prompts.write")}</DialogTitle>
             <DialogDescription>
-              {mode === "text"
-                ? "Maandishi haya yatasomwa na mfumo popote unapoyachagua kwenye mtiririko."
-                : "Faili hili litachezwa moja kwa moja — muziki wa kusubiri, salamu iliyorekodiwa, au jingle."}
+              {mode === "text" ? t("voice.audio_prompts.dialog_desc_text") : t("voice.audio_prompts.dialog_desc_audio")}
             </DialogDescription>
           </DialogHeader>
 
@@ -338,8 +333,8 @@ export default function AudioPrompts() {
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
               {(
                 [
-                  ["text", Type, "Andika maandishi"],
-                  ["audio", FileAudio, "Pakia sauti"],
+                  ["text", Type, t("voice.audio_prompts.mode_text")],
+                  ["audio", FileAudio, t("voice.audio_prompts.upload")],
                 ] as Array<[Mode, typeof Type, string]>
               ).map(([m, Icon, label]) => (
                 <button
@@ -360,26 +355,26 @@ export default function AudioPrompts() {
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="prompt-name">Jina</Label>
-              <Input id="prompt-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="mf. Salamu ya Asubuhi" autoFocus />
+              <Label htmlFor="prompt-name">{t("voice.forms.name_label")}</Label>
+              <Input id="prompt-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t("voice.audio_prompts.name_placeholder")} autoFocus />
             </div>
 
             {mode === "text" ? (
               <div className="space-y-1">
-                <Label htmlFor="prompt-text">Maandishi ya kusomwa</Label>
+                <Label htmlFor="prompt-text">{t("voice.audio_prompts.text_label")}</Label>
                 <Textarea
                   id="prompt-text"
                   value={draft.text}
                   onChange={(e) => setDraft({ ...draft, text: e.target.value })}
-                  placeholder="Karibu {company_name}. Asante kwa kuwasiliana nasi."
+                  placeholder={t("voice.audio_prompts.text_placeholder")}
                   rows={4}
                   className="text-sm"
                 />
-                <p className="text-[11px] text-muted-foreground">{PLACEHOLDER_HELP}</p>
+                <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.vars_help")}</p>
               </div>
             ) : (
               <div className="space-y-1">
-                <Label htmlFor="prompt-file">{editing ? "Badilisha faili (si lazima)" : "Faili la sauti"}</Label>
+                <Label htmlFor="prompt-file">{editing ? t("voice.audio_prompts.change_file_label") : t("voice.audio_prompts.audio_file_label")}</Label>
                 <input
                   ref={fileRef}
                   id="prompt-file"
@@ -389,8 +384,8 @@ export default function AudioPrompts() {
                   className="block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:opacity-90"
                 />
                 {file && <p className="text-[11px] text-muted-foreground">{file.name} · {formatSize(file.size)}</p>}
-                {!file && editing && <p className="text-[11px] text-muted-foreground">Bila kuchagua faili jipya, jina tu ndilo litakalosasishwa.</p>}
-                <p className="text-[11px] text-muted-foreground">MP3, WAV au OGG. Kiwango cha juu 10 MB.</p>
+                {!file && editing && <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.no_new_file_note")}</p>}
+                <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.file_format_note")}</p>
               </div>
             )}
 
@@ -399,10 +394,10 @@ export default function AudioPrompts() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Ghairi
+              {t("cancel")}
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? "Inahifadhi…" : "Hifadhi"}
+              {saving ? t("voice.forms.saving") : t("voice.forms.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

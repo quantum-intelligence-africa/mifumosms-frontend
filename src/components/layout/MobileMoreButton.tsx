@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Menu } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { MobileOverflowMenu } from "@/components/layout/MobileOverflowMenu";
+import { useLanguage } from "@/hooks/useLanguage";
 
 /**
  * Floating hamburger (☰) menu trigger for non-home, non-settings pages.
  * Pinned to the top-right corner with safe-area awareness.
  */
 export function MobileMoreButton() {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const { tab, isHome, isPublicRoute } = usePageMeta();
 
@@ -21,7 +23,7 @@ export function MobileMoreButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="More options"
+        aria-label={t("layout.mobile.more_options")}
         className={[
           "md:hidden fixed z-[55]",
           "w-10 h-10 inline-flex items-center justify-center",

@@ -2,6 +2,7 @@ import { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface MetricCardProps {
   title: string;
@@ -20,8 +21,10 @@ export function MetricCard({
   description,
   trend,
   isEmpty = false,
-  emptyMessage = "No data yet",
+  emptyMessage,
 }: MetricCardProps) {
+  const { t } = useLanguage();
+  const resolvedEmptyMessage = emptyMessage ?? t("dashboard.empty.no_data");
   const [displayValue, setDisplayValue] = useState<string | number>("0");
 
   // Animate number counting effect
@@ -59,7 +62,7 @@ export function MetricCard({
           {/* Content */}
           <div className="flex-1 flex flex-col min-w-0">
             <p className="text-[10px] sm:text-[11px] lg:text-xs font-medium text-text-subtle uppercase tracking-wide mb-1 line-clamp-2">{title}</p>
-            <p className="text-[9px] sm:text-xs text-muted-foreground line-clamp-2">{emptyMessage}</p>
+            <p className="text-[9px] sm:text-xs text-muted-foreground line-clamp-2">{resolvedEmptyMessage}</p>
           </div>
         </div>
       </Card>

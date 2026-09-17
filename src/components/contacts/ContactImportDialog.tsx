@@ -16,6 +16,7 @@ import { parseCSVFile } from '@/utils/csvParser';
 import { parseExcelFile } from '@/utils/excelParser';
 import { parseVCardFile } from '@/utils/vcardParser';
 import { MobileContactsDialog } from './MobileContactsDialog';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface ContactImportDialogProps {
   children: React.ReactNode;
@@ -34,6 +35,7 @@ interface ImportResult {
 }
 
 export function ContactImportDialog({ children }: ContactImportDialogProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileContactsOpen, setIsMobileContactsOpen] = useState(false);
   const [importType, setImportType] = useState<ImportType>('csv');
@@ -137,8 +139,8 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
 
       if (result.success) {
         toast({
-          title: "Success",
-          description: `${result.imported} contacts imported successfully`,
+          title: t('contacts.import_dialog.toast_success_title'),
+          description: t('contacts.import_dialog.toast_success_desc', { count: result.imported }),
         });
         setIsOpen(false);
       } else {
@@ -149,9 +151,9 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Import failed';
+      const message = error instanceof Error ? error.message : t('contacts.import_dialog.toast_error_fallback');
       toast({
-        title: "Error",
+        title: t('contacts.import_dialog.toast_error_title'),
         description: message,
         variant: "destructive"
       });
@@ -239,14 +241,14 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
-            Import Contacts
+            {t('import_contacts')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Import Type Selection */}
           <div className="space-y-2">
-            <Label>Import Type</Label>
+            <Label>{t('contacts.import_dialog.import_type_label')}</Label>
             <Select value={importType} onValueChange={(value: ImportType) => setImportType(value)}>
               <SelectTrigger>
                 <SelectValue />
@@ -255,25 +257,25 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                 <SelectItem value="csv">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    CSV File
+                    {t('contacts.import_dialog.csv_file')}
                   </div>
                 </SelectItem>
                 <SelectItem value="excel">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    Excel File
+                    {t('contacts.import_dialog.excel_file')}
                   </div>
                 </SelectItem>
                 <SelectItem value="phone_contacts">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Phone Contacts
+                    {t('contacts.import_dialog.phone_contacts')}
                   </div>
                 </SelectItem>
                 <SelectItem value="vcard">
                   <div className="flex items-center gap-2">
                     <Smartphone className="w-4 h-4" />
-                    Contacts File (.vcf)
+                    {t('contacts.import_dialog.vcf_file')}
                   </div>
                 </SelectItem>
                 <SelectItem
@@ -282,10 +284,10 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                 >
                   <div className="flex items-center gap-2">
                     <Smartphone className="w-4 h-4" />
-                    Mobile Device Contacts
+                    {t('contacts.import_dialog.mobile_device_contacts')}
                     {(!isContactPickerSupported() || !isMobileDevice()) && (
                       <Badge variant="outline" className="ml-2 text-xs">
-                        Mobile Only
+                        {t('contacts.import_dialog.mobile_only_badge')}
                       </Badge>
                     )}
                   </div>
@@ -297,7 +299,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
           {/* File Upload */}
           {(importType === 'csv' || importType === 'excel') && (
             <div className="space-y-2">
-              <Label>Upload File</Label>
+              <Label>{t('contacts.import_dialog.upload_file_label')}</Label>
               <Input
                 type="file"
                 accept=".csv,.xlsx,.xls"
@@ -317,7 +319,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
               native device-contacts picker below which only a few browsers support */}
           {importType === 'vcard' && (
             <div className="space-y-2">
-              <Label>Upload Contacts File (.vcf)</Label>
+              <Label>{t('contacts.import_dialog.upload_vcf_label')}</Label>
               <Input
                 type="file"
                 accept=".vcf,text/vcard,text/x-vcard"
@@ -331,9 +333,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                 </div>
               )}
               <div className="text-xs text-text-subtle">
-                Works on any phone and any browser (Samsung Internet, Safari, Chrome, Firefox...).
-                Open your phone's Contacts app, select the contacts to send, choose <strong>Share</strong> →{' '}
-                <strong>vCard / .vcf file</strong>, then upload the file here.
+                {t('contacts.import_dialog.vcard_hint')}
               </div>
             </div>
           )}
@@ -341,7 +341,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
           {/* CSV Data Input */}
           {(importType === 'csv' || importType === 'excel') && (
             <div className="space-y-2">
-              <Label>CSV Data</Label>
+              <Label>{t('contacts.import_dialog.csv_data_label')}</Label>
               <Textarea
                 placeholder="name,phone,email,tags&#10;John Mkumbo,0712345678,john@example.com,vip&#10;Fatma Mbwana,+255771978307,,customer"
                 value={csvData}
@@ -350,8 +350,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                 className="font-mono text-sm"
               />
               <div className="text-xs text-text-subtle">
-                <strong>Required:</strong> phone — accepts 0712…, 712…, 06…, +255… or 255….<br />
-                <strong>Optional:</strong> name, email, tags (separate multiple tags with commas). Other columns are ignored.
+                {t('contacts.import_dialog.csv_data_hint')}
               </div>
             </div>
           )}
@@ -362,29 +361,29 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Smartphone className="w-5 h-5" />
-                  Mobile Device Contacts
+                  {t('contacts.import_dialog.mobile_device_contacts')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-sm text-text-subtle">
-                  This will import contacts directly from your mobile device's contact list using the Web Contacts API.
+                  {t('contacts.import_dialog.mobile_contacts_desc')}
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm font-medium">Requirements:</div>
+                  <div className="text-sm font-medium">{t('contacts.import_dialog.requirements_label')}</div>
                   <ul className="text-sm text-text-subtle space-y-1 ml-4">
-                    <li>• Must be running on a mobile device (Android/iOS)</li>
-                    <li>• Must use a supported browser (Chrome, Edge, Samsung Internet)</li>
-                    <li>• Must grant permission to access contacts</li>
+                    <li>• {t('contacts.import_dialog.requirement_1')}</li>
+                    <li>• {t('contacts.import_dialog.requirement_2')}</li>
+                    <li>• {t('contacts.import_dialog.requirement_3')}</li>
                   </ul>
                 </div>
                 {!isMobileDevice() && (
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <div className="flex items-center gap-2 text-yellow-800">
                       <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">Mobile Device Required</span>
+                      <span className="text-sm font-medium">{t('contacts.import_dialog.mobile_required_title')}</span>
                     </div>
                     <p className="text-sm text-yellow-700 mt-1">
-                      This feature only works on mobile devices. Please use a mobile browser to import contacts from your device.
+                      {t('contacts.import_dialog.mobile_required_desc')}
                     </p>
                   </div>
                 )}
@@ -392,10 +391,10 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                     <div className="flex items-center gap-2 text-red-800">
                       <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">Browser Not Supported</span>
+                      <span className="text-sm font-medium">{t('contacts.import_dialog.browser_not_supported_title')}</span>
                     </div>
                     <p className="text-sm text-red-700 mt-1">
-                      Your browser doesn't support the Web Contacts API. Please use Chrome, Edge, or Samsung Internet on Android.
+                      {t('contacts.import_dialog.browser_not_supported_desc')}
                     </p>
                   </div>
                 )}
@@ -403,10 +402,10 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                     <div className="flex items-center gap-2 text-green-800">
                       <CheckCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">Ready to Import</span>
+                      <span className="text-sm font-medium">{t('contacts.import_dialog.ready_to_import_title')}</span>
                     </div>
                     <p className="text-sm text-green-700 mt-1">
-                      Your device and browser support mobile contact import. Click "Import Contacts" to select contacts from your device.
+                      {t('contacts.import_dialog.ready_to_import_desc')}
                     </p>
                   </div>
                 )}
@@ -418,7 +417,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
           {importType === 'phone_contacts' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Phone Contacts</Label>
+                <Label>{t('contacts.import_dialog.phone_contacts')}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -426,7 +425,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   onClick={handlePhoneContactAdd}
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Add Contact
+                  {t('add_contact')}
                 </Button>
               </div>
 
@@ -434,7 +433,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                 {phoneContacts.map((contact, index) => (
                   <Card key={index} className="p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium">Contact {index + 1}</span>
+                      <span className="text-sm font-medium">{t('contacts.import_dialog.contact_number_label', { number: index + 1 })}</span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -446,7 +445,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <Label htmlFor={`name-${index}`}>Full Name *</Label>
+                        <Label htmlFor={`name-${index}`}>{t('contacts.import_dialog.full_name_label')}</Label>
                         <Input
                           id={`name-${index}`}
                           value={contact.full_name}
@@ -455,7 +454,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`phone-${index}`}>Phone *</Label>
+                        <Label htmlFor={`phone-${index}`}>{t('contacts.import_dialog.phone_label')}</Label>
                         <Input
                           id={`phone-${index}`}
                           value={contact.phone}
@@ -464,7 +463,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`email-${index}`}>Email</Label>
+                        <Label htmlFor={`email-${index}`}>{t('contacts.import_dialog.email_label')}</Label>
                         <Input
                           id={`email-${index}`}
                           value={contact.email}
@@ -483,7 +482,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
           {importType !== 'mobile_contacts' && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Import Options</CardTitle>
+                <CardTitle className="text-base">{t('contacts.import_dialog.import_options_title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-2">
@@ -492,7 +491,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     checked={skipDuplicates}
                     onCheckedChange={(checked) => setSkipDuplicates(checked as boolean)}
                   />
-                  <Label htmlFor="skip-duplicates">Skip duplicate contacts</Label>
+                  <Label htmlFor="skip-duplicates">{t('contacts.import_dialog.skip_duplicate_contacts')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -500,7 +499,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                     checked={updateExisting}
                     onCheckedChange={(checked) => setUpdateExisting(checked as boolean)}
                   />
-                  <Label htmlFor="update-existing">Update existing contacts</Label>
+                  <Label htmlFor="update-existing">{t('contacts.import_dialog.update_existing_contacts')}</Label>
                 </div>
               </CardContent>
             </Card>
@@ -516,26 +515,26 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                   ) : (
                     <AlertCircle className="w-5 h-5 text-red-500" />
                   )}
-                  Import Result
+                  {t('contacts.import_dialog.import_result_title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{importResult.imported}</div>
-                    <div className="text-sm text-text-subtle">Imported</div>
+                    <div className="text-sm text-text-subtle">{t('contacts.csv_import.imported')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{importResult.updated}</div>
-                    <div className="text-sm text-text-subtle">Updated</div>
+                    <div className="text-sm text-text-subtle">{t('contacts.csv_import.updated')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-yellow-600">{importResult.skipped}</div>
-                    <div className="text-sm text-text-subtle">Skipped</div>
+                    <div className="text-sm text-text-subtle">{t('contacts.csv_import.skipped')}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-600">{importResult.total_processed}</div>
-                    <div className="text-sm text-text-subtle">Total</div>
+                    <div className="text-sm text-text-subtle">{t('contacts.import_dialog.total_label')}</div>
                   </div>
                 </div>
 
@@ -545,7 +544,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
 
                 {importResult.errors.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Errors:</Label>
+                    <Label>{t('contacts.import_dialog.errors_label')}</Label>
                     <div className="space-y-1">
                       {importResult.errors.map((error, index) => (
                         <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -562,14 +561,14 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
           {/* Actions */}
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={handleClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleImport}
               disabled={isImporting || (importType === 'mobile_contacts' && (!isContactPickerSupported() || !isMobileDevice()))}
               className="min-w-24"
             >
-              {isImporting ? 'Importing...' : importType === 'mobile_contacts' ? 'Import from Device' : 'Import Contacts'}
+              {isImporting ? t('contacts.csv_import.importing') : importType === 'mobile_contacts' ? t('contacts.import_dialog.import_from_device') : t('import_contacts')}
             </Button>
           </div>
         </div>

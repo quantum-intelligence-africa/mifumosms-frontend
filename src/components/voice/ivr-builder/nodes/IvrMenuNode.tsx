@@ -2,6 +2,7 @@ import type { NodeProps } from "@xyflow/react";
 import { BaseNode } from "./BaseNode";
 import { NODE_META } from "../nodeMeta";
 import type { AppNodeData } from "../types";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const meta = NODE_META.ivr_menu;
 
@@ -11,6 +12,7 @@ const meta = NODE_META.ivr_menu;
 // screenshot. BaseNode's multi-port branch renders this generically from
 // nodeMeta's `outputs` array.
 export function IvrMenuNode({ data, selected }: NodeProps) {
+  const { t } = useLanguage();
   const fields = (data as AppNodeData).fields ?? {};
   const prompt = typeof fields.prompt === "string" ? fields.prompt : "";
 
@@ -19,7 +21,7 @@ export function IvrMenuNode({ data, selected }: NodeProps) {
       icon={meta.icon}
       iconClass={meta.iconClass}
       title={meta.label}
-      subtitle={prompt || "Hakuna ujumbe bado"}
+      subtitle={prompt || t("voice.ivr_nodes.no_message_yet")}
       outputs={meta.outputs}
       data={data as AppNodeData}
       selected={selected}

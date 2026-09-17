@@ -46,7 +46,7 @@ import {
 
 const Landing = () => {
   const context = useContext(LanguageContext);
-  const { language, t } = context || { language: 'en', t: (s: string) => s };
+  const { t } = context || { t: (s: string) => s };
 
   // Force light theme on marketing surfaces
   useEffect(() => {
@@ -243,6 +243,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   ], []);
 
   const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
+  const tierNameKey = (name: string) => {
+    if (name === 'Lite') return t('landing.pricing.lite.name');
+    if (name === 'Standard') return t('landing.pricing.standard.name');
+    if (name === 'Pro') return t('landing.pricing.pro.name');
+    return name;
+  };
+
   const activeTier = useMemo(() => {
     if (parsedCredits === 0) return null;
     if (parsedCredits < 50000) return tiers[0]; // Lite: 1-49,999
@@ -348,7 +355,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 key={currentBusiness} className="text-gray-900 font-semibold text-[10px] truncate phone-content-transition">{currentBusinessData.sender}</h3>
-                    <p className="text-gray-500 text-[8px]">System Messages</p>
+                    <p className="text-gray-500 text-[8px]">{t('landing.hero.system_messages')}</p>
                   </div>
                   <div className="w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0" />
                 </div>
@@ -434,66 +441,66 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   const features = [
     {
       icon: MessageSquare,
-      title: language === 'sw' ? 'Biashara ya WhatsApp' : 'WhatsApp Business',
-      description: language === 'sw' ? 'Tuma ujumbe na simamia mazungumzo kupitia API ya WhatsApp Business.' : 'Send messages and manage conversations through WhatsApp Business API.'
+      title: t('landing.features.whatsapp.title'),
+      description: t('landing.features.whatsapp.description')
     },
     {
       icon: Send,
-      title: language === 'sw' ? 'Kampeni za SMS' : 'SMS Campaigns',
-      description: language === 'sw' ? 'Unda, panga, na fuatilia kampeni za SMS kwa ripoti za uwasilishaji papo hapo.' : 'Create, schedule, and track bulk SMS campaigns with real-time delivery reports.'
+      title: t('landing.features.sms_campaigns.title'),
+      description: t('landing.features.sms_campaigns.description')
     },
     {
       icon: Users,
-      title: language === 'sw' ? 'Usimamizi wa Mawasiliano' : 'Contact Management',
-      description: language === 'sw' ? 'Ingiza, gawa, na panga mawasiliano kwa kuchuja na kusaidia CSV.' : 'Import, segment, and organize contacts with advanced filtering and CSV support.'
+      title: t('landing.features.contacts.title'),
+      description: t('landing.features.contacts.description')
     },
     {
       icon: BarChart3,
-      title: language === 'sw' ? 'Takwimu & Ripoti' : 'Analytics & Reports',
-      description: language === 'sw' ? 'Fuatilia viwango vya uwasilishaji, ushiriki, na utendaji wa kampeni kwa chati za kina.' : 'Monitor delivery rates, engagement metrics, and campaign performance with detailed charts.'
+      title: t('landing.features.analytics.title'),
+      description: t('landing.features.analytics.description')
     },
     {
       icon: Zap,
-      title: language === 'sw' ? 'Violezo & Uratibu' : 'Templates & Automation',
-      description: language === 'sw' ? 'Unda violezo vya ujumbe na weka uratibu wa kiotomatiki kwa ushiriki wa wateja.' : 'Create message templates and set up automated workflows for customer engagement.'
+      title: t('landing.features.templates.title'),
+      description: t('landing.features.templates.description')
     },
     {
       icon: Globe,
-      title: language === 'sw' ? 'Lugha Nyingi' : 'Multi-language',
-      description: language === 'sw' ? 'Wasiliana kwa Kiingereza, Kiswahili, Kifaransa, na Kiarabu kwa biashara barani Afrika.' : 'Communicate in English, Kiswahili, French, and Arabic for businesses across Africa.'
+      title: t('landing.features.multilang.title'),
+      description: t('landing.features.multilang.description')
     }
   ];
 
   const pricing = [
     {
-      name: language === 'sw' ? 'Rahisi' : 'Lite',
+      name: t('landing.pricing.lite.name'),
       rate: "TZS 18/SMS",
-      credits: language === 'sw' ? '1 hadi 49,999 SMS' : '1 to 49,999 SMS',
+      credits: t('landing.pricing.lite.credits'),
       features: [
-        language === 'sw' ? 'Ujazo wa haraka' : 'Instant top-up',
-        language === 'sw' ? 'Ripoti za uwasilishaji za msingi' : 'Basic delivery reports',
-        language === 'sw' ? 'Risiti ya barua pepe' : 'Email receipt',
+        t('landing.pricing.lite.feature1'),
+        t('landing.pricing.lite.feature2'),
+        t('landing.pricing.lite.feature3'),
       ],
     },
     {
-      name: language === 'sw' ? 'Kawaida' : 'Standard',
+      name: t('landing.pricing.standard.name'),
       rate: "TZS 14/SMS",
-      credits: language === 'sw' ? '50,000 hadi 149,999 SMS' : '50,000 to 149,999 SMS',
+      credits: t('landing.pricing.standard.credits'),
       features: [
-        language === 'sw' ? 'Ujazo wa kipaumbele & usaidizi' : 'Priority top-up & support',
-        language === 'sw' ? 'Takwimu za uwasilishaji za hali ya juu' : 'Advanced delivery analytics',
-        language === 'sw' ? 'Upangaji wa kampeni' : 'Campaign scheduling',
+        t('landing.pricing.standard.feature1'),
+        t('landing.pricing.standard.feature2'),
+        t('landing.pricing.standard.feature3'),
       ],
       popular: true,
     },
     {
-      name: language === 'sw' ? 'Bora' : 'Pro',
+      name: t('landing.pricing.pro.name'),
       rate: "TZS 12/SMS",
-      credits: language === 'sw' ? '250,000 SMS na zaidi' : '250,000 SMS and above',
+      credits: t('landing.pricing.pro.credits'),
       features: [
-        language === 'sw' ? 'Zana za kampeni nyingi' : 'Bulk campaign tools',
-        language === 'sw' ? 'Takwimu za hali ya juu' : 'Advanced analytics',
-        language === 'sw' ? 'API ya kufikia' : 'API access',
+        t('landing.pricing.pro.feature1'),
+        t('landing.pricing.pro.feature2'),
+        t('landing.pricing.pro.feature3'),
       ],
     }
   ];
@@ -723,14 +730,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left pr-4 sm:pr-6 md:pr-8 lg:pr-12">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-left">
-                  {language === 'sw' ? 'Usipoteze wateja.' : 'Don’t lose customers.'}
+                  {t('landing.hero.title_line1')}
                   <br />
-                  <span className="text-blue-200">{language === 'sw' ? 'Geuza Kila Ujumbe Kuwa Mauzo' : "Turn every message into sales"}</span>
+                  <span className="text-blue-200">{t('landing.hero.title_line2')}</span>
               </h1>
                 <p className="lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal text-left">
-                {language === 'sw'
-                  ? 'Mfumo wa SMS na AI unaokusaidia kufuatilia wateja, kutuma kampeni kwa pamoja, na kuongeza mauzo bila kuajiri staff wa ziada. Tuma SMS kwa maelfu ya wateja, pima delivery rate, na fuatilia mchango wake sehemu moja.'
-                  : 'An SMS and AI system that helps you track customers, send bulk campaigns, and increase sales without hiring extra staff. Send SMS to thousands of customers, measure delivery rates, and monitor its impact all in one place.'}
+                {t('landing.hero.subtitle')}
               </p>
             </div>
 
@@ -741,7 +746,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       variant="outline"
       className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
     >
-      {language === 'sw' ? 'Anza Bure' : 'Start Free'}
+      {t('landing.hero.start_free')}
     </Button>
   </Link>
 
@@ -751,7 +756,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-    {language === 'sw' ? 'Jinsi ya Kutumia.' : 'How to Use.'}
+    {t('landing.hero.how_to_use')}
   </Button>
 </div>
 
@@ -759,15 +764,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12 w-full justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Biashara' : 'Active Businesses'}</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_businesses')}</div>
                 </div>
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1M+</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Ujumbe' : 'Messages Sent'}</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_messages')}</div>
                 </div>
                 <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">98%</div>
-                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{language === 'sw' ? 'Ufanisi' : 'Delivery Rate'}</div>
+                  <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_delivery')}</div>
                 </div>
               </div>
 
@@ -968,13 +973,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-yellow-50 shadow-sm px-4 py-5 sm:hidden">
           <div className="text-left mb-8">
                 <h2 className="font-heading text-xl font-bold text-gray-900 mb-2 leading-tight">
-                  {language === 'sw' ? 'Kila kitu unachohitaji' : 'Everything you need to'}
+                  {t('landing.features.heading_line1')}
                   <span className="block text-blue-500">
-                    {language === 'sw' ? 'kusimamia mawasiliano ya wateja' : 'manage customer communications'}
+                    {t('landing.features.heading_line2')}
                   </span>
                 </h2>
                 <p className="text-xs text-gray-600 leading-relaxed max-w-3xl">
-                  {language === 'sw' ? 'Vipengele vyenye nguvu vimeundwa kwa ajili ya biashara za Afrika kuongeza mawasiliano na wateja.' : 'Powerful features designed for African businesses to scale their customer communication'}
+                  {t('landing.features.subtitle')}
                 </p>
           </div>
           <div className="space-y-8">
@@ -1019,13 +1024,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 }`}
               >
                 <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
-                  {language === 'sw' ? 'Kila kitu unachohitaji' : 'Everything you need to'}
+                  {t('landing.features.heading_line1')}
                   <span className="block text-blue-500">
-                    {language === 'sw' ? 'kusimamia mawasiliano ya wateja' : 'manage customer communications'}
+                    {t('landing.features.heading_line2')}
                   </span>
                 </h2>
                 <p className="mt-4 text-base md:text-lg text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'Vipengele vyenye nguvu vimeundwa kwa ajili ya biashara za Afrika kuongeza mawasiliano na wateja.' : 'Powerful features designed for African businesses to scale their customer communication'}
+                  {t('landing.features.subtitle')}
                 </p>
               </div>
 
@@ -1099,15 +1104,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           {/* Section header */}
           <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
             <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-[1.1]">
-              {language === 'sw' ? 'Bei sahihi kwa' : 'Pay only for what you send —'}{' '}
+              {t('landing.pricing.heading_line1')}{' '}
               <span className="text-blue-200">
-                {language === 'sw' ? 'kila kiwango cha biashara' : 'volume discounts built-in'}
+                {t('landing.pricing.heading_line2')}
               </span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-white leading-relaxed">
-              {language === 'sw'
-                ? 'Hakuna mkataba, hakuna ada za usajili. Bei hupungua kadiri unavyokua.'
-                : 'No contracts, no setup fees. The rate per SMS drops automatically as your volume grows.'}
+              {t('landing.pricing.subtitle')}
             </p>
           </div>
 
@@ -1121,27 +1124,21 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               const planMeta = [
                 {
                   Icon: Send,
-                  taglineEn: 'For teams getting started with SMS',
-                  taglineSw: 'Kwa biashara zinazoanza na SMS',
+                  tagline: t('landing.pricing.lite.tagline'),
                   saving: null,
-                  prevPlanEn: null,
-                  prevPlanSw: null,
+                  prevPlanName: null,
                 },
                 {
                   Icon: TrendingUp,
-                  taglineEn: 'For growing teams running active campaigns',
-                  taglineSw: 'Kwa biashara zinazokua na kampeni hai',
+                  tagline: t('landing.pricing.standard.tagline'),
                   saving: 22,
-                  prevPlanEn: 'Lite',
-                  prevPlanSw: 'Rahisi',
+                  prevPlanName: t('landing.pricing.lite.name'),
                 },
                 {
                   Icon: Zap,
-                  taglineEn: 'Built for high-volume senders & developers',
-                  taglineSw: 'Imejengwa kwa watumiaji wakubwa na waendelezaji',
+                  tagline: t('landing.pricing.pro.tagline'),
                   saving: 33,
-                  prevPlanEn: 'Standard',
-                  prevPlanSw: 'Kawaida',
+                  prevPlanName: t('landing.pricing.standard.name'),
                 },
               ][index];
 
@@ -1160,7 +1157,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-blue-600 to-blue-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] ring-1 ring-white/20">
                         <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                        {language === 'sw' ? 'Maarufu zaidi' : 'Most popular'}
+                        {t('landing.pricing.most_popular')}
                       </span>
                     </div>
                   )}
@@ -1193,13 +1190,13 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
                         {planMeta.saving && (
                           <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                            {language === 'sw' ? `Punguzo ${planMeta.saving}%` : `Save ${planMeta.saving}%`}
+                            {t('landing.pricing.save_percent', { percent: planMeta.saving })}
                           </span>
                         )}
                       </div>
 
                       <p className="mt-3 text-[13px] text-gray-500 leading-relaxed">
-                        {language === 'sw' ? planMeta.taglineSw : planMeta.taglineEn}
+                        {planMeta.tagline}
                       </p>
 
                       {/* Price */}
@@ -1226,7 +1223,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                               : 'bg-gray-900 hover:bg-gray-800 text-white shadow-sm'
                           }`}
                         >
-                          {language === 'sw' ? 'Anza sasa' : 'Get started'}
+                          {t('landing.pricing.get_started')}
                           <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-0.5" />
                         </Button>
                       </Link>
@@ -1238,14 +1235,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                     {/* "What's included" + features */}
                     <div className="px-7 pt-6 pb-7 flex-1 flex flex-col">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-4">
-                        {language === 'sw' ? 'Kinajumuisha' : "What's included"}
+                        {t('landing.pricing.whats_included')}
                       </p>
 
-                      {planMeta.prevPlanEn && (
+                      {planMeta.prevPlanName && (
                         <p className="mb-3 text-[12.5px] font-medium text-gray-700">
-                          {language === 'sw'
-                            ? `Kila kitu kwenye ${planMeta.prevPlanSw}, jumuisha:`
-                            : `Everything in ${planMeta.prevPlanEn}, plus:`}
+                          {t('landing.pricing.everything_in_plus', { plan: planMeta.prevPlanName })}
                         </p>
                       )}
 
@@ -1277,15 +1272,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           {/* Included-in-every-plan strip */}
           <div className="mt-12 flex flex-col items-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300">
-              {language === 'sw' ? 'Vipo katika kila mpango' : 'Included in every plan'}
+              {t('landing.pricing.included_in_every_plan')}
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               {[
-                { label: language === 'sw' ? 'Hakuna mkataba' : 'No contracts' },
-                { label: language === 'sw' ? 'Bei ya wazi' : 'Transparent pricing' },
-                { label: language === 'sw' ? 'Ripoti za uwasilishaji' : 'Delivery reports' },
-                { label: language === 'sw' ? 'Msaada wa 24/7' : '24/7 support' },
-                { label: language === 'sw' ? 'API & webhooks' : 'API & webhooks' },
+                { label: t('landing.pricing.perk_no_contracts') },
+                { label: t('landing.pricing.perk_transparent_pricing') },
+                { label: t('landing.pricing.perk_delivery_reports') },
+                { label: t('landing.pricing.perk_support') },
+                { label: t('landing.pricing.perk_api_webhooks') },
               ].map((item) => (
                 <span
                   key={item.label}
@@ -1307,11 +1302,11 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
               <span className="block text-blue-600">
-                {language === 'sw' ? 'Kikokotoo cha Bei' : 'Pricing Calculator'}
+                {t('landing.calculator.title')}
               </span>
             </h3>
             <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
-              {language === 'sw' ? 'Ingiza idadi ya SMS unayotaka ili kuona bei halisi kulingana na muundo wa viwango vyetu.' : 'Enter your desired SMS credits to see the exact pricing based on our tiered structure'}
+              {t('landing.calculator.subtitle')}
             </p>
           </div>
 
@@ -1321,7 +1316,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-500" />
-                      {language === 'sw' ? 'Idadi ya SMS' : 'Number of SMS Credits'}
+                      {t('landing.calculator.sms_credits_label')}
                     </Label>
                 <Input
                   type="number"
@@ -1336,12 +1331,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <div className="space-y-2">
                     <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-green-500" />
-                      {language === 'sw' ? 'Gharama Jumla' : 'Total Cost'}
+                      {t('landing.calculator.total_cost_label')}
                     </Label>
                   <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-blue-100 to-blue-50 border-2 border-blue-300 flex items-center justify-between">
                     <span className="text-lg font-bold text-blue-900">TZS {customPrice.toLocaleString()}</span>
                     <div className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
-                      {activeTier ? (language === 'sw' ? 'Kiwango cha Bei' : activeTier.name) : (language === 'sw' ? 'Chagua kiasi' : 'Select amount')}
+                      {activeTier ? tierNameKey(activeTier.name) : t('landing.calculator.select_amount')}
                     </div>
                   </div>
                 </div>
@@ -1351,23 +1346,23 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
                   <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
-                    {language === 'sw' ? 'Maelezo ya Bei' : 'Pricing Details'}
+                    {t('landing.calculator.pricing_details')}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-700">{language === 'sw' ? 'Kiwango Kinachotumika:' : 'Active Tier:'}</span>
+                      <span className="text-blue-700">{t('landing.calculator.active_tier')}</span>
                       <span className="font-semibold text-blue-900">
-                        {activeTier ? (language === 'sw' ? 'Kiwango cha Bei' : activeTier.name) : '—'}
+                        {activeTier ? tierNameKey(activeTier.name) : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-700">{language === 'sw' ? 'Bei kwa SMS:' : 'Rate per SMS:'}</span>
+                      <span className="text-blue-700">{t('landing.calculator.rate_per_sms')}</span>
                       <span className="font-semibold text-blue-900">
                         {activeTier ? `TZS ${activeTier.rate}/SMS` : '—'}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-700">{language === 'sw' ? 'Wigo wa SMS:' : 'SMS Range:'}</span>
+                      <span className="text-blue-700">{t('landing.calculator.sms_range')}</span>
                       <span className="font-semibold text-blue-900">
                         {activeTier ? activeTier.rangeLabel : '—'}
                       </span>
@@ -1379,8 +1374,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   <div className="flex items-start gap-2">
                     <Shield className="w-4 h-4 text-red-600 mt-0.5" />
                     <div>
-                      <p className="text-xs font-semibold text-red-800">{language === 'sw' ? 'Ununuzi wa Chini' : 'Minimum Purchase'}</p>
-                      <p className="text-xs text-red-700">{language === 'sw' ? 'Unahitaji kununua SMS 1000 au zaidi' : '1000 SMS credits required'}</p>
+                      <p className="text-xs font-semibold text-red-800">{t('landing.calculator.minimum_purchase')}</p>
+                      <p className="text-xs text-red-700">{t('landing.calculator.minimum_purchase_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -1391,12 +1386,12 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-center sm:text-left">
-                    <p className="text-sm text-gray-600">{language === 'sw' ? 'Uko tayari kuanza?' : 'Ready to get started?'}</p>
-                    <p className="text-xs text-gray-500">{language === 'sw' ? `Nunua SMS ${parsedCredits.toLocaleString()}` : `Purchase ${parsedCredits.toLocaleString()} SMS credits`}</p>
+                    <p className="text-sm text-gray-600">{t('landing.calculator.ready_to_start')}</p>
+                    <p className="text-xs text-gray-500">{t('landing.calculator.purchase_credits', { count: parsedCredits.toLocaleString() })}</p>
                   </div>
                   <Link to="/signup">
                     <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-2 h-10 transition-all duration-300 hover:scale-105">
-                      {language === 'sw' ? 'Nunua Sasa' : 'Buy Now'}
+                      {t('landing.calculator.buy_now')}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </Link>
@@ -1422,9 +1417,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               ? 'animate-fade-in-up'
               : 'opacity-0 translate-y-4'
           }`}>
-            {language === 'sw' ? 'Uko tayari kubadilisha' : 'Ready to transform your'}
+            {t('landing.cta.heading_line1')}
             <span className="block text-blue-600">
-              {language === 'sw' ? 'mawasiliano ya wateja?' : 'customer communication?'}
+              {t('landing.cta.heading_line2')}
             </span>
           </h2>
           <p className={`text-sm sm:text-base md:text-lg text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed transition-all duration-800 delay-200 ${
@@ -1432,7 +1427,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               ? 'animate-fade-in-up'
               : 'opacity-0 translate-y-4'
           }`} style={{ animationDelay: ctaReveal.isVisible ? '200ms' : '0ms' }}>
-            {language === 'sw' ? 'Jiunge na maelfu ya biashara za Afrika zinazotumia SENDA' : 'Join thousands of African businesses already using SENDA'}
+            {t('landing.cta.subtitle')}
           </p>
 
           <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center transition-all duration-800 delay-400 ${
@@ -1445,7 +1440,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 size="lg"
                 className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group"
               >
-                {language === 'sw' ? 'Anza' : 'Get Started'}
+                {t('landing.cta.get_started')}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
             </Link>
@@ -1469,10 +1464,10 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     <DialogHeader>
       <DialogTitle className="flex items-center gap-2 text-lg">
         <Play className="w-5 h-5 text-blue-600" />
-        Video Tutorial
+        {t('landing.video.title')}
       </DialogTitle>
       <DialogDescription>
-        Learn how to use SENDA platform effectively
+        {t('landing.video.description')}
       </DialogDescription>
     </DialogHeader>
 
@@ -1486,7 +1481,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       >
         <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
         <p className="text-center text-gray-600 p-4">
-          Your browser does not support the video tag. Please download the video to watch it.
+          {t('landing.video.unsupported')}
         </p>
       </video>
     </div>

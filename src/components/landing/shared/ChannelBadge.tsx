@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { MessageSquare, Phone } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export type Channel = "whatsapp" | "facebook" | "instagram" | "sms" | "voice";
 
@@ -84,8 +85,10 @@ export const ChannelBadge = ({
   labelClassName,
   className,
 }: ChannelBadgeProps) => {
+  const { t } = useLanguage();
   const s = sizeMap[size];
   const meta = channelMeta[channel];
+  const label = channel === "voice" ? t('shared.channel.voice') : meta.label;
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <span
@@ -95,7 +98,7 @@ export const ChannelBadge = ({
           meta.bg,
           meta.ring
         )}
-        aria-label={meta.label}
+        aria-label={label}
       >
         <ChannelGlyph channel={channel} className={s.icon} />
       </span>
@@ -107,7 +110,7 @@ export const ChannelBadge = ({
             labelClassName ?? "text-gray-700"
           )}
         >
-          {meta.label}
+          {label}
         </span>
       )}
     </span>

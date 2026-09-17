@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface Message {
   id: string;
@@ -63,6 +64,7 @@ const Conversations = () => {
   }, []);
 
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -188,6 +190,9 @@ const Conversations = () => {
     return timestamp;
   };
 
+  const contactStatusLabel = (status: "online" | "offline") =>
+    status === "online" ? t("status.online") : t("conversations.status_offline");
+
   return (
     <div className="flex h-screen bg-background">
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -203,7 +208,7 @@ const Conversations = () => {
               <div className="relative mb-2 sm:mb-3">
                 <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
                 <Input
-                  placeholder="Search conversations..."
+                  placeholder={t("conversations.search_placeholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 sm:pl-10 glass-subtle border-0 text-xs sm:text-sm h-8 sm:h-9"
@@ -212,13 +217,13 @@ const Conversations = () => {
               <div className="flex gap-1 sm:gap-2 flex-wrap">
                 <Button variant="outline" size="sm" className="glass-subtle border-0 text-xs h-7 sm:h-8">
                   <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                  <span className="hidden sm:inline">All</span>
+                  <span className="hidden sm:inline">{t("conversations.filter_all")}</span>
                 </Button>
                 <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8">
-                  <span className="hidden sm:inline">Unread</span>
+                  <span className="hidden sm:inline">{t("conversations.filter_unread")}</span>
                 </Button>
                 <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8">
-                  <span className="hidden sm:inline">Starred</span>
+                  <span className="hidden sm:inline">{t("conversations.filter_starred")}</span>
                 </Button>
               </div>
             </div>
@@ -320,7 +325,7 @@ const Conversations = () => {
                           {currentConversation.contact.name}
                         </h3>
                         <p className="text-xs lg:text-sm text-text-subtle truncate">
-                          {currentConversation.contact.phone} • {currentConversation.contact.status}
+                          {currentConversation.contact.phone} • {contactStatusLabel(currentConversation.contact.status)}
                         </p>
                       </div>
                     </div>
@@ -341,16 +346,16 @@ const Conversations = () => {
                         <DropdownMenuContent align="end" className="glass">
                           <DropdownMenuItem>
                             <Archive className="w-4 h-4 mr-2" />
-                            Archive conversation
+                            {t("conversations.action_archive")}
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <User className="w-4 h-4 mr-2" />
-                            View contact
+                            {t("conversations.action_view_contact")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive">
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete conversation
+                            {t("conversations.action_delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -399,7 +404,7 @@ const Conversations = () => {
                   <div className="flex items-end gap-1 sm:gap-2 lg:gap-3">
                     <div className="flex-1">
                       <Textarea
-                        placeholder="Type your message..."
+                        placeholder={t("conversations.message_placeholder")}
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={(e) => {
@@ -439,10 +444,10 @@ const Conversations = () => {
                     <MessageSquare className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-base lg:text-lg font-semibold text-foreground mb-2">
-                    Select a conversation
+                    {t("conversations.empty_title")}
                   </h3>
                   <p className="text-sm lg:text-base text-text-subtle">
-                    Choose a conversation from the list to start messaging
+                    {t("conversations.empty_desc")}
                   </p>
                 </div>
               </div>

@@ -17,6 +17,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
 import { PushSettingsCard } from "@/components/pwa/PushSettingsCard";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type ActivityItem = {
   id: string;
@@ -31,11 +32,11 @@ type ActivityItem = {
 
 type FilterKey = "all" | "messages" | "campaigns" | "contacts";
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "messages", label: "Messages" },
-  { key: "campaigns", label: "Campaigns" },
-  { key: "contacts", label: "Contacts" },
+const FILTER_KEYS: { key: FilterKey; labelKey: "notifications.page.filter_all" | "notifications.page.filter_messages" | "notifications.page.filter_campaigns" | "notifications.page.filter_contacts" }[] = [
+  { key: "all", labelKey: "notifications.page.filter_all" },
+  { key: "messages", labelKey: "notifications.page.filter_messages" },
+  { key: "campaigns", labelKey: "notifications.page.filter_campaigns" },
+  { key: "contacts", labelKey: "notifications.page.filter_contacts" },
 ];
 
 interface TypeStyle {
@@ -123,6 +124,7 @@ const NotificationsPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  const { t } = useLanguage();
   const { recentActivity, isLoading } = useDashboard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -172,17 +174,21 @@ const NotificationsPage = () => {
             {/* Desktop header (mobile header lives in the top bar context) */}
             <div className="hidden md:block mb-3">
               <h1 className="font-heading text-lg lg:text-xl font-bold text-foreground leading-tight">
-                Notifications
+                {t("notifications.page.title")}
               </h1>
               <p className="text-sm text-foreground/60 mt-0.5">
-                Activity across messages, campaigns and contacts.
+                {t("notifications.page.subtitle")}
               </p>
             </div>
 
             {/* Mobile: simple count line */}
             <div className="md:hidden mb-2.5">
               <p className="text-[12.5px] text-foreground/60">
-                {filtered.length === 0 ? "Nothing to show" : `${filtered.length} notification${filtered.length === 1 ? "" : "s"}`}
+                {filtered.length === 0
+                  ? t("notifications.page.nothing_to_show")
+                  : filtered.length === 1
+                    ? t("notifications.page.count_singular", { count: filtered.length })
+                    : t("notifications.page.count_plural", { count: filtered.length })}
               </p>
             </div>
 
@@ -197,14 +203,14 @@ const NotificationsPage = () => {
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search notifications"
+                placeholder={t("notifications.page.search_placeholder")}
                 className="h-10 pl-9 pr-9 text-sm rounded-xl bg-card dark:bg-card/95 border-border/70 dark:border-border/50"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
-                  aria-label="Clear search"
+                  aria-label={t("notifications.page.clear_search_aria")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 inline-flex items-center justify-center rounded-full text-foreground/50 active:bg-accent/60"
                 >
                   <X className="w-4 h-4" />
@@ -217,7 +223,7 @@ const NotificationsPage = () => {
               className="flex gap-1.5 overflow-x-auto pb-1.5 mb-2.5 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none"
               style={{ scrollbarWidth: "none" }}
             >
-              {FILTERS.map((f) => {
+              {FILTER_KEYS.map((f) => {
                 const active = activeFilter === f.key;
                 return (
                   <button
@@ -232,7 +238,7 @@ const NotificationsPage = () => {
                         : "bg-card dark:bg-card/95 border border-border/70 dark:border-border/50 text-foreground/70 dark:text-foreground/65 active:bg-accent/60",
                     ].join(" ")}
                   >
-                    {f.label}
+                    {t(f.labelKey)}
                   </button>
                 );
               })}
@@ -254,23 +260,28 @@ const NotificationsPage = () => {
                 {orderedBuckets.map((bucket) => {
                   const items = grouped[bucket];
                   if (items.length === 0) return null;
+                  const bucketLabelKey = bucket === "Today"
+                    ? "notifications.page.bucket_today"
+                    : bucket === "Yesterday"
+                      ? "notifications.page.bucket_yesterday"
+                      : "notifications.page.bucket_earlier";
                   return (
                     <section key={bucket}>
                       <p className="px-2.5 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-foreground/45 dark:text-foreground/40">
-                        {bucket}
+                        {t(bucketLabelKey)}
                       </p>
                       <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden overflow-x-auto">
                         <table className="w-full table-fixed border-collapse text-left">
                           <thead>
                             <tr className="border-b border-border/50 dark:border-border/30">
                               <th className="w-[52px] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
-                                Type
+                                {t("notifications.page.col_type")}
                               </th>
                               <th className="px-1 py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
-                                Message
+                                {t("notifications.page.col_message")}
                               </th>
                               <th className="w-20 sm:w-28 whitespace-nowrap px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-foreground/45 dark:text-foreground/40">
-                                Time
+                                {t("notifications.page.col_time")}
                               </th>
                             </tr>
                           </thead>
@@ -381,18 +392,19 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ hasFilter, onClear }: EmptyStateProps) {
+  const { t } = useLanguage();
   return (
     <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 p-8 text-center">
       <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
         <Bell className="w-7 h-7" strokeWidth={1.8} />
       </div>
       <h3 className="text-[15px] font-semibold text-foreground dark:text-foreground">
-        {hasFilter ? "No matches" : "You're all caught up"}
+        {hasFilter ? t("notifications.page.no_matches_title") : t("notifications.page.all_caught_up_title")}
       </h3>
       <p className="text-[12.5px] text-foreground/60 dark:text-foreground/55 leading-snug mt-1 max-w-xs mx-auto">
         {hasFilter
-          ? "Try a different filter or clear your search to see everything."
-          : "New activity from messages, campaigns and contacts will show up here."}
+          ? t("notifications.page.no_matches_desc")
+          : t("notifications.page.empty_desc")}
       </p>
       {hasFilter && (
         <Button
@@ -401,7 +413,7 @@ function EmptyState({ hasFilter, onClear }: EmptyStateProps) {
           onClick={onClear}
           className="mt-4 h-9 px-4 text-xs font-semibold"
         >
-          Clear filters
+          {t("notifications.page.clear_filters_button")}
         </Button>
       )}
     </div>
@@ -414,6 +426,7 @@ interface DetailSheetProps {
 }
 
 function DetailSheet({ item, onClose }: DetailSheetProps) {
+  const { t } = useLanguage();
   const style = getTypeStyle(item.type);
   const Icon = style.Icon;
   const statusTone = getStatusTone(item.type);
@@ -422,7 +435,7 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("close")}
         onClick={onClose}
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
       />
@@ -452,7 +465,7 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("close")}
             className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center rounded-full text-foreground/70 active:bg-accent/60 transition-colors -mr-1"
           >
             <X className="w-5 h-5" strokeWidth={2.2} />
@@ -465,9 +478,9 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
           </p>
 
           <div className="rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/60 dark:border-border/30 divide-y divide-border/40 dark:divide-border/25 text-[12.5px]">
-            <Field label="Type" value={item.type.replace(/_/g, " ").toUpperCase()} />
+            <Field label={t("notifications.page.col_type")} value={item.type.replace(/_/g, " ").toUpperCase()} />
             <Field
-              label="Time"
+              label={t("notifications.page.col_time")}
               value={new Date(item.timestamp).toLocaleString(undefined, {
                 year: "numeric",
                 month: "short",
@@ -476,7 +489,7 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
                 minute: "2-digit",
               })}
             />
-            <Field label="Time ago" value={item.time_ago || "—"} />
+            <Field label={t("notifications.page.field_time_ago")} value={item.time_ago || "—"} />
           </div>
         </div>
 
@@ -486,7 +499,7 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
             onClick={onClose}
             className="flex-1 h-10 text-sm font-semibold"
           >
-            Close
+            {t("close")}
           </Button>
         </div>
       </div>

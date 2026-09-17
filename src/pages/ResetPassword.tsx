@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,21 +28,21 @@ const ResetPassword = () => {
   useEffect(() => {
     if (!token) {
       toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid or has expired.",
+        title: t("auth.reset_password.toast_invalid_link_title"),
+        description: t("auth.reset_password.toast_invalid_link_desc"),
         variant: "destructive"
       });
       navigate("/forgot-password");
     }
-  }, [token, navigate, toast]);
+  }, [token, navigate, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords are identical.",
+        title: t("auth.common.passwords_mismatch_title"),
+        description: t("auth.common.passwords_mismatch_desc"),
         variant: "destructive"
       });
       return;
@@ -48,8 +50,8 @@ const ResetPassword = () => {
 
     if (password.length < 8) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: t("auth.common.password_too_short_title"),
+        description: t("auth.common.password_too_short_desc"),
         variant: "destructive"
       });
       return;
@@ -57,8 +59,8 @@ const ResetPassword = () => {
 
     if (!token) {
       toast({
-        title: "Invalid reset link",
-        description: "The password reset link is invalid or has expired.",
+        title: t("auth.reset_password.toast_invalid_link_title"),
+        description: t("auth.reset_password.toast_invalid_link_desc"),
         variant: "destructive"
       });
       return;
@@ -72,21 +74,21 @@ const ResetPassword = () => {
       if (response.success) {
         setIsSuccess(true);
         toast({
-          title: "Password reset successfully",
-          description: "Your password has been updated. You can now sign in with your new password.",
+          title: t("auth.reset_password.toast_reset_success_title"),
+          description: t("auth.reset_password.toast_reset_success_desc"),
         });
       } else {
         toast({
-          title: "Password reset failed",
-          description: response.error || "Failed to reset password. The link may have expired.",
+          title: t("auth.reset_password.toast_reset_failed_title"),
+          description: response.error || t("auth.reset_password.reset_failed_default"),
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Password reset error:', error);
       toast({
-        title: "Password reset failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("auth.reset_password.toast_reset_failed_title"),
+        description: t("auth.common.unexpected_error"),
         variant: "destructive"
       });
     } finally {
@@ -106,7 +108,7 @@ const ResetPassword = () => {
           <div className="text-center mb-6">
             <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors">
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Back to homepage</span>
+              <span className="text-sm">{t("auth.reset_password.back_to_homepage")}</span>
             </Link>
             <div className="flex items-center justify-center gap-3 mb-4">
               <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
@@ -121,16 +123,16 @@ const ResetPassword = () => {
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">Password Reset Complete</CardTitle>
+              <CardTitle className="text-2xl font-bold text-gray-900">{t("auth.reset_password.success_title")}</CardTitle>
               <CardDescription className="text-gray-600">
-                Your password has been successfully updated
+                {t("auth.reset_password.success_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="px-6 pb-6">
               <div className="space-y-4">
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-4">
-                    You can now sign in to your account with your new password.
+                    {t("auth.reset_password.success_message")}
                   </p>
                 </div>
 
@@ -138,7 +140,7 @@ const ResetPassword = () => {
                   onClick={handleBackToLogin}
                   className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  Sign In to Your Account
+                  {t("auth.reset_password.sign_in_to_account_button")}
                 </Button>
               </div>
             </CardContent>
@@ -146,9 +148,9 @@ const ResetPassword = () => {
 
           <div className="mt-6 text-center text-xs text-gray-500">
             <p>
-              Need help? Contact our{" "}
+              {t("auth.reset_password.need_help")}{" "}
               <Link to="/support" className="text-blue-600 hover:underline">
-                support team
+                {t("auth.reset_password.support_team")}
               </Link>
             </p>
           </div>
@@ -164,7 +166,7 @@ const ResetPassword = () => {
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to homepage</span>
+            <span className="text-sm">{t("auth.reset_password.back_to_homepage")}</span>
           </Link>
           <div className="flex items-center justify-center gap-3 mb-4">
             <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
@@ -179,20 +181,20 @@ const ResetPassword = () => {
             <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
               <Key className="w-8 h-8 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Reset your password</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">{t("auth.forgot_password.step_title_reset")}</CardTitle>
             <CardDescription className="text-gray-600">
-              Enter your new password below
+              {t("auth.forgot_password.step_desc_reset")}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">New Password</Label>
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">{t("auth.reset_password.new_password_label")}</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your new password"
+                    placeholder={t("auth.forgot_password.new_password_placeholder")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -206,16 +208,16 @@ const ResetPassword = () => {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">Password must be at least 8 characters long</p>
+                <p className="text-xs text-gray-500">{t("auth.reset_password.password_hint")}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">{t("auth.reset_password.confirm_password_label")}</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your new password"
+                    placeholder={t("auth.forgot_password.confirm_password_placeholder")}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -236,15 +238,15 @@ const ResetPassword = () => {
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading}
               >
-                {isLoading ? "Resetting..." : "Reset Password"}
+                {isLoading ? t("auth.common.resetting") : t("auth.reset_password.reset_password_button")}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Remember your password?{" "}
+                {t("auth.common.remember_your_password")}{" "}
                 <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  Sign in
+                  {t("auth.common.sign_in")}
                 </Link>
               </p>
             </div>
@@ -253,13 +255,13 @@ const ResetPassword = () => {
 
         <div className="mt-6 text-center text-xs text-gray-500">
           <p>
-            By using this service, you agree to our{" "}
+            {t("auth.reset_password.terms_notice_prefix")}{" "}
             <Link to="/terms" className="text-blue-600 hover:underline">
-              Terms of Service
+              {t("auth.signup.terms_full")}
             </Link>{" "}
-            and{" "}
+            {t("auth.signup.and")}{" "}
             <Link to="/privacy" className="text-blue-600 hover:underline">
-              Privacy Policy
+              {t("auth.signup.privacy_policy")}
             </Link>
           </p>
         </div>

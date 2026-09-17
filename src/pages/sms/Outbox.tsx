@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, AlertCircle, Send, Pencil, Inbox, Copy, Check } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -40,6 +41,7 @@ const Outbox = () => {
   const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -49,11 +51,11 @@ const Outbox = () => {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied", description: "Message copied to clipboard." });
+      toast({ title: t("common.copied"), description: t("sms.common.message_copied_desc") });
     } catch {
       toast({
-        title: "Copy failed",
-        description: "Could not copy the message.",
+        title: t("sms.common.copy_failed_title"),
+        description: t("sms.common.copy_failed_desc"),
         variant: "destructive",
       });
     }
@@ -77,14 +79,14 @@ const Outbox = () => {
     } catch (error) {
       logger.warn("Failed to load outbox");
       toast({
-        title: "Failed to load outbox",
-        description: "Could not fetch failed messages.",
+        title: t("sms.outbox.load_error_title"),
+        description: t("sms.outbox.load_error_desc"),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast]);
+  }, [currentPage, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
@@ -109,23 +111,23 @@ const Outbox = () => {
       const response = await apiClient.retrySMSMessage(m.id);
       if (response.success) {
         toast({
-          title: "Message re-queued",
-          description: `Resending to ${recipientOf(m)}.`,
+          title: t("sms.outbox.retry_success_title"),
+          description: t("sms.outbox.retry_success_desc", { recipient: recipientOf(m) }),
         });
         // It's no longer "failed" — drop it and refresh counts.
         loadMessages();
       } else {
         toast({
-          title: "Could not resend",
-          description: response.error || "Please try again.",
+          title: t("sms.outbox.retry_error_title"),
+          description: response.error || t("common.try_again_desc"),
           variant: "destructive",
         });
       }
     } catch (error) {
       logger.warn("Retry failed");
       toast({
-        title: "Could not resend",
-        description: "Please try again.",
+        title: t("sms.outbox.retry_error_title"),
+        description: t("common.try_again_desc"),
         variant: "destructive",
       });
     } finally {
@@ -168,10 +170,10 @@ const Outbox = () => {
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                  Outbox
+                  {t("sms.outbox.title")}
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Messages that failed to send. Review the reason and resend.
+                  {t("sms.outbox.subtitle")}
                 </p>
               </div>
 
@@ -182,7 +184,7 @@ const Outbox = () => {
                     <div className="relative flex-1">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-subtle" />
                       <Input
-                        placeholder="Search by recipient or message ID..."
+                        placeholder={t("sms.common.search_placeholder")}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -192,7 +194,7 @@ const Outbox = () => {
                     <div className="flex items-center gap-2">
                       <Button onClick={handleSearch} disabled={isLoading} className="text-xs">
                         <Search className="w-3 h-3 mr-2" />
-                        Search
+                        {t("sms.common.search")}
                       </Button>
                       <Button
                         variant="outline"
@@ -201,7 +203,7 @@ const Outbox = () => {
                         className="text-xs"
                       >
                         <RefreshCw className={`w-3 h-3 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                        Refresh
+                        {t("sms.common.refresh")}
                       </Button>
                     </div>
                   </div>
@@ -213,7 +215,7 @@ const Outbox = () => {
                 <CardHeader className="p-4">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <AlertCircle className="w-4 h-4 text-destructive" />
-                    Failed messages
+                    {t("sms.outbox.list_title")}
                     <Badge variant="secondary" className="text-xs ml-1">
                       {total}
                     </Badge>
@@ -223,12 +225,12 @@ const Outbox = () => {
                   {isLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                      <p className="text-xs text-text-subtle">Loading outbox...</p>
+                      <p className="text-xs text-text-subtle">{t("sms.outbox.loading")}</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-center py-10">
                       <Inbox className="w-12 h-12 mx-auto text-text-subtle mb-3" />
-                      <p className="text-sm text-text-subtle">No failed messages. You're all caught up.</p>
+                      <p className="text-sm text-text-subtle">{t("sms.outbox.empty")}</p>
                     </div>
                   ) : (
                     <>
@@ -237,11 +239,11 @@ const Outbox = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Recipient</TableHead>
-                              <TableHead className="text-xs">Message</TableHead>
-                              <TableHead className="text-xs">Sender</TableHead>
-                              <TableHead className="text-xs">Failed at</TableHead>
-                              <TableHead className="text-xs text-right">Actions</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_recipient")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_message")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_sender")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.outbox.col_failed_at")}</TableHead>
+                              <TableHead className="text-xs text-right">{t("sms.common.col_actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -249,14 +251,14 @@ const Outbox = () => {
                               <TableRow
                                 key={m.id}
                                 onClick={() => m.message && setViewMessage(m)}
-                                title={m.message ? "Click to view and copy the full message" : undefined}
+                                title={m.message ? t("sms.common.row_click_hint") : undefined}
                                 className={m.message ? "cursor-pointer" : undefined}
                               >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
                                   {extraRecipients(m) > 0 && (
                                     <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      +{extraRecipients(m)} more
+                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
                                     </span>
                                   )}
                                 </TableCell>
@@ -285,7 +287,7 @@ const Outbox = () => {
                                       <Send
                                         className={`w-3 h-3 mr-1.5 ${retryingId === m.id ? "animate-pulse" : ""}`}
                                       />
-                                      {retryingId === m.id ? "Sending..." : "Retry"}
+                                      {retryingId === m.id ? t("sms.outbox.sending") : t("sms.outbox.retry")}
                                     </Button>
                                     <Button
                                       size="sm"
@@ -297,7 +299,7 @@ const Outbox = () => {
                                       className="text-xs h-7"
                                     >
                                       <Pencil className="w-3 h-3 mr-1.5" />
-                                      Edit &amp; resend
+                                      {t("sms.outbox.edit_resend")}
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -321,12 +323,12 @@ const Outbox = () => {
                                   {recipientOf(m)}
                                   {extraRecipients(m) > 0 && (
                                     <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      +{extraRecipients(m)} more
+                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
                                     </span>
                                   )}
                                 </span>
                                 <Badge variant="destructive" className="text-xs flex-shrink-0">
-                                  failed
+                                  {t("status.failed")}
                                 </Badge>
                               </div>
                               <p className="text-xs text-text-subtle line-clamp-2 break-words">
@@ -348,7 +350,7 @@ const Outbox = () => {
                                   <Send
                                     className={`w-3 h-3 mr-1.5 ${retryingId === m.id ? "animate-pulse" : ""}`}
                                   />
-                                  {retryingId === m.id ? "Sending..." : "Retry"}
+                                  {retryingId === m.id ? t("sms.outbox.sending") : t("sms.outbox.retry")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -360,7 +362,7 @@ const Outbox = () => {
                                   className="text-xs h-7 flex-1"
                                 >
                                   <Pencil className="w-3 h-3 mr-1.5" />
-                                  Edit
+                                  {t("sms.outbox.edit_short")}
                                 </Button>
                               </div>
                             </CardContent>
@@ -377,10 +379,10 @@ const Outbox = () => {
                             disabled={currentPage === 1 || isLoading}
                             className="text-xs"
                           >
-                            Previous
+                            {t("sms.common.previous")}
                           </Button>
                           <span className="text-xs text-text-subtle">
-                            Page {currentPage} of {totalPages}
+                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
                           </span>
                           <Button
                             variant="outline"
@@ -389,7 +391,7 @@ const Outbox = () => {
                             disabled={currentPage === totalPages || isLoading}
                             className="text-xs"
                           >
-                            Next
+                            {t("sms.common.next")}
                           </Button>
                         </div>
                       )}
@@ -406,10 +408,10 @@ const Outbox = () => {
       <Dialog open={!!viewMessage} onOpenChange={(open) => !open && setViewMessage(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Message</DialogTitle>
+            <DialogTitle>{t("sms.common.message_dialog_title")}</DialogTitle>
             <DialogDescription>
-              To {viewMessage ? recipientOf(viewMessage) : ""}
-              {viewMessage?.sender_name ? ` · from ${viewMessage.sender_name}` : ""}
+              {t("sms.common.to_prefix")} {viewMessage ? recipientOf(viewMessage) : ""}
+              {viewMessage?.sender_name ? ` · ${t("sms.common.from_label")} ${viewMessage.sender_name}` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-sm">
@@ -425,7 +427,7 @@ const Outbox = () => {
               ) : (
                 <Copy className="w-3 h-3 mr-2" />
               )}
-              {copied ? "Copied" : "Copy message"}
+              {copied ? t("common.copied") : t("sms.common.copy_message")}
             </Button>
           </div>
         </DialogContent>

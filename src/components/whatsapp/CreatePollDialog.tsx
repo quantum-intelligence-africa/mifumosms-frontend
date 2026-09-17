@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Loader2, Copy, Check } from "lucide-react";
 import { useWhatsAppCloud, type WAPoll } from "@/hooks/useWhatsAppCloud";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface CreatePollDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ const MAX_OPTIONS = 3;
 export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDialogProps) {
   const { createPoll, isLoading } = useWhatsAppCloud();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [title, setTitle] = useState("");
   const [question, setQuestion] = useState("");
@@ -86,8 +88,8 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
         setCreatedPoll(res.poll);
         onCreated?.(res.poll);
         toast({
-          title: "Poll created",
-          description: `"${res.poll.title}" is ready to send.`,
+          title: t("whatsapp.poll_dialog.toast_created_title"),
+          description: t("whatsapp.poll_dialog.toast_created_desc", { title: res.poll.title }),
         });
       }
     } catch {
@@ -110,11 +112,11 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[92vh] overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">Create a WhatsApp poll</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.poll_dialog.title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
             {createdPoll
-              ? "Copy the poll ID and paste it into the Poll ID field when sending."
-              : "Set up reply-button options that recipients can tap. Up to 3 options, 20 characters each."}
+              ? t("whatsapp.poll_dialog.created_desc")
+              : t("whatsapp.poll_dialog.setup_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -122,7 +124,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
           <div className="p-4 sm:p-5 space-y-3">
             <div className="rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 px-3.5 py-3">
               <p className="text-[11px] font-bold tracking-wider uppercase text-emerald-700 dark:text-emerald-400">
-                Poll ID
+                {t("whatsapp.poll_dialog.poll_id_label")}
               </p>
               <div className="mt-1.5 flex items-center gap-2">
                 <code className="flex-1 min-w-0 font-mono text-[12.5px] text-foreground break-all">
@@ -138,12 +140,12 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                   {copied ? (
                     <>
                       <Check className="w-3.5 h-3.5 mr-1" strokeWidth={2.8} />
-                      Copied
+                      {t("common.copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 mr-1" strokeWidth={2.2} />
-                      Copy
+                      {t("whatsapp.poll_dialog.copy")}
                     </>
                   )}
                 </Button>
@@ -151,7 +153,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
             </div>
 
             <div className="rounded-xl border border-border/60 dark:border-border/40 bg-muted/30 dark:bg-muted/15 p-3 space-y-1.5">
-              <p className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Preview</p>
+              <p className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.preview")}</p>
               <p className="text-[13px] font-semibold text-foreground leading-tight">{createdPoll.question}</p>
               <div className="flex flex-wrap gap-1.5 pt-1.5">
                 {createdPoll.options.map((o) => (
@@ -169,23 +171,23 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
           <div className="p-4 sm:p-5 space-y-3">
             <div>
               <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                Internal title
+                {t("whatsapp.poll_dialog.internal_title_label")}
               </Label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Wedding RSVP — Mar 20"
+                placeholder={t("whatsapp.poll_dialog.internal_title_placeholder")}
                 className="mt-1 h-10 rounded-xl text-[13px]"
               />
               <p className="text-[11px] text-foreground/55 mt-1 leading-tight">
-                Only you see this. Recipients see the question below.
+                {t("whatsapp.poll_dialog.internal_title_hint")}
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between">
                 <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                  Question for recipients
+                  {t("whatsapp.poll_dialog.question_label")}
                 </Label>
                 <span
                   className={`text-[10.5px] tabular-nums ${
@@ -200,7 +202,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
               <Textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g. Will you attend our wedding?"
+                placeholder={t("whatsapp.poll_dialog.question_placeholder")}
                 rows={2}
                 className="mt-1 min-h-[68px] rounded-xl text-[13px] leading-relaxed"
               />
@@ -208,10 +210,10 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
 
             <div>
               <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                Reply options
+                {t("whatsapp.poll_dialog.options_label")}
               </Label>
               <p className="text-[11px] text-foreground/55 mt-1 leading-tight">
-                {options.length} of {MAX_OPTIONS} · max 20 characters each
+                {t("whatsapp.poll_dialog.options_hint", { count: options.length, max: MAX_OPTIONS })}
               </p>
               <div className="mt-2 space-y-2">
                 {options.map((opt, idx) => (
@@ -219,7 +221,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                     <Input
                       value={opt}
                       onChange={(e) => updateOption(idx, e.target.value)}
-                      placeholder={`Option ${idx + 1}`}
+                      placeholder={t("whatsapp.poll_dialog.option_placeholder", { n: idx + 1 })}
                       maxLength={MAX_OPTION}
                       className="h-10 rounded-xl text-[13px]"
                     />
@@ -247,7 +249,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                   className="mt-2 h-9 px-3 text-[12px] font-semibold rounded-lg"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
-                  Add option
+                  {t("whatsapp.poll_dialog.add_option")}
                 </Button>
               )}
             </div>
@@ -259,7 +261,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                 onChange={(e) => setActive(e.target.checked)}
                 className="h-4 w-4 accent-primary"
               />
-              <span className="text-[12.5px] text-foreground">Active — accepting replies</span>
+              <span className="text-[12.5px] text-foreground">{t("whatsapp.poll_dialog.active_label")}</span>
             </label>
           </div>
         )}
@@ -274,13 +276,13 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                 }}
                 className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
               >
-                Create another
+                {t("whatsapp.poll_dialog.create_another")}
               </Button>
               <Button
                 onClick={() => handleClose(false)}
                 className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
               >
-                Done
+                {t("whatsapp.common.done")}
               </Button>
             </>
           ) : (
@@ -291,7 +293,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                 disabled={isLoading}
                 className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 onClick={handleCreate}
@@ -301,12 +303,12 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                 {isLoading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Creating…
+                    {t("whatsapp.poll_dialog.creating")}
                   </>
                 ) : (
                   <>
                     <Plus className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
-                    Create poll
+                    {t("whatsapp.poll_dialog.create_poll")}
                   </>
                 )}
               </Button>

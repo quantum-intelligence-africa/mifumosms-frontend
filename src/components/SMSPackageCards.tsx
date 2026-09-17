@@ -3,13 +3,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface SMSPackage {
   id: string;
-  name: string;
   price: string;
-  smsRange: string;
-  features: string[];
+  featureKeys: string[];
   isPopular?: boolean;
   isSelected?: boolean;
 }
@@ -17,49 +16,31 @@ interface SMSPackage {
 const smsPackages: SMSPackage[] = [
   {
     id: 'lite',
-    name: 'Lite',
     price: 'TZS 30/SMS',
-    smsRange: '1 to 49,999 SMS',
-    features: ['Never expires']
+    featureKeys: ['feature_1']
   },
   {
     id: 'standard',
-    name: 'Standard',
     price: 'TZS 25/SMS',
-    smsRange: '50,000 to 149,999 SMS',
-    features: [
-      'Priority top-up & support',
-      'Advanced delivery analytics',
-      'Campaign scheduling'
-    ],
+    featureKeys: ['feature_1', 'feature_2', 'feature_3'],
     isPopular: true
   },
   {
     id: 'pro',
-    name: 'Pro',
     price: 'TZS 18/SMS',
-    smsRange: '250,000 SMS and above',
-    features: [
-      'Bulk campaign tools',
-      'Advanced analytics',
-      'API access'
-    ]
+    featureKeys: ['feature_1', 'feature_2', 'feature_3']
   },
   {
     id: 'enterprise',
-    name: 'Enterprise',
     price: 'TZS 12/SMS',
-    smsRange: '1 Million+ SMS',
-    features: [
-      'Dedicated account manager',
-      'Custom invoicing & contracts',
-      'Enterprise API & SSO'
-    ],
+    featureKeys: ['feature_1', 'feature_2', 'feature_3'],
     isSelected: true
   }
 ];
 
 export const SMSPackageCards: React.FC = () => {
+  const { t } = useLanguage();
+
   const handleSelect = (packageId: string) => {
     console.log('Selected package:', packageId);
     // TODO: Implement package selection logic
@@ -79,7 +60,7 @@ export const SMSPackageCards: React.FC = () => {
             {pkg.isPopular && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-full flex justify-center px-2">
                 <Badge className="bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap">
-                  Most Popular
+                  {t('sms_packages.most_popular')}
                 </Badge>
               </div>
             )}
@@ -87,7 +68,7 @@ export const SMSPackageCards: React.FC = () => {
             <CardContent className="p-4 sm:p-6 text-center h-full flex flex-col">
               {/* Package Name */}
               <h3 className="text-base sm:text-xl font-bold text-foreground mb-2 sm:mb-3">
-                {pkg.name}
+                {t(`sms_packages.${pkg.id}.name` as any)}
               </h3>
 
               {/* Price */}
@@ -97,15 +78,15 @@ export const SMSPackageCards: React.FC = () => {
 
               {/* SMS Range */}
               <div className="text-xs sm:text-sm text-text-subtle mb-4 sm:mb-6">
-                {pkg.smsRange}
+                {t(`sms_packages.${pkg.id}.sms_range` as any)}
               </div>
 
               {/* Features */}
               <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6 flex-1">
-                {pkg.features.map((feature, index) => (
+                {pkg.featureKeys.map((featureKey, index) => (
                   <div key={index} className="flex items-start text-xs sm:text-sm text-foreground">
                     <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 dark:text-green-400 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-left">{feature}</span>
+                    <span className="text-left">{t(`sms_packages.${pkg.id}.${featureKey}` as any)}</span>
                   </div>
                 ))}
               </div>
@@ -120,7 +101,7 @@ export const SMSPackageCards: React.FC = () => {
                 }`}
                 variant={pkg.isSelected ? 'default' : 'outline'}
               >
-                {pkg.isSelected ? 'Selected' : 'Select'}
+                {pkg.isSelected ? t('sms_packages.selected_button') : t('sms_packages.select_button')}
               </Button>
             </CardContent>
           </Card>

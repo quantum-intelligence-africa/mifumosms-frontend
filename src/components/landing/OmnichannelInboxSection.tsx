@@ -1,4 +1,3 @@
-import { useContext } from "react";
 import { Inbox, Users, Zap, Shield, Search, Filter, Send } from "lucide-react";
 import {
   SectionHeader,
@@ -7,7 +6,7 @@ import {
   ChannelBadge,
   type Channel,
 } from "./shared";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
 interface ConversationItem {
@@ -65,17 +64,16 @@ const ACTIVE_THREAD: Array<{
   { from: "them", text: "Asante! Nimepokea ankara. Nitalipa leo.", time: "10:46" },
 ];
 
-const getFeatures = (isSw: boolean) => [
-  { label: isSw ? "Sanduku la timu" : "Shared team inbox", icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Mwelekeo wa kiotomatiki" : "Auto-routing", icon: <Zap className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Majibu yaliyohifadhiwa" : "Saved replies", icon: <Send className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Muktadha wa mteja" : "Customer context", icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
+const getFeatures = (t: (key: any, params?: any) => string) => [
+  { label: t("landing.omnichannel_inbox.feature_shared_inbox"), icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.omnichannel_inbox.feature_auto_routing"), icon: <Zap className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.omnichannel_inbox.feature_saved_replies"), icon: <Send className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.omnichannel_inbox.feature_customer_context"), icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
 ];
 
 const OmnichannelInboxSection = () => {
-  const lang = useContext(LanguageContext);
-  const isSw = lang?.language === "sw";
-  const features = getFeatures(isSw);
+  const { t } = useLanguage();
+  const features = getFeatures(t);
 
   return (
     <section
@@ -92,26 +90,15 @@ const OmnichannelInboxSection = () => {
           {/* Copy */}
           <div className="lg:col-span-5 order-2 lg:order-1">
             <SectionHeader
-              eyebrow={isSw ? "Sanduku Pamoja" : "Omnichannel Inbox"}
+              eyebrow={t("landing.omnichannel_inbox.eyebrow")}
               tone="dark"
               title={
-                isSw ? (
-                  <>
-                    Kila mazungumzo,{" "}
-                    <span className="text-blue-200">sanduku moja</span>
-                  </>
-                ) : (
-                  <>
-                    Every conversation,{" "}
-                    <span className="text-blue-200">one shared inbox</span>
-                  </>
-                )
+                <>
+                  {t("landing.omnichannel_inbox.title_line1")}{" "}
+                  <span className="text-blue-200">{t("landing.omnichannel_inbox.title_line2")}</span>
+                </>
               }
-              lead={
-                isSw
-                  ? "WhatsApp, SMS, na Sauti — timu yako inajibu kutoka kwenye mazungumzo moja yenye muktadha kamili wa mteja, bila kubadilisha vichupo."
-                  : "WhatsApp, SMS, and Voice — your team replies from a single thread with full customer context, no tab-switching."
-              }
+              lead={t("landing.omnichannel_inbox.lead")}
             />
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -132,13 +119,13 @@ const OmnichannelInboxSection = () => {
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
                 <p className="text-2xl font-bold text-white">3×</p>
                 <p className="text-xs text-white mt-1">
-                  {isSw ? "jibu la kwanza haraka" : "faster first response"}
+                  {t("landing.omnichannel_inbox.stat_faster_response")}
                 </p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
                 <p className="text-2xl font-bold text-white">1</p>
                 <p className="text-xs text-white mt-1">
-                  {isSw ? "mazungumzo kwa mteja" : "thread per customer"}
+                  {t("landing.omnichannel_inbox.stat_thread_per_customer")}
                 </p>
               </div>
             </div>
@@ -157,7 +144,7 @@ const OmnichannelInboxSection = () => {
                     <div className="flex items-center gap-1.5 flex-1 rounded-md border border-gray-200 bg-white px-2 py-1.5">
                       <Search className="h-3.5 w-3.5 text-gray-400" />
                       <span className="text-[11px] text-gray-400">
-                        {isSw ? "Tafuta" : "Search"}
+                        {t("landing.omnichannel_inbox.search")}
                       </span>
                     </div>
                     <button
@@ -220,7 +207,7 @@ const OmnichannelInboxSection = () => {
                     </div>
                     <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      {isSw ? "Mtandaoni" : "Online"}
+                      {t("status.online")}
                     </span>
                   </header>
 
@@ -269,7 +256,7 @@ const OmnichannelInboxSection = () => {
                     <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2">
                       <Inbox className="h-3.5 w-3.5 text-gray-400" />
                       <span className="flex-1 text-[11px] text-gray-400">
-                        {isSw ? "Jibu kwenye WhatsApp…" : "Reply on WhatsApp…"}
+                        {t("landing.omnichannel_inbox.reply_placeholder")}
                       </span>
                       <button
                         type="button"

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { API_CONFIG, buildApiUrl } from "@/config/api";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type AgentSetup = {
   name: string;
@@ -82,7 +83,9 @@ type FlowStep = {
 type BuilderTemplate = {
   key: string;
   label: string;
+  labelKey: string;
   summary: string;
+  summaryKey: string;
   setup: AgentSetup;
   flow: FlowStep[];
 };
@@ -91,7 +94,9 @@ const defaultFeatures = [
   {
     icon: Bot,
     title: "Copilot Dashboard",
+    titleKey: "pages.ai_agents.features.dashboard.title",
     desc: "Monitor all copilots, conversation volume, and performance metrics in real time.",
+    descKey: "pages.ai_agents.features.dashboard.desc",
     iconColor: "text-blue-600 dark:text-blue-400",
     iconBg: "bg-blue-600/10 dark:bg-blue-400/20",
     borderAccent: "border-t-blue-500 dark:border-t-blue-400",
@@ -99,7 +104,9 @@ const defaultFeatures = [
   {
     icon: Plus,
     title: "Create Copilot",
+    titleKey: "pages.ai_agents.features.create.title",
     desc: "Launch a rapid AI copilot builder with onboarding, flow design, JSON output, and SMS-ready endpoints.",
+    descKey: "pages.ai_agents.features.create.desc",
     iconColor: "text-emerald-600 dark:text-emerald-400",
     iconBg: "bg-emerald-600/10 dark:bg-emerald-400/20",
     borderAccent: "border-t-emerald-500 dark:border-t-emerald-400",
@@ -107,7 +114,9 @@ const defaultFeatures = [
   {
     icon: MessageCircle,
     title: "Conversations",
+    titleKey: "pages.ai_agents.features.conversations.title",
     desc: "Full message history and sentiment analysis for every copilot-handled conversation.",
+    descKey: "pages.ai_agents.features.conversations.desc",
     iconColor: "text-violet-600 dark:text-violet-400",
     iconBg: "bg-violet-600/10 dark:bg-violet-400/20",
     borderAccent: "border-t-violet-500 dark:border-t-violet-400",
@@ -115,7 +124,9 @@ const defaultFeatures = [
   {
     icon: Database,
     title: "Knowledge Base",
+    titleKey: "pages.ai_agents.features.knowledge_base.title",
     desc: "Upload docs, FAQs, and product data to ground your copilots in your business.",
+    descKey: "pages.ai_agents.features.knowledge_base.desc",
     iconColor: "text-amber-600 dark:text-amber-400",
     iconBg: "bg-amber-600/10 dark:bg-amber-400/20",
     borderAccent: "border-t-amber-500 dark:border-t-amber-400",
@@ -123,7 +134,9 @@ const defaultFeatures = [
   {
     icon: BarChart2,
     title: "Analytics",
+    titleKey: "pages.ai_agents.features.analytics.title",
     desc: "Track containment rate, resolution time, and satisfaction scores over time.",
+    descKey: "pages.ai_agents.features.analytics.desc",
     iconColor: "text-rose-600 dark:text-rose-400",
     iconBg: "bg-rose-600/10 dark:bg-rose-400/20",
     borderAccent: "border-t-rose-500 dark:border-t-rose-400",
@@ -131,7 +144,9 @@ const defaultFeatures = [
   {
     icon: Zap,
     title: "Automation Triggers",
+    titleKey: "pages.ai_agents.features.automation.title",
     desc: "Connect copilots to SMS campaigns, contact events, and external webhooks.",
+    descKey: "pages.ai_agents.features.automation.desc",
     iconColor: "text-orange-600 dark:text-orange-400",
     iconBg: "bg-orange-600/10 dark:bg-orange-400/20",
     borderAccent: "border-t-orange-500 dark:border-t-orange-400",
@@ -143,6 +158,13 @@ const defaultPerks = [
   "Direct line to the product team",
   "Shape the feature before launch",
 ];
+
+/** Maps the default (English) perk strings to translation keys for display. Any perk text returned by the backend that doesn't match a default falls back to being shown as-is. */
+const DEFAULT_PERK_KEYS: Record<string, string> = {
+  "Free access during private beta": "pages.ai_agents.hero.perk_free_access",
+  "Direct line to the product team": "pages.ai_agents.hero.perk_direct_line",
+  "Shape the feature before launch": "pages.ai_agents.hero.perk_shape_feature",
+};
 
 const industries = ["Retail", "Education", "Healthcare", "Finance", "Hospitality", "Logistics", "Technology"];
 const languages = [
@@ -165,51 +187,61 @@ const apiEndpoints = [
     method: "POST",
     path: "/early-access/ai-copilots/create/",
     description: "Create the AI copilot profile from onboarding details.",
+    descKey: "pages.ai_agents.api.endpoint_create",
   },
   {
     method: "GET",
     path: "/early-access/ai-copilots/status/",
     description: "Check if the user has early access or is on the waitlist.",
+    descKey: "pages.ai_agents.api.endpoint_status",
   },
   {
     method: "POST",
     path: "/early-access/ai-copilots/waitlist/",
     description: "Join the waitlist with full name, email, phone, and KYC file.",
+    descKey: "pages.ai_agents.api.endpoint_waitlist",
   },
   {
     method: "GET",
     path: "/early-access/ai-copilots/",
     description: "List all copilots created by the authenticated user.",
+    descKey: "pages.ai_agents.api.endpoint_list",
   },
   {
     method: "GET",
     path: "/early-access/ai-copilots/{id}/",
     description: "Retrieve full details of a specific copilot.",
+    descKey: "pages.ai_agents.api.endpoint_detail",
   },
   {
     method: "POST",
     path: "/early-access/ai-copilots/{id}/flow/",
     description: "Save the structured flow contract for the runtime engine.",
+    descKey: "pages.ai_agents.api.endpoint_flow",
   },
   {
     method: "POST",
     path: "/early-access/ai-copilots/{id}/simulate/",
     description: "Run fast test sessions against the START step of the flow.",
+    descKey: "pages.ai_agents.api.endpoint_simulate",
   },
   {
     method: "POST",
     path: "/early-access/ai-copilots/{id}/deploy/",
     description: "Publish the copilot to production after validation passes.",
+    descKey: "pages.ai_agents.api.endpoint_deploy",
   },
   {
     method: "PUT",
     path: "/early-access/ai-copilots/{id}/whatsapp-credentials/",
     description: "Store Meta WhatsApp Cloud API credentials and deployment payload for the copilot.",
+    descKey: "pages.ai_agents.api.endpoint_wa_creds_put",
   },
   {
     method: "PATCH",
     path: "/early-access/ai-copilots/{id}/whatsapp-credentials/",
     description: "Partially update WhatsApp credentials (omit fields to leave unchanged).",
+    descKey: "pages.ai_agents.api.endpoint_wa_creds_patch",
   },
 ];
 
@@ -217,7 +249,9 @@ const builderTemplates: BuilderTemplate[] = [
   {
     key: "sms-sales",
     label: "SMS Sales Copilot",
+    labelKey: "pages.ai_agents.templates.sms_sales.label",
     summary: "Qualify leads, guide users, and push the next buying action quickly.",
+    summaryKey: "pages.ai_agents.templates.sms_sales.summary",
     setup: {
       name: "Kuza Sales Copilot",
       business: "Mifumo Labs",
@@ -274,7 +308,9 @@ const builderTemplates: BuilderTemplate[] = [
   {
     key: "support",
     label: "Support Copilot",
+    labelKey: "pages.ai_agents.templates.support.label",
     summary: "Resolve common issues first, then escalate with structured context.",
+    summaryKey: "pages.ai_agents.templates.support.summary",
     setup: {
       name: "Kuza Support Copilot",
       business: "Mifumo Labs",
@@ -321,7 +357,9 @@ const builderTemplates: BuilderTemplate[] = [
   {
     key: "booking",
     label: "Booking Copilot",
+    labelKey: "pages.ai_agents.templates.booking.label",
     summary: "Handle scheduling, confirmations, reminders, and follow-up links.",
+    summaryKey: "pages.ai_agents.templates.booking.summary",
     setup: {
       name: "Kuza Booking Copilot",
       business: "Mifumo Labs",
@@ -367,11 +405,41 @@ const builderTemplates: BuilderTemplate[] = [
   },
 ];
 
-const createTemplateCopy = (template: BuilderTemplate) => ({
+/** Maps the default (English) seed option-button / URL-button labels used across builderTemplates flows to translation keys, so template flow-editor defaults and the chat preview show in the current UI language when a template is first loaded. */
+const TEMPLATE_OPTION_LABEL_KEYS: Record<string, string> = {
+  "View packages": "pages.ai_agents.templates.options.view_packages",
+  "Talk to sales": "pages.ai_agents.templates.options.talk_to_sales",
+  "Setup help": "pages.ai_agents.templates.options.setup_help",
+  "Starter": "pages.ai_agents.templates.options.starter",
+  "Growth": "pages.ai_agents.templates.options.growth",
+  "Back to menu": "pages.ai_agents.templates.options.back_to_menu",
+  "Sender name": "pages.ai_agents.templates.options.sender_name",
+  "API access": "pages.ai_agents.templates.options.api_access",
+  "Delivery issue": "pages.ai_agents.templates.options.delivery_issue",
+  "Billing": "pages.ai_agents.templates.options.billing",
+  "Technical help": "pages.ai_agents.templates.options.technical_help",
+  "New booking": "pages.ai_agents.templates.options.new_booking",
+  "Check availability": "pages.ai_agents.templates.options.check_availability",
+  "Existing reservation": "pages.ai_agents.templates.options.existing_reservation",
+};
+
+const TEMPLATE_URL_LABEL_KEYS: Record<string, string> = {
+  "Open pricing": "pages.ai_agents.templates.options.open_pricing",
+  "Open developer docs": "pages.ai_agents.templates.options.open_developer_docs",
+  "Open booking page": "pages.ai_agents.templates.options.open_booking_page",
+};
+
+const createTemplateCopy = (template: BuilderTemplate, t: TranslateFn) => ({
   setup: { ...template.setup },
   flow: template.flow.map((step) => ({
     ...step,
-    options: step.options.map((option) => ({ ...option })),
+    options: step.options.map((option) => ({
+      ...option,
+      label: TEMPLATE_OPTION_LABEL_KEYS[option.label] ? t(TEMPLATE_OPTION_LABEL_KEYS[option.label]) : option.label,
+    })),
+    ...(step.urlLabel && TEMPLATE_URL_LABEL_KEYS[step.urlLabel]
+      ? { urlLabel: t(TEMPLATE_URL_LABEL_KEYS[step.urlLabel]) }
+      : {}),
   })),
 });
 
@@ -427,6 +495,37 @@ const validateFlow = (flow: FlowStep[]) => {
   });
 
   return { errors, warnings, isValid: errors.length === 0 };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TranslateFn = (key: any, params?: Record<string, string | number>) => string;
+
+/** Translate a raw validateFlow() error string for display, keeping the underlying English text intact for .includes() logic checks. */
+const translateValidationError = (error: string, t: TranslateFn): string => {
+  if (error === "A START step is required before deploy.") {
+    return t("pages.ai_agents.validation.error_start_required");
+  }
+  if (error === "Each step needs a unique state name.") {
+    return t("pages.ai_agents.validation.error_unique_names");
+  }
+  const missingMatch = error.match(/^(.+) links to a missing next step\.$/);
+  if (missingMatch) {
+    return t("pages.ai_agents.validation.error_missing_link", { step: missingMatch[1] });
+  }
+  return error;
+};
+
+/** Translate a raw validateFlow() warning string for display. */
+const translateValidationWarning = (warning: string, t: TranslateFn): string => {
+  const noMessage = warning.match(/^(.+) does not have a message yet\.$/);
+  if (noMessage) {
+    return t("pages.ai_agents.validation.warning_no_message", { step: noMessage[1] });
+  }
+  const noLabel = warning.match(/^(.+) has an option without a label\.$/);
+  if (noLabel) {
+    return t("pages.ai_agents.validation.warning_no_label", { step: noLabel[1] });
+  }
+  return warning;
 };
 
 const formatJson = (value: unknown) => JSON.stringify(value, null, 2);
@@ -554,8 +653,9 @@ const saveFlowDraft = (draft: FlowDraft) => {
 };
 
 export default function AIAgents() {
+  const { t } = useLanguage();
   const initialTemplate = builderTemplates[0];
-  const initialBuilder = createTemplateCopy(initialTemplate);
+  const initialBuilder = createTemplateCopy(initialTemplate, t);
   const savedDraft = loadFlowDraft();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -782,7 +882,7 @@ export default function AIAgents() {
     if (!res.ok) {
       const message =
         (data && (data.message || data.error)) ||
-        `Request failed (HTTP ${res.status})`;
+        t("pages.ai_agents.errors.request_failed" as any, { status: res.status });
       throw new Error(message);
     }
     return data;
@@ -799,7 +899,7 @@ export default function AIAgents() {
       setBackendResult(data);
       setActiveTab("flow");
     } catch (err) {
-      setBackendError(err instanceof Error ? err.message : "Failed to create agent");
+      setBackendError(err instanceof Error ? err.message : t("pages.ai_agents.errors.create_agent_failed" as any));
     } finally {
       setBackendBusy(false);
     }
@@ -825,7 +925,7 @@ export default function AIAgents() {
           createData?.data?.id ||
           createData?.id;
         if (typeof newId !== "string" || !newId.trim()) {
-          throw new Error("Could not obtain a copilot ID from the server. Fill in the Setup tab first.");
+          throw new Error(t("pages.ai_agents.errors.no_copilot_id" as any));
         }
         resolvedId = newId;
         setChatbotId(newId);
@@ -839,10 +939,10 @@ export default function AIAgents() {
       setSaveFlowSuccess(
         (typeof data === "object" && data !== null && "message" in data
           ? String((data as Record<string, unknown>).message)
-          : null) ?? "Flow saved successfully."
+          : null) ?? t("pages.ai_agents.success.flow_saved" as any)
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save flow";
+      const msg = err instanceof Error ? err.message : t("pages.ai_agents.errors.save_flow_failed" as any);
       setSaveFlowError(msg);
       setBackendError(msg);
     } finally {
@@ -854,7 +954,7 @@ export default function AIAgents() {
     setBackendError(null);
     setBackendResult(null);
     if (!chatbotId) {
-      setBackendError("Create the agent first to get a chatbot_id.");
+      setBackendError(t("pages.ai_agents.errors.create_agent_first" as any));
       return;
     }
     try {
@@ -865,7 +965,7 @@ export default function AIAgents() {
       });
       setBackendResult(data);
     } catch (err) {
-      setBackendError(err instanceof Error ? err.message : "Failed to simulate");
+      setBackendError(err instanceof Error ? err.message : t("pages.ai_agents.errors.simulate_failed" as any));
     } finally {
       setBackendBusy(false);
     }
@@ -876,11 +976,11 @@ export default function AIAgents() {
     setDeploySuccess(null);
     setBackendResult(null);
     if (!chatbotId) {
-      setBackendError("Create the copilot first to get a chatbot_id.");
+      setBackendError(t("pages.ai_agents.errors.create_copilot_first" as any));
       return;
     }
     if (!validation.isValid) {
-      setBackendError("Fix flow validation errors before deploying.");
+      setBackendError(t("pages.ai_agents.errors.fix_validation_before_deploy" as any));
       return;
     }
     try {
@@ -899,10 +999,10 @@ export default function AIAgents() {
       setDeploySuccess(
         (typeof data === "object" && data !== null && "message" in data
           ? String((data as Record<string, unknown>).message)
-          : null) ?? "Copilot deployed successfully."
+          : null) ?? t("pages.ai_agents.success.copilot_deployed" as any)
       );
     } catch (err) {
-      setBackendError(err instanceof Error ? err.message : "Failed to deploy");
+      setBackendError(err instanceof Error ? err.message : t("pages.ai_agents.errors.deploy_failed" as any));
     } finally {
       setBackendBusy(false);
     }
@@ -912,7 +1012,7 @@ export default function AIAgents() {
     setWaCredsError(null);
     setWaCredsResult(null);
     if (method === "PUT" && (!waPhoneNumberId.trim() || !waAccessToken.trim() || !waVerifyToken.trim())) {
-      setWaCredsError("Phone number ID, access token, and verify token are required.");
+      setWaCredsError(t("pages.ai_agents.errors.wa_creds_required" as any));
       return;
     }
     try {
@@ -951,7 +1051,7 @@ export default function AIAgents() {
       }
       setWaAccessToken(""); // clear sensitive field
     } catch (err) {
-      setWaCredsError(err instanceof Error ? err.message : "Failed to save WhatsApp credentials");
+      setWaCredsError(err instanceof Error ? err.message : t("pages.ai_agents.errors.wa_creds_save_failed" as any));
     } finally {
       setWaCredsBusy(false);
     }
@@ -983,13 +1083,13 @@ export default function AIAgents() {
       if (!res.ok) {
         const message =
           (data && (data.message || data.error)) ||
-          `Failed to submit (HTTP ${res.status})`;
+          t("pages.ai_agents.errors.submit_failed_http" as any, { status: res.status });
         throw new Error(message);
       }
 
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit request");
+      setSubmitError(err instanceof Error ? err.message : t("pages.ai_agents.errors.submit_failed" as any));
     } finally {
       setIsSubmitting(false);
     }
@@ -1039,7 +1139,7 @@ export default function AIAgents() {
     setAiGenerateSuccess(
       (typeof json === "object" && json !== null && "message" in json
         ? String((json as Record<string, unknown>).message)
-        : null) ?? "Copilot flow generated successfully."
+        : null) ?? t("pages.ai_agents.success.copilot_generated" as any)
     );
     setActiveTab("flow");
   };
@@ -1084,7 +1184,7 @@ export default function AIAgents() {
 
       if (!res.ok) {
         // Fall back to local template if API fails
-        const templateCopy = createTemplateCopy(template);
+        const templateCopy = createTemplateCopy(template, t);
         setAgentSetup(templateCopy.setup);
         setFlowSteps(templateCopy.flow);
         setSelectedStepId(templateCopy.flow[0]?.id ?? "");
@@ -1096,7 +1196,7 @@ export default function AIAgents() {
       applyGenerateResult(json, template.setup);
     } catch {
       // Silent fallback to local template
-      const templateCopy = createTemplateCopy(template);
+      const templateCopy = createTemplateCopy(template, t);
       setAgentSetup(templateCopy.setup);
       setFlowSteps(templateCopy.flow);
       setSelectedStepId(templateCopy.flow[0]?.id ?? "");
@@ -1145,7 +1245,7 @@ export default function AIAgents() {
 
       applyGenerateResult(json, undefined, aiGeneratePrompt.slice(0, 200));
     } catch (err) {
-      setBackendError(err instanceof Error ? err.message : "AI generation failed");
+      setBackendError(err instanceof Error ? err.message : t("pages.ai_agents.errors.ai_generation_failed" as any));
     } finally {
       setIsAiGenerating(false);
     }
@@ -1200,7 +1300,7 @@ export default function AIAgents() {
     const newStep: FlowStep = {
       id: `custom-step-${Date.now()}`,
       name: `STEP_${nextIndex}`,
-      message: "Write the next response for this AI agent step.",
+      message: t("pages.ai_agents.flow.new_step_default_message" as any),
       options: [],
     };
 
@@ -1224,7 +1324,7 @@ export default function AIAgents() {
                 ...step.options,
                 {
                   id: `option-${Date.now()}-${nextIndex}`,
-                  label: `Option ${nextIndex}`,
+                  label: t("pages.ai_agents.flow.new_option_default_label" as any, { index: nextIndex }),
                   nextStateId: defaultNextState,
                 },
               ],
@@ -1296,7 +1396,7 @@ export default function AIAgents() {
       setTimeout(() => {
         setChatHistory((prev) => [
           ...prev,
-          { from: "bot", text: "Please choose one of the options below.", time: nowTime() },
+          { from: "bot", text: t("pages.ai_agents.preview.choose_option_below" as any), time: nowTime() },
         ]);
       }, 400);
     }
@@ -1314,10 +1414,10 @@ export default function AIAgents() {
             {/* Header — iOS large title */}
             <header className="mb-4">
               <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
-                AI Copilots
+                {t("pages.ai_agents.header.title" as any)}
               </h1>
               <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
-                Build and deploy intelligent copilots for automated customer engagement
+                {t("pages.ai_agents.header.subtitle" as any)}
               </p>
             </header>
 
@@ -1331,23 +1431,22 @@ export default function AIAgents() {
                       <Bot className="w-[18px] h-[18px] text-primary" strokeWidth={1.8} />
                     </div>
                     <Badge className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary border border-primary/30 dark:border-primary/40 hover:bg-primary/10 dark:hover:bg-primary/20 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
-                      Early Access
+                      {t("pages.ai_agents.hero.badge_early_access" as any)}
                     </Badge>
                   </div>
 
                   <h2 className="text-[18px] font-semibold text-foreground dark:text-foreground tracking-tight mb-2">
-                    AI Copilots - in private beta
+                    {t("pages.ai_agents.hero.title" as any)}
                   </h2>
                   <p className="text-[13px] text-foreground/70 dark:text-foreground/60 leading-relaxed mb-6 max-w-[380px]">
-                    Intelligent copilots that handle conversations, qualify leads, and trigger
-                    SMS workflows - powered by LLMs and built into your existing contacts.
+                    {t("pages.ai_agents.hero.description" as any)}
                   </p>
 
                   <ul className="space-y-2.5">
                     {perks.map((perk) => (
                       <li key={perk} className="flex items-center gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-success dark:text-success flex-shrink-0" strokeWidth={2} />
-                        <span className="text-[13px] text-foreground/75 dark:text-foreground/65">{perk}</span>
+                        <span className="text-[13px] text-foreground/75 dark:text-foreground/65">{DEFAULT_PERK_KEYS[perk] ? t(DEFAULT_PERK_KEYS[perk] as any) : perk}</span>
                       </li>
                     ))}
                   </ul>
@@ -1361,23 +1460,23 @@ export default function AIAgents() {
                       <div className="w-11 h-11 rounded-full bg-success/10 dark:bg-success/20 border border-success/30 dark:border-success/40 flex items-center justify-center mb-3">
                         <CheckCircle2 className="w-5 h-5 text-success dark:text-success" strokeWidth={2} />
                       </div>
-                      <p className="text-[15px] font-semibold text-foreground dark:text-foreground mb-1">You're on the list</p>
+                      <p className="text-[15px] font-semibold text-foreground dark:text-foreground mb-1">{t("pages.ai_agents.waitlist.submitted_title" as any)}</p>
                       <p className="text-[13px] text-foreground/70 dark:text-foreground/60">
-                        We'll reach out as soon as early access opens.
+                        {t("pages.ai_agents.waitlist.submitted_desc" as any)}
                       </p>
                     </div>
                   ) : (
                     <>
                       <p className="text-[13px] font-semibold text-foreground dark:text-foreground mb-0.5">
-                        Join the waitlist
+                        {t("pages.ai_agents.waitlist.title" as any)}
                       </p>
                       <p className="text-[12px] text-foreground/50 dark:text-foreground/40 mb-1">
-                        Be among the first to test AI Copilots on SENDA.
+                        {t("pages.ai_agents.waitlist.subtitle" as any)}
                       </p>
 
                       <form onSubmit={handleSubmit} className="space-y-2.5">
                         <Input
-                          placeholder="Full name"
+                          placeholder={t("pages.ai_agents.waitlist.name_placeholder" as any)}
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
@@ -1386,21 +1485,21 @@ export default function AIAgents() {
                         <Input
                           type="email"
                           required
-                          placeholder="Work email"
+                          placeholder={t("pages.ai_agents.waitlist.email_placeholder" as any)}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="h-9 text-[13px] border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card placeholder:text-foreground/40 dark:placeholder:text-foreground/30"
                         />
                         <Input
                           type="tel"
-                          placeholder="Phone number (e.g. +255 689 726 060)"
+                          placeholder={t("pages.ai_agents.waitlist.phone_placeholder" as any)}
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           className="h-9 text-[13px] border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card placeholder:text-foreground/40 dark:placeholder:text-foreground/30"
                         />
                         <div>
                           <p className="text-[11px] font-medium text-foreground/70 dark:text-foreground/50 mb-1">
-                            KYC Document <span className="text-foreground/40 dark:text-foreground/30 font-normal">(National ID, Passport, or Business Registration)</span>
+                            {t("pages.ai_agents.waitlist.kyc_label" as any)} <span className="text-foreground/40 dark:text-foreground/30 font-normal">({t("pages.ai_agents.waitlist.kyc_hint" as any)})</span>
                           </p>
                           <Input
                             type="file"
@@ -1416,7 +1515,7 @@ export default function AIAgents() {
                           </div>
                         ) : null}
                         <Button type="submit" disabled={isSubmitting} className="w-full h-9 text-[13px] font-medium">
-                          {isSubmitting ? "Submitting..." : "Request Early Access"}
+                          {isSubmitting ? t("pages.ai_agents.waitlist.submitting" as any) : t("pages.ai_agents.waitlist.submit" as any)}
                         </Button>
                       </form>
                     </>
@@ -1427,7 +1526,7 @@ export default function AIAgents() {
 
             <div className="flex items-center gap-3 mb-3">
               <p className="text-[11px] font-semibold text-foreground/40 dark:text-foreground/30 uppercase tracking-widest whitespace-nowrap">
-                Feature Preview
+                {t("pages.ai_agents.features.section_label" as any)}
               </p>
               <div className="flex-1 h-px bg-border dark:bg-border/60" />
             </div>
@@ -1456,15 +1555,15 @@ export default function AIAgents() {
                           <Icon className={`w-4 h-4 ${feature.iconColor}`} strokeWidth={1.8} />
                         </div>
                         <Badge className="bg-emerald-600/10 dark:bg-emerald-400/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-400/40 hover:bg-emerald-600/15 dark:hover:bg-emerald-400/25 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                          Rapid Builder
+                          {t("pages.ai_agents.features.badge_rapid_builder" as any)}
                         </Badge>
                       </div>
                       <h3 className="text-[13px] font-semibold text-foreground dark:text-foreground mb-1.5 tracking-[-0.01em]">
-                        {feature.title}
+                        {t(feature.titleKey as any)}
                       </h3>
-                      <p className="text-[12px] text-foreground/70 dark:text-foreground/60 leading-[1.6]">{feature.desc}</p>
+                      <p className="text-[12px] text-foreground/70 dark:text-foreground/60 leading-[1.6]">{t(feature.descKey as any)}</p>
                       <div className="mt-4 flex items-center justify-between text-[12px] font-medium text-emerald-700">
-                        <span>{builderOpen ? "Hide builder" : "Open builder"}</span>
+                        <span>{builderOpen ? t("pages.ai_agents.features.hide_builder" as any) : t("pages.ai_agents.features.open_builder" as any)}</span>
                         <ArrowRight className={`w-3.5 h-3.5 transition-transform ${builderOpen ? "rotate-90" : ""}`} />
                       </div>
                     </button>
@@ -1480,9 +1579,9 @@ export default function AIAgents() {
                       <Icon className={`w-4 h-4 ${feature.iconColor}`} strokeWidth={1.8} />
                     </div>
                     <h3 className="text-[13px] font-semibold text-foreground dark:text-foreground mb-1.5 tracking-[-0.01em]">
-                      {feature.title}
+                      {t(feature.titleKey as any)}
                     </h3>
-                    <p className="text-[12px] text-foreground/70 dark:text-foreground/60 leading-[1.6]">{feature.desc}</p>
+                    <p className="text-[12px] text-foreground/70 dark:text-foreground/60 leading-[1.6]">{t(feature.descKey as any)}</p>
                   </div>
                 );
               })}
@@ -1498,17 +1597,17 @@ export default function AIAgents() {
                           <BrainCircuit className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" strokeWidth={1.8} />
                         </div>
                         <Badge className="bg-emerald-600/10 dark:bg-emerald-400/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-400/40 hover:bg-emerald-600/15 dark:hover:bg-emerald-400/25 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                          Rapid AI Builder
+                          {t("pages.ai_agents.builder.badge_rapid_ai_builder" as any)}
                         </Badge>
                         <Badge className="bg-muted/50 dark:bg-muted/30 text-foreground/70 dark:text-foreground/60 border border-border dark:border-border/60 hover:bg-muted/60 dark:hover:bg-muted/40 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-                          SMS-ready
+                          {t("pages.ai_agents.builder.badge_sms_ready" as any)}
                         </Badge>
                       </div>
                       <h3 className="text-sm font-semibold text-foreground dark:text-foreground tracking-tight leading-snug">
-                        Create a fast, structured AI copilot
+                        {t("pages.ai_agents.builder.header_title" as any)}
                       </h3>
                       <p className="mt-0.5 text-[9px] sm:text-[10px] leading-relaxed text-foreground/70 dark:text-foreground/60 max-w-xl">
-                        Every screen maps to a backend-ready flow state. Save, validate, simulate, deploy.
+                        {t("pages.ai_agents.builder.header_subtitle" as any)}
                       </p>
                     </div>
 
@@ -1526,11 +1625,16 @@ export default function AIAgents() {
                     {mobileWizardStep !== "template" && mobileWizardStep !== "generate" ? (() => {
                       const mSteps = ["setup", "flow", "preview", "deploy"];
                       const mIdx = Math.max(0, mSteps.indexOf(mobileWizardStep.startsWith("flow") ? "flow" : mobileWizardStep));
-                      const mLabels = ["Setup", "Flow Build", "Preview", "Deploy"];
+                      const mLabels = [
+                        t("pages.ai_agents.wizard.label_setup" as any),
+                        t("pages.ai_agents.wizard.label_flow_build" as any),
+                        t("pages.ai_agents.wizard.label_preview" as any),
+                        t("pages.ai_agents.wizard.label_deploy" as any),
+                      ];
                       return (
                         <div className="mb-4">
                           <div className="flex justify-between text-[9px] text-foreground/50 mb-1.5">
-                            <span>Step {mIdx + 1} of 4</span>
+                            <span>{t("pages.ai_agents.wizard.progress_label" as any, { step: mIdx + 1, total: 4 })}</span>
                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{mLabels[mIdx]}</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-muted/60 dark:bg-muted/40 overflow-hidden">
@@ -1544,30 +1648,30 @@ export default function AIAgents() {
                     {mobileWizardStep === "template" ? (
                       <div className="space-y-3 pb-4">
                         <div>
-                          <h3 className="text-base font-bold text-foreground">Choose your Copilot type</h3>
-                          <p className="text-xs text-foreground/60 mt-0.5">Pick a type — then describe your business with AI to personalise it.</p>
+                          <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.template.title" as any)}</h3>
+                          <p className="text-xs text-foreground/60 mt-0.5">{t("pages.ai_agents.wizard.template.subtitle" as any)}</p>
                         </div>
                         <div className="space-y-2.5">
                           {([
-                            { key: "sms-sales", label: "SMS Sales Copilot",  summary: "Qualify leads, guide users, and push the next buying action quickly.", Icon: Send,          cardCls: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-400/30",     ibg: "bg-blue-100 dark:bg-blue-400/20",     icl: "text-blue-700 dark:text-blue-400" },
-                            { key: "support",   label: "Support Copilot",    summary: "Resolve common issues first, then escalate with structured context.",   Icon: MessageCircle, cardCls: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-400/30", ibg: "bg-emerald-100 dark:bg-emerald-400/20", icl: "text-emerald-700 dark:text-emerald-400" },
-                            { key: "booking",   label: "Booking Copilot",    summary: "Let users check availability, place bookings, and get confirmations.", Icon: Zap,           cardCls: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-400/30",     ibg: "bg-amber-100 dark:bg-amber-400/20",     icl: "text-amber-700 dark:text-amber-400" },
-                          ] as Array<{ key: string; label: string; summary: string; Icon: React.ElementType; cardCls: string; ibg: string; icl: string }>).map((t) => (
+                            { key: "sms-sales", labelKey: "pages.ai_agents.templates.sms_sales.label",  summaryKey: "pages.ai_agents.templates.sms_sales.summary", Icon: Send,          cardCls: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-400/30",     ibg: "bg-blue-100 dark:bg-blue-400/20",     icl: "text-blue-700 dark:text-blue-400" },
+                            { key: "support",   labelKey: "pages.ai_agents.templates.support.label",    summaryKey: "pages.ai_agents.templates.support.summary",   Icon: MessageCircle, cardCls: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-400/30", ibg: "bg-emerald-100 dark:bg-emerald-400/20", icl: "text-emerald-700 dark:text-emerald-400" },
+                            { key: "booking",   labelKey: "pages.ai_agents.templates.booking.label",    summaryKey: "pages.ai_agents.templates.booking.summary_mobile", Icon: Zap,           cardCls: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-400/30",     ibg: "bg-amber-100 dark:bg-amber-400/20",     icl: "text-amber-700 dark:text-amber-400" },
+                          ] as Array<{ key: string; labelKey: string; summaryKey: string; Icon: React.ElementType; cardCls: string; ibg: string; icl: string }>).map((tpl) => (
                             <button
-                              key={t.key}
+                              key={tpl.key}
                               type="button"
-                              onClick={() => { setSelectedTemplateKey(t.key); setAiGenerateSuccess(null); setBackendError(null); setMobileWizardStep("generate"); }}
-                              className={`w-full text-left flex items-center gap-3.5 rounded-xl border p-3.5 transition-all active:scale-[0.97] ${t.cardCls}`}
+                              onClick={() => { setSelectedTemplateKey(tpl.key); setAiGenerateSuccess(null); setBackendError(null); setMobileWizardStep("generate"); }}
+                              className={`w-full text-left flex items-center gap-3.5 rounded-xl border p-3.5 transition-all active:scale-[0.97] ${tpl.cardCls}`}
                             >
-                              <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${t.ibg}`}>
-                                <t.Icon className={`w-5 h-5 ${t.icl}`} strokeWidth={1.8} />
+                              <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${tpl.ibg}`}>
+                                <tpl.Icon className={`w-5 h-5 ${tpl.icl}`} strokeWidth={1.8} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-foreground">{t.label}</p>
-                                <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">{t.summary}</p>
+                                <p className="text-sm font-bold text-foreground">{t(tpl.labelKey as any)}</p>
+                                <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">{t(tpl.summaryKey as any)}</p>
                               </div>
                               <div className="flex-shrink-0 flex items-center gap-1">
-                                <span className="text-[9px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-400/30 rounded-full px-2 py-0.5">Describe →</span>
+                                <span className="text-[9px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-400/30 rounded-full px-2 py-0.5">{t("pages.ai_agents.wizard.template.describe_cta" as any)}</span>
                               </div>
                             </button>
                           ))}
@@ -1579,57 +1683,57 @@ export default function AIAgents() {
                     {/* ── Screen 1: AI Generate ── */}
                     {mobileWizardStep === "generate" ? (() => {
                       const mGenTypes = [
-                        { key: "sms-sales", label: "SMS Sales",  activeCls: "bg-blue-600 border-blue-600 text-white",    inactiveCls: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-400/30 text-blue-700 dark:text-blue-400" },
-                        { key: "support",   label: "Support",    activeCls: "bg-emerald-600 border-emerald-600 text-white", inactiveCls: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-400" },
-                        { key: "booking",   label: "Booking",    activeCls: "bg-amber-500 border-amber-500 text-white",    inactiveCls: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-400/30 text-amber-700 dark:text-amber-400" },
-                      ] as Array<{ key: string; label: string; activeCls: string; inactiveCls: string }>;
-                      const mActiveType = mGenTypes.find((t) => t.key === selectedTemplateKey) ?? mGenTypes[0];
+                        { key: "sms-sales", labelKey: "pages.ai_agents.templates.sms_sales.short_label",  activeCls: "bg-blue-600 border-blue-600 text-white",    inactiveCls: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-400/30 text-blue-700 dark:text-blue-400" },
+                        { key: "support",   labelKey: "pages.ai_agents.templates.support.short_label",    activeCls: "bg-emerald-600 border-emerald-600 text-white", inactiveCls: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-400/30 text-emerald-700 dark:text-emerald-400" },
+                        { key: "booking",   labelKey: "pages.ai_agents.templates.booking.short_label",    activeCls: "bg-amber-500 border-amber-500 text-white",    inactiveCls: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-400/30 text-amber-700 dark:text-amber-400" },
+                      ] as Array<{ key: string; labelKey: string; activeCls: string; inactiveCls: string }>;
+                      const mActiveType = mGenTypes.find((tplType) => tplType.key === selectedTemplateKey) ?? mGenTypes[0];
                       return (
                         <div className="space-y-4 pb-4">
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setMobileWizardStep("template")} className="text-foreground/50 hover:text-foreground flex-shrink-0"><ChevronLeft className="w-5 h-5" /></button>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-base font-bold text-foreground">Describe your business</h3>
-                              <p className="text-xs text-foreground/60">AI tailors the flow to your description</p>
+                              <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.generate.title" as any)}</h3>
+                              <p className="text-xs text-foreground/60">{t("pages.ai_agents.wizard.generate.subtitle" as any)}</p>
                             </div>
                           </div>
 
                           {/* Type switcher pills */}
                           <div>
-                            <p className="text-[11px] font-semibold text-foreground/50 mb-2 uppercase tracking-wide">Copilot type</p>
+                            <p className="text-[11px] font-semibold text-foreground/50 mb-2 uppercase tracking-wide">{t("pages.ai_agents.wizard.generate.type_label" as any)}</p>
                             <div className="flex gap-2 flex-wrap">
-                              {mGenTypes.map((t) => (
+                              {mGenTypes.map((tplType) => (
                                 <button
-                                  key={t.key || "custom"}
+                                  key={tplType.key || "custom"}
                                   type="button"
-                                  onClick={() => setSelectedTemplateKey(t.key)}
-                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${selectedTemplateKey === t.key ? t.activeCls : t.inactiveCls}`}
+                                  onClick={() => setSelectedTemplateKey(tplType.key)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${selectedTemplateKey === tplType.key ? tplType.activeCls : tplType.inactiveCls}`}
                                 >
-                                  {t.label}
+                                  {t(tplType.labelKey as any)}
                                 </button>
                               ))}
                             </div>
-                            <p className="mt-1.5 text-[10px] text-foreground/50">Using <span className="font-semibold text-foreground/70">{mActiveType.label}</span> template as base — AI will personalise it from your description</p>
+                            <p className="mt-1.5 text-[10px] text-foreground/50">{t("pages.ai_agents.wizard.generate.using_template" as any, { template: t(mActiveType.labelKey as any) })}</p>
                           </div>
 
                           {/* Description textarea */}
                           <div className="space-y-1.5">
-                            <p className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wide">Your business description</p>
+                            <p className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wide">{t("pages.ai_agents.wizard.generate.description_label" as any)}</p>
                             <textarea
                               value={aiGeneratePrompt}
                               onChange={(e) => setAiGeneratePrompt(e.target.value)}
                               placeholder={selectedTemplateKey === "sms-sales"
-                                ? "e.g. I sell electronics online. Help customers browse products, get prices, place orders, and track deliveries via SMS."
+                                ? t("pages.ai_agents.wizard.generate.placeholder_sms_sales" as any)
                                 : selectedTemplateKey === "support"
-                                ? "e.g. I run a telecoms company. Help customers check account balances, report issues, and escalate unresolved problems 24/7."
+                                ? t("pages.ai_agents.wizard.generate.placeholder_support" as any)
                                 : selectedTemplateKey === "booking"
-                                ? "e.g. I own a salon. Let clients check availability, book appointments, get confirmations, and receive reminders via SMS."
-                                : "e.g. I run a pharmacy. Help customers check medicine availability, prices, and place orders via SMS. Handle inquiries 24/7."
+                                ? t("pages.ai_agents.wizard.generate.placeholder_booking" as any)
+                                : t("pages.ai_agents.wizard.generate.placeholder_default" as any)
                               }
                               rows={6}
                               className="w-full resize-none rounded-xl border border-violet-300 dark:border-violet-400/40 bg-card dark:bg-card/95 px-3 py-3 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-violet-400 leading-relaxed"
                             />
-                            <p className="text-[10px] text-foreground/40">You can switch the type above and generate again with the same description.</p>
+                            <p className="text-[10px] text-foreground/40">{t("pages.ai_agents.wizard.generate.switch_hint" as any)}</p>
                           </div>
 
                           {aiGenerateSuccess ? (
@@ -1637,7 +1741,7 @@ export default function AIAgents() {
                               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">{aiGenerateSuccess}</p>
-                                <p className="text-[10px] text-emerald-600/80 mt-0.5">Switch type and generate again, or continue to setup.</p>
+                                <p className="text-[10px] text-emerald-600/80 mt-0.5">{t("pages.ai_agents.wizard.generate.success_hint" as any)}</p>
                               </div>
                               <button type="button" onClick={() => setAiGenerateSuccess(null)} className="text-emerald-500 text-xs flex-shrink-0">✕</button>
                             </div>
@@ -1657,8 +1761,8 @@ export default function AIAgents() {
                               className="w-full h-11 text-sm font-semibold bg-violet-600 hover:bg-violet-700 gap-2"
                             >
                               {isAiGenerating
-                                ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />Generating…</>
-                                : <><Wand2 className="w-4 h-4" />{aiGenerateSuccess ? "Re-generate" : "Generate Copilot"}</>}
+                                ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />{t("pages.ai_agents.wizard.generate.generating" as any)}</>
+                                : <><Wand2 className="w-4 h-4" />{aiGenerateSuccess ? t("pages.ai_agents.wizard.generate.regenerate" as any) : t("pages.ai_agents.wizard.generate.generate_copilot" as any)}</>}
                             </Button>
                             <Button
                               type="button"
@@ -1669,7 +1773,7 @@ export default function AIAgents() {
                                 setMobileWizardStep("setup");
                               }}
                             >
-                              {aiGenerateSuccess ? "Continue to Setup →" : "Skip — load template as-is"}
+                              {aiGenerateSuccess ? t("pages.ai_agents.wizard.generate.continue_to_setup" as any) : t("pages.ai_agents.wizard.generate.skip_load_template" as any)}
                             </Button>
                           </div>
                         </div>
@@ -1682,87 +1786,87 @@ export default function AIAgents() {
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => setMobileWizardStep("template")} className="text-foreground/50 hover:text-foreground flex-shrink-0"><ChevronLeft className="w-5 h-5" /></button>
                           <div>
-                            <h3 className="text-base font-bold text-foreground">Configure your Copilot</h3>
-                            <p className="text-xs text-foreground/60">Step 1 of 4 — Essential settings</p>
+                            <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.setup.title" as any)}</h3>
+                            <p className="text-xs text-foreground/60">{t("pages.ai_agents.wizard.setup.subtitle" as any)}</p>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="col-span-2 space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Copilot Name</label>
-                            <Input value={agentSetup.name} onChange={(e) => updateSetup("name", e.target.value)} placeholder="e.g. Kuza Sales Copilot" className="h-9 text-xs" />
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.name_label" as any)}</label>
+                            <Input value={agentSetup.name} onChange={(e) => updateSetup("name", e.target.value)} placeholder={t("pages.ai_agents.setup.name_placeholder" as any)} className="h-9 text-xs" />
                           </div>
                           <div className="col-span-2 space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Business Name</label>
-                            <Input value={agentSetup.business} onChange={(e) => updateSetup("business", e.target.value)} placeholder="e.g. Mifumo Labs" className="h-9 text-xs" />
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.business_label" as any)}</label>
+                            <Input value={agentSetup.business} onChange={(e) => updateSetup("business", e.target.value)} placeholder={t("pages.ai_agents.setup.business_placeholder" as any)} className="h-9 text-xs" />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Industry</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.industry_label" as any)}</label>
                             <Select value={agentSetup.industry} onValueChange={(v) => updateSetup("industry", v)}>
-                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("pages.ai_agents.setup.select_placeholder" as any)} /></SelectTrigger>
                               <SelectContent>{industries.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Language</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.language_label" as any)}</label>
                             <Select value={agentSetup.language} onValueChange={(v) => updateSetup("language", v)}>
-                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("pages.ai_agents.setup.select_placeholder" as any)} /></SelectTrigger>
                               <SelectContent>{languages.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Tone</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.tone_label" as any)}</label>
                             <Select value={agentSetup.tone} onValueChange={(v) => updateSetup("tone", v)}>
-                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                              <SelectContent>{tones.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("pages.ai_agents.setup.select_placeholder" as any)} /></SelectTrigger>
+                              <SelectContent>{tones.map((tone) => <SelectItem key={tone} value={tone}>{tone}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Channel</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.channel_label" as any)}</label>
                             <Select value={agentSetup.channel} onValueChange={(v) => updateSetup("channel", v)}>
-                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("pages.ai_agents.setup.select_placeholder" as any)} /></SelectTrigger>
                               <SelectContent>{channels.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                           <div className="col-span-2 space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Intent & Purpose</label>
-                            <Textarea value={agentSetup.intent} onChange={(e) => updateSetup("intent", e.target.value)} placeholder="e.g. Qualify leads, guide users through purchasing…" className="min-h-[80px] text-xs resize-none" />
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.setup.intent_label" as any)}</label>
+                            <Textarea value={agentSetup.intent} onChange={(e) => updateSetup("intent", e.target.value)} placeholder={t("pages.ai_agents.setup.intent_placeholder_mobile" as any)} className="min-h-[80px] text-xs resize-none" />
                           </div>
                         </div>
                         {/* Create copilot CTA */}
                         <div className="rounded-xl border border-border dark:border-border/60 bg-muted/20 dark:bg-muted/10 px-3 py-2.5 space-y-2">
-                          <p className="text-[10px] text-foreground/50">Register this copilot with the backend so flow steps can be saved.</p>
+                          <p className="text-[10px] text-foreground/50">{t("pages.ai_agents.setup.register_hint" as any)}</p>
                           <Button className="w-full h-9 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={createChatbotInBackend} disabled={backendBusy}>
                             <Bot className="w-3.5 h-3.5" />
-                            {backendBusy ? "Registering…" : chatbotId ? `Registered — ${chatbotId.slice(0, 10)}…` : "Create Copilot"}
+                            {backendBusy ? t("pages.ai_agents.setup.registering" as any) : chatbotId ? t("pages.ai_agents.setup.registered_with_id" as any, { id: chatbotId.slice(0, 10) }) : t("pages.ai_agents.setup.create_copilot" as any)}
                           </Button>
                           {backendError ? <p className="text-[10px] text-rose-600 dark:text-rose-400">{backendError}</p> : null}
                         </div>
                         {/* WhatsApp credentials (conditional) */}
                         {agentSetup.channel.toLowerCase() === "whatsapp" ? (
                           <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-400/30 p-3 space-y-2">
-                            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" />WhatsApp Credentials</p>
-                            <input type="text" placeholder="Phone Number ID" value={waPhoneNumberId} onChange={(e) => setWaPhoneNumberId(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
-                            <div className="relative"><input type={showWaToken ? "text" : "password"} placeholder="Access Token" value={waAccessToken} onChange={(e) => setWaAccessToken(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 pr-8 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" /><button type="button" onClick={() => setShowWaToken((v) => !v)} tabIndex={-1} className="absolute inset-y-0 right-0 px-2 text-foreground/40 hover:text-foreground/70">{showWaToken ? <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> : <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>}</button></div>
-                            <div className="relative"><input type={showWaVerifyToken ? "text" : "password"} placeholder="Verify Token" value={waVerifyToken} onChange={(e) => setWaVerifyToken(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 pr-8 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" /><button type="button" onClick={() => setShowWaVerifyToken((v) => !v)} tabIndex={-1} className="absolute inset-y-0 right-0 px-2 text-foreground/40 hover:text-foreground/70">{showWaVerifyToken ? <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> : <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>}</button></div>
-                            <input type="text" placeholder="Graph API Base (optional)" value={waGraphApiBase} onChange={(e) => setWaGraphApiBase(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" />{t("pages.ai_agents.whatsapp.title" as any)}</p>
+                            <input type="text" placeholder={t("pages.ai_agents.whatsapp.phone_number_id" as any)} value={waPhoneNumberId} onChange={(e) => setWaPhoneNumberId(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <div className="relative"><input type={showWaToken ? "text" : "password"} placeholder={t("pages.ai_agents.whatsapp.access_token" as any)} value={waAccessToken} onChange={(e) => setWaAccessToken(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 pr-8 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" /><button type="button" onClick={() => setShowWaToken((v) => !v)} tabIndex={-1} className="absolute inset-y-0 right-0 px-2 text-foreground/40 hover:text-foreground/70">{showWaToken ? <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> : <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>}</button></div>
+                            <div className="relative"><input type={showWaVerifyToken ? "text" : "password"} placeholder={t("pages.ai_agents.whatsapp.verify_token" as any)} value={waVerifyToken} onChange={(e) => setWaVerifyToken(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 pr-8 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" /><button type="button" onClick={() => setShowWaVerifyToken((v) => !v)} tabIndex={-1} className="absolute inset-y-0 right-0 px-2 text-foreground/40 hover:text-foreground/70">{showWaVerifyToken ? <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> : <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>}</button></div>
+                            <input type="text" placeholder={t("pages.ai_agents.whatsapp.graph_api_base" as any)} value={waGraphApiBase} onChange={(e) => setWaGraphApiBase(e.target.value)} className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 px-2.5 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary" />
                             {waCredsError ? <p className="text-[10px] text-rose-600 dark:text-rose-400">{waCredsError}</p> : null}
                             {waCredsResult ? (
                               <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-white dark:bg-emerald-950/20 px-2.5 py-1.5 space-y-0.5">
-                                <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">✓ Credentials saved</p>
+                                <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">✓ {t("pages.ai_agents.whatsapp.credentials_saved" as any)}</p>
                                 {waCredsResult.callbackUrl ? (
                                   <div className="flex items-center gap-1">
-                                    <p className="text-[9px] text-foreground/60 break-all flex-1">Webhook: {waCredsResult.callbackUrl}</p>
-                                    <button type="button" onClick={() => void navigator.clipboard.writeText(waCredsResult?.callbackUrl ?? "")} className="flex-shrink-0 text-foreground/40 hover:text-foreground" title="Copy"><svg viewBox="0 0 16 16" fill="none" className="w-3 h-3"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 11V3a1 1 0 011-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
+                                    <p className="text-[9px] text-foreground/60 break-all flex-1">{t("pages.ai_agents.whatsapp.webhook_prefix" as any)}: {waCredsResult.callbackUrl}</p>
+                                    <button type="button" onClick={() => void navigator.clipboard.writeText(waCredsResult?.callbackUrl ?? "")} className="flex-shrink-0 text-foreground/40 hover:text-foreground" title={t("pages.ai_agents.whatsapp.copy" as any)}><svg viewBox="0 0 16 16" fill="none" className="w-3 h-3"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 11V3a1 1 0 011-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
                                   </div>
                                 ) : null}
                               </div>
                             ) : null}
-                            <Button type="button" onClick={() => void putWhatsAppCredentials("PUT")} disabled={waCredsBusy} className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700">{waCredsBusy ? "Saving…" : "Save Credentials"}</Button>
+                            <Button type="button" onClick={() => void putWhatsAppCredentials("PUT")} disabled={waCredsBusy} className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700">{waCredsBusy ? t("pages.ai_agents.whatsapp.saving" as any) : t("pages.ai_agents.whatsapp.save_credentials" as any)}</Button>
                           </div>
                         ) : null}
                         <div className="flex items-center justify-between pt-2 border-t border-border dark:border-border/60">
-                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("template")}><ChevronLeft className="w-3.5 h-3.5" />Back</Button>
-                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("flow"); setMobileWizardStep("flow"); setMobileFlowEditing(false); }}>Next: Flow<ChevronRight className="w-3.5 h-3.5" /></Button>
+                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("template")}><ChevronLeft className="w-3.5 h-3.5" />{t("pages.ai_agents.wizard.back" as any)}</Button>
+                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("flow"); setMobileWizardStep("flow"); setMobileFlowEditing(false); }}>{t("pages.ai_agents.wizard.next_flow" as any)}<ChevronRight className="w-3.5 h-3.5" /></Button>
                         </div>
                       </div>
                     ) : null}
@@ -1774,13 +1878,13 @@ export default function AIAgents() {
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setMobileWizardStep("setup")} className="text-foreground/50 hover:text-foreground"><ChevronLeft className="w-5 h-5" /></button>
                             <div>
-                              <h3 className="text-base font-bold text-foreground">Build your Flow</h3>
-                              <p className="text-xs text-foreground/60">Step 2 of 4 — {flowSteps.length} step{flowSteps.length !== 1 ? "s" : ""}</p>
+                              <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.flow.title" as any)}</h3>
+                              <p className="text-xs text-foreground/60">{t("pages.ai_agents.wizard.flow.subtitle" as any, { count: flowSteps.length })}</p>
                             </div>
                           </div>
                           <div className="flex gap-1.5">
-                            <Button variant="outline" size="sm" onClick={addStep} className="h-8 text-xs gap-1 px-2"><Plus className="w-3 h-3" />Add</Button>
-                            <Button size="sm" onClick={() => void saveFlowToBackend()} disabled={backendBusy || !chatbotId} className="h-8 text-xs gap-1 px-2"><Database className="w-3 h-3" />{backendBusy ? "…" : "Save"}</Button>
+                            <Button variant="outline" size="sm" onClick={addStep} className="h-8 text-xs gap-1 px-2"><Plus className="w-3 h-3" />{t("pages.ai_agents.wizard.add" as any)}</Button>
+                            <Button size="sm" onClick={() => void saveFlowToBackend()} disabled={backendBusy || !chatbotId} className="h-8 text-xs gap-1 px-2"><Database className="w-3 h-3" />{backendBusy ? "…" : t("pages.ai_agents.wizard.save" as any)}</Button>
                           </div>
                         </div>
                         {saveFlowSuccess ? (
@@ -1799,27 +1903,27 @@ export default function AIAgents() {
                                   <span className="text-xs font-semibold text-foreground truncate">{step.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
-                                  <span className="text-[9px] text-foreground/40">{step.options.length} path{step.options.length !== 1 ? "s" : ""}</span>
+                                  <span className="text-[9px] text-foreground/40">{t("pages.ai_agents.wizard.flow.path_count" as any, { count: step.options.length })}</span>
                                   <ChevronRight className="w-3.5 h-3.5 text-foreground/30" />
                                 </div>
                               </div>
-                              <p className="text-[11px] text-foreground/60 leading-snug line-clamp-2">{step.message || "No message yet"}</p>
+                              <p className="text-[11px] text-foreground/60 leading-snug line-clamp-2">{step.message || t("pages.ai_agents.wizard.flow.no_message_yet" as any)}</p>
                             </button>
                           ))}
                         </div>
                         {!validation.isValid ? (
                           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-400/30 px-3 py-2 space-y-0.5">
-                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">⚠ Fix before deploy</p>
-                            {validation.errors.map((e) => <p key={e} className="text-[10px] text-amber-700 dark:text-amber-400">• {e}</p>)}
+                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">⚠ {t("pages.ai_agents.wizard.flow.fix_before_deploy" as any)}</p>
+                            {validation.errors.map((e) => <p key={e} className="text-[10px] text-amber-700 dark:text-amber-400">• {translateValidationError(e, t)}</p>)}
                           </div>
                         ) : (
                           <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-400/30 px-3 py-2">
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">✓ Flow looks good — ready to preview</p>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">✓ {t("pages.ai_agents.wizard.flow.looks_good" as any)}</p>
                           </div>
                         )}
                         <div className="flex items-center justify-between pt-2 border-t border-border dark:border-border/60">
-                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("setup")}><ChevronLeft className="w-3.5 h-3.5" />Back</Button>
-                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("preview"); setMobileWizardStep("preview"); }}>Next: Preview<ChevronRight className="w-3.5 h-3.5" /></Button>
+                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("setup")}><ChevronLeft className="w-3.5 h-3.5" />{t("pages.ai_agents.wizard.back" as any)}</Button>
+                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("preview"); setMobileWizardStep("preview"); }}>{t("pages.ai_agents.wizard.next_preview" as any)}<ChevronRight className="w-3.5 h-3.5" /></Button>
                         </div>
                       </div>
                     ) : null}
@@ -1830,40 +1934,40 @@ export default function AIAgents() {
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => setMobileFlowEditing(false)} className="text-foreground/50 hover:text-foreground"><ChevronLeft className="w-5 h-5" /></button>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-bold text-foreground">Edit Step</h3>
+                            <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.edit_step.title" as any)}</h3>
                             <p className="text-[11px] text-foreground/60 font-mono truncate">{toStateKey(selectedStep.name)}</p>
                           </div>
-                          <button type="button" onClick={() => { setFlowSteps((cur) => cur.filter((s) => s.id !== selectedStep.id)); setMobileFlowEditing(false); }} className="text-rose-500 hover:text-rose-600 text-xs font-semibold flex-shrink-0">Delete</button>
+                          <button type="button" onClick={() => { setFlowSteps((cur) => cur.filter((s) => s.id !== selectedStep.id)); setMobileFlowEditing(false); }} className="text-rose-500 hover:text-rose-600 text-xs font-semibold flex-shrink-0">{t("pages.ai_agents.wizard.edit_step.delete" as any)}</button>
                         </div>
                         <div className="space-y-2.5">
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Step Name</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.wizard.edit_step.step_name" as any)}</label>
                             <Input value={selectedStep.name} onChange={(e) => updateSelectedStep("name", e.target.value)} className="h-9 text-xs" />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-foreground/70">Message text</label>
+                            <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.wizard.edit_step.message_text" as any)}</label>
                             <Textarea value={selectedStep.message} onChange={(e) => updateSelectedStep("message", e.target.value)} className="min-h-[90px] text-xs resize-none" />
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <label className="text-[11px] font-semibold text-foreground/70">Options / Paths</label>
-                              <Button variant="outline" size="sm" onClick={addOption} className="h-7 text-[10px] px-2 gap-1"><Plus className="w-2.5 h-2.5" />Add</Button>
+                              <label className="text-[11px] font-semibold text-foreground/70">{t("pages.ai_agents.wizard.edit_step.options_paths" as any)}</label>
+                              <Button variant="outline" size="sm" onClick={addOption} className="h-7 text-[10px] px-2 gap-1"><Plus className="w-2.5 h-2.5" />{t("pages.ai_agents.wizard.add" as any)}</Button>
                             </div>
                             <div className="space-y-2">
                               {selectedStep.options.map((opt) => (
                                 <div key={opt.id} className="rounded-xl border border-border dark:border-border/60 bg-muted/20 dark:bg-muted/10 p-2.5 space-y-1.5">
-                                  <Input value={opt.label} onChange={(e) => updateOption(opt.id, "label", e.target.value)} placeholder="Button label" className="h-8 text-xs" />
+                                  <Input value={opt.label} onChange={(e) => updateOption(opt.id, "label", e.target.value)} placeholder={t("pages.ai_agents.wizard.edit_step.button_label" as any)} className="h-8 text-xs" />
                                   <Select value={opt.nextStateId} onValueChange={(v) => updateOption(opt.id, "nextStateId", v)}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Goes to step…" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("pages.ai_agents.wizard.edit_step.goes_to_step" as any)} /></SelectTrigger>
                                     <SelectContent>{flowSteps.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                                   </Select>
                                 </div>
                               ))}
-                              {selectedStep.options.length === 0 ? <p className="text-[10px] text-foreground/40 text-center py-2 border border-dashed border-border dark:border-border/60 rounded-lg">No options yet — tap + Add</p> : null}
+                              {selectedStep.options.length === 0 ? <p className="text-[10px] text-foreground/40 text-center py-2 border border-dashed border-border dark:border-border/60 rounded-lg">{t("pages.ai_agents.wizard.edit_step.no_options_tap_add" as any)}</p> : null}
                             </div>
                           </div>
                         </div>
-                        <Button className="w-full h-10 text-sm bg-emerald-600 hover:bg-emerald-700" onClick={() => setMobileFlowEditing(false)}>Done Editing</Button>
+                        <Button className="w-full h-10 text-sm bg-emerald-600 hover:bg-emerald-700" onClick={() => setMobileFlowEditing(false)}>{t("pages.ai_agents.wizard.edit_step.done_editing" as any)}</Button>
                       </div>
                     ) : null}
 
@@ -1874,13 +1978,13 @@ export default function AIAgents() {
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => { setMobileWizardStep("flow"); setMobileFlowEditing(false); }} className="text-foreground/50 hover:text-foreground"><ChevronLeft className="w-5 h-5" /></button>
                             <div>
-                              <h3 className="text-base font-bold text-foreground">Preview</h3>
-                              <p className="text-xs text-foreground/60">Step 3 of 4 — Walk the flow</p>
+                              <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.preview.title" as any)}</h3>
+                              <p className="text-xs text-foreground/60">{t("pages.ai_agents.wizard.preview.subtitle" as any)}</p>
                             </div>
                           </div>
                           <div className="flex gap-1.5">
-                            <Button variant="outline" size="sm" onClick={resetPreview} className="h-8 text-xs px-2">↻ Reset</Button>
-                            <Button variant="outline" size="sm" onClick={simulateOnBackend} disabled={backendBusy || !chatbotId} className="h-8 text-xs px-2 gap-1"><Zap className="w-3 h-3" />{backendBusy ? "…" : "Sim"}</Button>
+                            <Button variant="outline" size="sm" onClick={resetPreview} className="h-8 text-xs px-2">↻ {t("pages.ai_agents.wizard.preview.reset" as any)}</Button>
+                            <Button variant="outline" size="sm" onClick={simulateOnBackend} disabled={backendBusy || !chatbotId} className="h-8 text-xs px-2 gap-1"><Zap className="w-3 h-3" />{backendBusy ? "…" : t("pages.ai_agents.wizard.preview.sim" as any)}</Button>
                           </div>
                         </div>
                         <div className="flex justify-center">
@@ -1891,11 +1995,11 @@ export default function AIAgents() {
                                 <div className="bg-[#f0f2f5] dark:bg-[#0b141a] px-4 pt-6 pb-1 flex items-center justify-between"><span className="text-[8px] text-gray-700 dark:text-white/70 font-medium">9:41</span><span className="text-[8px] text-gray-600 dark:text-white/70 font-medium">100%</span></div>
                                 <div className="bg-[#008069] dark:bg-[#202c33] px-3 py-2 flex items-center gap-2">
                                   <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"><Bot className="w-3.5 h-3.5 text-white" /></div>
-                                  <div className="flex-1 min-w-0"><p className="text-[10px] font-semibold text-white truncate">{agentSetup.name || "AI Copilot"}</p><p className="text-[8px] text-white/70">online</p></div>
+                                  <div className="flex-1 min-w-0"><p className="text-[10px] font-semibold text-white truncate">{agentSetup.name || t("pages.ai_agents.preview.default_copilot_name" as any)}</p><p className="text-[8px] text-white/70">{t("pages.ai_agents.preview.online" as any)}</p></div>
                                 </div>
                                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-2 py-2 space-y-2 bg-[#e9ddd4] dark:bg-[#0b141a]" style={{ scrollbarWidth: "none" }}>
                                   {chatHistory.length === 0 ? (
-                                    <div className="flex justify-center mt-6"><div className="bg-[#d8cfc8] dark:bg-[#182229] rounded-xl px-3 py-2"><p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">No flow steps yet</p></div></div>
+                                    <div className="flex justify-center mt-6"><div className="bg-[#d8cfc8] dark:bg-[#182229] rounded-xl px-3 py-2"><p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">{t("pages.ai_agents.preview.no_flow_steps_yet" as any)}</p></div></div>
                                   ) : chatHistory.map((msg, i) => (
                                     <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
                                       <div className={`max-w-[85%] rounded-2xl px-2.5 py-1.5 shadow-sm ${msg.from === "user" ? "bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none" : "bg-white dark:bg-[#202c33] rounded-tl-none"}`}><p className="text-[10px] text-[#111b21] dark:text-[#e9edef] leading-relaxed">{msg.text}</p></div>
@@ -1906,11 +2010,11 @@ export default function AIAgents() {
                                       {previewStep.options.map((opt) => { const ns = flowSteps.find((s) => s.id === opt.nextStateId); return (<button key={opt.id} type="button" onClick={() => handleOptionClick(opt.label, ns?.id)} className="w-full rounded-xl bg-white dark:bg-[#202c33] border border-[#25D366]/40 hover:border-[#25D366] px-2.5 py-1.5 text-left active:scale-[0.98]"><span className="text-[10px] font-medium text-[#008069] dark:text-[#25D366]">{opt.label}</span></button>); })}
                                     </div>
                                   ) : previewStep && previewStep.options.length === 0 && chatHistory.length > 0 ? (
-                                    <div className="flex justify-center pt-1"><div className="bg-[#d8cfc8] dark:bg-[#182229] rounded-full px-3 py-1"><p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">End of conversation</p></div></div>
+                                    <div className="flex justify-center pt-1"><div className="bg-[#d8cfc8] dark:bg-[#182229] rounded-full px-3 py-1"><p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">{t("pages.ai_agents.preview.end_of_conversation" as any)}</p></div></div>
                                   ) : null}
                                 </div>
                                 <div className="bg-[#f0f2f5] dark:bg-[#202c33] px-2 py-1.5 flex items-center gap-1.5">
-                                  <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-full px-3 py-1.5"><input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleUserSend(); }} placeholder="Type a message…" className="w-full bg-transparent text-[9px] text-[#111b21] dark:text-[#e9edef] placeholder:text-gray-400 outline-none" /></div>
+                                  <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-full px-3 py-1.5"><input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleUserSend(); }} placeholder={t("pages.ai_agents.preview.type_a_message" as any)} className="w-full bg-transparent text-[9px] text-[#111b21] dark:text-[#e9edef] placeholder:text-gray-400 outline-none" /></div>
                                   <button type="button" onClick={handleUserSend} className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center"><svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
                                 </div>
                               </div>
@@ -1919,8 +2023,8 @@ export default function AIAgents() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-border dark:border-border/60">
-                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => { setMobileWizardStep("flow"); setMobileFlowEditing(false); }}><ChevronLeft className="w-3.5 h-3.5" />Back</Button>
-                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("api"); setMobileWizardStep("deploy"); }}>Next: Deploy<ChevronRight className="w-3.5 h-3.5" /></Button>
+                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => { setMobileWizardStep("flow"); setMobileFlowEditing(false); }}><ChevronLeft className="w-3.5 h-3.5" />{t("pages.ai_agents.wizard.back" as any)}</Button>
+                          <Button size="sm" className="h-9 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleTabChange("api"); setMobileWizardStep("deploy"); }}>{t("pages.ai_agents.wizard.next_deploy" as any)}<ChevronRight className="w-3.5 h-3.5" /></Button>
                         </div>
                       </div>
                     ) : null}
@@ -1931,28 +2035,28 @@ export default function AIAgents() {
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => setMobileWizardStep("preview")} className="text-foreground/50 hover:text-foreground"><ChevronLeft className="w-5 h-5" /></button>
                           <div>
-                            <h3 className="text-base font-bold text-foreground">Deploy to Production</h3>
-                            <p className="text-xs text-foreground/60">Step 4 of 4 — Final checks</p>
+                            <h3 className="text-base font-bold text-foreground">{t("pages.ai_agents.wizard.deploy.title" as any)}</h3>
+                            <p className="text-xs text-foreground/60">{t("pages.ai_agents.wizard.deploy.subtitle" as any)}</p>
                           </div>
                         </div>
                         <div className="space-y-2">
                           {([
-                            { label: "START step present",   ok: !validation.errors.some((e) => e.includes("START")) },
-                            { label: "All state links valid", ok: !validation.errors.some((e) => e.includes("missing next step")) },
-                            { label: "Channel configured",   ok: !!agentSetup.channel },
-                            { label: "Copilot registered",   ok: !!chatbotId },
-                          ] as Array<{ label: string; ok: boolean }>).map((check) => (
-                            <div key={check.label} className={`flex items-center gap-2 rounded-xl border px-3.5 py-3 font-medium ${check.ok ? "border-emerald-200 dark:border-emerald-400/30 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400" : "border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400"}`}>
+                            { labelKey: "pages.ai_agents.wizard.deploy.check_start",   ok: !validation.errors.some((e) => e.includes("START")) },
+                            { labelKey: "pages.ai_agents.wizard.deploy.check_links", ok: !validation.errors.some((e) => e.includes("missing next step")) },
+                            { labelKey: "pages.ai_agents.wizard.deploy.check_channel",   ok: !!agentSetup.channel },
+                            { labelKey: "pages.ai_agents.wizard.deploy.check_registered",   ok: !!chatbotId },
+                          ] as Array<{ labelKey: string; ok: boolean }>).map((check) => (
+                            <div key={check.labelKey} className={`flex items-center gap-2 rounded-xl border px-3.5 py-3 font-medium ${check.ok ? "border-emerald-200 dark:border-emerald-400/30 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400" : "border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400"}`}>
                               <span className="text-sm">{check.ok ? "✓" : "✗"}</span>
-                              <span className="text-sm">{check.label}</span>
+                              <span className="text-sm">{t(check.labelKey as any)}</span>
                             </div>
                           ))}
                         </div>
                         {validation.warnings.length > 0 ? (
-                          <div className="space-y-1">{validation.warnings.map((w) => <div key={w} className="rounded-xl border border-amber-200 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/20 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-400">⚠ {w}</div>)}</div>
+                          <div className="space-y-1">{validation.warnings.map((w) => <div key={w} className="rounded-xl border border-amber-200 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/20 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-400">⚠ {translateValidationWarning(w, t)}</div>)}</div>
                         ) : null}
                         <Button className="w-full h-12 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700" onClick={deployToBackend} disabled={backendBusy || !chatbotId || !validation.isValid}>
-                          {backendBusy ? "Deploying…" : "Deploy to Production"}
+                          {backendBusy ? t("pages.ai_agents.wizard.deploy.deploying" as any) : t("pages.ai_agents.wizard.deploy.deploy_to_production" as any)}
                         </Button>
                         {deploySuccess ? (
                           <div className="flex items-start gap-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2.5">
@@ -1968,8 +2072,8 @@ export default function AIAgents() {
                           </div>
                         ) : null}
                         <div className="flex items-center justify-between pt-2 border-t border-border dark:border-border/60">
-                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("preview")}><ChevronLeft className="w-3.5 h-3.5" />Back</Button>
-                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("template")}><span>Start over</span></Button>
+                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("preview")}><ChevronLeft className="w-3.5 h-3.5" />{t("pages.ai_agents.wizard.back" as any)}</Button>
+                          <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={() => setMobileWizardStep("template")}><span>{t("pages.ai_agents.wizard.deploy.start_over" as any)}</span></Button>
                         </div>
                       </div>
                     ) : null}
@@ -1984,19 +2088,19 @@ export default function AIAgents() {
                   <div className="mb-3 rounded-xl border border-violet-300 dark:border-violet-400/40 bg-gradient-to-br from-violet-600/10 dark:from-violet-400/20 to-indigo-600/10 dark:to-indigo-400/20 p-4 sm:p-5 md:p-6">
                     <div className="mb-3 sm:mb-4 flex items-start gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm md:text-base font-bold text-violet-700 dark:text-violet-300 leading-tight">Generate with AI</p>
-                        <p className="text-[10px] sm:text-xs md:text-sm text-violet-600 dark:text-violet-300 leading-snug">Describe your business and let AI build the copilot flow.</p>
+                        <p className="text-xs sm:text-sm md:text-base font-bold text-violet-700 dark:text-violet-300 leading-tight">{t("pages.ai_agents.builder.generate.title" as any)}</p>
+                        <p className="text-[10px] sm:text-xs md:text-sm text-violet-600 dark:text-violet-300 leading-snug">{t("pages.ai_agents.builder.generate.subtitle" as any)}</p>
                       </div>
                     </div>
                     <textarea
                       value={aiGeneratePrompt}
                       onChange={(e) => setAiGeneratePrompt(e.target.value)}
-                      placeholder="e.g. I run a pharmacy. Help customers check medicine availability, prices, and place orders via SMS. My copilot should handle inquiries 24/7."
+                      placeholder={t("pages.ai_agents.wizard.generate.placeholder_default" as any)}
                       rows={4}
                       className="w-full resize-none rounded-lg border border-violet-300 dark:border-violet-400/40 bg-card dark:bg-card/95 px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm md:text-base text-foreground dark:text-foreground placeholder:text-foreground/40 dark:placeholder:text-foreground/30 focus:border-violet-400 dark:focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400/50 dark:focus:ring-violet-400/30 leading-relaxed"
                     />
                     <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
-                      <p className="text-[10px] sm:text-xs md:text-sm text-violet-600 dark:text-violet-300 leading-snug">AI will pre-fill your copilot setup, flow steps, and responses.</p>
+                      <p className="text-[10px] sm:text-xs md:text-sm text-violet-600 dark:text-violet-300 leading-snug">{t("pages.ai_agents.builder.generate.prefill_hint" as any)}</p>
                       <button
                         type="button"
                         disabled={!aiGeneratePrompt.trim() || isAiGenerating}
@@ -2006,10 +2110,10 @@ export default function AIAgents() {
                         {isAiGenerating ? (
                           <>
                             <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                            Generating…
+                            {t("pages.ai_agents.wizard.generate.generating" as any)}
                           </>
                         ) : (
-                          "Generate"
+                          t("pages.ai_agents.builder.generate.generate_button" as any)
                         )}
                       </button>
                     </div>
@@ -2021,7 +2125,7 @@ export default function AIAgents() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{aiGenerateSuccess}</p>
-                          <p className="text-[9px] sm:text-[10px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">Setup fields and flow have been updated. You can edit them before saving.</p>
+                          <p className="text-[9px] sm:text-[10px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">{t("pages.ai_agents.builder.generate.success_hint" as any)}</p>
                         </div>
                         <button type="button" onClick={() => setAiGenerateSuccess(null)} className="text-emerald-500 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex-shrink-0">
                           <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -2035,7 +2139,7 @@ export default function AIAgents() {
                           <svg viewBox="0 0 12 12" fill="none" className="w-2 h-2"><path d="M6 3v3.5M6 9v.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] sm:text-[11px] font-semibold text-rose-700 dark:text-rose-400">Generation failed</p>
+                          <p className="text-[10px] sm:text-[11px] font-semibold text-rose-700 dark:text-rose-400">{t("pages.ai_agents.builder.generate.generation_failed" as any)}</p>
                           <p className="text-[9px] sm:text-[10px] text-rose-600/80 dark:text-rose-400/70 mt-0.5">{backendError}</p>
                         </div>
                         <button type="button" onClick={() => setBackendError(null)} className="text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 flex-shrink-0">
@@ -2048,8 +2152,8 @@ export default function AIAgents() {
                   {/* ── Quick Templates ───────────────────────────────── */}
                   <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/40 dark:text-foreground/30">Quick Templates</p>
-                      <p className="mt-0.5 text-[10px] sm:text-[11px] text-foreground/70 dark:text-foreground/60">Start from a proven use case, then fine-tune.</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/40 dark:text-foreground/30">{t("pages.ai_agents.builder.quick_templates.title" as any)}</p>
+                      <p className="mt-0.5 text-[10px] sm:text-[11px] text-foreground/70 dark:text-foreground/60">{t("pages.ai_agents.builder.quick_templates.subtitle" as any)}</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {builderTemplates.map((template) => (
@@ -2063,7 +2167,7 @@ export default function AIAgents() {
                               : "border-border dark:border-border/60 bg-card dark:bg-card/95 text-foreground/70 dark:text-foreground/60 hover:border-border/80 dark:hover:border-border/80 hover:text-foreground dark:hover:text-foreground"
                           }`}
                         >
-                          {template.label}
+                          {t(template.labelKey as any)}
                         </button>
                       ))}
                     </div>
@@ -2073,10 +2177,10 @@ export default function AIAgents() {
                     {/* ── Step indicator ── */}
                     {(() => {
                       const steps = [
-                        { key: "setup", label: "Setup" },
-                        { key: "flow", label: "Flow" },
-                        { key: "preview", label: "Preview" },
-                        { key: "api", label: "API" },
+                        { key: "setup", label: t("pages.ai_agents.tabs.setup" as any) },
+                        { key: "flow", label: t("pages.ai_agents.tabs.flow" as any) },
+                        { key: "preview", label: t("pages.ai_agents.tabs.preview" as any) },
+                        { key: "api", label: t("pages.ai_agents.tabs.api" as any) },
                       ];
                       const currentIdx = steps.findIndex((s) => s.key === activeTab);
                       return (
@@ -2124,42 +2228,42 @@ export default function AIAgents() {
                         <div className="rounded-xl bg-muted/30 dark:bg-muted/15 p-3 sm:p-4">
                           <div className="mb-3 flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground tracking-tight">Copilot Configuration</h4>
+                              <h4 className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground tracking-tight">{t("pages.ai_agents.setup.configuration_title" as any)}</h4>
                               <p className="mt-0.5 text-[10px] sm:text-[11px] text-foreground/60 dark:text-foreground/50 leading-relaxed">
-                                Define context, intent, and the core job your AI copilot handles.
+                                {t("pages.ai_agents.setup.configuration_subtitle" as any)}
                               </p>
                             </div>
                             <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50 text-[9px] font-semibold px-2 py-0.5 rounded-md shrink-0">
-                              Step 1 of 4
+                              {t("pages.ai_agents.setup.step_badge" as any)}
                             </Badge>
                           </div>
 
                           <div className="mb-3 pb-3 border-b border-border dark:border-border/60">
-                            <h5 className="text-[9px] sm:text-[10px] font-bold text-foreground/40 dark:text-foreground/30 uppercase tracking-widest mb-2">Essential Information</h5>
+                            <h5 className="text-[9px] sm:text-[10px] font-bold text-foreground/40 dark:text-foreground/30 uppercase tracking-widest mb-2">{t("pages.ai_agents.setup.essential_info" as any)}</h5>
                             <div className="grid gap-2 sm:grid-cols-2">
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Copilot Name</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.name_label" as any)}</label>
                                 <Input
                                   value={agentSetup.name}
                                   onChange={(e) => updateSetup("name", e.target.value)}
-                                  placeholder="e.g., Kuza Sales Copilot"
+                                  placeholder={t("pages.ai_agents.setup.name_placeholder" as any)}
                                   className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Business Name</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.business_label" as any)}</label>
                                 <Input
                                   value={agentSetup.business}
                                   onChange={(e) => updateSetup("business", e.target.value)}
-                                  placeholder="e.g., Mifumo Labs"
+                                  placeholder={t("pages.ai_agents.setup.business_placeholder" as any)}
                                   className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Industry</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.industry_label" as any)}</label>
                                 <Select value={agentSetup.industry} onValueChange={(value) => updateSetup("industry", value)}>
                                   <SelectTrigger className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20">
-                                    <SelectValue placeholder="Select industry" />
+                                    <SelectValue placeholder={t("pages.ai_agents.setup.industry_placeholder" as any)} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {industries.map((industry) => (
@@ -2169,10 +2273,10 @@ export default function AIAgents() {
                                 </Select>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Language</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.language_label" as any)}</label>
                                 <Select value={agentSetup.language} onValueChange={(value) => updateSetup("language", value)}>
                                   <SelectTrigger className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20">
-                                    <SelectValue placeholder="Select language" />
+                                    <SelectValue placeholder={t("pages.ai_agents.setup.language_placeholder" as any)} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {languages.map((language) => (
@@ -2182,10 +2286,10 @@ export default function AIAgents() {
                                 </Select>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Tone</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.tone_label" as any)}</label>
                                 <Select value={agentSetup.tone} onValueChange={(value) => updateSetup("tone", value)}>
                                   <SelectTrigger className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20">
-                                    <SelectValue placeholder="Select tone" />
+                                    <SelectValue placeholder={t("pages.ai_agents.setup.tone_placeholder" as any)} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {tones.map((tone) => (
@@ -2195,10 +2299,10 @@ export default function AIAgents() {
                                 </Select>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Channel</label>
+                                <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.channel_label" as any)}</label>
                                 <Select value={agentSetup.channel} onValueChange={(value) => updateSetup("channel", value)}>
                                   <SelectTrigger className="h-8 text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20">
-                                    <SelectValue placeholder="Select channel" />
+                                    <SelectValue placeholder={t("pages.ai_agents.setup.channel_placeholder" as any)} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {channels.map((channel) => (
@@ -2211,11 +2315,11 @@ export default function AIAgents() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">Copilot Intent & Purpose</label>
+                            <label className="text-[10px] sm:text-[11px] font-semibold text-foreground/80 dark:text-foreground/70">{t("pages.ai_agents.setup.intent_label" as any)}</label>
                             <Textarea
                               value={agentSetup.intent}
                               onChange={(e) => updateSetup("intent", e.target.value)}
-                              placeholder="e.g., Qualify leads, guide users through purchasing, collect contact information..."
+                              placeholder={t("pages.ai_agents.setup.intent_placeholder_desktop" as any)}
                               className="min-h-[80px] sm:min-h-[100px] text-[11px] sm:text-xs border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus-visible:bg-card dark:focus-visible:bg-card resize-none"
                             />
                           </div>
@@ -2227,14 +2331,14 @@ export default function AIAgents() {
                           <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 p-3">
                             <div className="flex items-center gap-2 mb-2">
                               <div>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-widest">Design Principles</p>
-                                <p className="text-[8px] sm:text-[9px] text-emerald-700">Guide every decision</p>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-widest">{t("pages.ai_agents.setup.design_principles.title" as any)}</p>
+                                <p className="text-[8px] sm:text-[9px] text-emerald-700">{t("pages.ai_agents.setup.design_principles.subtitle" as any)}</p>
                               </div>
                             </div>
                             <ul className="space-y-1.5 text-[9px] sm:text-[10px] leading-relaxed text-emerald-900/90">
-                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>Simple, conversational language for non-technical users.</li>
-                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>Maps every screen to backend-ready flow states.</li>
-                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>SMS deployment in mind from step one.</li>
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>{t("pages.ai_agents.setup.design_principles.point1" as any)}</li>
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>{t("pages.ai_agents.setup.design_principles.point2" as any)}</li>
+                              <li className="flex items-start gap-1.5"><span className="text-emerald-600 font-bold flex-shrink-0">•</span>{t("pages.ai_agents.setup.design_principles.point3" as any)}</li>
                             </ul>
                           </div>
 
@@ -2245,8 +2349,8 @@ export default function AIAgents() {
                                 <Bot className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" strokeWidth={1.8} />
                               </div>
                               <div>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">Copilot Creation</p>
-                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Ready to deploy</p>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.setup.copilot_creation.title" as any)}</p>
+                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.setup.copilot_creation.subtitle" as any)}</p>
                               </div>
                             </div>
                             {/* Hidden from regular users — dev-only payload preview */}
@@ -2261,17 +2365,17 @@ export default function AIAgents() {
                               disabled={backendBusy}
                             >
                               <Bot className="w-3 h-3" />
-                              {backendBusy ? "Creating..." : "Create Copilot Now"}
+                              {backendBusy ? t("pages.ai_agents.setup.creating" as any) : t("pages.ai_agents.setup.create_copilot_now" as any)}
                               <ArrowRight className="w-3 h-3 ml-auto" />
                             </Button>
                             <div className="mt-2 space-y-1.5">
                               <div className="rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2.5 py-2">
-                                <p className="text-[8px] font-medium text-foreground/40 dark:text-foreground/30 uppercase tracking-widest">Chatbot ID</p>
-                                <p className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground break-all">{chatbotId ?? "Pending creation"}</p>
+                                <p className="text-[8px] font-medium text-foreground/40 dark:text-foreground/30 uppercase tracking-widest">{t("pages.ai_agents.setup.chatbot_id" as any)}</p>
+                                <p className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground break-all">{chatbotId ?? t("pages.ai_agents.setup.pending_creation" as any)}</p>
                               </div>
                               {backendError ? (
                                 <div className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-2">
-                                  <p className="text-[8px] font-semibold text-rose-700 uppercase tracking-widest">Error</p>
+                                  <p className="text-[8px] font-semibold text-rose-700 uppercase tracking-widest">{t("pages.ai_agents.setup.error_label" as any)}</p>
                                   <p className="mt-0.5 text-[9px] text-rose-600">{backendError}</p>
                                 </div>
                               ) : null}
@@ -2286,14 +2390,14 @@ export default function AIAgents() {
                                   <MessageCircle className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" strokeWidth={2} />
                                 </div>
                                 <div>
-                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">WhatsApp Credentials</p>
-                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Step 6 — Meta Cloud API</p>
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.whatsapp.title" as any)}</p>
+                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.whatsapp.step_meta_cloud_api" as any)}</p>
                                 </div>
                               </div>
                               <div className="space-y-2">
                                 <input
                                   type="text"
-                                  placeholder="Phone Number ID (WHATSAPP_PHONE_NUMBER_ID)"
+                                  placeholder={t("pages.ai_agents.whatsapp.phone_number_id_full" as any)}
                                   value={waPhoneNumberId}
                                   onChange={(e) => setWaPhoneNumberId(e.target.value)}
                                   className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2.5 text-[11px] text-foreground dark:text-foreground placeholder:text-foreground/40 dark:placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -2301,7 +2405,7 @@ export default function AIAgents() {
                                 <div className="relative">
                                   <input
                                     type={showWaToken ? "text" : "password"}
-                                    placeholder="Access Token (WHATSAPP_ACCESS_TOKEN)"
+                                    placeholder={t("pages.ai_agents.whatsapp.access_token_full" as any)}
                                     value={waAccessToken}
                                     onChange={(e) => setWaAccessToken(e.target.value)}
                                     className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2.5 pr-8 text-[11px] text-foreground dark:text-foreground placeholder:text-foreground/40 dark:placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -2311,7 +2415,7 @@ export default function AIAgents() {
                                     onClick={() => setShowWaToken((v) => !v)}
                                     className="absolute inset-y-0 right-0 flex items-center px-2 text-foreground/40 hover:text-foreground/70"
                                     tabIndex={-1}
-                                    aria-label={showWaToken ? "Hide token" : "Show token"}
+                                    aria-label={showWaToken ? t("pages.ai_agents.whatsapp.hide_token" as any) : t("pages.ai_agents.whatsapp.show_token" as any)}
                                   >
                                     {showWaToken ? (
                                       <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -2323,7 +2427,7 @@ export default function AIAgents() {
                                 <div className="relative">
                                   <input
                                     type={showWaVerifyToken ? "text" : "password"}
-                                    placeholder="Verify Token (VERIFY_TOKEN)"
+                                    placeholder={t("pages.ai_agents.whatsapp.verify_token_full" as any)}
                                     value={waVerifyToken}
                                     onChange={(e) => setWaVerifyToken(e.target.value)}
                                     className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2.5 pr-8 text-[11px] text-foreground dark:text-foreground placeholder:text-foreground/40 dark:placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -2333,7 +2437,7 @@ export default function AIAgents() {
                                     onClick={() => setShowWaVerifyToken((v) => !v)}
                                     className="absolute inset-y-0 right-0 flex items-center px-2 text-foreground/40 hover:text-foreground/70"
                                     tabIndex={-1}
-                                    aria-label={showWaVerifyToken ? "Hide verify token" : "Show verify token"}
+                                    aria-label={showWaVerifyToken ? t("pages.ai_agents.whatsapp.hide_verify_token" as any) : t("pages.ai_agents.whatsapp.show_verify_token" as any)}
                                   >
                                     {showWaVerifyToken ? (
                                       <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="3" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -2344,7 +2448,7 @@ export default function AIAgents() {
                                 </div>
                                 <input
                                   type="text"
-                                  placeholder="Graph API Base (optional)"
+                                  placeholder={t("pages.ai_agents.whatsapp.graph_api_base" as any)}
                                   value={waGraphApiBase}
                                   onChange={(e) => setWaGraphApiBase(e.target.value)}
                                   className="w-full h-8 rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2.5 text-[11px] text-foreground dark:text-foreground placeholder:text-foreground/40 dark:placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -2356,16 +2460,16 @@ export default function AIAgents() {
                                 ) : null}
                                 {waCredsResult ? (
                                   <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-1.5 space-y-0.5">
-                                    <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">✓ Credentials saved</p>
-                                    {waCredsResult.hint ? <p className="text-[9px] text-foreground/60 dark:text-foreground/50">Token: configured ({waCredsResult.hint})</p> : null}
+                                    <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400">✓ {t("pages.ai_agents.whatsapp.credentials_saved" as any)}</p>
+                                    {waCredsResult.hint ? <p className="text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.whatsapp.token_configured" as any, { hint: waCredsResult.hint })}</p> : null}
                                     {waCredsResult.callbackUrl ? (
                                       <div className="flex items-center gap-1">
-                                        <p className="text-[9px] text-foreground/60 dark:text-foreground/50 break-all flex-1">Webhook: {waCredsResult.callbackUrl}</p>
+                                        <p className="text-[9px] text-foreground/60 dark:text-foreground/50 break-all flex-1">{t("pages.ai_agents.whatsapp.webhook_prefix" as any)}: {waCredsResult.callbackUrl}</p>
                                         <button
                                           type="button"
                                           onClick={() => void navigator.clipboard.writeText(waCredsResult.callbackUrl)}
                                           className="flex-shrink-0 text-foreground/40 hover:text-foreground"
-                                          title="Copy webhook URL"
+                                          title={t("pages.ai_agents.whatsapp.copy_webhook_url" as any)}
                                         >
                                           <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 11V3a1 1 0 011-1h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                                         </button>
@@ -2380,7 +2484,7 @@ export default function AIAgents() {
                                     disabled={waCredsBusy}
                                     className="flex-1 h-8 text-[10px] font-semibold bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600"
                                   >
-                                    {waCredsBusy ? "Saving..." : "Save Credentials"}
+                                    {waCredsBusy ? t("pages.ai_agents.whatsapp.saving_full" as any) : t("pages.ai_agents.whatsapp.save_credentials" as any)}
                                   </Button>
                                   <Button
                                     type="button"
@@ -2388,9 +2492,9 @@ export default function AIAgents() {
                                     onClick={() => void putWhatsAppCredentials("PATCH")}
                                     disabled={waCredsBusy}
                                     className="h-8 text-[10px] font-semibold px-3"
-                                    title="PATCH — partial update"
+                                    title={t("pages.ai_agents.whatsapp.patch_partial_update" as any)}
                                   >
-                                    Patch
+                                    {t("pages.ai_agents.whatsapp.patch" as any)}
                                   </Button>
                                 </div>
                               </div>
@@ -2403,17 +2507,20 @@ export default function AIAgents() {
                                 <ChevronRight className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" strokeWidth={2} />
                               </div>
                               <div>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">Template Overview</p>
-                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Ready to build your flow</p>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.setup.template_overview.title" as any)}</p>
+                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.setup.template_overview.subtitle" as any)}</p>
                               </div>
                             </div>
                             <div className="bg-muted/30 dark:bg-muted/20 rounded-lg border border-border dark:border-border/60 p-2.5 mb-2">
                               <p className="text-[9px] sm:text-[10px] text-foreground/80 dark:text-foreground/70 leading-relaxed">
-                                {builderTemplates.find((template) => template.key === selectedTemplateKey)?.summary}
+                                {(() => {
+                                  const tpl = builderTemplates.find((template) => template.key === selectedTemplateKey);
+                                  return tpl ? t(tpl.summaryKey as any) : "";
+                                })()}
                               </p>
                             </div>
                             <Button className="w-full gap-2 h-8 text-[10px] sm:text-xs font-semibold bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600" onClick={() => handleTabChange("flow")}>
-                              Proceed to Flow Builder
+                              {t("pages.ai_agents.setup.template_overview.proceed_button" as any)}
                               <ChevronRight className="w-3 h-3 ml-auto" />
                             </Button>
                           </div>
@@ -2421,9 +2528,9 @@ export default function AIAgents() {
                       </div>
                       {/* Step 1 nav footer */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border dark:border-border/60">
-                        <span className="text-[10px] text-foreground/40 font-medium">Step 1 of 4 — Setup</span>
+                        <span className="text-[10px] text-foreground/40 font-medium">{t("pages.ai_agents.footer.step1_setup" as any)}</span>
                         <Button onClick={() => handleTabChange("flow")} size="sm" className="h-8 text-[11px] gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                          Next: Flow Builder <ChevronRight className="w-3.5 h-3.5" />
+                          {t("pages.ai_agents.footer.next_flow_builder" as any)} <ChevronRight className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </TabsContent>
@@ -2434,14 +2541,14 @@ export default function AIAgents() {
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <div className="flex items-center gap-2">
                               <div>
-                                <p className="text-[10px] sm:text-xs font-bold text-foreground dark:text-foreground uppercase tracking-widest">Flow Management</p>
-                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Design each step of your copilot's conversation</p>
+                                <p className="text-[10px] sm:text-xs font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.flow.management_title" as any)}</p>
+                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.management_subtitle" as any)}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <Button variant="outline" onClick={addStep} className="h-7 text-[9px] sm:text-[10px] px-2 gap-1">
                                 <Plus className="w-3 h-3" />
-                                Add
+                                {t("pages.ai_agents.wizard.add" as any)}
                               </Button>
                               <Button
                                 variant="outline"
@@ -2450,10 +2557,10 @@ export default function AIAgents() {
                                 className="h-7 text-[9px] sm:text-[10px] px-2 gap-1"
                               >
                                 <Database className="w-3 h-3" />
-                                {backendBusy ? "Saving…" : "Save"}
+                                {backendBusy ? t("pages.ai_agents.flow.saving" as any) : t("pages.ai_agents.wizard.save" as any)}
                               </Button>
                               <Button onClick={() => setActiveTab("preview")} className="h-7 text-[9px] sm:text-[10px] px-2 gap-1">
-                                Preview
+                                {t("pages.ai_agents.tabs.preview" as any)}
                                 <ArrowRight className="w-3 h-3" />
                               </Button>
                             </div>
@@ -2499,7 +2606,7 @@ export default function AIAgents() {
                                 </p>
                                 <div className="mt-2 flex items-center gap-1 text-[8px] sm:text-[9px] md:text-[10px] text-foreground/50 dark:text-foreground/40 flex-shrink-0">
                                   <GitBranch className="w-3 h-3 flex-shrink-0" />
-                                  <span>{step.options.length} path{step.options.length === 1 ? "" : "s"}</span>
+                                  <span>{t("pages.ai_agents.wizard.flow.path_count" as any, { count: step.options.length })}</span>
                                 </div>
                               </button>
                             ))}
@@ -2512,7 +2619,7 @@ export default function AIAgents() {
                               <>
                                 <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
                                   <div className="space-y-1">
-                                    <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">Step name</label>
+                                    <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">{t("pages.ai_agents.flow.step_name" as any)}</label>
                                     <Input
                                       value={selectedStep.name}
                                       onChange={(e) => updateSelectedStep("name", e.target.value)}
@@ -2520,7 +2627,7 @@ export default function AIAgents() {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">State key</label>
+                                    <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">{t("pages.ai_agents.flow.state_key" as any)}</label>
                                     <div className="h-7 sm:h-8 rounded-md border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 px-2 flex items-center text-[9px] sm:text-[10px] font-medium text-foreground/60 dark:text-foreground/50">
                                       {toStateKey(selectedStep.name)}
                                     </div>
@@ -2528,7 +2635,7 @@ export default function AIAgents() {
                                 </div>
 
                                 <div className="mt-2 space-y-1">
-                                  <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">Message</label>
+                                  <label className="text-[9px] sm:text-[10px] font-medium text-foreground/70 dark:text-foreground/60">{t("pages.ai_agents.flow.message" as any)}</label>
                                   <Textarea
                                     value={selectedStep.message}
                                     onChange={(e) => updateSelectedStep("message", e.target.value)}
@@ -2539,11 +2646,11 @@ export default function AIAgents() {
                                 <div className="mt-2.5">
                                   <div className="mb-2 flex items-center justify-between gap-2">
                                     <div>
-                                      <p className="text-[10px] sm:text-[11px] font-semibold text-foreground dark:text-foreground">Options builder</p>
-                                      <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Map each button to the next step.</p>
+                                      <p className="text-[10px] sm:text-[11px] font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.flow.options_builder" as any)}</p>
+                                      <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.options_builder_hint" as any)}</p>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={addOption} className="h-6 text-[8px] sm:text-[9px] px-2 gap-1">
-                                      <Plus className="w-2.5 h-2.5" />Add
+                                      <Plus className="w-2.5 h-2.5" />{t("pages.ai_agents.wizard.add" as any)}
                                     </Button>
                                   </div>
 
@@ -2552,7 +2659,7 @@ export default function AIAgents() {
                                       <div key={option.id} className="rounded-lg border border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 p-2">
                                         <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
                                           <div className="space-y-1">
-                                            <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">Button label</label>
+                                            <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.button_label" as any)}</label>
                                             <Input
                                               value={option.label}
                                               onChange={(e) => updateOption(option.id, "label", e.target.value)}
@@ -2560,10 +2667,10 @@ export default function AIAgents() {
                                             />
                                           </div>
                                           <div className="space-y-1">
-                                            <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">Goes to</label>
+                                            <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.goes_to" as any)}</label>
                                             <Select value={option.nextStateId} onValueChange={(value) => updateOption(option.id, "nextStateId", value)}>
                                               <SelectTrigger className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95">
-                                                <SelectValue placeholder="Choose next step" />
+                                                <SelectValue placeholder={t("pages.ai_agents.flow.choose_next_step" as any)} />
                                               </SelectTrigger>
                                               <SelectContent>
                                                 {flowSteps.map((step) => (
@@ -2577,7 +2684,7 @@ export default function AIAgents() {
                                     ))}
                                     {selectedStep.options.length === 0 ? (
                                       <div className="rounded-lg border border-dashed border-border dark:border-border/60 px-3 py-3 text-[9px] sm:text-[10px] text-foreground/40 dark:text-foreground/30">
-                                        No options yet. Add transitions to keep the flow moving.
+                                        {t("pages.ai_agents.flow.no_options_hint" as any)}
                                       </div>
                                     ) : null}
                                   </div>
@@ -2586,38 +2693,38 @@ export default function AIAgents() {
                                 <div className="mt-2.5 rounded-xl border border-border dark:border-border/60 p-2.5 sm:p-3 bg-muted/20 dark:bg-muted/10">
                                   <div className="mb-2 flex items-center gap-1.5">
                                     <Globe className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" strokeWidth={1.8} />
-                                    <p className="text-[10px] sm:text-[11px] font-semibold text-foreground dark:text-foreground">Advanced actions</p>
+                                    <p className="text-[10px] sm:text-[11px] font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.flow.advanced_actions" as any)}</p>
                                   </div>
 
                                   <div className="grid gap-2 sm:grid-cols-2">
                                     <div className="space-y-1">
-                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">List header</label>
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.list_header" as any)}</label>
                                       <Input value={selectedStep.listHeader ?? ""} onChange={(e) => updateSelectedStep("listHeader", e.target.value)} className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                     </div>
                                     <div className="space-y-1">
-                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">List button</label>
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.list_button" as any)}</label>
                                       <Input value={selectedStep.listButton ?? ""} onChange={(e) => updateSelectedStep("listButton", e.target.value)} className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                     </div>
                                   </div>
 
                                   <div className="mt-2 space-y-1">
-                                    <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">List body</label>
+                                    <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.list_body" as any)}</label>
                                     <Textarea value={selectedStep.listBody ?? ""} onChange={(e) => updateSelectedStep("listBody", e.target.value)} className="min-h-[60px] text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus-visible:bg-card dark:focus-visible:bg-card resize-none" />
                                   </div>
 
                                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                     <div className="space-y-1">
-                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">URL button label</label>
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.url_button_label" as any)}</label>
                                       <Input value={selectedStep.urlLabel ?? ""} onChange={(e) => updateSelectedStep("urlLabel", e.target.value)} className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                     </div>
                                     <div className="space-y-1">
-                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">URL</label>
+                                      <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.url" as any)}</label>
                                       <Input value={selectedStep.url ?? ""} onChange={(e) => updateSelectedStep("url", e.target.value)} className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                     </div>
                                   </div>
 
                                   <div className="mt-2 space-y-1">
-                                    <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">API endpoint</label>
+                                    <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.api_endpoint" as any)}</label>
                                     <Input value={selectedStep.apiEndpoint ?? ""} onChange={(e) => updateSelectedStep("apiEndpoint", e.target.value)} placeholder="/early-access/ai-copilots/{id}/webhooks/action/" className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                   </div>
                                 </div>
@@ -2651,8 +2758,8 @@ export default function AIAgents() {
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" strokeWidth={2} />
                                 </div>
                                 <div>
-                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">Validation</p>
-                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Check before deploying</p>
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.validation.title" as any)}</p>
+                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.validation.subtitle" as any)}</p>
                                 </div>
                               </div>
                               <div className="space-y-1.5">
@@ -2661,16 +2768,16 @@ export default function AIAgents() {
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                     : "border-rose-200 bg-rose-50 text-rose-700"
                                 }`}>
-                                  {validation.isValid ? "✓ Flow valid — ready to save/deploy" : "✗ Flow needs attention"}
+                                  {validation.isValid ? `✓ ${t("pages.ai_agents.validation.flow_valid" as any)}` : `✗ ${t("pages.ai_agents.validation.flow_needs_attention" as any)}`}
                                 </div>
                                 {validation.errors.map((error) => (
-                                  <div key={error} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[9px] text-rose-700 font-medium">✗ {error}</div>
+                                  <div key={error} className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[9px] text-rose-700 font-medium">✗ {translateValidationError(error, t)}</div>
                                 ))}
                                 {validation.warnings.map((warning) => (
-                                  <div key={warning} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[9px] text-amber-700 font-medium">⚠️ {warning}</div>
+                                  <div key={warning} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[9px] text-amber-700 font-medium">⚠️ {translateValidationWarning(warning, t)}</div>
                                 ))}
                                 {validation.errors.length === 0 && validation.warnings.length === 0 ? (
-                                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] text-emerald-700 font-medium">No issues. All systems ready.</div>
+                                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] text-emerald-700 font-medium">{t("pages.ai_agents.validation.no_issues" as any)}</div>
                                 ) : null}
                               </div>
                             </div>
@@ -2680,11 +2787,11 @@ export default function AIAgents() {
                       {/* Step 2 nav footer */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border dark:border-border/60">
                         <Button variant="outline" onClick={() => handleTabChange("setup")} size="sm" className="h-8 text-[11px] gap-1.5">
-                          <ChevronLeft className="w-3.5 h-3.5" /> Back
+                          <ChevronLeft className="w-3.5 h-3.5" /> {t("pages.ai_agents.wizard.back" as any)}
                         </Button>
-                        <span className="text-[10px] text-foreground/40 font-medium">Step 2 of 4 — Flow</span>
+                        <span className="text-[10px] text-foreground/40 font-medium">{t("pages.ai_agents.footer.step2_flow" as any)}</span>
                         <Button onClick={() => handleTabChange("preview")} size="sm" className="h-8 text-[11px] gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                          Next: Preview <ChevronRight className="w-3.5 h-3.5" />
+                          {t("pages.ai_agents.footer.next_preview" as any)} <ChevronRight className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </TabsContent>
@@ -2700,12 +2807,12 @@ export default function AIAgents() {
                                 <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" strokeWidth={1.8} />
                               </div>
                               <div>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">Live WhatsApp Preview</p>
-                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Tap an option to walk the flow</p>
+                                <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.preview.live_whatsapp_preview" as any)}</p>
+                                <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.preview.tap_option_hint" as any)}</p>
                               </div>
                             </div>
                             <div className="flex gap-1.5">
-                              <Button variant="outline" onClick={resetPreview} className="h-7 text-[9px] sm:text-[10px] px-2">↻ Reset</Button>
+                              <Button variant="outline" onClick={resetPreview} className="h-7 text-[9px] sm:text-[10px] px-2">↻ {t("pages.ai_agents.wizard.preview.reset" as any)}</Button>
                               <Button
                                 variant="outline"
                                 onClick={simulateOnBackend}
@@ -2713,7 +2820,7 @@ export default function AIAgents() {
                                 className="h-7 text-[9px] sm:text-[10px] px-2 gap-1"
                               >
                                 <Zap className="w-3 h-3" />
-                                {backendBusy ? "..." : "Simulate"}
+                                {backendBusy ? "..." : t("pages.ai_agents.preview.simulate" as any)}
                               </Button>
                             </div>
                           </div>
@@ -2753,8 +2860,8 @@ export default function AIAgents() {
                                     <Bot className="w-4 h-4 text-white" strokeWidth={1.8} />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold text-white truncate leading-tight">{agentSetup.name || "AI Copilot"}</p>
-                                    <p className="text-[9px] text-white/70 dark:text-[#8696a0] leading-tight">online</p>
+                                    <p className="text-[11px] font-semibold text-white truncate leading-tight">{agentSetup.name || t("pages.ai_agents.preview.default_copilot_name" as any)}</p>
+                                    <p className="text-[9px] text-white/70 dark:text-[#8696a0] leading-tight">{t("pages.ai_agents.preview.online" as any)}</p>
                                   </div>
                                   <div className="flex gap-3">
                                     <svg className="w-4 h-4 text-white/90 dark:text-[#aebac1]" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" /></svg>
@@ -2767,7 +2874,7 @@ export default function AIAgents() {
                                   {chatHistory.length === 0 ? (
                                     <div className="flex justify-center mt-8">
                                       <div className="bg-[#d8cfc8] dark:bg-[#182229] border border-[#c5bdb6] dark:border-[#2a3942] rounded-2xl px-4 py-3 text-center">
-                                        <p className="text-[10px] text-[#54656f] dark:text-[#8696a0]">No flow steps yet</p>
+                                        <p className="text-[10px] text-[#54656f] dark:text-[#8696a0]">{t("pages.ai_agents.preview.no_flow_steps_yet" as any)}</p>
                                       </div>
                                     </div>
                                   ) : (
@@ -2810,7 +2917,7 @@ export default function AIAgents() {
                                   ) : previewStep && previewStep.options.length === 0 && chatHistory.length > 0 ? (
                                     <div className="flex justify-center pt-1">
                                       <div className="bg-[#d8cfc8] dark:bg-[#182229] border border-[#c5bdb6] dark:border-[#2a3942] rounded-full px-3 py-1">
-                                        <p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">End of conversation</p>
+                                        <p className="text-[9px] text-[#54656f] dark:text-[#8696a0]">{t("pages.ai_agents.preview.end_of_conversation" as any)}</p>
                                       </div>
                                     </div>
                                   ) : null}
@@ -2825,7 +2932,7 @@ export default function AIAgents() {
                                       value={userInput}
                                       onChange={(e) => setUserInput(e.target.value)}
                                       onKeyDown={(e) => { if (e.key === "Enter") handleUserSend(); }}
-                                      placeholder="Type a message…"
+                                      placeholder={t("pages.ai_agents.preview.type_a_message" as any)}
                                       className="w-full bg-transparent text-[9px] sm:text-[10px] text-[#111b21] dark:text-[#e9edef] placeholder:text-gray-400 dark:placeholder:text-[#8696a0] outline-none"
                                     />
                                   </div>
@@ -2866,24 +2973,24 @@ export default function AIAgents() {
                           <div className="rounded-xl bg-emerald-50/40 dark:bg-emerald-900/10 p-4 sm:p-5 md:p-6">
                             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
                               <div>
-                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">Pre-Deploy Checks</p>
-                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">Everything ready?</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pages.ai_agents.deploy.pre_deploy_checks" as any)}</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.deploy.everything_ready" as any)}</p>
                               </div>
                             </div>
                             <div className="space-y-2.5 sm:space-y-3">
                               <div className="rounded-lg sm:rounded-xl border border-border dark:border-border/60 bg-card/50 dark:bg-card/50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-foreground dark:text-foreground">
                                 <span className={validation.errors.some((error) => error.includes("START")) ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}>
-                                  {validation.errors.some((error) => error.includes("START")) ? "✗" : "✓"} START Step
+                                  {validation.errors.some((error) => error.includes("START")) ? "✗" : "✓"} {t("pages.ai_agents.deploy.check_start_step" as any)}
                                 </span>
                               </div>
                               <div className="rounded-lg sm:rounded-xl border border-border dark:border-border/60 bg-card/50 dark:bg-card/50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-foreground dark:text-foreground">
                                 <span className={validation.errors.some((error) => error.includes("missing next step")) ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}>
-                                  {validation.errors.some((error) => error.includes("missing next step")) ? "✗" : "✓"} State Links
+                                  {validation.errors.some((error) => error.includes("missing next step")) ? "✗" : "✓"} {t("pages.ai_agents.deploy.check_state_links" as any)}
                                 </span>
                               </div>
                               <div className="rounded-lg sm:rounded-xl border border-border dark:border-border/60 bg-card/50 dark:bg-card/50 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-foreground dark:text-foreground">
                                 <span className={!agentSetup.channel ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}>
-                                  {agentSetup.channel ? "✓" : "⚠"} Channel: {agentSetup.channel || "Need to select"}
+                                  {agentSetup.channel ? "✓" : "⚠"} {t("pages.ai_agents.deploy.channel_prefix" as any)}: {agentSetup.channel || t("pages.ai_agents.deploy.need_to_select" as any)}
                                 </span>
                               </div>
                             </div>
@@ -2893,7 +3000,7 @@ export default function AIAgents() {
                               disabled={backendBusy || !chatbotId || !validation.isValid}
                             >
 
-                              {backendBusy ? "Saving & Deploying..." : "Deploy to Production"}
+                              {backendBusy ? t("pages.ai_agents.deploy.saving_deploying" as any) : t("pages.ai_agents.wizard.deploy.deploy_to_production" as any)}
                               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-auto" />
                             </Button>
                             {deploySuccess ? (
@@ -2939,11 +3046,11 @@ export default function AIAgents() {
                       {/* Step 3 nav footer */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border dark:border-border/60">
                         <Button variant="outline" onClick={() => handleTabChange("flow")} size="sm" className="h-8 text-[11px] gap-1.5">
-                          <ChevronLeft className="w-3.5 h-3.5" /> Back
+                          <ChevronLeft className="w-3.5 h-3.5" /> {t("pages.ai_agents.wizard.back" as any)}
                         </Button>
-                        <span className="text-[10px] text-foreground/40 font-medium">Step 3 of 4 — Preview</span>
+                        <span className="text-[10px] text-foreground/40 font-medium">{t("pages.ai_agents.footer.step3_preview" as any)}</span>
                         <Button onClick={() => handleTabChange("api")} size="sm" className="h-8 text-[11px] gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                          Next: API <ChevronRight className="w-3.5 h-3.5" />
+                          {t("pages.ai_agents.footer.next_api" as any)} <ChevronRight className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </TabsContent>
@@ -2956,11 +3063,11 @@ export default function AIAgents() {
                         <div className="rounded-xl bg-indigo-50/30 dark:bg-indigo-900/10 p-2.5 min-w-0 w-full">
                           <div className="mb-2 flex items-center justify-between gap-1.5">
                             <div className="min-w-0">
-                              <h4 className="text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-wide truncate">API Endpoints</h4>
-                              <p className="text-[8px] text-foreground/50 dark:text-foreground/40 mt-0.5">Full lifecycle: create → save → simulate → deploy</p>
+                              <h4 className="text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-wide truncate">{t("pages.ai_agents.api.endpoints_title" as any)}</h4>
+                              <p className="text-[8px] text-foreground/50 dark:text-foreground/40 mt-0.5">{t("pages.ai_agents.api.endpoints_subtitle" as any)}</p>
                             </div>
                             <Badge className="bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-400/40 hover:bg-indigo-600/10 dark:hover:bg-indigo-400/20 text-[7px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                              Step 4
+                              {t("pages.ai_agents.api.step4_badge" as any)}
                             </Badge>
                           </div>
                           <div className="space-y-1">
@@ -2972,7 +3079,7 @@ export default function AIAgents() {
                                   </span>
                                   <code className="text-[8px] font-semibold text-foreground dark:text-foreground font-mono break-all leading-tight min-w-0">{endpoint.path}</code>
                                 </div>
-                                <p className="mt-1 text-[7px] leading-snug text-foreground/50 dark:text-foreground/40 pl-0">{endpoint.description}</p>
+                                <p className="mt-1 text-[7px] leading-snug text-foreground/50 dark:text-foreground/40 pl-0">{t(endpoint.descKey as any)}</p>
                               </div>
                             ))}
                           </div>
@@ -2985,8 +3092,8 @@ export default function AIAgents() {
                           <div className="rounded-xl bg-violet-50/30 dark:bg-violet-900/10 p-2.5 min-w-0">
                             <div className="flex items-center gap-1.5 mb-2">
                               <div className="min-w-0">
-                                <p className="text-[9px] font-bold text-foreground dark:text-foreground uppercase tracking-wider leading-none truncate">Connect to Backend</p>
-                                <p className="text-[7px] text-foreground/50 dark:text-foreground/40 mt-0.5">One tap per action</p>
+                                <p className="text-[9px] font-bold text-foreground dark:text-foreground uppercase tracking-wider leading-none truncate">{t("pages.ai_agents.api.connect_to_backend" as any)}</p>
+                                <p className="text-[7px] text-foreground/50 dark:text-foreground/40 mt-0.5">{t("pages.ai_agents.api.one_tap_per_action" as any)}</p>
                               </div>
                             </div>
                             {/* 2×2 button grid — each button constrained to half width */}
@@ -2998,7 +3105,7 @@ export default function AIAgents() {
                                 className="flex items-center justify-center gap-1 h-7 w-full rounded-lg bg-violet-600 dark:bg-violet-600 hover:bg-violet-700 dark:hover:bg-violet-700 text-white text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
                                 <Plus className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Create</span>
+                                <span className="truncate">{t("pages.ai_agents.api.action_create" as any)}</span>
                               </button>
                               <button
                                 type="button"
@@ -3007,7 +3114,7 @@ export default function AIAgents() {
                                 className="flex items-center justify-center gap-1 h-7 w-full rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 hover:bg-card/80 dark:hover:bg-card/80 text-foreground dark:text-foreground text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
                                 <Database className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Save</span>
+                                <span className="truncate">{t("pages.ai_agents.wizard.save" as any)}</span>
                               </button>
                               <button
                                 type="button"
@@ -3016,7 +3123,7 @@ export default function AIAgents() {
                                 className="flex items-center justify-center gap-1 h-7 w-full rounded-lg border border-border dark:border-border/60 bg-card dark:bg-card/95 hover:bg-card/80 dark:hover:bg-card/80 text-foreground dark:text-foreground text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
                                 <Zap className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Simulate</span>
+                                <span className="truncate">{t("pages.ai_agents.api.action_simulate" as any)}</span>
                               </button>
                               <button
                                 type="button"
@@ -3025,11 +3132,11 @@ export default function AIAgents() {
                                 className="flex items-center justify-center gap-1 h-7 w-full rounded-lg bg-emerald-600 dark:bg-emerald-600 hover:bg-emerald-700 dark:hover:bg-emerald-700 text-white text-[9px] font-semibold disabled:opacity-50 truncate px-1.5"
                               >
                                 <Zap className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Deploy</span>
+                                <span className="truncate">{t("pages.ai_agents.api.action_deploy" as any)}</span>
                               </button>
                             </div>
                             <div className="mt-1.5 rounded-lg border border-border dark:border-border/60 bg-card/60 dark:bg-card/60 px-2 py-1 text-[7px] text-foreground/60 dark:text-foreground/50 font-medium flex items-center gap-1 min-w-0">
-                              <span className="flex-shrink-0 text-foreground/40 dark:text-foreground/30">ID:</span>
+                              <span className="flex-shrink-0 text-foreground/40 dark:text-foreground/30">{t("pages.ai_agents.api.id_label" as any)}</span>
                               <span className="font-bold text-foreground dark:text-foreground font-mono truncate">{chatbotId ?? "—"}</span>
                             </div>
                             {backendError ? (
@@ -3045,9 +3152,9 @@ export default function AIAgents() {
                               <div className="w-6 h-6 rounded-lg bg-slate-600/10 dark:bg-slate-400/20 flex items-center justify-center flex-shrink-0">
                                 <Code className="w-3 h-3 text-slate-700 dark:text-slate-400" strokeWidth={2} />
                               </div>
-                              <p className="text-[9px] font-bold text-foreground dark:text-foreground uppercase tracking-wider">Frontend → Backend</p>
+                              <p className="text-[9px] font-bold text-foreground dark:text-foreground uppercase tracking-wider">{t("pages.ai_agents.api.frontend_to_backend" as any)}</p>
                             </div>
-                            <p className="text-[7px] text-foreground/50 dark:text-foreground/40 mb-1.5">Contract schema on each request.</p>
+                            <p className="text-[7px] text-foreground/50 dark:text-foreground/40 mb-1.5">{t("pages.ai_agents.api.contract_schema_hint" as any)}</p>
                             <div className="bg-muted dark:bg-muted/70 rounded-lg p-1.5 border border-border dark:border-border/40 w-full min-w-0 overflow-hidden">
                               <pre className="max-h-[140px] overflow-auto text-[6.5px] sm:text-[7px] leading-[1.4] text-foreground dark:text-foreground font-mono w-full whitespace-pre-wrap break-all">
                                 {formatJson(deployPayload)}
@@ -3059,12 +3166,12 @@ export default function AIAgents() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
                             <div className="rounded-xl bg-emerald-50/50 dark:bg-emerald-900/15 p-2.5 min-w-0">
                               <div className="flex items-center gap-1.5 mb-1.5">
-                                <p className="text-[8px] font-bold text-emerald-900 dark:text-emerald-100 uppercase tracking-wider">Why It Works</p>
+                                <p className="text-[8px] font-bold text-emerald-900 dark:text-emerald-100 uppercase tracking-wider">{t("pages.ai_agents.api.why_it_works" as any)}</p>
                               </div>
                               <ul className="space-y-1 text-[7px] leading-snug text-emerald-900 dark:text-emerald-100/80">
-                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>Business intent, not canned replies</span></li>
-                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>Executable flow states instantly</span></li>
-                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>SMS, actions, links in one flow</span></li>
+                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>{t("pages.ai_agents.api.why_point1" as any)}</span></li>
+                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>{t("pages.ai_agents.api.why_point2" as any)}</span></li>
+                                <li className="flex gap-1"><span className="font-bold text-emerald-700 dark:text-emerald-400 flex-shrink-0">→</span><span>{t("pages.ai_agents.api.why_point3" as any)}</span></li>
                               </ul>
                             </div>
 
@@ -3073,16 +3180,16 @@ export default function AIAgents() {
                                 <div className="w-5 h-5 rounded-md bg-slate-600/10 dark:bg-slate-400/20 flex items-center justify-center flex-shrink-0">
                                   <ChevronRight className="w-2.5 h-2.5 text-slate-700 dark:text-slate-400" strokeWidth={2} />
                                 </div>
-                                <p className="text-[8px] font-bold text-foreground dark:text-foreground uppercase tracking-wider">Save Sequence</p>
+                                <p className="text-[8px] font-bold text-foreground dark:text-foreground uppercase tracking-wider">{t("pages.ai_agents.api.save_sequence" as any)}</p>
                               </div>
                               <div className="flex items-center flex-wrap gap-1 text-[7px]">
-                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">Create</span>
+                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.api.action_create" as any)}</span>
                                 <ChevronRight className="w-2 h-2 text-foreground/30 dark:text-foreground/20 flex-shrink-0" />
-                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">Save</span>
+                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.wizard.save" as any)}</span>
                                 <ChevronRight className="w-2 h-2 text-foreground/30 dark:text-foreground/20 flex-shrink-0" />
-                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">Simulate</span>
+                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.api.action_simulate" as any)}</span>
                                 <ChevronRight className="w-2 h-2 text-foreground/30 dark:text-foreground/20 flex-shrink-0" />
-                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">Deploy</span>
+                                <span className="rounded border border-border dark:border-border/60 bg-card dark:bg-card/95 px-1.5 py-0.5 font-semibold text-foreground dark:text-foreground">{t("pages.ai_agents.api.action_deploy" as any)}</span>
                               </div>
                             </div>
                           </div>
@@ -3092,9 +3199,9 @@ export default function AIAgents() {
                       {/* Step 4 nav footer */}
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border dark:border-border/60">
                         <Button variant="outline" onClick={() => handleTabChange("preview")} size="sm" className="h-8 text-[11px] gap-1.5">
-                          <ChevronLeft className="w-3.5 h-3.5" /> Back
+                          <ChevronLeft className="w-3.5 h-3.5" /> {t("pages.ai_agents.wizard.back" as any)}
                         </Button>
-                        <span className="text-[10px] text-foreground/40 font-medium">Step 4 of 4 — Deploy</span>
+                        <span className="text-[10px] text-foreground/40 font-medium">{t("pages.ai_agents.footer.step4_deploy" as any)}</span>
                       </div>
                     </TabsContent>
                   </Tabs>

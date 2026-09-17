@@ -7,6 +7,7 @@ import { ChevronRight, ChevronLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/hooks/useLanguage";
 import { NODE_META, PALETTE_NODE_TYPES } from "./nodeMeta";
 import type { IvrNodeType } from "./types";
 
@@ -20,6 +21,7 @@ function isNarrowViewport() {
 }
 
 export function NodePalette() {
+  const { t } = useLanguage();
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(() => isNarrowViewport());
 
@@ -62,7 +64,7 @@ export function NodePalette() {
   if (collapsed) {
     return (
       <div className="flex w-9 shrink-0 flex-col items-center border-l border-border bg-card py-2">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCollapsed(false)} aria-label="Fungua orodha ya visanduku">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCollapsed(false)} aria-label={t("voice.ivr_builder.palette.open_aria")}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
@@ -77,14 +79,14 @@ export function NodePalette() {
       <>
         <button
           type="button"
-          aria-label="Funga orodha ya visanduku"
+          aria-label={t("voice.ivr_builder.palette.close_aria")}
           onClick={() => setCollapsed(true)}
           className="fixed inset-0 z-40 bg-black/30"
         />
         <div className="fixed inset-y-0 right-0 z-50 flex w-[min(72vw,260px)] flex-col border-l border-border bg-card shadow-xl">
           <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2.5">
-            <h3 className="text-xs font-semibold text-foreground">Visanduku</h3>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCollapsed(true)} aria-label="Funga orodha ya visanduku">
+            <h3 className="text-xs font-semibold text-foreground">{t("voice.ivr_builder.palette.title")}</h3>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCollapsed(true)} aria-label={t("voice.ivr_builder.palette.close_aria")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -97,8 +99,8 @@ export function NodePalette() {
   return (
     <div className="flex w-60 shrink-0 flex-col border-l border-border bg-card">
       <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2.5">
-        <h3 className="text-xs font-semibold text-foreground">Visanduku</h3>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCollapsed(true)} aria-label="Funga orodha ya visanduku">
+        <h3 className="text-xs font-semibold text-foreground">{t("voice.ivr_builder.palette.title")}</h3>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCollapsed(true)} aria-label={t("voice.ivr_builder.palette.close_aria")}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

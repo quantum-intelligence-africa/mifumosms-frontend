@@ -1,4 +1,3 @@
-import { useContext } from "react";
 import {
   Bot,
   Brain,
@@ -12,20 +11,22 @@ import {
   CheckCheck,
 } from "lucide-react";
 import { SectionHeader, FeaturePillStrip } from "./shared";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
-const getCapabilityStrip = (isSw: boolean) => [
-  { label: isSw ? "Inaendeshwa na GenAI" : "GenAI-powered", icon: <Bot className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Inalishwa na maarifa" : "Knowledge-base fed", icon: <Brain className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Majibu ya midia mbalimbali" : "Rich media replies", icon: <ImageIcon className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Lugha nyingi" : "Multi-language", icon: <Languages className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Ramani ya mtiririko" : "Workflow mapping", icon: <Workflow className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Saa 24" : "Round-the-clock", icon: <Clock3 className="h-3.5 w-3.5 text-blue-600" /> },
+type TFn = (key: any, params?: any) => string;
+
+const getCapabilityStrip = (t: TFn) => [
+  { label: t("landing.ai_copilots.capability_genai"), icon: <Bot className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.ai_copilots.capability_kb_fed"), icon: <Brain className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.ai_copilots.capability_rich_media"), icon: <ImageIcon className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.ai_copilots.capability_multilanguage"), icon: <Languages className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.ai_copilots.capability_workflow_mapping"), icon: <Workflow className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.ai_copilots.capability_round_the_clock"), icon: <Clock3 className="h-3.5 w-3.5 text-blue-600" /> },
 ];
 
 const getKpis = (
-  isSw: boolean
+  t: TFn
 ): Array<{
   value: string;
   label: string;
@@ -34,26 +35,20 @@ const getKpis = (
 }> => [
   {
     value: "−45%",
-    label: isSw ? "Muda wa kungoja" : "Wait time",
-    caption: isSw
-      ? "Wateja wanapata majibu kabla wakala hajachukua simu"
-      : "Customers get answers before an agent picks up",
+    label: t("landing.ai_copilots.kpi_wait_time_label"),
+    caption: t("landing.ai_copilots.kpi_wait_time_caption"),
     tone: "blue",
   },
   {
     value: "−25%",
-    label: isSw ? "Idadi ya wakala wa moja kwa moja" : "Live-agent volume",
-    caption: isSw
-      ? "Simu zinazojirudia zinatatuliwa kiotomatiki kwenye chat au sauti"
-      : "Repetitive calls auto-resolved on chat or voice",
+    label: t("landing.ai_copilots.kpi_live_agent_volume_label"),
+    caption: t("landing.ai_copilots.kpi_live_agent_volume_caption"),
     tone: "emerald",
   },
   {
     value: "+2",
-    label: isSw ? "Pointi za NPS" : "NPS points",
-    caption: isSw
-      ? "Majibu ya papo hapo, yanayolingana na chapa, kwa lugha ya mteja"
-      : "Instant, on-brand answers in the customer's language",
+    label: t("landing.ai_copilots.kpi_nps_label"),
+    caption: t("landing.ai_copilots.kpi_nps_caption"),
     tone: "indigo",
   },
 ];
@@ -104,7 +99,7 @@ const CHAT: Array<{
 // Phone mockup with WhatsApp-style chatbot conversation
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ChatbotPhone = ({ isSw }: { isSw: boolean }) => (
+const ChatbotPhone = ({ t }: { t: TFn }) => (
   <div className="relative mx-auto w-full max-w-[300px]">
     <div className="relative aspect-[9/19] overflow-hidden rounded-[2.25rem] border-[6px] border-gray-900 bg-[#ECE5DD] shadow-[0_30px_60px_-20px_rgba(15,23,42,0.4)]">
       {/* Notch */}
@@ -118,7 +113,7 @@ const ChatbotPhone = ({ isSw }: { isSw: boolean }) => (
         <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] font-semibold">Senda Copilot</p>
           <p className="truncate text-[9px] text-white/70">
-            {isSw ? "mtandaoni · inajibu mara moja" : "online · replies instantly"}
+            {t("landing.ai_copilots.chat_status")}
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-100">
@@ -176,35 +171,33 @@ const ChatbotPhone = ({ isSw }: { isSw: boolean }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getSources = (
-  isSw: boolean
+  t: TFn
 ): Array<{
   Icon: typeof FileText;
   label: string;
   meta: string;
   tone: string;
 }> => [
-  { Icon: FileText, label: isSw ? "PDF ya bidhaa" : "Product PDF", meta: isSw ? "kurasa 12" : "12 pages", tone: "bg-rose-50 text-rose-600" },
-  { Icon: Globe2, label: isSw ? "Tovuti" : "Website", meta: isSw ? "URLs 84" : "84 URLs", tone: "bg-blue-50 text-blue-600" },
-  { Icon: MessageSquare, label: isSw ? "Hati ya FAQ" : "FAQ doc", meta: isSw ? "Maswali 126" : "126 Q&A", tone: "bg-emerald-50 text-emerald-600" },
-  { Icon: Workflow, label: isSw ? "Mitiririko" : "Workflows", meta: isSw ? "mitiririko 8" : "8 flows", tone: "bg-indigo-50 text-indigo-600" },
+  { Icon: FileText, label: t("landing.ai_copilots.source_product_pdf"), meta: t("landing.ai_copilots.source_product_pdf_meta"), tone: "bg-rose-50 text-rose-600" },
+  { Icon: Globe2, label: t("landing.ai_copilots.source_website"), meta: t("landing.ai_copilots.source_website_meta"), tone: "bg-blue-50 text-blue-600" },
+  { Icon: MessageSquare, label: t("landing.ai_copilots.source_faq_doc"), meta: t("landing.ai_copilots.source_faq_doc_meta"), tone: "bg-emerald-50 text-emerald-600" },
+  { Icon: Workflow, label: t("landing.ai_copilots.source_workflows"), meta: t("landing.ai_copilots.source_workflows_meta"), tone: "bg-indigo-50 text-indigo-600" },
 ];
 
-const KnowledgeBaseBlock = ({ isSw }: { isSw: boolean }) => {
-  const sources = getSources(isSw);
+const KnowledgeBaseBlock = ({ t }: { t: TFn }) => {
+  const sources = getSources(t);
   return (
     <div className="relative grid grid-cols-1 items-center gap-6 rounded-2xl border border-white/70 bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/40 p-5 sm:p-7 shadow-[0_15px_40px_-15px_rgba(37,99,235,0.18)] backdrop-blur-sm md:grid-cols-12">
       {/* Sources */}
       <div className="md:col-span-5 space-y-2.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-          {isSw ? "Hatua 1 · Ilishe" : "Step 1 · Feed it"}
+          {t("landing.ai_copilots.kb_step1_eyebrow")}
         </p>
         <h3 className="font-heading text-xl font-bold text-gray-900">
-          {isSw ? "Weka msingi wako wa maarifa" : "Drop in your knowledge base"}
+          {t("landing.ai_copilots.kb_step1_title")}
         </h3>
         <p className="text-sm leading-relaxed text-gray-600">
-          {isSw
-            ? "Pakia PDF, elekeza kwenye tovuti yako, au sawazisha hati za msaada — Copilot inasoma kila kitu na kuanza kujibu mara moja."
-            : "Upload PDFs, point at your website, or sync your help docs — the Copilot reads everything and starts answering immediately."}
+          {t("landing.ai_copilots.kb_step1_body")}
         </p>
         <ul className="mt-3 grid grid-cols-2 gap-2">
           {sources.map(({ Icon, label, meta, tone }) => (
@@ -256,10 +249,10 @@ const KnowledgeBaseBlock = ({ isSw }: { isSw: boolean }) => {
               <Brain className="relative h-10 w-10" />
             </div>
             <p className="mt-2 text-[11px] font-bold text-gray-900">
-              {isSw ? "Ubongo wa Copilot" : "Copilot brain"}
+              {t("landing.ai_copilots.kb_brain_title")}
             </p>
             <p className="text-[9px] text-gray-500">
-              {isSw ? "Imefunzwa · imewekewa fahirisi · iko tayari" : "Trained · indexed · ready"}
+              {t("landing.ai_copilots.kb_brain_subtitle")}
             </p>
           </div>
 
@@ -268,13 +261,13 @@ const KnowledgeBaseBlock = ({ isSw }: { isSw: boolean }) => {
             <FileText className="h-3 w-3 text-rose-600" /> PDF
           </div>
           <div className="absolute left-3 top-12 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-gray-700 shadow-sm">
-            <Globe2 className="h-3 w-3 text-blue-600" /> {isSw ? "Tovuti" : "Site"}
+            <Globe2 className="h-3 w-3 text-blue-600" /> {t("landing.ai_copilots.kb_pin_site")}
           </div>
           <div className="absolute bottom-12 left-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-gray-700 shadow-sm">
             <MessageSquare className="h-3 w-3 text-emerald-600" /> FAQ
           </div>
           <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-gray-700 shadow-sm">
-            <Workflow className="h-3 w-3 text-indigo-600" /> {isSw ? "Mitiririko" : "Flows"}
+            <Workflow className="h-3 w-3 text-indigo-600" /> {t("landing.ai_copilots.kb_pin_flows")}
           </div>
         </div>
       </div>
@@ -287,10 +280,9 @@ const KnowledgeBaseBlock = ({ isSw }: { isSw: boolean }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AiCopilotsSection = () => {
-  const lang = useContext(LanguageContext);
-  const isSw = lang?.language === "sw";
-  const capabilityStrip = getCapabilityStrip(isSw);
-  const kpis = getKpis(isSw);
+  const { t } = useLanguage();
+  const capabilityStrip = getCapabilityStrip(t);
+  const kpis = getKpis(t);
 
   return (
     <section
@@ -305,26 +297,15 @@ const AiCopilotsSection = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={isSw ? "AI Copilot" : "AI Copilots"}
+            eyebrow={t("landing.ai_copilots.eyebrow")}
             align="center"
             title={
-              isSw ? (
-                <>
-                  Tatua maswali saa 24/7 —{" "}
-                  <span className="text-blue-600">papo hapo, kwa lugha yoyote</span>
-                </>
-              ) : (
-                <>
-                  Resolve queries 24/7 —{" "}
-                  <span className="text-blue-600">instantly, in any language</span>
-                </>
-              )
+              <>
+                {t("landing.ai_copilots.title_line1")}{" "}
+                <span className="text-blue-600">{t("landing.ai_copilots.title_line2")}</span>
+              </>
             }
-            lead={
-              isSw
-                ? "Wakala wa GenAI wanaosoma msingi wako wa maarifa, wanafanya mazungumzo ya asili kwenye WhatsApp, wavuti, na sauti — na kuhamishia kwa binadamu kwa usafi pale inapohitajika."
-                : "Generative AI agents that read your knowledge base, hold natural conversations across WhatsApp, web, and voice — and hand off cleanly to a human the moment they should."
-            }
+            lead={t("landing.ai_copilots.lead")}
           />
         </div>
 
@@ -368,44 +349,28 @@ const AiCopilotsSection = () => {
         {/* Chatbot mockup + capability list */}
         <div className="mt-14 grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
           <div className="lg:col-span-6 order-2 lg:order-1">
-            <ChatbotPhone isSw={isSw} />
+            <ChatbotPhone t={t} />
           </div>
           <div className="lg:col-span-6 order-1 lg:order-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-              {isSw ? "Hai kwenye kila njia" : "Live on every channel"}
+              {t("landing.ai_copilots.live_channel_eyebrow")}
             </p>
             <h3 className="mt-2 font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-              {isSw ? (
-                <>
-                  Mazungumzo ya kweli.{" "}
-                  <span className="text-blue-600">Matokeo ya kweli.</span>
-                </>
-              ) : (
-                <>
-                  Real conversations.{" "}
-                  <span className="text-blue-600">Real outcomes.</span>
-                </>
-              )}
+              <>
+                {t("landing.ai_copilots.conversations_title_line1")}{" "}
+                <span className="text-blue-600">{t("landing.ai_copilots.conversations_title_line2")}</span>
+              </>
             </h3>
             <p className="mt-3 text-base leading-relaxed text-gray-600">
-              {isSw
-                ? "Copilot inashughulikia maswali yanayojirudia kutoka mwanzo hadi mwisho — utangulizi, ufuatiliaji wa oda, malipo, FAQs — na inahamisha pamoja na muktadha kamili pale binadamu anapohitajika."
-                : "The Copilot handles repetitive questions end-to-end — onboarding, order tracking, billing, FAQs — and escalates with full conversation context the second a human is needed."}
+              {t("landing.ai_copilots.conversations_body")}
             </p>
 
             <ul className="mt-6 space-y-3">
-              {(isSw
-                ? [
-                    { Icon: Bot, title: "Sauti iliyoboreshwa kwa chapa", body: "Inaandika kwa mtindo wako — rasmi, isiyo rasmi, Kiswahili, Sheng." },
-                    { Icon: Workflow, title: "Inajua mtiririko", body: "Inazindua vitendo vya backend: tafuta oda, endesha KYC, fungua tiketi." },
-                    { Icon: MessageSquare, title: "Uhamishaji safi kwa binadamu", body: "Inatambua hasira au mipaka ya wigo na inaongoza kwa wakala kwa muktadha kamili." },
-                  ]
-                : [
-                    { Icon: Bot, title: "Brand-tuned voice", body: "Writes in your tone — formal, casual, Swahili, Sheng." },
-                    { Icon: Workflow, title: "Workflow-aware", body: "Triggers backend actions: lookup orders, run KYC, open tickets." },
-                    { Icon: MessageSquare, title: "Clean human handoff", body: "Detects frustration or scope-limits and routes to an agent with full context." },
-                  ]
-              ).map(({ Icon, title, body }) => (
+              {[
+                { Icon: Bot, title: t("landing.ai_copilots.feature_brand_voice_title"), body: t("landing.ai_copilots.feature_brand_voice_body") },
+                { Icon: Workflow, title: t("landing.ai_copilots.feature_workflow_aware_title"), body: t("landing.ai_copilots.feature_workflow_aware_body") },
+                { Icon: MessageSquare, title: t("landing.ai_copilots.feature_human_handoff_title"), body: t("landing.ai_copilots.feature_human_handoff_body") },
+              ].map(({ Icon, title, body }) => (
                 <li key={title} className="flex items-start gap-3">
                   <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                     <Icon className="h-4 w-4" />
@@ -428,7 +393,7 @@ const AiCopilotsSection = () => {
 
         {/* Knowledge base block */}
         <div className="mt-14">
-          <KnowledgeBaseBlock isSw={isSw} />
+          <KnowledgeBaseBlock t={t} />
         </div>
       </div>
     </section>

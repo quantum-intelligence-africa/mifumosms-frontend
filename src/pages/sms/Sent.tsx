@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, CheckCircle2, MessageSquare, Copy, Check } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -38,6 +39,7 @@ const Sent = () => {
   const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -46,11 +48,11 @@ const Sent = () => {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied", description: "Message copied to clipboard." });
+      toast({ title: t("common.copied"), description: t("sms.common.message_copied_desc") });
     } catch {
       toast({
-        title: "Copy failed",
-        description: "Could not copy the message.",
+        title: t("sms.common.copy_failed_title"),
+        description: t("sms.common.copy_failed_desc"),
         variant: "destructive",
       });
     }
@@ -74,14 +76,14 @@ const Sent = () => {
     } catch (error) {
       logger.warn("Failed to load sent messages");
       toast({
-        title: "Failed to load sent messages",
-        description: "Could not fetch sent messages.",
+        title: t("sms.sent.load_error_title"),
+        description: t("sms.sent.load_error_desc"),
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast]);
+  }, [currentPage, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
@@ -102,6 +104,9 @@ const Sent = () => {
 
   const statusVariant = (status: string) =>
     status === "delivered" ? "default" : "secondary";
+
+  const statusLabel = (status: string) =>
+    status === "delivered" ? t("status.delivered") : t("status.sent");
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
@@ -129,10 +134,10 @@ const Sent = () => {
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                  Sent
+                  {t("sms.sent.title")}
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Messages that were successfully sent or delivered.
+                  {t("sms.sent.subtitle")}
                 </p>
               </div>
 
@@ -143,7 +148,7 @@ const Sent = () => {
                     <div className="relative flex-1">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-subtle" />
                       <Input
-                        placeholder="Search by recipient or message ID..."
+                        placeholder={t("sms.common.search_placeholder")}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -153,7 +158,7 @@ const Sent = () => {
                     <div className="flex items-center gap-2">
                       <Button onClick={handleSearch} disabled={isLoading} className="text-xs">
                         <Search className="w-3 h-3 mr-2" />
-                        Search
+                        {t("sms.common.search")}
                       </Button>
                       <Button
                         variant="outline"
@@ -162,7 +167,7 @@ const Sent = () => {
                         className="text-xs"
                       >
                         <RefreshCw className={`w-3 h-3 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                        Refresh
+                        {t("sms.common.refresh")}
                       </Button>
                     </div>
                   </div>
@@ -174,7 +179,7 @@ const Sent = () => {
                 <CardHeader className="p-4">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Sent messages
+                    {t("sms.sent.list_title")}
                     <Badge variant="secondary" className="text-xs ml-1">
                       {total}
                     </Badge>
@@ -184,12 +189,12 @@ const Sent = () => {
                   {isLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                      <p className="text-xs text-text-subtle">Loading sent messages...</p>
+                      <p className="text-xs text-text-subtle">{t("sms.sent.loading")}</p>
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-center py-10">
                       <MessageSquare className="w-12 h-12 mx-auto text-text-subtle mb-3" />
-                      <p className="text-sm text-text-subtle">No sent messages yet.</p>
+                      <p className="text-sm text-text-subtle">{t("sms.sent.empty")}</p>
                     </div>
                   ) : (
                     <>
@@ -198,11 +203,11 @@ const Sent = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Recipient</TableHead>
-                              <TableHead className="text-xs">Message</TableHead>
-                              <TableHead className="text-xs">Sender</TableHead>
-                              <TableHead className="text-xs">Status</TableHead>
-                              <TableHead className="text-xs">Sent at</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_recipient")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_message")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_sender")}</TableHead>
+                              <TableHead className="text-xs">{t("status")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.sent.col_sent_at")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -210,14 +215,14 @@ const Sent = () => {
                               <TableRow
                                 key={m.id}
                                 onClick={() => m.message && setViewMessage(m)}
-                                title={m.message ? "Click to view and copy the full message" : undefined}
+                                title={m.message ? t("sms.common.row_click_hint") : undefined}
                                 className={m.message ? "cursor-pointer" : undefined}
                               >
                                 <TableCell className="text-xs font-medium whitespace-nowrap">
                                   {recipientOf(m)}
                                   {extraRecipients(m) > 0 && (
                                     <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      +{extraRecipients(m)} more
+                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
                                     </span>
                                   )}
                                 </TableCell>
@@ -231,7 +236,7 @@ const Sent = () => {
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={statusVariant(m.status)} className="text-xs">
-                                    {m.status}
+                                    {statusLabel(m.status)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-xs whitespace-nowrap">
@@ -257,12 +262,12 @@ const Sent = () => {
                                   {recipientOf(m)}
                                   {extraRecipients(m) > 0 && (
                                     <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      +{extraRecipients(m)} more
+                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
                                     </span>
                                   )}
                                 </span>
                                 <Badge variant={statusVariant(m.status)} className="text-xs flex-shrink-0">
-                                  {m.status}
+                                  {statusLabel(m.status)}
                                 </Badge>
                               </div>
                               <p className="text-xs text-text-subtle line-clamp-2 break-words">
@@ -285,10 +290,10 @@ const Sent = () => {
                             disabled={currentPage === 1 || isLoading}
                             className="text-xs"
                           >
-                            Previous
+                            {t("sms.common.previous")}
                           </Button>
                           <span className="text-xs text-text-subtle">
-                            Page {currentPage} of {totalPages}
+                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
                           </span>
                           <Button
                             variant="outline"
@@ -297,7 +302,7 @@ const Sent = () => {
                             disabled={currentPage === totalPages || isLoading}
                             className="text-xs"
                           >
-                            Next
+                            {t("sms.common.next")}
                           </Button>
                         </div>
                       )}
@@ -314,10 +319,10 @@ const Sent = () => {
       <Dialog open={!!viewMessage} onOpenChange={(open) => !open && setViewMessage(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Message</DialogTitle>
+            <DialogTitle>{t("sms.common.message_dialog_title")}</DialogTitle>
             <DialogDescription>
-              To {viewMessage ? recipientOf(viewMessage) : ""}
-              {viewMessage?.sender_name ? ` · from ${viewMessage.sender_name}` : ""}
+              {t("sms.common.to_prefix")} {viewMessage ? recipientOf(viewMessage) : ""}
+              {viewMessage?.sender_name ? ` · ${t("sms.common.from_label")} ${viewMessage.sender_name}` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-sm">
@@ -333,7 +338,7 @@ const Sent = () => {
               ) : (
                 <Copy className="w-3 h-3 mr-2" />
               )}
-              {copied ? "Copied" : "Copy message"}
+              {copied ? t("common.copied") : t("sms.common.copy_message")}
             </Button>
           </div>
         </DialogContent>

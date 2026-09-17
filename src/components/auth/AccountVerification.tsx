@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/hooks/useLanguage';
 import { Phone, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface AccountVerificationProps {
@@ -23,6 +24,7 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
   const [isResending, setIsResending] = useState(false);
   const { toast } = useToast();
   const { verifyAccount, sendAccountVerification } = useAuth();
+  const { t } = useLanguage();
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,21 +36,21 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
 
       if (result.success) {
         toast({
-          title: "Account Verified!",
-          description: "Your phone number has been successfully verified.",
+          title: t("auth.account_verification.toast_verified_title"),
+          description: t("auth.account_verification.toast_verified_desc"),
         });
         onVerified?.();
       } else {
         toast({
-          title: "Verification Failed",
-          description: result.error || "Invalid verification code. Please try again.",
+          title: t("auth.account_verification.toast_failed_title"),
+          description: result.error || t("auth.account_verification.toast_failed_desc_default"),
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Verification Failed",
-        description: "An error occurred. Please try again.",
+        title: t("auth.account_verification.toast_failed_title"),
+        description: t("auth.common.generic_error"),
         variant: "destructive"
       });
     } finally {
@@ -63,20 +65,20 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
 
       if (result.success) {
         toast({
-          title: "Verification SMS Sent",
-          description: `A new verification code has been sent to ${phoneNumber}`,
+          title: t("auth.account_verification.toast_sms_sent_title"),
+          description: t("auth.account_verification.toast_sms_sent_desc", { phone: phoneNumber }),
         });
       } else {
         toast({
-          title: "Failed to Send SMS",
-          description: result.error || "Could not send verification SMS. Please try again.",
+          title: t("auth.account_verification.toast_sms_failed_title"),
+          description: result.error || t("auth.account_verification.toast_sms_failed_desc"),
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Failed to Send SMS",
-        description: "An error occurred. Please try again.",
+        title: t("auth.account_verification.toast_sms_failed_title"),
+        description: t("auth.common.generic_error"),
         variant: "destructive"
       });
     } finally {
@@ -96,10 +98,10 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
           <Phone className="w-8 h-8 text-blue-600" />
         </div>
         <CardTitle className="text-xl font-bold text-gray-900">
-          Verify Your Account
+          {t("auth.common.verify_your_account_title")}
         </CardTitle>
         <CardDescription className="text-gray-600">
-          We've sent a verification code to your phone number
+          {t("auth.account_verification.subtitle")}
         </CardDescription>
         <div className="text-sm text-gray-500 mt-4 md:mt-2">
           {phoneNumber}
@@ -110,14 +112,14 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
         <form onSubmit={handleVerify} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="verification-code" className="text-sm font-semibold text-gray-700">
-              Verification Code
+              {t("auth.common.verification_code_label")}
             </Label>
             <Input
               id="verification-code"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              placeholder="Enter verification code"
+              placeholder={t("auth.account_verification.code_placeholder")}
               value={code}
               onChange={handleCodeChange}
               className="h-12 text-center text-lg font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -134,12 +136,12 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Verifying...
+                {t("auth.common.verifying")}
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
-                Verify Account
+                {t("auth.account_verification.verify_button")}
               </div>
             )}
           </Button>
@@ -147,7 +149,7 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
 
         <div className="text-center space-y-2">
           <div className="text-sm text-gray-600">
-            Didn't receive the code?
+            {t("auth.common.didnt_receive_code")}
           </div>
           <Button
             type="button"
@@ -159,10 +161,10 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
             {isResending ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Sending...
+                {t("auth.common.sending")}
               </div>
             ) : (
-              'Resend Code'
+              t("auth.common.resend_code")
             )}
           </Button>
         </div>
@@ -175,7 +177,7 @@ export const AccountVerification: React.FC<AccountVerificationProps> = ({
             className="w-full"
             disabled={isLoading}
           >
-            Skip for now
+            {t("auth.account_verification.skip_button")}
           </Button>
         )}
       </CardContent>

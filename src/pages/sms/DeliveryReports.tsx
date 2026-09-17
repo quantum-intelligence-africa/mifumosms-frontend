@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Search, Filter, Download, RefreshCw, Calendar, MessageSquare, Users, Clock } from "lucide-react";
 
 interface DeliveryReport {
@@ -51,6 +52,7 @@ const DeliveryReports = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const loadReports = async () => {
     setIsLoading(true);
@@ -70,8 +72,8 @@ const DeliveryReports = () => {
     } catch (error) {
       logger.warn('Failed to load delivery reports');
       toast({
-        title: "Failed to load reports",
-        description: "Could not fetch delivery reports.",
+        title: t("sms.delivery_reports.load_error_title"),
+        description: t("sms.delivery_reports.load_error_desc"),
         variant: "destructive",
       });
     } finally {
@@ -116,6 +118,19 @@ const DeliveryReports = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "delivered":
+        return t("status.delivered");
+      case "sent":
+        return t("status.sent");
+      case "failed":
+        return t("status.failed");
+      default:
+        return status;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -149,10 +164,10 @@ const DeliveryReports = () => {
               {/* Header */}
               <div className="mb-3 sm:mb-4 lg:mb-5 xl:mb-6">
                 <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                  Delivery Reports
+                  {t("sms.delivery_reports.title")}
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Track and monitor SMS delivery status
+                  {t("sms.delivery_reports.subtitle")}
                 </p>
               </div>
 
@@ -162,7 +177,7 @@ const DeliveryReports = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs sm:text-sm text-text-subtle">Total Reports</p>
+                        <p className="text-xs sm:text-sm text-text-subtle">{t("sms.delivery_reports.stat_total")}</p>
                         <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">
                           {pagination?.total || 0}
                         </p>
@@ -178,7 +193,7 @@ const DeliveryReports = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs sm:text-sm text-text-subtle">This Page</p>
+                        <p className="text-xs sm:text-sm text-text-subtle">{t("sms.delivery_reports.stat_this_page")}</p>
                         <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">
                           {reports.length}
                         </p>
@@ -194,7 +209,7 @@ const DeliveryReports = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs sm:text-sm text-text-subtle">Page</p>
+                        <p className="text-xs sm:text-sm text-text-subtle">{t("sms.delivery_reports.stat_page")}</p>
                         <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">
                           {pagination?.page || 1} / {pagination?.pages || 1}
                         </p>
@@ -212,17 +227,17 @@ const DeliveryReports = () => {
                 <CardHeader className="p-4">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Filter className="w-4 h-4" />
-                    Filters
+                    {t("sms.delivery_reports.filters_title")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs">Search</Label>
+                      <Label className="text-xs">{t("sms.common.search")}</Label>
                       <div className="relative">
                         <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-text-subtle" />
                         <Input
-                          placeholder="Search by ID or content..."
+                          placeholder={t("sms.delivery_reports.search_placeholder")}
                           value={filters.search}
                           onChange={(e) => handleFilterChange("search", e.target.value)}
                           className="glass-subtle border-0 text-sm pl-8"
@@ -231,22 +246,22 @@ const DeliveryReports = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs">Status</Label>
+                      <Label className="text-xs">{t("status")}</Label>
                       <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
                         <SelectTrigger className="glass-subtle border-0 text-sm">
-                          <SelectValue placeholder="All statuses" />
+                          <SelectValue placeholder={t("sms.delivery_reports.all_statuses")} />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="all">All statuses</SelectItem>
-                          <SelectItem value="sent">Sent</SelectItem>
-                          <SelectItem value="delivered">Delivered</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
+                          <SelectItem value="all">{t("sms.delivery_reports.all_statuses")}</SelectItem>
+                          <SelectItem value="sent">{t("status.sent")}</SelectItem>
+                          <SelectItem value="delivered">{t("status.delivered")}</SelectItem>
+                          <SelectItem value="failed">{t("status.failed")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs">Start Date</Label>
+                      <Label className="text-xs">{t("sms.delivery_reports.start_date")}</Label>
                       <div className="relative">
                         <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-text-subtle" />
                         <Input
@@ -259,7 +274,7 @@ const DeliveryReports = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs">End Date</Label>
+                      <Label className="text-xs">{t("sms.delivery_reports.end_date")}</Label>
                       <div className="relative">
                         <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-text-subtle" />
                         <Input
@@ -275,7 +290,7 @@ const DeliveryReports = () => {
                   <div className="flex items-center gap-2 mt-4">
                     <Button onClick={handleSearch} disabled={isLoading} className="text-xs">
                       <Search className="w-3 h-3 mr-2" />
-                      Search
+                      {t("sms.common.search")}
                     </Button>
                     <Button
                       variant="outline"
@@ -284,7 +299,7 @@ const DeliveryReports = () => {
                       className="text-xs"
                     >
                       <RefreshCw className="w-3 h-3 mr-2" />
-                      Reset
+                      {t("sms.delivery_reports.reset")}
                     </Button>
                   </div>
                 </CardContent>
@@ -294,10 +309,10 @@ const DeliveryReports = () => {
               <Card className="glass border-0">
                 <CardHeader className="p-4">
                   <CardTitle className="flex items-center justify-between text-sm">
-                    <span>Reports</span>
+                    <span>{t("sms.delivery_reports.list_title")}</span>
                     <Button variant="outline" size="sm" className="text-xs">
                       <Download className="w-3 h-3 mr-2" />
-                      Export
+                      {t("sms.delivery_reports.export")}
                     </Button>
                   </CardTitle>
                 </CardHeader>
@@ -305,12 +320,12 @@ const DeliveryReports = () => {
                   {isLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-                      <p className="text-xs text-text-subtle">Loading reports...</p>
+                      <p className="text-xs text-text-subtle">{t("sms.delivery_reports.loading")}</p>
                     </div>
                   ) : filteredReports.length === 0 ? (
                     <div className="text-center py-8">
                       <MessageSquare className="w-12 h-12 mx-auto text-text-subtle mb-3" />
-                      <p className="text-sm text-text-subtle">No reports found</p>
+                      <p className="text-sm text-text-subtle">{t("sms.delivery_reports.empty")}</p>
                     </div>
                   ) : (
                     <>
@@ -318,12 +333,12 @@ const DeliveryReports = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Message ID</TableHead>
-                              <TableHead className="text-xs">Status</TableHead>
-                              <TableHead className="text-xs">Sender</TableHead>
-                              <TableHead className="text-xs">Content</TableHead>
-                              <TableHead className="text-xs">Recipients</TableHead>
-                              <TableHead className="text-xs">Date</TableHead>
+                              <TableHead className="text-xs">{t("sms.delivery_reports.col_message_id")}</TableHead>
+                              <TableHead className="text-xs">{t("status")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.common.col_sender")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.delivery_reports.col_content")}</TableHead>
+                              <TableHead className="text-xs">{t("sms.delivery_reports.col_recipients")}</TableHead>
+                              <TableHead className="text-xs">{t("date")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -334,7 +349,7 @@ const DeliveryReports = () => {
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={getStatusVariant(report.status)} className="text-xs">
-                                    {report.status}
+                                    {getStatusLabel(report.status)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-xs">{report.sender_id}</TableCell>
@@ -359,10 +374,10 @@ const DeliveryReports = () => {
                             disabled={currentPage === 1 || isLoading}
                             className="text-xs"
                           >
-                            Previous
+                            {t("sms.common.previous")}
                           </Button>
                           <span className="text-xs text-text-subtle">
-                            Page {currentPage} of {pagination.pages}
+                            {t("sms.common.page_of", { current: currentPage, total: pagination.pages })}
                           </span>
                           <Button
                             variant="outline"
@@ -371,7 +386,7 @@ const DeliveryReports = () => {
                             disabled={currentPage === pagination.pages || isLoading}
                             className="text-xs"
                           >
-                            Next
+                            {t("sms.common.next")}
                           </Button>
                         </div>
                       )}

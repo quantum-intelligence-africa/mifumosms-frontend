@@ -1,4 +1,3 @@
-import { useContext } from "react";
 import {
   Phone,
   PhoneCall,
@@ -14,68 +13,49 @@ import {
   Code2,
 } from "lucide-react";
 import { SectionHeader, FeaturePillStrip } from "./shared";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
-const getCapabilityStrip = (isSw: boolean) => [
-  { label: isSw ? "Ujumbe wa sauti" : "Voicemail", icon: <Voicemail className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Muziki wakati wa kungoja" : "Music on hold", icon: <Music2 className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Salamu ya kiotomatiki" : "Auto greeting", icon: <Megaphone className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Mwito wa kurudi" : "Queue callbacks", icon: <Bell className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Ibukio la CRM" : "CRM popup", icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "CSAT baada ya simu" : "Post-call CSAT", icon: <Star className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Muunganiko wa API" : "API integration", icon: <Code2 className="h-3.5 w-3.5 text-blue-600" /> },
+type TFn = (key: any, params?: any) => string;
+
+const getCapabilityStrip = (t: TFn) => [
+  { label: t("landing.voice_ivr_section.capability_voicemail"), icon: <Voicemail className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_music_on_hold"), icon: <Music2 className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_auto_greeting"), icon: <Megaphone className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_queue_callbacks"), icon: <Bell className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_crm_popup"), icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_post_call_csat"), icon: <Star className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.voice_ivr_section.capability_api_integration"), icon: <Code2 className="h-3.5 w-3.5 text-blue-600" /> },
 ];
 
 const getPillarFeatures = (
-  isSw: boolean
+  t: TFn
 ): Record<"routing" | "telephony" | "surveys", string[]> => ({
-  routing: isSw
-    ? [
-        "Mgawanyo wa simu wa kiotomatiki",
-        "Menyu za IVR za viwango vingi",
-        "Foleni za kipaumbele kwa ujuzi",
-        "Mwito wa kurudi unaposhughulika",
-      ]
-    : [
-        "Automatic Call Distribution",
-        "Multi-level IVR menus",
-        "Skills-based priority queues",
-        "Callback on busy",
-      ],
-  telephony: isSw
-    ? [
-        "Kushikilia · Nyamazisha · Hamisha · Mkutano",
-        "Kurekodi & ufuatiliaji wa simu",
-        "Msaada wa SIP & FXO",
-        "Simu ya meza, ya mkononi & wavuti",
-      ]
-    : [
-        "Hold · Mute · Transfer · Conference",
-        "Call recording & monitoring",
-        "SIP & FXO support",
-        "Deskphone, mobile & web",
-      ],
-  surveys: isSw
-    ? [
-        "Uchunguzi wa sauti wa kiotomatiki",
-        "Kurekodi & utafsiri",
-        "Mpigaji wa kampeni za nje",
-        "Maelekezo ya lugha nyingi",
-      ]
-    : [
-        "Automated voice surveys",
-        "Recording & transcription",
-        "Outbound campaign dialer",
-        "Multilingual prompts",
-      ],
+  routing: [
+    t("landing.voice_ivr_section.routing_feature1"),
+    t("landing.voice_ivr_section.routing_feature2"),
+    t("landing.voice_ivr_section.routing_feature3"),
+    t("landing.voice_ivr_section.routing_feature4"),
+  ],
+  telephony: [
+    t("landing.voice_ivr_section.telephony_feature1"),
+    t("landing.voice_ivr_section.telephony_feature2"),
+    t("landing.voice_ivr_section.telephony_feature3"),
+    t("landing.voice_ivr_section.telephony_feature4"),
+  ],
+  surveys: [
+    t("landing.voice_ivr_section.surveys_feature1"),
+    t("landing.voice_ivr_section.surveys_feature2"),
+    t("landing.voice_ivr_section.surveys_feature3"),
+    t("landing.voice_ivr_section.surveys_feature4"),
+  ],
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Visual asides — custom SVG / HTML mockups (no images)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const IvrTreeVisual = ({ isSw }: { isSw: boolean }) => (
+const IvrTreeVisual = ({ t }: { t: TFn }) => (
   <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 via-white to-blue-50/30 px-4 py-4">
     <svg viewBox="0 0 320 180" className="h-full w-full" aria-hidden="true">
       <defs>
@@ -91,14 +71,14 @@ const IvrTreeVisual = ({ isSw }: { isSw: boolean }) => (
       <g>
         <rect x="105" y="14" width="110" height="28" rx="14" fill="#2563eb" />
         <text x="160" y="32" textAnchor="middle" fontSize="11" fontWeight="600" fill="white">
-          {isSw ? "Simu inayoingia" : "Incoming call"}
+          {t("landing.voice_ivr_section.incoming_call")}
         </text>
       </g>
 
       {[
-        { x: 12, label: isSw ? "Mauzo" : "Sales", tone: "#3b82f6" },
-        { x: 112, label: isSw ? "Msaada" : "Support", tone: "#0ea5e9" },
-        { x: 212, label: isSw ? "Malipo" : "Billing", tone: "#6366f1" },
+        { x: 12, label: t("landing.common.queue_sales"), tone: "#3b82f6" },
+        { x: 112, label: t("landing.common.queue_support"), tone: "#0ea5e9" },
+        { x: 212, label: t("landing.common.queue_billing"), tone: "#6366f1" },
       ].map((leaf) => (
         <g key={leaf.label}>
           <rect
@@ -142,12 +122,12 @@ const IvrTreeVisual = ({ isSw }: { isSw: boolean }) => (
   </div>
 );
 
-const SoftphoneVisual = ({ isSw }: { isSw: boolean }) => (
+const SoftphoneVisual = ({ t }: { t: TFn }) => (
   <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-5 py-4 text-white">
     <div className="flex items-center justify-between">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        {isSw ? "Kwenye simu · 02:41" : "On call · 02:41"}
+        {t("landing.voice_ivr_section.softphone_on_call")}
       </span>
       <span className="text-[10px] text-gray-400">SIP · TZ-DAR-01</span>
     </div>
@@ -159,17 +139,17 @@ const SoftphoneVisual = ({ isSw }: { isSw: boolean }) => (
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-semibold">Fatuma Mwakalinga</p>
         <p className="truncate text-[11px] text-gray-400">
-          +255 754 118 220 · {isSw ? "Mteja wa Premier" : "Premier customer"}
+          +255 754 118 220 · {t("landing.voice_ivr_section.premier_customer")}
         </p>
       </div>
     </div>
 
     <div className="mt-4 flex items-center justify-between">
       {[
-        { Icon: MicOff, label: isSw ? "Nyamaza" : "Mute" },
-        { Icon: Pause, label: isSw ? "Shikilia" : "Hold" },
-        { Icon: PhoneForwarded, label: isSw ? "Hamisha" : "Transfer" },
-        { Icon: Users, label: isSw ? "Mkutano" : "Conf." },
+        { Icon: MicOff, label: t("landing.voice_ivr_section.softphone_mute") },
+        { Icon: Pause, label: t("landing.voice_ivr_section.softphone_hold") },
+        { Icon: PhoneForwarded, label: t("landing.voice_ivr_section.softphone_transfer") },
+        { Icon: Users, label: t("landing.voice_ivr_section.softphone_conf") },
       ].map(({ Icon, label }) => (
         <div key={label} className="flex flex-col items-center gap-1 text-gray-300">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
@@ -188,10 +168,16 @@ const SoftphoneVisual = ({ isSw }: { isSw: boolean }) => (
   </div>
 );
 
-const SentimentVisual = ({ isSw }: { isSw: boolean }) => {
-  const dayLabels = isSw
-    ? ["Jt2", "Jt3", "Jt4", "Jt5", "Iju", "Jmo", "Jpi"]
-    : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SentimentVisual = ({ t }: { t: TFn }) => {
+  const dayLabels = [
+    t("landing.common.day_mon"),
+    t("landing.common.day_tue"),
+    t("landing.common.day_wed"),
+    t("landing.common.day_thu"),
+    t("landing.common.day_fri"),
+    t("landing.common.day_sat"),
+    t("landing.common.day_sun"),
+  ];
   const values = [62, 78, 54, 86, 40, 70, 58];
   const tones = [
     "from-emerald-400 to-emerald-500",
@@ -207,7 +193,7 @@ const SentimentVisual = ({ isSw }: { isSw: boolean }) => {
     <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-4 py-3">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold text-gray-700">
-          {isSw ? "CSAT ya sauti · siku 7 zilizopita" : "Voice CSAT · last 7 days"}
+          {t("landing.voice_ivr_section.voice_csat_last7")}
         </p>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
           ▲ +6.4%
@@ -232,15 +218,15 @@ const SentimentVisual = ({ isSw }: { isSw: boolean }) => {
       <div className="mt-2 flex items-center justify-end gap-3 text-[9px] text-gray-500">
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {isSw ? "Chanya" : "Positive"}
+          {t("voice.calls.sentiment_positive")}
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-          {isSw ? "Wastani" : "Neutral"}
+          {t("voice.calls.sentiment_neutral")}
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-          {isSw ? "Hasi" : "Negative"}
+          {t("voice.calls.sentiment_negative")}
         </span>
       </div>
     </div>
@@ -302,10 +288,9 @@ const Pillar = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VoiceAndIvrSection = () => {
-  const lang = useContext(LanguageContext);
-  const isSw = lang?.language === "sw";
-  const pillarFeatures = getPillarFeatures(isSw);
-  const capabilityStrip = getCapabilityStrip(isSw);
+  const { t } = useLanguage();
+  const pillarFeatures = getPillarFeatures(t);
+  const capabilityStrip = getCapabilityStrip(t);
 
   return (
     <section
@@ -320,76 +305,53 @@ const VoiceAndIvrSection = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={isSw ? "Sauti & IVR" : "Voice & IVR"}
+            eyebrow={t("landing.voice_ivr_section.eyebrow")}
             align="center"
             title={
-              isSw ? (
-                <>
-                  Sauti ya kisasa kwa{" "}
-                  <span className="text-blue-600">vituo vya simu vya kisasa</span>
-                </>
-              ) : (
-                <>
-                  Modern voice for{" "}
-                  <span className="text-blue-600">modern call centers</span>
-                </>
-              )
+              <>
+                {t("landing.voice_ivr_section.title_line1")}{" "}
+                <span className="text-blue-600">{t("landing.voice_ivr_section.title_line2")}</span>
+              </>
             }
-            lead={
-              isSw
-                ? "PBX kamili kwenye wingu — mwelekeo wa busara, mafunzo ya wakati halisi, na kampeni za nje, vyote vinavyoendeshwa kwenye namba ile ile ambayo wateja wako tayari wanaijua."
-                : "A full PBX in the cloud — smart routing, live coaching, and outbound campaigns, all running on the same number your customers already know."
-            }
+            lead={t("landing.voice_ivr_section.lead")}
           />
 
           <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm">
             <Phone className="h-3.5 w-3.5 text-blue-600" />
-            SIP · FXO · WebRTC · {isSw ? "Mkononi" : "Mobile"} · {isSw ? "Meza" : "Desk"}
+            SIP · FXO · WebRTC · {t("landing.voice_ivr_section.mobile")} · {t("landing.voice_ivr_section.desk")}
           </div>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-7">
           <Pillar
             index={1}
-            eyebrow={isSw ? "Mwelekeo" : "Routing"}
-            title={isSw ? "Mwelekeo wa Simu wa Busara" : "Smart Call Routing"}
-            description={
-              isSw
-                ? "Kila simu inafika kwa wakala sahihi mara ya kwanza — hakuna mizunguko ya menyu, hakuna foleni zinazoanguka."
-                : "Every call lands on the right agent the first time — no menu mazes, no dropped queues."
-            }
+            eyebrow={t("landing.voice_ivr_section.pillar_routing_eyebrow")}
+            title={t("landing.voice_ivr_section.pillar_routing_title")}
+            description={t("landing.voice_ivr_section.pillar_routing_description")}
             features={pillarFeatures.routing}
-            visual={<IvrTreeVisual isSw={isSw} />}
+            visual={<IvrTreeVisual t={t} />}
           />
           <Pillar
             index={2}
-            eyebrow={isSw ? "Simu" : "Telephony"}
-            title={isSw ? "Mfumo Kamili wa Simu" : "Full Telephony Suite"}
-            description={
-              isSw
-                ? "PBX ya wingu ambayo timu yako inataka kuitumia — softphone, simu ya meza au ya mkononi, login moja."
-                : "A cloud PBX your team actually wants to use — softphone, deskphone or mobile, same login."
-            }
+            eyebrow={t("landing.voice_ivr_section.pillar_telephony_eyebrow")}
+            title={t("landing.voice_ivr_section.pillar_telephony_title")}
+            description={t("landing.voice_ivr_section.pillar_telephony_description")}
             features={pillarFeatures.telephony}
-            visual={<SoftphoneVisual isSw={isSw} />}
+            visual={<SoftphoneVisual t={t} />}
           />
           <Pillar
             index={3}
-            eyebrow={isSw ? "Nje & maarifa" : "Outbound & insights"}
-            title={isSw ? "Uchunguzi wa Sauti & Kampeni za Nje" : "Voice Surveys & Outbound"}
-            description={
-              isSw
-                ? "Kampeni za kupiga kiotomatiki na uchunguzi baada ya simu — zilizorekodiwa, kutafsiriwa, na tayari kufundisha."
-                : "Auto-dial campaigns and post-call surveys — recorded, transcribed, and ready to coach on."
-            }
+            eyebrow={t("landing.voice_ivr_section.pillar_surveys_eyebrow")}
+            title={t("landing.voice_ivr_section.pillar_surveys_title")}
+            description={t("landing.voice_ivr_section.pillar_surveys_description")}
             features={pillarFeatures.surveys}
-            visual={<SentimentVisual isSw={isSw} />}
+            visual={<SentimentVisual t={t} />}
           />
         </div>
 
         <div className="mt-12 flex flex-col items-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            {isSw ? "Pia zinajumuishwa" : "Also included"}
+            {t("landing.voice_ivr_section.also_included")}
           </p>
           <FeaturePillStrip
             items={capabilityStrip}

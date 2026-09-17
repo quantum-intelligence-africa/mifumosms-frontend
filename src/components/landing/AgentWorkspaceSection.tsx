@@ -1,4 +1,3 @@
-import { useContext } from "react";
 import {
   Headphones,
   Ear,
@@ -15,22 +14,24 @@ import {
   FileBarChart,
 } from "lucide-react";
 import { SectionHeader, FeaturePillStrip, MockupFrame } from "./shared";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
-const getCapabilityStrip = (isSw: boolean) => [
-  { label: isSw ? "Ufikiaji wa majukumu" : "Role-based access", icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Ulinganishaji wa mawasiliano" : "Auto contact matching", icon: <UserCheck className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Usimamizi wa hali" : "Status management", icon: <CircleDot className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Hamisha kwa kuburuza" : "Drag-drop transfer", icon: <GripVertical className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Zana za mafunzo" : "Coaching tools", icon: <Headphones className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Lebo za simu zilizopita" : "Missed-call labeling", icon: <Tags className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Ufuatiliaji wa SLA" : "SLA tracking", icon: <GaugeCircle className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: isSw ? "Ripoti kwa wakala" : "Per-agent reports", icon: <FileBarChart className="h-3.5 w-3.5 text-blue-600" /> },
+type TFn = (key: any, params?: any) => string;
+
+const getCapabilityStrip = (t: TFn) => [
+  { label: t("landing.agent_workspace.capability_role_access"), icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_contact_matching"), icon: <UserCheck className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_status_management"), icon: <CircleDot className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_drag_transfer"), icon: <GripVertical className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_coaching_tools"), icon: <Headphones className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_missed_call_labeling"), icon: <Tags className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_sla_tracking"), icon: <GaugeCircle className="h-3.5 w-3.5 text-blue-600" /> },
+  { label: t("landing.agent_workspace.capability_per_agent_reports"), icon: <FileBarChart className="h-3.5 w-3.5 text-blue-600" /> },
 ];
 
 const getKpis = (
-  isSw: boolean
+  t: TFn
 ): Array<{
   label: string;
   value: string;
@@ -38,8 +39,8 @@ const getKpis = (
   tone: "emerald" | "blue" | "rose";
 }> => [
   { label: "SLA", value: "85.16%", delta: "▲ 2.1%", tone: "emerald" },
-  { label: isSw ? "Zilijibiwa" : "Answered", value: "24", delta: "▲ 6", tone: "blue" },
-  { label: isSw ? "Zilikataliwa" : "Abandoned", value: "2", delta: "▼ 1", tone: "rose" },
+  { label: t("landing.agent_workspace.kpi_answered"), value: "24", delta: "▲ 6", tone: "blue" },
+  { label: t("landing.agent_workspace.kpi_abandoned"), value: "2", delta: "▼ 1", tone: "rose" },
 ];
 
 const KPI_TONES: Record<
@@ -64,7 +65,7 @@ const KPI_TONES: Record<
 };
 
 const getWaiting = (
-  isSw: boolean
+  t: TFn
 ): Array<{
   caller: string;
   number: string;
@@ -72,13 +73,13 @@ const getWaiting = (
   wait: string;
   priority?: "vip";
 }> => [
-  { caller: "Mwajuma Said", number: "+255 712 345 678", queue: isSw ? "Mauzo" : "Sales", wait: "0:08", priority: "vip" },
-  { caller: "Juma Kessy", number: "+255 754 442 019", queue: isSw ? "Msaada" : "Support", wait: "0:21" },
-  { caller: "Naima Omar", number: "+255 689 110 442", queue: isSw ? "Malipo" : "Billing", wait: "0:34" },
+  { caller: "Mwajuma Said", number: "+255 712 345 678", queue: t("landing.common.queue_sales"), wait: "0:08", priority: "vip" },
+  { caller: "Juma Kessy", number: "+255 754 442 019", queue: t("landing.common.queue_support"), wait: "0:21" },
+  { caller: "Naima Omar", number: "+255 689 110 442", queue: t("landing.common.queue_billing"), wait: "0:34" },
 ];
 
 const getActive = (
-  isSw: boolean
+  t: TFn
 ): Array<{
   agent: string;
   initials: string;
@@ -86,13 +87,13 @@ const getActive = (
   duration: string;
   customer: string;
 }> => [
-  { agent: "Asha M.", initials: "AM", status: "on-call", duration: "04:12", customer: isSw ? "Premier · Oda #4821" : "Premier · Order #4821" },
-  { agent: "Baraka T.", initials: "BT", status: "wrap-up", duration: "00:48", customer: isSw ? "Msaada · Ufuatiliaji wa KYC" : "Support · KYC follow-up" },
-  { agent: "Christina N.", initials: "CN", status: "on-call", duration: "01:55", customer: isSw ? "Mauzo · Nukuu ya SMS" : "Sales · Bulk SMS quote" },
+  { agent: "Asha M.", initials: "AM", status: "on-call", duration: "04:12", customer: t("landing.agent_workspace.customer_premier_order") },
+  { agent: "Baraka T.", initials: "BT", status: "wrap-up", duration: "00:48", customer: t("landing.agent_workspace.customer_kyc_followup") },
+  { agent: "Christina N.", initials: "CN", status: "on-call", duration: "01:55", customer: t("landing.agent_workspace.customer_bulk_sms_quote") },
 ];
 
 const getStatusMeta = (
-  isSw: boolean
+  t: TFn
 ): Record<
   "on-call" | "wrap-up" | "available",
   { dot: string; bg: string; text: string; label: string }
@@ -101,30 +102,29 @@ const getStatusMeta = (
     dot: "bg-emerald-500",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
-    label: isSw ? "Kwenye simu" : "On call",
+    label: t("landing.agent_workspace.status_on_call"),
   },
   "wrap-up": {
     dot: "bg-amber-500",
     bg: "bg-amber-50",
     text: "text-amber-700",
-    label: isSw ? "Inakamilisha" : "Wrap-up",
+    label: t("landing.agent_workspace.status_wrap_up"),
   },
   available: {
     dot: "bg-blue-500",
     bg: "bg-blue-50",
     text: "text-blue-700",
-    label: isSw ? "Yupo" : "Available",
+    label: t("landing.agent_workspace.status_available"),
   },
 });
 
 const AgentWorkspaceSection = () => {
-  const lang = useContext(LanguageContext);
-  const isSw = lang?.language === "sw";
-  const capabilityStrip = getCapabilityStrip(isSw);
-  const kpis = getKpis(isSw);
-  const waiting = getWaiting(isSw);
-  const active = getActive(isSw);
-  const statusMeta = getStatusMeta(isSw);
+  const { t } = useLanguage();
+  const capabilityStrip = getCapabilityStrip(t);
+  const kpis = getKpis(t);
+  const waiting = getWaiting(t);
+  const active = getActive(t);
+  const statusMeta = getStatusMeta(t);
 
   return (
     <section
@@ -192,14 +192,14 @@ const AgentWorkspaceSection = () => {
                     <div className="flex items-center gap-1.5">
                       <PhoneIncoming className="h-3.5 w-3.5 text-blue-600" />
                       <p className="text-[11px] font-semibold text-gray-900">
-                        {isSw ? "Simu zinazongoja" : "Waiting calls"}
+                        {t("landing.agent_workspace.waiting_calls")}
                       </p>
                       <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold text-white">
                         {waiting.length}
                       </span>
                     </div>
                     <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400">
-                      {isSw ? "Buruza kuhamisha" : "Drag to assign"}
+                      {t("landing.agent_workspace.drag_to_assign")}
                     </span>
                   </header>
                   <ul className="divide-y divide-gray-100">
@@ -241,11 +241,11 @@ const AgentWorkspaceSection = () => {
                     <div className="flex items-center gap-1.5">
                       <PhoneCall className="h-3.5 w-3.5 text-emerald-600" />
                       <p className="text-[11px] font-semibold text-gray-900">
-                        {isSw ? "Simu zinazoendelea" : "Active calls"}
+                        {t("landing.agent_workspace.active_calls")}
                       </p>
                     </div>
                     <span className="text-[9px] font-medium uppercase tracking-wider text-gray-400">
-                      {isSw ? "Moja kwa moja" : "Live"}
+                      {t("landing.agent_workspace.live")}
                     </span>
                   </header>
                   <ul className="divide-y divide-gray-100">
@@ -290,25 +290,25 @@ const AgentWorkspaceSection = () => {
                 <div className="pointer-events-none flex justify-end">
                   <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 shadow-lg shadow-blue-600/5">
                     <span className="px-1.5 text-[9px] font-semibold uppercase tracking-wider text-gray-500">
-                      {isSw ? "Funza" : "Coach"}
+                      {t("landing.agent_workspace.coach_label")}
                     </span>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700"
                     >
-                      <Ear className="h-3 w-3" /> {isSw ? "Sikiliza" : "Listen"}
+                      <Ear className="h-3 w-3" /> {t("landing.agent_workspace.action_listen")}
                     </button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700"
                     >
-                      <MessageCircle className="h-3 w-3" /> {isSw ? "Nong'oneza" : "Whisper"}
+                      <MessageCircle className="h-3 w-3" /> {t("landing.agent_workspace.action_whisper")}
                     </button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-blue-700"
                     >
-                      <Zap className="h-3 w-3" /> {isSw ? "Ingia" : "Barge"}
+                      <Zap className="h-3 w-3" /> {t("landing.agent_workspace.action_barge")}
                     </button>
                   </div>
                 </div>
@@ -319,32 +319,21 @@ const AgentWorkspaceSection = () => {
           {/* Copy — right on desktop */}
           <div className="lg:col-span-5 order-2">
             <SectionHeader
-              eyebrow={isSw ? "Usimamizi wa Wakala" : "Agent Management"}
+              eyebrow={t("landing.agent_workspace.eyebrow")}
               title={
-                isSw ? (
-                  <>
-                    Wapeni wasimamizi macho ya x-ray.{" "}
-                    <span className="text-blue-600">Wapeni wakala nguvu kuu.</span>
-                  </>
-                ) : (
-                  <>
-                    Give supervisors x-ray vision.{" "}
-                    <span className="text-blue-600">Give agents superpowers.</span>
-                  </>
-                )
+                <>
+                  {t("landing.agent_workspace.title_line1")}{" "}
+                  <span className="text-blue-600">{t("landing.agent_workspace.title_line2")}</span>
+                </>
               }
-              lead={
-                isSw
-                  ? "Foleni za wakati halisi, ugawaji wa simu kwa kuburuza, na mafunzo ya moja kwa moja — sikiliza, nong'oneza, au ingia — vyote kutoka kwenye eneo moja la majukumu."
-                  : "Real-time queues, drag-and-drop call distribution, and live coaching — listen, whisper, or barge in — all from one role-based workspace."
-              }
+              lead={t("landing.agent_workspace.lead")}
             />
 
             <div className="mt-6 grid grid-cols-3 gap-2 max-w-sm">
               {[
-                { Icon: Ear, label: isSw ? "Sikiliza" : "Listen" },
-                { Icon: MessageCircle, label: isSw ? "Nong'oneza" : "Whisper" },
-                { Icon: Zap, label: isSw ? "Ingia" : "Barge" },
+                { Icon: Ear, label: t("landing.agent_workspace.action_listen") },
+                { Icon: MessageCircle, label: t("landing.agent_workspace.action_whisper") },
+                { Icon: Zap, label: t("landing.agent_workspace.action_barge") },
               ].map(({ Icon, label }) => (
                 <div
                   key={label}

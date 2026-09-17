@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pause, Play, X, Download, Loader2, PhoneIncoming, PhoneOutgoing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export interface PlayerTrack {
   id: string;
@@ -47,6 +48,7 @@ export function formatSize(bytes: number | null | undefined): string {
 }
 
 export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }: RecordingPlayerBarProps) {
+  const { t } = useLanguage();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -138,7 +140,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
       {track && (
       <div
         role="region"
-        aria-label="Kicheza rekodi"
+        aria-label={t("voice.recording_player.region_aria")}
         className={cn(
           "fixed inset-x-0 bottom-0 z-[90] border-t border-border bg-card/95 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur",
           "md:left-[240px]",
@@ -150,7 +152,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
             size="icon"
             className="h-10 w-10 shrink-0 rounded-full"
             onClick={() => onPlayingChange(!playing)}
-            aria-label={playing ? "Simamisha" : "Cheza"}
+            aria-label={playing ? t("voice.recording_player.pause_aria") : t("voice.recording_player.play_aria")}
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
           </Button>
@@ -174,7 +176,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
                   setCurrent(t);
                 }}
                 className="h-1.5 flex-1 cursor-pointer accent-primary"
-                aria-label="Sogeza"
+                aria-label={t("voice.recording_player.seek_aria")}
               />
               <span className="w-10 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">{formatClock(total)}</span>
             </div>
@@ -186,8 +188,8 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
             onClick={downloadTrack}
             disabled={downloading}
             className="hidden h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-60 sm:flex"
-            aria-label="Pakua rekodi"
-            title="Pakua"
+            aria-label={t("voice.recording_player.download_aria")}
+            title={t("voice.recording_player.download_title")}
           >
             {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           </button>
@@ -199,7 +201,7 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
               silence();
               onClose();
             }}
-            aria-label="Funga kicheza"
+            aria-label={t("voice.recording_player.close_aria")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -238,13 +240,14 @@ export function PlayButton({
   active,
   playing,
   onClick,
-  label = "Cheza rekodi",
+  label,
 }: {
   active: boolean;
   playing: boolean;
   onClick: () => void;
   label?: string;
 }) {
+  const { t } = useLanguage();
   return (
     <button
       type="button"
@@ -252,7 +255,7 @@ export function PlayButton({
         e.stopPropagation();
         onClick();
       }}
-      aria-label={playing ? "Simamisha" : label}
+      aria-label={playing ? t("voice.recording_player.pause_aria") : label ?? t("voice.recording_player.play_recording_aria")}
       className={cn(
         "flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
         active

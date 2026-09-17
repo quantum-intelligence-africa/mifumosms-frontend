@@ -25,6 +25,7 @@ import {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,6 +67,8 @@ interface AnalyticsCategory {
 }
 
 const Analytics = () => {
+  const { t } = useLanguage();
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -92,29 +95,29 @@ const Analytics = () => {
   const analyticsCategories: AnalyticsCategory[] = [
     {
       id: "overview",
-      title: "Overview",
-      description: "Key metrics and performance insights",
+      title: t("pages.analytics.category.overview.title"),
+      description: t("pages.analytics.category.overview.desc"),
       icon: Activity,
       color: "bg-blue-500"
     },
     {
       id: "campaigns",
-      title: "Campaigns",
-      description: "Campaign performance and analytics",
+      title: t("pages.analytics.category.campaigns.title"),
+      description: t("pages.analytics.category.campaigns.desc"),
       icon: Send,
       color: "bg-green-500"
     },
     {
       id: "audience",
-      title: "Audience",
-      description: "Audience insights and engagement",
+      title: t("pages.analytics.category.audience.title"),
+      description: t("pages.analytics.category.audience.desc"),
       icon: Users,
       color: "bg-purple-500"
     },
     {
       id: "revenue",
-      title: "Revenue",
-      description: "Revenue attribution and ROI analysis",
+      title: t("pages.analytics.category.revenue.title"),
+      description: t("pages.analytics.category.revenue.desc"),
       icon: RevenueIcon,
       color: "bg-emerald-500"
     }
@@ -203,52 +206,52 @@ const Analytics = () => {
 
   const metrics = [
     {
-      title: "Total Messages",
+      title: t("dashboard.metric.total_messages"),
       value: "45,280",
       change: "+12.5%",
       changeType: "positive" as const,
       icon: MessageSquare,
-      description: "Last 30 days"
+      description: t("dashboard.metric.last_30_days")
     },
     {
-      title: "Delivery Rate",
+      title: t("dashboard.performance.delivery_rate"),
       value: "96.8%",
       change: "+2.1%",
       changeType: "positive" as const,
       icon: Target,
-      description: "Average across channels"
+      description: t("pages.analytics.metric.avg_across_channels")
     },
     {
-      title: "Open Rate",
+      title: t("pages.analytics.metric.open_rate"),
       value: "78.4%",
       change: "-1.2%",
       changeType: "negative" as const,
       icon: Eye,
-      description: "Engagement metric"
+      description: t("pages.analytics.metric.open_rate_desc")
     },
     {
-      title: "Click Rate",
+      title: t("pages.analytics.metric.click_rate"),
       value: "24.6%",
       change: "+5.8%",
       changeType: "positive" as const,
       icon: MousePointer,
-      description: "Action conversion"
+      description: t("pages.analytics.metric.click_rate_desc")
     },
     {
-      title: "Active Contacts",
+      title: t("dashboard.metric.active_contacts"),
       value: "8,940",
       change: "+8.9%",
       changeType: "positive" as const,
       icon: Users,
-      description: "Engaged this month"
+      description: t("dashboard.metric.engaged_this_month")
     },
     {
-      title: "Revenue Impact",
+      title: t("pages.analytics.metric.revenue_impact"),
       value: "Tsh 42,800",
       change: "+18.7%",
       changeType: "positive" as const,
       icon: DollarSign,
-      description: "Attributed revenue"
+      description: t("pages.analytics.metric.attributed_revenue")
     }
   ];
 
@@ -339,11 +342,11 @@ const Analytics = () => {
 
       // Add title
       pdf.setFontSize(20);
-      pdf.text('Analytics Report', 20, 20);
+      pdf.text(t("pages.analytics.pdf.title"), 20, 20);
       pdf.setFontSize(12);
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-      pdf.text(`Date Range: ${dateRange}`, 20, 35);
-      pdf.text(`Channel: ${selectedChannel}`, 20, 40);
+      pdf.text(t("pages.analytics.pdf.generated_on", { date: new Date().toLocaleDateString() }), 20, 30);
+      pdf.text(t("pages.analytics.pdf.date_range", { range: dateRange }), 20, 35);
+      pdf.text(t("pages.analytics.pdf.channel", { channel: selectedChannel }), 20, 40);
 
       position = 50; // Start image below title
       heightLeft = imgHeight;
@@ -366,7 +369,7 @@ const Analytics = () => {
 
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      alert(t("pages.analytics.error.export_failed"));
     } finally {
       setIsExporting(false);
     }
@@ -407,7 +410,7 @@ const Analytics = () => {
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <BarChart3 className="w-4 h-4 text-primary" />
-                            Message Volume
+                            {t("dashboard.performance.message_volume")}
                           </CardTitle>
                         </CardHeader>
                 <CardContent className="p-3 pt-0">
@@ -422,7 +425,7 @@ const Analytics = () => {
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Target className="w-4 h-4 text-success" />
-                            Delivery Rate Trend
+                            {t("pages.analytics.chart.delivery_rate_trend")}
                           </CardTitle>
                         </CardHeader>
                 <CardContent className="p-3 pt-0">
@@ -437,7 +440,7 @@ const Analytics = () => {
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <PieChart className="w-4 h-4 text-secondary" />
-                            Channel Distribution
+                            {t("pages.analytics.chart.channel_distribution")}
                           </CardTitle>
                         </CardHeader>
                 <CardContent className="p-3 pt-0">
@@ -470,7 +473,7 @@ const Analytics = () => {
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Globe className="w-4 h-4 text-primary" />
-                            Top Countries
+                            {t("pages.analytics.chart.top_countries")}
                           </CardTitle>
                         </CardHeader>
                 <CardContent className="p-3 pt-0">
@@ -482,7 +485,7 @@ const Analytics = () => {
                                   <div>
                             <p className="font-medium text-foreground text-sm">{country.country}</p>
                             <p className="text-xs text-text-subtle">
-                                      {country.messages.toLocaleString()} messages
+                                      {t("pages.analytics.chart.messages_count", { count: country.messages.toLocaleString() })}
                                     </p>
                                   </div>
                                 </div>
@@ -512,7 +515,7 @@ const Analytics = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Send className="w-4 h-4 text-primary" />
-                            Campaign Performance
+                            {t("pages.analytics.chart.campaign_performance")}
                           </CardTitle>
                         </CardHeader>
               <CardContent className="p-3 pt-0">
@@ -525,7 +528,7 @@ const Analytics = () => {
                       {/* Top Campaigns Table */}
                       <Card className="glass border-0">
               <CardHeader className="p-3">
-                <CardTitle className="text-sm">Top Performing Campaigns</CardTitle>
+                <CardTitle className="text-sm">{t("pages.analytics.chart.top_campaigns")}</CardTitle>
                         </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="space-y-2">
@@ -537,25 +540,25 @@ const Analytics = () => {
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
-                          <p className="text-text-subtle">Sent</p>
+                          <p className="text-text-subtle">{t("dashboard.recent_campaigns.sent")}</p>
                           <p className="font-medium">{campaign.sent.toLocaleString()}</p>
                                       </div>
                         <div>
-                          <p className="text-text-subtle">Delivered</p>
+                          <p className="text-text-subtle">{t("dashboard.recent_campaigns.delivered")}</p>
                           <p className="font-medium">{campaign.delivered.toLocaleString()}</p>
                           <p className="text-success">
                                         {Math.round((campaign.delivered / campaign.sent) * 100)}%
                           </p>
                                       </div>
                         <div>
-                          <p className="text-text-subtle">Opened</p>
+                          <p className="text-text-subtle">{t("dashboard.recent_campaigns.opened")}</p>
                           <p className="font-medium">{campaign.opened.toLocaleString()}</p>
                           <p className="text-primary">
                             {Math.round((campaign.opened / campaign.delivered) * 100)}%
                           </p>
                                       </div>
                         <div>
-                          <p className="text-text-subtle">Clicked</p>
+                          <p className="text-text-subtle">{t("pages.analytics.chart.clicked")}</p>
                           <p className="font-medium">{campaign.clicked.toLocaleString()}</p>
                           <p className="text-amber-600">
                             {Math.round((campaign.clicked / campaign.opened) * 100)}%
@@ -577,7 +580,7 @@ const Analytics = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary" />
-                  Audience Insights
+                  {t("pages.analytics.audience.title")}
                 </CardTitle>
                         </CardHeader>
               <CardContent className="p-3 pt-0">
@@ -585,17 +588,17 @@ const Analytics = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
                       <p className="text-xl font-bold text-primary">8,940</p>
-                      <p className="text-xs text-text-subtle">Active Contacts</p>
+                      <p className="text-xs text-text-subtle">{t("dashboard.metric.active_contacts")}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
                       <p className="text-xl font-bold text-success">78.4%</p>
-                      <p className="text-xs text-text-subtle">Engagement Rate</p>
+                      <p className="text-xs text-text-subtle">{t("pages.analytics.audience.engagement_rate")}</p>
                     </div>
                   </div>
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">Engagement Patterns</h4>
-                    <p className="text-xs text-text-subtle">Peak engagement times: 9-11 AM and 6-8 PM</p>
-                    <p className="text-xs text-text-subtle mt-1">Most active day: Tuesday</p>
+                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.audience.patterns_title")}</h4>
+                    <p className="text-xs text-text-subtle">{t("pages.analytics.audience.peak_times")}</p>
+                    <p className="text-xs text-text-subtle mt-1">{t("pages.analytics.audience.most_active_day")}</p>
                   </div>
                 </div>
                         </CardContent>
@@ -605,7 +608,7 @@ const Analytics = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4 text-primary" />
-                  Geographic Distribution
+                  {t("pages.analytics.audience.geo_title")}
                 </CardTitle>
                         </CardHeader>
               <CardContent className="p-3 pt-0">
@@ -617,7 +620,7 @@ const Analytics = () => {
                         <div>
                           <p className="font-medium text-foreground text-sm">{country.country}</p>
                           <p className="text-xs text-text-subtle">
-                            {country.messages.toLocaleString()} contacts
+                            {t("pages.analytics.chart.contacts_count", { count: country.messages.toLocaleString() })}
                           </p>
                         </div>
                       </div>
@@ -645,7 +648,7 @@ const Analytics = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <RevenueIcon className="w-4 h-4 text-primary" />
-                  Revenue Attribution
+                  {t("pages.analytics.revenue.title")}
                 </CardTitle>
                         </CardHeader>
               <CardContent className="p-3 pt-0">
@@ -653,15 +656,15 @@ const Analytics = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
                       <p className="text-xl font-bold text-success">Tsh 42,800</p>
-                      <p className="text-xs text-text-subtle">Total Revenue</p>
+                      <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.total_revenue")}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
                       <p className="text-xl font-bold text-primary">+18.7%</p>
-                      <p className="text-xs text-text-subtle">Growth Rate</p>
+                      <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.growth_rate")}</p>
                     </div>
                   </div>
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">Top Revenue Campaigns</h4>
+                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.revenue.top_campaigns")}</h4>
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs">Flash Sale</span>
@@ -685,28 +688,28 @@ const Analytics = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <TrendingUp className="w-4 h-4 text-primary" />
-                  ROI Analysis
+                  {t("pages.analytics.revenue.roi_title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="space-y-3">
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
                     <p className="text-xl font-bold text-success">4.2x</p>
-                    <p className="text-xs text-text-subtle">Return on Investment</p>
+                    <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.roi")}</p>
                   </div>
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
-                    <h4 className="font-medium text-sm mb-1">Cost Breakdown</h4>
+                    <h4 className="font-medium text-sm mb-1">{t("pages.analytics.revenue.cost_breakdown")}</h4>
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">SMS Costs</span>
+                        <span className="text-xs">{t("pages.analytics.revenue.sms_costs")}</span>
                         <span className="text-xs font-medium">Tsh 8,200</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">WhatsApp Costs</span>
+                        <span className="text-xs">{t("pages.analytics.revenue.whatsapp_costs")}</span>
                         <span className="text-xs font-medium">Tsh 2,100</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">Platform Fees</span>
+                        <span className="text-xs">{t("pages.analytics.revenue.platform_fees")}</span>
                         <span className="text-xs font-medium">Tsh 1,500</span>
                       </div>
                     </div>
@@ -736,10 +739,10 @@ const Analytics = () => {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
                 <div>
                   <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                    Analytics
+                    {t("pages.analytics.title")}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                    Track performance and insights across all channels
+                    {t("pages.analytics.subtitle")}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 lg:gap-3">
@@ -749,19 +752,19 @@ const Analytics = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
-                      <SelectItem value="7d">Last 7 days</SelectItem>
-                      <SelectItem value="30d">Last 30 days</SelectItem>
-                      <SelectItem value="90d">Last 90 days</SelectItem>
-                      <SelectItem value="1y">Last year</SelectItem>
+                      <SelectItem value="7d">{t("pages.analytics.range.7d")}</SelectItem>
+                      <SelectItem value="30d">{t("pages.analytics.range.30d")}</SelectItem>
+                      <SelectItem value="90d">{t("pages.analytics.range.90d")}</SelectItem>
+                      <SelectItem value="1y">{t("pages.analytics.range.1y")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={selectedChannel} onValueChange={setSelectedChannel}>
                     <SelectTrigger className="w-full sm:w-36 lg:w-40 glass-subtle border-0 text-xs sm:text-sm h-7 sm:h-8">
                       <Filter className="w-3 h-3 mr-1 sm:mr-2" />
-                      <SelectValue placeholder="All channels" />
+                      <SelectValue placeholder={t("pages.analytics.channel.all")} />
                     </SelectTrigger>
                     <SelectContent className="glass">
-                      <SelectItem value="all">All channels</SelectItem>
+                      <SelectItem value="all">{t("pages.analytics.channel.all")}</SelectItem>
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="sms">SMS</SelectItem>
                       <SelectItem value="email">Email</SelectItem>
@@ -776,10 +779,10 @@ const Analytics = () => {
                   >
                     <Download className="w-3 h-3 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">
-                      {isExporting ? "Exporting..." : "Export PDF"}
+                      {isExporting ? t("pages.analytics.export.exporting") : t("pages.analytics.export.export_pdf")}
                     </span>
                     <span className="sm:hidden">
-                      {isExporting ? "..." : "PDF"}
+                      {isExporting ? "..." : t("pages.analytics.export.pdf_short")}
                     </span>
                   </Button>
                 </div>
@@ -854,7 +857,7 @@ const Analytics = () => {
                           className="glass-subtle border-0 text-xs"
                         >
                           <Download className="w-3 h-3 mr-1" />
-                          {isExporting ? "Exporting..." : "Export"}
+                          {isExporting ? t("pages.analytics.export.exporting") : t("pages.analytics.export.export_short")}
                         </Button>
                       </div>
 

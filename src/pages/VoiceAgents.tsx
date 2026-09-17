@@ -9,9 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { API_CONFIG, buildApiUrl } from "@/config/api";
+import { useLanguage } from "@/hooks/useLanguage";
+
+type T = ReturnType<typeof useLanguage>["t"];
 
 const defaultFeatures = [
   {
+    key: "dashboard",
     icon: Phone,
     title: "Voice Dashboard",
     desc: "Bird's-eye view of active copilots, live call counts, and real-time performance.",
@@ -20,6 +24,7 @@ const defaultFeatures = [
     borderAccent: "border-t-blue-500 dark:border-t-blue-400",
   },
   {
+    key: "call_flows",
     icon: GitBranch,
     title: "Call Flows",
     desc: "Multi-step conversation flows with branching logic and intent recognition nodes.",
@@ -28,6 +33,7 @@ const defaultFeatures = [
     borderAccent: "border-t-blue-400 dark:border-t-blue-300",
   },
   {
+    key: "campaigns",
     icon: PhoneCall,
     title: "Voice Campaigns",
     desc: "Automated outbound campaigns to your contact lists with scheduling built in.",
@@ -36,6 +42,7 @@ const defaultFeatures = [
     borderAccent: "border-t-indigo-500 dark:border-t-indigo-400",
   },
   {
+    key: "call_logs",
     icon: FileAudio,
     title: "Call Logs",
     desc: "Full call recordings, transcripts, and metadata for every copilot interaction.",
@@ -44,6 +51,7 @@ const defaultFeatures = [
     borderAccent: "border-t-blue-600 dark:border-t-blue-300",
   },
   {
+    key: "ai_config",
     icon: Settings2,
     title: "AI Voice Config",
     desc: "Choose voice personas, speech engines, and latency settings per copilot.",
@@ -52,6 +60,7 @@ const defaultFeatures = [
     borderAccent: "border-t-slate-400 dark:border-t-slate-300",
   },
   {
+    key: "create_copilot",
     icon: Plus,
     title: "Create Copilot",
     desc: "Set up a voice copilot with greetings, FAQs, and escalation paths in minutes.",
@@ -61,13 +70,33 @@ const defaultFeatures = [
   },
 ];
 
+// title is the English literal the backend's optional override payload
+// matches against (see the `/status` merge below) — it must not be
+// translated. Display text is looked up by `key` instead, and only falls
+// back to the raw `desc` when the backend has actually replaced it.
+const FEATURE_I18N: Record<string, { titleKey: Parameters<T>[0]; descKey: Parameters<T>[0] }> = {
+  dashboard: { titleKey: "voice.copilots.feature_dashboard_title", descKey: "voice.copilots.feature_dashboard_desc" },
+  call_flows: { titleKey: "voice.copilots.feature_call_flows_title", descKey: "voice.copilots.feature_call_flows_desc" },
+  campaigns: { titleKey: "voice.copilots.feature_campaigns_title", descKey: "voice.copilots.feature_campaigns_desc" },
+  call_logs: { titleKey: "voice.copilots.feature_call_logs_title", descKey: "voice.copilots.feature_call_logs_desc" },
+  ai_config: { titleKey: "voice.copilots.feature_ai_config_title", descKey: "voice.copilots.feature_ai_config_desc" },
+  create_copilot: { titleKey: "voice.copilots.feature_create_copilot_title", descKey: "voice.copilots.feature_create_copilot_desc" },
+};
+const DEFAULT_DESC_BY_KEY: Record<string, string> = Object.fromEntries(defaultFeatures.map((f) => [f.key, f.desc]));
+
 const defaultPerks = [
   "Free access during private beta",
   "Direct line to the product team",
   "Shape the feature before launch",
 ];
+const DEFAULT_PERK_KEYS: Array<Parameters<T>[0]> = [
+  "voice.copilots.perk_free_access",
+  "voice.copilots.perk_direct_line",
+  "voice.copilots.perk_shape_feature",
+];
 
 export default function VoiceAgents() {
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -149,13 +178,13 @@ export default function VoiceAgents() {
       if (!res.ok) {
         const message =
           (data && (data.message || data.error)) ||
-          `Failed to submit (HTTP ${res.status})`;
+          t("voice.copilots.submit_failed", { status: res.status });
         throw new Error(message);
       }
 
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit request");
+      setSubmitError(err instanceof Error ? err.message : t("voice.copilots.submit_failed_generic"));
     } finally {
       setIsSubmitting(false);
     }
@@ -174,10 +203,10 @@ export default function VoiceAgents() {
             {/* iOS large-title header */}
             <header className="mb-4">
               <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
-                Voice Copilots
+                {t("voice.copilots.title")}
               </h1>
               <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
-                Deploy AI-powered voice copilots to automate inbound and outbound calls
+                {t("voice.copilots.subtitle")}
               </p>
             </header>
 
@@ -195,23 +224,24 @@ export default function VoiceAgents() {
                       <Mic className="w-[18px] h-[18px] text-primary" strokeWidth={1.8} />
                     </div>
                     <Badge className="bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary border border-primary/30 dark:border-primary/40 hover:bg-primary/10 dark:hover:bg-primary/20 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
-                      Early Access
+                      {t("voice.copilots.badge_early_access")}
                     </Badge>
                   </div>
 
                   <h2 className="text-[18px] font-semibold text-foreground dark:text-foreground tracking-tight mb-2">
-                    Voice Copilots — in private beta
+                    {t("voice.copilots.hero_title")}
                   </h2>
                   <p className="text-[13px] text-foreground/70 dark:text-foreground/60 leading-relaxed mb-6 max-w-[380px]">
-                    Natural-sounding voice copilots that handle inbound calls, run outbound
-                    campaigns, qualify leads, and hand off to humans — with zero code.
+                    {t("voice.copilots.hero_desc")}
                   </p>
 
                   <ul className="space-y-2.5">
-                    {perks.map((perk) => (
+                    {perks.map((perk, i) => (
                       <li key={perk} className="flex items-center gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-success dark:text-success flex-shrink-0" strokeWidth={2} />
-                        <span className="text-[13px] text-foreground/75 dark:text-foreground/65">{perk}</span>
+                        <span className="text-[13px] text-foreground/75 dark:text-foreground/65">
+                          {perks === defaultPerks ? t(DEFAULT_PERK_KEYS[i]) : perk}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -227,23 +257,23 @@ export default function VoiceAgents() {
                       <div className="w-11 h-11 rounded-full bg-success/10 dark:bg-success/20 border border-success/30 dark:border-success/40 flex items-center justify-center mb-3">
                         <CheckCircle2 className="w-5 h-5 text-success dark:text-success" strokeWidth={2} />
                       </div>
-                      <p className="text-[15px] font-semibold text-foreground dark:text-foreground mb-1">You're on the list</p>
+                      <p className="text-[15px] font-semibold text-foreground dark:text-foreground mb-1">{t("voice.copilots.submitted_title")}</p>
                       <p className="text-[13px] text-foreground/70 dark:text-foreground/60">
-                        We'll reach out as soon as early access opens.
+                        {t("voice.copilots.submitted_desc")}
                       </p>
                     </div>
                   ) : (
                     <>
                       <p className="text-[13px] font-semibold text-foreground dark:text-foreground mb-0.5">
-                        Join the waitlist
+                        {t("voice.copilots.join_waitlist")}
                       </p>
                       <p className="text-[12px] text-foreground/50 dark:text-foreground/40 mb-1">
-                        Be among the first to test Voice Copilots on SENDA.
+                        {t("voice.copilots.join_waitlist_desc")}
                       </p>
 
                       <form onSubmit={handleSubmit} className="space-y-2.5">
                         <Input
-                          placeholder="Full name"
+                          placeholder={t("full_name")}
                           required
                           value={name}
                           onChange={(e) => setName(e.target.value)}
@@ -252,14 +282,14 @@ export default function VoiceAgents() {
                         <Input
                           type="email"
                           required
-                          placeholder="Work email"
+                          placeholder={t("voice.copilots.work_email_placeholder")}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="h-9 text-[13px] border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card placeholder:text-foreground/40 dark:placeholder:text-foreground/30"
                         />
                         <Input
                           type="tel"
-                          placeholder="Phone number (e.g. +255689726060)"
+                          placeholder={t("voice.copilots.phone_placeholder")}
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           className="h-9 text-[13px] border-border dark:border-border/60 bg-muted/30 dark:bg-muted/20 focus:bg-card dark:focus:bg-card placeholder:text-foreground/40 dark:placeholder:text-foreground/30"
@@ -281,7 +311,7 @@ export default function VoiceAgents() {
                           disabled={isSubmitting}
                           className="w-full h-9 text-[13px] font-medium gap-2"
                         >
-                          {isSubmitting ? "Submitting..." : "Request Early Access"}
+                          {isSubmitting ? t("voice.copilots.submitting") : t("voice.copilots.request_access")}
                           <ArrowRight className="w-3.5 h-3.5 ml-auto" strokeWidth={2} />
                         </Button>
                       </form>
@@ -295,7 +325,7 @@ export default function VoiceAgents() {
             {/* ── Feature Preview ──────────────────────────── */}
             <div className="flex items-center gap-3 mb-3">
               <p className="text-[11px] font-semibold text-foreground/50 dark:text-foreground/40 uppercase tracking-widest whitespace-nowrap">
-                Feature Preview
+                {t("voice.copilots.feature_preview_label")}
               </p>
               <div className="flex-1 h-px bg-border dark:bg-border/60" />
             </div>
@@ -303,6 +333,8 @@ export default function VoiceAgents() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {features.map((feature) => {
                 const Icon = feature.icon;
+                const i18n = FEATURE_I18N[feature.key];
+                const descIsDefault = DEFAULT_DESC_BY_KEY[feature.key] === feature.desc;
                 return (
                   <div
                     key={feature.title}
@@ -312,10 +344,10 @@ export default function VoiceAgents() {
                       <Icon className={`w-4 h-4 ${feature.iconColor}`} strokeWidth={1.8} />
                     </div>
                     <h3 className="text-[13px] font-semibold text-foreground dark:text-foreground mb-1.5 tracking-[-0.01em]">
-                      {feature.title}
+                      {i18n ? t(i18n.titleKey) : feature.title}
                     </h3>
                     <p className="text-[12px] text-foreground/70 dark:text-foreground/60 leading-[1.6]">
-                      {feature.desc}
+                      {i18n && descIsDefault ? t(i18n.descKey) : feature.desc}
                     </p>
                   </div>
                 );

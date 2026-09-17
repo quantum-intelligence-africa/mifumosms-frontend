@@ -46,6 +46,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { Template, TemplateFilterParams, CreateTemplateRequest } from "@/lib/api";
 
 const Templates = () => {
@@ -71,6 +72,7 @@ const Templates = () => {
   });
   const location = useLocation();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Static template data - no backend connection
   const [templates, setTemplates] = useState<Template[]>([
@@ -312,6 +314,21 @@ const Templates = () => {
     }
   };
 
+  const categoryLabel = (value: string) => {
+    switch (value) {
+      case "onboarding": return t("templates.category_onboarding");
+      case "promotions": return t("templates.category_promotions");
+      case "reminders": return t("templates.category_reminders");
+      case "loyalty": return t("templates.category_loyalty");
+      case "win_back": return t("templates.category_win_back");
+      case "post_purchase": return t("templates.category_post_purchase");
+      case "transactional": return t("templates.category_transactional");
+      case "marketing": return t("templates.category_marketing");
+      case "alerts": return t("templates.category_alerts");
+      default: return value;
+    }
+  };
+
   // Template Action Functions
   const handlePreviewTemplate = (template: Template) => {
     setSelectedTemplate(template);
@@ -319,8 +336,8 @@ const Templates = () => {
 
   const handleEditTemplate = (template: Template) => {
     toast({
-      title: "Edit Template",
-      description: `Opening editor for "${template.name}"`,
+      title: t("templates.edit_toast_title"),
+      description: t("templates.edit_toast_desc", { name: template.name }),
     });
     // TODO: Implement edit functionality
   };
@@ -339,57 +356,58 @@ const Templates = () => {
 
     setTemplates(prev => [duplicatedTemplate, ...prev]);
     toast({
-      title: "Template Duplicated",
-      description: `Created a copy of "${template.name}"`,
+      title: t("templates.duplicate_toast_title"),
+      description: t("templates.duplicate_toast_desc", { name: template.name }),
     });
   };
 
   const handleToggleStar = async (template: Template) => {
-    setTemplates(prev => prev.map(t =>
-      t.id === template.id
-        ? { ...t, is_favorite: !t.is_favorite }
-        : t
+    setTemplates(prev => prev.map(tpl =>
+      tpl.id === template.id
+        ? { ...tpl, is_favorite: !tpl.is_favorite }
+        : tpl
     ));
 
-    const action = template.is_favorite ? "removed from" : "added to";
     toast({
-      title: "Template Starred",
-      description: `"${template.name}" ${action} favorites`,
+      title: t("templates.star_toast_title"),
+      description: template.is_favorite
+        ? t("templates.removed_from_favorites", { name: template.name })
+        : t("templates.added_to_favorites", { name: template.name }),
     });
   };
 
   const handleApproveTemplate = async (template: Template) => {
-    setTemplates(prev => prev.map(t =>
-      t.id === template.id
-        ? { ...t, status: "approved", status_display: "Approved", approved: true, approval_status: "approved" }
-        : t
+    setTemplates(prev => prev.map(tpl =>
+      tpl.id === template.id
+        ? { ...tpl, status: "approved", status_display: "Approved", approved: true, approval_status: "approved" }
+        : tpl
     ));
 
     toast({
-      title: "Template Approved",
-      description: `"${template.name}" has been approved`,
+      title: t("templates.approve_toast_title"),
+      description: t("templates.approve_toast_desc", { name: template.name }),
     });
   };
 
   const handleRejectTemplate = async (template: Template) => {
-    setTemplates(prev => prev.map(t =>
-      t.id === template.id
-        ? { ...t, status: "rejected", status_display: "Rejected", approved: false, approval_status: "rejected" }
-        : t
+    setTemplates(prev => prev.map(tpl =>
+      tpl.id === template.id
+        ? { ...tpl, status: "rejected", status_display: "Rejected", approved: false, approval_status: "rejected" }
+        : tpl
     ));
 
     toast({
-      title: "Template Rejected",
-      description: `"${template.name}" has been rejected`,
+      title: t("templates.reject_toast_title"),
+      description: t("templates.reject_toast_desc", { name: template.name }),
     });
   };
 
   const handleDeleteTemplate = async (template: Template) => {
-    if (window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
-      setTemplates(prev => prev.filter(t => t.id !== template.id));
+    if (window.confirm(t("templates.delete_confirm", { name: template.name }))) {
+      setTemplates(prev => prev.filter(tpl => tpl.id !== template.id));
       toast({
-        title: "Template Deleted",
-        description: `"${template.name}" has been deleted`,
+        title: t("templates.delete_toast_title"),
+        description: t("templates.delete_toast_desc", { name: template.name }),
         variant: "destructive",
       });
     }
@@ -398,8 +416,8 @@ const Templates = () => {
   const handleCreateTemplate = async () => {
     if (!createFormData.name || !createFormData.category || !createFormData.language || !createFormData.channel || !createFormData.body_text) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
+        title: t("templates.validation_error_title"),
+        description: t("templates.validation_error_desc"),
         variant: "destructive"
       });
       return;
@@ -449,8 +467,8 @@ const Templates = () => {
       setIsCreating(false);
 
       toast({
-        title: "Template Created",
-        description: `"${createFormData.name}" has been created successfully`,
+        title: t("templates.create_toast_title"),
+        description: t("templates.create_toast_desc", { name: createFormData.name }),
       });
     }, 1000);
   };
@@ -469,99 +487,99 @@ const Templates = () => {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 sm:mb-4 lg:mb-5 xl:mb-6 gap-2 sm:gap-3 lg:gap-4">
                 <div>
                   <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">
-                    Templates
+                    {t("templates.title")}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                    Create and manage reusable message templates
+                    {t("templates.subtitle")}
                   </p>
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
                       <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">New Template</span>
+                      <span className="hidden sm:inline">{t("templates.new_template")}</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="glass w-full max-w-[95vw] sm:max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Create New Template</DialogTitle>
+                      <DialogTitle>{t("templates.create_dialog_title")}</DialogTitle>
                       <DialogDescription>
-                        Create a reusable message template
+                        {t("templates.create_dialog_desc")}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="templateName">Template Name *</Label>
+                        <Label htmlFor="templateName">{t("templates.field_name")}</Label>
                         <Input
                           id="templateName"
-                          placeholder="Enter template name"
+                          placeholder={t("templates.placeholder_name")}
                           value={createFormData.name}
                           onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
                           className="glass-subtle border-0"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="templateChannel">Channel *</Label>
+                        <Label htmlFor="templateChannel">{t("templates.field_channel")}</Label>
                         <Select value={createFormData.channel} onValueChange={(value) => setCreateFormData(prev => ({ ...prev, channel: value as any }))}>
                           <SelectTrigger className="glass-subtle border-0">
-                            <SelectValue placeholder="Select channel" />
+                            <SelectValue placeholder={t("templates.select_channel_placeholder")} />
                           </SelectTrigger>
                           <SelectContent className="glass">
-                            <SelectItem value="sms">SMS</SelectItem>
-                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="all">All Channels</SelectItem>
+                            <SelectItem value="sms">{t("templates.channel_sms")}</SelectItem>
+                            <SelectItem value="whatsapp">{t("templates.channel_whatsapp")}</SelectItem>
+                            <SelectItem value="email">{t("templates.channel_email")}</SelectItem>
+                            <SelectItem value="all">{t("templates.channel_all")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="category">Category *</Label>
+                        <Label htmlFor="category">{t("templates.field_category")}</Label>
                         <Select value={createFormData.category} onValueChange={(value) => setCreateFormData(prev => ({ ...prev, category: value }))}>
                           <SelectTrigger className="glass-subtle border-0">
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder={t("templates.select_category_placeholder")} />
                           </SelectTrigger>
                           <SelectContent className="glass">
-                            <SelectItem value="onboarding">Onboarding</SelectItem>
-                            <SelectItem value="promotions">Promotions</SelectItem>
-                            <SelectItem value="reminders">Reminders</SelectItem>
-                            <SelectItem value="loyalty">Loyalty</SelectItem>
-                            <SelectItem value="win_back">Win-Back</SelectItem>
-                            <SelectItem value="post_purchase">Post-Purchase</SelectItem>
-                            <SelectItem value="transactional">Transactional</SelectItem>
-                            <SelectItem value="marketing">Marketing</SelectItem>
-                            <SelectItem value="alerts">Alerts</SelectItem>
+                            <SelectItem value="onboarding">{t("templates.category_onboarding")}</SelectItem>
+                            <SelectItem value="promotions">{t("templates.category_promotions")}</SelectItem>
+                            <SelectItem value="reminders">{t("templates.category_reminders")}</SelectItem>
+                            <SelectItem value="loyalty">{t("templates.category_loyalty")}</SelectItem>
+                            <SelectItem value="win_back">{t("templates.category_win_back")}</SelectItem>
+                            <SelectItem value="post_purchase">{t("templates.category_post_purchase")}</SelectItem>
+                            <SelectItem value="transactional">{t("templates.category_transactional")}</SelectItem>
+                            <SelectItem value="marketing">{t("templates.category_marketing")}</SelectItem>
+                            <SelectItem value="alerts">{t("templates.category_alerts")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="language">Language *</Label>
+                        <Label htmlFor="language">{t("templates.field_language")}</Label>
                         <Select value={createFormData.language} onValueChange={(value) => setCreateFormData(prev => ({ ...prev, language: value }))}>
                           <SelectTrigger className="glass-subtle border-0">
-                            <SelectValue placeholder="Select language" />
+                            <SelectValue placeholder={t("templates.select_language_placeholder")} />
                           </SelectTrigger>
                           <SelectContent className="glass">
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="sw">Kiswahili</SelectItem>
+                            <SelectItem value="en">{t("voice.ai_settings.language_en")}</SelectItem>
+                            <SelectItem value="sw">{t("voice.ai_settings.language_sw")}</SelectItem>
                             <SelectItem value="fr">Français</SelectItem>
                             <SelectItem value="ar">العربية</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description">{t("templates.field_description")}</Label>
                         <Input
                           id="description"
-                          placeholder="Optional description"
+                          placeholder={t("templates.placeholder_description")}
                           value={createFormData.description}
                           onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                           className="glass-subtle border-0"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="content">Message Content *</Label>
+                        <Label htmlFor="content">{t("templates.field_message_content")}</Label>
                         <Textarea
                           id="content"
-                          placeholder="Enter your message content. Use {{variable}} for dynamic content."
+                          placeholder={t("templates.placeholder_message_content")}
                           value={createFormData.body_text}
                           onChange={(e) => setCreateFormData(prev => ({ ...prev, body_text: e.target.value }))}
                           className="glass-subtle border-0"
@@ -574,14 +592,14 @@ const Templates = () => {
                           onClick={handleCreateTemplate}
                           disabled={isCreating}
                         >
-                          {isCreating ? "Creating..." : "Create Template"}
+                          {isCreating ? t("templates.creating") : t("templates.create_template_button")}
                         </Button>
                         <Button
                           variant="outline"
                           className="flex-1"
                           onClick={() => setIsCreateDialogOpen(false)}
                         >
-                          Cancel
+                          {t("cancel")}
                         </Button>
                       </div>
                     </div>
@@ -594,7 +612,7 @@ const Templates = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
-                    placeholder="Search templates..."
+                    placeholder={t("templates.search_placeholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 glass-subtle border-0 text-sm"
@@ -602,37 +620,41 @@ const Templates = () => {
                 </div>
                 <Select value={channelFilter} onValueChange={setChannelFilter}>
                   <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
-                    <SelectValue placeholder="All channels" />
+                    <SelectValue placeholder={t("templates.all_channels")} />
                   </SelectTrigger>
                   <SelectContent className="glass">
-                    <SelectItem value="all">All channels</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="all">{t("templates.all_channels")}</SelectItem>
+                    <SelectItem value="sms">{t("templates.channel_sms")}</SelectItem>
+                    <SelectItem value="whatsapp">{t("templates.channel_whatsapp")}</SelectItem>
+                    <SelectItem value="email">{t("templates.channel_email")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
-                    <SelectValue placeholder="All categories" />
+                    <SelectValue placeholder={t("templates.all_categories")} />
                   </SelectTrigger>
                   <SelectContent className="glass">
-                    <SelectItem value="all">All categories</SelectItem>
+                    <SelectItem value="all">{t("templates.all_categories")}</SelectItem>
                     {filterOptions?.categories?.map((category: any) => (
                       <SelectItem key={category.value} value={category.value}>
-                        {category.label}
+                        {categoryLabel(category.value)}
                       </SelectItem>
                     )) || []}
                   </SelectContent>
                 </Select>
                 <Select value={languageFilter} onValueChange={setLanguageFilter}>
                   <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
-                    <SelectValue placeholder="All languages" />
+                    <SelectValue placeholder={t("templates.all_languages")} />
                   </SelectTrigger>
                   <SelectContent className="glass">
-                    <SelectItem value="all">All languages</SelectItem>
+                    <SelectItem value="all">{t("templates.all_languages")}</SelectItem>
                     {filterOptions?.languages?.map((language: any) => (
                       <SelectItem key={language.value} value={language.value}>
-                        {language.label}
+                        {language.value === "en"
+                          ? t("voice.ai_settings.language_en")
+                          : language.value === "sw"
+                          ? t("voice.ai_settings.language_sw")
+                          : language.label}
                       </SelectItem>
                     )) || []}
                   </SelectContent>
@@ -645,8 +667,8 @@ const Templates = () => {
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-sm text-text-subtle">Loading templates...</p>
-                      <p className="text-xs text-text-subtle mt-2">This may take a moment...</p>
+                      <p className="text-sm text-text-subtle">{t("templates.loading")}</p>
+                      <p className="text-xs text-text-subtle mt-2">{t("templates.loading_hint")}</p>
                     </div>
                   </div>
                 ) : (
@@ -692,21 +714,21 @@ const Templates = () => {
                                     handlePreviewTemplate(template);
                                   }}>
                                     <Eye className="w-4 h-4 mr-2" />
-                                    Preview
+                                    {t("templates.action_preview")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
                                     handleEditTemplate(template);
                                   }}>
                                     <Edit className="w-4 h-4 mr-2" />
-                                    Edit Template
+                                    {t("templates.action_edit")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
                                     handleDuplicateTemplate(template);
                                   }}>
                                     <Copy className="w-4 h-4 mr-2" />
-                                    Duplicate
+                                    {t("templates.action_duplicate")}
                                   </DropdownMenuItem>
                                   {template.status === 'pending' && (
                                     <>
@@ -715,14 +737,14 @@ const Templates = () => {
                                         handleApproveTemplate(template);
                                       }}>
                                         <CheckCircle className="w-4 h-4 mr-2" />
-                                        Approve
+                                        {t("templates.action_approve")}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={(e) => {
                                         e.stopPropagation();
                                         handleRejectTemplate(template);
                                       }}>
                                         <AlertCircle className="w-4 h-4 mr-2" />
-                                        Reject
+                                        {t("templates.action_reject")}
                                       </DropdownMenuItem>
                                     </>
                                   )}
@@ -731,7 +753,7 @@ const Templates = () => {
                                     handleToggleStar(template);
                                   }}>
                                     <Star className="w-4 h-4 mr-2" />
-                                    {template.is_favorite ? "Remove Star" : "Add Star"}
+                                    {template.is_favorite ? t("templates.action_remove_star") : t("templates.action_add_star")}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
@@ -742,7 +764,7 @@ const Templates = () => {
                                     }}
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Template
+                                    {t("templates.action_delete")}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -764,7 +786,7 @@ const Templates = () => {
 
                           {template.variables.length > 0 && (
                             <div className="mb-4">
-                              <p className="text-xs text-text-subtle mb-2">Variables:</p>
+                              <p className="text-xs text-text-subtle mb-2">{t("templates.variables_label")}</p>
                               <div className="flex flex-wrap gap-1">
                                 {template.variables.slice(0, 2).map((variable) => (
                                   <Badge key={variable} variant="outline" className="text-xs">
@@ -781,7 +803,7 @@ const Templates = () => {
                           )}
 
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-text-subtle gap-1">
-                            <span>Used {template.usage_count} times</span>
+                            <span>{t("templates.used_times", { count: template.usage_count })}</span>
                             <span className="truncate">
                               {template.last_used_display}
                             </span>
@@ -796,13 +818,13 @@ const Templates = () => {
                           </div>
                           <h3 className="text-xl font-semibold text-foreground mb-3">
                             {searchQuery || channelFilter !== "all" || categoryFilter !== "all" || languageFilter !== "all"
-                              ? "No templates match your filters"
-                              : "No templates yet"}
+                              ? t("templates.empty_filtered_title")
+                              : t("templates.empty_title")}
                           </h3>
                           <p className="text-sm text-text-subtle mb-6 leading-relaxed">
                             {searchQuery || channelFilter !== "all" || categoryFilter !== "all" || languageFilter !== "all"
-                              ? "Try adjusting your search terms or filters to find what you're looking for."
-                              : "Create your first message template to get started with automated communications."}
+                              ? t("templates.empty_filtered_desc")
+                              : t("templates.empty_desc")}
                           </p>
                           <div className="flex gap-2 justify-center">
                             {(searchQuery || channelFilter !== "all" || categoryFilter !== "all" || languageFilter !== "all") && (
@@ -816,7 +838,7 @@ const Templates = () => {
                                 }}
                                 className="px-6"
                               >
-                                Clear Filters
+                                {t("templates.clear_filters")}
                               </Button>
                             )}
                             <Button
@@ -824,7 +846,7 @@ const Templates = () => {
                               onClick={() => window.location.reload()}
                               className="px-6"
                             >
-                              Refresh Page
+                              {t("templates.refresh_page")}
                             </Button>
                           </div>
                         </div>
@@ -843,7 +865,7 @@ const Templates = () => {
         <div className="w-full lg:w-96 border-l border-border-subtle glass flex flex-col">
           <div className="p-4 lg:p-6 border-b border-border-subtle">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-heading text-base lg:text-lg font-semibold">Template Details</h3>
+              <h3 className="font-heading text-base lg:text-lg font-semibold">{t("templates.details_title")}</h3>
               <Button variant="ghost" size="icon" onClick={() => setSelectedTemplate(null)} className="h-8 w-8">
                 <MoreVertical className="w-4 h-4" />
               </Button>
@@ -870,12 +892,12 @@ const Templates = () => {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs lg:text-sm font-medium text-foreground">Category</p>
+                <p className="text-xs lg:text-sm font-medium text-foreground">{t("templates.detail_category_label")}</p>
                 <Badge variant="outline" className="text-xs">{selectedTemplate.category_display}</Badge>
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs lg:text-sm font-medium text-foreground">Language</p>
+                <p className="text-xs lg:text-sm font-medium text-foreground">{t("templates.detail_language_label")}</p>
                 <div className="flex items-center gap-2">
                   <Globe className="w-3 h-3 lg:w-4 lg:h-4 text-text-subtle" />
                   <span className="text-xs lg:text-sm text-foreground">{selectedTemplate.language_display}</span>
@@ -883,20 +905,20 @@ const Templates = () => {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs lg:text-sm font-medium text-foreground">Usage Statistics</p>
+                <p className="text-xs lg:text-sm font-medium text-foreground">{t("templates.usage_stats")}</p>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs lg:text-sm">
-                    <span className="text-text-subtle">Total uses</span>
+                    <span className="text-text-subtle">{t("templates.total_uses")}</span>
                     <span className="text-foreground">{selectedTemplate.usage_count}</span>
                   </div>
                   <div className="flex justify-between text-xs lg:text-sm">
-                    <span className="text-text-subtle">Last used</span>
+                    <span className="text-text-subtle">{t("templates.last_used")}</span>
                     <span className="text-foreground">
                       {selectedTemplate.last_used_display}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs lg:text-sm">
-                    <span className="text-text-subtle">Created</span>
+                    <span className="text-text-subtle">{t("dashboard.sender_ids.table.created")}</span>
                     <span className="text-foreground">{new Date(selectedTemplate.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -909,7 +931,7 @@ const Templates = () => {
                   onClick={() => handleEditTemplate(selectedTemplate)}
                 >
                   <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
-                  Edit
+                  {t("templates.edit_short")}
                 </Button>
                 <Button
                   variant="outline"
@@ -926,14 +948,14 @@ const Templates = () => {
           <div className="flex-1 p-4 lg:p-6">
             <Tabs defaultValue="content" className="h-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="content" className="text-xs lg:text-sm">Content</TabsTrigger>
-                <TabsTrigger value="variables" className="text-xs lg:text-sm">Variables</TabsTrigger>
+                <TabsTrigger value="content" className="text-xs lg:text-sm">{t("templates.tab_content")}</TabsTrigger>
+                <TabsTrigger value="variables" className="text-xs lg:text-sm">{t("templates.tab_variables")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="content" className="mt-4">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-xs lg:text-sm font-medium text-foreground mb-2">Message Content</p>
+                    <p className="text-xs lg:text-sm font-medium text-foreground mb-2">{t("templates.message_content_label")}</p>
                     <div className="p-3 rounded-lg bg-gradient-surface border border-border-subtle">
                       <p className="text-xs lg:text-sm text-foreground whitespace-pre-wrap">
                         {selectedTemplate.body_text}
@@ -947,7 +969,7 @@ const Templates = () => {
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs lg:text-sm font-medium text-foreground mb-2">
-                      Template Variables ({selectedTemplate.variables.length})
+                      {t("templates.template_variables_count", { count: selectedTemplate.variables.length })}
                     </p>
                     <div className="space-y-2">
                       {selectedTemplate.variables.map((variable) => (
@@ -959,7 +981,7 @@ const Templates = () => {
                         </div>
                       ))}
                       {selectedTemplate.variables.length === 0 && (
-                        <p className="text-xs lg:text-sm text-text-subtle">No variables in this template</p>
+                        <p className="text-xs lg:text-sm text-text-subtle">{t("templates.no_variables")}</p>
                       )}
                     </div>
                   </div>

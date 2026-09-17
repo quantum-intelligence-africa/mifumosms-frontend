@@ -1,7 +1,7 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, ChevronDown } from "lucide-react";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import MobileMenu from "@/components/layout/MobileMenu";
@@ -34,7 +34,7 @@ export const LandingHeader = ({
   forceScrolled = false,
   heroSectionId = "about",
 }: LandingHeaderProps) => {
-  const { language } = useContext(LanguageContext);
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -131,13 +131,13 @@ export const LandingHeader = ({
               onClick={() => handleAnchor("features")}
               className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${linkColor}`}
             >
-              {language === "sw" ? "Vipengele" : "Features"}
+              {t("landing.nav.features")}
             </button>
             <button
               onClick={() => handleAnchor("pricing")}
               className={`transition-colors duration-300 cursor-pointer flex items-center gap-2 ${linkColor}`}
             >
-              {language === "sw" ? "Bei" : "Pricing"}
+              {t("landing.nav.pricing")}
             </button>
 
             {/* Platform mega-menu */}
@@ -146,9 +146,9 @@ export const LandingHeader = ({
                 type="button"
                 className={`transition-colors duration-300 cursor-pointer inline-flex items-center gap-1 ${linkColor}`}
                 aria-haspopup="true"
-                aria-label="Platform menu"
+                aria-label={t("landing.nav.platform")}
               >
-                {language === "sw" ? "Jukwaa" : "Platform"}
+                {t("landing.nav.platform")}
                 <ChevronDown className="w-3.5 h-3.5 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
               </button>
               <div
@@ -158,12 +158,10 @@ export const LandingHeader = ({
                 <div className="relative rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-blue-900/10 overflow-hidden">
                   <div className="px-5 pt-4 pb-3 border-b border-gray-100 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-600">
-                      {language === "sw" ? "Jukwaa" : "Platform"}
+                      {t("landing.nav.platform")}
                     </p>
                     <p className="mt-0.5 text-[13px] font-semibold text-gray-900">
-                      {language === "sw"
-                        ? "Njia tatu, suite moja."
-                        : "Three channels, one stack."}
+                      {t("landing.header.platform_menu_subtitle")}
                     </p>
                   </div>
                   <ul className="grid grid-cols-2 gap-1 p-2">
@@ -200,7 +198,7 @@ export const LandingHeader = ({
               to="/developer"
               className={`transition-colors duration-300 ${linkColor}`}
             >
-              {language === "sw" ? "Developa" : "Developer"}
+              {t("landing.nav.developer")}
             </Link>
             <Link
               to="/whatsapp-broadcast"
@@ -228,7 +226,7 @@ export const LandingHeader = ({
                     : "border border-white text-white hover:bg-white hover:text-gray-900"
                 }`}
               >
-                {language === "sw" ? "Ingia" : "Login"}
+                {t("landing.nav.login")}
               </button>
             </Link>
             <Link to="/signup">
@@ -239,7 +237,7 @@ export const LandingHeader = ({
                     : "border border-white text-white hover:bg-blue-600 hover:text-white hover:border-blue-600"
                 }`}
               >
-                {language === "sw" ? "Jiunge" : "Get started"}
+                {t("landing.nav.get_started")}
               </button>
             </Link>
           </div>
@@ -251,7 +249,7 @@ export const LandingHeader = ({
               className={`relative p-2 cursor-pointer transition-colors duration-300 ${linkColor}`}
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               aria-expanded={isMobileMenuOpen}
-              aria-label="Toggle mobile menu"
+              aria-label={t("landing.header.toggle_mobile_menu")}
             >
               <Menu className="w-5 h-5" />
             </button>

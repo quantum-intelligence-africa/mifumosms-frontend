@@ -27,6 +27,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { voiceApi } from "@/services/voiceApi";
+import { useLanguage } from "@/hooks/useLanguage";
+
+type T = ReturnType<typeof useLanguage>["t"];
 
 interface VoiceAccountOption {
   id: string;
@@ -94,18 +97,28 @@ function formatDuration(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function phoneStatusLine(call: PlacedCall | null): { icon: typeof Phone; text: string; tone: string } | null {
+function phoneStatusLine(call: PlacedCall | null, t: T): { icon: typeof Phone; text: string; tone: string } | null {
   if (!call) return null;
-  if (call.status === "ringing") return { icon: PhoneIncoming, text: "Simu yako inaita — pokea, kisha tutamuunganisha mteja.", tone: "text-amber-600" };
-  if (call.status === "in_progress") return { icon: PhoneCall, text: `Umepokea. Tunampigia mteja ${call.to_number}… mazungumzo yanarekodiwa.`, tone: "text-green-600" };
+  if (call.status === "ringing") return { icon: PhoneIncoming, text: t("voice.place_call.status_ringing"), tone: "text-amber-600" };
+  if (call.status === "in_progress")
+    return { icon: PhoneCall, text: t("voice.place_call.status_in_progress", { number: call.to_number }), tone: "text-green-600" };
   if (call.status === "completed") {
     const mins = call.duration_seconds != null ? ` (${formatDuration(call.duration_seconds)})` : "";
-    return { icon: CheckCircle2, text: `Simu imemalizika${mins}. Rekodi itaonekana kwenye Recordings.`, tone: "text-muted-foreground" };
+    return {
+      icon: CheckCircle2,
+      text: t("voice.place_call.status_completed", { mins, recordings: t("nav.recordings") }),
+      tone: "text-muted-foreground",
+    };
   }
-  return { icon: AlertCircle, text: `Simu haikufanikiwa${call.provider_status ? ` (${call.provider_status})` : ""}.`, tone: "text-destructive" };
+  return {
+    icon: AlertCircle,
+    text: t("voice.place_call.status_failed", { status: call.provider_status ? ` (${call.provider_status})` : "" }),
+    tone: "text-destructive",
+  };
 }
 
 export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", initialNumber = "", onCallEnded }: PlaceCallDialogProps) {
+  const { t } = useLanguage();
   const [accounts, setAccounts] = useState<VoiceAccountOption[]>([]);
   const [accountId, setAccountId] = useState<string>("");
   const [mode, setMode] = useState<Mode>("browser");
@@ -178,12 +191,12 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     if (!open || mode !== "browser" || !account) return;
     let cancelled = false;
     setBrowserState("connecting");
-    setBrowserNote("Tunaandaa simu ya kivinjari…");
+    setBrowserNote(t("voice.place_call.preparing_browser"));
     voiceApi.post<WebRtcToken>(`/voice/accounts/${account.id}/webrtc-token/`).then((res) => {
       if (cancelled) return;
       if (!res.success || !res.data) {
         setBrowserState("error");
-        setBrowserNote(res.error || "Kivinjari hakikuweza kuandaliwa kupiga simu.");
+        setBrowserNote(res.error || t("voice.place_call.browser_setup_failed"));
         return;
       }
       const client = new Africastalking.Client(res.data.token);
@@ -191,22 +204,22 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
       client.on("ready", () => {
         if (cancelled) return;
         setBrowserState("ready");
-        setBrowserNote(`Tayari kupiga kutoka ${res.data!.phone_number}.`);
+        setBrowserNote(t("voice.place_call.ready_to_call", { number: res.data!.phone_number }));
       });
       client.on("notready", () => {
         if (cancelled) return;
         setBrowserState("error");
-        setBrowserNote("Kivinjari hakiko tayari — ruhusu kipaza sauti (microphone) kisha jaribu tena.");
+        setBrowserNote(t("voice.place_call.browser_not_ready"));
       });
       client.on("calling", () => {
         if (cancelled) return;
         setBrowserState("calling");
-        setBrowserNote(`Tunampigia ${dialable}…`);
+        setBrowserNote(t("voice.place_call.calling_number", { number: dialable }));
       });
       client.on("callaccepted", () => {
         if (cancelled) return;
         setBrowserState("in_call");
-        setBrowserNote(record ? "Mmeunganishwa. Mazungumzo yanarekodiwa." : "Mmeunganishwa.");
+        setBrowserNote(record ? t("voice.place_call.connected_recording") : t("voice.place_call.connected"));
         setCallSeconds(0);
         stopTimer(tickTimer);
         tickTimer.current = setInterval(() => setCallSeconds((s) => s + 1), 1000);
@@ -220,20 +233,20 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
         setBrowserState("ended");
         setBrowserNote(
           c.reason && String(c.reason).toLowerCase() !== "normal_clearing"
-            ? `Simu imeisha (${c.reason}).`
-            : "Simu imemalizika. Rekodi itaonekana kwenye Recordings baada ya muda mfupi.",
+            ? t("voice.place_call.call_ended_reason", { reason: c.reason })
+            : t("voice.place_call.call_ended_recording_soon", { recordings: t("nav.recordings") }),
         );
         onCallEnded?.();
       });
       client.on("offline", () => {
         if (cancelled) return;
         setBrowserState("error");
-        setBrowserNote("Muda wa kuunganishwa umeisha — funga na ufungue tena dirisha hili.");
+        setBrowserNote(t("voice.place_call.connection_timeout"));
       });
       client.on("closed", () => {
         if (cancelled) return;
         setBrowserState((s) => (s === "in_call" || s === "calling" ? "error" : s));
-        setBrowserNote((n) => n || "Muunganisho na mtandao umekatika.");
+        setBrowserNote((n) => n || t("voice.place_call.network_disconnected"));
       });
     });
     return () => {
@@ -243,7 +256,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     // `dialable`/`record` are read inside handlers at event time via closure
     // of the latest render is not guaranteed; they only affect status text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, account?.id]);
+  }, [open, mode, account?.id, t]);
 
   useEffect(() => {
     if (!open) {
@@ -263,10 +276,10 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     try {
       clientRef.current.call(dialable);
       setBrowserState("calling");
-      setBrowserNote(`Tunampigia ${dialable}…`);
+      setBrowserNote(t("voice.place_call.calling_number", { number: dialable }));
     } catch (e) {
       setBrowserState("error");
-      setBrowserNote(`Simu haikuweza kuanzishwa: ${(e as Error).message}`);
+      setBrowserNote(t("voice.place_call.call_start_failed", { message: (e as Error).message }));
     }
   };
   const browserHangup = () => {
@@ -283,7 +296,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
       hangupAckTimer.current = null;
       stopTimer(tickTimer);
       setBrowserState("ended");
-      setBrowserNote("Tumefunga upande wetu. Ikiwa mteja bado yuko mstarini, itakatika yenyewe hivi karibuni.");
+      setBrowserNote(t("voice.place_call.hangup_local_note"));
     }, 4000);
   };
   const toggleMute = () => {
@@ -295,7 +308,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
   const browserReset = () => {
     // After a call: same token, same client — just allow another dial.
     setBrowserState("ready");
-    setBrowserNote(`Tayari kupiga kutoka ${account?.phone_number ?? ""}.`);
+    setBrowserNote(t("voice.place_call.ready_to_call", { number: account?.phone_number ?? "" }));
     setCallSeconds(0);
     setMuted(false);
   };
@@ -313,7 +326,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     });
     setIsPlacing(false);
     if (!res.success || !res.data) {
-      setError(res.error || "Simu haikuweza kuanzishwa.");
+      setError(res.error || t("voice.place_call.call_could_not_start"));
       return;
     }
     setCall(res.data);
@@ -329,7 +342,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     }, POLL_MS);
   };
 
-  const phoneStatus = phoneStatusLine(call);
+  const phoneStatus = phoneStatusLine(call, t);
   const inBrowserCall = browserState === "calling" || browserState === "in_call";
   const canDial =
     !!account && enoughDigits && (mode === "browser" ? browserState === "ready" : !isPlacing && (!call || call.status === "completed" || call.status === "failed"));
@@ -338,19 +351,17 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Piga simu</DialogTitle>
+          <DialogTitle>{t("voice.place_call.title")}</DialogTitle>
           <DialogDescription>
-            {mode === "browser"
-              ? "Utazungumza moja kwa moja kupitia kivinjari; mteja ataona namba ya biashara na mazungumzo yatarekodiwa."
-              : "Simu yako itaita kwanza; ukipokea, mteja ataunganishwa nawe na mazungumzo yatarekodiwa."}
+            {mode === "browser" ? t("voice.place_call.desc_browser") : t("voice.place_call.desc_phone")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
           {(
             [
-              ["browser", Monitor, "Kivinjari"],
-              ["phone", Smartphone, "Simu yangu"],
+              ["browser", Monitor, t("voice.place_call.mode_browser")],
+              ["phone", Smartphone, t("voice.place_call.mode_phone")],
             ] as Array<[Mode, typeof Monitor, string]>
           ).map(([m, Icon, label]) => (
             <button
@@ -371,9 +382,9 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
 
         {accounts.length > 1 && (
           <div className="space-y-1">
-            <Label className="text-xs">Piga kutoka namba</Label>
+            <Label className="text-xs">{t("voice.place_call.from_number_label")}</Label>
             <Select value={accountId} onValueChange={setAccountId} disabled={inBrowserCall}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Chagua namba" /></SelectTrigger>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("voice.place_call.choose_number_placeholder")} /></SelectTrigger>
               <SelectContent>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id} className="text-sm">
@@ -386,7 +397,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
         )}
         {accounts.length === 0 && (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Hakuna namba ya biashara iliyo tayari kupiga simu. Ongeza namba yenye mtoa huduma kwenye Phone Numbers kwanza.
+            {t("voice.place_call.no_numbers_warning", { phone_numbers: t("nav.phone_numbers") })}
           </p>
         )}
 
@@ -394,7 +405,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
           <div className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card py-5">
             <p className="font-mono text-2xl tracking-wider text-foreground">{dialable}</p>
             <p className={cn("text-xs", browserState === "in_call" ? "text-green-600" : "text-amber-600")}>
-              {browserState === "in_call" ? `Mazungumzo · ${formatDuration(callSeconds)}` : "Inaita…"}
+              {browserState === "in_call" ? t("voice.place_call.in_call_label", { duration: formatDuration(callSeconds) }) : t("voice.place_call.calling_label")}
             </p>
           </div>
         ) : (
@@ -406,11 +417,11 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
               inputMode="tel"
               autoFocus
               className="h-14 text-center font-mono text-2xl tracking-wider"
-              aria-label="Namba ya mteja"
+              aria-label={t("voice.place_call.customer_number_aria")}
             />
             {enoughDigits && dialable !== number && (
               <p className="-mt-2 text-center text-xs text-muted-foreground">
-                Itapigwa kama <span className="font-mono text-foreground">{dialable}</span>
+                {t("voice.place_call.will_dial_as")} <span className="font-mono text-foreground">{dialable}</span>
               </p>
             )}
             <div className="grid grid-cols-3 gap-2">
@@ -431,7 +442,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
 
         {mode === "phone" && (
           <div className="space-y-1">
-            <Label htmlFor="agent-number" className="text-xs">Simu yako (itaita kwanza)</Label>
+            <Label htmlFor="agent-number" className="text-xs">{t("voice.place_call.your_phone_label")}</Label>
             <Input
               id="agent-number"
               value={agentNumber}
@@ -445,7 +456,7 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
         {mode === "phone" && (
           <div className="flex items-center gap-2">
             <Checkbox id="record-call" checked={record} onCheckedChange={(v) => setRecord(!!v)} />
-            <Label htmlFor="record-call" className="text-xs font-normal">Rekodi mazungumzo</Label>
+            <Label htmlFor="record-call" className="text-xs font-normal">{t("voice.place_call.record_checkbox")}</Label>
           </div>
         )}
 
@@ -473,21 +484,21 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
 
         <div className="flex items-center justify-between pt-1">
           {inBrowserCall ? (
-            <Button variant="outline" size="icon" onClick={toggleMute} aria-label={muted ? "Washa kipaza sauti" : "Zima kipaza sauti"}>
+            <Button variant="outline" size="icon" onClick={toggleMute} aria-label={muted ? t("voice.place_call.unmute_aria") : t("voice.place_call.mute_aria")}>
               {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" onClick={backspace} disabled={!number} aria-label="Futa tarakimu">
+            <Button variant="ghost" size="icon" onClick={backspace} disabled={!number} aria-label={t("voice.place_call.backspace_aria")}>
               <Delete className="h-5 w-5" />
             </Button>
           )}
 
           {mode === "browser" && inBrowserCall ? (
-            <Button size="icon" onClick={browserHangup} className="h-16 w-16 rounded-full bg-red-600 text-white hover:bg-red-700" aria-label="Kata simu">
+            <Button size="icon" onClick={browserHangup} className="h-16 w-16 rounded-full bg-red-600 text-white hover:bg-red-700" aria-label={t("voice.place_call.hangup_aria")}>
               <PhoneOff className="h-6 w-6" />
             </Button>
           ) : mode === "browser" && browserState === "ended" ? (
-            <Button size="icon" onClick={browserReset} className="h-16 w-16 rounded-full" aria-label="Piga tena">
+            <Button size="icon" onClick={browserReset} className="h-16 w-16 rounded-full" aria-label={t("voice.place_call.call_again_aria")}>
               <Phone className="h-6 w-6" />
             </Button>
           ) : (
@@ -496,14 +507,14 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
               onClick={mode === "browser" ? browserCall : placeViaPhone}
               disabled={!canDial}
               className="h-16 w-16 rounded-full bg-green-600 text-white hover:bg-green-700"
-              aria-label={`Mpigie ${dialable}`}
+              aria-label={t("voice.place_call.call_number_aria", { number: dialable })}
             >
               {isPlacing || browserState === "connecting" ? <Loader2 className="h-6 w-6 animate-spin" /> : <Phone className="h-6 w-6" />}
             </Button>
           )}
 
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={inBrowserCall}>
-            Funga
+            {t("close")}
           </Button>
         </div>
       </DialogContent>

@@ -8,6 +8,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { Notification } from '@/services/NotificationService';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface NotificationDropdownProps {
   className?: string;
@@ -17,6 +18,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const {
     notifications,
     unreadCount,
@@ -121,7 +123,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
           {/* Header */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Notifications</h3>
+              <h3 className="font-semibold text-gray-900">{t("notifications.dropdown.title")}</h3>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -140,7 +142,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
                     className="h-8 px-2 text-xs"
                   >
                     <Check className="h-3 w-3 mr-1" />
-                    Mark all read
+                    {t("notifications.dropdown.mark_all_read")}
                   </Button>
                 )}
               </div>
@@ -152,7 +154,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">No notifications yet</p>
+                <p className="text-sm">{t("notifications.dropdown.empty")}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
@@ -204,7 +206,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
                                 }}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
-                                {notification.action_text || 'View'}
+                                {notification.action_text || t("notifications.dropdown.view")}
                               </Button>
                             )}
 
@@ -241,7 +243,7 @@ const NotificationDropdown = ({ className }: NotificationDropdownProps) => {
               }}
             >
               <Settings className="h-4 w-4 mr-2" />
-              View all notifications
+              {t("notifications.dropdown.view_all")}
             </Button>
           </div>
         </div>

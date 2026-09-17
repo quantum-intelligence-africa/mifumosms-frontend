@@ -27,6 +27,7 @@ import {
 } from "@/hooks/useWhatsAppCloud";
 import { apiClient, type Template } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // Local templates use named placeholders like {{name}}, {{date}}. Pull the
 // distinct keys out of the body so the Send dialog can collect values for each.
@@ -58,6 +59,7 @@ export function CreateTemplateDialog({
 }: CreateTemplateDialogProps) {
   const { toast } = useToast();
   const { getAvailableVariables } = useWhatsAppCloud();
+  const { t } = useLanguage();
 
   const [name, setName] = useState("");
   const [language, setLanguage] = useState<"en" | "sw">("en");
@@ -128,13 +130,13 @@ export function CreateTemplateDialog({
         description: description.trim() || undefined,
       });
       if (!res.success || !res.data) {
-        throw new Error(res.error || res.message || "Failed to create template");
+        throw new Error(res.error || res.message || t("whatsapp.local_template.create_failed"));
       }
-      toast({ title: "Template created", description: res.data.name });
+      toast({ title: t("whatsapp.local_template.create_toast_title"), description: res.data.name });
       onCreated?.(res.data);
       close(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create template");
+      setError(e instanceof Error ? e.message : t("whatsapp.local_template.create_failed"));
     } finally {
       setIsSaving(false);
     }
@@ -144,54 +146,53 @@ export function CreateTemplateDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[92vh] overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">New WhatsApp template</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.local_template.create_title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
-            Authored locally — sent as a plain WhatsApp text. Use{" "}
-            <code className="text-[11px] bg-muted px-1 rounded">{"{{name}}"}</code> or any{" "}
-            <code className="text-[11px] bg-muted px-1 rounded">{"{{key}}"}</code> placeholders; the
-            server fills them from Contact at send time.
+            {t("whatsapp.local_template.create_desc_p1")}{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">{"{{name}}"}</code> {t("whatsapp.local_template.create_desc_or_any")}{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">{"{{key}}"}</code> {t("whatsapp.local_template.create_desc_p2")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="p-4 sm:p-5 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Name</Label>
+              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.name_label")}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Appointment reminder"
+                placeholder={t("whatsapp.local_template.name_placeholder")}
                 className="h-10 rounded-xl text-[13px]"
               />
               {name && !nameOk && (
-                <p className="text-[11px] text-destructive">letters, digits, spaces, _ or - only</p>
+                <p className="text-[11px] text-destructive">{t("whatsapp.local_template.name_hint")}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Language</Label>
+              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.language_label")}</Label>
               <Select value={language} onValueChange={(v) => setLanguage(v as "en" | "sw")}>
                 <SelectTrigger className="h-10 rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English (en)</SelectItem>
-                  <SelectItem value="sw">Kiswahili (sw)</SelectItem>
+                  <SelectItem value="en">{t("whatsapp.common.lang_en")}</SelectItem>
+                  <SelectItem value="sw">{t("whatsapp.common.lang_sw")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Category</Label>
+            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.category_label")}</Label>
             <Input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="reminders, marketing, otp …"
+              placeholder={t("whatsapp.local_template.category_placeholder")}
               className="h-10 rounded-xl text-[13px]"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Body</Label>
+            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.body")}</Label>
             <Textarea
               ref={bodyRef}
               value={bodyText}
@@ -203,7 +204,7 @@ export function CreateTemplateDialog({
             {variables.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 <span className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55 mr-1 mt-0.5">
-                  Insert
+                  {t("whatsapp.local_template.insert_label")}
                 </span>
                 {variables.map((v) => (
                   <button
@@ -222,7 +223,7 @@ export function CreateTemplateDialog({
 
           <div className="space-y-1.5">
             <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-              Description <span className="opacity-60 font-normal">(optional)</span>
+              {t("whatsapp.local_template.description_label")} <span className="opacity-60 font-normal">{t("whatsapp.common.optional_suffix")}</span>
             </Label>
             <Input
               value={description}
@@ -247,7 +248,7 @@ export function CreateTemplateDialog({
             disabled={isSaving}
             className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={submit}
@@ -257,12 +258,12 @@ export function CreateTemplateDialog({
             {isSaving ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Saving…
+                {t("whatsapp.common.saving_dots")}
               </>
             ) : (
               <>
                 <Plus className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
-                Create
+                {t("whatsapp.local_template.create_button")}
               </>
             )}
           </Button>
@@ -283,6 +284,7 @@ interface EditTemplateDialogProps {
 export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTemplateDialogProps) {
   const { toast } = useToast();
   const { getAvailableVariables } = useWhatsAppCloud();
+  const { t } = useLanguage();
 
   const [name, setName] = useState("");
   const [language, setLanguage] = useState<"en" | "sw">("en");
@@ -345,13 +347,13 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
         description: description.trim() || undefined,
       });
       if (!res.success || !res.data) {
-        throw new Error(res.error || res.message || "Failed to update template");
+        throw new Error(res.error || res.message || t("whatsapp.local_template.update_failed"));
       }
-      toast({ title: "Template updated", description: res.data.name });
+      toast({ title: t("whatsapp.local_template.update_toast_title"), description: res.data.name });
       onEdited?.(res.data);
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update template");
+      setError(e instanceof Error ? e.message : t("whatsapp.local_template.update_failed"));
     } finally {
       setIsSaving(false);
     }
@@ -361,16 +363,16 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
     <Dialog open={!!template} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[92vh] overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">Edit template</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.local_template.edit_title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
-            Placeholders are re-extracted from the body when you save.
+            {t("whatsapp.local_template.edit_desc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="p-4 sm:p-5 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Name</Label>
+              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.name_label")}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -378,19 +380,19 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Language</Label>
+              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.language_label")}</Label>
               <Select value={language} onValueChange={(v) => setLanguage(v as "en" | "sw")}>
                 <SelectTrigger className="h-10 rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English (en)</SelectItem>
-                  <SelectItem value="sw">Kiswahili (sw)</SelectItem>
+                  <SelectItem value="en">{t("whatsapp.common.lang_en")}</SelectItem>
+                  <SelectItem value="sw">{t("whatsapp.common.lang_sw")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Category</Label>
+            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.category_label")}</Label>
             <Input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -399,7 +401,7 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Body</Label>
+            <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.body")}</Label>
             <Textarea
               ref={bodyRef}
               value={bodyText}
@@ -410,7 +412,7 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
             {variables.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 <span className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55 mr-1 mt-0.5">
-                  Insert
+                  {t("whatsapp.local_template.insert_label")}
                 </span>
                 {variables.map((v) => (
                   <button
@@ -429,7 +431,7 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
 
           <div className="space-y-1.5">
             <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-              Description <span className="opacity-60 font-normal">(optional)</span>
+              {t("whatsapp.local_template.description_label")} <span className="opacity-60 font-normal">{t("whatsapp.common.optional_suffix")}</span>
             </Label>
             <Input
               value={description}
@@ -453,7 +455,7 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
             disabled={isSaving}
             className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={submit}
@@ -463,10 +465,10 @@ export function EditTemplateDialog({ template, onOpenChange, onEdited }: EditTem
             {isSaving ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Saving…
+                {t("whatsapp.common.saving_dots")}
               </>
             ) : (
-              "Save changes"
+              t("whatsapp.local_template.save_changes")
             )}
           </Button>
         </DialogFooter>
@@ -489,6 +491,7 @@ export function DeleteTemplateDialog({
   onDeleted,
 }: DeleteTemplateDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -503,13 +506,13 @@ export function DeleteTemplateDialog({
     try {
       const res = await apiClient.deleteTemplate(template.id);
       if (!res.success) {
-        throw new Error(res.error || res.message || "Failed to delete template");
+        throw new Error(res.error || res.message || t("whatsapp.local_template.delete_failed"));
       }
-      toast({ title: "Template deleted", description: template.name });
+      toast({ title: t("whatsapp.local_template.delete_toast_title"), description: template.name });
       onDeleted?.();
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete template");
+      setError(e instanceof Error ? e.message : t("whatsapp.local_template.delete_failed"));
     } finally {
       setIsDeleting(false);
     }
@@ -519,9 +522,9 @@ export function DeleteTemplateDialog({
     <Dialog open={!!template} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-md p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">Delete template</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.local_template.delete_title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
-            This cannot be undone.
+            {t("whatsapp.local_template.delete_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -548,7 +551,7 @@ export function DeleteTemplateDialog({
             disabled={isDeleting}
             className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -559,12 +562,12 @@ export function DeleteTemplateDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Deleting…
+                {t("whatsapp.common.deleting_dots")}
               </>
             ) : (
               <>
                 <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                Delete
+                {t("whatsapp.common.delete")}
               </>
             )}
           </Button>
@@ -594,6 +597,7 @@ export function SendFromTemplateDialog({
   waAccountId,
 }: SendFromTemplateDialogProps) {
   const { sendFromTemplate, isLoading } = useWhatsAppCloud();
+  const { t } = useLanguage();
   const [recipientsRaw, setRecipientsRaw] = useState("");
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [delayMs, setDelayMs] = useState<string>("80");
@@ -644,7 +648,13 @@ export function SendFromTemplateDialog({
         },
         waAccountId,
       );
-      setResultSummary(`${data.sent} sent, ${data.failed} failed of ${data.total}`);
+      setResultSummary(
+        t("whatsapp.local_template.result_summary", {
+          sent: data.sent,
+          failed: data.failed,
+          total: data.total,
+        }),
+      );
 
       // Surface recipients whose Contact lookup didn't fill a placeholder.
       const missing = new Set<string>();
@@ -653,7 +663,7 @@ export function SendFromTemplateDialog({
       }
       setMissingFromAutofill(Array.from(missing));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Send failed");
+      setError(e instanceof Error ? e.message : t("whatsapp.common.send_failed"));
     }
   };
 
@@ -661,11 +671,11 @@ export function SendFromTemplateDialog({
     <Dialog open={!!template} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[92vh] overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">Send template</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.local_template.send_title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
-            Each recipient gets a plain WhatsApp text rendered from this template. Contact data
-            auto-fills <code className="text-[11px] bg-muted px-1 rounded">{"{{name}}"}</code>,{" "}
-            <code className="text-[11px] bg-muted px-1 rounded">{"{{phone}}"}</code>, and{" "}
+            {t("whatsapp.local_template.send_desc_p1")}{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">{"{{name}}"}</code>,{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">{"{{phone}}"}</code>, {t("whatsapp.local_template.send_desc_and")}{" "}
             <code className="text-[11px] bg-muted px-1 rounded">{"{{email}}"}</code>.
           </DialogDescription>
         </DialogHeader>
@@ -688,7 +698,7 @@ export function SendFromTemplateDialog({
 
           <div className="space-y-1.5">
             <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-              Recipients <span className="opacity-60 font-normal">(max 500, comma or newline separated)</span>
+              {t("whatsapp.local_template.recipients_label")} <span className="opacity-60 font-normal">{t("whatsapp.local_template.recipients_hint_suffix")}</span>
             </Label>
             <Textarea
               value={recipientsRaw}
@@ -698,18 +708,18 @@ export function SendFromTemplateDialog({
               className="rounded-xl text-[13px] font-mono leading-relaxed"
             />
             <p className="text-[11px] text-foreground/55 tabular-nums">
-              {recipients.length} recipient{recipients.length === 1 ? "" : "s"}
-              {recipients.length > 500 && <span className="text-destructive ml-2">— over 500 limit</span>}
+              {t("whatsapp.local_template.recipient_count", { count: recipients.length })}
+              {recipients.length > 500 && <span className="text-destructive ml-2">{t("whatsapp.local_template.over_limit")}</span>}
             </p>
           </div>
 
           {requiredKeys.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                Variables
+                {t("whatsapp.local_template.variables_label")}
               </Label>
               <p className="text-[11px] text-foreground/55">
-                Shared values for placeholders not auto-filled from Contact.
+                {t("whatsapp.local_template.variables_hint")}
               </p>
               <div className="space-y-1.5">
                 {requiredKeys.map((k) => (
@@ -720,7 +730,7 @@ export function SendFromTemplateDialog({
                       onChange={(e) =>
                         setVariables((prev) => ({ ...prev, [k]: e.target.value }))
                       }
-                      placeholder={`Value for ${k}`}
+                      placeholder={t("whatsapp.local_template.value_for", { key: k })}
                       className="h-9 rounded-lg text-[13px]"
                     />
                   </div>
@@ -732,10 +742,10 @@ export function SendFromTemplateDialog({
           {autofillKeys.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                Auto-filled overrides <span className="opacity-60 font-normal">(optional)</span>
+                {t("whatsapp.local_template.autofill_overrides_label")} <span className="opacity-60 font-normal">{t("whatsapp.common.optional_suffix")}</span>
               </Label>
               <p className="text-[11px] text-foreground/55">
-                Leave blank to use each recipient's Contact record.
+                {t("whatsapp.local_template.autofill_hint")}
               </p>
               <div className="space-y-1.5">
                 {autofillKeys.map((k) => (
@@ -746,7 +756,7 @@ export function SendFromTemplateDialog({
                       onChange={(e) =>
                         setVariables((prev) => ({ ...prev, [k]: e.target.value }))
                       }
-                      placeholder={`Override for ${k}`}
+                      placeholder={t("whatsapp.local_template.override_for", { key: k })}
                       className="h-9 rounded-lg text-[13px]"
                     />
                   </div>
@@ -757,7 +767,7 @@ export function SendFromTemplateDialog({
 
           <div className="space-y-1.5">
             <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-              Delay <span className="opacity-60 font-normal">(ms, max 2000)</span>
+              {t("whatsapp.local_template.delay_label")} <span className="opacity-60 font-normal">{t("whatsapp.local_template.delay_hint_suffix")}</span>
             </Label>
             <Input
               value={delayMs}
@@ -781,7 +791,7 @@ export function SendFromTemplateDialog({
                   <>
                     {" — "}
                     <span className="font-semibold">
-                      missing for some recipients:
+                      {t("whatsapp.local_template.missing_for_some")}
                     </span>{" "}
                     <span className="font-mono">{missingFromAutofill.join(", ")}</span>
                   </>
@@ -798,7 +808,7 @@ export function SendFromTemplateDialog({
             disabled={isLoading}
             className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
           >
-            Close
+            {t("close")}
           </Button>
           <Button
             onClick={submit}
@@ -808,12 +818,12 @@ export function SendFromTemplateDialog({
             {isLoading ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Sending…
+                {t("whatsapp.common.sending_dots")}
               </>
             ) : (
               <>
                 <Send className="w-3.5 h-3.5 mr-1.5" />
-                Send
+                {t("whatsapp.common.send")}
               </>
             )}
           </Button>

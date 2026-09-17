@@ -16,6 +16,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUserAvatar, AVATAR_OPTIONS } from "@/hooks/useUserAvatar";
 import { OnboardingStatus, RecommendationCard } from "@/hooks/useSendaOnboarding";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasSmsAccess } from "@/utils/roleUtils";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface GettingStartedProps {
   status: OnboardingStatus | null;
@@ -29,8 +31,8 @@ type StepKey = "email_verified" | "profile_completed" | "contacts_imported" | "s
 
 interface StepDef {
   key: StepKey;
-  title: string;
-  subtitle: string;
+  titleKey: "dashboard.getting_started.step_email_title" | "dashboard.getting_started.step_profile_title" | "dashboard.getting_started.step_contacts_title" | "dashboard.getting_started.step_sender_id_title";
+  subtitleKey: "dashboard.getting_started.step_email_subtitle" | "dashboard.getting_started.step_profile_subtitle" | "dashboard.getting_started.step_contacts_subtitle" | "dashboard.getting_started.step_sender_id_subtitle";
   required: boolean;
   icon: typeof Hash;
 }
@@ -38,29 +40,29 @@ interface StepDef {
 const STEPS: StepDef[] = [
   {
     key: "email_verified",
-    title: "Verify your account",
-    subtitle: "Confirmed via the OTP sent to your email or phone at sign-up.",
+    titleKey: "dashboard.getting_started.step_email_title",
+    subtitleKey: "dashboard.getting_started.step_email_subtitle",
     required: true,
     icon: ShieldCheck,
   },
   {
     key: "profile_completed",
-    title: "Choose your avatar",
-    subtitle: "Pick a profile image — you can change it anytime.",
+    titleKey: "dashboard.getting_started.step_profile_title",
+    subtitleKey: "dashboard.getting_started.step_profile_subtitle",
     required: true,
     icon: UserCircle,
   },
   {
     key: "contacts_imported",
-    title: "Add your contacts",
-    subtitle: "Bring in at least 5 contacts. You can always do this later.",
+    titleKey: "dashboard.getting_started.step_contacts_title",
+    subtitleKey: "dashboard.getting_started.step_contacts_subtitle",
     required: false,
     icon: Users,
   },
   {
     key: "sender_id_requested",
-    title: "Request a Sender ID",
-    subtitle: "Required to send branded SMS in Tanzania.",
+    titleKey: "dashboard.getting_started.step_sender_id_title",
+    subtitleKey: "dashboard.getting_started.step_sender_id_subtitle",
     required: true,
     icon: Hash,
   },
@@ -74,6 +76,14 @@ export function GettingStarted({
   const isMobile = useIsMobile();
   const { avatar, setAvatar } = useUserAvatar();
   const { user } = useAuth();
+  const { t } = useLanguage();
+
+  // Sender ID is purely an SMS/messaging concept — skip that step entirely
+  // for a user who only has IVR access (no SMS access to request one for).
+  const steps = useMemo(
+    () => (hasSmsAccess(user) ? STEPS : STEPS.filter((s) => s.key !== "sender_id_requested")),
+    [user]
+  );
 
   // If the user is on the dashboard, they've already passed the registration
   // OTP gate — mark account verification done. Prefer the profile flags so
@@ -114,9 +124,9 @@ export function GettingStarted({
 
   // Resolve the current step: first non-completed, non-skipped step.
   const firstUnfinishedIndex = useMemo(() => {
-    const idx = STEPS.findIndex((s) => !completion[s.key] && !skipped.has(s.key));
-    return idx === -1 ? STEPS.length - 1 : idx;
-  }, [completion, skipped]);
+    const idx = steps.findIndex((s) => !completion[s.key] && !skipped.has(s.key));
+    return idx === -1 ? steps.length - 1 : idx;
+  }, [steps, completion, skipped]);
 
   const [currentIndex, setCurrentIndex] = useState(firstUnfinishedIndex);
 
@@ -125,10 +135,10 @@ export function GettingStarted({
     setCurrentIndex(firstUnfinishedIndex);
   }, [firstUnfinishedIndex]);
 
-  const totalSteps = STEPS.length;
-  const doneCount = STEPS.filter((s) => completion[s.key]).length;
+  const totalSteps = steps.length;
+  const doneCount = steps.filter((s) => completion[s.key]).length;
   const percentage = Math.round((doneCount / totalSteps) * 100);
-  const currentStep = STEPS[currentIndex];
+  const currentStep = steps[currentIndex];
 
   const goNext = () => {
     if (currentIndex < totalSteps - 1) setCurrentIndex(currentIndex + 1);
@@ -148,15 +158,15 @@ export function GettingStarted({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-bold tracking-wider uppercase text-primary">
-              Welcome{firstName ? `, ${firstName}` : ""}
+              {firstName ? t("dashboard.getting_started.welcome_named", { name: firstName }) : t("dashboard.getting_started.welcome")}
             </p>
             <h2 className="text-[16px] sm:text-lg font-bold text-foreground leading-tight mt-0.5">
-              Let's get your account ready
+              {t("dashboard.getting_started.header_title")}
             </h2>
             <p className="text-[12px] text-foreground/65 dark:text-foreground/60 leading-snug mt-0.5">
               {doneCount === totalSteps
-                ? "You're all set."
-                : `${doneCount} of ${totalSteps} steps complete · a few minutes to go.`}
+                ? t("dashboard.getting_started.all_set")
+                : t("dashboard.getting_started.progress_summary", { done: doneCount, total: totalSteps })}
             </p>
           </div>
           <span className="flex-shrink-0 text-[16px] font-bold text-primary tabular-nums">
@@ -166,8 +176,8 @@ export function GettingStarted({
         <Progress value={percentage} className="h-1.5 mt-2.5" />
 
         {/* Step indicator */}
-        <ol className="mt-3 grid grid-cols-4 gap-2">
-          {STEPS.map((s, idx) => {
+        <ol className={`mt-3 grid gap-2 ${steps.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+          {steps.map((s, idx) => {
             const done = completion[s.key];
             const active = idx === currentIndex;
             const skip = skipped.has(s.key);
@@ -186,7 +196,7 @@ export function GettingStarted({
                           ? "bg-muted/60 text-foreground/40"
                           : "bg-muted/60 text-foreground/50",
                   ].join(" ")}
-                  aria-label={`Step ${idx + 1}: ${s.title}`}
+                  aria-label={t("dashboard.getting_started.step_aria", { step: idx + 1, title: t(s.titleKey) })}
                 >
                   {done ? (
                     <Check className="w-4 h-4" strokeWidth={3} />
@@ -201,12 +211,12 @@ export function GettingStarted({
                   ].join(" ")}
                 >
                   {s.key === "email_verified"
-                    ? "Account"
+                    ? t("dashboard.getting_started.chip_account")
                     : s.key === "profile_completed"
-                      ? "Profile"
+                      ? t("dashboard.getting_started.chip_profile")
                       : s.key === "contacts_imported"
-                        ? "Contacts"
-                        : "Sender ID"}
+                        ? t("dashboard.getting_started.chip_contacts")
+                        : t("dashboard.getting_started.chip_sender_id")}
                 </span>
               </li>
             );
@@ -220,7 +230,7 @@ export function GettingStarted({
         <div className="px-4 sm:px-5 pt-3 pb-2.5 border-b border-border/60 dark:border-border/30">
           <div className="flex items-center gap-2 text-[10.5px] font-bold tracking-wider uppercase">
             <span className="text-primary">
-              Step {currentIndex + 1} of {totalSteps}
+              {t("dashboard.getting_started.step_of", { current: currentIndex + 1, total: totalSteps })}
             </span>
             <span
               className={[
@@ -230,7 +240,7 @@ export function GettingStarted({
                   : "bg-muted text-foreground/55",
               ].join(" ")}
             >
-              {currentStep.required ? "Required" : "Optional"}
+              {currentStep.required ? t("common.required") : t("common.optional")}
             </span>
           </div>
           <div className="flex items-start gap-2.5 mt-1.5">
@@ -239,10 +249,10 @@ export function GettingStarted({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-[15px] font-bold text-foreground leading-tight">
-                {currentStep.title}
+                {t(currentStep.titleKey)}
               </h3>
               <p className="text-[12px] text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5">
-                {currentStep.subtitle}
+                {t(currentStep.subtitleKey)}
               </p>
             </div>
           </div>
@@ -273,7 +283,7 @@ export function GettingStarted({
               className="h-9 px-3 text-[12.5px] font-semibold text-foreground/65"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              Back
+              {t("common.back")}
             </Button>
           ) : (
             <div />
@@ -285,7 +295,7 @@ export function GettingStarted({
                 onClick={skipCurrent}
                 className="h-9 px-3 text-[12.5px] font-semibold text-foreground/65"
               >
-                Skip
+                {t("common.skip")}
               </Button>
             )}
             {currentIndex < totalSteps - 1 ? (
@@ -297,17 +307,19 @@ export function GettingStarted({
                 }
                 className="h-9 px-4 rounded-xl text-[12.5px] font-semibold shadow-sm"
               >
-                Continue
+                {t("common.continue")}
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
-            ) : (
+            ) : currentStep.key === "sender_id_requested" ? (
               <Button
                 onClick={() => navigate("/sms/sender-names?action=request")}
                 className="h-9 px-4 rounded-xl text-[12.5px] font-semibold shadow-md"
               >
-                Request Sender ID
+                {t("dashboard.getting_started.request_sender_id_button")}
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
+            ) : (
+              <span className="text-[12.5px] font-semibold text-foreground/50 px-2">{t("dashboard.getting_started.all_set_short")}</span>
             )}
           </div>
         </div>
@@ -318,15 +330,16 @@ export function GettingStarted({
 
 /** Step 1 — account already verified at registration via the OTP. */
 function EmailVerifiedBody() {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 px-3.5 py-2.5">
       <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
         <Check className="w-5 h-5" strokeWidth={3} />
       </div>
       <div className="min-w-0">
-        <p className="text-[13px] font-semibold text-foreground">Account verified</p>
+        <p className="text-[13px] font-semibold text-foreground">{t("dashboard.getting_started.account_verified_title")}</p>
         <p className="text-[11.5px] text-foreground/60 leading-snug">
-          You confirmed your account with the OTP sent to your email or phone — all set. Tap Continue.
+          {t("dashboard.getting_started.account_verified_desc")}
         </p>
       </div>
     </div>
@@ -343,12 +356,13 @@ function ProfileBody({
   onPick: (path: string) => void;
   hasPicked: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
       <p className="text-[12px] text-foreground/65 dark:text-foreground/60 mb-2.5">
         {hasPicked
-          ? "Looks good — tap Continue to keep going."
-          : "Pick an avatar — it'll show up on your dashboard and across the app."}
+          ? t("dashboard.getting_started.profile_picked_desc")
+          : t("dashboard.getting_started.profile_pick_desc")}
       </p>
       <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
         {AVATAR_OPTIONS.map((src) => {
@@ -390,10 +404,11 @@ function ContactsBody({
   isMobile: boolean;
   navigate: (path: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-2">
       <p className="text-[12px] text-foreground/65 dark:text-foreground/60">
-        Reach more people, faster. Add at least 5 contacts to start sending.
+        {t("dashboard.getting_started.contacts_intro")}
       </p>
 
       {isMobile ? (
@@ -406,9 +421,9 @@ function ContactsBody({
             <Smartphone className="w-5 h-5" strokeWidth={2.2} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-foreground leading-tight">Import from phone</p>
+            <p className="text-[13px] font-semibold text-foreground leading-tight">{t("dashboard.getting_started.import_from_phone_title")}</p>
             <p className="text-[11.5px] text-foreground/55 leading-snug mt-0.5">
-              Quickly pick contacts from your phone book.
+              {t("dashboard.getting_started.import_from_phone_desc")}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-foreground/40 flex-shrink-0" />
@@ -423,9 +438,9 @@ function ContactsBody({
             <Users className="w-5 h-5" strokeWidth={2.2} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-foreground leading-tight">Add contacts manually</p>
+            <p className="text-[13px] font-semibold text-foreground leading-tight">{t("dashboard.getting_started.add_manually_title")}</p>
             <p className="text-[11.5px] text-foreground/55 leading-snug mt-0.5">
-              Open Contacts to add or import a CSV.
+              {t("dashboard.getting_started.add_manually_desc")}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-foreground/40 flex-shrink-0" />
@@ -433,7 +448,7 @@ function ContactsBody({
       )}
 
       <p className="text-[11px] text-foreground/50 dark:text-foreground/45 leading-snug">
-        Don't have contacts ready? You can skip and come back to this anytime.
+        {t("dashboard.getting_started.contacts_skip_note")}
       </p>
     </div>
   );
@@ -441,16 +456,17 @@ function ContactsBody({
 
 /** Step 4 — Sender ID request (required). */
 function SenderIdBody({ navigate }: { navigate: (path: string) => void }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-2.5">
       <div className="rounded-xl bg-primary/[0.04] dark:bg-primary/10 border border-primary/15 dark:border-primary/25 p-3">
         <h4 className="text-[12px] font-bold tracking-wider uppercase text-primary mb-1.5">
-          Why this matters
+          {t("dashboard.getting_started.why_matters_title")}
         </h4>
         <ul className="text-[12px] text-foreground/70 dark:text-foreground/65 leading-snug space-y-1">
-          <li className="flex gap-1.5"><span className="text-primary">•</span> SMS messages will be branded with your name (not a random number).</li>
-          <li className="flex gap-1.5"><span className="text-primary">•</span> Required by Tanzania regulators for marketing SMS.</li>
-          <li className="flex gap-1.5"><span className="text-primary">•</span> Approval usually takes 1–3 business days.</li>
+          <li className="flex gap-1.5"><span className="text-primary">•</span> {t("dashboard.getting_started.why_matters_1")}</li>
+          <li className="flex gap-1.5"><span className="text-primary">•</span> {t("dashboard.getting_started.why_matters_2")}</li>
+          <li className="flex gap-1.5"><span className="text-primary">•</span> {t("dashboard.getting_started.why_matters_3")}</li>
         </ul>
       </div>
       <Button
@@ -458,10 +474,10 @@ function SenderIdBody({ navigate }: { navigate: (path: string) => void }) {
         className="w-full h-11 rounded-2xl text-[14px] font-semibold shadow-md"
       >
         <Hash className="w-4 h-4 mr-2" strokeWidth={2.4} />
-        Request Sender ID now
+        {t("dashboard.getting_started.request_sender_id_now_button")}
       </Button>
       <p className="text-[11px] text-foreground/50 dark:text-foreground/45 text-center leading-snug">
-        Once submitted, your dashboard returns to normal as we review.
+        {t("dashboard.getting_started.sender_id_submitted_note")}
       </p>
     </div>
   );

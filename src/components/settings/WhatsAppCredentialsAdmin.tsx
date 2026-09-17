@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { buildApiUrl, API_CONFIG } from "@/config/api";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const EP = API_CONFIG.ENDPOINTS.MESSAGING.ADMIN_WHATSAPP_CREDENTIALS;
 
@@ -96,6 +97,7 @@ const fromCredential = (c: WaCredential): FormState => ({
 
 export default function WhatsAppCredentialsAdmin() {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState<WaCredential[]>([]);
@@ -129,14 +131,14 @@ export default function WhatsAppCredentialsAdmin() {
       setPartners(partnerData.results || []);
     } catch (err) {
       toast({
-        title: "Could not load WhatsApp credentials",
+        title: t("settings.whatsapp_admin.load_failed"),
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     load();
@@ -160,12 +162,12 @@ export default function WhatsAppCredentialsAdmin() {
 
   const save = async () => {
     if (!form.phone_number_id.trim()) {
-      toast({ title: "Phone Number ID is required", variant: "destructive" });
+      toast({ title: t("settings.whatsapp_admin.phone_number_id_required"), variant: "destructive" });
       return;
     }
     // On first save (no stored token yet) an access token is mandatory.
     if (!selectedExisting?.access_token_configured && !form.access_token.trim()) {
-      toast({ title: "Access Token is required", variant: "destructive" });
+      toast({ title: t("settings.whatsapp_admin.access_token_required"), variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -192,11 +194,11 @@ export default function WhatsAppCredentialsAdmin() {
       if (!res.ok) {
         throw new Error((data && (data.message || data.detail || JSON.stringify(data))) || `HTTP ${res.status}`);
       }
-      toast({ title: "Saved", description: "WhatsApp credentials updated." });
+      toast({ title: t("settings.whatsapp_admin.saved_title"), description: t("settings.whatsapp_admin.saved_desc") });
       await load();
     } catch (err) {
       toast({
-        title: "Save failed",
+        title: t("settings.whatsapp_admin.save_failed"),
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -217,15 +219,15 @@ export default function WhatsAppCredentialsAdmin() {
         throw new Error((data && (data.message || data.detail)) || `HTTP ${res.status}`);
       }
       toast({
-        title: "Verified",
+        title: t("settings.whatsapp_admin.verified_title"),
         description: data?.data?.display_phone_number
-          ? `Connected: ${data.data.display_phone_number}`
-          : "Credentials are valid.",
+          ? t("settings.whatsapp_admin.connected_desc", { number: data.data.display_phone_number })
+          : t("settings.whatsapp_admin.credentials_valid"),
       });
       await load();
     } catch (err) {
       toast({
-        title: "Verification failed",
+        title: t("settings.whatsapp_admin.verification_failed"),
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -236,7 +238,8 @@ export default function WhatsAppCredentialsAdmin() {
   };
 
   const remove = async (cred: WaCredential) => {
-    if (!window.confirm(`Delete WhatsApp credentials for ${cred.is_default ? "the platform default" : cred.partner_detail?.email}?`))
+    const target = cred.is_default ? t("settings.whatsapp_admin.the_platform_default") : cred.partner_detail?.email;
+    if (!window.confirm(t("settings.whatsapp_admin.delete_confirm", { target: target || "" })))
       return;
     try {
       const res = await fetch(buildApiUrl(EP.DETAIL(cred.id)), {
@@ -244,14 +247,14 @@ export default function WhatsAppCredentialsAdmin() {
         headers: authHeaders(),
       });
       if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
-      toast({ title: "Deleted" });
+      toast({ title: t("settings.whatsapp_admin.deleted_title") });
       if ((cred.partner === null ? "default" : String(cred.partner)) === selectedPartnerId) {
         setSelectedPartnerId("default");
       }
       await load();
     } catch (err) {
       toast({
-        title: "Delete failed",
+        title: t("settings.whatsapp_admin.delete_failed"),
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -259,19 +262,19 @@ export default function WhatsAppCredentialsAdmin() {
   };
 
   const StatusBadge = ({ cred }: { cred: WaCredential }) => {
-    if (!cred.is_configured) return <Badge variant="outline">Not configured</Badge>;
-    if (!cred.is_active) return <Badge variant="secondary">Disabled</Badge>;
+    if (!cred.is_configured) return <Badge variant="outline">{t("settings.whatsapp_admin.not_configured")}</Badge>;
+    if (!cred.is_active) return <Badge variant="secondary">{t("common.disabled")}</Badge>;
     return cred.verified ? (
-      <Badge className="bg-emerald-600 hover:bg-emerald-600">Verified</Badge>
+      <Badge className="bg-emerald-600 hover:bg-emerald-600">{t("settings.whatsapp_admin.verified_badge")}</Badge>
     ) : (
-      <Badge variant="outline" className="text-amber-600 border-amber-500">Unverified</Badge>
+      <Badge variant="outline" className="text-amber-600 border-amber-500">{t("settings.whatsapp_admin.unverified_badge")}</Badge>
     );
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading WhatsApp credentials…
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> {t("settings.whatsapp_admin.loading")}
       </div>
     );
   }
@@ -279,30 +282,29 @@ export default function WhatsAppCredentialsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">WhatsApp Credentials</h2>
+        <h2 className="text-xl font-semibold">{t("settings.whatsapp_admin.title")}</h2>
         <p className="text-sm text-muted-foreground">
-          Set the platform's default Meta WhatsApp number (used for normal customers) and each
-          partner's own number (used for that partner and all of their clients).
+          {t("settings.whatsapp_admin.subtitle")}
         </p>
       </div>
 
       {/* Editor */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Edit credentials</CardTitle>
+          <CardTitle className="text-base">{t("settings.whatsapp_admin.edit_credentials")}</CardTitle>
           <CardDescription>
-            Choose the platform default or a partner, then enter their Meta Cloud API details.
+            {t("settings.whatsapp_admin.edit_credentials_desc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Scope</Label>
+            <Label>{t("settings.whatsapp_admin.scope_label")}</Label>
             <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
               <SelectTrigger className="max-w-md">
-                <SelectValue placeholder="Select scope" />
+                <SelectValue placeholder={t("settings.whatsapp_admin.select_scope_placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Platform default (our credentials)</SelectItem>
+                <SelectItem value="default">{t("settings.whatsapp_admin.platform_default_option")}</SelectItem>
                 {partners.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name || p.email} {p.has_credential ? "✓" : ""}
@@ -312,7 +314,7 @@ export default function WhatsAppCredentialsAdmin() {
             </Select>
             {selectedPartnerId !== "default" && (
               <p className="text-xs text-muted-foreground">
-                Used for this partner and every client/sub-tenant they create.
+                {t("settings.whatsapp_admin.scope_partner_hint")}
               </p>
             )}
           </div>
@@ -321,7 +323,7 @@ export default function WhatsAppCredentialsAdmin() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="wa-label">Label</Label>
+              <Label htmlFor="wa-label">{t("settings.whatsapp_admin.label_field")}</Label>
               <Input
                 id="wa-label"
                 placeholder="Business / WABA name"
@@ -330,7 +332,7 @@ export default function WhatsAppCredentialsAdmin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="wa-phone-id">Phone Number ID *</Label>
+              <Label htmlFor="wa-phone-id">{t("settings.whatsapp_admin.phone_number_id_field")}</Label>
               <Input
                 id="wa-phone-id"
                 placeholder="e.g. 123456789012345"
@@ -340,7 +342,7 @@ export default function WhatsAppCredentialsAdmin() {
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="wa-token">
-                Access Token {selectedExisting?.access_token_configured ? "(leave blank to keep current)" : "*"}
+                {t("settings.whatsapp_admin.access_token_field")} {selectedExisting?.access_token_configured ? t("settings.whatsapp_admin.leave_blank_hint") : "*"}
               </Label>
               <Input
                 id="wa-token"
@@ -356,7 +358,7 @@ export default function WhatsAppCredentialsAdmin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="wa-waba">WhatsApp Business Account ID (WABA)</Label>
+              <Label htmlFor="wa-waba">{t("settings.whatsapp_admin.waba_field")}</Label>
               <Input
                 id="wa-waba"
                 placeholder="Optional"
@@ -365,7 +367,7 @@ export default function WhatsAppCredentialsAdmin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="wa-verify">Verify Token</Label>
+              <Label htmlFor="wa-verify">{t("settings.whatsapp_admin.verify_token_field")}</Label>
               <Input
                 id="wa-verify"
                 placeholder="Webhook verify token"
@@ -374,7 +376,7 @@ export default function WhatsAppCredentialsAdmin() {
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="wa-base">Graph API base (optional)</Label>
+              <Label htmlFor="wa-base">{t("settings.whatsapp_admin.graph_api_base_field")}</Label>
               <Input
                 id="wa-base"
                 placeholder="https://graph.facebook.com/v24.0"
@@ -390,13 +392,13 @@ export default function WhatsAppCredentialsAdmin() {
               checked={form.is_active}
               onCheckedChange={(v) => setField("is_active", v)}
             />
-            <Label htmlFor="wa-active">Active</Label>
+            <Label htmlFor="wa-active">{t("status.active")}</Label>
           </div>
 
           <div className="flex gap-2">
             <Button onClick={save} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              {selectedExisting ? "Update credentials" : "Add credentials"}
+              {selectedExisting ? t("settings.whatsapp_admin.update_credentials_button") : t("settings.whatsapp_admin.add_credentials_button")}
             </Button>
           </div>
         </CardContent>
@@ -405,12 +407,12 @@ export default function WhatsAppCredentialsAdmin() {
       {/* Existing credentials list */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Configured credentials</CardTitle>
-          <CardDescription>{credentials.length} credential set(s).</CardDescription>
+          <CardTitle className="text-base">{t("settings.whatsapp_admin.configured_credentials")}</CardTitle>
+          <CardDescription>{t("settings.whatsapp_admin.credential_count", { count: credentials.length })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {credentials.length === 0 && (
-            <p className="text-sm text-muted-foreground">No credentials saved yet.</p>
+            <p className="text-sm text-muted-foreground">{t("settings.whatsapp_admin.no_credentials")}</p>
           )}
           {credentials.map((cred) => (
             <div
@@ -420,7 +422,7 @@ export default function WhatsAppCredentialsAdmin() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium truncate">
-                    {cred.is_default ? "Platform default" : cred.partner_detail?.email || "Partner"}
+                    {cred.is_default ? t("settings.whatsapp_admin.platform_default_label") : cred.partner_detail?.email || t("settings.whatsapp_admin.partner_label")}
                   </span>
                   <StatusBadge cred={cred} />
                 </div>
@@ -438,7 +440,7 @@ export default function WhatsAppCredentialsAdmin() {
                   variant="outline"
                   onClick={() => setSelectedPartnerId(cred.is_default ? "default" : String(cred.partner))}
                 >
-                  Edit
+                  {t("dashboard.recent_campaigns.menu.edit")}
                 </Button>
                 <Button
                   size="sm"
@@ -453,7 +455,7 @@ export default function WhatsAppCredentialsAdmin() {
                   ) : (
                     <ShieldAlert className="h-4 w-4" />
                   )}
-                  <span className="ml-1 hidden sm:inline">Verify</span>
+                  <span className="ml-1 hidden sm:inline">{t("settings.whatsapp_admin.verify_button")}</span>
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(cred)}>
                   <Trash2 className="h-4 w-4 text-red-500" />
@@ -462,7 +464,7 @@ export default function WhatsAppCredentialsAdmin() {
             </div>
           ))}
           <Button variant="ghost" size="sm" onClick={load} className="mt-2">
-            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+            <RefreshCw className="h-4 w-4 mr-2" /> {t("common.refresh")}
           </Button>
         </CardContent>
       </Card>

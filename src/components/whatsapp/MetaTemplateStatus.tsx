@@ -20,6 +20,7 @@ import {
   type WATemplateComponent,
   type WATemplateStatus,
 } from "@/hooks/useWhatsAppCloud";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // ─── Status presentation ──────────────────────────────────────────────────────
 // Meta returns PENDING / APPROVED / REJECTED / DISABLED (older wrappers used
@@ -32,25 +33,25 @@ const normalizeStatus = (s: WATemplateStatus): DisplayStatus =>
 
 const STATUS_META: Record<
   DisplayStatus,
-  { label: string; badge: string; Icon: typeof Clock }
+  { labelKey: string; badge: string; Icon: typeof Clock }
 > = {
   PENDING: {
-    label: "Pending review",
+    labelKey: "whatsapp.template_status.status_pending",
     badge: "bg-amber-500 hover:bg-amber-500 text-white",
     Icon: Clock,
   },
   APPROVED: {
-    label: "Approved",
+    labelKey: "approved",
     badge: "bg-emerald-600 hover:bg-emerald-600 text-white",
     Icon: CheckCircle2,
   },
   REJECTED: {
-    label: "Rejected",
+    labelKey: "rejected",
     badge: "bg-red-600 hover:bg-red-600 text-white",
     Icon: XCircle,
   },
   DISABLED: {
-    label: "Disabled",
+    labelKey: "whatsapp.template_status.status_disabled",
     badge: "bg-foreground/50 hover:bg-foreground/50 text-white",
     Icon: AlertCircle,
   },
@@ -88,15 +89,16 @@ interface MetaTemplateStatusProps {
 
 type StatusFilter = "ALL" | DisplayStatus;
 
-const FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "PENDING", label: "Pending" },
-  { key: "APPROVED", label: "Approved" },
-  { key: "REJECTED", label: "Rejected" },
+const FILTERS: { key: StatusFilter; labelKey: string }[] = [
+  { key: "ALL", labelKey: "whatsapp.common.all" },
+  { key: "PENDING", labelKey: "pending" },
+  { key: "APPROVED", labelKey: "approved" },
+  { key: "REJECTED", labelKey: "rejected" },
 ];
 
 export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
   const { getMessageTemplates } = useWhatsAppCloud();
+  const { t } = useLanguage();
 
   const [templates, setTemplates] = useState<WAMessageTemplate[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -128,11 +130,11 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
       setTemplates(sorted);
       setSyncedAt(new Date().toLocaleTimeString());
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to load templates");
+      setLoadError(e instanceof Error ? e.message : t("whatsapp.template_status.load_failed"));
     } finally {
       setSyncing(false);
     }
-  }, [getMessageTemplates, waAccountId]);
+  }, [getMessageTemplates, waAccountId, t]);
 
   useEffect(() => {
     if (loadedRef.current) return;
@@ -185,17 +187,16 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
         <div>
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-amber-500" />
-            Submitted to Meta
+            {t("whatsapp.template_status.header_title")}
           </Label>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Track approval of templates you submitted. Pending entries refresh automatically every
-            30s until Meta decides.
+            {t("whatsapp.template_status.header_desc")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {syncedAt && (
             <span className="text-[10.5px] text-muted-foreground hidden sm:inline">
-              Synced {syncedAt}
+              {t("whatsapp.common.synced_at", { time: syncedAt })}
             </span>
           )}
           <Button
@@ -209,7 +210,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Refresh
+            {t("whatsapp.common.refresh")}
           </Button>
         </div>
       </div>
@@ -223,7 +224,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
 
       {/* Status filter chips */}
       <div className="flex flex-wrap items-center gap-2">
-        {FILTERS.map(({ key, label }) => {
+        {FILTERS.map(({ key, labelKey }) => {
           const active = filter === key;
           const count =
             key === "ALL" ? templates.length : counts[key as DisplayStatus];
@@ -239,7 +240,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
                   : "bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.1]",
               ].join(" ")}
             >
-              {label}
+              {t(labelKey as Parameters<typeof t>[0])}
               <span
                 className={[
                   "text-[10.5px] tabular-nums px-1.5 rounded-full",
@@ -256,7 +257,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, body…"
+            placeholder={t("whatsapp.template_status.search_placeholder")}
             className="h-8 pl-8 text-[12.5px] w-52"
           />
         </div>
@@ -266,15 +267,15 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
       {syncing && templates.length === 0 ? (
         <div className="flex items-center justify-center py-12 gap-2 text-foreground/60">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-[13px]">Loading your submitted templates…</span>
+          <span className="text-[13px]">{t("whatsapp.template_status.loading")}</span>
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
           <FileText className="w-8 h-8 text-muted-foreground/30" />
           <p className="text-xs text-muted-foreground max-w-xs">
             {templates.length === 0
-              ? "You haven't submitted any templates yet. Use “Submit to Meta” to create one."
-              : "No templates match this filter."}
+              ? t("whatsapp.template_status.empty_none", { action: t("whatsapp.common.submit_to_meta") })
+              : t("whatsapp.template_status.empty_filtered")}
           </p>
         </div>
       ) : (
@@ -305,7 +306,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
                   </div>
                   <Badge className={`text-[9.5px] h-5 px-2 gap-1 shrink-0 ${meta.badge}`}>
                     <Icon className="w-3 h-3" />
-                    {meta.label}
+                    {t(meta.labelKey as Parameters<typeof t>[0])}
                   </Badge>
                 </div>
 
@@ -325,14 +326,14 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
                   <div className="flex items-start gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1.5">
                     <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
                     <span className="text-[11px] text-red-700 dark:text-red-300">
-                      Rejected by Meta{reason ? `: ${reason}` : ""}. Edit the template and resubmit.
+                      {t("whatsapp.template_status.rejected_note", { reason: reason ? `: ${reason}` : "" })}
                     </span>
                   </div>
                 )}
                 {ds === "PENDING" && (
                   <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Awaiting Meta review — usually within minutes, up to 24h.
+                    {t("whatsapp.template_status.pending_note")}
                   </div>
                 )}
               </div>

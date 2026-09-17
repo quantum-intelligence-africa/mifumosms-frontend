@@ -5,6 +5,7 @@ import type {
   WAMessageTemplate,
   WATemplateComponent,
 } from "@/hooks/useWhatsAppCloud";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // ─── Reusable WhatsApp chat-style preview for an approved Meta template ────────
 // Renders the selected template inside a faux WhatsApp chat bubble so the user
@@ -22,11 +23,14 @@ const componentOf = (
 // "static:Hello") into what the preview should show for that placeholder.
 //   • static → the literal text (rendered inline, no chip)
 //   • everything else → a short human label rendered as a chip
+type Translate = (key: string, params?: Record<string, unknown>) => string;
+
 const describeSource = (
   src: string | undefined,
   token: string,
+  t: Translate,
 ): { kind: "literal"; value: string } | { kind: "chip"; value: string } => {
-  if (!src) return { kind: "chip", value: labelForToken(token) };
+  if (!src) return { kind: "chip", value: labelForToken(token, t) };
   if (src.startsWith("static:")) {
     const v = src.slice("static:".length).trim();
     return { kind: "literal", value: v || `{{${token}}}` };
@@ -37,18 +41,18 @@ const describeSource = (
   }
   switch (src) {
     case "name":
-      return { kind: "chip", value: "Name" };
+      return { kind: "chip", value: t("whatsapp.template_messenger.source_name") };
     case "phone":
-      return { kind: "chip", value: "Phone" };
+      return { kind: "chip", value: t("whatsapp.template_messenger.source_phone") };
     case "email":
-      return { kind: "chip", value: "Email" };
+      return { kind: "chip", value: t("whatsapp.template_messenger.source_email") };
     default:
       return { kind: "chip", value: src };
   }
 };
 
-const labelForToken = (token: string): string =>
-  /^\d+$/.test(token) ? `Value ${token}` : token;
+const labelForToken = (token: string, t: Translate): string =>
+  /^\d+$/.test(token) ? t("whatsapp.message_preview.value_n", { n: token }) : token;
 
 const formatNow = () =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -60,7 +64,7 @@ const Chip = ({ value }: { value: string }) => (
 );
 
 // Split a template string on {{token}} and render each token via paramSources.
-const renderWithParams = (text: string, paramSources: Record<string, string>) => {
+const renderWithParams = (text: string, paramSources: Record<string, string>, t: Translate) => {
   const re = /{{\s*([^}]+?)\s*}}/g;
   const out: React.ReactNode[] = [];
   let cursor = 0;
@@ -69,7 +73,7 @@ const renderWithParams = (text: string, paramSources: Record<string, string>) =>
   while ((m = re.exec(text)) !== null) {
     if (m.index > cursor) out.push(<span key={`t${i}`}>{text.slice(cursor, m.index)}</span>);
     const token = m[1].trim();
-    const desc = describeSource(paramSources[token], token);
+    const desc = describeSource(paramSources[token], token, t);
     out.push(
       desc.kind === "literal" ? (
         <span key={`p${i}`}>{desc.value}</span>
@@ -100,8 +104,10 @@ export function WhatsAppMessagePreview({
   paramSources = {},
   mediaUrl = "",
   mediaFile = null,
-  emptyHint = "Select a template to preview the message.",
+  emptyHint,
 }: WhatsAppMessagePreviewProps) {
+  const { t } = useLanguage();
+  const resolvedEmptyHint = emptyHint ?? t("whatsapp.common.select_template_hint");
   const header = componentOf(template, "HEADER");
   const headerFormat = header?.format; // TEXT | IMAGE | VIDEO | DOCUMENT
   const headerIsMedia =
@@ -131,12 +137,12 @@ export function WhatsAppMessagePreview({
     <aside className="rounded-2xl border border-border/60 bg-card shadow-sm p-3 sm:p-4 space-y-3">
       <div className="flex items-center gap-2 px-1">
         <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-        <h2 className="text-[14px] font-bold">Message preview</h2>
+        <h2 className="text-[14px] font-bold">{t("whatsapp.message_preview.title")}</h2>
       </div>
 
       {!template ? (
         <div className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center">
-          <p className="text-[12.5px] italic text-muted-foreground">{emptyHint}</p>
+          <p className="text-[12.5px] italic text-muted-foreground">{resolvedEmptyHint}</p>
         </div>
       ) : (
         <>
@@ -147,8 +153,8 @@ export function WhatsAppMessagePreview({
                 <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="text-[13px] font-bold leading-tight truncate">Your Business</div>
-                <div className="text-[10.5px] opacity-80 leading-tight">online</div>
+                <div className="text-[13px] font-bold leading-tight truncate">{t("whatsapp.message_preview.your_business")}</div>
+                <div className="text-[10.5px] opacity-80 leading-tight">{t("status.online")}</div>
               </div>
             </div>
 
@@ -179,12 +185,12 @@ export function WhatsAppMessagePreview({
                 )}
                 {headerFormat === "TEXT" && header?.text && (
                   <div className="px-3 pt-2 font-bold text-[13px]">
-                    {renderWithParams(header.text, paramSources)}
+                    {renderWithParams(header.text, paramSources, t)}
                   </div>
                 )}
 
                 <div className="px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
-                  {bodyText ? renderWithParams(bodyText, paramSources) : "Body preview…"}
+                  {bodyText ? renderWithParams(bodyText, paramSources, t) : t("whatsapp.common.body_preview_placeholder")}
                 </div>
 
                 {footerText && (
@@ -214,11 +220,11 @@ export function WhatsAppMessagePreview({
 
           {(headerIsMedia && !imageSrc) && (
             <p className="text-[10.5px] text-muted-foreground text-center">
-              {String(headerFormat).toLowerCase()} header — attach media below to preview it.
+              {t("whatsapp.message_preview.attach_media_hint", { format: String(headerFormat).toLowerCase() })}
             </p>
           )}
           <p className="text-[10.5px] text-muted-foreground text-center">
-            Highlighted chips are filled per-recipient when sent.
+            {t("whatsapp.message_preview.chips_hint")}
           </p>
         </>
       )}

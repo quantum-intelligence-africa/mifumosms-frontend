@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NODE_META } from "./nodeMeta";
 import { voiceApi } from "@/services/voiceApi";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, IvrNodeType } from "./types";
 
 interface NodeInspectorProps {
@@ -101,6 +102,7 @@ function AgentField({
   value: unknown;
   onPick: (agent: AgentOption | null) => void;
 }) {
+  const { t } = useLanguage();
   const [agents, setAgents] = useState<AgentOption[] | null>(null);
 
   useEffect(() => {
@@ -126,11 +128,11 @@ function AgentField({
         disabled={agents === null}
       >
         <SelectTrigger id={fieldId} className="h-8 text-xs">
-          <SelectValue placeholder={agents === null ? "Inapakia…" : "Chagua mhudumu"} />
+          <SelectValue placeholder={agents === null ? t("voice.calls.loading") : t("voice.ivr_builder.inspector.choose_agent")} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={TYPE_MANUALLY} className="text-xs">
-            Andika namba mwenyewe
+            {t("voice.ivr_builder.inspector.enter_number_manually")}
           </SelectItem>
           {(agents ?? []).map((a) => (
             <SelectItem key={a.id} value={a.id} className="text-xs">
@@ -142,7 +144,7 @@ function AgentField({
       </Select>
       {agents !== null && agents.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna mhudumu bado. Waongeze kwenye Simu na IVR &gt; Wakala ili wachaguliwe hapa kwa majina.
+          {t("voice.ivr_builder.inspector.no_agents_desc", { voice_ivr: t("nav.voice_ivr"), voice_agents: t("nav.voice_agents") })}
         </p>
       ) : (
         helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>
@@ -168,6 +170,7 @@ function AgentMultiSelectField({
   value: unknown;
   onChange: (ids: string[]) => void;
 }) {
+  const { t } = useLanguage();
   const [agents, setAgents] = useState<AgentOption[] | null>(null);
 
   useEffect(() => {
@@ -186,10 +189,10 @@ function AgentMultiSelectField({
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       {agents === null ? (
-        <p className="text-[10px] text-muted-foreground">Inapakia…</p>
+        <p className="text-[10px] text-muted-foreground">{t("voice.calls.loading")}</p>
       ) : agents.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna mhudumu bado. Waongeze kwenye Simu na IVR &gt; Wakala ili wachaguliwe hapa.
+          {t("voice.ivr_builder.inspector.no_agents_desc_short", { voice_ivr: t("nav.voice_ivr"), voice_agents: t("nav.voice_agents") })}
         </p>
       ) : (
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
@@ -244,6 +247,7 @@ function PromptLibraryField({
   value: unknown;
   onPick: (prompt: PromptOption | null) => void;
 }) {
+  const { t } = useLanguage();
   const [prompts, setPrompts] = useState<PromptOption[] | null>(null);
 
   useEffect(() => {
@@ -269,11 +273,11 @@ function PromptLibraryField({
         disabled={prompts === null}
       >
         <SelectTrigger id={fieldId} className="h-8 text-xs">
-          <SelectValue placeholder={prompts === null ? "Inapakia…" : "Chagua ujumbe"} />
+          <SelectValue placeholder={prompts === null ? t("voice.calls.loading") : t("voice.ivr_builder.inspector.choose_prompt")} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={TYPE_MANUALLY} className="text-xs">
-            Andika/pakia mwenyewe hapa chini
+            {t("voice.ivr_builder.inspector.enter_manually_below")}
           </SelectItem>
           {(prompts ?? []).map((p) => (
             <SelectItem key={p.id} value={p.id} className="text-xs">
@@ -285,7 +289,7 @@ function PromptLibraryField({
       </Select>
       {prompts !== null && prompts.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna ujumbe bado. Uongeze kwenye Simu na IVR &gt; Sauti za Mfumo ili uchaguliwe hapa kwa jina.
+          {t("voice.ivr_builder.inspector.no_prompts_desc", { voice_ivr: t("nav.voice_ivr"), audio_prompts: t("nav.audio_prompts") })}
         </p>
       ) : (
         helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>
@@ -295,6 +299,7 @@ function PromptLibraryField({
 }
 
 export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDelete }: NodeInspectorProps) {
+  const { t } = useLanguage();
   const meta = NODE_META[nodeType];
   const fields = data.fields ?? {};
 
@@ -305,13 +310,13 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
           <CardTitle className="text-sm">{meta.label}</CardTitle>
           <p className="truncate text-[11px] text-muted-foreground">{meta.description}</p>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Funga mipangilio">
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label={t("voice.ivr_builder.inspector.close_aria")}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </CardHeader>
       <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto pb-3">
         {meta.fields.length === 0 && (
-          <p className="text-xs text-muted-foreground">Kisanduku hiki hakina mipangilio ya kubadilisha.</p>
+          <p className="text-xs text-muted-foreground">{t("voice.ivr_builder.inspector.no_settings")}</p>
         )}
         {meta.fields.map((field) => {
           const value = fields[field.key];
@@ -465,7 +470,7 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
         {nodeType !== "start" && (
           <Button variant="outline" size="sm" className="w-full text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Futa kisanduku
+            {t("voice.ivr_builder.inspector.delete_node")}
           </Button>
         )}
       </CardContent>

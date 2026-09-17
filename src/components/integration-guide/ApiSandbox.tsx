@@ -33,6 +33,7 @@ import {
 import { apiClient } from "@/lib/api";
 import { API_CONFIG } from "@/config/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const methodClass = (method: string) => {
   if (method === "GET") return "bg-emerald-200 text-emerald-900 dark:bg-emerald-300 dark:text-emerald-950";
@@ -80,9 +81,10 @@ async function sandboxFetch(path: string, apiKey: string, init?: RequestInit): P
 }
 
 function ResultPanel({ result }: { result: SandboxResult | null }) {
+  const { t } = useLanguage();
   if (!result) return null;
   const label = result.error
-    ? "Network error"
+    ? t("common.network_error")
     : `${result.status} ${result.ok ? "OK" : "Error"}`;
   return (
     <div className="mt-3 space-y-1.5">
@@ -109,23 +111,25 @@ function RunButton({
   onClick,
   loading,
   disabled,
-  label = "Run",
+  label,
 }: {
   onClick: () => void;
   loading: boolean;
   disabled?: boolean;
   label?: string;
 }) {
+  const { t } = useLanguage();
   return (
     <Button size="sm" onClick={onClick} disabled={loading || disabled} className="gap-1.5">
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-      {loading ? "Running…" : label}
+      {loading ? t("common.running") : label ?? t("common.run")}
     </Button>
   );
 }
 
 export function ApiSandbox() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -162,18 +166,18 @@ export function ApiSandbox() {
         setApiKey(res.data.api_key);
         setShowKey(true);
         toast({
-          title: "Sandbox key generated",
-          description: "This key is only shown once — it's held in this page's memory only, not saved anywhere.",
+          title: t("integration.sandbox.key_generated_title"),
+          description: t("integration.sandbox.key_generated_desc"),
         });
       } else {
         toast({
-          title: "Couldn't generate a key",
-          description: res.error || "Try again, or paste an existing key below instead.",
+          title: t("integration.sandbox.key_generate_failed_title"),
+          description: res.error || t("integration.sandbox.key_generate_failed_desc"),
           variant: "destructive",
         });
       }
     } catch {
-      toast({ title: "Couldn't generate a key", description: "Network error.", variant: "destructive" });
+      toast({ title: t("integration.sandbox.key_generate_failed_title"), description: t("common.network_error"), variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -241,15 +245,13 @@ export function ApiSandbox() {
     <Card id="integration-sandbox" className="glass border border-teal-200/60 dark:border-teal-800/60">
       <CardContent className="p-3 sm:p-4 space-y-4">
         <div className="space-y-1.5">
-          <p className="text-xs uppercase tracking-wide text-teal-700 dark:text-teal-300 font-semibold">Live Sandbox</p>
+          <p className="text-xs uppercase tracking-wide text-teal-700 dark:text-teal-300 font-semibold">{t("integration.sandbox.live_sandbox")}</p>
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
             <Sparkles className="w-4.5 h-4.5 text-teal-600 dark:text-teal-400" />
-            Try the API for real
+            {t("integration.sandbox.title")}
           </h2>
           <p className="text-sm text-foreground/80">
-            Run real requests against your own account below — no copy-pasting into a terminal required. Your
-            sandbox key stays in this page's memory only: it's never saved to your browser or sent anywhere except
-            the API itself.
+            {t("integration.sandbox.description")}
           </p>
         </div>
 
@@ -257,7 +259,7 @@ export function ApiSandbox() {
         <div className="rounded-xl border border-border-subtle/80 bg-muted/30 p-3 sm:p-4 space-y-2.5">
           <Label className="text-[11px] font-bold uppercase tracking-wide text-foreground/60 flex items-center gap-1.5">
             <KeyRound className="w-3.5 h-3.5" />
-            API Key
+            {t("integration.sandbox.api_key")}
           </Label>
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
@@ -265,7 +267,7 @@ export function ApiSandbox() {
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="mif_... — paste an existing key, or generate one"
+                placeholder={t("integration.sandbox.api_key_placeholder")}
                 className="pr-16 font-mono text-xs"
               />
               <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
@@ -293,7 +295,7 @@ export function ApiSandbox() {
             </div>
             <Button variant="outline" size="sm" onClick={handleGenerateKey} disabled={generating} className="gap-1.5 shrink-0">
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
-              Generate sandbox key
+              {t("integration.sandbox.generate_key")}
             </Button>
           </div>
         </div>
@@ -301,23 +303,23 @@ export function ApiSandbox() {
         {!hasKey && (
           <p className="text-xs text-foreground/60 flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            Add a key above to enable the actions below.
+            {t("integration.sandbox.add_key_hint")}
           </p>
         )}
 
         <Tabs defaultValue="balance" className="w-full">
           <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto">
             <TabsTrigger value="balance" className="text-xs py-1.5 gap-1.5">
-              <Wallet className="w-3.5 h-3.5" /> Balance
+              <Wallet className="w-3.5 h-3.5" /> {t("integration.sandbox.tab_balance")}
             </TabsTrigger>
             <TabsTrigger value="status" className="text-xs py-1.5 gap-1.5">
-              <Search className="w-3.5 h-3.5" /> Status
+              <Search className="w-3.5 h-3.5" /> {t("integration.sandbox.tab_status")}
             </TabsTrigger>
             <TabsTrigger value="send" className="text-xs py-1.5 gap-1.5">
-              <Send className="w-3.5 h-3.5" /> Send SMS
+              <Send className="w-3.5 h-3.5" /> {t("integration.sandbox.tab_send")}
             </TabsTrigger>
             <TabsTrigger value="sender" className="text-xs py-1.5 gap-1.5">
-              <Tag className="w-3.5 h-3.5" /> Sender IDs
+              <Tag className="w-3.5 h-3.5" /> {t("integration.sandbox.tab_sender")}
             </TabsTrigger>
           </TabsList>
 
@@ -329,7 +331,7 @@ export function ApiSandbox() {
               </span>
               <code className="text-xs font-semibold">{API_CONFIG.ENDPOINTS.INTEGRATION.SMS.BALANCE}</code>
             </div>
-            <RunButton onClick={runBalance} loading={balanceLoading} disabled={!hasKey} label="Check balance" />
+            <RunButton onClick={runBalance} loading={balanceLoading} disabled={!hasKey} label={t("integration.sandbox.check_balance")} />
             <ResultPanel result={balanceResult} />
           </TabsContent>
 
@@ -345,10 +347,10 @@ export function ApiSandbox() {
               <Input
                 value={messageId}
                 onChange={(e) => setMessageId(e.target.value)}
-                placeholder="message_id from a previous send"
+                placeholder={t("integration.sandbox.message_id_placeholder")}
                 className="text-xs"
               />
-              <RunButton onClick={runStatus} loading={statusLoading} disabled={!hasKey || !messageId.trim()} label="Look up" />
+              <RunButton onClick={runStatus} loading={statusLoading} disabled={!hasKey || !messageId.trim()} label={t("integration.sandbox.look_up")} />
             </div>
             <ResultPanel result={statusResult} />
           </TabsContent>
@@ -363,21 +365,21 @@ export function ApiSandbox() {
             </div>
             <div className="rounded-lg border border-amber-200/70 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              This sends a real SMS and deducts real credits from your account (18 TZS/segment).
+              {t("integration.sandbox.send_warning")}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <Label className="text-xs">Recipient (international format)</Label>
+                <Label className="text-xs">{t("integration.sandbox.recipient_label")}</Label>
                 <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="+255700000000" className="text-xs" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Sender ID (optional)</Label>
-                <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="Uses your default if left blank" className="text-xs" />
+                <Label className="text-xs">{t("integration.sandbox.sender_id_optional_label")}</Label>
+                <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder={t("integration.sandbox.sender_id_placeholder")} className="text-xs" />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Message</Label>
-              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Test message from the sandbox" className="text-xs" />
+              <Label className="text-xs">{t("integration.sandbox.message_label")}</Label>
+              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder={t("integration.sandbox.message_placeholder")} className="text-xs" />
             </div>
             <AlertDialog open={confirmSendOpen} onOpenChange={setConfirmSendOpen}>
               <Button
@@ -387,19 +389,18 @@ export function ApiSandbox() {
                 className="gap-1.5"
               >
                 {sendLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                {sendLoading ? "Sending…" : "Send real SMS"}
+                {sendLoading ? t("integration.sandbox.sending") : t("integration.sandbox.send_real_sms")}
               </Button>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Send a real SMS?</AlertDialogTitle>
+                  <AlertDialogTitle>{t("integration.sandbox.send_confirm_title")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will send an actual message to <span className="font-semibold text-foreground">{recipient}</span> and
-                    deduct credits from your account. This cannot be undone.
+                    {t("integration.sandbox.send_confirm_desc_prefix")} <span className="font-semibold text-foreground">{recipient}</span> {t("integration.sandbox.send_confirm_desc_suffix")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={runSend}>Send it</AlertDialogAction>
+                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={runSend}>{t("integration.sandbox.send_it")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -415,7 +416,7 @@ export function ApiSandbox() {
                 </span>
                 <code className="text-xs font-semibold">{API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.AVAILABLE}</code>
               </div>
-              <RunButton onClick={runSenderList} loading={senderListLoading} disabled={!hasKey} label="List approved sender IDs" />
+              <RunButton onClick={runSenderList} loading={senderListLoading} disabled={!hasKey} label={t("integration.sandbox.list_sender_ids")} />
               <ResultPanel result={senderListResult} />
             </div>
 
@@ -427,23 +428,23 @@ export function ApiSandbox() {
                 <code className="text-xs font-semibold">{API_CONFIG.ENDPOINTS.INTEGRATION.SENDER_ID.REQUEST}</code>
               </div>
               <p className="text-[11px] text-foreground/60">
-                Submits a real sender ID approval request that a reviewer will see — not billed, but not throwaway either.
+                {t("integration.sandbox.sender_request_note")}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <Label className="text-xs">Requested sender ID</Label>
+                  <Label className="text-xs">{t("integration.sandbox.requested_sender_id_label")}</Label>
                   <Input value={requestedSenderName} onChange={(e) => setRequestedSenderName(e.target.value)} placeholder="MyBrand1" className="text-xs" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Sample message content</Label>
-                  <Input value={requestedSampleContent} onChange={(e) => setRequestedSampleContent(e.target.value)} placeholder="What you'll send with this sender ID" className="text-xs" />
+                  <Label className="text-xs">{t("integration.sandbox.sample_content_label")}</Label>
+                  <Input value={requestedSampleContent} onChange={(e) => setRequestedSampleContent(e.target.value)} placeholder={t("integration.sandbox.sample_content_placeholder")} className="text-xs" />
                 </div>
               </div>
               <RunButton
                 onClick={runSenderRequest}
                 loading={senderRequestLoading}
                 disabled={!hasKey || !requestedSenderName.trim()}
-                label="Submit request"
+                label={t("integration.sandbox.submit_request")}
               />
               <ResultPanel result={senderRequestResult} />
             </div>

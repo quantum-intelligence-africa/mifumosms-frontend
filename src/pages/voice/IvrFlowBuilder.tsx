@@ -13,9 +13,11 @@ import { FlowToolbar } from "@/components/voice/ivr-builder/FlowToolbar";
 import { NodeInspector } from "@/components/voice/ivr-builder/NodeInspector";
 import { SimulatePanel } from "@/components/voice/ivr-builder/SimulatePanel";
 import { validateFlow } from "@/components/voice/ivr-builder/validation";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, PublishResponse, ValidateResponse, ValidationError } from "@/components/voice/ivr-builder/types";
 
 export default function IvrFlowBuilder() {
+  const { t } = useLanguage();
   const { flowId } = useParams<{ flowId: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -59,16 +61,16 @@ export default function IvrFlowBuilder() {
     setIsValidating(false);
     if (res.success && res.data) {
       if (res.data.valid) {
-        toast.success("Flow is valid");
+        toast.success(t("voice.ivr_builder.page.valid_toast"));
         setServerErrors([]);
       } else {
         setServerErrors(res.data.errors ?? []);
-        toast.error(`Validation failed: ${res.data.errors?.length ?? 0} error(s)`);
+        toast.error(t("voice.ivr_builder.page.validation_failed_toast", { count: res.data.errors?.length ?? 0 }));
       }
     } else {
-      toast.error(res.error || "Validation request failed");
+      toast.error(res.error || t("voice.ivr_builder.page.validation_request_failed"));
     }
-  }, [flowId, flow]);
+  }, [flowId, flow, t]);
 
   const handlePublish = useCallback(async () => {
     if (!flowId || localErrors.length > 0) return;
@@ -77,16 +79,16 @@ export default function IvrFlowBuilder() {
     const res = await voiceApi.post<PublishResponse>(`/voice/ivr/${flowId}/publish/`);
     setIsPublishing(false);
     if (res.success && res.data?.valid) {
-      toast.success(`Published as version ${res.data.version_number}`);
+      toast.success(t("voice.ivr_builder.page.published_toast", { version: res.data.version_number ?? "" }));
       flow.setStatus("published");
       setServerErrors([]);
     } else if (res.data && res.data.valid === false) {
       setServerErrors(res.data.errors ?? []);
-      toast.error(`Publish failed: ${res.data.errors?.length ?? 0} error(s)`);
+      toast.error(t("voice.ivr_builder.page.publish_failed_toast", { count: res.data.errors?.length ?? 0 }));
     } else {
-      toast.error(res.error || "Publish failed");
+      toast.error(res.error || t("voice.ivr_builder.page.publish_failed"));
     }
-  }, [flowId, flow, localErrors.length]);
+  }, [flowId, flow, localErrors.length, t]);
 
   if (!flowId) return null;
 
@@ -151,7 +153,7 @@ export default function IvrFlowBuilder() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setServerErrors(null)} aria-label="Dismiss" className="shrink-0">
+                <button onClick={() => setServerErrors(null)} aria-label={t("voice.ivr_builder.page.dismiss_aria")} className="shrink-0">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { MobileOverflowMenu } from "@/components/layout/MobileOverflowMenu";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface HeroMetricData {
   title: string;
@@ -18,16 +19,17 @@ interface MobileHomeHeroProps {
   metricCards: HeroMetricData[];
 }
 
-function getTimeGreeting(date = new Date()): string {
+function getTimeGreeting(t: (key: any, params?: any) => string, date = new Date()): string {
   const hour = date.getHours();
-  if (hour < 5) return "Good night";
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 21) return "Good evening";
-  return "Good night";
+  if (hour < 5) return t("layout.mobile_hero.greeting_night");
+  if (hour < 12) return t("layout.mobile_hero.greeting_morning");
+  if (hour < 17) return t("layout.mobile_hero.greeting_afternoon");
+  if (hour < 21) return t("layout.mobile_hero.greeting_evening");
+  return t("layout.mobile_hero.greeting_night");
 }
 
 export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   const { avatar } = useUserAvatar();
@@ -50,13 +52,13 @@ export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
     return () => window.clearInterval(id);
   }, []);
 
-  const greeting = useMemo(() => getTimeGreeting(now), [now]);
+  const greeting = useMemo(() => getTimeGreeting(t, now), [t, now]);
 
-  const firstName = user?.first_name || user?.full_name?.split(" ")[0] || "there";
+  const firstName = user?.first_name || user?.full_name?.split(" ")[0] || t("layout.mobile_hero.fallback_first_name");
   const fullName =
     user?.full_name ||
     `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
-    "User";
+    t("user.user");
 
   const getInitials = (name: string) =>
     name
@@ -81,7 +83,7 @@ export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
           <button
             type="button"
             onClick={() => navigate("/settings")}
-            aria-label="Profile"
+            aria-label={t("profile.profile")}
             className="flex-shrink-0 active:scale-95 transition-transform"
           >
             <Avatar className="h-14 w-14 ring-2 ring-white/30 shadow-md">
@@ -104,7 +106,7 @@ export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
           <button
             type="button"
             onClick={() => navigate("/notifications")}
-            aria-label="Notifications"
+            aria-label={t("layout.mobile_hero.notifications")}
             className="w-10 h-10 inline-flex items-center justify-center rounded-full text-primary-foreground active:bg-white/15 transition-colors"
           >
             <Bell className="w-[20px] h-[20px]" strokeWidth={2.2} />
@@ -113,7 +115,7 @@ export function MobileHomeHero({ metricCards }: MobileHomeHeroProps) {
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            aria-label="More options"
+            aria-label={t("layout.mobile.more_options")}
             className="w-10 h-10 -mr-1 inline-flex items-center justify-center rounded-full text-primary-foreground active:bg-white/15 transition-colors"
           >
             <Menu className="w-[22px] h-[22px]" strokeWidth={2.4} />

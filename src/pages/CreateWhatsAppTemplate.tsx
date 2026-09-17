@@ -39,6 +39,7 @@ import {
   type WATemplateCategory,
 } from "@/hooks/useWhatsAppCloud";
 import { buildApiUrl, API_CONFIG } from "@/config/api";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // Product spec: only English and Kiswahili are supported for WhatsApp templates.
 const META_LANGUAGES: Array<{ value: string; label: string }> = [
@@ -54,11 +55,11 @@ const SIZE_CAPS: Record<"image" | "video" | "document", number> = {
   document: 100 * 1024 * 1024,
 };
 
-const HEADER_TYPES: Array<{ key: WASimpleHeaderType; label: string; Icon: typeof Type }> = [
-  { key: "text", label: "Text", Icon: Type },
-  { key: "image", label: "Image", Icon: ImageIcon },
-  { key: "video", label: "Video", Icon: Video },
-  { key: "document", label: "Document", Icon: FileText },
+const HEADER_TYPES: Array<{ key: WASimpleHeaderType; labelKey: string; Icon: typeof Type }> = [
+  { key: "text", labelKey: "whatsapp.common.text", Icon: Type },
+  { key: "image", labelKey: "whatsapp.common.image", Icon: ImageIcon },
+  { key: "video", labelKey: "whatsapp.common.video", Icon: Video },
+  { key: "document", labelKey: "whatsapp.common.document", Icon: FileText },
 ];
 
 const countBodyPlaceholders = (text: string): number => {
@@ -73,6 +74,7 @@ export default function CreateWhatsAppTemplate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { simplePreviewMetaTemplate, simpleCreateMetaTemplate, isLoading } = useWhatsAppCloud();
+  const { t } = useLanguage();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -106,18 +108,19 @@ export default function CreateWhatsAppTemplate() {
         const channel = data?.whatsapp_channel;
         if (cancelled) return;
         if (!id) {
-          setAccountError("No WhatsApp account linked. Connect credentials in Settings → WhatsApp.");
+          setAccountError(t("whatsapp.create_template_page.no_account_linked"));
         } else {
           setWaAccountId(id);
           setWaPhoneNumberId(channel?.phone_number_id ?? "");
         }
       } catch {
-        if (!cancelled) setAccountError("Could not load WhatsApp account.");
+        if (!cancelled) setAccountError(t("whatsapp.create_template_page.account_load_failed"));
       } finally {
         if (!cancelled) setAccountLoading(false);
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Form state (mirrors §2.2 builder fields) ──────────────────────────────
@@ -195,7 +198,7 @@ export default function CreateWhatsAppTemplate() {
         .then((d) => setRendered(d.rendered))
         .catch((e) => {
           setRendered(null);
-          setPreviewError(e instanceof Error ? e.message : "Preview failed");
+          setPreviewError(e instanceof Error ? e.message : t("whatsapp.meta_template_dialog.preview_failed"));
         })
         .finally(() => setPreviewLoading(false));
     }, 250);
@@ -203,6 +206,7 @@ export default function CreateWhatsAppTemplate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     name,
+    t,
     category,
     language,
     headerType,
@@ -227,8 +231,11 @@ export default function CreateWhatsAppTemplate() {
       const cap = SIZE_CAPS[headerType];
       if (file.size > cap) {
         toast({
-          title: "File too large",
-          description: `${headerType} header is capped at ${Math.round(cap / (1024 * 1024))} MB.`,
+          title: t("whatsapp.meta_template_dialog.file_too_large_title"),
+          description: t("whatsapp.meta_template_dialog.file_too_large_desc", {
+            type: headerType,
+            mb: Math.round(cap / (1024 * 1024)),
+          }),
           variant: "destructive",
         });
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -243,8 +250,8 @@ export default function CreateWhatsAppTemplate() {
   const addButton = (type: WASimpleButton["type"] = "QUICK_REPLY") => {
     if (buttons.length >= 3) {
       toast({
-        title: "Max 3 buttons",
-        description: "WhatsApp templates allow up to 3 interactive buttons.",
+        title: t("whatsapp.create_template_page.max_buttons_title"),
+        description: t("whatsapp.create_template_page.max_buttons_desc"),
         variant: "destructive",
       });
       return;
@@ -300,7 +307,7 @@ export default function CreateWhatsAppTemplate() {
       // go from PENDING → APPROVED / REJECTED.
       navigate("/whatsapp?tab=templates&tmode=submitted");
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Failed to submit template");
+      setSubmitError(e instanceof Error ? e.message : t("whatsapp.meta_template_dialog.submit_failed"));
     }
   };
 
@@ -321,9 +328,9 @@ export default function CreateWhatsAppTemplate() {
                 <WhatsAppIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#25D366]" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold leading-tight">Create Template</h1>
+                <h1 className="text-lg sm:text-xl font-bold leading-tight">{t("whatsapp.create_template_page.title")}</h1>
                 <p className="text-[12px] sm:text-sm text-foreground/60 leading-snug">
-                  Build a Meta-approved WhatsApp message template.
+                  {t("whatsapp.create_template_page.subtitle")}
                 </p>
               </div>
             </header>
@@ -354,11 +361,11 @@ export default function CreateWhatsAppTemplate() {
                     different account" option that switches to a free-text input */}
                 <div className="space-y-1.5">
                   <Label className="text-[13px] font-bold">
-                    WhatsApp Account <span className="text-destructive">*</span>
+                    {t("whatsapp.create_template_page.account_label")} <span className="text-destructive">*</span>
                   </Label>
                   {accountLoading ? (
                     <div className="flex items-center gap-2 h-11 px-3 rounded-xl border border-border text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Loading account…
+                      <Loader2 className="w-4 h-4 animate-spin" /> {t("whatsapp.create_template_page.loading_account")}
                     </div>
                   ) : accountMode === "manual" ? (
                     <>
@@ -371,7 +378,7 @@ export default function CreateWhatsAppTemplate() {
                       />
                       <div className="flex items-center justify-between">
                         <p className="text-[11px] text-muted-foreground">
-                          Enter the chatbot ID (cb_…) or phone number ID for the WhatsApp account to use.
+                          {t("whatsapp.create_template_page.manual_account_hint")}
                         </p>
                         {waAccountId && (
                           <button
@@ -379,7 +386,7 @@ export default function CreateWhatsAppTemplate() {
                             onClick={() => { setAccountMode("detected"); setManualAccountId(""); }}
                             className="text-[11px] text-[#1ebe5d] font-semibold hover:underline whitespace-nowrap"
                           >
-                            Use detected
+                            {t("whatsapp.create_template_page.use_detected")}
                           </button>
                         )}
                       </div>
@@ -393,8 +400,8 @@ export default function CreateWhatsAppTemplate() {
                         }}
                       >
                         <SelectTrigger className="h-11 rounded-xl text-sm">
-                          <SelectValue placeholder="No account detected">
-                            {waAccountId ? (waPhoneNumberId || waAccountId) : "No account detected"}
+                          <SelectValue placeholder={t("whatsapp.create_template_page.no_account_detected")}>
+                            {waAccountId ? (waPhoneNumberId || waAccountId) : t("whatsapp.create_template_page.no_account_detected")}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -402,18 +409,18 @@ export default function CreateWhatsAppTemplate() {
                             <SelectItem value="__detected__">
                               <div className="flex flex-col">
                                 <span className="font-mono text-[13px]">{waPhoneNumberId || waAccountId}</span>
-                                <span className="text-[10.5px] text-muted-foreground">Auto-detected</span>
+                                <span className="text-[10.5px] text-muted-foreground">{t("whatsapp.create_template_page.auto_detected")}</span>
                               </div>
                             </SelectItem>
                           )}
                           <SelectItem value="__manual__">
-                            Use a different account…
+                            {t("whatsapp.create_template_page.use_different_account")}
                           </SelectItem>
                         </SelectContent>
                       </Select>
                       {!waAccountId && (
                         <p className="text-[11px] text-muted-foreground">
-                          No account auto-detected. Pick <strong>Use a different account…</strong> to enter one.
+                          {t("whatsapp.create_template_page.no_auto_detect_before")} <strong>{t("whatsapp.create_template_page.use_different_account")}</strong> {t("whatsapp.create_template_page.no_auto_detect_after")}
                         </p>
                       )}
                     </>
@@ -423,7 +430,7 @@ export default function CreateWhatsAppTemplate() {
                 {/* Template Name */}
                 <div className="space-y-1.5">
                   <Label className="text-[13px] font-bold">
-                    Template Name <span className="text-destructive">*</span>
+                    {t("whatsapp.create_template_page.name_label")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     value={name}
@@ -432,7 +439,7 @@ export default function CreateWhatsAppTemplate() {
                     className="h-11 rounded-xl text-sm font-mono"
                   />
                   <p className={`text-[11px] ${name && !nameOk ? "text-destructive" : "text-muted-foreground"}`}>
-                    Lowercase letters, numbers, and underscores only
+                    {t("whatsapp.create_template_page.name_hint")}
                   </p>
                 </div>
 
@@ -440,20 +447,20 @@ export default function CreateWhatsAppTemplate() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-[13px] font-bold">
-                      Category <span className="text-destructive">*</span>
+                      {t("whatsapp.meta_template_dialog.category_label")} <span className="text-destructive">*</span>
                     </Label>
                     <Select value={category} onValueChange={(v) => setCategory(v as WATemplateCategory)}>
                       <SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="UTILITY">Utility</SelectItem>
-                        <SelectItem value="MARKETING">Marketing</SelectItem>
-                        <SelectItem value="AUTHENTICATION">Authentication</SelectItem>
+                        <SelectItem value="UTILITY">{t("whatsapp.create_template_page.category_utility")}</SelectItem>
+                        <SelectItem value="MARKETING">{t("whatsapp.create_template_page.category_marketing")}</SelectItem>
+                        <SelectItem value="AUTHENTICATION">{t("whatsapp.create_template_page.category_auth")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[13px] font-bold">
-                      Language <span className="text-destructive">*</span>
+                      {t("whatsapp.meta_template_dialog.language_label")} <span className="text-destructive">*</span>
                     </Label>
                     <Select value={language} onValueChange={setLanguage}>
                       <SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger>
@@ -469,7 +476,7 @@ export default function CreateWhatsAppTemplate() {
                 {/* Header */}
                 <div className="space-y-2">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
-                    <Label className="text-[13px] font-bold">Header (optional)</Label>
+                    <Label className="text-[13px] font-bold">{t("whatsapp.meta_template_dialog.header_label")}</Label>
                     <div className="grid grid-cols-5 gap-1 p-0.5 rounded-lg bg-muted/40 border border-border/60 w-full sm:w-auto sm:inline-flex sm:gap-1">
                       <button
                         type="button"
@@ -480,9 +487,9 @@ export default function CreateWhatsAppTemplate() {
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <span className="leading-none truncate">None</span>
+                        <span className="leading-none truncate">{t("whatsapp.common.none")}</span>
                       </button>
-                      {HEADER_TYPES.map(({ key, label, Icon }) => {
+                      {HEADER_TYPES.map(({ key, labelKey, Icon }) => {
                         const active = headerType === key;
                         return (
                           <button
@@ -496,7 +503,7 @@ export default function CreateWhatsAppTemplate() {
                             }`}
                           >
                             <Icon className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />
-                            <span className="leading-none truncate">{label}</span>
+                            <span className="leading-none truncate">{t(labelKey as Parameters<typeof t>[0])}</span>
                           </button>
                         );
                       })}
@@ -512,7 +519,7 @@ export default function CreateWhatsAppTemplate() {
                         className="h-11 rounded-xl text-sm"
                       />
                       <p className="text-[11px] text-muted-foreground tabular-nums">
-                        Max 60 characters · {headerText.length}/60
+                        {t("whatsapp.create_template_page.header_char_count", { count: headerText.length })}
                       </p>
                       {/\{\{1\}\}/.test(headerText) && (
                         <Input
@@ -541,7 +548,7 @@ export default function CreateWhatsAppTemplate() {
                         className="h-11 w-full rounded-xl gap-2"
                       >
                         <Upload className="w-4 h-4" />
-                        {headerFile ? "Replace file" : "Click to upload"}
+                        {headerFile ? t("whatsapp.common.replace_file") : t("whatsapp.create_template_page.click_to_upload")}
                       </Button>
                       {headerFile && (
                         <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-[12px]">
@@ -555,7 +562,7 @@ export default function CreateWhatsAppTemplate() {
                           </button>
                         </div>
                       )}
-                      <div className="text-center text-[11px] text-muted-foreground">or</div>
+                      <div className="text-center text-[11px] text-muted-foreground">{t("whatsapp.common.or")}</div>
                       <Input
                         value={headerUrl}
                         onChange={(e) => setHeaderUrl(e.target.value)}
@@ -571,7 +578,7 @@ export default function CreateWhatsAppTemplate() {
                         />
                       )}
                       <p className="text-[11px] text-muted-foreground">
-                        Caps: image ≤ 5 MB · video ≤ 16 MB · document ≤ 100 MB · HTTPS only.
+                        {t("whatsapp.create_template_page.media_caps")}
                       </p>
                     </div>
                   )}
@@ -580,7 +587,7 @@ export default function CreateWhatsAppTemplate() {
                 {/* Body */}
                 <div className="space-y-1.5">
                   <Label className="text-[13px] font-bold">
-                    Body <span className="text-destructive">*</span>
+                    {t("whatsapp.common.body")} <span className="text-destructive">*</span>
                   </Label>
                   <Textarea
                     value={body}
@@ -590,13 +597,13 @@ export default function CreateWhatsAppTemplate() {
                     className="rounded-xl text-sm leading-relaxed"
                   />
                   <p className="text-[11px] text-muted-foreground tabular-nums">
-                    Use placeholders like {"{{1}}, {{2}}"} for dynamic values. Max 1024 characters.
-                    <span className="ml-2 opacity-60">{body.length}/1024 · {placeholderCount} placeholder{placeholderCount === 1 ? "" : "s"}</span>
+                    {t("whatsapp.create_template_page.body_hint_before")} {"{{1}}, {{2}}"} {t("whatsapp.create_template_page.body_hint_after")}
+                    <span className="ml-2 opacity-60">{body.length}/1024 · {t("whatsapp.meta_template_dialog.placeholder_count", { count: placeholderCount })}</span>
                   </p>
 
                   {placeholderCount > 0 && (
                     <div className="space-y-1.5 pt-2">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Sample values</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("whatsapp.create_template_page.sample_values_heading")}</p>
                       {bodyExamples.map((val, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <span className="text-[12px] font-mono text-muted-foreground w-12">{`{{${idx + 1}}}`}</span>
@@ -605,7 +612,7 @@ export default function CreateWhatsAppTemplate() {
                             onChange={(e) =>
                               setBodyExamples((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
                             }
-                            placeholder={`Example for {{${idx + 1}}}`}
+                            placeholder={t("whatsapp.meta_template_dialog.example_for", { n: idx + 1 })}
                             className="h-10 rounded-lg text-sm"
                           />
                         </div>
@@ -616,7 +623,7 @@ export default function CreateWhatsAppTemplate() {
 
                 {/* Footer */}
                 <div className="space-y-1.5">
-                  <Label className="text-[13px] font-bold">Footer (optional)</Label>
+                  <Label className="text-[13px] font-bold">{t("whatsapp.common.footer_optional")}</Label>
                   <Input
                     value={footer}
                     onChange={(e) => setFooter(e.target.value.slice(0, 60))}
@@ -624,7 +631,7 @@ export default function CreateWhatsAppTemplate() {
                     className="h-11 rounded-xl text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Max 60 characters. No variables allowed.
+                    {t("whatsapp.create_template_page.footer_hint")}
                   </p>
                 </div>
 
@@ -632,11 +639,11 @@ export default function CreateWhatsAppTemplate() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-                    <Label className="text-[13px] font-bold">Buttons (optional)</Label>
+                    <Label className="text-[13px] font-bold">{t("whatsapp.create_template_page.buttons_label")}</Label>
                   </div>
 
                   {buttons.length === 0 ? (
-                    <p className="text-[12px] italic text-muted-foreground">No buttons added yet</p>
+                    <p className="text-[12px] italic text-muted-foreground">{t("whatsapp.create_template_page.no_buttons")}</p>
                   ) : (
                     <div className="space-y-2">
                       {buttons.map((btn, idx) => (
@@ -655,15 +662,15 @@ export default function CreateWhatsAppTemplate() {
                             >
                               <SelectTrigger className="h-9 w-40 text-[12px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="QUICK_REPLY">Quick Reply</SelectItem>
-                                <SelectItem value="URL">URL</SelectItem>
-                                <SelectItem value="PHONE_NUMBER">Phone Number</SelectItem>
+                                <SelectItem value="QUICK_REPLY">{t("whatsapp.common.quick_reply")}</SelectItem>
+                                <SelectItem value="URL">{t("whatsapp.common.url")}</SelectItem>
+                                <SelectItem value="PHONE_NUMBER">{t("whatsapp.common.phone_number")}</SelectItem>
                               </SelectContent>
                             </Select>
                             <Input
                               value={btn.text}
                               onChange={(e) => updateButton(idx, { text: e.target.value.slice(0, 25) })}
-                              placeholder="Button label"
+                              placeholder={t("whatsapp.common.button_label")}
                               className="h-9 text-[13px] flex-1"
                             />
                             <button
@@ -716,7 +723,7 @@ export default function CreateWhatsAppTemplate() {
                       className="w-full h-11 rounded-xl border-[#25D366]/40 text-[#1ebe5d] hover:bg-[#25D366]/10 hover:text-[#1ebe5d] gap-2 font-semibold"
                     >
                       <Plus className="w-4 h-4" />
-                      Add Button
+                      {t("whatsapp.create_template_page.add_button")}
                     </Button>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -727,7 +734,7 @@ export default function CreateWhatsAppTemplate() {
                         className="h-10 rounded-xl gap-2"
                       >
                         <LinkIcon className="w-3.5 h-3.5" />
-                        URL
+                        {t("whatsapp.common.url")}
                       </Button>
                       <Button
                         type="button"
@@ -737,11 +744,11 @@ export default function CreateWhatsAppTemplate() {
                         className="h-10 rounded-xl gap-2"
                       >
                         <PhoneIcon className="w-3.5 h-3.5" />
-                        Phone
+                        {t("whatsapp.create_template_page.phone_button")}
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Max 3 buttons. Quick Reply, URL, and Phone Number buttons supported.
+                      {t("whatsapp.create_template_page.buttons_hint")}
                     </p>
                   </div>
                 </div>
@@ -761,7 +768,7 @@ export default function CreateWhatsAppTemplate() {
                     disabled={isLoading}
                     className="flex-1 h-11 rounded-xl font-semibold"
                   >
-                    Cancel
+                    {t("cancel")}
                   </Button>
                   <Button
                     onClick={submit}
@@ -771,12 +778,12 @@ export default function CreateWhatsAppTemplate() {
                     {isLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting…
+                        {t("whatsapp.common.submitting")}
                       </>
                     ) : (
                       <>
                         <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
-                        Submit to Meta
+                        {t("whatsapp.common.submit_to_meta")}
                       </>
                     )}
                   </Button>
@@ -881,6 +888,7 @@ function WhatsAppChatPreview({
   previewLoading,
   hasPreviewableContent,
 }: WhatsAppChatPreviewProps) {
+  const { t } = useLanguage();
   // The bubble shows the RAW template with `{{N}}` as inline chips — Meta's
   // own preview style. Sample values you type live in `bodyExamples` and ship
   // to Meta for approval, but the preview deliberately keeps the placeholders
@@ -913,18 +921,18 @@ function WhatsAppChatPreview({
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-          <h2 className="text-[15px] font-bold">Live Preview</h2>
+          <h2 className="text-[15px] font-bold">{t("whatsapp.create_template_page.live_preview_title")}</h2>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           {previewLoading && <Loader2 className="w-3 h-3 animate-spin" />}
-          Updates as you type
+          {t("whatsapp.create_template_page.updates_as_you_type")}
         </div>
       </div>
 
       {!hasPreviewableContent ? (
         <div className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center">
           <p className="text-[13px] italic text-muted-foreground">
-            No template data to preview
+            {t("whatsapp.create_template_page.no_preview_data")}
           </p>
         </div>
       ) : (
@@ -938,8 +946,8 @@ function WhatsAppChatPreview({
                   <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-bold leading-tight truncate">Your Business</div>
-                  <div className="text-[10.5px] opacity-80 leading-tight">online</div>
+                  <div className="text-[13px] font-bold leading-tight truncate">{t("whatsapp.message_preview.your_business")}</div>
+                  <div className="text-[10.5px] opacity-80 leading-tight">{t("status.online")}</div>
                 </div>
               </div>
               <div className="w-6 h-4 rounded-sm border border-white/40 flex-shrink-0" />
@@ -978,7 +986,7 @@ function WhatsAppChatPreview({
                 )}
 
                 <div className="px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
-                  {bodySource ? renderWithChips(bodySource) : "Body preview…"}
+                  {bodySource ? renderWithChips(bodySource) : t("whatsapp.common.body_preview_placeholder")}
                 </div>
 
                 {renderedFooter && (
@@ -1008,7 +1016,7 @@ function WhatsAppChatPreview({
             {/* Chat footer — cosmetic "Type a message" bar */}
             <div className="bg-[#f0f0f0] dark:bg-[#1f2c33] px-3 py-2 flex items-center gap-2">
               <div className="flex-1 h-9 rounded-full bg-white dark:bg-[#2a3942] px-3 flex items-center text-[12.5px] text-muted-foreground">
-                Type a message
+                {t("whatsapp.create_template_page.type_a_message")}
               </div>
               <div className="w-9 h-9 rounded-full bg-[#25D366] flex items-center justify-center flex-shrink-0">
                 <WhatsAppIcon className="w-4 h-4 text-white" />

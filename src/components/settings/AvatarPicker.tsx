@@ -1,13 +1,15 @@
 import { Check } from "lucide-react";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function AvatarPicker() {
   const { avatar, setAvatar, options } = useUserAvatar();
+  const { t } = useLanguage();
 
   return (
     <div>
       <p className="text-xs text-foreground/60 dark:text-foreground/55 mb-3">
-        Choose an avatar — it shows up on your dashboard and across the app.
+        {t("settings.avatar_picker.desc")}
       </p>
       <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
         {options.map((src) => {
@@ -18,7 +20,7 @@ export function AvatarPicker() {
               type="button"
               onClick={() => setAvatar(src)}
               aria-pressed={selected}
-              aria-label={`Use avatar ${src.split("/").pop()}`}
+              aria-label={t("settings.avatar_picker.use_avatar_aria", { name: src.split("/").pop() || "" })}
               className={[
                 "relative aspect-square rounded-2xl overflow-hidden",
                 "transition-all duration-150 active:scale-95",

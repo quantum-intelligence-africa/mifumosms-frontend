@@ -36,6 +36,7 @@ import {
   formatScheduleDescription,
 } from '@/utils/campaignUtils';
 import { apiClient, SenderNameRequest, UnifiedSenderName } from '@/lib/api';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface CreateCampaignDialogProps {
   children?: React.ReactNode;
@@ -157,6 +158,7 @@ function writePendingNewDraftId(id: string | null) {
 }
 
 export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange, draftId }: CreateCampaignDialogProps) {
+  const { t } = useLanguage();
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
@@ -357,13 +359,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
   const requestClose = useCallback(() => {
     if (hasUnsavedChanges && !isSubmitting) {
-      const confirmed = window.confirm(
-        "You have unsaved changes.\n\nYour latest changes haven't finished saving. Leave anyway?"
-      );
+      const confirmed = window.confirm(t('campaigns.create_dialog.unsaved_changes_confirm'));
       if (!confirmed) return;
     }
     setOpen(false);
-  }, [hasUnsavedChanges, isSubmitting, setOpen]);
+  }, [hasUnsavedChanges, isSubmitting, setOpen, t]);
 
   const handleDialogOpenChange = (nextOpen: boolean) => {
     if (nextOpen) setOpen(true);
@@ -372,7 +372,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
   const handleSaveDraftClick = () => {
     saveNow().then(() => {
-      toast({ title: 'Draft saved', description: 'Find it later under the Draft filter on Campaigns.' });
+      toast({ title: t('campaigns.create_dialog.draft_saved_title'), description: t('campaigns.create_dialog.draft_saved_desc') });
     });
     requestClose();
   };
@@ -520,9 +520,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
   const saveStatusLabel = (() => {
     if (autosaveError) return null; // shown separately, as a dismissible inline alert
-    if (isAutosaving) return 'Saving…';
-    if (hasUnsavedChanges) return 'Unsaved changes';
-    if (lastSavedAt) return `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    if (isAutosaving) return t('campaigns.create_dialog.saving');
+    if (hasUnsavedChanges) return t('campaigns.create_dialog.unsaved_changes');
+    if (lastSavedAt) return t('campaigns.create_dialog.saved_at', { time: lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
     return null;
   })();
 
@@ -532,8 +532,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         {children || (
           <Button className="gap-2">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add New Campaign</span>
-            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">{t('campaigns.create_dialog.add_new_campaign')}</span>
+            <span className="sm:hidden">{t('campaigns.create_dialog.new_short')}</span>
           </Button>
         )}
       </DialogTrigger>
@@ -545,10 +545,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">
-                {draftId ? 'Edit Draft' : 'Create Campaign'}
+                {draftId ? t('campaigns.create_dialog.edit_draft_title') : t('campaigns.create_dialog.create_campaign_title')}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Reach your audience with targeted SMS
+                {t('campaigns.create_dialog.subtitle')}
               </DialogDescription>
             </div>
           </div>
@@ -557,7 +557,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         {isLoadingDraft ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Loading draft…
+            {t('campaigns.create_dialog.loading_draft')}
           </div>
         ) : (
         <>
@@ -566,7 +566,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <Alert className="border-warning/40 bg-warning/10 py-2">
               <AlertCircle className="h-4 w-4 text-warning" />
               <AlertDescription className="text-xs text-foreground/80">
-                Couldn't reach the server — showing your last locally saved changes.
+                {t('campaigns.create_dialog.offline_alert')}
               </AlertDescription>
             </Alert>
           )}
@@ -580,7 +580,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <Alert className="border-primary/30 bg-primary/5 py-2">
               <Info className="h-4 w-4 text-primary" />
               <AlertDescription className="text-xs text-foreground/80 flex items-center justify-between gap-2 flex-wrap">
-                <span>You have unsaved local changes to this draft.</span>
+                <span>{t('campaigns.create_dialog.local_restore_alert')}</span>
                 <span className="flex gap-2">
                   <button
                     type="button"
@@ -590,7 +590,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       setLocalRestore(null);
                     }}
                   >
-                    Restore
+                    {t('campaigns.create_dialog.restore')}
                   </button>
                   <button
                     type="button"
@@ -600,7 +600,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       setLocalRestore(null);
                     }}
                   >
-                    Discard
+                    {t('campaigns.create_dialog.discard')}
                   </button>
                 </span>
               </AlertDescription>
@@ -613,20 +613,20 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div className="sm:col-span-2 space-y-1.5">
                   <Label htmlFor="name" className="text-xs font-medium text-foreground">
-                    Campaign Name <span className="text-destructive">*</span>
+                    {t('campaigns.create_dialog.name_label')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
-                    placeholder="E.g., Summer Sale Campaign"
+                    placeholder={t('campaigns.create_dialog.name_placeholder')}
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className="h-9"
                   />
-                  <p className="text-[11px] text-muted-foreground">Give your campaign a memorable name</p>
+                  <p className="text-[11px] text-muted-foreground">{t('campaigns.create_dialog.name_hint')}</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-foreground">Campaign Type</Label>
+                  <Label className="text-xs font-medium text-foreground">{t('campaigns.create_dialog.campaign_type_label')}</Label>
                   <div className="h-9 flex items-center justify-center rounded-md border border-primary/30 bg-primary/5">
                     <span className="text-xs font-semibold text-primary">SMS</span>
                   </div>
@@ -636,18 +636,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="sender_id" className="text-xs font-medium text-foreground">
-                    Sender ID <span className="text-destructive">*</span>
+                    {t('sender_id')} <span className="text-destructive">*</span>
                   </Label>
                   {!loadingBalance && smsBalance !== null && (
                     <span className={`text-[11px] font-medium ${smsBalance < 100 ? 'text-warning' : 'text-muted-foreground'}`}>
-                      Balance: TZS {smsBalance.toLocaleString()}{smsBalance < 100 ? ' · Low' : ''}
+                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString() })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
                     </span>
                   )}
                 </div>
                 {approvedSenders.length > 0 ? (
                   <Select value={formData.sender_id} onValueChange={(value) => handleInputChange('sender_id', value)}>
                     <SelectTrigger id="sender_id" className="h-9">
-                      <SelectValue placeholder="Choose a sender..." />
+                      <SelectValue placeholder={t('campaigns.create_dialog.choose_sender_placeholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {approvedSenders.map((sender) => (
@@ -663,9 +663,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-semibold text-destructive">No approved senders</p>
+                      <p className="text-xs font-semibold text-destructive">{t('campaigns.create_dialog.no_approved_senders')}</p>
                       <Link to="/sms/sender-names?action=request" className="text-[11px] font-semibold text-destructive underline">
-                        Request Sender Approval →
+                        {t('campaigns.create_dialog.request_sender_approval')}
                       </Link>
                     </div>
                   </div>
@@ -675,11 +675,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               {/* Message Text */}
               <div className="space-y-1.5">
                 <Label htmlFor="message_text" className="text-xs font-medium text-foreground">
-                  Message Text <span className="text-destructive">*</span>
+                  {t('campaigns.create_dialog.message_text_label')} <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="message_text"
-                  placeholder="Type your message here. Keep it clear and concise..."
+                  placeholder={t('campaigns.create_dialog.message_placeholder')}
                   value={formData.message_text}
                   onChange={(e) => handleInputChange('message_text', e.target.value)}
                   rows={3}
@@ -688,7 +688,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 />
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">
-                    {calculateSMSSegments(formData.message_text)} SMS {formData.message_text.length > 0 ? `(${formData.message_text.length} chars)` : ''}
+                    {t('campaigns.create_dialog.sms_segments_count', { count: calculateSMSSegments(formData.message_text) })} {formData.message_text.length > 0 ? t('campaigns.create_dialog.chars_paren', { count: formData.message_text.length }) : ''}
                   </span>
                   <span className={formData.message_text.length > 140 ? 'text-warning font-semibold' : 'text-muted-foreground'}>
                     {formData.message_text.length}/160
@@ -698,11 +698,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
               <div className="space-y-1.5">
                 <Label htmlFor="description" className="text-xs font-medium text-foreground">
-                  Description <span className="text-muted-foreground font-normal">(optional)</span>
+                  {t('campaigns.create_dialog.description_label')} <span className="text-muted-foreground font-normal">{t('campaigns.create_dialog.optional_suffix')}</span>
                 </Label>
                 <Textarea
                   id="description"
-                  placeholder="Write a brief description about your campaign..."
+                  placeholder={t('campaigns.create_dialog.description_placeholder')}
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={2}
@@ -730,9 +730,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       <Repeat className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-xs font-semibold text-foreground block">Recurring Campaign</span>
+                      <span className="text-xs font-semibold text-foreground block">{t('campaigns.create_dialog.recurring_campaign')}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {formData.is_recurring ? 'Runs automatically on a schedule' : 'Run once or repeat automatically'}
+                        {formData.is_recurring ? t('campaigns.create_dialog.recurring_desc_on') : t('campaigns.create_dialog.recurring_desc_off')}
                       </span>
                     </div>
                   </div>
@@ -750,7 +750,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 {!formData.is_recurring && (
                   <div className="space-y-1.5 rounded-lg bg-muted/40 p-2.5">
                     <Label htmlFor="scheduled_at" className="text-xs font-medium text-foreground">
-                      Run at <span className="text-muted-foreground font-normal">(optional)</span>
+                      {t('campaigns.create_dialog.run_at_label')} <span className="text-muted-foreground font-normal">{t('campaigns.create_dialog.optional_suffix')}</span>
                     </Label>
                     <Input
                       id="scheduled_at"
@@ -759,7 +759,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
                       className="h-9"
                     />
-                    <p className="text-[11px] text-muted-foreground">Leave empty to send immediately</p>
+                    <p className="text-[11px] text-muted-foreground">{t('campaigns.create_dialog.run_at_hint')}</p>
                   </div>
                 )}
               </div>
@@ -774,15 +774,15 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="single">Single day — one-time at a specific time</SelectItem>
-                      <SelectItem value="daily">Daily — every day at a specific time</SelectItem>
-                      <SelectItem value="weekly">Weekly — specific days each week</SelectItem>
-                      <SelectItem value="monthly">Monthly — specific day each month</SelectItem>
+                      <SelectItem value="single">{t('campaigns.create_dialog.schedule_single')}</SelectItem>
+                      <SelectItem value="daily">{t('campaigns.create_dialog.schedule_daily')}</SelectItem>
+                      <SelectItem value="weekly">{t('campaigns.create_dialog.schedule_weekly')}</SelectItem>
+                      <SelectItem value="monthly">{t('campaigns.create_dialog.schedule_monthly')}</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="recurring_time" className="text-xs font-medium text-foreground">Execution Time</Label>
+                    <Label htmlFor="recurring_time" className="text-xs font-medium text-foreground">{t('campaigns.create_dialog.execution_time_label')}</Label>
                     <Input
                       id="recurring_time"
                       type="time"
@@ -800,7 +800,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                             checked={formData.recurring_schedule.days?.includes(day) || false}
                             onCheckedChange={() => handleDayToggle(day)}
                           />
-                          {day.slice(0, 3)}
+                          {t(`campaigns.create_dialog.day_${day.slice(0, 3)}` as any)}
                         </label>
                       ))}
                     </div>
@@ -808,7 +808,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
                   {formData.recurring_schedule.type === 'monthly' && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="day_of_month" className="text-xs font-medium text-foreground">Day of Month</Label>
+                      <Label htmlFor="day_of_month" className="text-xs font-medium text-foreground">{t('campaigns.create_dialog.day_of_month_label')}</Label>
                       <Input
                         id="day_of_month"
                         type="number"
@@ -822,7 +822,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   )}
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="end_date" className="text-xs font-medium text-foreground">End Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Label htmlFor="end_date" className="text-xs font-medium text-foreground">{t('campaigns.create_dialog.end_date_label')} <span className="text-muted-foreground font-normal">{t('campaigns.create_dialog.optional_suffix')}</span></Label>
                     <Input
                       id="end_date"
                       type="date"
@@ -850,32 +850,32 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <div className="rounded-lg border border-success/30 bg-success/5 p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <DollarSign className="w-4 h-4 text-success" />
-                    <h4 className="text-xs font-semibold text-foreground">Cost Estimation</h4>
+                    <h4 className="text-xs font-semibold text-foreground">{t('campaigns.create_dialog.cost_estimation_title')}</h4>
                   </div>
                   <div className="space-y-1.5 text-xs">
                     <div className="flex items-center justify-between bg-background rounded-md px-2.5 py-1.5">
-                      <span className="text-muted-foreground">Message Length</span>
-                      <span className="font-semibold text-foreground">{formData.message_text.length} chars ({calculateSMSSegments(formData.message_text)} SMS)</span>
+                      <span className="text-muted-foreground">{t('campaigns.create_dialog.message_length_label')}</span>
+                      <span className="font-semibold text-foreground">{t('campaigns.create_dialog.message_length_value', { chars: formData.message_text.length, segments: calculateSMSSegments(formData.message_text) })}</span>
                     </div>
                     <div className="flex items-center justify-between bg-background rounded-md px-2.5 py-1.5">
-                      <span className="text-muted-foreground">Recipients</span>
-                      <span className="font-semibold text-foreground">{formData.target_contact_ids.length} contacts</span>
+                      <span className="text-muted-foreground">{t('campaigns.details_modal.recipients')}</span>
+                      <span className="font-semibold text-foreground">{t('campaigns.create_dialog.contacts_count', { count: formData.target_contact_ids.length })}</span>
                     </div>
                     <div className="flex items-center justify-between bg-success/10 rounded-md px-2.5 py-1.5 border border-success/30">
-                      <span className="font-semibold text-foreground">Total Cost</span>
-                      <span className="text-sm font-bold text-success">TZS {estimatedCost.toLocaleString()}</span>
+                      <span className="font-semibold text-foreground">{t('total_cost')}</span>
+                      <span className="text-sm font-bold text-success">{t('campaigns.create_dialog.tzs_amount', { amount: estimatedCost.toLocaleString() })}</span>
                     </div>
                     {formData.is_recurring && (
                       <div className="flex items-center justify-between bg-primary/5 rounded-md px-2.5 py-1.5 border border-primary/25">
-                        <span className="font-semibold text-foreground">Weekly Cost</span>
-                        <span className="text-sm font-bold text-primary">TZS {weeklyCost.toLocaleString()}</span>
+                        <span className="font-semibold text-foreground">{t('campaigns.create_dialog.weekly_cost_label')}</span>
+                        <span className="text-sm font-bold text-primary">{t('campaigns.create_dialog.tzs_amount', { amount: weeklyCost.toLocaleString() })}</span>
                       </div>
                     )}
                     {smsBalance !== null && estimatedCost > smsBalance && (
                       <div className="rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 flex items-start gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
                         <p className="text-[11px] text-destructive font-medium">
-                          Insufficient credits — you need TZS {(estimatedCost - smsBalance).toLocaleString()} more.
+                          {t('campaigns.create_dialog.insufficient_credits', { amount: (estimatedCost - smsBalance).toLocaleString() })}
                         </p>
                       </div>
                     )}
@@ -890,27 +890,27 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Select Target Audience</h3>
-                  <p className="text-[11px] text-muted-foreground">Choose who will receive this campaign</p>
+                  <h3 className="text-sm font-semibold text-foreground">{t('campaigns.create_dialog.select_target_audience')}</h3>
+                  <p className="text-[11px] text-muted-foreground">{t('campaigns.create_dialog.choose_recipients_desc')}</p>
                 </div>
-                <Badge className="text-[11px] font-semibold">{formData.target_contact_ids.length} selected</Badge>
+                <Badge className="text-[11px] font-semibold">{t('campaigns.create_dialog.selected_count', { count: formData.target_contact_ids.length })}</Badge>
               </div>
 
               {contactsLoading ? (
                 <div className="text-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                  <p className="text-xs text-muted-foreground mt-2">Loading your contacts...</p>
+                  <p className="text-xs text-muted-foreground mt-2">{t('campaigns.create_dialog.loading_contacts')}</p>
                 </div>
               ) : showContactsEmptyState ? (
                 <div className="text-center py-8 px-4 border border-dashed border-border rounded-lg bg-muted/30 space-y-3">
                   <AlertCircle className="w-8 h-8 text-primary mx-auto" />
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">No Contacts Found</p>
-                    <p className="text-xs text-muted-foreground">Create at least one contact before launching a campaign.</p>
+                    <p className="text-sm font-semibold text-foreground">{t('campaigns.create_dialog.no_contacts_found_title')}</p>
+                    <p className="text-xs text-muted-foreground">{t('campaigns.create_dialog.no_contacts_found_desc')}</p>
                   </div>
                   <Button asChild size="sm" onClick={() => { setStep(1); requestClose(); }}>
                     <Link to="/contacts" className="flex items-center gap-1.5">
-                      Add Contacts <ArrowRight className="w-3.5 h-3.5" />
+                      {t('dashboard.quick_actions.add_contacts')} <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </Button>
                 </div>
@@ -918,9 +918,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2.5 bg-muted/40 rounded-lg p-2.5 border border-border">
                     <Button variant="outline" size="sm" onClick={handleSelectAllContacts} className="h-8">
-                      {formData.target_contact_ids.length === contacts.length ? 'Deselect All' : 'Select All'}
+                      {formData.target_contact_ids.length === contacts.length ? t('campaigns.create_dialog.deselect_all') : t('campaigns.create_dialog.select_all')}
                     </Button>
-                    <p className="text-[11px] font-medium text-muted-foreground">{contacts.length} total contacts</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">{t('contacts.list.total_contacts', { count: contacts.length })}</p>
                   </div>
 
                   <div className="rounded-lg border border-border overflow-hidden">
@@ -952,14 +952,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
               <div className="space-y-2 rounded-lg border border-border p-3">
                 <div>
-                  <h4 className="text-xs font-semibold text-foreground">Target Criteria</h4>
-                  <p className="text-[11px] text-muted-foreground">Add tags to further refine your audience</p>
+                  <h4 className="text-xs font-semibold text-foreground">{t('campaigns.create_dialog.target_criteria_title')}</h4>
+                  <p className="text-[11px] text-muted-foreground">{t('campaigns.create_dialog.target_criteria_desc')}</p>
                 </div>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
                     <Input
-                      placeholder="Enter a tag (e.g., VIP, Premium)"
+                      placeholder={t('campaigns.create_dialog.tag_placeholder')}
                       value={formData.newTag}
                       onChange={(e) => handleInputChange('newTag', e.target.value)}
                       onKeyPress={(e) => {
@@ -983,7 +983,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     disabled={!formData.newTag.trim() || formData.target_criteria.tags.includes(formData.newTag.trim())}
                     className="h-9"
                   >
-                    Add
+                    {t('campaigns.create_dialog.add_button')}
                   </Button>
                 </div>
                 {formData.target_criteria.tags.length > 0 && (
@@ -1011,7 +1011,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           <div className="flex-shrink-0 px-4 py-2 border-t border-destructive/20 bg-destructive/5 flex items-center justify-between gap-2">
             <span className="text-[11px] text-destructive">{autosaveError}</span>
             <button type="button" onClick={() => { dismissAutosaveError(); saveNow(); }} className="text-[11px] font-semibold text-destructive underline flex-shrink-0">
-              Retry
+              {t('campaigns.create_dialog.retry')}
             </button>
           </div>
         )}
@@ -1022,7 +1022,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <div className="flex items-center gap-1.5">
               <div className={`w-1.5 h-1.5 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
               <div className={`w-1.5 h-1.5 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-              <span className="text-[11px] text-muted-foreground font-medium">Step {step} of 2</span>
+              <span className="text-[11px] text-muted-foreground font-medium">{t('campaigns.create_dialog.step_of_total', { step })}</span>
             </div>
             {saveStatusLabel && (
               <span className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -1035,29 +1035,29 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {step > 1 && (
               <Button variant="ghost" onClick={() => setStep(step - 1)} className="h-9 px-3">
-                ← Previous
+                ← {t('campaigns.create_dialog.previous')}
               </Button>
             )}
             <Button variant="outline" onClick={handleSaveDraftClick} disabled={!formData.name.trim()} className="h-9 px-3">
-              Save Draft
+              {t('campaigns.create_dialog.save_draft')}
             </Button>
             {step < 2 ? (
               <Button onClick={() => setStep(2)} disabled={!canProceedToStep2} className="flex-1 sm:flex-none h-9 px-4">
-                Next →
+                {t('campaigns.create_dialog.next')} →
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting} className="flex-1 sm:flex-none h-9 px-4 gap-1.5">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating...
+                    {t('campaigns.create_dialog.creating')}
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4" />
                     <span className="truncate">
-                      <span className="sm:hidden">Create</span>
-                      <span className="hidden sm:inline">Create Campaign</span>
+                      <span className="sm:hidden">{t('campaigns.create_dialog.create_short')}</span>
+                      <span className="hidden sm:inline">{t('campaigns.create_dialog.create_campaign_title')}</span>
                     </span>
                   </>
                 )}

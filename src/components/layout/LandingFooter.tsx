@@ -1,6 +1,5 @@
-import { useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { PLATFORM_LINKS } from "@/components/landing/shared/platformLinks";
 
@@ -13,7 +12,7 @@ interface LandingFooterProps {
 }
 
 export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
-  const { language } = useContext(LanguageContext);
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -65,24 +64,24 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
               onClick={() => handleAnchor("about")}
               className="hover:underline hover:text-white"
             >
-              {language === "sw" ? "Kuhusu" : "About"}
+              {t("landing.nav.about")}
             </button>
             <button
               type="button"
               onClick={() => handleAnchor("features")}
               className="hover:underline hover:text-white"
             >
-              {language === "sw" ? "Vipengele" : "Features"}
+              {t("landing.nav.features")}
             </button>
             <button
               type="button"
               onClick={() => handleAnchor("pricing")}
               className="hover:underline hover:text-white"
             >
-              {language === "sw" ? "Bei" : "Pricing"}
+              {t("landing.nav.pricing")}
             </button>
             <Link to="/developer" className="hover:underline hover:text-white">
-              {language === "sw" ? "Developa" : "Developer"}
+              {t("landing.nav.developer")}
             </Link>
             <Link
               to="/whatsapp-broadcast"
@@ -115,7 +114,7 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
         <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-              {language === "sw" ? "Jukwaa" : "Platform"}
+              {t("landing.nav.platform")}
             </span>
             <nav className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 text-xs text-white/80">
               {PLATFORM_LINKS.map(({ id, anchor, label, labelSw }) => (
@@ -135,9 +134,7 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
         <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
           <p className="text-xs sm:text-sm text-white/80">
             &copy; 2025 SENDA.{" "}
-            {language === "sw"
-              ? "Haki zote zimehifadhiwa."
-              : "All rights reserved."}
+            {t("landing.footer.rights_reserved")}
           </p>
         </div>
       </div>

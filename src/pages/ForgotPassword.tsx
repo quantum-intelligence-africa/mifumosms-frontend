@@ -9,12 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useSMSVerification } from "@/hooks/useSMSVerification";
 import { SMSVerificationCode } from "@/components/auth/SMSVerificationCode";
 import { normalizePhoneNumber, getPhonePlaceholder, toBackendPhoneFormat } from "@/utils/phoneUtils";
+import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const ForgotPassword = () => {
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [backendPhoneNumber, setBackendPhoneNumber] = useState(""); // Store the phone number format returned by backend
   const [isLoading, setIsLoading] = useState(false);
@@ -52,10 +54,10 @@ const ForgotPassword = () => {
       // Validate and normalize phone number
       const phoneInfo = normalizePhoneNumber(phoneNumber);
       if (!phoneInfo.isValid) {
-        setVerificationError(phoneInfo.error || 'Please enter a valid phone number');
+        setVerificationError(phoneInfo.error || t("auth.forgot_password.invalid_phone_default"));
         toast({
-          title: "Invalid Phone Number",
-          description: phoneInfo.error || "Please enter a valid phone number",
+          title: t("auth.forgot_password.toast_invalid_phone_title"),
+          description: phoneInfo.error || t("auth.forgot_password.invalid_phone_default"),
           variant: "destructive"
         });
         return;
@@ -74,27 +76,27 @@ const ForgotPassword = () => {
         console.log('Backend returned phone:', result.phone_number || backendFormat);
         setStep('verification');
         toast({
-          title: "Reset code sent",
-          description: `Reset code sent to ${phoneInfo.formatted} and your email. Use whichever arrives first.`,
+          title: t("auth.forgot_password.toast_reset_code_sent_title"),
+          description: t("auth.forgot_password.toast_reset_code_sent_desc", { phone: phoneInfo.formatted }),
         });
       } else {
         // Check for insufficient balance error
         if (result.error_code === 102) {
           toast({
-            title: "Service Temporarily Unavailable",
-            description: "SMS service is currently unavailable due to insufficient balance. Please contact the administrator for assistance at admin@mifumosms.com or call +255 XXX XXX XXX",
+            title: t("auth.forgot_password.toast_service_unavailable_title"),
+            description: t("auth.forgot_password.toast_service_unavailable_desc"),
             variant: "destructive",
             duration: 10000,
           });
         } else {
-          setVerificationError(result.error || 'Failed to send reset code');
+          setVerificationError(result.error || t("auth.forgot_password.failed_send_reset_code_default"));
           setAttemptsRemaining(result.attempts_remaining);
           setLockedUntil(result.locked_until);
         }
       }
     } catch (error) {
       console.error('Password reset request error:', error);
-      setVerificationError('Failed to send reset code. Please try again.');
+      setVerificationError(t("auth.forgot_password.reset_code_error_generic"));
     } finally {
       setIsLoading(false);
     }
@@ -119,19 +121,19 @@ const ForgotPassword = () => {
         setVerificationCode(code);
         setStep('reset');
         toast({
-          title: "Code verified successfully!",
-          description: "You can now reset your password."
+          title: t("auth.forgot_password.toast_code_verified_title"),
+          description: t("auth.forgot_password.toast_code_verified_desc")
         });
       } else {
-        setVerificationError(verifyResult.error || 'Invalid verification code');
+        setVerificationError(verifyResult.error || t("auth.forgot_password.invalid_verification_code_default"));
         setAttemptsRemaining(verifyResult.attempts_remaining);
         setLockedUntil(verifyResult.locked_until);
       }
     } catch (error) {
-      setVerificationError('Verification failed. Please try again.');
+      setVerificationError(t("auth.forgot_password.verification_failed_generic"));
       toast({
-        title: "Verification failed",
-        description: "An error occurred. Please try again.",
+        title: t("auth.common.verification_failed_title"),
+        description: t("auth.common.generic_error"),
         variant: "destructive"
       });
     } finally {
@@ -151,12 +153,12 @@ const ForgotPassword = () => {
       });
 
       if (!result.success) {
-        setVerificationError(result.error || 'Failed to resend code');
+        setVerificationError(result.error || t("auth.forgot_password.resend_failed_default"));
         setAttemptsRemaining(result.attempts_remaining);
         setLockedUntil(result.locked_until);
       }
     } catch (error) {
-      setVerificationError('Failed to resend code. Please try again.');
+      setVerificationError(t("auth.forgot_password.resend_failed_generic"));
     }
   };
 
@@ -165,8 +167,8 @@ const ForgotPassword = () => {
 
     if (newPassword !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords are identical.",
+        title: t("auth.common.passwords_mismatch_title"),
+        description: t("auth.common.passwords_mismatch_desc"),
         variant: "destructive"
       });
       return;
@@ -174,8 +176,8 @@ const ForgotPassword = () => {
 
     if (newPassword.length < 8) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: t("auth.common.password_too_short_title"),
+        description: t("auth.common.password_too_short_desc"),
         variant: "destructive"
       });
       return;
@@ -199,22 +201,22 @@ const ForgotPassword = () => {
 
       if (result.success) {
         toast({
-          title: "Password reset successfully!",
-          description: "You can now login with your new password."
+          title: t("auth.forgot_password.toast_reset_success_title"),
+          description: t("auth.forgot_password.toast_reset_success_desc")
         });
         navigate("/login");
       } else {
         toast({
-          title: "Password reset failed",
-          description: result.error || "Failed to reset password. The verification code may have expired.",
+          title: t("auth.forgot_password.toast_reset_failed_title"),
+          description: result.error || t("auth.forgot_password.reset_failed_default"),
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Password reset error:', error);
       toast({
-        title: "Password reset failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("auth.forgot_password.toast_reset_failed_title"),
+        description: t("auth.common.unexpected_error"),
         variant: "destructive"
       });
     } finally {
@@ -239,19 +241,19 @@ const ForgotPassword = () => {
         return (
           <form onSubmit={handlePhoneSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">Phone number</Label>
+              <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">{t("phone_number")}</Label>
               <Input
                 id="phone"
                 type="tel"
-                placeholder="Enter your phone number"
+                placeholder={t("auth.forgot_password.phone_placeholder")}
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
                 className="h-11 sm:h-12 text-sm sm:text-base border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg transition-all"
               />
               <div className="text-xs text-gray-500 space-y-1">
-                <p>Enter the phone number associated with your account</p>
-                <p className="text-blue-600 font-medium">📱 Formats: +255700000001, 0700000001, 255700000001</p>
+                <p>{t("auth.forgot_password.phone_hint")}</p>
+                <p className="text-blue-600 font-medium">📱 {t("auth.forgot_password.phone_formats_hint")}</p>
               </div>
             </div>
 
@@ -260,7 +262,7 @@ const ForgotPassword = () => {
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
               disabled={isLoading}
             >
-              {isLoading ? "Sending..." : "Send reset code"}
+              {isLoading ? t("auth.common.sending") : t("auth.forgot_password.send_reset_code_button")}
             </Button>
 
             {verificationError && (
@@ -293,12 +295,12 @@ const ForgotPassword = () => {
         return (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="newPassword" className="text-sm font-semibold text-gray-700">New password</Label>
+              <Label htmlFor="newPassword" className="text-sm font-semibold text-gray-700">{t("auth.forgot_password.new_password_label")}</Label>
               <div className="relative">
                 <Input
                   id="newPassword"
                   type={showNewPassword ? "text" : "password"}
-                  placeholder="Enter new password"
+                  placeholder={t("auth.forgot_password.new_password_placeholder")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -312,16 +314,16 @@ const ForgotPassword = () => {
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">Must be at least 8 characters long</p>
+              <p className="text-xs text-gray-500">{t("auth.forgot_password.password_min_length_hint")}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm password</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">{t("auth.forgot_password.confirm_password_label")}</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm new password"
+                  placeholder={t("auth.forgot_password.confirm_password_placeholder")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -342,7 +344,7 @@ const ForgotPassword = () => {
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
               disabled={isLoading}
             >
-              {isLoading ? "Resetting..." : "Reset password"}
+              {isLoading ? t("auth.common.resetting") : t("auth.forgot_password.reset_password_button")}
             </Button>
           </form>
         );
@@ -355,26 +357,26 @@ const ForgotPassword = () => {
   const getStepTitle = () => {
     switch (step) {
       case 'phone':
-        return 'Forgot your password?';
+        return t("auth.forgot_password.step_title_phone");
       case 'verification':
-        return 'Verify your phone number';
+        return t("auth.forgot_password.step_title_verification");
       case 'reset':
-        return 'Reset your password';
+        return t("auth.forgot_password.step_title_reset");
       default:
-        return 'Forgot your password?';
+        return t("auth.forgot_password.step_title_phone");
     }
   };
 
   const getStepDescription = () => {
     switch (step) {
       case 'phone':
-        return 'No worries! Enter your phone number and we\'ll send you a reset code';
+        return t("auth.forgot_password.step_desc_phone");
       case 'verification':
-        return 'Enter the verification code sent to your phone and email';
+        return t("auth.sms_verification.message_default");
       case 'reset':
-        return 'Enter your new password below';
+        return t("auth.forgot_password.step_desc_reset");
       default:
-        return 'No worries! Enter your phone number and we\'ll send you a reset code';
+        return t("auth.forgot_password.step_desc_phone");
     }
   };
 
@@ -506,9 +508,9 @@ const ForgotPassword = () => {
 
             <div className="mt-6 text-center">
               <p className="text-xs sm:text-sm text-gray-600">
-                Remember your password?{" "}
+                {t("auth.common.remember_your_password")}{" "}
                 <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  Sign in
+                  {t("auth.common.sign_in")}
                 </Link>
               </p>
             </div>
@@ -535,7 +537,7 @@ const ForgotPassword = () => {
                     SENDA
                   </span>
                   <p className="text-base text-black mt-1">
-                    Reliable SMS solutions for businesses
+                    {t("auth.common.tagline")}
                   </p>
                 </div>
               </div>
@@ -544,28 +546,28 @@ const ForgotPassword = () => {
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
                 <h3 className="text-base font-semibold text-black mb-2">
-                  {step === 'phone' && 'Quick Account Recovery'}
-                  {step === 'verification' && 'Secure Verification'}
-                  {step === 'reset' && 'Create New Password'}
+                  {step === 'phone' && t("auth.forgot_password.side_panel_phone_title")}
+                  {step === 'verification' && t("auth.forgot_password.side_panel_verification_title")}
+                  {step === 'reset' && t("auth.forgot_password.side_panel_reset_title")}
                 </h3>
                 <ul className="space-y-1 text-sm text-black">
                   {step === 'phone' && (
                     <>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Recover access in seconds</span>
+                        <span>{t("auth.forgot_password.bullet_phone_1")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>SMS verification for security</span>
+                        <span>{t("auth.forgot_password.bullet_phone_2")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Set a strong new password</span>
+                        <span>{t("auth.forgot_password.bullet_phone_3")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Back to your account instantly</span>
+                        <span>{t("auth.forgot_password.bullet_phone_4")}</span>
                       </li>
                     </>
                   )}
@@ -573,19 +575,19 @@ const ForgotPassword = () => {
                     <>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Enter code from your text</span>
+                        <span>{t("auth.forgot_password.bullet_verification_1")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Enhanced account security</span>
+                        <span>{t("auth.forgot_password.bullet_verification_2")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Only authorized users allowed</span>
+                        <span>{t("auth.forgot_password.bullet_verification_3")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Can resend code if needed</span>
+                        <span>{t("auth.forgot_password.bullet_verification_4")}</span>
                       </li>
                     </>
                   )}
@@ -593,19 +595,19 @@ const ForgotPassword = () => {
                     <>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Use strong password (8+ chars)</span>
+                        <span>{t("auth.forgot_password.bullet_reset_1")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Protect your account</span>
+                        <span>{t("auth.forgot_password.bullet_reset_2")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Never reuse old passwords</span>
+                        <span>{t("auth.forgot_password.bullet_reset_3")}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">•</span>
-                        <span>Immediate access after reset</span>
+                        <span>{t("auth.forgot_password.bullet_reset_4")}</span>
                       </li>
                     </>
                   )}
@@ -653,9 +655,9 @@ const ForgotPassword = () => {
 
             <div className="text-center">
               <p className="text-xs sm:text-sm text-gray-600">
-                Remember your password?{" "}
+                {t("auth.common.remember_your_password")}{" "}
                 <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  Sign in
+                  {t("auth.common.sign_in")}
                 </Link>
               </p>
             </div>

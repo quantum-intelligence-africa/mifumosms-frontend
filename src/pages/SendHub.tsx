@@ -4,6 +4,7 @@ import { ArrowRight, BarChart3, MessageSquare } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface ChannelCardProps {
   title: string;
@@ -59,6 +60,7 @@ function ChannelCard({
 const SendHub = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 overflow-hidden">
@@ -76,19 +78,19 @@ const SendHub = () => {
           <div className="p-2.5 sm:p-3.5 md:p-5 max-w-3xl mx-auto w-full min-h-full flex flex-col">
             <div className="mb-2.5 sm:mb-3">
               <h2 className="text-[14px] sm:text-base font-bold text-foreground dark:text-foreground leading-tight">
-                How do you want to send?
+                {t("send_hub.heading")}
               </h2>
               <p className="text-[11.5px] sm:text-sm text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5">
-                Pick a channel to compose a new message.
+                {t("send_hub.subtitle")}
               </p>
             </div>
 
             <div className="flex-1 flex flex-col justify-center lg:justify-start lg:flex-none">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
                 <ChannelCard
-                  title="Send an SMS"
-                  description="Reach any mobile number. Branded with your approved Sender ID."
-                  cta="Continue with SMS"
+                  title={t("send_hub.sms_title")}
+                  description={t("send_hub.sms_desc")}
+                  cta={t("send_hub.sms_cta")}
                   iconBg="bg-primary/10 dark:bg-primary/15"
                   iconColor="text-primary"
                   Icon={MessageSquare}
@@ -96,9 +98,9 @@ const SendHub = () => {
                 />
 
                 <ChannelCard
-                  title="Send on WhatsApp"
-                  description="Rich media, buttons, and templates for two-way conversations."
-                  cta="Continue with WhatsApp"
+                  title={t("send_hub.whatsapp_title")}
+                  description={t("send_hub.whatsapp_desc")}
+                  cta={t("send_hub.whatsapp_cta")}
                   iconBg="bg-emerald-500/10 dark:bg-emerald-500/15"
                   iconColor="text-emerald-600 dark:text-emerald-400"
                   Icon={WhatsAppIcon}
@@ -116,10 +118,10 @@ const SendHub = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-foreground dark:text-foreground leading-tight">
-                    Send to many at once
+                    {t("send_hub.bulk_title")}
                   </p>
                   <p className="text-[11px] text-foreground/60 dark:text-foreground/55 leading-snug mt-0.5">
-                    Create a campaign to schedule and track delivery.
+                    {t("send_hub.bulk_desc")}
                   </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-foreground/40 flex-shrink-0" />

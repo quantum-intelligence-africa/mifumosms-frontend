@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
@@ -24,6 +25,7 @@ const ADMIN_BASE_URL = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
 
 const Login = () => {
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -92,7 +94,7 @@ const Login = () => {
             admin: payload.admin,
             loginAt: Date.now(),
           }));
-          toast({ title: "Welcome back", description: "Opening admin panel…" });
+          toast({ title: t("auth.common.welcome_back"), description: t("auth.login.toast_admin_opening") });
           navigate("/admin", { replace: true });
           return;
         }
@@ -100,14 +102,14 @@ const Login = () => {
         // reveal that admin-mode was attempted.
         const errObj = (data as { error?: { message?: string } }).error;
         toast({
-          title: "Login failed",
-          description: errObj?.message || "Please check your credentials and try again.",
+          title: t("auth.login.toast_login_failed_title"),
+          description: errObj?.message || t("auth.login.toast_credentials_error"),
           variant: "destructive",
         });
       } catch {
         toast({
-          title: "Login failed",
-          description: "Network error. Please try again.",
+          title: t("auth.login.toast_login_failed_title"),
+          description: t("auth.login.toast_network_error"),
           variant: "destructive",
         });
       } finally {
@@ -125,14 +127,14 @@ const Login = () => {
 
       if (result.success) {
         toast({
-          title: "Login successful",
-          description: "Welcome back to SENDA!"
+          title: t("auth.login.toast_login_success_title"),
+          description: t("auth.login.toast_login_success_desc")
         });
 
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
       } else {
-        const errorMessage = result.error || "Please check your credentials and try again.";
+        const errorMessage = result.error || t("auth.login.toast_credentials_error");
 
         if (result.requiresActivation) {
           const resultData = result as Record<string, unknown>;
@@ -155,11 +157,11 @@ const Login = () => {
           }
 
           const toastMessage = phoneNumber
-            ? `A new 6-digit verification code has been sent to your phone (${phoneNumber}) and your email. Use whichever arrives first to verify your account.`
-            : "A new 6-digit verification code has been sent to your phone and your email. Use whichever arrives first to verify your account.";
+            ? t("auth.login.toast_code_sent_with_phone", { phone: phoneNumber })
+            : t("auth.login.toast_code_sent_no_phone");
 
           toast({
-            title: "Account not activated",
+            title: t("auth.login.toast_not_activated_title"),
             description: toastMessage,
             variant: "default",
             duration: 10000
@@ -174,7 +176,7 @@ const Login = () => {
           });
         } else {
           toast({
-            title: "Login failed",
+            title: t("auth.login.toast_login_failed_title"),
             description: errorMessage,
             variant: "destructive"
           });
@@ -182,8 +184,8 @@ const Login = () => {
       }
     } catch (error) {
       toast({
-        title: "Login failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("auth.login.toast_login_failed_title"),
+        description: t("auth.common.unexpected_error"),
         variant: "destructive"
       });
     } finally {
@@ -298,10 +300,10 @@ const Login = () => {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="text-2xl font-bold text-gray-800 mb-2"
             >
-              Welcome back
+              {t("auth.common.welcome_back")}
             </motion.h2>
             <p className="text-sm text-gray-600">
-              Sign in to your account
+              {t("auth.login.subtitle_mobile")}
             </p>
           </div>
 
@@ -313,7 +315,7 @@ const Login = () => {
               </div>
               <Input
                 type="email"
-                placeholder="Email address"
+                placeholder={t("email_address")}
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 required
@@ -328,7 +330,7 @@ const Login = () => {
               </div>
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="Password"
+                placeholder={t("auth.common.password_label")}
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 required
@@ -354,14 +356,14 @@ const Login = () => {
                   className="h-4 w-4"
                 />
                 <Label htmlFor="remember-mobile" className="text-sm text-gray-600">
-                  Remember me
+                  {t("auth.common.remember_me")}
                 </Label>
               </div>
               <Link
                 to="/forgot-password"
                 className="text-sm text-gray-500 hover:text-blue-600 transition-colors"
               >
-                Forgot password?
+                {t("auth.common.forgot_password_link")}
               </Link>
             </div>
 
@@ -375,7 +377,7 @@ const Login = () => {
                 className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "SIGN IN"}
+                {isLoading ? t("auth.common.signing_in") : t("auth.login.sign_in_button_mobile")}
               </Button>
             </motion.div>
           </form>
@@ -387,16 +389,16 @@ const Login = () => {
                 to="/"
                 className="text-sm text-blue-600 font-semibold hover:text-blue-700 hover:underline"
               >
-                Home
+                {t("auth.common.home")}
               </Link>
               <span className="text-gray-400">|</span>
               <p className="text-gray-500 text-sm">
-                Don't have account?{" "}
+                {t("auth.common.dont_have_account")}{" "}
                 <Link
                   to="/signup"
                   className="text-blue-600 font-semibold hover:text-blue-700 hover:underline"
                 >
-                  Sign up
+                  {t("auth.common.sign_up")}
                 </Link>
               </p>
             </div>
@@ -423,7 +425,7 @@ const Login = () => {
                     SENDA
                   </span>
                   <p className="text-base text-black mt-1">
-                    Reliable SMS solutions for businesses
+                    {t("auth.common.tagline")}
                   </p>
                 </div>
               </div>
@@ -431,23 +433,23 @@ const Login = () => {
 
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">Why Choose SENDA?</h3>
+                <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
                 <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Reliable delivery across all networks</span>
+                    <span>{t("auth.common.benefit_reliable_delivery")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Competitive pricing with bulk discounts</span>
+                    <span>{t("auth.common.benefit_competitive_pricing")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Advanced analytics and reporting</span>
+                    <span>{t("auth.common.benefit_advanced_analytics")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>24/7 customer support</span>
+                    <span>{t("auth.common.benefit_support")}</span>
                   </li>
                 </ul>
               </div>
@@ -481,20 +483,20 @@ const Login = () => {
               </div>
 
               <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
-                Welcome back
+                {t("auth.common.welcome_back")}
               </h2>
               <p className="text-xs sm:text-sm text-gray-600">
-                Sign in to your account to continue
+                {t("auth.login.subtitle")}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">Email address</Label>
+                <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t("auth.common.email_placeholder")}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
@@ -503,12 +505,12 @@ const Login = () => {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="password" className="text-xs sm:text-sm font-medium text-gray-700">Password</Label>
+                <Label htmlFor="password" className="text-xs sm:text-sm font-medium text-gray-700">{t("auth.common.password_label")}</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder={t("auth.common.password_placeholder")}
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     required
@@ -539,14 +541,14 @@ const Login = () => {
                     className="h-4 w-4"
                   />
                   <Label htmlFor="remember" className="text-xs sm:text-sm text-gray-600">
-                    Remember me
+                    {t("auth.common.remember_me")}
                   </Label>
                 </div>
                 <Link
                   to="/forgot-password"
                   className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium text-left sm:text-right"
                 >
-                  Forgot password?
+                  {t("auth.common.forgot_password_link")}
                 </Link>
               </div>
 
@@ -555,20 +557,20 @@ const Login = () => {
                 className="w-full h-10 sm:h-11 text-sm sm:text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isLoading ? t("auth.common.signing_in") : t("auth.common.sign_in")}
               </Button>
             </form>
 
             <div className="text-center space-y-2 sm:space-y-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-4">
                 <Link to="/" className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                  Home
+                  {t("auth.common.home")}
                 </Link>
                 <span className="hidden sm:inline text-gray-400 text-sm">|</span>
                 <p className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-                  Don't have an account?{" "}
+                  {t("auth.common.dont_have_account")}{" "}
                   <Link to="/signup" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
-                    Sign up
+                    {t("auth.common.sign_up")}
                   </Link>
                 </p>
               </div>

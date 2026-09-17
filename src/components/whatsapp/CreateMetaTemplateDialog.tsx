@@ -29,6 +29,7 @@ import {
   type WATemplateCategory,
 } from "@/hooks/useWhatsAppCloud";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // Common Meta BCP-47 codes — Meta accepts many more, but these cover the
 // languages this product targets.
@@ -76,6 +77,7 @@ export function CreateMetaTemplateDialog({
 }: CreateMetaTemplateDialogProps) {
   const { simplePreviewMetaTemplate, simpleCreateMetaTemplate, isLoading } = useWhatsAppCloud();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Form state mirrors the §2.2 body fields.
   const [name, setName] = useState("");
@@ -174,7 +176,7 @@ export function CreateMetaTemplateDialog({
         .then((d) => setRendered(d.rendered))
         .catch((e) => {
           setRendered(null);
-          setPreviewError(e instanceof Error ? e.message : "Preview failed");
+          setPreviewError(e instanceof Error ? e.message : t("whatsapp.meta_template_dialog.preview_failed"));
         })
         .finally(() => setPreviewLoading(false));
     }, 250);
@@ -182,6 +184,7 @@ export function CreateMetaTemplateDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     open,
+    t,
     name,
     category,
     language,
@@ -208,8 +211,11 @@ export function CreateMetaTemplateDialog({
       const cap = SIZE_CAPS[headerType];
       if (file.size > cap) {
         toast({
-          title: "File too large",
-          description: `${headerType} header is capped at ${Math.round(cap / (1024 * 1024))} MB.`,
+          title: t("whatsapp.meta_template_dialog.file_too_large_title"),
+          description: t("whatsapp.meta_template_dialog.file_too_large_desc", {
+            type: headerType,
+            mb: Math.round(cap / (1024 * 1024)),
+          }),
           variant: "destructive",
         });
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -251,7 +257,7 @@ export function CreateMetaTemplateDialog({
       onCreated?.();
       close(false);
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Failed to submit template");
+      setSubmitError(e instanceof Error ? e.message : t("whatsapp.meta_template_dialog.submit_failed"));
     }
   };
 
@@ -259,10 +265,10 @@ export function CreateMetaTemplateDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[92vh] overflow-hidden p-0 rounded-2xl">
         <DialogHeader className="px-4 sm:px-5 pt-4 pb-2 border-b border-border/60">
-          <DialogTitle className="text-[15px] font-bold">New Meta-approved template</DialogTitle>
+          <DialogTitle className="text-[15px] font-bold">{t("whatsapp.meta_template_dialog.title")}</DialogTitle>
           <DialogDescription className="text-[12px] text-foreground/65 leading-snug">
-            Submit to Meta for review. Use positional <code className="text-[11px] bg-muted px-1 rounded">{"{{1}}"}</code>{" "}
-            placeholders. The preview on the right updates as you type.
+            {t("whatsapp.meta_template_dialog.desc_before")} <code className="text-[11px] bg-muted px-1 rounded">{"{{1}}"}</code>{" "}
+            {t("whatsapp.meta_template_dialog.desc_after")}
           </DialogDescription>
         </DialogHeader>
 
@@ -271,7 +277,7 @@ export function CreateMetaTemplateDialog({
           <div className="p-4 sm:p-5 space-y-3 overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Name</Label>
+                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.name_label")}</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
@@ -279,11 +285,11 @@ export function CreateMetaTemplateDialog({
                   className="h-10 rounded-xl text-[13px] font-mono"
                 />
                 {name && !nameOk && (
-                  <p className="text-[11px] text-destructive">lowercase letters, digits, underscores only</p>
+                  <p className="text-[11px] text-destructive">{t("whatsapp.meta_template_dialog.name_hint")}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Language</Label>
+                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.language_label")}</Label>
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="h-10 rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -296,13 +302,13 @@ export function CreateMetaTemplateDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Category</Label>
+              <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.category_label")}</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as WATemplateCategory)}>
                 <SelectTrigger className="h-10 rounded-xl text-[13px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="UTILITY">Utility — order updates, alerts</SelectItem>
-                  <SelectItem value="MARKETING">Marketing — promotions</SelectItem>
-                  <SelectItem value="AUTHENTICATION">Authentication — OTP</SelectItem>
+                  <SelectItem value="UTILITY">{t("whatsapp.meta_template_dialog.category_utility")}</SelectItem>
+                  <SelectItem value="MARKETING">{t("whatsapp.meta_template_dialog.category_marketing")}</SelectItem>
+                  <SelectItem value="AUTHENTICATION">{t("whatsapp.meta_template_dialog.category_auth")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -310,15 +316,15 @@ export function CreateMetaTemplateDialog({
             {/* HEADER */}
             <div className="space-y-1.5 rounded-lg border border-border/60 p-3 bg-muted/20">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Header (optional)</Label>
+                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.meta_template_dialog.header_label")}</Label>
                 <Select value={headerType} onValueChange={(v) => setHeaderType(v as WASimpleHeaderType)}>
                   <SelectTrigger className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="image">Image</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="document">Document</SelectItem>
+                    <SelectItem value="none">{t("whatsapp.common.none")}</SelectItem>
+                    <SelectItem value="text">{t("whatsapp.common.text")}</SelectItem>
+                    <SelectItem value="image">{t("whatsapp.common.image")}</SelectItem>
+                    <SelectItem value="video">{t("whatsapp.common.video")}</SelectItem>
+                    <SelectItem value="document">{t("whatsapp.common.document")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -358,7 +364,7 @@ export function CreateMetaTemplateDialog({
                       onClick={() => fileInputRef.current?.click()}
                       className="h-8 text-[12px] gap-1"
                     >
-                      <Upload className="w-3.5 h-3.5" /> {headerFile ? "Replace file" : "Choose file"}
+                      <Upload className="w-3.5 h-3.5" /> {headerFile ? t("whatsapp.common.replace_file") : t("whatsapp.common.choose_file")}
                     </Button>
                     {headerFile && (
                       <>
@@ -373,7 +379,7 @@ export function CreateMetaTemplateDialog({
                       </>
                     )}
                   </div>
-                  <div className="text-center text-[10.5px] text-muted-foreground">or</div>
+                  <div className="text-center text-[10.5px] text-muted-foreground">{t("whatsapp.common.or")}</div>
                   <Input
                     value={headerUrl}
                     onChange={(e) => setHeaderUrl(e.target.value)}
@@ -389,7 +395,7 @@ export function CreateMetaTemplateDialog({
                     />
                   )}
                   <p className="text-[10.5px] text-muted-foreground">
-                    Caps: image ≤ 5 MB · video ≤ 16 MB · document ≤ 100 MB.
+                    {t("whatsapp.common.media_caps")}
                   </p>
                 </div>
               )}
@@ -398,9 +404,9 @@ export function CreateMetaTemplateDialog({
             {/* BODY */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Body</Label>
+                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.body")}</Label>
                 <span className="text-[10.5px] text-muted-foreground tabular-nums">
-                  {body.length}/1024 · {placeholderCount} placeholder{placeholderCount === 1 ? "" : "s"}
+                  {body.length}/1024 · {t("whatsapp.meta_template_dialog.placeholder_count", { count: placeholderCount })}
                 </span>
               </div>
               <Textarea
@@ -412,7 +418,7 @@ export function CreateMetaTemplateDialog({
               />
               {placeholderCount > 0 && (
                 <div className="space-y-1.5 pt-1">
-                  <p className="text-[10.5px] text-muted-foreground">Sample values (one per placeholder):</p>
+                  <p className="text-[10.5px] text-muted-foreground">{t("whatsapp.meta_template_dialog.sample_values_hint")}</p>
                   {bodyExamples.map((val, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <span className="text-[11px] font-mono text-muted-foreground w-10">{`{{${idx + 1}}}`}</span>
@@ -421,7 +427,7 @@ export function CreateMetaTemplateDialog({
                         onChange={(e) =>
                           setBodyExamples((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
                         }
-                        placeholder={`Example for {{${idx + 1}}}`}
+                        placeholder={t("whatsapp.meta_template_dialog.example_for", { n: idx + 1 })}
                         className="h-9 rounded-lg text-[13px]"
                       />
                     </div>
@@ -433,7 +439,7 @@ export function CreateMetaTemplateDialog({
             {/* FOOTER */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">Footer (optional)</Label>
+                <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.footer_optional")}</Label>
                 <span className="text-[10.5px] text-muted-foreground tabular-nums">{footer.length}/60</span>
               </div>
               <Input
@@ -448,11 +454,11 @@ export function CreateMetaTemplateDialog({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                  Buttons (optional, max 3)
+                  {t("whatsapp.meta_template_dialog.buttons_label")}
                 </Label>
                 {buttons.length < 3 && (
                   <Button type="button" variant="ghost" size="sm" onClick={addButton} className="h-7 text-[12px] gap-1">
-                    <Plus className="w-3 h-3" /> Add
+                    <Plus className="w-3 h-3" /> {t("whatsapp.common.add")}
                   </Button>
                 )}
               </div>
@@ -467,15 +473,15 @@ export function CreateMetaTemplateDialog({
                     >
                       <SelectTrigger className="h-8 w-36 text-[12px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="QUICK_REPLY">Quick Reply</SelectItem>
-                        <SelectItem value="URL">URL</SelectItem>
-                        <SelectItem value="PHONE_NUMBER">Phone Number</SelectItem>
+                        <SelectItem value="QUICK_REPLY">{t("whatsapp.common.quick_reply")}</SelectItem>
+                        <SelectItem value="URL">{t("whatsapp.common.url")}</SelectItem>
+                        <SelectItem value="PHONE_NUMBER">{t("whatsapp.common.phone_number")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
                       value={btn.text}
                       onChange={(e) => updateButton(idx, { text: e.target.value.slice(0, 25) })}
-                      placeholder="Button label"
+                      placeholder={t("whatsapp.common.button_label")}
                       className="h-8 text-[12px] flex-1"
                     />
                     <button
@@ -528,7 +534,7 @@ export function CreateMetaTemplateDialog({
           {/* RIGHT — WhatsApp-style bubble preview */}
           <div className="hidden md:flex md:flex-col border-l border-border/60 bg-muted/30 dark:bg-muted/15">
             <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
-              <span className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55">Preview</span>
+              <span className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55">{t("whatsapp.common.preview")}</span>
               {previewLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
             </div>
             <div className="flex-1 overflow-y-auto p-3">
@@ -547,7 +553,7 @@ export function CreateMetaTemplateDialog({
                   </div>
                 )}
                 <div className="px-3 py-2 whitespace-pre-wrap break-words leading-relaxed">
-                  {rendered?.body || body || "Body preview…"}
+                  {rendered?.body || body || t("whatsapp.common.body_preview_placeholder")}
                 </div>
                 {rendered?.footer && (
                   <div className="px-3 pb-2 text-[11px] opacity-60">{rendered.footer}</div>
@@ -566,7 +572,7 @@ export function CreateMetaTemplateDialog({
                 )}
               </div>
               <p className="mt-3 text-center text-[10.5px] text-muted-foreground">
-                {rendered ? "Live preview via /simple/preview/" : "Type a body to start preview"}
+                {rendered ? t("whatsapp.meta_template_dialog.live_preview_note") : t("whatsapp.meta_template_dialog.type_body_hint")}
               </p>
             </div>
           </div>
@@ -579,7 +585,7 @@ export function CreateMetaTemplateDialog({
             disabled={isLoading}
             className="flex-1 h-10 rounded-xl text-[12.5px] font-semibold"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={submit}
@@ -589,12 +595,12 @@ export function CreateMetaTemplateDialog({
             {isLoading ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                Submitting…
+                {t("whatsapp.common.submitting")}
               </>
             ) : (
               <>
                 <Plus className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
-                Submit to Meta
+                {t("whatsapp.common.submit_to_meta")}
               </>
             )}
           </Button>

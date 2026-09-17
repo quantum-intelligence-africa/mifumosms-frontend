@@ -38,6 +38,7 @@ import {
 } from "@/hooks/useWhatsAppCloud";
 import { apiClient, type Contact } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // ─── Meta template helpers ───────────────────────────────────────────────────
 
@@ -151,6 +152,7 @@ interface MetaTemplateMessengerProps {
 export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProps) {
   const { getMessageTemplates, sendTemplateMessage, isLoading } = useWhatsAppCloud();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // ── Templates synced from Meta (APPROVED only) ────────────────────────────
   const [templates, setTemplates] = useState<WAMessageTemplate[]>([]);
@@ -201,11 +203,11 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
         prev && approved.some((t) => t.id === prev) ? prev : null,
       );
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to sync templates");
+      setLoadError(e instanceof Error ? e.message : t("whatsapp.template_messenger.sync_failed"));
     } finally {
       setSyncing(false);
     }
-  }, [getMessageTemplates, waAccountId]);
+  }, [getMessageTemplates, waAccountId, t]);
 
   useEffect(() => {
     if (loadedRef.current) return;
@@ -379,37 +381,37 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
   // ── Contact field source options for the per-param dropdown ────────────────
   const contactSourceOptions = useMemo(() => {
     const base: { value: ParamSource; label: string }[] = [
-      { value: "manual", label: "Custom value" },
-      { value: "name", label: "Contact name" },
-      { value: "phone", label: "Phone number" },
-      { value: "email", label: "Email" },
-      { value: "company", label: "Company" },
+      { value: "manual", label: t("whatsapp.template_messenger.source_custom") },
+      { value: "name", label: t("whatsapp.template_messenger.source_name") },
+      { value: "phone", label: t("whatsapp.template_messenger.source_phone") },
+      { value: "email", label: t("whatsapp.template_messenger.source_email") },
+      { value: "company", label: t("whatsapp.template_messenger.source_company") },
     ];
     const attrs = contact?.attributes ?? {};
     for (const k of Object.keys(attrs)) {
       if (["company", "company_name", "organization", "business"].includes(k)) continue;
-      base.push({ value: `attr:${k}`, label: `Attribute · ${k}` });
+      base.push({ value: `attr:${k}`, label: `${t("whatsapp.template_messenger.source_attribute")} · ${k}` });
     }
     return base;
-  }, [contact]);
+  }, [contact, t]);
 
   // ── Validation ────────────────────────────────────────────────────────────
   const validation = useMemo(() => {
     const issues: string[] = [];
-    if (!selected) issues.push("Select an approved template");
-    else if (selected.status !== "APPROVED") issues.push("Template is no longer APPROVED — re-sync");
-    if (!isValidPhone(recipient)) issues.push("Enter a valid recipient phone number");
+    if (!selected) issues.push(t("whatsapp.template_messenger.validation_select_template"));
+    else if (selected.status !== "APPROVED") issues.push(t("whatsapp.template_messenger.validation_not_approved"));
+    if (!isValidPhone(recipient)) issues.push(t("whatsapp.template_messenger.validation_invalid_phone"));
     const missing = paramFields.filter((f) => !resolveValue(f.key).trim());
-    if (missing.length > 0) issues.push(`Fill all parameters (${missing.length} empty)`);
+    if (missing.length > 0) issues.push(t("whatsapp.template_messenger.validation_fill_params", { count: missing.length }));
     if (mediaHeader) {
       if (mediaMode === "url" && !mediaUrl.trim())
-        issues.push("Provide the required header media URL");
+        issues.push(t("whatsapp.template_messenger.validation_media_url_required"));
       if (mediaMode === "upload" && !mediaFile)
-        issues.push("Choose a file for the header media");
+        issues.push(t("whatsapp.template_messenger.validation_media_file_required"));
     }
     // Belt-and-braces: no {{…}} may survive into the resolved header/body.
     if (/{{\s*[^}]+?\s*}}/.test(previewBody) || /{{\s*[^}]+?\s*}}/.test(previewHeader))
-      issues.push("Unresolved placeholders remain");
+      issues.push(t("whatsapp.template_messenger.validation_unresolved_placeholders"));
     return { ok: issues.length === 0, issues };
   }, [
     selected,
@@ -422,6 +424,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
     mediaFile,
     previewBody,
     previewHeader,
+    t,
   ]);
 
   // ── Build the Meta Cloud API components array ─────────────────────────────
@@ -503,7 +506,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
       );
       setSendResult(data);
     } catch (e) {
-      setSendError(e instanceof Error ? e.message : "Send failed");
+      setSendError(e instanceof Error ? e.message : t("whatsapp.common.send_failed"));
     }
   };
 
@@ -512,7 +515,10 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
     setRecipient(c.phone_e164 || recipient);
     setPickerOpen(false);
     setContactSearch("");
-    toast({ title: "Contact applied", description: `${c.name} — parameters auto-filled` });
+    toast({
+      title: t("whatsapp.template_messenger.contact_applied_title"),
+      description: t("whatsapp.template_messenger.contact_applied_desc", { name: c.name }),
+    });
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────
@@ -524,17 +530,17 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
         <div>
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            Approved templates
+            {t("whatsapp.template_messenger.header_title")}
           </Label>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Synced live from Meta. Only <strong>APPROVED</strong> templates can be sent — content is
-            locked; you supply the parameters.
+            {t("whatsapp.template_messenger.header_desc_before")} <strong>APPROVED</strong>{" "}
+            {t("whatsapp.template_messenger.header_desc_after")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {syncedAt && (
             <span className="text-[10.5px] text-muted-foreground hidden sm:inline">
-              Synced {syncedAt}
+              {t("whatsapp.common.synced_at", { time: syncedAt })}
             </span>
           )}
           <Button
@@ -548,7 +554,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Sync templates
+            {t("whatsapp.template_messenger.sync_button")}
           </Button>
         </div>
       </div>
@@ -564,14 +570,14 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
       {syncing && templates.length === 0 ? (
         <div className="flex items-center justify-center py-12 gap-2 text-foreground/60">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-[13px]">Syncing approved templates from Meta…</span>
+          <span className="text-[13px]">{t("whatsapp.template_messenger.syncing")}</span>
         </div>
       ) : !syncing && templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
           <FileText className="w-8 h-8 text-muted-foreground/30" />
           <p className="text-xs text-muted-foreground max-w-xs">
-            No <strong>APPROVED</strong> templates found on your WhatsApp Business account. Create one
-            and wait for Meta approval, then sync again.
+            {t("whatsapp.template_messenger.empty_before")} <strong>APPROVED</strong>{" "}
+            {t("whatsapp.template_messenger.empty_after")}
           </p>
         </div>
       ) : (
@@ -581,21 +587,21 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
             {/* Template selector */}
             <div className="space-y-2">
               <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                Template
+                {t("whatsapp.template_messenger.template_label")}
               </Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, category, language…"
+                  placeholder={t("whatsapp.template_messenger.search_placeholder")}
                   className="h-9 pl-8 text-[13px]"
                 />
               </div>
               <div className="max-h-56 overflow-y-auto rounded-xl border border-border/60 divide-y divide-border/50">
                 {filteredTemplates.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground text-center py-6">
-                    No templates match “{search}”.
+                    {t("whatsapp.template_messenger.no_match", { search })}
                   </p>
                 ) : (
                   filteredTemplates.map((t) => {
@@ -648,35 +654,35 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                 <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                      Template content
+                      {t("whatsapp.template_messenger.content_label")}
                     </span>
                     <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                      {paramFields.length} variable{paramFields.length === 1 ? "" : "s"}
+                      {t("whatsapp.template_messenger.variable_count", { count: paramFields.length })}
                     </Badge>
                   </div>
                   {(headerText || mediaHeader) && (
                     <div className="text-[11.5px]">
-                      <span className="font-semibold text-foreground/50 mr-1.5">HEADER</span>
+                      <span className="font-semibold text-foreground/50 mr-1.5">{t("whatsapp.template_messenger.section_header")}</span>
                       <span className="font-mono text-foreground/80 break-words">
                         {mediaHeader ? `${mediaFormat} media` : headerText}
                       </span>
                     </div>
                   )}
                   <div className="text-[11.5px]">
-                    <span className="font-semibold text-foreground/50 mr-1.5">BODY</span>
+                    <span className="font-semibold text-foreground/50 mr-1.5">{t("whatsapp.template_messenger.section_body")}</span>
                     <span className="font-mono text-foreground/80 whitespace-pre-wrap break-words">
                       {bodyText || "—"}
                     </span>
                   </div>
                   {footerText && (
                     <div className="text-[11.5px]">
-                      <span className="font-semibold text-foreground/50 mr-1.5">FOOTER</span>
+                      <span className="font-semibold text-foreground/50 mr-1.5">{t("whatsapp.template_messenger.section_footer")}</span>
                       <span className="font-mono text-foreground/80 break-words">{footerText}</span>
                     </div>
                   )}
                   {buttons.length > 0 && (
                     <div className="text-[11.5px] flex flex-wrap items-center gap-1.5">
-                      <span className="font-semibold text-foreground/50">BUTTONS</span>
+                      <span className="font-semibold text-foreground/50">{t("whatsapp.template_messenger.section_buttons")}</span>
                       {buttons.map((b, bi) => (
                         <Badge key={bi} variant="secondary" className="text-[10px] h-4 px-1.5">
                           {b.type === "URL" ? "🔗" : b.type === "PHONE_NUMBER" ? "📞" : "💬"} {b.text}
@@ -686,7 +692,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                   )}
                   {paramFields.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border/40">
-                      <span className="text-[10.5px] font-semibold text-foreground/50">NEEDS</span>
+                      <span className="text-[10.5px] font-semibold text-foreground/50">{t("whatsapp.template_messenger.section_needs")}</span>
                       {paramFields.map((f) => (
                         <Badge key={f.key} variant="outline" className="text-[10px] h-4 px-1.5 font-mono">
                           {`{{${f.token}}}`}
@@ -699,7 +705,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                 {/* Recipient + contact auto-fill */}
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                    Recipient
+                    {t("whatsapp.template_messenger.recipient_label")}
                   </Label>
                   <div className="flex gap-2">
                     <Input
@@ -715,7 +721,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                       className="h-10 rounded-xl gap-1.5 px-3 text-[12px]"
                     >
                       <UserIcon className="w-3.5 h-3.5" />
-                      Contact
+                      {t("whatsapp.template_messenger.contact_button")}
                       <ChevronDown className="w-3 h-3" />
                     </Button>
                   </div>
@@ -743,7 +749,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                         <Input
                           value={contactSearch}
                           onChange={(e) => setContactSearch(e.target.value)}
-                          placeholder="Search contacts…"
+                          placeholder={t("whatsapp.template_messenger.contact_search_placeholder")}
                           className="h-8 pl-8 text-[12px]"
                           autoFocus
                         />
@@ -755,7 +761,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                           </div>
                         ) : contactResults.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">
-                            No contacts found.
+                            {t("whatsapp.template_messenger.no_contacts")}
                           </p>
                         ) : (
                           contactResults.map((c) => (
@@ -781,8 +787,8 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                 {mediaHeader && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                      {mediaFormat} header media{" "}
-                      <span className="text-destructive font-normal">(required)</span>
+                      {mediaFormat} {t("whatsapp.template_messenger.header_media_label")}{" "}
+                      <span className="text-destructive font-normal">{t("whatsapp.common.required_suffix")}</span>
                     </Label>
 
                     {/* Two ways to supply the header media: upload a file or paste a URL. */}
@@ -796,7 +802,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                             : "text-muted-foreground"
                         }`}
                       >
-                        Upload file
+                        {t("whatsapp.common.upload_file_mode")}
                       </button>
                       <button
                         type="button"
@@ -807,7 +813,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                             : "text-muted-foreground"
                         }`}
                       >
-                        Paste URL
+                        {t("whatsapp.common.paste_url_mode")}
                       </button>
                     </div>
 
@@ -827,8 +833,8 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                         />
                         <p className="text-[10.5px] text-muted-foreground">
                           {mediaFile
-                            ? `Selected: ${mediaFile.name} — uploaded to Meta on send (most reliable).`
-                            : "Upload your own file — it is hosted by Meta and delivers reliably."}
+                            ? t("whatsapp.template_messenger.file_selected_note", { name: mediaFile.name })
+                            : t("whatsapp.template_messenger.upload_own_file_note")}
                         </p>
                       </>
                     ) : (
@@ -841,8 +847,8 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                         />
                         <p className="text-[10.5px] text-muted-foreground">
                           {exampleHeaderMedia(selected) && mediaUrl === exampleHeaderMedia(selected)
-                            ? "This is the template's sample image (a temporary Meta preview link that may not deliver). Upload your own file or paste a stable public URL."
-                            : "Provide a public, non-expiring HTTPS URL for the header media."}
+                            ? t("whatsapp.template_messenger.sample_image_warning")
+                            : t("whatsapp.template_messenger.public_url_hint")}
                         </p>
                       </>
                     )}
@@ -853,7 +859,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                 {paramFields.length > 0 ? (
                   <div className="space-y-2">
                     <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                      Parameters ({paramFields.length})
+                      {t("whatsapp.template_messenger.parameters_label", { count: paramFields.length })}
                     </Label>
                     {paramFields.map((f) => {
                       const st = params[f.key] ?? { source: "manual", manual: "" };
@@ -883,7 +889,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                           <Input
                             value={resolved}
                             onChange={(e) => setParamManual(f.key, e.target.value)}
-                            placeholder={`Value for {{${f.token}}}`}
+                            placeholder={t("whatsapp.template_messenger.value_for_placeholder", { token: f.token })}
                             className={[
                               "h-9 rounded-lg text-[13px]",
                               !resolved.trim() ? "border-amber-400/70" : "",
@@ -891,7 +897,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                           />
                           {st.source !== "manual" && resolved.trim() && (
                             <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                              Auto-filled from contact · edit to override
+                              {t("whatsapp.template_messenger.autofilled_note")}
                             </p>
                           )}
                         </div>
@@ -900,7 +906,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
-                    This template has no parameters — it sends exactly as approved.
+                    {t("whatsapp.template_messenger.no_parameters")}
                   </p>
                 )}
               </>
@@ -910,7 +916,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
           {/* ── Right: WhatsApp preview + validation + send ──────────────── */}
           <div className="space-y-4">
             <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-              Preview
+              {t("whatsapp.common.preview")}
             </Label>
 
             {/* WhatsApp-style chat bubble */}
@@ -940,8 +946,8 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                           )}
                           <span className="text-[11px]">
                             {mediaPreviewSrc || mediaFile
-                              ? "Document attached"
-                              : `${mediaFormat} header — add media`}
+                              ? t("whatsapp.template_messenger.document_attached")
+                              : t("whatsapp.template_messenger.header_add_media", { format: mediaFormat })}
                           </span>
                         </div>
                       )}
@@ -985,7 +991,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
                 </div>
               ) : (
                 <div className="w-full text-center text-[12px] text-foreground/40 self-center py-10">
-                  Select a template to preview the message.
+                  {t("whatsapp.common.select_template_hint")}
                 </div>
               )}
             </div>
@@ -994,12 +1000,12 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
             {selected && (
               <div className="rounded-xl border border-border/60 p-3 space-y-1.5">
                 <p className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                  Validation
+                  {t("whatsapp.template_messenger.validation_label")}
                 </p>
                 {validation.ok ? (
                   <div className="flex items-center gap-1.5 text-[12px] text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    All checks passed — ready to send.
+                    {t("whatsapp.template_messenger.validation_ok")}
                   </div>
                 ) : (
                   <ul className="space-y-1">
@@ -1027,8 +1033,13 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
               <Alert className="py-2 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">
                 <AlertDescription className="text-xs text-emerald-800 dark:text-emerald-300">
                   {sendResult.ok
-                    ? `Sent to ${sendResult.to}${sendResult.message_id ? ` · ${sendResult.message_id}` : ""}`
-                    : `Delivery reported a problem: ${sendResult.error || "unknown error"}`}
+                    ? t("whatsapp.template_messenger.sent_to", {
+                        to: sendResult.to,
+                        id: sendResult.message_id ? ` · ${sendResult.message_id}` : "",
+                      })
+                    : t("whatsapp.template_messenger.delivery_problem", {
+                        error: sendResult.error || t("whatsapp.common.unknown_error"),
+                      })}
                 </AlertDescription>
               </Alert>
             )}
@@ -1041,12 +1052,12 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                  Sending…
+                  {t("whatsapp.common.sending_dots")}
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-1.5" />
-                  Send template
+                  {t("whatsapp.template_messenger.send_template")}
                 </>
               )}
             </Button>

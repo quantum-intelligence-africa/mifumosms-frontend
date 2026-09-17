@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, AlertCircle, Search, Loader2, Phone, Mail, X } from 'lucide-react';
 import { MobileContact, fetchMobileContacts } from '@/utils/mobileContactPicker';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface MobileContactsDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function MobileContactsDialog({
   onImport,
   isImporting = false
 }: MobileContactsDialogProps) {
+  const { t } = useLanguage();
   const [contacts, setContacts] = useState<MobileContact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -140,7 +142,7 @@ export function MobileContactsDialog({
         <DialogHeader className="pb-2 sm:pb-3">
           <DialogTitle className="flex items-center gap-2 text-sm sm:text-lg">
             <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="truncate">Mobile Device Contacts</span>
+            <span className="truncate">{t('contacts.import_dialog.mobile_device_contacts')}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -151,7 +153,7 @@ export function MobileContactsDialog({
               <Alert>
                 <AlertCircle className="w-3 h-3 sm:h-4 sm:w-4" />
                 <AlertDescription className="text-xs sm:text-sm">
-                  Click the button below to access your device contacts. This will show all available contacts on your device.
+                  {t('contacts.mobile_dialog.fetch_intro')}
                 </AlertDescription>
               </Alert>
 
@@ -163,20 +165,20 @@ export function MobileContactsDialog({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
-                    Loading Contacts...
+                    {t('contacts.mobile_dialog.loading_contacts')}
                   </>
                 ) : (
-                  'Access Device Contacts'
+                  t('contacts.mobile_dialog.access_device_contacts')
                 )}
               </Button>
 
               <div className="text-xs sm:text-sm text-text-subtle p-2 sm:p-3 bg-muted/20 rounded-lg">
-                <strong>How it works:</strong>
+                <strong>{t('contacts.mobile_dialog.how_it_works_title')}</strong>
                 <ul className="list-disc list-inside space-y-1 mt-1 sm:mt-2">
-                  <li>We fetch all contacts from your device</li>
-                  <li>You can search and select which ones to import</li>
-                  <li>Duplicates are automatically filtered</li>
-                  <li>Process is optimized for large contact lists</li>
+                  <li>{t('contacts.mobile_dialog.how_it_works_1')}</li>
+                  <li>{t('contacts.mobile_dialog.how_it_works_2')}</li>
+                  <li>{t('contacts.mobile_dialog.how_it_works_3')}</li>
+                  <li>{t('contacts.mobile_dialog.how_it_works_4')}</li>
                 </ul>
               </div>
             </div>
@@ -187,7 +189,7 @@ export function MobileContactsDialog({
               <CardContent className="p-3 sm:p-4">
                 <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <span>Loading contacts...</span>
+                    <span>{t('contacts.list.loading')}</span>
                     <span className="font-medium">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-1.5 sm:h-2" />
@@ -213,21 +215,21 @@ export function MobileContactsDialog({
                   <CardContent className="p-2 sm:p-3 text-center">
                     <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-primary mx-auto mb-1" />
                     <div className="text-xs sm:text-sm font-bold">{contacts.length}</div>
-                    <div className="text-xs text-text-subtle">Total</div>
+                    <div className="text-xs text-text-subtle">{t('contacts.import_dialog.total_label')}</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-2 sm:p-3 text-center">
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-success mx-auto mb-1" />
                     <div className="text-xs sm:text-sm font-bold">{selectedContacts.size}</div>
-                    <div className="text-xs text-text-subtle">Selected</div>
+                    <div className="text-xs text-text-subtle">{t('contacts.mobile_dialog.selected_label')}</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-2 sm:p-3 text-center">
                     <Search className="w-3 h-3 sm:w-4 sm:h-4 text-warning mx-auto mb-1" />
                     <div className="text-xs sm:text-sm font-bold">{filteredContacts.length}</div>
-                    <div className="text-xs text-text-subtle">Filtered</div>
+                    <div className="text-xs text-text-subtle">{t('contacts.mobile_dialog.filtered_label')}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -237,7 +239,7 @@ export function MobileContactsDialog({
                 <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-text-subtle" />
                 <Input
                   type="text"
-                  placeholder="Search contacts by name, phone, or email..."
+                  placeholder={t('contacts.list.search_placeholder')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -263,7 +265,7 @@ export function MobileContactsDialog({
                         >
                           <div className="flex items-start justify-between gap-1">
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-xs sm:text-sm truncate">{contact.full_name || 'Unknown'}</div>
+                              <div className="font-medium text-xs sm:text-sm truncate">{contact.full_name || t('contacts.mobile_dialog.unknown_name')}</div>
                               <div className="text-xs text-text-subtle space-y-0.5">
                                 {contact.phone && (
                                   <div className="flex items-center gap-1 truncate">
@@ -290,7 +292,7 @@ export function MobileContactsDialog({
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between text-xs sm:text-sm p-2 sm:p-3 bg-muted/20 rounded-lg">
                       <span className="text-text-subtle">
-                        Page {currentPage + 1} of {totalPages} ({filteredContacts.length} total)
+                        {t('contacts.mobile_dialog.page_of_total', { current: currentPage + 1, total: totalPages, count: filteredContacts.length })}
                       </span>
                       <div className="flex gap-1">
                         <Button
@@ -323,7 +325,7 @@ export function MobileContactsDialog({
                       onClick={selectAllVisible}
                       className="text-xs px-2 h-7 sm:h-8 flex-1"
                     >
-                      All Page
+                      {t('contacts.mobile_dialog.all_page')}
                     </Button>
                     <Button
                       variant="outline"
@@ -331,7 +333,7 @@ export function MobileContactsDialog({
                       onClick={deselectAll}
                       className="text-xs px-2 h-7 sm:h-8 flex-1"
                     >
-                      Clear
+                      {t('contacts.mobile_dialog.clear')}
                     </Button>
                   </div>
                 </>
@@ -339,7 +341,7 @@ export function MobileContactsDialog({
                 <Alert>
                   <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                   <AlertDescription className="text-xs sm:text-sm">
-                    No contacts found matching your search.
+                    {t('contacts.mobile_dialog.no_search_results')}
                   </AlertDescription>
                 </Alert>
               )}
@@ -350,8 +352,8 @@ export function MobileContactsDialog({
         <DialogFooter className="flex items-center justify-between pt-2 sm:pt-4 border-t flex-col sm:flex-row gap-2 sm:gap-3">
           <div className="text-xs sm:text-sm text-text-subtle">
             {selectedContacts.size > 0
-              ? `${selectedContacts.size} contact(s) selected`
-              : 'No contacts selected'
+              ? t('contacts.csv_import.contacts_selected_count', { count: selectedContacts.size })
+              : t('no_contacts_selected')
             }
           </div>
           <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
@@ -360,7 +362,7 @@ export function MobileContactsDialog({
               onClick={() => onOpenChange(false)}
               className="text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2 h-7 sm:h-10 flex-1 sm:flex-none"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             {contacts.length > 0 && (
               <Button
@@ -368,7 +370,7 @@ export function MobileContactsDialog({
                 disabled={selectedContacts.size === 0 || isImporting}
                 className="text-xs sm:text-sm px-2 sm:px-4 py-1 sm:py-2 h-7 sm:h-10 flex-1 sm:flex-none"
               >
-                {isImporting ? 'Importing...' : `Import (${selectedContacts.size})`}
+                {isImporting ? t('contacts.csv_import.importing') : t('contacts.csv_import.import_count', { count: selectedContacts.size })}
               </Button>
             )}
           </div>

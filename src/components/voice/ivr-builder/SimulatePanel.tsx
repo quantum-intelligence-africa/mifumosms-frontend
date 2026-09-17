@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, PhoneOff, Send, TimerOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useIvrSimulate } from "./useIvrSimulate";
 
 interface SimulatePanelProps {
@@ -22,6 +23,7 @@ interface SimulatePanelProps {
 const DTMF_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
 export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: SimulatePanelProps) {
+  const { t } = useLanguage();
   const sim = useIvrSimulate(flowId);
   const [speechValue, setSpeechValue] = useState("");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -54,15 +56,15 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Jaribu simu</SheetTitle>
-          <SheetDescription>Sikia mtiririko wako kama mteja atakavyousikia, bila kuhitaji namba ya simu.</SheetDescription>
+          <SheetTitle>{t("voice.ivr_builder.simulate.title")}</SheetTitle>
+          <SheetDescription>{t("voice.ivr_builder.simulate.desc")}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 space-y-2 overflow-y-auto rounded-lg border border-border-subtle bg-muted/30 p-3">
           {sim.transcript.length === 0 && sim.isLoading && (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Tunaanza jaribio…
+              {t("voice.ivr_builder.simulate.starting")}
             </div>
           )}
           {sim.transcript.map((entry) => (
@@ -89,7 +91,7 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
           {sim.isTerminal && (
             <div className="flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground">
               <PhoneOff className="h-3.5 w-3.5" />
-              Simu imemalizika
+              {t("voice.ivr_builder.simulate.call_ended")}
             </div>
           )}
           <div ref={transcriptEndRef} />
@@ -127,8 +129,8 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
                 onChange={(e) => setSpeechValue(e.target.value)}
                 placeholder={
                   sim.awaitingInputType === "recording"
-                    ? "Andika anachosema mteja… (jibu la AI halitajaribiwa hapa)"
-                    : "Andika anachosema mteja…"
+                    ? t("voice.ivr_builder.simulate.recording_placeholder")
+                    : t("voice.ivr_builder.simulate.speech_placeholder")
                 }
                 disabled={disabled}
                 className="h-9 text-xs"
@@ -147,7 +149,7 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
             onClick={() => sim.sendInput("timeout")}
           >
             <TimerOff className="mr-1.5 h-3.5 w-3.5" />
-            Onyesha mteja asipojibu
+            {t("voice.ivr_builder.simulate.force_timeout")}
           </Button>
         </div>
       </SheetContent>

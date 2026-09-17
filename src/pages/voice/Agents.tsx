@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 import { AgentChip } from "@/components/voice/RecordingPlayerBar";
 
@@ -52,15 +53,16 @@ export default function Agents() {
   const [formError, setFormError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     const res = await voiceApi.get<Agent[]>("/voice/agents/");
     if (res.success && res.data) setAgents(res.data);
-    else setError(res.error || "Failed to load agents");
+    else setError(res.error || t("voice.agents.error_loading"));
     setIsLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -98,11 +100,11 @@ export default function Agents() {
       : await voiceApi.post<Agent>("/voice/agents/", body);
     setSaving(false);
     if (!res.success) {
-      setFormError(res.error || "Haikuweza kuhifadhiwa.");
+      setFormError(res.error || t("voice.forms.save_failed"));
       return;
     }
     setOpen(false);
-    toast({ title: editing ? "Mhudumu amesasishwa" : "Mhudumu ameongezwa", description: body.name });
+    toast({ title: editing ? t("voice.agents.updated_toast") : t("voice.agents.added_toast"), description: body.name });
     load();
   };
 
@@ -112,13 +114,13 @@ export default function Agents() {
   };
 
   const remove = async (agent: Agent) => {
-    if (!window.confirm(`Ondoa ${agent.name} kwenye orodha ya wahudumu?`)) return;
+    if (!window.confirm(t("voice.agents.remove_confirm", { name: agent.name }))) return;
     const res = await voiceApi.delete(`/voice/agents/${agent.id}/`);
     if (res.success) {
       setAgents((prev) => prev.filter((a) => a.id !== agent.id));
-      toast({ title: "Mhudumu ameondolewa", description: agent.name });
+      toast({ title: t("voice.agents.removed_toast"), description: agent.name });
     } else {
-      toast({ title: "Haikuweza kuondolewa", description: res.error, variant: "destructive" });
+      toast({ title: t("voice.agents.remove_failed_toast"), description: res.error, variant: "destructive" });
     }
   };
 
@@ -131,15 +133,12 @@ export default function Agents() {
           <div className="mx-auto max-w-5xl space-y-3.5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Agents</h1>
-                <p className="mt-0.5 text-sm text-foreground/60">
-                  Wahudumu wanaopokea simu. A transfer box in a flow picks one of these by name, and their calls are
-                  credited to them.
-                </p>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.voice_agents")}</h1>
+                <p className="mt-0.5 text-sm text-foreground/60">{t("voice.agents.subtitle")}</p>
               </div>
               <Button onClick={startAdd}>
                 <Plus className="mr-1.5 h-4 w-4" />
-                Ongeza mhudumu
+                {t("voice.agents.add")}
               </Button>
             </header>
 
@@ -150,7 +149,7 @@ export default function Agents() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={load}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    {t("common.try_again")}
                   </Button>
                 </CardContent>
               </Card>
@@ -168,14 +167,11 @@ export default function Agents() {
               <Card>
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <Users className="h-10 w-10 text-muted-foreground" />
-                  <h3 className="text-base font-semibold text-foreground">Hakuna mhudumu bado</h3>
-                  <p className="max-w-md text-sm text-muted-foreground">
-                    Ongeza watu wanaopokea simu za wateja. Ukishawaongeza, kisanduku cha "Mpeleke kwa Mhudumu" kwenye
-                    mtiririko kitawaonyesha kwa majina.
-                  </p>
+                  <h3 className="text-base font-semibold text-foreground">{t("voice.agents.empty_title")}</h3>
+                  <p className="max-w-md text-sm text-muted-foreground">{t("voice.agents.empty_desc")}</p>
                   <Button className="mt-2" onClick={startAdd}>
                     <Plus className="mr-1.5 h-4 w-4" />
-                    Ongeza mhudumu wa kwanza
+                    {t("voice.agents.add_first")}
                   </Button>
                 </CardContent>
               </Card>
@@ -187,12 +183,12 @@ export default function Agents() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead>Agent</TableHead>
-                        <TableHead>Number</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>App login</TableHead>
-                        <TableHead>Available</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{t("voice.calls.col_agent")}</TableHead>
+                        <TableHead>{t("voice.recordings.col_number")}</TableHead>
+                        <TableHead>{t("voice.agents.col_department")}</TableHead>
+                        <TableHead>{t("voice.agents.col_app_login")}</TableHead>
+                        <TableHead>{t("voice.agents.col_available")}</TableHead>
+                        <TableHead className="text-right">{t("voice.recordings.col_actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -204,17 +200,17 @@ export default function Agents() {
                           <TableCell className="whitespace-nowrap font-mono text-sm text-foreground">{agent.phone_number}</TableCell>
                           <TableCell className="text-sm text-foreground/80">{agent.department || "—"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {agent.user ? (user && agent.user === Number(user.id) ? "Mimi" : `User #${agent.user}`) : "—"}
+                            {agent.user ? (user && agent.user === Number(user.id) ? t("voice.agents.me") : t("voice.agents.user_number", { id: agent.user })) : "—"}
                           </TableCell>
                           <TableCell>
-                            <Switch checked={agent.is_active} onCheckedChange={() => toggleActive(agent)} aria-label="Available for transfers" />
+                            <Switch checked={agent.is_active} onCheckedChange={() => toggleActive(agent)} aria-label={t("voice.agents.available_aria")} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(agent)} aria-label="Hariri">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(agent)} aria-label={t("voice.agents.edit_aria")}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(agent)} aria-label="Ondoa">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(agent)} aria-label={t("voice.agents.remove_aria")}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -230,8 +226,7 @@ export default function Agents() {
             {!error && !isLoading && agents.length > 0 && (
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
                 <PhoneForwarded className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                Kwenye mtiririko, fungua kisanduku cha "Mpeleke kwa Mhudumu" na uchague mhudumu kutoka kwenye orodha. Namba
-                yake na jina hujazwa yenyewe.
+                {t("voice.agents.footer_note")}
               </p>
             )}
           </div>
@@ -241,16 +236,16 @@ export default function Agents() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Hariri mhudumu" : "Ongeza mhudumu"}</DialogTitle>
-            <DialogDescription>Simu za wateja zitaelekezwa kwenye namba hii.</DialogDescription>
+            <DialogTitle>{editing ? t("voice.agents.edit_title") : t("voice.agents.add")}</DialogTitle>
+            <DialogDescription>{t("voice.agents.dialog_desc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="agent-name">Jina</Label>
-              <Input id="agent-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="mf. Sally" autoFocus />
+              <Label htmlFor="agent-name">{t("voice.forms.name_label")}</Label>
+              <Input id="agent-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t("voice.agents.name_placeholder")} autoFocus />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="agent-phone">Namba ya simu</Label>
+              <Label htmlFor="agent-phone">{t("phone_number")}</Label>
               <Input
                 id="agent-phone"
                 value={draft.phone_number}
@@ -261,15 +256,15 @@ export default function Agents() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="agent-dept">Idara (si lazima)</Label>
-              <Input id="agent-dept" value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })} placeholder="mf. Huduma kwa Wateja" />
+              <Label htmlFor="agent-dept">{t("voice.agents.department_label")}</Label>
+              <Input id="agent-dept" value={draft.department} onChange={(e) => setDraft({ ...draft, department: e.target.value })} placeholder={t("voice.agents.department_placeholder")} />
             </div>
             {user && (
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={draft.linkToMe} onCheckedChange={(v) => setDraft({ ...draft, linkToMe: v === true })} className="mt-0.5" />
                 <span>
-                  Huyu ni mimi ({user.email})
-                  <span className="block text-xs text-muted-foreground">Simu nitakazopiga kutoka kwenye programu zitahesabiwa kwa mhudumu huyu.</span>
+                  {t("voice.agents.link_to_me", { email: user.email })}
+                  <span className="block text-xs text-muted-foreground">{t("voice.agents.link_to_me_desc")}</span>
                 </span>
               </label>
             )}
@@ -277,10 +272,10 @@ export default function Agents() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Ghairi
+              {t("cancel")}
             </Button>
             <Button onClick={save} disabled={saving || !draft.name.trim() || draft.phone_number.replace(/\D/g, "").length < 9}>
-              {saving ? "Inahifadhi…" : "Hifadhi"}
+              {saving ? t("voice.forms.saving") : t("voice.forms.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api";
 import { detectMobileMoneyProvider, validatePhoneNumber } from "@/utils/phoneUtils";
 import { logger } from "@/utils/logger";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +82,7 @@ function renderMessage(template: string, name: string, credits: number, amount: 
 export function PendingPaymentReminder() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const wasAuthenticatedRef = useRef(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -159,8 +161,8 @@ export function PendingPaymentReminder() {
 
     if (!phone.trim() || !validatePhoneNumber(phone)) {
       toast({
-        title: "Namba ya simu inahitajika",
-        description: "Tafadhali ingiza namba sahihi ya pesa za simu",
+        title: t("pending_payment.phone_required_title"),
+        description: t("pending_payment.phone_required_desc"),
         variant: "destructive",
       });
       return;
@@ -185,15 +187,15 @@ export function PendingPaymentReminder() {
         setAttemptStatus("failed");
         setSubmitting(false);
         toast({
-          title: "Malipo yameshindikana",
-          description: response.error || "Imeshindikana kuanzisha malipo. Tafadhali jaribu namba nyingine.",
+          title: t("pending_payment.payment_failed_title"),
+          description: response.error || t("pending_payment.payment_init_failed_desc"),
           variant: "destructive",
         });
         return;
       }
 
       setAttemptStatus("pending");
-      toast({ title: "Malipo yameanzishwa", description: "Tafadhali angalia simu yako kwa ujumbe wa pesa za simu" });
+      toast({ title: t("pending_payment.payment_initiated_title"), description: t("pending_payment.payment_initiated_desc") });
 
       const { transaction_id } = response.data;
       if (!transaction_id) {
@@ -212,7 +214,7 @@ export function PendingPaymentReminder() {
             stopPolling();
             setAttemptStatus("completed");
             setSubmitting(false);
-            toast({ title: "Malipo yamefanikiwa!", description: "Salio lako limeongezwa kwenye akaunti yako" });
+            toast({ title: t("pending_payment.payment_success_title"), description: t("pending_payment.payment_success_desc") });
             setTimeout(() => setOpen(false), 1500);
           } else if (status === "failed" || status === "expired") {
             stopPolling();
@@ -233,8 +235,8 @@ export function PendingPaymentReminder() {
       setAttemptStatus("failed");
       setSubmitting(false);
       toast({
-        title: "Malipo yameshindikana",
-        description: "Hitilafu imetokea. Tafadhali jaribu tena.",
+        title: t("pending_payment.payment_failed_title"),
+        description: t("pending_payment.payment_error_desc"),
         variant: "destructive",
       });
     }
@@ -256,46 +258,46 @@ export function PendingPaymentReminder() {
     >
       <DialogContent className="glass max-w-[95vw] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Malipo Yanasubiri</DialogTitle>
+          <DialogTitle>{t("pending_payment.dialog_title")}</DialogTitle>
           <DialogDescription>{renderedMessage}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="flex justify-between text-sm py-1 border-b border-border-subtle">
-            <span className="text-text-subtle">Agizo</span>
+            <span className="text-text-subtle">{t("pending_payment.order_label")}</span>
             <span className="font-medium">{pendingPurchase.invoice_number}</span>
           </div>
           <div className="flex justify-between text-sm py-1 border-b border-border-subtle">
-            <span className="text-text-subtle">Kiasi</span>
+            <span className="text-text-subtle">{t("amount")}</span>
             <span className="font-medium text-primary">TZS {amount.toLocaleString()}</span>
           </div>
 
           {attemptStatus === "completed" ? (
             <div className="flex items-center gap-2 text-success text-sm p-3 bg-success/10 rounded-lg">
-              <CheckCircle className="w-4 h-4" /> Malipo yamekamilika!
+              <CheckCircle className="w-4 h-4" /> {t("pending_payment.payment_complete_banner")}
             </div>
           ) : (
             <>
               {attemptStatus === "failed" && (
                 <div className="flex items-center gap-2 text-red-500 text-sm p-2 bg-red-500/10 rounded-lg">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  Jaribio hilo halikufanikiwa — jaribu namba nyingine ya pesa za simu.
+                  {t("pending_payment.attempt_failed_banner")}
                 </div>
               )}
               {attemptStatus === "pending" && (
                 <div className="flex items-center gap-2 text-sm p-2 bg-primary/5 rounded-lg">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Inasubiri uthibitisho kwenye simu yako…
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t("pending_payment.awaiting_confirmation_banner")}
                 </div>
               )}
 
               <div className="space-y-1">
-                <Label htmlFor="pendingPaymentPhone" className="text-sm">Namba ya Pesa za Simu</Label>
+                <Label htmlFor="pendingPaymentPhone" className="text-sm">{t("pending_payment.mobile_money_number_label")}</Label>
                 <div className="relative">
                   <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-subtle" />
                   <Input
                     id="pendingPaymentPhone"
                     type="tel"
-                    placeholder="mfano, 0762 123 456"
+                    placeholder={t("pending_payment.phone_placeholder")}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="pl-9"
@@ -314,16 +316,16 @@ export function PendingPaymentReminder() {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting && attemptStatus === "pending"}>
-            Nikumbushe baadaye
+            {t("pending_payment.remind_later")}
           </Button>
           {attemptStatus !== "completed" && (
             <Button onClick={handlePayNow} disabled={submitting}>
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" /> Inachakata…
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" /> {t("pending_payment.processing_label")}
                 </>
               ) : (
-                "Lipa Sasa"
+                t("pending_payment.pay_now")
               )}
             </Button>
           )}

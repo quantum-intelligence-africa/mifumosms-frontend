@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface ApiAccount {
   id: string;
@@ -107,6 +108,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
   handleDeleteWebhook,
   formatDate,
 }) => {
+  const { t } = useLanguage();
   const availableEvents = [
     "message.sent",
     "message.delivered",
@@ -132,25 +134,25 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
           <CardTitle className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <Key className="w-4 h-4" />
-              API Keys
+              {t("settings.api.api_keys_title")}
             </div>
             <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" className="text-xs">
                   <Plus className="w-3 h-3 mr-1" />
-                  New Key
+                  {t("settings.api.new_key_button")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="glass">
                 <DialogHeader>
-                  <DialogTitle className="text-sm">Create API Key</DialogTitle>
+                  <DialogTitle className="text-sm">{t("settings.api.create_api_key_title")}</DialogTitle>
                   <DialogDescription className="text-xs">
-                    Generate a new API key for your applications
+                    {t("settings.api.create_api_key_desc")}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="keyName" className="text-xs">Key Name</Label>
+                    <Label htmlFor="keyName" className="text-xs">{t("settings.api.key_name_label")}</Label>
                     <Input
                       id="keyName"
                       placeholder="e.g., Production API Key"
@@ -164,7 +166,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     disabled={isLoading}
                     className="w-full text-xs"
                   >
-                    {isLoading ? "Creating..." : "Create API Key"}
+                    {isLoading ? t("settings.api.creating") : t("settings.api.create_api_key_button")}
                   </Button>
                 </div>
               </DialogContent>
@@ -175,12 +177,12 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
           {isLoading && !apiSettings?.api_keys ? (
             <div className="text-center py-8">
               <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-              <p className="text-xs text-text-subtle">Loading API keys...</p>
+              <p className="text-xs text-text-subtle">{t("settings.api.loading_keys")}</p>
             </div>
           ) : !apiSettings?.api_keys || apiSettings.api_keys.length === 0 ? (
             <div className="text-center py-8">
               <Key className="w-12 h-12 mx-auto text-text-subtle mb-3" />
-              <p className="text-sm text-text-subtle">No API keys created yet</p>
+              <p className="text-sm text-text-subtle">{t("settings.api.no_keys")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -200,14 +202,14 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                           onClick={() => handleRegenerateAPIKey(key.id)}
                         >
                           <RefreshCw className="w-3 h-3 mr-2" />
-                          Regenerate
+                          {t("settings.api.regenerate")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive text-xs"
                           onClick={() => handleRevokeAPIKey(key.id)}
                         >
                           <Trash2 className="w-3 h-3 mr-2" />
-                          Revoke
+                          {t("settings.api.revoke")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -226,7 +228,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     </Button>
                   </div>
                   <div className="flex items-center justify-between text-xs text-text-subtle">
-                    <span>Last used: {formatDate(key.last_used)}</span>
+                    <span>{t("settings.api.last_used", { date: formatDate(key.last_used) })}</span>
                     <Badge
                       variant={key.status === "active" ? "default" : "secondary"}
                       className="text-xs"
@@ -258,25 +260,25 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
           <CardTitle className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <Webhook className="w-4 h-4" />
-              Webhooks
+              {t("settings.api.webhooks_title")}
             </div>
             <Dialog open={showWebhookDialog} onOpenChange={setShowWebhookDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" className="text-xs">
                   <Plus className="w-3 h-3 mr-1" />
-                  Add Webhook
+                  {t("settings.api.add_webhook_button")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="glass max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="text-sm">Create Webhook</DialogTitle>
+                  <DialogTitle className="text-sm">{t("settings.api.create_webhook_title")}</DialogTitle>
                   <DialogDescription className="text-xs">
-                    Configure a webhook endpoint to receive events
+                    {t("settings.api.create_webhook_desc")}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="webhookUrl" className="text-xs">Webhook URL</Label>
+                    <Label htmlFor="webhookUrl" className="text-xs">{t("settings.api.webhook_url_label")}</Label>
                     <Input
                       id="webhookUrl"
                       placeholder="https://your-domain.com/webhooks/mifumo"
@@ -286,7 +288,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Events</Label>
+                    <Label className="text-xs">{t("settings.api.events_label")}</Label>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {availableEvents.map((event) => (
                         <div key={event} className="flex items-center space-x-2">
@@ -310,7 +312,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     disabled={isLoading || !newWebhookForm.url || newWebhookForm.events.length === 0}
                     className="w-full text-xs"
                   >
-                    {isLoading ? "Creating..." : "Create Webhook"}
+                    {isLoading ? t("settings.api.creating") : t("settings.api.create_webhook_button")}
                   </Button>
                 </div>
               </DialogContent>
@@ -321,12 +323,12 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
           {isLoading && !apiSettings?.webhooks ? (
             <div className="text-center py-8">
               <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-              <p className="text-xs text-text-subtle">Loading webhooks...</p>
+              <p className="text-xs text-text-subtle">{t("settings.api.loading_webhooks")}</p>
             </div>
           ) : !apiSettings?.webhooks || apiSettings.webhooks.length === 0 ? (
             <div className="text-center py-8">
               <Webhook className="w-12 h-12 mx-auto text-text-subtle mb-3" />
-              <p className="text-sm text-text-subtle">No webhooks configured yet</p>
+              <p className="text-sm text-text-subtle">{t("settings.api.no_webhooks")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -351,14 +353,14 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                           onClick={() => handleToggleWebhook(webhook.id)}
                         >
                           <RefreshCw className="w-3 h-3 mr-2" />
-                          Toggle Status
+                          {t("settings.api.toggle_status")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive text-xs"
                           onClick={() => handleDeleteWebhook(webhook.id)}
                         >
                           <Trash2 className="w-3 h-3 mr-2" />
-                          Delete
+                          {t("common.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -368,10 +370,10 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                       variant={webhook.is_active ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {webhook.is_active ? "Active" : "Inactive"}
+                      {webhook.is_active ? t("status.active") : t("voice.numbers.status_inactive")}
                     </Badge>
                     <span className="text-text-subtle">
-                      {webhook.successful_calls} / {webhook.total_calls} successful
+                      {t("settings.api.successful_calls", { successful: webhook.successful_calls, total: webhook.total_calls })}
                     </span>
                   </div>
                   <div className="flex gap-1 flex-wrap mb-2">
@@ -387,7 +389,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-text-subtle">
-                    Last triggered: {formatDate(webhook.last_triggered)}
+                    {t("settings.api.last_triggered", { date: formatDate(webhook.last_triggered) })}
                   </p>
                 </div>
               ))}

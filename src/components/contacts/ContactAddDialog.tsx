@@ -9,6 +9,7 @@ import { X, Plus, User, Phone, Mail, Tag } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
 import { useToast } from '@/hooks/use-toast';
 import { normalizePhoneNumber } from '@/utils/phoneUtils';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface ContactAddDialogProps {
   children: React.ReactNode;
@@ -32,6 +33,7 @@ const PRESET_TAGS = [
 ];
 
 export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,7 +72,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
       if (prev.tags.includes(tag)) {
         return {
           ...prev,
-          tags: prev.tags.filter(t => t !== tag)
+          tags: prev.tags.filter(existingTag => existingTag !== tag)
         };
       } else {
         return {
@@ -99,29 +101,29 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = t('contacts.add_dialog.name_required');
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = t('contacts.add_dialog.phone_required');
     } else {
       const phoneInfo = normalizePhoneNumber(formData.phone);
       if (!phoneInfo.isValid) {
-        newErrors.phone = 'Please enter a valid phone number';
+        newErrors.phone = t('contacts.add_dialog.phone_invalid');
       }
     }
 
     if (formData.email && formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address';
+        newErrors.email = t('contacts.add_dialog.email_invalid');
       }
     }
 
     if (formData.tags.length === 0) {
-      newErrors.tags = 'At least one tag is required';
+      newErrors.tags = t('contacts.add_dialog.tags_required');
     } else if (formData.newTag.trim()) {
-      newErrors.tags = 'Press + to add the tag or clear the input.';
+      newErrors.tags = t('contacts.add_dialog.tag_press_plus');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,10 +166,10 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
       });
 
       // Show success notification with tags
-      const tagsList = tagsToSend.length > 0 ? tagsToSend.join(', ') : 'No tags';
+      const tagsList = tagsToSend.length > 0 ? tagsToSend.join(', ') : t('contacts.add_dialog.no_tags');
       toast({
-        title: 'Contact Added Successfully',
-        description: `${formData.name} has been added. Tags: ${tagsList}`,
+        title: t('contacts.add_dialog.toast_success_title'),
+        description: t('contacts.add_dialog.toast_success_desc', { name: formData.name, tags: tagsList }),
         variant: 'default'
       });
 
@@ -223,19 +225,19 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            Add New Contact
+            {t('contacts.add_dialog.title')}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name Field */}
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">{t('contacts.add_dialog.name_label')}</Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
               <Input
                 id="name"
-                placeholder="Enter full name (any case)"
+                placeholder={t('contacts.add_dialog.name_placeholder')}
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 className={`pl-10 ${errors.name ? 'border-red-500' : ''}`}
@@ -243,7 +245,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
               />
             </div>
             <p className="text-xs text-gray-500">
-              💡 You can use any case: "john doe", "John Doe", "JOHN DOE" - all are accepted
+              {t('contacts.add_dialog.name_hint')}
             </p>
             {errors.name && (
               <p className="text-sm text-red-600">{errors.name}</p>
@@ -252,13 +254,13 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
           {/* Phone Field */}
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number *</Label>
+            <Label htmlFor="phone">{t('contacts.add_dialog.phone_label')}</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+255 700 000 001"
+                placeholder={t('contacts.add_dialog.phone_placeholder')}
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
@@ -266,7 +268,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
               />
             </div>
             <p className="text-xs text-blue-600 font-medium">
-              📱 Accepted formats: +255700000001, 0700000001, 255700000001
+              {t('contacts.add_dialog.phone_hint')}
             </p>
             {errors.phone && (
               <p className="text-sm text-red-600">{errors.phone}</p>
@@ -275,13 +277,13 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
           {/* Email Field */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email (Optional)</Label>
+            <Label htmlFor="email">{t('contacts.add_dialog.email_label')}</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter email address"
+                placeholder={t('contacts.add_dialog.email_placeholder')}
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
@@ -295,11 +297,11 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
           {/* Tags Field */}
           <div className="space-y-2">
-            <Label htmlFor="tags">Tags *</Label>
+            <Label htmlFor="tags">{t('contacts.add_dialog.tags_label')}</Label>
             <div className="space-y-3">
               {/* Preset Tags - Hidden */}
               <div className="hidden">
-                <p className="text-sm font-medium text-gray-900 mb-2">Quick Select:</p>
+                <p className="text-sm font-medium text-gray-900 mb-2">{t('contacts.add_dialog.quick_select')}</p>
                 <div className="flex flex-wrap gap-2">
                   {PRESET_TAGS.map((tag) => (
                     <button
@@ -321,12 +323,12 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
               {/* Custom Tag Input */}
               <div>
-                <p className="text-sm font-semibold text-gray-900 mb-2">Tags Names: <span className="text-red-600">*</span></p>
+                <p className="text-sm font-semibold text-gray-900 mb-2">{t('contacts.add_dialog.tags_names_label')} <span className="text-red-600">*</span></p>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-subtle w-4 h-4" />
                     <Input
-                      placeholder="Type a tag name (e.g., 'wholesale', 'partner')"
+                      placeholder={t('contacts.add_dialog.tag_input_placeholder')}
                       value={formData.newTag}
                       onChange={(e) => handleInputChange('newTag', e.target.value)}
                       onKeyPress={handleKeyPress}
@@ -350,7 +352,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
 
               {/* Display All Selected Tags */}
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Selected Tags:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">{t('contacts.add_dialog.selected_tags_label')}</p>
                 <div className="flex flex-wrap gap-2">
                   {formData.tags.map((tag, index) => (
                     <Badge key={index} variant="secondary" className="flex items-center gap-1">
@@ -381,7 +383,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
               onClick={handleCancel}
               disabled={isLoading}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               type="submit"
@@ -392,7 +394,7 @@ export function ContactAddDialog({ children, onContactAdded }: ContactAddDialogP
                   : 'bg-primary hover:bg-primary-dark text-white'
               }
             >
-              {isLoading ? 'Adding...' : 'Add Contact'}
+              {isLoading ? t('contacts.add_dialog.adding') : t('add_contact')}
             </Button>
           </div>
         </form>

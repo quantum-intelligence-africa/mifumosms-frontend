@@ -4,21 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export function PushSettingsCard() {
   const { status, busy, supported, enable, disable, sendTest } = usePushNotifications();
+  const { t } = useLanguage();
 
   if (!supported) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Bell className="h-4 w-4" /> Push notifications
+            <Bell className="h-4 w-4" /> {t("pwa.push_settings.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            This browser doesn't support push notifications. Try Chrome, Edge, or Safari 16.4+.
+            {t("pwa.push_settings.unsupported_desc")}
           </p>
         </CardContent>
       </Card>
@@ -28,10 +30,10 @@ export function PushSettingsCard() {
   const handleEnable = async () => {
     const ok = await enable();
     toast({
-      title: ok ? 'Notifications enabled' : "Couldn't enable notifications",
+      title: ok ? t("pwa.notifications_enabled_title") : t("pwa.enable_failed_title"),
       description: ok
-        ? "You'll receive alerts even when SENDA isn't open."
-        : 'Permission was not granted, or the browser refused to subscribe.',
+        ? t("pwa.push_settings.enabled_desc")
+        : t("pwa.push_settings.enable_failed_desc"),
       variant: ok ? 'default' : 'destructive',
     });
   };
@@ -39,18 +41,18 @@ export function PushSettingsCard() {
   const handleDisable = async () => {
     await disable();
     toast({
-      title: 'Notifications disabled',
-      description: 'You will no longer receive push alerts on this device.',
+      title: t("pwa.push_settings.disabled_title"),
+      description: t("pwa.push_settings.disabled_desc"),
     });
   };
 
   const handleTest = async () => {
     const ok = await sendTest();
     toast({
-      title: ok ? 'Test push sent' : 'Test push failed',
+      title: ok ? t("pwa.push_settings.test_sent_title") : t("pwa.push_settings.test_failed_title"),
       description: ok
-        ? 'A notification should arrive in a moment.'
-        : 'The server rejected the request.',
+        ? t("pwa.push_settings.test_sent_desc")
+        : t("pwa.push_settings.test_failed_desc"),
       variant: ok ? 'default' : 'destructive',
     });
   };
@@ -60,39 +62,39 @@ export function PushSettingsCard() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2 text-base">
           <span className="flex items-center gap-2">
-            <Bell className="h-4 w-4" /> Push notifications
+            <Bell className="h-4 w-4" /> {t("pwa.push_settings.title")}
           </span>
-          {status === 'subscribed' && <Badge>Enabled</Badge>}
-          {status === 'denied' && <Badge variant="destructive">Blocked</Badge>}
+          {status === 'subscribed' && <Badge>{t("common.enabled")}</Badge>}
+          {status === 'denied' && <Badge variant="destructive">{t("pwa.push_settings.blocked_badge")}</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {status === 'denied' ? (
           <p className="text-sm text-muted-foreground">
-            Notifications are blocked. Re-enable them from your browser's site settings.
+            {t("pwa.push_settings.denied_desc")}
           </p>
         ) : status === 'subscribed' ? (
           <>
             <p className="text-sm text-muted-foreground">
-              You'll get delivery reports, replies, and account events as native notifications.
+              {t("pwa.push_settings.subscribed_desc")}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={handleTest} disabled={busy}>
-                <Send className="mr-2 h-3.5 w-3.5" /> Send test
+                <Send className="mr-2 h-3.5 w-3.5" /> {t("pwa.push_settings.send_test_button")}
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDisable} disabled={busy}>
-                <BellOff className="mr-2 h-3.5 w-3.5" /> Turn off
+                <BellOff className="mr-2 h-3.5 w-3.5" /> {t("pwa.push_settings.turn_off_button")}
               </Button>
             </div>
           </>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Get instant alerts even when SENDA isn't open in a tab.
+              {t("pwa.push_settings.not_subscribed_desc")}
             </p>
             <Button size="sm" onClick={handleEnable} disabled={busy}>
               <Bell className="mr-2 h-3.5 w-3.5" />
-              {busy ? 'Enabling…' : 'Enable notifications'}
+              {busy ? t("pwa.enabling") : t("pwa.enable_notifications_button")}
             </Button>
           </>
         )}

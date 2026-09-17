@@ -23,7 +23,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { FlowLanguage, FlowStatus, ValidationError } from "./types";
+
+type T = ReturnType<typeof useLanguage>["t"];
+
+// Raw flow status -> the label a non-technical user reads, rather than the
+// raw enum value surfaced verbatim.
+const statusLabelKey = (status: FlowStatus): Parameters<T>[0] => {
+  switch (status) {
+    case "published":
+      return "voice.ivr_builder.toolbar.status_published";
+    case "archived":
+      return "voice.ivr_builder.toolbar.status_archived";
+    default:
+      return "voice.ivr_builder.toolbar.status_draft";
+  }
+};
 
 export const LANGUAGE_LABELS: Record<FlowLanguage, string> = {
   sw: "Kiswahili",
@@ -79,6 +95,7 @@ export function FlowToolbar({
   onSelectError,
 }: FlowToolbarProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [draftName, setDraftName] = useState(name);
   const [editingName, setEditingName] = useState(false);
   const [errorPopoverOpen, setErrorPopoverOpen] = useState(false);
@@ -109,7 +126,7 @@ export function FlowToolbar({
   return (
     <div className="flex h-auto min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-2 py-2 sm:h-14 sm:flex-nowrap sm:px-3 sm:py-0">
       <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate("/voice/ivr")} aria-label="Back to flows">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate("/voice/ivr")} aria-label={t("voice.ivr_builder.toolbar.back_aria")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
 
@@ -133,14 +150,14 @@ export function FlowToolbar({
             type="button"
             onClick={() => setEditingName(true)}
             className="min-w-0 flex-1 truncate rounded px-1.5 py-1 text-left text-sm font-semibold text-foreground hover:bg-accent sm:max-w-[220px] sm:flex-none"
-            title="Click to rename"
+            title={t("voice.ivr_builder.toolbar.rename_title")}
           >
-            {name || "Untitled Flow"}
+            {name || t("voice.ivr_builder.toolbar.untitled_flow")}
           </button>
         )}
 
         <Badge variant={status === "published" ? "default" : "outline"} className="shrink-0 capitalize">
-          {status}
+          {t(statusLabelKey(status))}
         </Badge>
 
         <Select value={language} onValueChange={(v) => onLanguageChange(v as FlowLanguage)}>
@@ -174,49 +191,48 @@ export function FlowToolbar({
             <button
               type="button"
               className="flex min-w-0 shrink items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent"
-              title="Jina la biashara linalosikika kwa mteja"
+              title={t("voice.ivr_builder.toolbar.business_button_title")}
             >
               <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="max-w-[110px] truncate">{companyName || "Jina la biashara"}</span>
+              <span className="max-w-[110px] truncate">{companyName || t("voice.ivr_builder.toolbar.business_name_fallback")}</span>
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-80 max-w-[90vw] space-y-3">
             <div className="space-y-1">
               <Label htmlFor="flow-company-name" className="text-xs">
-                Jina la Biashara
+                {t("voice.ivr_builder.toolbar.business_name_label")}
               </Label>
               <Input
                 id="flow-company-name"
                 value={draftCompany}
-                placeholder="mf. SENDA"
+                placeholder={t("voice.ivr_builder.toolbar.business_name_placeholder")}
                 onChange={(e) => setDraftCompany(e.target.value)}
                 className="h-8 text-xs"
               />
               <p className="text-[10px] text-muted-foreground">
-                Hili ndilo jina mteja atakalolisikia mwanzoni mwa simu. Likiachwa wazi, litatumika jina la akaunti yako.
+                {t("voice.ivr_builder.toolbar.business_name_help")}
               </p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="flow-business-hours" className="text-xs">
-                Saa za Kazi
+                {t("voice.ivr_builder.toolbar.business_hours_label")}
               </Label>
               <Input
                 id="flow-business-hours"
                 value={draftHours}
-                placeholder="mf. Jumatatu hadi Ijumaa, saa mbili asubuhi hadi saa kumi na moja jioni"
+                placeholder={t("voice.ivr_builder.toolbar.business_hours_placeholder")}
                 onChange={(e) => setDraftHours(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="rounded-md bg-muted/50 p-2">
               <p className="text-[10px] leading-relaxed text-muted-foreground">
-                Ndani ya ujumbe wowote unaweza kuandika{" "}
+                {t("voice.ivr_builder.toolbar.vars_help_intro")}{" "}
                 <code className="rounded bg-background px-1">{"{company_name}"}</code>,{" "}
                 <code className="rounded bg-background px-1">{"{customer_name}"}</code>,{" "}
-                <code className="rounded bg-background px-1">{"{agent_name}"}</code> au{" "}
-                <code className="rounded bg-background px-1">{"{business_hours}"}</code>. Mfano: &ldquo;Karibu{" "}
-                {"{company_name}"}. Asante kwa kuwasiliana nasi.&rdquo; husomwa kama &ldquo;Karibu{" "}
-                {companyName || "SENDA"}. Asante kwa kuwasiliana nasi.&rdquo;
+                <code className="rounded bg-background px-1">{"{agent_name}"}</code> {t("voice.ivr_builder.toolbar.vars_help_or")}{" "}
+                <code className="rounded bg-background px-1">{"{business_hours}"}</code>
+                {t("voice.ivr_builder.toolbar.vars_help_example", { name: companyName || "SENDA" })}
               </p>
             </div>
           </PopoverContent>
@@ -228,7 +244,7 @@ export function FlowToolbar({
               <button
                 type="button"
                 className="flex shrink-0 items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive"
-                aria-label={`${errors.length} validation error${errors.length === 1 ? "" : "s"} — tap to view`}
+                aria-label={t("voice.ivr_builder.toolbar.errors_badge_aria", { count: errors.length })}
               >
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {errors.length}
@@ -236,7 +252,7 @@ export function FlowToolbar({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80 max-w-[90vw] p-0">
               <div className="border-b border-border px-3 py-2 text-xs font-semibold text-foreground">
-                {errors.length} error{errors.length === 1 ? "" : "s"} to fix
+                {t("voice.ivr_builder.toolbar.errors_popover_header", { count: errors.length })}
               </div>
               <ul className="max-h-72 divide-y divide-border overflow-y-auto">
                 {errors.map((err, i) => (
@@ -266,24 +282,26 @@ export function FlowToolbar({
             title={saveError}
           >
             <AlertTriangle className="h-3 w-3 shrink-0" />
-            <span>Save failed — retry</span>
+            <span>{t("voice.ivr_builder.toolbar.save_failed")}</span>
           </button>
         ) : isSaving ? (
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="hidden sm:inline">Saving…</span>
+            <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.saving")}</span>
           </span>
         ) : hasUnsavedChanges ? (
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
             <Circle className="h-2 w-2 shrink-0 fill-current" />
-            <span className="hidden sm:inline">Unsaved changes</span>
+            <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.unsaved_changes")}</span>
           </span>
         ) : (
           lastSavedAt && (
             <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
               <Check className="h-3 w-3 shrink-0 text-green-600" />
               <span className="hidden sm:inline">
-                Saved · {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {t("voice.ivr_builder.toolbar.saved_at", {
+                  time: lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                })}
               </span>
             </span>
           )
@@ -299,15 +317,15 @@ export function FlowToolbar({
           disabled={!hasUnsavedChanges || isSaving}
         >
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <Save className="h-3.5 w-3.5 sm:mr-1.5" />}
-          <span className="hidden sm:inline">Save</span>
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.save")}</span>
         </Button>
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onExport}>
           <Download className="h-3.5 w-3.5 sm:mr-1.5" />
-          <span className="hidden sm:inline">Export</span>
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.export")}</span>
         </Button>
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onSimulate}>
           <PlayCircle className="h-3.5 w-3.5 sm:mr-1.5" />
-          <span className="hidden sm:inline">Simulate</span>
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.simulate")}</span>
         </Button>
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onValidate} disabled={isValidating}>
           {isValidating ? (
@@ -315,7 +333,7 @@ export function FlowToolbar({
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
           )}
-          <span className="hidden sm:inline">Validate</span>
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.validate")}</span>
         </Button>
         <Button size="sm" className="shrink-0 px-2 sm:px-3" onClick={onPublish} disabled={errors.length > 0 || isPublishing}>
           {isPublishing ? (
@@ -323,7 +341,7 @@ export function FlowToolbar({
           ) : (
             <Upload className="h-3.5 w-3.5 sm:mr-1.5" />
           )}
-          <span className="hidden sm:inline">Publish</span>
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.publish")}</span>
         </Button>
       </div>
     </div>

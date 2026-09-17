@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import React, { useContext, useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   Code,
   Zap,
@@ -18,13 +18,12 @@ import {
   Target,
   Clock,
 } from "lucide-react";
-import { LanguageContext } from "../contexts/LanguageContext";
 import { LandingHeader } from "@/components/layout/LandingHeader";
 import { LandingFooter } from "@/components/layout/LandingFooter";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Developer = () => {
-  const context = useContext(LanguageContext);
-  const { language } = context || { language: 'en', t: (s: string) => s };
+  const { t } = useLanguage();
 
   // Auto-scroll to hero section on page load
   useEffect(() => {
@@ -59,19 +58,19 @@ const Developer = () => {
             <div className="text-center w-full space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 max-w-4xl mx-auto">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading text-center text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
-                  {language === 'sw' ? 'API ya SENDA' : 'SENDA API'}
+                  {t("developer.hero.title_line1")}
                   <br />
-                  <span className="text-blue-200">{language === 'sw' ? 'Nyaraka' : 'Documentation'}</span>
+                  <span className="text-blue-200">{t("developer.hero.title_line2")}</span>
                 </h1>
                 <p className="text-center text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl mx-auto leading-relaxed font-normal">
-                  {language === 'sw' ? 'Rahisisha mawasiliano yako kwa kutumia API ya SENDA. Nyaraka na mwongozo wa msanidi programu vinakupa kila kitu unachohitaji kuunganisha huduma za SMS kwenye programu zako.' : 'Simplify your communication with the SENDA API. Our comprehensive documentation and developer guides provide everything you need to seamlessly integrate SMS services into your applications.'}
+                  {t("developer.hero.desc")}
                 </p>
               </div>
 
               <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 justify-center pt-2">
                 <a href="https://docs-sms.mifumolabs.com/" target="_blank" rel="noopener noreferrer">
                   <Button className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    {language === 'sw' ? 'Anza' : 'Get started'}
+                    {t("developer.hero.get_started_button")}
                   </Button>
                 </a>
               </div>
@@ -86,10 +85,10 @@ const Developer = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {language === 'sw' ? 'Jenga uzoefu wa mawasiliano wenye nguvu' : 'Build powerful communication experiences'}
+              {t("developer.features.title")}
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              {language === 'sw' ? 'kwa API zetu kamili, SDKs na zana za msanidi programu.' : 'with our comprehensive APIs, SDKs and developer tools.'}
+              {t("developer.features.subtitle")}
             </p>
           </div>
 
@@ -101,9 +100,9 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4 shadow-md">
                   <Server className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Upatikanaji wa Juu' : 'High Availability'}</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t("developer.features.high_availability.title")}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya SENDA imeundwa kuwa na upatikanaji wa juu na kupanuka. Inaboresha uaminifu wa programu zako kwa kutumia mifumo iliyosambazwa.' : 'SENDA API is designed to be highly available and scalable. Enhancing the reliability of your applications using distributed systems.'}
+                  {t("developer.features.high_availability.desc")}
                 </p>
                 <div className="mt-4 items-center text-blue-600 font-medium hidden">
                   <span>Learn more</span>
@@ -119,12 +118,12 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center mb-4 shadow-md">
                   <Target className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Lenga Kinachohusika' : 'Focus on What Matters'}</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t("developer.features.focus.title")}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya SENDA inakuwezesha kuzingatia mantiki ya biashara yako kwa kutoa huduma ya arifa inayotegemewa na inayopanuka. Unahitaji tu kuunganisha na API yetu na tutashughulikia yote mengine.' : 'SENDA API allows you to focus on your business logic by providing a reliable and scalable notification service. You just need to integrate with our API and we will take care of the rest.'}
+                  {t("developer.features.focus.desc")}
                 </p>
                 <div className="mt-4 items-center text-green-600 font-medium hidden">
-                  <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
+                  <span>{t("developer.features.learn_more")}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </CardContent>
@@ -137,12 +136,12 @@ const Developer = () => {
                 <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center mb-4 shadow-md">
                   <CheckCircle className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{language === 'sw' ? 'Uwasilishaji wa Ujumbe wa Kuaminika' : 'Reliable Message Delivery'}</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t("developer.features.reliable.title")}</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {language === 'sw' ? 'API ya SENDA inahakikisha ujumbe wako unawafikia watumiaji wako kwa wakati. Tunatoa kumbukumbu na ripoti za kina ili kukusaidia kufuatilia hali ya ujumbe wako.' : 'SENDA API ensures that your messages are delivered to your users in a timely manner. We provide detailed logs and reports to help you track the status of your messages.'}
+                  {t("developer.features.reliable.desc")}
                 </p>
                 <div className="mt-4 items-center text-purple-600 font-medium hidden">
-                  <span>{language === 'sw' ? 'Jifunze zaidi' : 'Learn more'}</span>
+                  <span>{t("developer.features.learn_more")}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </CardContent>
@@ -156,36 +155,36 @@ const Developer = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {language === 'sw' ? 'Vipengele vya API ya SMS' : 'Powerful SMS API Features'}
+              {t("developer.api_features.title")}
             </h2>
             <p className="text-lg text-gray-600">
-              {language === 'sw' ? 'Kila kitu unachohitaji kuunganisha SMS kwenye programu zako' : 'Everything you need to integrate SMS functionality into your applications'}
+              {t("developer.api_features.subtitle")}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Send className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Tuma SMS' : 'Send SMS'}</h3>
-              <p className="text-sm text-gray-600">{language === 'sw' ? 'Tuma ujumbe wa SMS kwa watu binafsi au makundi' : 'Send SMS messages to individuals or groups'}</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{t("nav.send_sms")}</h3>
+              <p className="text-sm text-gray-600">{t("developer.api_features.send_sms_desc")}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Users className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Usimamizi wa Mawasiliano' : 'Contact Management'}</h3>
-              <p className="text-sm text-gray-600">{language === 'sw' ? 'Simamia mawasiliano na makundi kwa ufanisi' : 'Manage contacts and groups efficiently'}</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{t("developer.api_features.contact_mgmt_title")}</h3>
+              <p className="text-sm text-gray-600">{t("developer.api_features.contact_mgmt_desc")}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Takwimu' : 'Analytics'}</h3>
-              <p className="text-sm text-gray-600">{language === 'sw' ? 'Fuatilia viwango vya uwasilishaji na utendaji wa kampeni' : 'Track delivery rates and campaign performance'}</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{t("developer.api_features.analytics_title")}</h3>
+              <p className="text-sm text-gray-600">{t("developer.api_features.analytics_desc")}</p>
             </div>
 
             <div className="text-center p-6 bg-white rounded-lg shadow-md">
               <Globe className="w-8 h-8 text-orange-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">{language === 'sw' ? 'Lugha Nyingi' : 'Multi-language'}</h3>
-              <p className="text-sm text-gray-600">{language === 'sw' ? 'Msaada kwa lugha na kanda mbalimbali' : 'Support for multiple languages and regions'}</p>
+              <h3 className="font-semibold text-gray-900 mb-2">{t("developer.api_features.multilang_title")}</h3>
+              <p className="text-sm text-gray-600">{t("developer.api_features.multilang_desc")}</p>
             </div>
           </div>
         </div>

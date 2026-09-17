@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface DataTablePaginationProps {
   currentPage: number;
@@ -31,6 +32,7 @@ export function DataTablePagination({
   pageSizeOptions = [10, 20, 30, 50],
   showPageSizeSelector = true,
 }: DataTablePaginationProps) {
+  const { t } = useLanguage();
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
@@ -84,13 +86,12 @@ export function DataTablePagination({
       {/* Left side - Items info */}
       <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
         <span>
-          Showing <span className="font-medium text-foreground">{startItem}-{endItem}</span> of{' '}
-          <span className="font-medium text-foreground">{totalItems}</span> items
+          {t("components.pagination.showing", { start: startItem, end: endItem, total: totalItems })}
         </span>
-        
+
         {showPageSizeSelector && onPageSizeChange && (
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline">Per page:</span>
+            <span className="hidden sm:inline">{t("components.pagination.per_page")}</span>
             <Select
               value={pageSize.toString()}
               onValueChange={(value) => onPageSizeChange(parseInt(value))}

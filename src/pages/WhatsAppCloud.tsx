@@ -70,6 +70,7 @@ import {
   type WABulkJobStatus,
 } from "@/hooks/useWhatsAppBulkImageSend";
 import { useContacts } from "@/hooks/useContacts";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // ─── Phone number normalization ───────────────────────────────────────────────
 
@@ -96,14 +97,15 @@ const isTemplateTokenFilled = (source: string | undefined): boolean => {
 // ─── Result Banner ────────────────────────────────────────────────────────────
 
 function BulkResultBanner({ result }: { result: WASendBulkResult | null }) {
+  const { t } = useLanguage();
   if (!result) return null;
   const success = result.failed === 0;
   return (
     <Alert className={`py-2.5 ${success ? "border-green-200 bg-green-50 dark:bg-green-950/30" : "border-amber-200 bg-amber-50 dark:bg-amber-950/30"}`}>
       {success ? <CheckCircle className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
       <AlertDescription className={`text-xs ${success ? "text-green-800 dark:text-green-300" : "text-amber-800 dark:text-amber-300"}`}>
-        <span className="font-semibold">{result.sent}</span> sent,{" "}
-        <span className="font-semibold">{result.failed}</span> failed of{" "}
+        <span className="font-semibold">{result.sent}</span> {t("whatsapp.cloud.bulk_result.sent")},{" "}
+        <span className="font-semibold">{result.failed}</span> {t("whatsapp.cloud.bulk_result.failed_of")}{" "}
         <span className="font-semibold">{result.total}</span>.
         {result.failed > 0 && <FailedList results={result.results} />}
       </AlertDescription>
@@ -112,6 +114,7 @@ function BulkResultBanner({ result }: { result: WASendBulkResult | null }) {
 }
 
 function FailedList({ results }: { results: WASendBulkResult["results"] }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const failed = results.filter((r) => !r.ok);
   if (!failed.length) return null;
@@ -119,7 +122,7 @@ function FailedList({ results }: { results: WASendBulkResult["results"] }) {
     <div className="mt-1.5">
       <button className="text-[11px] underline underline-offset-2 flex items-center gap-1 opacity-80 hover:opacity-100" onClick={() => setOpen((v) => !v)}>
         {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        {open ? "Hide" : "Show"} failed ({failed.length})
+        {open ? t("whatsapp.cloud.bulk_result.hide") : t("whatsapp.cloud.bulk_result.show")} {t("whatsapp.cloud.bulk_result.failed_count", { count: failed.length })}
       </button>
       {open && (
         <ul className="mt-1 text-[11px] space-y-0.5">
@@ -180,18 +183,19 @@ function Pagination({
   hasPrevious: boolean; loading: boolean; count: number | null;
   onPrev: () => void; onNext: () => void;
 }) {
+  const { t } = useLanguage();
   if (!total) return null;
   return (
     <div className="flex items-center justify-between gap-2 pt-1">
       <div className="flex items-center gap-1.5">
-        <Button size="sm" variant="outline" onClick={onPrev} disabled={loading || !hasPrevious} className="h-7 px-2.5 text-xs">← Prev</Button>
+        <Button size="sm" variant="outline" onClick={onPrev} disabled={loading || !hasPrevious} className="h-7 px-2.5 text-xs">{t("whatsapp.cloud.pagination.prev")}</Button>
         <span className="text-[11px] text-muted-foreground px-1">
-          Page {page}{total ? ` / ${Math.ceil(total / pageSize)}` : ""}
+          {total ? t("whatsapp.cloud.pagination.page_of", { page, pages: Math.ceil(total / pageSize) }) : t("whatsapp.cloud.pagination.page", { page })}
         </span>
-        <Button size="sm" variant="outline" onClick={onNext} disabled={loading || !hasNext} className="h-7 px-2.5 text-xs">Next →</Button>
+        <Button size="sm" variant="outline" onClick={onNext} disabled={loading || !hasNext} className="h-7 px-2.5 text-xs">{t("whatsapp.cloud.pagination.next")}</Button>
       </div>
       {total !== null && count !== null && (
-        <span className="text-[11px] text-muted-foreground">{Math.min(count, pageSize)} of {total}</span>
+        <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.pagination.count_of", { count: Math.min(count, pageSize), total })}</span>
       )}
     </div>
   );
@@ -264,6 +268,7 @@ function MediaPollFields({
   onFilesChange?: (files: File[]) => void;
   matchHint?: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   const mediaModes: MediaMode[] = requiredHeaderFormat ? ["url", "file"] : ["none", "url", "file"];
   const [pollDialogOpen, setPollDialogOpen] = useState(false);
   // Pulling polls inline so the user picks from a list instead of having to
@@ -281,7 +286,7 @@ function MediaPollFields({
       const res = await listPolls({ page_size: 50 });
       setPolls(res.results ?? []);
     } catch (e) {
-      setPollsError(e instanceof Error ? e.message : "Failed to load polls");
+      setPollsError(e instanceof Error ? e.message : t("whatsapp.cloud.media.load_polls_failed"));
       setPolls([]);
     } finally {
       setPollsLoading(false);
@@ -300,11 +305,11 @@ function MediaPollFields({
             <FileText className="w-3.5 h-3.5" />
             {requiredHeaderFormat ? (
               <>
-                {requiredHeaderFormat} header media{" "}
-                <span className="text-destructive font-normal">(required)</span>
+                {t("whatsapp.cloud.media.header_media", { format: requiredHeaderFormat })}{" "}
+                <span className="text-destructive font-normal">{t("whatsapp.cloud.media.required")}</span>
               </>
             ) : (
-              "Media & Poll (optional)"
+              t("whatsapp.cloud.media.title")
             )}
           </Label>
         </div>
@@ -322,7 +327,7 @@ function MediaPollFields({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {m === "none" ? "No media" : m === "url" ? "Public URL" : "Upload file"}
+              {m === "none" ? t("whatsapp.cloud.media.mode_none") : m === "url" ? t("whatsapp.cloud.media.mode_url") : t("whatsapp.cloud.media.mode_file")}
             </button>
           ))}
         </div>
@@ -332,13 +337,13 @@ function MediaPollFields({
             {/* Media type select (URL mode) */}
             {state.mediaMode === "url" && (
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-medium text-muted-foreground">Media type</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("whatsapp.cloud.media.type_label")}</Label>
                 <Select value={state.mediaType} onValueChange={v => update("mediaType", v as WAMediaType)}>
                   <SelectTrigger className="h-8 text-xs border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="image">Image</SelectItem>
-                    <SelectItem value="document">Document / PDF</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="image">{t("whatsapp.cloud.media.type_image")}</SelectItem>
+                    <SelectItem value="document">{t("whatsapp.cloud.media.type_document")}</SelectItem>
+                    <SelectItem value="video">{t("whatsapp.cloud.media.type_video")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -347,7 +352,7 @@ function MediaPollFields({
             {/* URL input */}
             {state.mediaMode === "url" && (
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-medium text-muted-foreground">Public HTTPS URL</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("whatsapp.cloud.media.url_label")}</Label>
                 <Input
                   type="url"
                   placeholder="https://example.com/file.pdf"
@@ -363,8 +368,8 @@ function MediaPollFields({
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-[11px] font-medium text-muted-foreground">
                   {multiple
-                    ? "Upload image(s) — one per contact (matched by filename), or a single shared image"
-                    : "Pick a file (image / PDF / video)"}
+                    ? t("whatsapp.cloud.media.upload_multi_label")
+                    : t("whatsapp.cloud.media.upload_single_label")}
                 </Label>
                 <Input
                   type="file"
@@ -393,14 +398,14 @@ function MediaPollFields({
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] text-muted-foreground">
-                          {files.length} image{files.length === 1 ? "" : "s"} selected
+                          {t("whatsapp.cloud.media.images_selected", { count: files.length })}
                         </p>
                         <button
                           type="button"
                           onClick={() => onFilesChange?.([])}
                           className="text-[10px] font-semibold text-destructive hover:underline"
                         >
-                          Clear
+                          {t("whatsapp.cloud.media.clear")}
                         </button>
                       </div>
                       {matchHint}
@@ -420,7 +425,7 @@ function MediaPollFields({
             {!multiple && (state.mediaMode === "file" || state.mediaType === "document") && (
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-[11px] font-medium text-muted-foreground">
-                  Filename (shown to recipients on document tile)
+                  {t("whatsapp.cloud.media.filename_label")}
                 </Label>
                 <Input
                   placeholder="e.g. Invitation.pdf"
@@ -438,7 +443,7 @@ function MediaPollFields({
         <div className="space-y-1.5 pt-1 border-t border-border/60">
           <div className="flex items-center justify-between gap-2">
             <Label className="text-[11px] font-medium text-muted-foreground">
-              Poll (optional)
+              {t("whatsapp.cloud.media.poll_label")}
             </Label>
             <div className="flex items-center gap-2">
               {polls.length > 0 && (
@@ -462,7 +467,7 @@ function MediaPollFields({
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
               >
                 <Plus className="w-3 h-3" strokeWidth={2.6} />
-                Create new
+                {t("whatsapp.cloud.media.create_new")}
               </button>
             </div>
           </div>
@@ -475,12 +480,12 @@ function MediaPollFields({
           ) : pollsLoading && polls.length === 0 ? (
             <div className="h-8 inline-flex items-center gap-2 text-[11px] text-muted-foreground px-2">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Loading polls…
+              {t("whatsapp.cloud.media.loading_polls")}
             </div>
           ) : polls.length === 0 ? (
             <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2.5 text-center">
               <p className="text-[11px] text-muted-foreground">
-                No polls yet — tap <span className="font-semibold text-primary">Create new</span> to make one.
+                {t("whatsapp.cloud.media.no_polls_pre")} <span className="font-semibold text-primary">{t("whatsapp.cloud.media.create_new")}</span> {t("whatsapp.cloud.media.no_polls_post")}
               </p>
             </div>
           ) : (
@@ -490,17 +495,17 @@ function MediaPollFields({
                 onValueChange={(v) => update("pollId", v === "__none__" ? "" : v)}
               >
                 <SelectTrigger className="h-8 text-xs border-border">
-                  <SelectValue placeholder="Choose a poll…" />
+                  <SelectValue placeholder={t("whatsapp.cloud.media.choose_poll")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">No poll</SelectItem>
+                  <SelectItem value="__none__">{t("whatsapp.cloud.media.no_poll")}</SelectItem>
                   {polls.map((p) => (
                     <SelectItem key={p.id} value={p.title} className="text-xs">
                       <span className="inline-flex items-center gap-2">
                         <span className="font-medium">{p.title}</span>
                         {!p.is_active && (
                           <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
-                            closed
+                            {t("whatsapp.cloud.media.poll_closed")}
                           </span>
                         )}
                       </span>
@@ -509,7 +514,7 @@ function MediaPollFields({
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground">
-                Recipients receive reply buttons matching the poll's options.
+                {t("whatsapp.cloud.media.poll_hint")}
               </p>
             </>
           )}
@@ -561,6 +566,7 @@ function SingleSendTab({
   bulk?: boolean;
   prefillRecipients?: string[];
 }) {
+  const { t } = useLanguage();
   const { sendSingle, sendApprovedTemplateBulk, getMessageTemplates, getUsers, isLoading } = useWhatsAppCloud();
   // Policy: WhatsApp proactive sends are template-only (WHATSAPP_REQUIRE_TEMPLATE).
   const [msgType] = useState<"text" | "template">("template");
@@ -666,7 +672,7 @@ function SingleSendTab({
       setAudienceHasNext(res?.has_next ?? false);
       setAudienceHasPrevious(res?.has_previous ?? false);
     } catch (e) {
-      setAudienceError(e instanceof Error ? e.message : "Failed to load contacts");
+      setAudienceError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_contacts_failed"));
     } finally {
       setAudienceLoading(false);
     }
@@ -695,7 +701,7 @@ function SingleSendTab({
         const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
         setMetaTpls(list);
       } catch (e) {
-        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : "Failed to load templates");
+        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
       } finally {
         if (!cancelled) setMetaTplLoading(false);
       }
@@ -760,7 +766,7 @@ function SingleSendTab({
     try {
       if (msgType === "template") {
         if (!selectedMetaTpl) {
-          setError("Pick an approved template first.");
+          setError(t("whatsapp.cloud.errors.pick_template_first"));
           return;
         }
 
@@ -823,11 +829,11 @@ function SingleSendTab({
     } catch (e) {
       if (e instanceof WAInsufficientCreditsError) {
         setError(
-          `Out of WhatsApp credits — need ${e.credits_required}, have ${e.credits_available}. Top up to continue.`,
+          t("whatsapp.cloud.errors.insufficient_credits", { required: e.credits_required, available: e.credits_available }),
         );
         return;
       }
-      setError(e instanceof Error ? e.message : "Send failed");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.send_failed"));
     }
   };
 
@@ -837,7 +843,7 @@ function SingleSendTab({
   // thing that differs from single send.
   const sendSelected = async () => {
     if (!selectedMetaTpl) {
-      setError("Pick an approved template first.");
+      setError(t("whatsapp.cloud.errors.pick_template_first"));
       return;
     }
     // Recipients: when per-contact images are uploaded, the matched contacts ARE
@@ -948,12 +954,12 @@ function SingleSendTab({
       <div className="space-y-4 min-w-0">
       {/* Message type */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message Type</Label>
+        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.message_type")}</Label>
         <div className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-sm text-foreground">
-          Approved template
+          {t("whatsapp.cloud.approved_template")}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          WhatsApp messages are sent using approved templates only.
+          {t("whatsapp.cloud.templates_only_notice")}
         </p>
       </div>
 
@@ -962,12 +968,12 @@ function SingleSendTab({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-              Message {mediaPoll.state.mediaMode !== "none" && <span className="text-[10px] font-normal text-muted-foreground">(caption)</span>}
+              {t("whatsapp.cloud.message_label")} {mediaPoll.state.mediaMode !== "none" && <span className="text-[10px] font-normal text-muted-foreground">({t("whatsapp.cloud.caption")})</span>}
             </Label>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{text.length} chars</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">{t("whatsapp.cloud.chars_count", { count: text.length })}</span>
           </div>
           <Textarea
-            placeholder={mediaPoll.state.pollId ? "Optional poll question override…" : "Type your message here…"}
+            placeholder={mediaPoll.state.pollId ? t("whatsapp.cloud.poll_override_placeholder") : t("whatsapp.cloud.message_placeholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={4}
@@ -978,7 +984,7 @@ function SingleSendTab({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Approved template</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.approved_template")}</Label>
               <button
                 type="button"
                 onClick={() => { setMetaTpls([]); setMetaTplName(""); }}
@@ -986,20 +992,20 @@ function SingleSendTab({
                 className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1 disabled:opacity-50"
               >
                 {metaTplLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Reload
+                {t("whatsapp.cloud.reload")}
               </button>
             </div>
             {metaTplLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> {t("whatsapp.cloud.loading_approved_templates")}</div>
             ) : metaTplError ? (
               <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{metaTplError}</AlertDescription></Alert>
             ) : metaTpls.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground">
-                No approved Meta templates found. Create and get one approved in the Templates tab.
+                {t("whatsapp.cloud.no_approved_templates_found")}
               </div>
             ) : (
               <Select value={metaTplName} onValueChange={setMetaTplName}>
-                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select an approved template" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder={t("whatsapp.cloud.select_approved_template")} /></SelectTrigger>
                 <SelectContent>
                   {metaTpls.map((tpl) => (
                     <SelectItem key={tpl.id} value={tpl.name}>
@@ -1011,7 +1017,7 @@ function SingleSendTab({
             )}
             {selectedMetaTpl && (
               <p className="text-[10.5px] text-muted-foreground/80 pt-0.5">
-                Live from Meta · only APPROVED templates shown · delivers outside the 24-hour window.
+                {t("whatsapp.cloud.live_from_meta_notice")}
               </p>
             )}
           </div>
@@ -1019,9 +1025,9 @@ function SingleSendTab({
           {/* Per-recipient parameter mapping — each {{n}} resolves from a contact field. */}
           {selectedMetaTpl && metaBodyTokens.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Parameters</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.parameters")}</Label>
               <p className="text-[11px] text-muted-foreground">
-                Map each placeholder to a contact field, or set fixed text. Fills in from the recipient's contact when sent.
+                {t("whatsapp.cloud.parameters_hint")}
               </p>
               <div className="space-y-1.5">
                 {metaBodyTokens.map((tok) => {
@@ -1043,18 +1049,18 @@ function SingleSendTab({
                       >
                         <SelectTrigger className="h-9 text-sm border-border w-40"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="name">Contact name</SelectItem>
-                          <SelectItem value="phone">Phone</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="attr">Custom attribute…</SelectItem>
-                          <SelectItem value="static">Fixed text…</SelectItem>
+                          <SelectItem value="name">{t("whatsapp.cloud.param_source.name")}</SelectItem>
+                          <SelectItem value="phone">{t("whatsapp.cloud.param_source.phone")}</SelectItem>
+                          <SelectItem value="email">{t("whatsapp.cloud.param_source.email")}</SelectItem>
+                          <SelectItem value="attr">{t("whatsapp.cloud.param_source.attribute")}</SelectItem>
+                          <SelectItem value="static">{t("whatsapp.cloud.param_source.fixed_text")}</SelectItem>
                         </SelectContent>
                       </Select>
                       {isAttr && (
                         <Input
                           value={src.slice("attr:".length)}
                           onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `attr:${e.target.value}` }))}
-                          placeholder="attribute key (e.g. company)"
+                          placeholder={t("whatsapp.cloud.param_source.attribute_placeholder")}
                           className="h-9 text-sm border-border flex-1 min-w-[140px]"
                         />
                       )}
@@ -1062,7 +1068,7 @@ function SingleSendTab({
                         <Input
                           value={src.slice("static:".length)}
                           onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `static:${e.target.value}` }))}
-                          placeholder="same text for everyone"
+                          placeholder={t("whatsapp.cloud.param_source.fixed_text_placeholder")}
                           className="h-9 text-sm border-border flex-1 min-w-[140px]"
                         />
                       )}
@@ -1075,7 +1081,7 @@ function SingleSendTab({
 
           {selectedMetaTpl && metaNeedsImage && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400">
-              This template has a {String(metaHeaderFormat).toLowerCase()} header — attach a shared {String(metaHeaderFormat).toLowerCase()} below (Media).
+              {t("whatsapp.cloud.media_header_required_notice", { format: String(metaHeaderFormat).toLowerCase() })}
             </p>
           )}
         </div>
@@ -1097,10 +1103,8 @@ function SingleSendTab({
           matchHint={
             matchImages.length > 0 ? (
               <p className="text-[10px] text-muted-foreground leading-snug">
-                Matched by filename — phone (e.g. <span className="font-mono">255712345678.png</span>) or
-                name (e.g. <span className="font-mono">john_magesa.jpg</span>).{" "}
-                <span className="font-semibold text-[#1ebe5d]">{matchedAudienceCount}</span> of{" "}
-                {audience.length} on this page matched · others use the first image.
+                {t("whatsapp.cloud.match_hint_filename", { phoneExample: "255712345678.png", nameExample: "john_magesa.jpg" })}{" "}
+                <span className="font-semibold text-[#1ebe5d]">{matchedAudienceCount}</span> {t("whatsapp.cloud.match_hint_of", { total: audience.length })}
               </p>
             ) : null
           }
@@ -1129,7 +1133,7 @@ function SingleSendTab({
       {!bulk && bulkSending && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[12px]">
-            <span className="text-muted-foreground">Sending…</span>
+            <span className="text-muted-foreground">{t("whatsapp.cloud.sending")}</span>
             <span className="tabular-nums">
               <span className="font-bold text-foreground">{bulkPct}%</span>
               <span className="text-muted-foreground"> · {bulkProgress.done}/{bulkProgress.total}</span>
@@ -1150,23 +1154,23 @@ function SingleSendTab({
         <Alert className="py-2 border-green-200 bg-green-50 dark:bg-green-950/30">
           <CheckCircle className="h-3.5 w-3.5 text-green-600" />
           <AlertDescription className="text-xs text-green-800 dark:text-green-300">
-            Delivered to <span className="font-mono font-semibold">{result.to}</span>
-            {result.message_id && <span className="ml-2 opacity-60">ID: {result.message_id}</span>}
+            {t("whatsapp.cloud.delivered_to")} <span className="font-mono font-semibold">{result.to}</span>
+            {result.message_id && <span className="ml-2 opacity-60">{t("whatsapp.cloud.message_id_label")}: {result.message_id}</span>}
             {lastSendMeta && (lastSendMeta.credits_used !== undefined || lastSendMeta.media_type || lastSendMeta.poll_id) && (
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] opacity-80">
                 {lastSendMeta.credits_used !== undefined && (
                   <span className="px-1.5 py-0.5 rounded bg-emerald-200/40 dark:bg-emerald-900/40">
-                    {lastSendMeta.credits_used} credit{lastSendMeta.credits_used === 1 ? "" : "s"} used
-                    {lastSendMeta.credits_after !== undefined && ` · ${lastSendMeta.credits_after} left`}
+                    {t("whatsapp.cloud.credits_used", { count: lastSendMeta.credits_used })}
+                    {lastSendMeta.credits_after !== undefined && ` · ${t("whatsapp.cloud.credits_left", { count: lastSendMeta.credits_after })}`}
                   </span>
                 )}
                 {lastSendMeta.media_type && (
                   <span className="px-1.5 py-0.5 rounded bg-emerald-200/40 dark:bg-emerald-900/40">
-                    {lastSendMeta.media_type} attached
+                    {lastSendMeta.media_type} {t("whatsapp.cloud.attached")}
                   </span>
                 )}
                 {lastSendMeta.poll_id && (
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-200/40 dark:bg-emerald-900/40">poll attached</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-200/40 dark:bg-emerald-900/40">{t("whatsapp.cloud.poll_attached")}</span>
                 )}
               </div>
             )}
@@ -1177,9 +1181,9 @@ function SingleSendTab({
       {/* Contact table */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Contacts</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.contacts_label")}</Label>
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">Per page:</span>
+            <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.per_page")}</span>
             <Select value={String(audiencePageSize)} onValueChange={v => { setAudiencePageSize(Number(v)); setAudiencePage(1); }}>
               <SelectTrigger className="h-6 w-14 text-[11px] border-border"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -1188,7 +1192,7 @@ function SingleSendTab({
                 <SelectItem value="100">100</SelectItem>
               </SelectContent>
             </Select>
-            {audienceTotal !== null && <span className="text-[11px] text-muted-foreground ml-1">{audienceTotal} total</span>}
+            {audienceTotal !== null && <span className="text-[11px] text-muted-foreground ml-1">{t("whatsapp.cloud.total_count", { count: audienceTotal })}</span>}
           </div>
         </div>
 
@@ -1199,7 +1203,7 @@ function SingleSendTab({
           <Input
             value={audienceSearch}
             onChange={(e) => setAudienceSearch(e.target.value)}
-            placeholder="Search by name, phone, or email…"
+            placeholder={t("whatsapp.cloud.search_contacts_placeholder")}
             className="h-9 pl-8 pr-8 text-sm border-border"
           />
           {audienceSearch && (
@@ -1224,9 +1228,9 @@ function SingleSendTab({
         <TableWrap>
           <table className="w-full table-fixed">
             <TableHead>
-              <Th>Name</Th>
-              <Th>Phone</Th>
-              <Th className="hidden md:table-cell">Email</Th>
+              <Th>{t("whatsapp.cloud.table.name")}</Th>
+              <Th>{t("whatsapp.cloud.table.phone")}</Th>
+              <Th className="hidden md:table-cell">{t("whatsapp.cloud.table.email")}</Th>
               <Th>
                 {showSelectBoxes ? (
                   <input
@@ -1244,9 +1248,9 @@ function SingleSendTab({
                     className="h-4 w-4 accent-primary"
                   />
                 ) : bulk ? (
-                  "Image"
+                  t("whatsapp.cloud.table.image")
                 ) : (
-                  "Action"
+                  t("whatsapp.cloud.table.action")
                 )}
               </Th>
             </TableHead>
@@ -1254,7 +1258,7 @@ function SingleSendTab({
               {audienceLoading ? (
                 <tr><td colSpan={4} className="text-center py-6"><Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" /></td></tr>
               ) : audience.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">No contacts found.</td></tr>
+                <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">{t("whatsapp.cloud.no_contacts_found")}</td></tr>
               ) : (
                 audience.map((user) => {
                   const imgMatch =
@@ -1287,7 +1291,7 @@ function SingleSendTab({
                         />
                       ) : bulk ? (
                         imgMatch ? (
-                          <span className="text-[11px] font-semibold text-[#1ebe5d]">Matched</span>
+                          <span className="text-[11px] font-semibold text-[#1ebe5d]">{t("whatsapp.cloud.matched")}</span>
                         ) : (
                           <span className="text-[11px] text-muted-foreground">—</span>
                         )
@@ -1298,7 +1302,7 @@ function SingleSendTab({
                           onClick={() => sendOne(user.phone_number)}
                           disabled={isLoading || bulkSending || !rowCanSend(user)}
                         >
-                          {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send"}
+                          {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : t("whatsapp.cloud.send")}
                         </Button>
                       )}
                     </Td>
@@ -1324,7 +1328,7 @@ function SingleSendTab({
             {bulkSending && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-muted-foreground">Sending…</span>
+                  <span className="text-muted-foreground">{t("whatsapp.cloud.sending")}</span>
                   <span className="tabular-nums">
                     <span className="font-bold text-foreground">{bulkPct}%</span>
                     <span className="text-muted-foreground"> · {bulkProgress.done}/{bulkProgress.total}</span>
@@ -1342,17 +1346,16 @@ function SingleSendTab({
               <Alert className="py-2 border-green-200 bg-green-50 dark:bg-green-950/30">
                 <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                 <AlertDescription className="text-xs text-green-800 dark:text-green-300">
-                  Sent to {bulkSummary.sent} contact{bulkSummary.sent === 1 ? "" : "s"}
-                  {bulkSummary.failed > 0 && ` · ${bulkSummary.failed} failed`}.
+                  {t("whatsapp.cloud.sent_to_contacts", { count: bulkSummary.sent })}
+                  {bulkSummary.failed > 0 && ` · ${t("whatsapp.cloud.failed_count_suffix", { count: bulkSummary.failed })}`}.
                 </AlertDescription>
               </Alert>
             )}
             {matchImages.length > 0 && (
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Recipients are the{" "}
+                {t("whatsapp.cloud.matched_recipients_notice_pre")}{" "}
                 <span className="font-semibold text-foreground/80">{matchedContacts.length}</span>{" "}
-                contact{matchedContacts.length === 1 ? "" : "s"} matched from your uploaded images —
-                no need to select them below.
+                {t("whatsapp.cloud.matched_recipients_notice_post", { count: matchedContacts.length })}
               </p>
             )}
             <Button
@@ -1361,7 +1364,7 @@ function SingleSendTab({
               className="w-full h-10 gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white rounded-xl"
             >
               {bulkSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Send to {bulkRecipientCount} {matchImages.length > 0 ? "matched" : "selected"}
+              {t("whatsapp.cloud.send_to_n", { count: bulkRecipientCount })} {matchImages.length > 0 ? t("whatsapp.cloud.matched") : t("whatsapp.cloud.selected")}
             </Button>
           </div>
         )}
@@ -1393,6 +1396,7 @@ function BulkSendTab({
   prefillRecipients?: string[];
   onUseImageBulkForTemplate?: (templateName: string) => void;
 }) {
+  const { t } = useLanguage();
   const { sendBulk, sendFromTemplate, sendTemplateRich, getMessageTemplates, sendApprovedTemplateBulk, getUsers, isLoading } = useWhatsAppCloud();
   // Policy: WhatsApp proactive sends are template-only (WHATSAPP_REQUIRE_TEMPLATE).
   const [msgType] = useState<"text" | "template">("template");
@@ -1511,14 +1515,14 @@ function BulkSendTab({
         page_size: 100,
       });
       if (!res.success || !res.data) {
-        setTemplatesError(res.error || res.message || "Failed to load templates");
+        setTemplatesError(res.error || res.message || t("whatsapp.cloud.errors.load_templates_failed"));
         return;
       }
       const list = res.data.results?.templates ?? [];
       setTemplates(list);
       if (selectId && list.some((t) => t.id === selectId)) setTemplateId(selectId);
     } catch (e) {
-      setTemplatesError(e instanceof Error ? e.message : "Failed to load templates");
+      setTemplatesError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
     } finally {
       setTemplatesLoading(false);
       templatesLoadedForRef.current = true;
@@ -1567,7 +1571,7 @@ function BulkSendTab({
         const list = (res?.data?.graph?.data ?? []).filter((t) => t.status === "APPROVED");
         setMetaTpls(list);
       } catch (e) {
-        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : "Failed to load templates");
+        if (!cancelled) setMetaTplError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
       } finally {
         if (!cancelled) setMetaTplLoading(false);
       }
@@ -1641,7 +1645,7 @@ function BulkSendTab({
       setAudienceHasNext(res?.has_next ?? false);
       setAudienceHasPrevious(res?.has_previous ?? false);
     } catch (e) {
-      setAudienceError(e instanceof Error ? e.message : "Failed to load contacts");
+      setAudienceError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_contacts_failed"));
     } finally {
       setAudienceLoading(false);
     }
@@ -1681,11 +1685,11 @@ function BulkSendTab({
   const handle = async (list: string[]) => {
     setError(null);
     setResult(null);
-    if (list.length === 0) { setError("No recipients selected."); return; }
-    if (list.length > 500) { setError("Maximum 500 recipients per request."); return; }
+    if (list.length === 0) { setError(t("whatsapp.cloud.errors.no_recipients_selected")); return; }
+    if (list.length > 500) { setError(t("whatsapp.cloud.errors.max_500_recipients")); return; }
     try {
       if (msgType === "template") {
-        if (!selectedMetaTpl) { setError("Pick an approved template first."); return; }
+        if (!selectedMetaTpl) { setError(t("whatsapp.cloud.errors.pick_template_first")); return; }
 
         // Real Meta type=template send. Each {{n}} resolves per recipient from
         // the mapped contact field. An optional shared header image comes from
@@ -1730,11 +1734,11 @@ function BulkSendTab({
     } catch (e) {
       if (e instanceof WAInsufficientCreditsError) {
         setError(
-          `Out of WhatsApp credits — need ${e.credits_required}, have ${e.credits_available}. Top up to continue.`,
+          t("whatsapp.cloud.errors.insufficient_credits", { required: e.credits_required, available: e.credits_available }),
         );
         return;
       }
-      setError(e instanceof Error ? e.message : "Bulk send failed");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.bulk_send_failed"));
     }
   };
 
@@ -1745,7 +1749,7 @@ function BulkSendTab({
     } else if (sendMode === "page") {
       await handle(pagePhones);
     } else if (sendMode === "group") {
-      if (groupPhones.length > 500) { setError("Maximum 500 recipients per request."); return; }
+      if (groupPhones.length > 500) { setError(t("whatsapp.cloud.errors.max_500_recipients")); return; }
       await handle(groupPhones);
     } else {
       try {
@@ -1760,11 +1764,11 @@ function BulkSendTab({
           page++;
         }
         setAudienceLoading(false);
-        if (allContacts.length > 500) { setError("Maximum 500 recipients per request."); return; }
+        if (allContacts.length > 500) { setError(t("whatsapp.cloud.errors.max_500_recipients")); return; }
         await handle(allContacts);
       } catch (e) {
         setAudienceLoading(false);
-        setError(e instanceof Error ? e.message : "Failed to load contacts");
+        setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_contacts_failed"));
       }
     }
   };
@@ -1798,12 +1802,12 @@ function BulkSendTab({
     <div className="space-y-4 p-1">
       {/* Message type — Text vs Approved template */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message Type</Label>
+        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.message_type")}</Label>
         <div className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-sm text-foreground">
-          Approved template
+          {t("whatsapp.cloud.approved_template")}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          WhatsApp messages are sent using approved templates only.
+          {t("whatsapp.cloud.templates_only_notice")}
         </p>
       </div>
 
@@ -1811,17 +1815,17 @@ function BulkSendTab({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-              Message {mediaPoll.state.mediaMode !== "none" && <span className="text-[10px] font-normal text-muted-foreground">(caption)</span>}
+              {t("whatsapp.cloud.message_label")} {mediaPoll.state.mediaMode !== "none" && <span className="text-[10px] font-normal text-muted-foreground">({t("whatsapp.cloud.caption")})</span>}
             </Label>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{text.length} chars</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">{t("whatsapp.cloud.chars_count", { count: text.length })}</span>
           </div>
-          <Textarea placeholder={mediaPoll.state.pollId ? "Optional poll question override…" : "Your message here…"} value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
+          <Textarea placeholder={mediaPoll.state.pollId ? t("whatsapp.cloud.poll_override_placeholder") : t("whatsapp.cloud.your_message_placeholder")} value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
         </div>
       ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Approved template</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.approved_template")}</Label>
               <button
                 type="button"
                 onClick={() => { setMetaTpls([]); setMetaTplName(""); }}
@@ -1829,20 +1833,20 @@ function BulkSendTab({
                 className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1 disabled:opacity-50"
               >
                 {metaTplLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Reload
+                {t("whatsapp.cloud.reload")}
               </button>
             </div>
             {metaTplLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1"><Loader2 className="w-3 h-3 animate-spin" /> {t("whatsapp.cloud.loading_approved_templates")}</div>
             ) : metaTplError ? (
               <Alert variant="destructive" className="py-1.5"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{metaTplError}</AlertDescription></Alert>
             ) : metaTpls.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 text-[12px] text-muted-foreground">
-                No approved Meta templates found. Create and get one approved in the Templates tab.
+                {t("whatsapp.cloud.no_approved_templates_found")}
               </div>
             ) : (
               <Select value={metaTplName} onValueChange={setMetaTplName}>
-                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder="Select an approved template" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm border-border"><SelectValue placeholder={t("whatsapp.cloud.select_approved_template")} /></SelectTrigger>
                 <SelectContent>
                   {metaTpls.map((tpl) => (
                     <SelectItem key={tpl.id} value={tpl.name}>
@@ -1854,7 +1858,7 @@ function BulkSendTab({
             )}
             {selectedMetaTpl && (
               <p className="text-[10.5px] text-muted-foreground/80 pt-0.5">
-                Live from Meta · only APPROVED templates shown · delivers outside the 24-hour window.
+                {t("whatsapp.cloud.live_from_meta_notice")}
               </p>
             )}
           </div>
@@ -1862,9 +1866,9 @@ function BulkSendTab({
           {/* Per-receiver parameter mapping — each {{n}} resolves from a contact field. */}
           {selectedMetaTpl && metaBodyTokens.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Parameters per receiver</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.parameters_per_receiver")}</Label>
               <p className="text-[11px] text-muted-foreground">
-                Map each placeholder to a contact field — it fills in from each receiver's own contact when sent.
+                {t("whatsapp.cloud.parameters_per_receiver_hint")}
               </p>
               <div className="space-y-1.5">
                 {metaBodyTokens.map((tok) => {
@@ -1886,18 +1890,18 @@ function BulkSendTab({
                       >
                         <SelectTrigger className="h-9 text-sm border-border w-40"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="name">Contact name</SelectItem>
-                          <SelectItem value="phone">Phone</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="attr">Custom attribute…</SelectItem>
-                          <SelectItem value="static">Fixed text…</SelectItem>
+                          <SelectItem value="name">{t("whatsapp.cloud.param_source.name")}</SelectItem>
+                          <SelectItem value="phone">{t("whatsapp.cloud.param_source.phone")}</SelectItem>
+                          <SelectItem value="email">{t("whatsapp.cloud.param_source.email")}</SelectItem>
+                          <SelectItem value="attr">{t("whatsapp.cloud.param_source.attribute")}</SelectItem>
+                          <SelectItem value="static">{t("whatsapp.cloud.param_source.fixed_text")}</SelectItem>
                         </SelectContent>
                       </Select>
                       {isAttr && (
                         <Input
                           value={src.slice("attr:".length)}
                           onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `attr:${e.target.value}` }))}
-                          placeholder="attribute key (e.g. company)"
+                          placeholder={t("whatsapp.cloud.param_source.attribute_placeholder")}
                           className="h-9 text-sm border-border flex-1 min-w-[140px]"
                         />
                       )}
@@ -1905,7 +1909,7 @@ function BulkSendTab({
                         <Input
                           value={src.slice("static:".length)}
                           onChange={(e) => setParamSources((prev) => ({ ...prev, [tok]: `static:${e.target.value}` }))}
-                          placeholder="same text for everyone"
+                          placeholder={t("whatsapp.cloud.param_source.fixed_text_placeholder")}
                           className="h-9 text-sm border-border flex-1 min-w-[140px]"
                         />
                       )}
@@ -1920,9 +1924,9 @@ function BulkSendTab({
             metaHeaderFormat === "IMAGE" && onUseImageBulkForTemplate ? (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5 space-y-2">
                 <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-snug">
-                  This template has an image header. Attach <span className="font-semibold">one shared image</span> below (Media), or send a
-                  {" "}<span className="font-semibold">different image to each receiver</span> — matched automatically by filename
-                  {" "}(e.g. <code className="font-mono">255712345678.jpg</code> or <code className="font-mono">Mary_Smith.png</code>).
+                  {t("whatsapp.cloud.image_header_notice_pre")} <span className="font-semibold">{t("whatsapp.cloud.one_shared_image")}</span> {t("whatsapp.cloud.image_header_notice_mid")}
+                  {" "}<span className="font-semibold">{t("whatsapp.cloud.different_image_per_receiver")}</span> {t("whatsapp.cloud.image_header_notice_post")}
+                  {" "}(e.g. <code className="font-mono">255712345678.jpg</code> {t("whatsapp.cloud.or")} <code className="font-mono">Mary_Smith.png</code>).
                 </p>
                 <button
                   type="button"
@@ -1930,12 +1934,12 @@ function BulkSendTab({
                   className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-white text-[12px] font-semibold hover:bg-amber-600 transition active:scale-[0.98]"
                 >
                   <ImageIcon className="w-3.5 h-3.5" strokeWidth={2.4} />
-                  Upload one image per receiver →
+                  {t("whatsapp.cloud.upload_image_per_receiver")}
                 </button>
               </div>
             ) : (
               <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                This template has a {String(metaHeaderFormat).toLowerCase()} header — attach a shared {String(metaHeaderFormat).toLowerCase()} below (Media).
+                {t("whatsapp.cloud.media_header_required_notice", { format: String(metaHeaderFormat).toLowerCase() })}
               </p>
             )
           )}
@@ -1959,18 +1963,18 @@ function BulkSendTab({
           reads as a distinct mode rather than just another radio option. */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Delay (ms)</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.delay_ms")}</Label>
           <div className="flex items-center gap-2">
             <Input type="number" min={0} max={2000} value={delayMs} onChange={(e) => setDelayMs(Number(e.target.value))} className="w-20 h-9 text-sm border-border" />
-            <span className="text-[11px] text-muted-foreground">Default 80</span>
+            <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.default_80")}</span>
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Send To</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.send_to")}</Label>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="radio" name="bulkSendMode" value="selected" checked={sendMode === "selected"} onChange={() => setSendMode("selected")} className="w-3.5 h-3.5 accent-[#25D366]" />
-              <span>Selected</span>
+              <span>{t("whatsapp.cloud.selected")}</span>
               {checked.size > 0 && (
                 <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-[#25D366] text-white text-[10px] font-bold leading-none">
                   {checked.size}
@@ -1979,11 +1983,11 @@ function BulkSendTab({
             </label>
             <label className="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="radio" name="bulkSendMode" value="page" checked={sendMode === "page"} onChange={() => setSendMode("page")} className="w-3.5 h-3.5 accent-[#25D366]" />
-              Page ({audience.length})
+              {t("whatsapp.cloud.page_count", { count: audience.length })}
             </label>
             <label className="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="radio" name="bulkSendMode" value="all" checked={sendMode === "all"} onChange={() => setSendMode("all")} className="w-3.5 h-3.5 accent-[#25D366]" />
-              All ({audienceTotal ?? 0})
+              {t("whatsapp.cloud.all_count", { count: audienceTotal ?? 0 })}
             </label>
           </div>
         </div>
@@ -2004,7 +2008,7 @@ function BulkSendTab({
             ].join(" ")}
           >
             <Users className="w-3.5 h-3.5" strokeWidth={2.4} />
-            <span>Group</span>
+            <span>{t("whatsapp.cloud.group")}</span>
             {sendMode === "group" && groupPhones.length > 0 && (
               <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-white/25 text-white text-[10px] font-bold leading-none">
                 {groupPhones.length}
@@ -2024,9 +2028,9 @@ function BulkSendTab({
                 <Users className="w-4 h-4 text-[#25D366]" strokeWidth={2.4} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-[13px] font-bold text-foreground leading-tight">Contact Group</h3>
+                <h3 className="text-[13px] font-bold text-foreground leading-tight">{t("whatsapp.cloud.contact_group")}</h3>
                 <p className="text-[11px] text-muted-foreground leading-tight">
-                  Pick All Contacts or a tag-based group to send to.
+                  {t("whatsapp.cloud.contact_group_hint")}
                 </p>
               </div>
             </div>
@@ -2035,7 +2039,7 @@ function BulkSendTab({
                 variant="secondary"
                 className={`text-[11px] font-semibold ${groupPhones.length > 500 ? "bg-destructive/15 text-destructive" : "bg-[#25D366]/15 text-[#1ebe5d]"}`}
               >
-                {groupContacts.length} {groupContacts.length === 1 ? "recipient" : "recipients"}
+                {t("whatsapp.cloud.recipients_count", { count: groupContacts.length })}
               </Badge>
             )}
           </div>
@@ -2050,16 +2054,16 @@ function BulkSendTab({
               }}
             >
               <SelectTrigger className="h-10 text-sm border-border">
-                <SelectValue placeholder={isLoadingAllContacts ? "Loading contacts…" : "Choose a contact group"} />
+                <SelectValue placeholder={isLoadingAllContacts ? t("whatsapp.cloud.loading_contacts") : t("whatsapp.cloud.choose_contact_group")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  <span className="font-medium">All Contacts</span>
+                  <span className="font-medium">{t("whatsapp.cloud.all_contacts")}</span>
                   <span className="ml-1.5 text-[11px] text-muted-foreground">({allContacts.length})</span>
                 </SelectItem>
                 <SelectItem value="choose-group">
-                  <span className="font-medium">Choose Group Name</span>
-                  <span className="ml-1.5 text-[11px] text-muted-foreground">({groupTags.length} tag{groupTags.length === 1 ? "" : "s"})</span>
+                  <span className="font-medium">{t("whatsapp.cloud.choose_group_name")}</span>
+                  <span className="ml-1.5 text-[11px] text-muted-foreground">({t("whatsapp.cloud.tag_count", { count: groupTags.length })})</span>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -2068,15 +2072,15 @@ function BulkSendTab({
               <div>
                 {isLoadingAllContacts && groupTags.length === 0 ? (
                   <div className="flex items-center gap-2 text-[12px] text-muted-foreground py-3 justify-center">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading groups…
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("whatsapp.cloud.loading_groups")}
                   </div>
                 ) : groupTags.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-4 text-center">
                     <p className="text-[12px] text-muted-foreground">
-                      No tags found on your contacts.
+                      {t("whatsapp.cloud.no_tags_found")}
                     </p>
                     <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                      Add tags to contacts to enable group sending.
+                      {t("whatsapp.cloud.add_tags_hint")}
                     </p>
                   </div>
                 ) : (
@@ -2097,7 +2101,7 @@ function BulkSendTab({
                         >
                           <span className="block truncate">{label.replace(/_/g, " ")}</span>
                           <span className={`block text-[10.5px] mt-0.5 ${isSelected ? "text-white/85" : "text-muted-foreground"}`}>
-                            {count} {count === 1 ? "contact" : "contacts"}
+                            {t("whatsapp.cloud.contacts_count", { count })}
                           </span>
                         </button>
                       );
@@ -2111,10 +2115,10 @@ function BulkSendTab({
               <div className="pt-2 border-t border-border/40">
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                    Preview
+                    {t("whatsapp.cloud.preview")}
                   </Label>
                   {groupPhones.length > 500 && (
-                    <span className="text-[11px] text-destructive font-semibold">Over 500 limit — narrow the group</span>
+                    <span className="text-[11px] text-destructive font-semibold">{t("whatsapp.cloud.over_500_limit")}</span>
                   )}
                 </div>
                 <div className="max-h-32 overflow-y-auto rounded-lg bg-muted/30 p-2 flex flex-wrap gap-1.5">
@@ -2125,7 +2129,7 @@ function BulkSendTab({
                   ))}
                   {groupContacts.length > 20 && (
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                      +{groupContacts.length - 20} more
+                      {t("whatsapp.cloud.n_more", { count: groupContacts.length - 20 })}
                     </span>
                   )}
                 </div>
@@ -2137,7 +2141,7 @@ function BulkSendTab({
 
       <Button onClick={handleSend} disabled={sendDisabled} className="gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white">
         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        Send to {sendCount} {sendCount === 1 ? "contact" : "contacts"}
+        {t("whatsapp.cloud.send_to_contacts", { count: sendCount })}
       </Button>
 
       {error && <Alert variant="destructive" className="py-2"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{error}</AlertDescription></Alert>}
@@ -2146,18 +2150,18 @@ function BulkSendTab({
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground -mt-1">
           {lastBulkMeta.credits_used !== undefined && (
             <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold">
-              {lastBulkMeta.credits_used} credit{lastBulkMeta.credits_used === 1 ? "" : "s"} used
-              {lastBulkMeta.credits_after !== undefined && ` · ${lastBulkMeta.credits_after} left`}
+              {t("whatsapp.cloud.credits_used", { count: lastBulkMeta.credits_used })}
+              {lastBulkMeta.credits_after !== undefined && ` · ${t("whatsapp.cloud.credits_left", { count: lastBulkMeta.credits_after })}`}
             </span>
           )}
           {lastBulkMeta.media_type && (
             <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold">
-              {lastBulkMeta.media_type} attached
+              {lastBulkMeta.media_type} {t("whatsapp.cloud.attached")}
             </span>
           )}
           {lastBulkMeta.poll_id && (
             <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-400 font-semibold">
-              poll attached
+              {t("whatsapp.cloud.poll_attached")}
             </span>
           )}
         </div>
@@ -2167,17 +2171,17 @@ function BulkSendTab({
       <div className={`space-y-2 ${sendMode === "group" ? "hidden" : ""}`}>
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Contacts</Label>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.contacts_label")}</Label>
             {checked.size > 0 && (
               <div className="flex items-center gap-1.5">
                 <button onClick={clearChecked} className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
-                  Clear
+                  {t("whatsapp.cloud.media.clear")}
                 </button>
               </div>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">Per page:</span>
+            <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.per_page")}</span>
             <Select value={String(audiencePageSize)} onValueChange={v => { setAudiencePageSize(Number(v)); setAudiencePage(1); }}>
               <SelectTrigger className="h-6 w-14 text-[11px] border-border"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -2186,7 +2190,7 @@ function BulkSendTab({
                 <SelectItem value="100">100</SelectItem>
               </SelectContent>
             </Select>
-            {audienceTotal !== null && <span className="text-[11px] text-muted-foreground">{audienceTotal} total</span>}
+            {audienceTotal !== null && <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.total_count", { count: audienceTotal })}</span>}
           </div>
         </div>
 
@@ -2197,7 +2201,7 @@ function BulkSendTab({
           <Input
             value={audienceSearch}
             onChange={(e) => setAudienceSearch(e.target.value)}
-            placeholder="Search by name, phone, or email…"
+            placeholder={t("whatsapp.cloud.search_contacts_placeholder")}
             className="h-9 pl-8 pr-8 text-sm border-border"
           />
           {audienceSearch && (
@@ -2233,16 +2237,16 @@ function BulkSendTab({
                     title="Select all on this page"
                   />
                 </th>
-                <Th>Name</Th>
-                <Th>Phone</Th>
-                <Th className="hidden md:table-cell">Email</Th>
+                <Th>{t("whatsapp.cloud.table.name")}</Th>
+                <Th>{t("whatsapp.cloud.table.phone")}</Th>
+                <Th className="hidden md:table-cell">{t("whatsapp.cloud.table.email")}</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {audienceLoading ? (
                 <tr><td colSpan={4} className="text-center py-6"><Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" /></td></tr>
               ) : audience.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">No contacts found.</td></tr>
+                <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">{t("whatsapp.cloud.no_contacts_found")}</td></tr>
               ) : (
                 audience.map((user) => {
                   const isChecked = checked.has(user.phone_number);
@@ -2288,6 +2292,7 @@ function BulkSendTab({
 type Category = "active subscribers" | "expiring soon" | "inactive paid users";
 
 function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
+  const { t } = useLanguage();
   const { getUsers, sendByCategory, isLoading } = useWhatsAppCloud();
   const [category, setCategory] = useState<Category>("active subscribers");
   const [days, setDays] = useState(15);
@@ -2311,13 +2316,13 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
       const res = await getUsers(params as Parameters<typeof getUsers>[0], waAccountId || undefined);
       setUsers(res.users); setCount(res.count); setPage(pageNum);
       if (res.total !== undefined) { setTotalCount(res.total); setHasNext(res.has_next || false); setHasPrevious(res.has_previous || false); }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_failed")); }
   };
 
   const send = async () => {
     setError(null); setResult(null);
     try { const data = await sendByCategory({ category, text, days, delay_ms: delayMs }, waAccountId || undefined); setResult(data); }
-    catch (e) { setError(e instanceof Error ? e.message : "Send failed"); }
+    catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.send_failed")); }
   };
 
   useEffect(() => { setPage(1); setTotalCount(null); setUsers([]); }, [category, days, tenantId]);
@@ -2326,31 +2331,31 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
     <div className="space-y-4 p-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Segment</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.segment")}</Label>
           <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="active subscribers">Active subscribers</SelectItem>
-              <SelectItem value="expiring soon">Expiring soon</SelectItem>
-              <SelectItem value="inactive paid users">Inactive paid users</SelectItem>
+              <SelectItem value="active subscribers">{t("whatsapp.cloud.segment_active")}</SelectItem>
+              <SelectItem value="expiring soon">{t("whatsapp.cloud.segment_expiring")}</SelectItem>
+              <SelectItem value="inactive paid users">{t("whatsapp.cloud.segment_inactive")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {category === "inactive paid users" && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Inactivity (days)</Label>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.inactivity_days")}</Label>
             <Input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-24 h-9 text-sm border-border" />
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Tenant ID</Label>
-          <Input type="text" placeholder="UUID (optional)" value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="h-9 text-sm border-border" />
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.tenant_id")}</Label>
+          <Input type="text" placeholder={t("whatsapp.cloud.uuid_optional")} value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="h-9 text-sm border-border" />
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Per Page</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.per_page_label")}</Label>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -2367,9 +2372,9 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => load(1)} disabled={isLoading} variant="outline" className="gap-2 h-9">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Load Segment
+          {t("whatsapp.cloud.load_segment")}
         </Button>
-        {totalCount !== null && <span className="text-xs text-muted-foreground">{totalCount} contact{totalCount !== 1 ? "s" : ""}</span>}
+        {totalCount !== null && <span className="text-xs text-muted-foreground">{t("whatsapp.cloud.contacts_count", { count: totalCount })}</span>}
       </div>
 
       {users.length > 0 && (
@@ -2377,10 +2382,10 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
           <TableWrap>
             <table className="w-full table-fixed">
               <TableHead>
-                <Th>Name</Th>
-                <Th>Phone</Th>
-                <Th>Status</Th>
-                <Th className="hidden lg:table-cell">Tags</Th>
+                <Th>{t("whatsapp.cloud.table.name")}</Th>
+                <Th>{t("whatsapp.cloud.table.phone")}</Th>
+                <Th>{t("status")}</Th>
+                <Th className="hidden lg:table-cell">{t("tags")}</Th>
               </TableHead>
               <tbody className="divide-y divide-border">
                 {users.map((u) => (
@@ -2389,11 +2394,11 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
                     <Td className="font-mono text-[10px] sm:text-[11px] max-w-[110px] truncate">{u.phone_number}</Td>
                     <Td>
                       <Badge variant="secondary" className={`text-[11px] px-1.5 py-0 ${u.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                        {u.is_active ? "Active" : "Inactive"}
+                        {u.is_active ? t("status.active") : t("whatsapp.cloud.inactive")}
                       </Badge>
                     </Td>
                     <Td className="hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">{u.tags?.map((t, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{t}</Badge>)}</div>
+                      <div className="flex flex-wrap gap-1">{u.tags?.map((tag, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{tag}</Badge>)}</div>
                     </Td>
                   </tr>
                 ))}
@@ -2407,20 +2412,20 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
       <div className="border-t border-border pt-4 space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message</Label>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{text.length} chars</span>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.message_label")}</Label>
+            <span className="text-[11px] text-muted-foreground tabular-nums">{t("whatsapp.cloud.chars_count", { count: text.length })}</span>
           </div>
-          <Textarea placeholder="Your message to this segment…" value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
+          <Textarea placeholder={t("whatsapp.cloud.segment_message_placeholder")} value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
         </div>
         <div className="flex items-center gap-2">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Delay (ms)</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.delay_ms")}</Label>
           <Input type="number" min={0} max={2000} value={delayMs} onChange={(e) => setDelayMs(Number(e.target.value))} className="w-20 h-9 text-sm border-border" />
-          <span className="text-[11px] text-muted-foreground">Default 80 · max 2000</span>
+          <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.default_80_max_2000")}</span>
         </div>
         <BulkResultBanner result={result} />
         <Button onClick={send} disabled={isLoading || users.length === 0 || !text.trim()} className="gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
-          Send to {users.length} Recipients
+          {t("whatsapp.cloud.send_to_recipients", { count: users.length })}
         </Button>
       </div>
     </div>
@@ -2430,6 +2435,7 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
 // ─── By User IDs Tab ──────────────────────────────────────────────────────────
 
 function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
+  const { t } = useLanguage();
   const { getUsers, sendByUserIds, isLoading } = useWhatsAppCloud();
   const [mode, setMode] = useState<"user_ids" | "phone_numbers">("phone_numbers");
   const [ids, setIds] = useState("");
@@ -2454,7 +2460,7 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
       const res = await getUsers(params as Parameters<typeof getUsers>[0], waAccountId || undefined);
       setUsers(res.users); setCount(res.count); setPage(pageNum);
       if (res.total !== undefined) { setTotalCount(res.total); setHasNext(res.has_next || false); setHasPrevious(res.has_previous || false); }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_failed")); }
   };
 
   const send = async () => {
@@ -2464,7 +2470,7 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
       const payload = mode === "user_ids" ? { text, user_ids: list } : { text, phone_numbers: list };
       const data = await sendByUserIds(payload, waAccountId || undefined);
       setResult(data);
-    } catch (e) { setError(e instanceof Error ? e.message : "Send failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.send_failed")); }
   };
 
   useEffect(() => { setPage(1); setTotalCount(null); setUsers([]); }, [ids, mode, tenantId]);
@@ -2473,21 +2479,21 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
     <div className="space-y-4 p-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Input Mode</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.input_mode")}</Label>
           <Select value={mode} onValueChange={(v) => setMode(v as "user_ids" | "phone_numbers")}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="phone_numbers">Phone numbers</SelectItem>
-              <SelectItem value="user_ids">Contact UUIDs</SelectItem>
+              <SelectItem value="phone_numbers">{t("whatsapp.cloud.phone_numbers")}</SelectItem>
+              <SelectItem value="user_ids">{t("whatsapp.cloud.contact_uuids")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Tenant ID</Label>
-          <Input type="text" placeholder="UUID (optional)" value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="h-9 text-sm border-border" />
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.tenant_id")}</Label>
+          <Input type="text" placeholder={t("whatsapp.cloud.uuid_optional")} value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="h-9 text-sm border-border" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Per Page</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.per_page_label")}</Label>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -2502,11 +2508,11 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            {mode === "phone_numbers" ? "Phone Numbers" : "Contact UUIDs"}
+            {mode === "phone_numbers" ? t("whatsapp.cloud.phone_numbers") : t("whatsapp.cloud.contact_uuids")}
           </Label>
           {ids.split(/[\n,]+/).filter(s => s.trim()).length > 0 && (
             <Badge variant="secondary" className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300">
-              {ids.split(/[\n,]+/).filter(s => s.trim()).length} items
+              {t("whatsapp.cloud.items_count", { count: ids.split(/[\n,]+/).filter(s => s.trim()).length })}
             </Badge>
           )}
         </div>
@@ -2515,7 +2521,7 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
           value={ids} onChange={(e) => setIds(e.target.value)} rows={4}
           className="font-mono text-xs resize-none border-border bg-gray-50 dark:bg-gray-900"
         />
-        <p className="text-[11px] text-muted-foreground">One per line or comma-separated</p>
+        <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.one_per_line_or_comma")}</p>
       </div>
 
       {error && <Alert variant="destructive" className="py-2"><AlertCircle className="h-3.5 w-3.5" /><AlertDescription className="text-xs">{error}</AlertDescription></Alert>}
@@ -2523,9 +2529,9 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => load(1)} disabled={isLoading} variant="outline" className="gap-2 h-9">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Load Contacts
+          {t("whatsapp.cloud.load_contacts")}
         </Button>
-        {totalCount !== null && <span className="text-xs text-muted-foreground">{totalCount} contact{totalCount !== 1 ? "s" : ""} found</span>}
+        {totalCount !== null && <span className="text-xs text-muted-foreground">{t("whatsapp.cloud.contacts_found", { count: totalCount })}</span>}
       </div>
 
       {users.length > 0 && (
@@ -2533,9 +2539,9 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
           <TableWrap>
             <table className="w-full table-fixed">
               <TableHead>
-                {mode === "phone_numbers" ? <><Th>Phone</Th><Th className="hidden sm:table-cell">Name</Th></> : <><Th>Name</Th><Th className="hidden sm:table-cell">Phone</Th></>}
-                <Th>Status</Th>
-                <Th className="hidden lg:table-cell">Tags</Th>
+                {mode === "phone_numbers" ? <><Th>{t("whatsapp.cloud.table.phone")}</Th><Th className="hidden sm:table-cell">{t("whatsapp.cloud.table.name")}</Th></> : <><Th>{t("whatsapp.cloud.table.name")}</Th><Th className="hidden sm:table-cell">{t("whatsapp.cloud.table.phone")}</Th></>}
+                <Th>{t("status")}</Th>
+                <Th className="hidden lg:table-cell">{t("tags")}</Th>
               </TableHead>
               <tbody className="divide-y divide-border">
                 {users.map((u) => (
@@ -2547,11 +2553,11 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
                     )}
                     <Td>
                       <Badge variant="secondary" className={`text-[11px] px-1.5 py-0 ${u.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                        {u.is_active ? "Active" : "Inactive"}
+                        {u.is_active ? t("status.active") : t("whatsapp.cloud.inactive")}
                       </Badge>
                     </Td>
                     <Td className="hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">{u.tags?.map((t, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{t}</Badge>)}</div>
+                      <div className="flex flex-wrap gap-1">{u.tags?.map((tag, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{tag}</Badge>)}</div>
                     </Td>
                   </tr>
                 ))}
@@ -2565,15 +2571,15 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
       <div className="border-t border-border pt-4 space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message</Label>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{text.length} chars</span>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.message_label")}</Label>
+            <span className="text-[11px] text-muted-foreground tabular-nums">{t("whatsapp.cloud.chars_count", { count: text.length })}</span>
           </div>
-          <Textarea placeholder="Your message…" value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
+          <Textarea placeholder={t("whatsapp.cloud.your_message_placeholder")} value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
         </div>
         <BulkResultBanner result={result} />
         <Button onClick={send} disabled={isLoading || !ids.trim() || !text.trim()} className="gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Hash className="w-4 h-4" />}
-          Send to {ids.split(/[\n,]+/).filter(s => s.trim()).length || 0} Recipients
+          {t("whatsapp.cloud.send_to_recipients", { count: ids.split(/[\n,]+/).filter(s => s.trim()).length || 0 })}
         </Button>
       </div>
     </div>
@@ -2583,6 +2589,7 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
 // ─── By Date Range Tab ────────────────────────────────────────────────────────
 
 function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
+  const { t } = useLanguage();
   const { getUsers, sendByDateRange, isLoading } = useWhatsAppCloud();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -2603,7 +2610,7 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
 
   const load = async (pageNum: number = 1) => {
     setError(null);
-    if (!startDate && !endDate) { setError("Provide at least one date."); return; }
+    if (!startDate && !endDate) { setError(t("whatsapp.cloud.errors.provide_a_date")); return; }
     try {
       const params: Record<string, string | number | undefined> = { type: "by_date_range", page: pageNum, page_size: pageSize };
       if (startDate) params.start_date = startDate;
@@ -2612,7 +2619,7 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
       const res = await getUsers(params as Parameters<typeof getUsers>[0], waAccountId || undefined);
       setUsers(res.users); setCount(res.count); setPage(pageNum);
       if (res.total !== undefined) { setTotalCount(res.total); setHasNext(res.has_next || false); setHasPrevious(res.has_previous || false); }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_failed")); }
   };
 
   useEffect(() => { setPage(1); setTotalCount(null); setUsers([]); setChecked(new Set()); }, [startDate, endDate, tenantId]);
@@ -2647,32 +2654,32 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
   return (
     <div className="space-y-4 p-1">
       <div>
-        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Registration Date Range</Label>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Filter contacts by when they were added (created_at).</p>
+        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.registration_date_range")}</Label>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{t("whatsapp.cloud.registration_date_range_hint")}</p>
       </div>
 
       {/* Filters + Load Contacts in one row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
         <div className="space-y-1.5">
-          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">From</Label>
+          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("whatsapp.cloud.from")}</Label>
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-sm border-border" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">To</Label>
+          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("whatsapp.cloud.to")}</Label>
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-sm border-border" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide opacity-0 select-none">Action</Label>
+          <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide opacity-0 select-none">{t("whatsapp.cloud.table.action")}</Label>
           <div className="flex items-center gap-2">
             <Button onClick={() => load(1)} disabled={isLoading || (!startDate && !endDate)} variant="outline" className="gap-2 h-9 w-full sm:w-auto">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Load
+              {t("whatsapp.cloud.load")}
             </Button>
-            {totalCount !== null && <span className="text-[11px] text-muted-foreground whitespace-nowrap">{totalCount} found</span>}
+            {totalCount !== null && <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("whatsapp.cloud.n_found", { count: totalCount })}</span>}
           </div>
         </div>
         <div className="space-y-1.5 hidden lg:block">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Per Page</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.per_page_label")}</Label>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -2691,20 +2698,20 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Contacts</Label>
+              <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.contacts_label")}</Label>
               {checked.size > 0 && (
                 <div className="flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#25D366] bg-green-50 dark:bg-green-950/30 border border-green-200 rounded-full px-2 py-0.5">
-                    {checked.size} selected
+                    {t("whatsapp.cloud.n_selected", { count: checked.size })}
                   </span>
                   <button onClick={clearChecked} className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors">
-                    Clear
+                    {t("whatsapp.cloud.media.clear")}
                   </button>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-1.5 lg:hidden">
-              <span className="text-[11px] text-muted-foreground">Per page:</span>
+              <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.per_page")}</span>
               <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
                 <SelectTrigger className="h-6 w-14 text-[11px] border-border"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -2730,9 +2737,9 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
                       title="Select all on this page"
                     />
                   </th>
-                  <Th>Name</Th>
-                  <Th>Phone</Th>
-                  <Th>Status</Th>
+                  <Th>{t("whatsapp.cloud.table.name")}</Th>
+                  <Th>{t("whatsapp.cloud.table.phone")}</Th>
+                  <Th>{t("status")}</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -2757,7 +2764,7 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
                       <Td className="font-mono text-[10px] sm:text-[11px] max-w-[110px] truncate">{u.phone_number}</Td>
                       <Td>
                         <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${u.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                          {u.is_active ? "Active" : "Inactive"}
+                          {u.is_active ? t("status.active") : t("whatsapp.cloud.inactive")}
                         </Badge>
                       </Td>
                     </tr>
@@ -2774,28 +2781,28 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
       {/* Message */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Message</Label>
-          <span className="text-[11px] text-muted-foreground tabular-nums">{text.length} chars</span>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.message_label")}</Label>
+          <span className="text-[11px] text-muted-foreground tabular-nums">{t("whatsapp.cloud.chars_count", { count: text.length })}</span>
         </div>
-        <Textarea placeholder="Your message to contacts in this date range…" value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
+        <Textarea placeholder={t("whatsapp.cloud.date_range_message_placeholder")} value={text} onChange={(e) => setText(e.target.value)} rows={3} className="text-sm resize-none border-border" />
       </div>
 
       {/* Delay + Send mode */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Delay (ms)</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.delay_ms")}</Label>
           <div className="flex items-center gap-2">
             <Input type="number" min={0} max={2000} value={delayMs} onChange={(e) => setDelayMs(Number(e.target.value))} className="w-20 h-9 text-sm border-border" />
-            <span className="text-[11px] text-muted-foreground">Default 80</span>
+            <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.default_80")}</span>
           </div>
         </div>
         {users.length > 0 && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Send To</Label>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.send_to")}</Label>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="radio" name="sendModeDate" value="selected" checked={sendMode === "selected"} onChange={() => setSendMode("selected")} className="w-3.5 h-3.5 accent-[#25D366]" />
-                <span>Selected</span>
+                <span>{t("whatsapp.cloud.selected")}</span>
                 {checked.size > 0 && (
                   <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-[#25D366] text-white text-[10px] font-bold leading-none">
                     {checked.size}
@@ -2804,11 +2811,11 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
               </label>
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="radio" name="sendModeDate" value="page" checked={sendMode === "page"} onChange={() => setSendMode("page")} className="w-3.5 h-3.5 accent-[#25D366]" />
-                Page ({users.length})
+                {t("whatsapp.cloud.page_count", { count: users.length })}
               </label>
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                 <input type="radio" name="sendModeDate" value="all" checked={sendMode === "all"} onChange={() => setSendMode("all")} className="w-3.5 h-3.5 accent-[#25D366]" />
-                All ({totalCount ?? 0})
+                {t("whatsapp.cloud.all_count", { count: totalCount ?? 0 })}
               </label>
             </div>
           </div>
@@ -2820,8 +2827,8 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
       <Button
         onClick={async () => {
           setError(null); setResult(null);
-          if (!startDate && !endDate) { setError("Provide at least one date."); return; }
-          if (sendMode === "selected" && checked.size === 0) { setError("No contacts selected."); return; }
+          if (!startDate && !endDate) { setError(t("whatsapp.cloud.errors.provide_a_date")); return; }
+          if (sendMode === "selected" && checked.size === 0) { setError(t("whatsapp.cloud.errors.no_contacts_selected")); return; }
           try {
             const data = await sendByDateRange({
               start_date: startDate || undefined,
@@ -2831,13 +2838,13 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
               ...(sendMode === "selected" ? { phone_numbers: [...checked] } : {}),
             }, waAccountId || undefined);
             setResult(data);
-          } catch (e) { setError(e instanceof Error ? e.message : "Send failed"); }
+          } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.send_failed")); }
         }}
         disabled={isLoading || sendCount === 0 || !text.trim() || (!startDate && !endDate)}
         className="gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white"
       >
         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        Send to {sendCount} {sendCount === 1 ? "contact" : "contacts"}
+        {t("whatsapp.cloud.send_to_contacts", { count: sendCount })}
       </Button>
     </div>
   );
@@ -2846,6 +2853,7 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
 // ─── Audience Inspector ───────────────────────────────────────────────────────
 
 function AudienceTab({ waAccountId }: { waAccountId: string }) {
+  const { t } = useLanguage();
   const { getUsers, isLoading } = useWhatsAppCloud();
   const [queryType, setQueryType] = useState<"all" | "by_category" | "by_user_ids" | "by_date_range">("all");
   const [category, setCategory] = useState("active subscribers");
@@ -2874,7 +2882,7 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
       const res = await getUsers(params as Parameters<typeof getUsers>[0], waAccountId || undefined);
       setUsers(res.users); setCount(res.count); setPage(pageNum);
       if (res.total !== undefined) { setTotalCount(res.total); setHasNext(res.has_next || false); setHasPrevious(res.has_previous || false); }
-    } catch (e) { setError(e instanceof Error ? e.message : "Load failed"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_failed")); }
   };
 
   useEffect(() => { setPage(1); setTotalCount(null); setUsers([]); }, [queryType, category, userIds, startDate, endDate, days, tenantId]);
@@ -2883,34 +2891,34 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
     <div className="space-y-4 p-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Filter</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.filter")}</Label>
           <Select value={queryType} onValueChange={(v) => setQueryType(v as typeof queryType)}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All contacts</SelectItem>
-              <SelectItem value="by_category">By segment</SelectItem>
-              <SelectItem value="by_user_ids">By contact UUIDs</SelectItem>
-              <SelectItem value="by_date_range">By date range</SelectItem>
+              <SelectItem value="all">{t("whatsapp.cloud.all_contacts")}</SelectItem>
+              <SelectItem value="by_category">{t("whatsapp.cloud.by_segment")}</SelectItem>
+              <SelectItem value="by_user_ids">{t("whatsapp.cloud.by_contact_uuids")}</SelectItem>
+              <SelectItem value="by_date_range">{t("whatsapp.cloud.by_date_range")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {queryType === "by_category" && (
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Segment</Label>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.segment")}</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="active subscribers">Active subscribers</SelectItem>
-                <SelectItem value="expiring soon">Expiring soon</SelectItem>
-                <SelectItem value="inactive paid users">Inactive paid users</SelectItem>
+                <SelectItem value="active subscribers">{t("whatsapp.cloud.segment_active")}</SelectItem>
+                <SelectItem value="expiring soon">{t("whatsapp.cloud.segment_expiring")}</SelectItem>
+                <SelectItem value="inactive paid users">{t("whatsapp.cloud.segment_inactive")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Per Page</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.per_page_label")}</Label>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
             <SelectTrigger className="h-9 text-sm border-border"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -2924,27 +2932,27 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
 
       {queryType === "by_category" && category === "inactive paid users" && (
         <div className="flex items-center gap-2">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Inactivity (days)</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.inactivity_days")}</Label>
           <Input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-20 h-9 text-sm border-border" />
         </div>
       )}
 
       {queryType === "by_user_ids" && (
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Contact UUIDs</Label>
+          <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.contact_uuids")}</Label>
           <Input placeholder="uuid-1, uuid-2, uuid-3" value={userIds} onChange={(e) => setUserIds(e.target.value)} className="h-9 text-sm border-border" />
-          <p className="text-[11px] text-muted-foreground">Comma-separated</p>
+          <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.comma_separated")}</p>
         </div>
       )}
 
       {queryType === "by_date_range" && (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">From</Label>
+            <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("whatsapp.cloud.from")}</Label>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-sm border-border" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">To</Label>
+            <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("whatsapp.cloud.to")}</Label>
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-sm border-border" />
           </div>
         </div>
@@ -2955,9 +2963,9 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => load(1)} disabled={isLoading} variant="outline" className="gap-2 h-9">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Load Audience
+          {t("whatsapp.cloud.load_audience")}
         </Button>
-        {totalCount !== null && <span className="text-xs text-muted-foreground">{totalCount} contact{totalCount !== 1 ? "s" : ""}</span>}
+        {totalCount !== null && <span className="text-xs text-muted-foreground">{t("whatsapp.cloud.contacts_count", { count: totalCount })}</span>}
       </div>
 
       {users.length > 0 && (
@@ -2965,10 +2973,10 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
           <TableWrap>
             <table className="w-full table-fixed">
               <TableHead>
-                <Th>Name</Th>
-                <Th>Phone</Th>
-                <Th>Status</Th>
-                <Th className="hidden lg:table-cell">Tags</Th>
+                <Th>{t("whatsapp.cloud.table.name")}</Th>
+                <Th>{t("whatsapp.cloud.table.phone")}</Th>
+                <Th>{t("status")}</Th>
+                <Th className="hidden lg:table-cell">{t("tags")}</Th>
               </TableHead>
               <tbody className="divide-y divide-border">
                 {users.map((u) => (
@@ -2977,11 +2985,11 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
                     <Td className="font-mono text-[10px] sm:text-[11px] max-w-[110px] truncate">{u.phone_number}</Td>
                     <Td>
                       <Badge variant="secondary" className={`text-[11px] px-1.5 py-0 ${u.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                        {u.is_active ? "Active" : "Inactive"}
+                        {u.is_active ? t("status.active") : t("whatsapp.cloud.inactive")}
                       </Badge>
                     </Td>
                     <Td className="hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">{u.tags.map((t, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{t}</Badge>)}</div>
+                      <div className="flex flex-wrap gap-1">{u.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-[11px] px-1.5 py-0">{tag}</Badge>)}</div>
                     </Td>
                   </tr>
                 ))}
@@ -3009,6 +3017,7 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
   const initialMode: TemplateMode =
     tmplParams.get("tmode") === "submitted" ? "submitted" : "approved";
   const [templateMode, setTemplateMode] = useState<TemplateMode>(initialMode);
+  const { t } = useLanguage();
 
   const navigate = useNavigate();
 
@@ -3019,10 +3028,10 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Templates
+            {t("whatsapp.cloud.templates_title")}
           </Label>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Create a Meta template, preview it, and submit for approval.
+            {t("whatsapp.cloud.templates_subtitle")}
           </p>
         </div>
         <Button
@@ -3031,7 +3040,7 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
           title="Build a template and submit it to Meta for approval"
         >
           <Plus className="w-4 h-4" strokeWidth={2.4} />
-          Create template
+          {t("whatsapp.cloud.create_template")}
         </Button>
       </div>
 
@@ -3042,8 +3051,8 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
         className="grid grid-cols-2 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-xl"
       >
         {[
-          { key: "approved" as const, label: "Approved (Meta)" },
-          { key: "submitted" as const, label: "Submitted" },
+          { key: "approved" as const, label: t("whatsapp.cloud.approved_meta") },
+          { key: "submitted" as const, label: t("whatsapp.cloud.submitted") },
         ].map(({ key, label }) => {
           const active = templateMode === key;
           return (
@@ -3097,12 +3106,14 @@ interface MetaTemplateBrowserProps {
 
 function MetaTemplateBrowser({
   waAccountId,
-  headerLabel = "Browse Meta-approved templates (advanced)",
+  headerLabel,
   defaultOpen = false,
   onUse,
 }: MetaTemplateBrowserProps) {
+  const { t } = useLanguage();
   const { getMessageTemplates, isLoading } = useWhatsAppCloud();
   const { toast } = useToast();
+  const resolvedHeaderLabel = headerLabel ?? t("whatsapp.cloud.browse_meta_templates");
   const [open, setOpen] = useState(defaultOpen);
   const [items, setItems] = useState<WAMessageTemplate[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("APPROVED");
@@ -3119,7 +3130,7 @@ function MetaTemplateBrowser({
       });
       setItems(res.data?.graph?.data ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load Meta templates");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_meta_templates_failed"));
     }
   };
 
@@ -3130,34 +3141,34 @@ function MetaTemplateBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const importAndUse = async (t: WAMessageTemplate) => {
+  const importAndUse = async (tpl: WAMessageTemplate) => {
     if (!onUse) return;
     const body =
-      (t.components?.find((c) => c.type === "BODY") as { text?: string } | undefined)?.text ?? "";
+      (tpl.components?.find((c) => c.type === "BODY") as { text?: string } | undefined)?.text ?? "";
     if (!body) {
-      toast({ title: "No body text", description: "This Meta template has no BODY block to import.", variant: "destructive" });
+      toast({ title: t("whatsapp.cloud.no_body_text"), description: t("whatsapp.cloud.no_body_text_desc"), variant: "destructive" });
       return;
     }
-    setUsingId(t.id);
+    setUsingId(tpl.id);
     try {
       const res = await apiClient.createTemplate({
-        name: t.name,
+        name: tpl.name,
         channel: "whatsapp",
-        language: (t.language as "en" | "sw") || "en",
-        category: (t.category as string)?.toLowerCase() || "general",
+        language: (tpl.language as "en" | "sw") || "en",
+        category: (tpl.category as string)?.toLowerCase() || "general",
         body_text: convertMetaBodyToLocal(body),
-        description: `Imported from Meta template "${t.name}" (${t.language || "—"})`,
+        description: `Imported from Meta template "${tpl.name}" (${tpl.language || "—"})`,
       });
       if (!res.success || !res.data) {
-        throw new Error(res.error || res.message || "Failed to import template");
+        throw new Error(res.error || res.message || t("whatsapp.cloud.errors.import_template_failed"));
       }
-      toast({ title: "Template imported", description: res.data.name });
+      toast({ title: t("whatsapp.cloud.template_imported"), description: res.data.name });
       onUse(res.data);
     } catch (e) {
       // Server may reject duplicate names — surface the message so the user can rename
       toast({
-        title: "Couldn't import",
-        description: e instanceof Error ? e.message : "Import failed",
+        title: t("whatsapp.cloud.import_failed_title"),
+        description: e instanceof Error ? e.message : t("whatsapp.cloud.errors.import_failed"),
         variant: "destructive",
       });
     } finally {
@@ -3174,7 +3185,7 @@ function MetaTemplateBrowser({
       >
         <span className="flex items-center gap-1.5 text-foreground/80">
           <FileText className="w-3.5 h-3.5" />
-          {headerLabel}
+          {resolvedHeaderLabel}
         </span>
         {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
@@ -3183,20 +3194,20 @@ function MetaTemplateBrowser({
         <div className="px-3 pb-3 pt-1 space-y-3 border-t border-border/40">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <Label className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55">Status</Label>
+              <Label className="text-[10.5px] font-bold tracking-wider uppercase text-foreground/55">{t("status")}</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-8 text-[12px] w-36 border-border"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="all">{t("whatsapp.cloud.all")}</SelectItem>
+                  <SelectItem value="APPROVED">{t("approved")}</SelectItem>
+                  <SelectItem value="PENDING">{t("pending")}</SelectItem>
+                  <SelectItem value="REJECTED">{t("rejected")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button onClick={load} disabled={isLoading} variant="outline" size="sm" className="h-8 text-[12px]">
               {isLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-              Reload
+              {t("whatsapp.cloud.reload")}
             </Button>
           </div>
 
@@ -3209,34 +3220,34 @@ function MetaTemplateBrowser({
 
           {items.length > 0 ? (
             <div className="space-y-1.5">
-              {items.map((t) => (
+              {items.map((tpl) => (
                 <div
-                  key={`${t.id}-${t.language}`}
+                  key={`${tpl.id}-${tpl.language}`}
                   className="rounded-lg border border-border/60 bg-card p-2.5 text-[12px] flex items-center justify-between gap-2 flex-wrap"
                 >
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="font-mono font-semibold truncate">{t.name}</span>
-                    <Badge variant="secondary" className="text-[10px] uppercase">{t.language || "—"}</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{t.status}</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{t.category || "—"}</Badge>
+                    <span className="font-mono font-semibold truncate">{tpl.name}</span>
+                    <Badge variant="secondary" className="text-[10px] uppercase">{tpl.language || "—"}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{tpl.status}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{tpl.category || "—"}</Badge>
                   </div>
-                  {onUse && t.status === "APPROVED" && (
+                  {onUse && tpl.status === "APPROVED" && (
                     <Button
                       size="sm"
                       variant="outline"
                       className="h-7 text-[11px]"
-                      disabled={usingId === t.id}
-                      onClick={() => importAndUse(t)}
+                      disabled={usingId === tpl.id}
+                      onClick={() => importAndUse(tpl)}
                     >
-                      {usingId === t.id ? (
+                      {usingId === tpl.id ? (
                         <>
                           <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                          Importing…
+                          {t("whatsapp.cloud.importing")}
                         </>
                       ) : (
                         <>
                           <Plus className="w-3 h-3 mr-1" />
-                          Use template
+                          {t("whatsapp.cloud.use_template")}
                         </>
                       )}
                     </Button>
@@ -3247,7 +3258,7 @@ function MetaTemplateBrowser({
           ) : (
             !isLoading && (
               <p className="text-[11px] text-muted-foreground text-center py-4">
-                No Meta-side templates returned for the selected status.
+                {t("whatsapp.cloud.no_meta_templates_for_status")}
               </p>
             )
           )}
@@ -3260,6 +3271,7 @@ function MetaTemplateBrowser({
 // ─── Poll Results Tab ────────────────────────────────────────────────────────
 
 function PollResultsTab() {
+  const { t } = useLanguage();
   const { getPollResults, getPollResultsByName, listPolls, deletePoll, isLoading } =
     useWhatsAppCloud();
   const [query, setQuery] = useState("");
@@ -3294,7 +3306,7 @@ function PollResultsTab() {
       const res = await listPolls({ page_size: 50 });
       setPolls(res.results ?? []);
     } catch (e) {
-      setPollsError(e instanceof Error ? e.message : "Failed to load polls");
+      setPollsError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_polls_failed"));
       setPolls([]);
     } finally {
       setPollsLoading(false);
@@ -3317,7 +3329,7 @@ function PollResultsTab() {
     // need a setTimeout(0) trick to read the new title back from state.
     const q = (opts?.queryOverride ?? query).trim();
     if (!q) {
-      setError("Enter a poll name or ID first.");
+      setError(t("whatsapp.cloud.errors.enter_poll_name_first"));
       return;
     }
     setError(null);
@@ -3339,7 +3351,7 @@ function PollResultsTab() {
       setPage(useAll ? 1 : targetPage);
     } catch (e) {
       if (reqId !== reqIdRef.current) return;
-      setError(e instanceof Error ? e.message : "Failed to load results");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_results_failed"));
       setData(null);
     } finally {
       if (reqId === reqIdRef.current) setSelectedLoading(false);
@@ -3381,8 +3393,8 @@ function PollResultsTab() {
       {/* Create poll banner */}
       <div className="rounded-2xl border border-primary/20 dark:border-primary/30 bg-primary/[0.04] dark:bg-primary/10 px-3.5 py-2.5 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[12.5px] font-semibold text-foreground leading-tight">Need a new RSVP poll?</p>
-          <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">Create one with up to 3 reply buttons in seconds.</p>
+          <p className="text-[12.5px] font-semibold text-foreground leading-tight">{t("whatsapp.cloud.need_new_poll")}</p>
+          <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">{t("whatsapp.cloud.need_new_poll_hint")}</p>
         </div>
         <Button
           onClick={() => setCreateOpen(true)}
@@ -3390,7 +3402,7 @@ function PollResultsTab() {
           className="h-9 px-3 rounded-lg text-[12px] font-semibold gap-1.5 flex-shrink-0"
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
-          Create poll
+          {t("whatsapp.cloud.create_poll")}
         </Button>
       </div>
 
@@ -3407,7 +3419,7 @@ function PollResultsTab() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Your polls
+            {t("whatsapp.cloud.your_polls")}
           </Label>
           <button
             type="button"
@@ -3420,7 +3432,7 @@ function PollResultsTab() {
             ) : (
               <RefreshCw className="w-3 h-3" />
             )}
-            Refresh
+            {t("whatsapp.cloud.refresh")}
           </button>
         </div>
 
@@ -3432,11 +3444,11 @@ function PollResultsTab() {
         ) : pollsLoading && polls.length === 0 ? (
           <div className="rounded-xl border border-border bg-card/50 px-3 py-4 text-center text-xs text-muted-foreground">
             <Loader2 className="w-4 h-4 mx-auto animate-spin mb-1" />
-            Loading your polls…
+            {t("whatsapp.cloud.loading_your_polls")}
           </div>
         ) : polls.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
-            No polls yet — tap <span className="font-semibold text-primary">Create poll</span> above to make one.
+            {t("whatsapp.cloud.no_polls_pre")} <span className="font-semibold text-primary">{t("whatsapp.cloud.create_poll")}</span> {t("whatsapp.cloud.no_polls_above_post")}
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card divide-y divide-border max-h-72 overflow-y-auto">
@@ -3463,7 +3475,7 @@ function PollResultsTab() {
                         variant={p.is_active ? "default" : "secondary"}
                         className="text-[9.5px] py-0 flex-shrink-0"
                       >
-                        {p.is_active ? "Active" : "Closed"}
+                        {p.is_active ? t("status.active") : t("whatsapp.cloud.closed")}
                       </Badge>
                       {loadingHere && (
                         <Loader2
@@ -3486,7 +3498,7 @@ function PollResultsTab() {
                       ))}
                       {typeof p.response_count === "number" && (
                         <span className="text-[10px] text-muted-foreground tabular-nums ml-auto">
-                          {p.response_count} responses
+                          {t("whatsapp.cloud.n_responses", { count: p.response_count })}
                         </span>
                       )}
                     </div>
@@ -3494,7 +3506,7 @@ function PollResultsTab() {
                   <button
                     type="button"
                     onClick={async () => {
-                      if (!window.confirm(`Archive "${p.title}"?`)) return;
+                      if (!window.confirm(t("whatsapp.cloud.archive_confirm", { title: p.title }))) return;
                       try {
                         await deletePoll(p.id);
                         await refreshPolls();
@@ -3516,10 +3528,10 @@ function PollResultsTab() {
 
       {/* Lookup row */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Poll name or ID</Label>
+        <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.poll_name_or_id")}</Label>
         <div className="flex flex-wrap gap-2">
           <Input
-            placeholder='e.g. "Mwaliko wa Harusi" or paste UUID'
+            placeholder={t("whatsapp.cloud.poll_name_or_id_placeholder")}
             value={query}
             onChange={e => {
               setQuery(e.target.value);
@@ -3530,14 +3542,14 @@ function PollResultsTab() {
             className="flex-1 min-w-[260px] h-9 text-sm border-border"
           />
           <Input
-            placeholder="Filter by option (optional)"
+            placeholder={t("whatsapp.cloud.filter_by_option_placeholder")}
             value={optionFilter}
             onChange={e => setOptionFilter(e.target.value)}
             className="w-52 h-9 text-sm border-border"
           />
           <Button onClick={() => load(1)} disabled={isLoading || !query.trim()} className="gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Load results
+            {t("whatsapp.cloud.load_results")}
           </Button>
         </div>
         <label className="flex items-center gap-2 text-[11px] text-foreground/80 cursor-pointer select-none pt-1">
@@ -3547,7 +3559,7 @@ function PollResultsTab() {
             onChange={(e) => setShowAll(e.target.checked)}
             className="h-3.5 w-3.5 accent-primary"
           />
-          Show all responses in one page (up to 50,000)
+          {t("whatsapp.cloud.show_all_responses")}
         </label>
       </div>
 
@@ -3567,7 +3579,7 @@ function PollResultsTab() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-foreground">{data.poll.title}</h3>
                   <Badge variant={data.poll.is_active ? "default" : "secondary"} className="text-[10px]">
-                    {data.poll.is_active ? "Active" : "Closed"}
+                    {data.poll.is_active ? t("status.active") : t("whatsapp.cloud.closed")}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">{data.poll.question}</p>
@@ -3598,7 +3610,7 @@ function PollResultsTab() {
               </div>
 
               <p className="text-[11px] text-muted-foreground pt-1 border-t border-border">
-                Total responses: <span className="font-semibold text-foreground">{data.summary.total}</span>
+                {t("whatsapp.cloud.total_responses")} <span className="font-semibold text-foreground">{data.summary.total}</span>
               </p>
             </CardContent>
           </Card>
@@ -3609,15 +3621,15 @@ function PollResultsTab() {
               <AlertCircle className="h-3.5 w-3.5" />
               <AlertDescription className="text-xs flex flex-wrap items-center gap-2">
                 <span>
-                  Showing the first{" "}
+                  {t("whatsapp.cloud.showing_first")}{" "}
                   <span className="font-semibold tabular-nums">
                     {(responses?.max_items ?? responses?.items.length ?? 0).toLocaleString()}
                   </span>{" "}
-                  of{" "}
+                  {t("whatsapp.cloud.of")}{" "}
                   <span className="font-semibold tabular-nums">
                     {responses?.total.toLocaleString()}
                   </span>{" "}
-                  responses. Switch to paged mode to view the rest.
+                  {t("whatsapp.cloud.responses_switch_to_paged")}
                 </span>
                 <Button
                   size="sm"
@@ -3628,7 +3640,7 @@ function PollResultsTab() {
                   }}
                   className="h-7 px-2.5 text-[11px] font-semibold gap-1"
                 >
-                  Load page 2 →
+                  {t("whatsapp.cloud.load_page_2")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -3636,21 +3648,21 @@ function PollResultsTab() {
 
           {/* Response list */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">Individual responses</Label>
+            <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.individual_responses")}</Label>
             <TableWrap>
               <table className="w-full table-fixed">
                 <TableHead>
-                  <Th>Name</Th>
-                  <Th>Phone</Th>
-                  <Th className="hidden sm:table-cell">Tags</Th>
-                  <Th>Option</Th>
-                  <Th className="hidden md:table-cell">When</Th>
+                  <Th>{t("whatsapp.cloud.table.name")}</Th>
+                  <Th>{t("whatsapp.cloud.table.phone")}</Th>
+                  <Th className="hidden sm:table-cell">{t("tags")}</Th>
+                  <Th>{t("whatsapp.cloud.table.option")}</Th>
+                  <Th className="hidden md:table-cell">{t("whatsapp.cloud.table.when")}</Th>
                 </TableHead>
                 <tbody className="divide-y divide-border">
                   {data.responses.items.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-6 text-xs text-muted-foreground">
-                        No responses yet.
+                        {t("whatsapp.cloud.no_responses_yet")}
                       </td>
                     </tr>
                   ) : (
@@ -3728,6 +3740,7 @@ function BulkImageSendTab({
   prefill?: { templateName: string } | null;
   onPrefillConsumed?: () => void;
 }) {
+  const { t } = useLanguage();
   const { createJob, getJob, listJobs, isLoading } = useWhatsAppBulkImageSend();
   // Load the user's address book on mount so we can auto-resolve each uploaded
   // image's filename to a contact (phone first, normalized name fallback —
@@ -3794,7 +3807,7 @@ function BulkImageSendTab({
         );
         setTplList(imgTpls);
       } catch (e) {
-        if (!cancelled) setTplError(e instanceof Error ? e.message : "Failed to load templates");
+        if (!cancelled) setTplError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_templates_failed"));
       } finally {
         if (!cancelled) setTplLoading(false);
       }
@@ -3876,7 +3889,7 @@ function BulkImageSendTab({
       });
       setJobs(res.items ?? []);
     } catch (e) {
-      setJobsError(e instanceof Error ? e.message : "Failed to load jobs");
+      setJobsError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_jobs_failed"));
       setJobs([]);
     } finally {
       setJobsLoading(false);
@@ -4109,7 +4122,7 @@ function BulkImageSendTab({
         pollJob(res.job_id);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start bulk send");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.start_bulk_send_failed"));
     }
   };
 
@@ -4118,6 +4131,14 @@ function BulkImageSendTab({
     running: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30",
     completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
     failed: "bg-destructive/10 text-destructive border-destructive/30",
+  };
+
+  const jobStatusLabel: Record<string, string> = {
+    all: t("whatsapp.cloud.job_status.all"),
+    pending: t("status.pending"),
+    running: t("whatsapp.cloud.job_status.running"),
+    completed: t("whatsapp.cloud.job_status.completed"),
+    failed: t("status.failed"),
   };
 
   return (
@@ -4129,10 +4150,10 @@ function BulkImageSendTab({
       {/* Intro */}
       <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-3.5 py-2.5">
         <p className="text-[12.5px] font-semibold text-foreground leading-tight">
-          Personalized image send
+          {t("whatsapp.cloud.personalized_image_send")}
         </p>
         <p className="text-[11px] text-foreground/65 leading-snug mt-0.5">
-          Upload one image per contact. Files match by phone digits (e.g. <code className="font-mono">255712345678.png</code>) or normalized name (<code className="font-mono">john_magesa.jpg</code>). Caption supports{" "}
+          {t("whatsapp.cloud.personalized_image_send_hint")}{" "}
           <span className="font-mono">{"{name}"}</span>.
         </p>
       </div>
@@ -4141,7 +4162,7 @@ function BulkImageSendTab({
       <div className="space-y-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Your jobs
+            {t("whatsapp.cloud.your_jobs")}
           </Label>
           <button
             type="button"
@@ -4150,7 +4171,7 @@ function BulkImageSendTab({
             className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1 disabled:opacity-50"
           >
             {jobsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            Refresh
+            {t("whatsapp.cloud.refresh")}
           </button>
         </div>
 
@@ -4169,7 +4190,7 @@ function BulkImageSendTab({
                     : "bg-card text-foreground/70 border-border hover:bg-muted/50"
                 }`}
               >
-                {s}
+                {jobStatusLabel[s]}
               </button>
             );
           })}
@@ -4183,11 +4204,11 @@ function BulkImageSendTab({
         ) : jobsLoading && jobs.length === 0 ? (
           <div className="rounded-xl border border-border bg-card/50 px-3 py-4 text-center text-xs text-muted-foreground">
             <Loader2 className="w-4 h-4 mx-auto animate-spin mb-1" />
-            Loading jobs…
+            {t("whatsapp.cloud.loading_jobs")}
           </div>
         ) : jobs.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
-            No jobs in this filter yet. Run your first send below.
+            {t("whatsapp.cloud.no_jobs_in_filter")}
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card divide-y divide-border max-h-72 overflow-y-auto">
@@ -4208,19 +4229,19 @@ function BulkImageSendTab({
                       variant="outline"
                       className={`text-[9.5px] uppercase font-semibold py-0 ${statusColor[j.job_status] ?? ""}`}
                     >
-                      {j.job_status}
+                      {jobStatusLabel[j.job_status] ?? j.job_status}
                     </Badge>
                     <span className="text-[11px] text-foreground/80 tabular-nums">
-                      {j.sent}/{j.total_contacts} sent
+                      {t("whatsapp.cloud.n_of_m_sent", { sent: j.sent, total: j.total_contacts })}
                     </span>
                     {j.failed > 0 && (
                       <span className="text-[11px] text-destructive tabular-nums">
-                        · {j.failed} failed
+                        · {t("whatsapp.cloud.n_failed", { count: j.failed })}
                       </span>
                     )}
                     {(j.error_row_count ?? 0) > 0 && (
                       <span className="text-[11px] text-amber-600 dark:text-amber-400 tabular-nums">
-                        · {j.error_row_count} issues
+                        · {t("whatsapp.cloud.n_issues", { count: j.error_row_count })}
                       </span>
                     )}
                     {loadingHere && (
@@ -4235,11 +4256,11 @@ function BulkImageSendTab({
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular-nums">
                     <span>{new Date(j.created_at).toLocaleString()}</span>
                     {typeof j.image_count === "number" && (
-                      <span>· {j.image_count} img</span>
+                      <span>· {t("whatsapp.cloud.n_img", { count: j.image_count })}</span>
                     )}
                     {j.idempotency_key && (
                       <span className="font-mono truncate" title={j.idempotency_key}>
-                        · key: {j.idempotency_key.slice(0, 8)}…
+                        · {t("whatsapp.cloud.key_label")}: {j.idempotency_key.slice(0, 8)}…
                       </span>
                     )}
                   </div>
@@ -4253,7 +4274,7 @@ function BulkImageSendTab({
       {/* Image upload */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-          Images
+          {t("whatsapp.cloud.images")}
         </Label>
         <div
           className="rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
@@ -4266,10 +4287,10 @@ function BulkImageSendTab({
         >
           <Upload className="w-6 h-6 mx-auto text-muted-foreground" strokeWidth={1.8} />
           <p className="text-xs text-foreground mt-1.5 font-medium">
-            Drop PNG / JPG files or click to choose
+            {t("whatsapp.cloud.drop_files_hint")}
           </p>
           <p className="text-[10.5px] text-muted-foreground mt-0.5">
-            Max 500 files · 8 MB each
+            {t("whatsapp.cloud.max_files_hint")}
           </p>
           <input
             ref={fileInputRef}
@@ -4302,10 +4323,10 @@ function BulkImageSendTab({
             ))}
             <p className="text-[10.5px] text-muted-foreground pt-1 border-t border-border/60 flex flex-wrap gap-x-2">
               <span>
-                {files.length} file{files.length === 1 ? "" : "s"} selected
+                {t("whatsapp.cloud.n_files_selected", { count: files.length })}
               </span>
               <span className="tabular-nums">
-                · total {(files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)).toFixed(1)} MB
+                · {t("whatsapp.cloud.total_mb", { size: (files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)).toFixed(1) })}
               </span>
             </p>
           </div>
@@ -4318,13 +4339,11 @@ function BulkImageSendTab({
             <Alert className="py-2 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
               <AlertCircle className="h-3.5 w-3.5" />
               <AlertDescription className="text-xs leading-snug">
-                Heads-up: total upload is{" "}
+                {t("whatsapp.cloud.large_upload_warning_pre")}{" "}
                 <span className="font-semibold tabular-nums">
                   {(files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)).toFixed(0)} MB
                 </span>
-                . Some servers cap request bodies at 10–50 MB and will reject the
-                batch with a 413 error. If that happens, split into smaller groups
-                or compress the images first.
+                . {t("whatsapp.cloud.large_upload_warning_post")}
               </AlertDescription>
             </Alert>
           )}
@@ -4334,41 +4353,40 @@ function BulkImageSendTab({
       {files.length > 0 && (
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Matched contacts
+            {t("whatsapp.cloud.matched_contacts")}
           </Label>
           {contactsLoading && addressBook.length === 0 ? (
             <div className="rounded-xl border border-border bg-card/50 px-3 py-3 text-center text-xs text-muted-foreground">
               <Loader2 className="w-4 h-4 mx-auto animate-spin mb-1" />
-              Loading your contacts so we can match them to your images…
+              {t("whatsapp.cloud.loading_contacts_to_match")}
             </div>
           ) : addressBook.length === 0 ? (
             <Alert className="py-2">
               <AlertCircle className="h-3.5 w-3.5" />
               <AlertDescription className="text-xs">
-                No saved contacts yet — files will be matched server-side by phone
-                digits in the filename. Add contacts on the{" "}
+                {t("whatsapp.cloud.no_saved_contacts_pre")}{" "}
                 <Link to="/messaging/contacts" className="font-semibold text-primary hover:underline">
-                  Contacts
+                  {t("contacts")}
                 </Link>{" "}
-                page so the caption's <span className="font-mono">{"{name}"}</span> can fill in.
+                {t("whatsapp.cloud.no_saved_contacts_post")}
               </AlertDescription>
             </Alert>
           ) : (
             <>
               {/* Match counters */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <Stat label="Images" value={files.length} />
+                <Stat label={t("whatsapp.cloud.images")} value={files.length} />
                 <Stat
-                  label="Matched"
+                  label={t("whatsapp.cloud.matched")}
                   value={fileMatches.matchedIds.size}
                   tone={fileMatches.matchedIds.size > 0 ? "success" : undefined}
                 />
                 <Stat
-                  label="Unmatched"
+                  label={t("whatsapp.cloud.unmatched")}
                   value={fileMatches.unmatched.length}
                   tone={fileMatches.unmatched.length > 0 ? "danger" : undefined}
                 />
-                <Stat label="By phone" value={fileMatches.viaPhoneCount} />
+                <Stat label={t("whatsapp.cloud.by_phone")} value={fileMatches.viaPhoneCount} />
               </div>
 
               {/* Matched contacts list — shows the file that maps to each. */}
@@ -4418,7 +4436,7 @@ function BulkImageSendTab({
                   onClick={() => setSuppressedIds(new Set())}
                   className="text-[11px] font-semibold text-primary hover:underline"
                 >
-                  Restore {suppressedIds.size} removed match{suppressedIds.size === 1 ? "" : "es"}
+                  {t("whatsapp.cloud.restore_removed_matches", { count: suppressedIds.size })}
                 </button>
               )}
 
@@ -4426,17 +4444,14 @@ function BulkImageSendTab({
               {fileMatches.unmatched.length > 0 && (
                 <details className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2">
                   <summary className="cursor-pointer text-[11.5px] font-semibold text-amber-900 dark:text-amber-200">
-                    {fileMatches.unmatched.length} file
-                    {fileMatches.unmatched.length === 1 ? "" : "s"} didn't match any contact
+                    {t("whatsapp.cloud.n_files_no_match", { count: fileMatches.unmatched.length })}
                   </summary>
                   <p className="text-[10.5px] text-foreground/70 mt-1 leading-snug">
-                    Rename to digits-only phone (e.g. <span className="font-mono">255712345678.png</span>)
-                    or normalized name (<span className="font-mono">john_magesa.jpg</span>), or add the
-                    person to your{" "}
+                    {t("whatsapp.cloud.rename_hint_pre")}{" "}
                     <Link to="/messaging/contacts" className="font-semibold text-primary hover:underline">
-                      Contacts
+                      {t("contacts")}
                     </Link>{" "}
-                    list.
+                    {t("whatsapp.cloud.rename_hint_post")}
                   </p>
                   <div className="mt-2 max-h-40 overflow-y-auto space-y-0.5">
                     {fileMatches.unmatched.slice(0, 100).map((n, i) => (
@@ -4446,7 +4461,7 @@ function BulkImageSendTab({
                     ))}
                     {fileMatches.unmatched.length > 100 && (
                       <p className="text-[10.5px] text-muted-foreground italic">
-                        … and {fileMatches.unmatched.length - 100} more
+                        {t("whatsapp.cloud.n_more", { count: fileMatches.unmatched.length - 100 })}
                       </p>
                     )}
                   </div>
@@ -4461,14 +4476,14 @@ function BulkImageSendTab({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Contacts ({contacts.length})
+            {t("whatsapp.cloud.contacts_count", { count: contacts.length })}
           </Label>
           <button
             type="button"
             onClick={addRow}
             className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1"
           >
-            <Plus className="w-3 h-3" strokeWidth={2.6} /> Add row
+            <Plus className="w-3 h-3" strokeWidth={2.6} /> {t("whatsapp.cloud.add_row")}
           </button>
         </div>
 
@@ -4482,7 +4497,7 @@ function BulkImageSendTab({
                 className="h-8 text-xs font-mono flex-1 min-w-0 border-border"
               />
               <Input
-                placeholder="Name (optional)"
+                placeholder={t("whatsapp.cloud.name_optional")}
                 value={r.name}
                 onChange={(e) => updateRow(r.id, { name: e.target.value })}
                 className="h-8 text-xs flex-1 min-w-0 border-border"
@@ -4502,10 +4517,10 @@ function BulkImageSendTab({
 
         <details className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
           <summary className="cursor-pointer text-foreground/80 font-medium">
-            Paste many at once
+            {t("whatsapp.cloud.paste_many_at_once")}
           </summary>
           <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
-            One per line — <span className="font-mono">+255712345678, John Magesa</span>
+            {t("whatsapp.cloud.one_per_line_example")} <span className="font-mono">+255712345678, John Magesa</span>
           </p>
           <Textarea
             value={bulkText}
@@ -4520,16 +4535,15 @@ function BulkImageSendTab({
       {/* Send mode — template only (plain image + caption is disabled by policy). */}
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-          Send as
+          {t("whatsapp.cloud.send_as")}
         </Label>
         <div className="inline-flex rounded-xl border bg-muted/40 p-0.5 text-[12px]">
           <span className="px-3 py-1 rounded-lg bg-background shadow-sm font-semibold">
-            Approved template
+            {t("whatsapp.cloud.approved_template")}
           </span>
         </div>
         <p className="text-[10.5px] text-muted-foreground leading-snug">
-          Approved template with each contact's image as the header — delivers anytime.
-          WhatsApp messages are sent using approved templates only.
+          {t("whatsapp.cloud.send_as_hint")}
         </p>
       </div>
 
@@ -4537,7 +4551,7 @@ function BulkImageSendTab({
         /* Caption (image mode only) */
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Caption (optional)
+            {t("whatsapp.cloud.caption_optional")}
           </Label>
           <Textarea
             value={caption}
@@ -4548,24 +4562,24 @@ function BulkImageSendTab({
             placeholder="Karibu {name}!"
           />
           <p className="text-[10.5px] text-muted-foreground">
-            Supports <span className="font-mono">{"{name}"}</span> · {caption.length}/1024
+            {t("whatsapp.cloud.supports_name_token", { count: caption.length })}
           </p>
         </div>
       ) : (
         /* Template picker (template mode) */
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Template (image header)
+            {t("whatsapp.cloud.template_image_header")}
           </Label>
           {tplLoading ? (
             <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
-              <Loader2 className="w-3 h-3 animate-spin" /> Loading approved templates…
+              <Loader2 className="w-3 h-3 animate-spin" /> {t("whatsapp.cloud.loading_approved_templates")}
             </p>
           ) : tplError ? (
             <p className="text-[11px] text-destructive">{tplError}</p>
           ) : tplList.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">
-              No approved templates with an image header. Create one in the Templates tab.
+              {t("whatsapp.cloud.no_image_header_templates")}
             </p>
           ) : (
             <>
@@ -4577,10 +4591,10 @@ function BulkImageSendTab({
                 }}
                 className="w-full h-9 rounded-lg border border-border bg-background text-xs px-2"
               >
-                <option value="">Select a template…</option>
-                {tplList.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name} ({(t.language as string) || "en"})
+                <option value="">{t("whatsapp.cloud.select_a_template")}</option>
+                {tplList.map((tpl) => (
+                  <option key={tpl.id} value={tpl.name}>
+                    {tpl.name} ({(tpl.language as string) || "en"})
                   </option>
                 ))}
               </select>
@@ -4589,8 +4603,8 @@ function BulkImageSendTab({
               {selectedTpl && bodyTokens.length > 0 && (
                 <div className="space-y-1.5 pt-1">
                   <p className="text-[10.5px] text-muted-foreground">
-                    Body variables — use <span className="font-mono">{"{name}"}</span> or{" "}
-                    <span className="font-mono">{"{phone}"}</span> to personalize each recipient.
+                    {t("whatsapp.cloud.body_variables_hint_pre")} <span className="font-mono">{"{name}"}</span> {t("whatsapp.cloud.or")}{" "}
+                    <span className="font-mono">{"{phone}"}</span> {t("whatsapp.cloud.body_variables_hint_post")}
                   </p>
                   {bodyTokens.map((tok, i) => (
                     <div key={tok} className="flex items-center gap-2">
@@ -4602,7 +4616,7 @@ function BulkImageSendTab({
                         onChange={(e) =>
                           setTplVars((prev) => ({ ...prev, [tok]: e.target.value }))
                         }
-                        placeholder={i === 0 ? "{name}" : "value or {name}/{phone}"}
+                        placeholder={i === 0 ? "{name}" : t("whatsapp.cloud.value_or_name_phone")}
                         className="h-8 text-xs border-border"
                       />
                     </div>
@@ -4610,7 +4624,7 @@ function BulkImageSendTab({
                 </div>
               )}
               <p className="text-[10.5px] text-muted-foreground leading-snug">
-                Each matched image becomes the template's header. Unmatched contacts are skipped.
+                {t("whatsapp.cloud.matched_image_becomes_header")}
               </p>
             </>
           )}
@@ -4620,10 +4634,10 @@ function BulkImageSendTab({
       {/* Advanced — idempotency key (collapsed by default). */}
       <details className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
         <summary className="cursor-pointer text-foreground/80 font-medium">
-          Advanced
+          {t("whatsapp.cloud.advanced")}
         </summary>
         <div className="mt-2 space-y-1.5">
-          <Label className="text-[11px] text-foreground/70">Idempotency key (optional)</Label>
+          <Label className="text-[11px] text-foreground/70">{t("whatsapp.cloud.idempotency_key")}</Label>
           <Input
             value={idempotencyKey}
             onChange={(e) => setIdempotencyKey(e.target.value)}
@@ -4632,8 +4646,7 @@ function BulkImageSendTab({
             maxLength={120}
           />
           <p className="text-[10.5px] text-muted-foreground leading-snug">
-            Repeat the same key within 24 h to replay a completed job instead of
-            creating a duplicate.
+            {t("whatsapp.cloud.idempotency_key_hint")}
           </p>
         </div>
       </details>
@@ -4647,7 +4660,7 @@ function BulkImageSendTab({
             onChange={(e) => setWait(e.target.checked)}
             className="h-4 w-4 accent-primary"
           />
-          Wait for completion (up to 3 min)
+          {t("whatsapp.cloud.wait_for_completion")}
         </label>
         <Button
           onClick={submit}
@@ -4659,7 +4672,7 @@ function BulkImageSendTab({
           ) : (
             <Send className="w-4 h-4" />
           )}
-          Send {contacts.length > 0 ? `(${contacts.length})` : ""}
+          {t("whatsapp.cloud.send")} {contacts.length > 0 ? `(${contacts.length})` : ""}
         </Button>
       </div>
 
@@ -4676,23 +4689,23 @@ function BulkImageSendTab({
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground">Job</p>
+                <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.job")}</p>
                 <p className="text-xs font-mono text-foreground truncate">{job.job_id}</p>
               </div>
               <Badge
                 variant="outline"
                 className={`text-[10.5px] uppercase font-semibold ${statusColor[job.job_status] ?? ""}`}
               >
-                {job.job_status}
+                {jobStatusLabel[job.job_status] ?? job.job_status}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-              <Stat label="Contacts" value={job.total_contacts} />
-              <Stat label="Matched" value={job.matched} />
-              <Stat label="Missing img" value={job.missing_images} />
-              <Stat label="Sent" value={job.sent} tone="success" />
-              <Stat label="Failed" value={job.failed} tone={job.failed > 0 ? "danger" : undefined} />
+              <Stat label={t("whatsapp.cloud.contacts_label")} value={job.total_contacts} />
+              <Stat label={t("whatsapp.cloud.matched")} value={job.matched} />
+              <Stat label={t("whatsapp.cloud.missing_img")} value={job.missing_images} />
+              <Stat label={t("whatsapp.cloud.sent")} value={job.sent} tone="success" />
+              <Stat label={t("whatsapp.cloud.failed")} value={job.failed} tone={job.failed > 0 ? "danger" : undefined} />
             </div>
 
             {/* Extended metadata — only render fields the backend actually returned. */}
@@ -4704,32 +4717,32 @@ function BulkImageSendTab({
               <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 space-y-1 text-[11px]">
                 {job.caption_preview && (
                   <div className="flex gap-2">
-                    <span className="text-muted-foreground flex-shrink-0">Caption:</span>
+                    <span className="text-muted-foreground flex-shrink-0">{t("whatsapp.cloud.caption_label")}:</span>
                     <span className="text-foreground truncate">{job.caption_preview}</span>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground tabular-nums">
                   {typeof job.image_count === "number" && (
                     <span>
-                      <span className="text-foreground/70">{job.image_count}</span> images
+                      <span className="text-foreground/70">{job.image_count}</span> {t("whatsapp.cloud.images_lower")}
                     </span>
                   )}
                   <span>
-                    Created <span className="text-foreground/70">{new Date(job.created_at).toLocaleString()}</span>
+                    {t("whatsapp.cloud.created_label")} <span className="text-foreground/70">{new Date(job.created_at).toLocaleString()}</span>
                   </span>
                   {job.completed_at && (
                     <span>
-                      Finished <span className="text-foreground/70">{new Date(job.completed_at).toLocaleString()}</span>
+                      {t("whatsapp.cloud.finished_label")} <span className="text-foreground/70">{new Date(job.completed_at).toLocaleString()}</span>
                     </span>
                   )}
                   {job.whatsapp_account_id && (
                     <span className="font-mono truncate" title={job.whatsapp_account_id}>
-                      acct: {job.whatsapp_account_id}
+                      {t("whatsapp.cloud.acct_label")}: {job.whatsapp_account_id}
                     </span>
                   )}
                   {job.idempotency_key && (
                     <span className="font-mono truncate" title={job.idempotency_key}>
-                      key: {job.idempotency_key}
+                      {t("whatsapp.cloud.key_label")}: {job.idempotency_key}
                     </span>
                   )}
                 </div>
@@ -4751,7 +4764,7 @@ function BulkImageSendTab({
                 className="h-8 text-xs gap-1.5"
               >
                 <RefreshCw className="w-3 h-3" />
-                Refresh
+                {t("whatsapp.cloud.refresh")}
               </Button>
               <Button
                 size="sm"
@@ -4759,7 +4772,7 @@ function BulkImageSendTab({
                 onClick={reset}
                 className="h-8 text-xs text-muted-foreground"
               >
-                New job
+                {t("whatsapp.cloud.new_job")}
               </Button>
             </div>
 
@@ -4773,7 +4786,7 @@ function BulkImageSendTab({
             {job.errors && job.errors.length > 0 && (
               <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
                 <summary className="cursor-pointer text-xs font-semibold text-foreground">
-                  Row errors ({job.errors.length})
+                  {t("whatsapp.cloud.row_errors", { count: job.errors.length })}
                 </summary>
                 <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
                   {job.errors.map((e, i) => (
@@ -4860,6 +4873,7 @@ function BulkSendCombined({
 // A tap can only be attributed to a template send that we logged, so we surface
 // every reply and let the user narrow by template + button.
 function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
+  const { t } = useLanguage();
   const { getMessageTemplates, getTemplateReplies, isLoading } = useWhatsAppCloud();
 
   // Approved templates that carry quick-reply buttons — the picker source.
@@ -4914,7 +4928,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
       });
       setData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load replies");
+      setError(e instanceof Error ? e.message : t("whatsapp.cloud.errors.load_replies_failed"));
       setData(null);
     }
   };
@@ -4939,7 +4953,14 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
   // Export the currently-shown responders as CSV (Excel-friendly).
   const exportCsv = () => {
     if (!items.length) return;
-    const header = ["Name", "Phone", "Email", "Button", "Template", "Responded at"];
+    const header = [
+      t("whatsapp.cloud.table.name"),
+      t("whatsapp.cloud.table.phone"),
+      t("whatsapp.cloud.table.email"),
+      t("whatsapp.cloud.button_label"),
+      t("whatsapp.cloud.template_label"),
+      t("whatsapp.cloud.responded_at"),
+    ];
     const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const rows = items.map((it) => [
       it.name ?? "",
@@ -4969,11 +4990,9 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
     <div className="space-y-4 p-1">
       {/* Intro banner */}
       <div className="rounded-2xl border border-teal-500/20 dark:border-teal-500/30 bg-teal-500/[0.04] dark:bg-teal-500/10 px-3.5 py-2.5">
-        <p className="text-[12.5px] font-semibold text-foreground leading-tight">Invitation replies (RSVP)</p>
+        <p className="text-[12.5px] font-semibold text-foreground leading-tight">{t("whatsapp.cloud.invitation_replies_title")}</p>
         <p className="text-[11px] text-foreground/60 leading-snug mt-0.5">
-          Every time someone taps a quick-reply button on an approved template — like
-          <span className="font-medium"> “Asante Nitashiriki”</span> or
-          <span className="font-medium"> “Sitoweza Kushiriki”</span> — it shows up here.
+          {t("whatsapp.cloud.invitation_replies_hint")}
         </p>
       </div>
 
@@ -4981,7 +5000,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Template
+            {t("whatsapp.cloud.template_label")}
           </Label>
           <button
             type="button"
@@ -4990,7 +5009,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
             className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            Refresh
+            {t("whatsapp.cloud.refresh")}
           </button>
         </div>
 
@@ -5005,33 +5024,33 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
                 : "bg-card text-foreground/70 border-border hover:bg-muted/50",
             ].join(" ")}
           >
-            All templates
+            {t("whatsapp.cloud.all_templates")}
           </button>
-          {templates.map((t) => (
+          {templates.map((tpl) => (
             <button
-              key={t.name}
+              key={tpl.name}
               type="button"
-              onClick={() => { setSelectedTemplate(t.name); setButtonFilter(""); }}
+              onClick={() => { setSelectedTemplate(tpl.name); setButtonFilter(""); }}
               className={[
                 "px-2.5 py-1 rounded-lg text-[12px] font-mono font-medium transition-colors border truncate max-w-[220px]",
-                selectedTemplate === t.name
+                selectedTemplate === tpl.name
                   ? "bg-teal-500 text-white border-teal-500"
                   : "bg-card text-foreground/70 border-border hover:bg-muted/50",
               ].join(" ")}
-              title={t.name}
+              title={tpl.name}
             >
-              {t.name}
+              {tpl.name}
             </button>
           ))}
           {templatesLoading && (
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground px-1">
-              <Loader2 className="w-3 h-3 animate-spin" /> loading…
+              <Loader2 className="w-3 h-3 animate-spin" /> {t("whatsapp.cloud.loading_ellipsis")}
             </span>
           )}
         </div>
         {!templatesLoading && templates.length === 0 && (
           <p className="text-[11px] text-muted-foreground">
-            No approved templates with quick-reply buttons found — showing replies across all templates.
+            {t("whatsapp.cloud.no_quick_reply_templates")}
           </p>
         )}
       </div>
@@ -5072,7 +5091,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-            Responders{" "}
+            {t("whatsapp.cloud.responders")}{" "}
             <span className="text-foreground/40 font-normal normal-case">
               ({data?.responses.total ?? 0}{buttonFilter ? ` · ${buttonFilter}` : ""})
             </span>
@@ -5086,7 +5105,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
             className="h-8 px-2.5 rounded-lg text-[12px] gap-1.5"
           >
             <Download className="w-3.5 h-3.5" />
-            Export CSV
+            {t("whatsapp.cloud.export_csv")}
           </Button>
         </div>
 
@@ -5094,7 +5113,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
           <Alert className="py-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
             <AlertCircle className="h-3.5 w-3.5" />
             <AlertDescription className="text-xs">
-              Showing the first {data?.responses.max_items} replies — narrow by template or button to see the rest.
+              {t("whatsapp.cloud.showing_first_replies", { count: data?.responses.max_items })}
             </AlertDescription>
           </Alert>
         )}
@@ -5102,14 +5121,14 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
         {isLoading && items.length === 0 ? (
           <div className="rounded-xl border border-border bg-card/50 px-3 py-6 text-center text-xs text-muted-foreground">
             <Loader2 className="w-4 h-4 mx-auto animate-spin mb-1" />
-            Loading replies…
+            {t("whatsapp.cloud.loading_replies")}
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center">
             <ClipboardCheck className="w-7 h-7 mx-auto text-muted-foreground/40 mb-2" />
-            <p className="text-[13px] font-semibold text-foreground">No replies yet</p>
+            <p className="text-[13px] font-semibold text-foreground">{t("whatsapp.cloud.no_replies_yet")}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs mx-auto">
-              Once recipients tap a quick-reply button on your sent invitation, their responses appear here.
+              {t("whatsapp.cloud.no_replies_yet_hint")}
             </p>
           </div>
         ) : (
@@ -5170,6 +5189,7 @@ const TABS: Tab[] = [
 const VISIBLE_TABS = ["single", "bulk", "templates", "pollresults", "replies"] as const satisfies readonly TabId[];
 
 export default function WhatsAppCloud() {
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [waAccountId, setWaAccountId] = useState("");
@@ -5217,21 +5237,21 @@ export default function WhatsAppCloud() {
     setWaAccountId("");
     try {
       const url = buildApiUrl(API_CONFIG.ENDPOINTS.EARLY_ACCESS.AI_AGENTS.WHATSAPP_CREDENTIALS_AUTO);
-      const t = localStorage.getItem("access_token");
-      const res = await fetch(url, { headers: { Accept: "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) } });
+      const accessToken = localStorage.getItem("access_token");
+      const res = await fetch(url, { headers: { Accept: "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) } });
       const json = await res.json().catch(() => null);
       const data = json?.data;
       const id: string = data?.chatbot_id ?? data?.whatsapp_account_id ?? "";
       const channel = data?.whatsapp_channel;
       if (!id) {
-        setAccountError("No WhatsApp account linked. Please connect your Meta credentials in Settings → WhatsApp.");
+        setAccountError(t("whatsapp.cloud.errors.no_account_linked"));
       } else if (!channel || !channel.access_token_configured || !channel.phone_number_id) {
-        setAccountError(`WhatsApp account found (${id}) but credentials are incomplete — Phone Number ID or Access Token missing.`);
+        setAccountError(t("whatsapp.cloud.errors.credentials_incomplete", { id }));
       } else {
         setWaAccountId(id);
       }
     } catch {
-      setAccountError("Could not load WhatsApp account. Check your connection and try again.");
+      setAccountError(t("whatsapp.cloud.errors.load_account_failed"));
     } finally {
       setLoadingAccount(false);
     }
@@ -5286,8 +5306,8 @@ export default function WhatsAppCloud() {
                   <WhatsAppIcon className="w-6 h-6 text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">WhatsApp Cloud</h1>
-                  <p className="text-[12px] sm:text-sm text-foreground/60 mt-0.5">Meta Cloud API messaging</p>
+                  <h1 className="text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">{t("whatsapp.cloud.page_title")}</h1>
+                  <p className="text-[12px] sm:text-sm text-foreground/60 mt-0.5">{t("whatsapp.cloud.page_subtitle")}</p>
                 </div>
               </div>
 
@@ -5295,7 +5315,7 @@ export default function WhatsAppCloud() {
               {loadingAccount ? (
                 <div className="flex items-center gap-1.5 rounded-full bg-muted/60 dark:bg-muted/30 border border-border/60 px-2.5 py-1.5 flex-shrink-0 mr-11 md:mr-0">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-foreground/60" />
-                  <span className="text-[11px] font-semibold text-foreground/65 hidden sm:inline">Connecting…</span>
+                  <span className="text-[11px] font-semibold text-foreground/65 hidden sm:inline">{t("whatsapp.cloud.connecting")}</span>
                 </div>
               ) : waAccountId ? (
                 <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 px-2.5 py-1.5 flex-shrink-0 mr-11 md:mr-0">
@@ -5319,8 +5339,8 @@ export default function WhatsAppCloud() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs font-medium">
                   {accountError}{" "}
-                  <Link to="/settings?tab=whatsapp" className="underline underline-offset-2 font-semibold text-red-700 dark:text-red-300">Configure</Link>
-                  <button className="ml-3 underline underline-offset-2 font-semibold text-red-700 dark:text-red-300" onClick={() => void loadAccount()}>Retry</button>
+                  <Link to="/settings?tab=whatsapp" className="underline underline-offset-2 font-semibold text-red-700 dark:text-red-300">{t("whatsapp.cloud.configure")}</Link>
+                  <button className="ml-3 underline underline-offset-2 font-semibold text-red-700 dark:text-red-300" onClick={() => void loadAccount()}>{t("common.try_again")}</button>
                 </AlertDescription>
               </Alert>
             )}
@@ -5329,8 +5349,8 @@ export default function WhatsAppCloud() {
             {!loadingAccount && !waAccountId && (
               <Card className="border border-border shadow-sm">
                 <CardContent className="p-3 space-y-2">
-                  <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">WhatsApp Account ID</Label>
-                  <p className="text-[11px] text-muted-foreground">Paste your copilot ID (cb_…) or configure credentials in Settings</p>
+                  <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.account_id_label")}</Label>
+                  <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.account_id_hint")}</p>
                   <Input
                     placeholder="cb_XXXXXXXXXXXX"
                     value={waAccountId}
@@ -5351,31 +5371,31 @@ export default function WhatsAppCloud() {
                 {
                   key: "single" as const,
                   icon: Send,
-                  label: "Single",
+                  label: t("whatsapp.cloud.tab_single"),
                   activeClass: "bg-[#25D366] text-white shadow-[0_2px_8px_rgba(37,211,102,0.35)]",
                 },
                 {
                   key: "bulk" as const,
                   icon: Users,
-                  label: "Bulk",
+                  label: t("whatsapp.cloud.tab_bulk"),
                   activeClass: "bg-blue-500 text-white shadow-[0_2px_8px_rgba(59,130,246,0.35)]",
                 },
                 {
                   key: "templates" as const,
                   icon: FileText,
-                  label: "Templates",
+                  label: t("whatsapp.cloud.tab_templates"),
                   activeClass: "bg-amber-500 text-white shadow-[0_2px_8px_rgba(245,158,11,0.35)]",
                 },
                 {
                   key: "pollresults" as const,
                   icon: BarChart3,
-                  label: "Polls",
+                  label: t("whatsapp.cloud.tab_polls"),
                   activeClass: "bg-purple-500 text-white shadow-[0_2px_8px_rgba(168,85,247,0.35)]",
                 },
                 {
                   key: "replies" as const,
                   icon: ClipboardCheck,
-                  label: "Replies",
+                  label: t("whatsapp.cloud.tab_replies"),
                   activeClass: "bg-teal-500 text-white shadow-[0_2px_8px_rgba(20,184,166,0.35)]",
                 },
               ].map(({ key, icon: Icon, label, activeClass }) => {
@@ -5412,7 +5432,7 @@ export default function WhatsAppCloud() {
               {loadingAccount ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-foreground/60">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-[13px]">Loading account…</span>
+                  <span className="text-[13px]">{t("whatsapp.cloud.loading_account")}</span>
                 </div>
               ) : !waAccountId ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3 px-4">
@@ -5420,9 +5440,9 @@ export default function WhatsAppCloud() {
                     <MessageSquare className="w-7 h-7 text-emerald-600 dark:text-emerald-400" strokeWidth={1.8} />
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[14px] font-semibold text-foreground">No account connected</p>
+                    <p className="text-[14px] font-semibold text-foreground">{t("whatsapp.cloud.no_account_connected")}</p>
                     <p className="text-[12px] text-foreground/60 max-w-xs">
-                      Enter your WhatsApp Account ID above or configure credentials in Settings.
+                      {t("whatsapp.cloud.no_account_connected_hint")}
                     </p>
                   </div>
                 </div>
@@ -5433,7 +5453,7 @@ export default function WhatsAppCloud() {
 
             {/* ── Footer ── */}
             <p className="text-[11px] text-muted-foreground text-center leading-relaxed pb-2">
-              <strong>Meta policy:</strong> Free-form text outside the 24-hr window requires an approved template. Max 500 recipients per bulk request.
+              <strong>{t("whatsapp.cloud.meta_policy_label")}</strong> {t("whatsapp.cloud.meta_policy_text")}
             </p>
 
           </div>

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Phone, ArrowLeft, RefreshCw } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface SMSVerificationCodeProps {
   phoneNumber: string;
@@ -30,6 +31,7 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
   lockedUntil,
   messageType = 'verification'
 }) => {
+  const { t } = useLanguage();
   const [code, setCode] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -102,9 +104,9 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
   const getMessageText = () => {
     switch (messageType) {
       case 'password_reset':
-        return 'Enter the verification code sent to your phone and email to reset your password';
+        return t("auth.sms_verification.message_password_reset");
       default:
-        return 'Enter the verification code sent to your phone and email';
+        return t("auth.sms_verification.message_default");
     }
   };
 
@@ -115,13 +117,13 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
           <Phone className="w-8 h-8 text-blue-600" />
         </div>
         <CardTitle className="text-xl font-bold text-gray-900">
-          Verify Phone Number
+          {t("auth.sms_verification.title")}
         </CardTitle>
         <CardDescription className="text-gray-600">
           {getMessageText()}
         </CardDescription>
         <div className="text-sm text-gray-500 mt-2">
-          Code sent to {formatPhoneNumber(phoneNumber)}
+          {t("auth.sms_verification.code_sent_to", { phone: formatPhoneNumber(phoneNumber) })}
         </div>
       </CardHeader>
 
@@ -129,14 +131,14 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="verification-code" className="text-sm font-semibold text-gray-700">
-              Verification Code
+              {t("auth.common.verification_code_label")}
             </Label>
             <Input
               id="verification-code"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              placeholder="Enter 6-digit code"
+              placeholder={t("auth.common.enter_6digit_code")}
               value={code}
               onChange={handleCodeChange}
               className="h-12 text-center text-lg font-mono tracking-widest border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -153,13 +155,16 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
 
           {attemptsRemaining !== undefined && attemptsRemaining > 0 && (
             <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-md">
-              {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining
+              {t("auth.sms_verification.attempts_remaining", {
+                count: attemptsRemaining,
+                plural: attemptsRemaining !== 1 ? 's' : ''
+              })}
             </div>
           )}
 
           {isLocked && timeRemaining > 0 && (
             <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-              Too many attempts. Try again in {formatTime(timeRemaining)}
+              {t("auth.sms_verification.locked_message", { time: formatTime(timeRemaining) })}
             </div>
           )}
 
@@ -171,17 +176,17 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Verifying...
+                {t("auth.common.verifying")}
               </div>
             ) : (
-              'Verify Code'
+              t("auth.sms_verification.verify_code_button")
             )}
           </Button>
         </form>
 
         <div className="text-center space-y-2">
           <div className="text-sm text-gray-600">
-            Didn't receive the code?
+            {t("auth.common.didnt_receive_code")}
           </div>
           <Button
             type="button"
@@ -193,10 +198,10 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
             {isResending ? (
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Sending...
+                {t("auth.common.sending")}
               </div>
             ) : (
-              'Resend Code'
+              t("auth.common.resend_code")
             )}
           </Button>
         </div>
@@ -210,7 +215,7 @@ export const SMSVerificationCode: React.FC<SMSVerificationCodeProps> = ({
             disabled={isLoading}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Phone Number
+            {t("auth.sms_verification.back_to_phone")}
           </Button>
         )}
       </CardContent>

@@ -22,6 +22,7 @@ import { NotificationSettings } from '@/services/NotificationService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/useLanguage';
 
 const NotificationSettingsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -29,6 +30,7 @@ const NotificationSettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const {
     settings,
@@ -101,9 +103,9 @@ const NotificationSettingsPage = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h1 className="text-base sm:text-lg lg:text-xl font-bold text-foreground">Notification Settings</h1>
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold text-foreground">{t("notification_settings.title")}</h1>
                 <p className="text-xs sm:text-sm text-text-subtle">
-                  Manage your notification preferences and thresholds
+                  {t("notification_settings.subtitle")}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +117,7 @@ const NotificationSettingsPage = () => {
                   className="text-xs sm:text-sm h-8 sm:h-9"
                 >
                   <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2", isLoading && "animate-spin")} />
-                  Refresh
+                  {t("common.refresh")}
                 </Button>
                 <Button
                   onClick={handleSave}
@@ -124,7 +126,7 @@ const NotificationSettingsPage = () => {
                   className="text-xs sm:text-sm h-8 sm:h-9"
                 >
                   <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? t("notification_settings.saving") : t("notification_settings.save_button")}
                 </Button>
               </div>
             </div>
@@ -134,15 +136,15 @@ const NotificationSettingsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="w-5 h-5" />
-                  Email Notifications
+                  {t("notification_settings.email.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="email-notifications">Enable Email Notifications</Label>
+                    <Label htmlFor="email-notifications">{t("notification_settings.email.enable_label")}</Label>
                     <p className="text-sm text-text-subtle">
-                      Receive notifications via email
+                      {t("notification_settings.email.desc")}
                     </p>
                   </div>
                   <Switch
@@ -159,15 +161,15 @@ const NotificationSettingsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Smartphone className="w-5 h-5" />
-                  SMS Notifications
+                  {t("notification_settings.sms.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="sms-notifications">Enable SMS Notifications</Label>
+                    <Label htmlFor="sms-notifications">{t("notification_settings.sms.enable_label")}</Label>
                     <p className="text-sm text-text-subtle">
-                      Receive critical notifications via SMS
+                      {t("notification_settings.sms.desc")}
                     </p>
                   </div>
                   <Switch
@@ -184,15 +186,15 @@ const NotificationSettingsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="w-5 h-5" />
-                  In-App Notifications
+                  {t("notification_settings.in_app.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="in-app-notifications">Enable In-App Notifications</Label>
+                    <Label htmlFor="in-app-notifications">{t("notification_settings.in_app.enable_label")}</Label>
                     <p className="text-sm text-text-subtle">
-                      Show notifications in the application interface
+                      {t("notification_settings.in_app.desc")}
                     </p>
                   </div>
                   <Switch
@@ -209,15 +211,15 @@ const NotificationSettingsPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
-                  SMS Credit Thresholds
+                  {t("notification_settings.thresholds.title")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="warning-threshold">Warning Threshold (%)</Label>
+                    <Label htmlFor="warning-threshold">{t("notification_settings.thresholds.warning_label")}</Label>
                     <p className="text-sm text-text-subtle">
-                      Receive a warning when SMS credits fall below this percentage
+                      {t("notification_settings.thresholds.warning_desc")}
                     </p>
                     <Input
                       id="warning-threshold"
@@ -230,13 +232,13 @@ const NotificationSettingsPage = () => {
                       className="max-w-xs"
                     />
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="critical-threshold">Critical Threshold (%)</Label>
+                    <Label htmlFor="critical-threshold">{t("notification_settings.thresholds.critical_label")}</Label>
                     <p className="text-sm text-text-subtle">
-                      Receive a critical alert when SMS credits fall below this percentage
+                      {t("notification_settings.thresholds.critical_desc")}
                     </p>
                     <Input
                       id="critical-threshold"
@@ -256,12 +258,12 @@ const NotificationSettingsPage = () => {
                   <div className="flex items-start gap-3">
                     <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div className="space-y-2">
-                      <h4 className="font-medium text-blue-900">Threshold Guidelines</h4>
+                      <h4 className="font-medium text-blue-900">{t("notification_settings.thresholds.guidelines_title")}</h4>
                       <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Warning threshold should be higher than critical threshold</li>
-                        <li>• Recommended warning threshold: 25-30%</li>
-                        <li>• Recommended critical threshold: 10-15%</li>
-                        <li>• Critical alerts are sent via SMS if enabled</li>
+                        <li>• {t("notification_settings.thresholds.guideline_1")}</li>
+                        <li>• {t("notification_settings.thresholds.guideline_2")}</li>
+                        <li>• {t("notification_settings.thresholds.guideline_3")}</li>
+                        <li>• {t("notification_settings.thresholds.guideline_4")}</li>
                       </ul>
                     </div>
                   </div>
@@ -275,40 +277,40 @@ const NotificationSettingsPage = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertCircle className="w-5 h-5" />
-                    Current Settings Summary
+                    {t("notification_settings.summary.title")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="font-medium">Email Notifications:</p>
+                      <p className="font-medium">{t("notification_settings.summary.email_label")}</p>
                       <p className={cn(
                         "text-sm",
                         settings.email_notifications_enabled ? "text-green-600" : "text-gray-500"
                       )}>
-                        {settings.email_notifications_enabled ? "Enabled" : "Disabled"}
+                        {settings.email_notifications_enabled ? t("common.enabled") : t("common.disabled")}
                       </p>
                     </div>
                     <div>
-                      <p className="font-medium">SMS Notifications:</p>
+                      <p className="font-medium">{t("notification_settings.summary.sms_label")}</p>
                       <p className={cn(
                         "text-sm",
                         settings.sms_notifications_enabled ? "text-green-600" : "text-gray-500"
                       )}>
-                        {settings.sms_notifications_enabled ? "Enabled" : "Disabled"}
+                        {settings.sms_notifications_enabled ? t("common.enabled") : t("common.disabled")}
                       </p>
                     </div>
                     <div>
-                      <p className="font-medium">In-App Notifications:</p>
+                      <p className="font-medium">{t("notification_settings.summary.in_app_label")}</p>
                       <p className={cn(
                         "text-sm",
                         settings.in_app_notifications_enabled ? "text-green-600" : "text-gray-500"
                       )}>
-                        {settings.in_app_notifications_enabled ? "Enabled" : "Disabled"}
+                        {settings.in_app_notifications_enabled ? t("common.enabled") : t("common.disabled")}
                       </p>
                     </div>
                     <div>
-                      <p className="font-medium">Last Updated:</p>
+                      <p className="font-medium">{t("notification_settings.summary.last_updated_label")}</p>
                       <p className="text-sm text-text-subtle">
                         {new Date(settings.updated_at).toLocaleString()}
                       </p>

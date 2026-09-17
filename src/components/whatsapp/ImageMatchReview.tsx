@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fileKeys, normalizeContactName } from "@/utils/contactImageMatch";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // Visual "image → contact" review for personalized WhatsApp image sends.
 // After the user uploads images from their device, this shows a thumbnail of
@@ -26,6 +27,7 @@ export function ImageMatchReview({
   onSend?: (contact: ContactLite) => void;
   sending?: boolean;
 }) {
+  const { t } = useLanguage();
   // One object URL per file for the thumbnail; revoked when files change/unmount.
   const [urls, setUrls] = useState<string[]>([]);
   useEffect(() => {
@@ -56,11 +58,10 @@ export function ImageMatchReview({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wide text-foreground/60">
-          Image → contact matches
+          {t("whatsapp.image_match.title")}
         </p>
         <span className="text-[10.5px] text-muted-foreground">
-          <span className="font-semibold text-[#1ebe5d] tabular-nums">{matchedCount}</span> of{" "}
-          {files.length} matched
+          {t("whatsapp.image_match.matched_count", { matched: matchedCount, total: files.length })}
         </span>
       </div>
       <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border">
@@ -93,13 +94,13 @@ export function ImageMatchReview({
                       disabled={sending}
                       className="ml-1 h-6 px-2.5 text-[10.5px] font-semibold rounded-md bg-[#25D366] hover:bg-[#1ebe5d] text-white disabled:opacity-50 flex-shrink-0"
                     >
-                      Send
+                      {t("whatsapp.common.send")}
                     </button>
                   )}
                 </>
               ) : (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400 flex-shrink-0">
-                  no match here
+                  {t("whatsapp.image_match.no_match")}
                 </span>
               )}
             </div>
@@ -107,8 +108,7 @@ export function ImageMatchReview({
         })}
       </div>
       <p className="text-[10px] text-muted-foreground leading-snug">
-        Matches are checked against contacts loaded on this page. The send re-matches each
-        selected recipient by filename — phone digits or normalized name.
+        {t("whatsapp.image_match.footnote")}
       </p>
     </div>
   );

@@ -14,9 +14,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Smsactivation = () => {
   const isMobile = useIsMobile();
+  const { t } = useLanguage();
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -112,10 +114,10 @@ const Smsactivation = () => {
     const hasAccessToken = !!localStorage.getItem('access_token');
 
     if (!cleanedToken) {
-      const codeSource = verificationMethod === 'sms' ? 'your phone or email' : 'your email';
+      const codeSource = verificationMethod === 'sms' ? t("auth.sms_activation.code_source_phone_email") : t("auth.sms_activation.code_source_email");
       toast({
-        title: "Code required",
-        description: `Please enter the 6-digit verification code from ${codeSource}.`,
+        title: t("auth.sms_activation.toast_code_required_title"),
+        description: t("auth.sms_activation.toast_code_required_desc", { source: codeSource }),
         variant: "destructive"
       });
       return;
@@ -123,8 +125,8 @@ const Smsactivation = () => {
 
     if (cleanedToken.length !== 6) {
       toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit verification code.",
+        title: t("auth.common.invalid_code_title"),
+        description: t("auth.common.invalid_code_desc"),
         variant: "destructive"
       });
       return;
@@ -132,8 +134,8 @@ const Smsactivation = () => {
 
     if (!hasAccessToken && !phoneForVerify) {
       toast({
-        title: "Phone number required",
-        description: "Please log in again to continue verification or provide the phone number used during signup.",
+        title: t("auth.common.phone_required_title"),
+        description: t("auth.sms_activation.phone_required_desc"),
         variant: "destructive"
       });
       return;
@@ -166,8 +168,8 @@ const Smsactivation = () => {
         }
 
         toast({
-          title: "Account activated successfully!",
-          description: "Welcome! Redirecting to your dashboard...",
+          title: t("auth.common.account_activated_title"),
+          description: t("auth.sms_activation.activated_desc"),
         });
 
         // Redirect to dashboard only when code is correct
@@ -177,11 +179,11 @@ const Smsactivation = () => {
       } else {
         // ❌ Code is wrong - STAY on verification form, show error
         setActivationStatus("error");
-        const errorMsg = result.error || "Invalid verification code. Please check your SMS and try again.";
+        const errorMsg = result.error || t("auth.sms_activation.verification_failed_default_sms");
         setErrorMessage(errorMsg);
 
         toast({
-          title: "Verification failed",
+          title: t("auth.common.verification_failed_title"),
           description: errorMsg,
           variant: "destructive"
         });
@@ -191,11 +193,11 @@ const Smsactivation = () => {
     } catch (error) {
       // ❌ Error occurred - STAY on verification form
       setActivationStatus("error");
-      const errorMsg = error instanceof Error ? error.message : "An error occurred. Please try again.";
+      const errorMsg = error instanceof Error ? error.message : t("auth.common.generic_error");
       setErrorMessage(errorMsg);
 
       toast({
-        title: "Verification failed",
+        title: t("auth.common.verification_failed_title"),
         description: errorMsg,
         variant: "destructive"
       });
@@ -218,21 +220,21 @@ const Smsactivation = () => {
         const result = await resendActivationEmail(email.trim(), phoneNumber.trim() || undefined);
         if (result.success) {
           toast({
-            title: "Switched to email verification",
-            description: `Please check your inbox at ${email} for the 6-digit verification code.`,
+            title: t("auth.sms_activation.toast_switched_email_title"),
+            description: t("auth.sms_activation.toast_switched_email_desc", { email }),
             duration: 10000
           });
         } else {
           toast({
-            title: "Failed to send email",
-            description: result.error || "Please try again later.",
+            title: t("auth.sms_activation.toast_failed_send_email_title"),
+            description: result.error || t("auth.sms_activation.try_again_later"),
             variant: "destructive"
           });
         }
       } catch (error) {
         toast({
-          title: "Failed to send email",
-          description: "An error occurred. Please try again.",
+          title: t("auth.sms_activation.toast_failed_send_email_title"),
+          description: t("auth.common.generic_error"),
           variant: "destructive"
         });
       } finally {
@@ -244,8 +246,8 @@ const Smsactivation = () => {
   const handleSwitchToSMS = async () => {
     if (!phoneNumber.trim()) {
       toast({
-        title: "Phone number required",
-        description: "Please enter your phone number to switch to SMS verification.",
+        title: t("auth.common.phone_required_title"),
+        description: t("auth.sms_activation.toast_phone_required_switch_desc"),
         variant: "destructive"
       });
       return;
@@ -265,30 +267,30 @@ const Smsactivation = () => {
         const method = result.method || 'sms';
         if (method === 'sms') {
           toast({
-            title: "Switched to SMS verification",
-            description: `Please check your phone (${phoneNumber}) for the 6-digit verification code.`,
+            title: t("auth.sms_activation.toast_switched_sms_title"),
+            description: t("auth.sms_activation.toast_switched_sms_desc", { phone: phoneNumber }),
             duration: 10000
           });
         } else {
           // Backend fell back to email
           toast({
-            title: "SMS failed, using email",
-            description: `SMS could not be sent. Please check your inbox at ${email} for the activation code.`,
+            title: t("auth.sms_activation.toast_sms_failed_using_email_title"),
+            description: t("auth.sms_activation.toast_sms_failed_using_email_desc", { email }),
             duration: 10000
           });
           setVerificationMethod('email');
         }
       } else {
         toast({
-          title: "Failed to send SMS",
-          description: result.error || "Please try again later.",
+          title: t("auth.sms_activation.toast_failed_send_sms_title"),
+          description: result.error || t("auth.sms_activation.try_again_later"),
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Failed to send SMS",
-        description: "An error occurred. Please try again.",
+        title: t("auth.sms_activation.toast_failed_send_sms_title"),
+        description: t("auth.common.generic_error"),
         variant: "destructive"
       });
     } finally {
@@ -299,8 +301,8 @@ const Smsactivation = () => {
   const handleResendSMS = async () => {
     if (!phoneNumber.trim() && !email.trim()) {
       toast({
-        title: "Email or phone required",
-        description: "Please provide either your email address or phone number to resend the SMS verification code.",
+        title: t("auth.sms_activation.toast_email_or_phone_required_title"),
+        description: t("auth.sms_activation.toast_email_or_phone_required_desc"),
         variant: "destructive"
       });
       return;
@@ -321,8 +323,10 @@ const Smsactivation = () => {
         // Backend also emails the same code as a backup channel — mention both.
         const displayPhone = result.phoneNumber || phoneNumber;
         toast({
-          title: "Verification code sent",
-          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''} and your email. Use whichever arrives first.`,
+          title: t("auth.sms_activation.toast_verification_code_sent_title"),
+          description: displayPhone
+            ? t("auth.sms_activation.code_sent_with_phone", { phone: displayPhone })
+            : t("auth.sms_activation.code_sent_no_phone"),
           duration: 10000
         });
         setVerificationMethod('sms');
@@ -330,13 +334,13 @@ const Smsactivation = () => {
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
-        const errorMessage = result.error || "Please try again later.";
+        const errorMessage = result.error || t("auth.sms_activation.try_again_later");
         const throttled = errorMessage.includes('429') || errorMessage.toLowerCase().includes('too many') || errorMessage.toLowerCase().includes('rate');
         const displayError = throttled
-          ? "Too many requests. Please wait a moment before requesting another code."
+          ? t("auth.sms_activation.throttled_message")
           : errorMessage;
         const variant = getToastVariant(errorMessage);
-        const title = getToastTitle("Failed to send code", displayError, variant);
+        const title = getToastTitle(t("auth.sms_activation.toast_failed_send_code_title"), displayError, variant);
         toast({
           title,
           description: displayError,
@@ -344,9 +348,9 @@ const Smsactivation = () => {
         });
       }
     } catch (error) {
-      const errorMessage = "An error occurred. Please try again.";
+      const errorMessage = t("auth.common.generic_error");
       const variant = getToastVariant(errorMessage);
-      const title = getToastTitle("Failed to send code", errorMessage, variant);
+      const title = getToastTitle(t("auth.sms_activation.toast_failed_send_code_title"), errorMessage, variant);
       toast({
         title,
         description: errorMessage,
@@ -361,8 +365,8 @@ const Smsactivation = () => {
     // Resend-activation accepts email OR phone_number, sends SMS only
     if (!email.trim() && !phoneNumber.trim()) {
       toast({
-        title: "Email or phone required",
-        description: "Please provide either your email address or phone number to resend the SMS verification code.",
+        title: t("auth.sms_activation.toast_email_or_phone_required_title"),
+        description: t("auth.sms_activation.toast_email_or_phone_required_desc"),
         variant: "destructive"
       });
       return;
@@ -383,8 +387,10 @@ const Smsactivation = () => {
         // Backend also emails the same code as a backup channel — mention both.
         const displayPhone = result.phoneNumber || phoneNumber;
         toast({
-          title: "Verification code sent",
-          description: `A new 6-digit verification code has been sent to your phone${displayPhone ? ` (${displayPhone})` : ''} and your email. Use whichever arrives first.`,
+          title: t("auth.sms_activation.toast_verification_code_sent_title"),
+          description: displayPhone
+            ? t("auth.sms_activation.code_sent_with_phone", { phone: displayPhone })
+            : t("auth.sms_activation.code_sent_no_phone"),
           duration: 10000
         });
         setVerificationMethod('sms');
@@ -392,9 +398,9 @@ const Smsactivation = () => {
         setErrorMessage("");
         setToken(""); // Clear the code
       } else {
-        const errorMessage = result.error || "Please try again later.";
+        const errorMessage = result.error || t("auth.sms_activation.try_again_later");
         const variant = getToastVariant(errorMessage);
-        const title = getToastTitle("Failed to send code", errorMessage, variant);
+        const title = getToastTitle(t("auth.sms_activation.toast_failed_send_code_title"), errorMessage, variant);
         toast({
           title,
           description: errorMessage,
@@ -402,9 +408,9 @@ const Smsactivation = () => {
         });
       }
     } catch (error) {
-      const errorMessage = "An error occurred. Please try again.";
+      const errorMessage = t("auth.common.generic_error");
       const variant = getToastVariant(errorMessage);
-      const title = getToastTitle("Failed to send code", errorMessage, variant);
+      const title = getToastTitle(t("auth.sms_activation.toast_failed_send_code_title"), errorMessage, variant);
       toast({
         title,
         description: errorMessage,
@@ -527,12 +533,12 @@ const Smsactivation = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-2xl font-bold text-gray-800 mb-2"
               >
-                Verify Your Account
+                {t("auth.common.verify_your_account_title")}
               </motion.h2>
               <p className="text-sm text-gray-600">
                 {verificationMethod === 'sms'
-                  ? `Enter the 6-digit code sent to your phone and email`
-                  : "Enter the 6-digit code from the email we sent you"}
+                  ? t("auth.sms_activation.subtitle_sms")
+                  : t("auth.sms_activation.subtitle_email")}
               </p>
             </div>
 
@@ -542,16 +548,16 @@ const Smsactivation = () => {
                   <CheckCircle className="w-12 h-12 text-green-500" />
                 </div>
                 <p className="text-lg font-semibold text-gray-800">
-                  Account Activated!
+                  {t("auth.sms_activation.activated_heading")}
                 </p>
                 <p className="text-sm text-gray-600">
-                  You will be redirected to your dashboard shortly.
+                  {t("auth.sms_activation.redirecting_desc")}
                 </p>
                 <Button
                   onClick={() => navigate("/dashboard", { replace: true })}
                   className="w-full h-10 text-sm"
                 >
-                  Go to Dashboard
+                  {t("auth.sms_activation.go_to_dashboard")}
                 </Button>
               </div>
             ) : (
@@ -559,13 +565,13 @@ const Smsactivation = () => {
                 {/* Verification Code Input */}
                 <div className="space-y-2">
                   <Label htmlFor="token" className="text-sm font-medium text-gray-700">
-                    Verification Code
+                    {t("auth.common.verification_code_label")}
                   </Label>
                   <div className="flex gap-2">
                     <Input
                       id="token"
                       type="text"
-                      placeholder="Enter 6-digit code"
+                      placeholder={t("auth.common.enter_6digit_code")}
                       value={token}
                       onChange={(e) => {
                         const value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -597,8 +603,8 @@ const Smsactivation = () => {
                   </div>
                   <p className="text-xs text-gray-500 text-center">
                     {verificationMethod === 'sms'
-                      ? `Check your phone or email inbox (and spam folder) for the 6-digit code`
-                      : "Check your email inbox for the 6-digit code"}
+                      ? t("auth.sms_activation.hint_sms_mobile")
+                      : t("auth.sms_activation.hint_email_mobile")}
                   </p>
                 </div>
 
@@ -608,7 +614,7 @@ const Smsactivation = () => {
                   className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                   disabled={isLoading || token.length !== 6}
                 >
-                  {isLoading ? "Activating..." : "Activate Account"}
+                  {isLoading ? t("auth.sms_activation.activating") : t("auth.sms_activation.activate_account")}
                 </Button>
               </form>
             )}
@@ -617,7 +623,7 @@ const Smsactivation = () => {
             <div className="text-center mt-6 pt-4 border-t border-gray-200">
               <Link to="/login" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm">Back to login</span>
+                <span className="text-sm">{t("auth.common.back_to_login")}</span>
               </Link>
             </div>
           </motion.div>
@@ -642,7 +648,7 @@ const Smsactivation = () => {
                     SENDA
                   </span>
                   <p className="text-base text-black mt-1">
-                    Reliable SMS solutions for businesses
+                    {t("auth.common.tagline")}
                   </p>
                 </div>
               </div>
@@ -651,23 +657,23 @@ const Smsactivation = () => {
             {/* SENDA Information - positioned at bottom of image area */}
             <div className="absolute bottom-4 left-4 right-4 z-20">
               <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">Why Choose SENDA?</h3>
+                <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
                 <ul className="space-y-1 text-sm text-black">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Reliable delivery across all networks</span>
+                    <span>{t("auth.common.benefit_reliable_delivery")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Competitive pricing with bulk discounts</span>
+                    <span>{t("auth.common.benefit_competitive_pricing")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>Advanced analytics and reporting</span>
+                    <span>{t("auth.common.benefit_advanced_analytics")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-1">•</span>
-                    <span>24/7 customer support</span>
+                    <span>{t("auth.common.benefit_support")}</span>
                   </li>
                 </ul>
               </div>
@@ -719,39 +725,39 @@ const Smsactivation = () => {
 
               <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
                 {activationStatus === "success"
-                  ? "Account Activated!"
+                  ? t("auth.sms_activation.activated_heading")
                   : activationStatus === "error"
-                  ? "Activation Failed"
-                  : "Verify Your Account"}
+                  ? t("auth.sms_activation.activation_failed_heading")
+                  : t("auth.common.verify_your_account_title")}
               </h2>
               <p className="text-xs sm:text-sm text-gray-600">
                 {activationStatus === "success"
-                  ? "Your account has been successfully activated. Redirecting to login..."
+                  ? t("auth.sms_activation.activated_redirect_desc")
                   : activationStatus === "error"
                   ? errorMessage
                   : verificationMethod === 'sms'
-                  ? `Enter the 6-digit verification code sent to your phone (${phoneNumber || 'your number'}) and email`
-                  : "Enter the 6-digit verification code from the email we sent you"}
+                  ? t("auth.sms_activation.idle_sms_desc", { phone: phoneNumber || t("auth.sms_activation.your_number") })
+                  : t("auth.sms_activation.idle_email_desc")}
               </p>
 
               {/* Back to login link */}
               <div className="mt-4">
                 <Link to="/login" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
                   <ArrowLeft className="w-4 h-4" />
-                  <span className="text-sm">Back to login</span>
+                  <span className="text-sm">{t("auth.common.back_to_login")}</span>
                 </Link>
               </div>
             </div>
             {activationStatus === "success" ? (
               <div className="text-center space-y-3 sm:space-y-4">
                 <p className="text-xs sm:text-sm text-gray-600">
-                  You will be redirected to your dashboard shortly.
+                  {t("auth.sms_activation.redirecting_desc")}
                 </p>
                 <Button
                   onClick={() => navigate("/dashboard", { replace: true })}
                   className="w-full h-9 sm:h-10 text-xs sm:text-sm"
                 >
-                  Go to Dashboard
+                  {t("auth.sms_activation.go_to_dashboard")}
                 </Button>
               </div>
             ) : (
@@ -759,13 +765,13 @@ const Smsactivation = () => {
                 <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div className="space-y-1">
                   <Label htmlFor="token" className="text-xs sm:text-sm font-medium text-gray-700">
-                    Verification Code
+                    {t("auth.common.verification_code_label")}
                   </Label>
                   <div className="flex gap-2">
                     <Input
                       id="token"
                       type="text"
-                      placeholder="Enter 6-digit code"
+                      placeholder={t("auth.common.enter_6digit_code")}
                       value={token}
                       onChange={(e) => {
                         // Only allow digits, max 6 characters
@@ -798,8 +804,8 @@ const Smsactivation = () => {
                   </div>
                   <p className="text-xs text-gray-500 text-center">
                     {verificationMethod === 'sms'
-                        ? `Check your phone (${phoneNumber || 'your number'}) or email inbox (and spam folder) for the 6-digit verification code`
-                        : "Check your email inbox (and spam folder) for the 6-digit verification code"}
+                        ? t("auth.sms_activation.hint_sms_desktop", { phone: phoneNumber || t("auth.sms_activation.your_number") })
+                        : t("auth.sms_activation.hint_email_desktop")}
                     </p>
                   </div>
 
@@ -807,7 +813,7 @@ const Smsactivation = () => {
                   {showSwitchToEmail && verificationMethod === 'sms' && email.trim() && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <p className="text-xs text-yellow-800 mb-2">
-                        SMS verification failed. Would you like to use email verification instead?
+                        {t("auth.sms_activation.sms_failed_switch_prompt")}
                       </p>
                       <Button
                         type="button"
@@ -819,12 +825,12 @@ const Smsactivation = () => {
                         {isResending ? (
                           <>
                             <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                            Switching...
+                            {t("auth.sms_activation.switching")}
                           </>
                         ) : (
                           <>
                             <Mail className="w-3 h-3 mr-1" />
-                            Switch to Email Verification
+                            {t("auth.sms_activation.switch_to_email")}
                           </>
                         )}
                       </Button>
@@ -836,7 +842,7 @@ const Smsactivation = () => {
                   className="w-full h-10 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg"
                   disabled={isLoading || token.length !== 6}
                 >
-                  {isLoading ? "Activating..." : "Activate Account"}
+                  {isLoading ? t("auth.sms_activation.activating") : t("auth.sms_activation.activate_account")}
                 </Button>
                 </form>
 
@@ -847,13 +853,13 @@ const Smsactivation = () => {
             <div className="text-center space-y-1 pt-4">
               <div className="flex items-center justify-center gap-3">
                 <Link to="/" className="text-blue-600 hover:text-blue-700 hover:underline font-medium text-xs">
-                  Home
+                  {t("auth.common.home")}
                 </Link>
                 <span className="text-gray-400 text-xs">|</span>
                 <p className="text-xs text-gray-600">
-                  Already have an account?{" "}
+                  {t("auth.common.already_have_account")}{" "}
                   <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
-                    Sign in
+                    {t("auth.common.sign_in")}
                   </Link>
                 </p>
               </div>

@@ -7,8 +7,10 @@ import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Terms = () => {
+  const { t } = useLanguage();
   // Force light theme on marketing surfaces
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -72,13 +74,13 @@ const Terms = () => {
           {/* Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <button onClick={() => navigate('/#features')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              Features
+              {t('legal.nav.features')}
             </button>
             <button onClick={() => navigate('/#pricing')} className="transition-colors duration-300 cursor-pointer flex items-center gap-2 text-gray-900 hover:text-gray-700">
-              Pricing
+              {t('legal.nav.pricing')}
             </button>
             <Link to="/developer" className="transition-colors duration-300 text-gray-900 hover:text-gray-700">
-              Developer
+              {t('legal.nav.developer')}
             </Link>
           </div>
 
@@ -86,12 +88,12 @@ const Terms = () => {
           <div className="hidden lg:flex items-center gap-4 w-28 justify-end">
               <Link to="/login">
                 <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer flex items-center justify-center border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  Login
+                  {t('legal.nav.login')}
                 </button>
               </Link>
               <Link to="/signup">
                 <button className="relative rounded-full px-6 py-2 text-sm transition duration-300 ease-out cursor-pointer inline-flex items-center justify-center leading-tight whitespace-nowrap border border-gray-900 text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600">
-                  Get started
+                  {t('legal.nav.get_started')}
                 </button>
               </Link>
           </div>
@@ -117,89 +119,49 @@ const Terms = () => {
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16" style={{ paddingTop: '120px' }}>
         <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-4">Terms of Service</h1>
-          <p className="text-gray-700 text-base sm:text-lg">Last updated: October 6, 2025</p>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-4">{t('legal.terms.title')}</h1>
+          <p className="text-gray-700 text-base sm:text-lg">{t('legal.terms.last_updated')}</p>
         </div>
         <div className="p-6 sm:p-8 lg:p-12 text-black min-h-[80vh] overflow-y-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">1. Agreement</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              By accessing or using this service, you agree to be bound by these
-              Terms of Service. If you do not agree to these terms, do not use the
-              service.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s1_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s1_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">2. Use of the Service</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              You must use the service in compliance with applicable laws and
-              regulations. You are responsible for all activity that occurs under
-              your account and for maintaining the security of your credentials.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s2_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s2_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">3. Messaging and Content</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              You are solely responsible for the content you send through the
-              platform, including obtaining necessary consents and honoring opt-in
-              and opt-out requirements. Prohibited content includes spam, illegal
-              content, and abusive or deceptive messages.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s3_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s3_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">4. Fees and Billing</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              Certain features may require payment. Prices and billing terms are
-              presented at checkout. Taxes may apply. We may change prices with
-              reasonable notice.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s4_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s4_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">5. Availability and Support</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              We strive for high availability but do not guarantee uninterrupted
-              service. Planned maintenance and unforeseen outages may occur.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s5_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s5_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">6. Data and Privacy</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s6_title')}</h2>
           <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              Our handling of personal data is described in our
+              {t('legal.terms.s6_p_pre')}
               {" "}
-            <Link to="/privacy" className="text-blue-600 underline hover:text-blue-800">Privacy Policy</Link>.
+            <Link to="/privacy" className="text-blue-600 underline hover:text-blue-800">{t('legal.terms.privacy_policy_link')}</Link>.
             </p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">7. Intellectual Property</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              The platform and its content (excluding user content) are owned by
-              us or our licensors and are protected by intellectual property laws.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s7_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s7_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">8. Termination</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              We may suspend or terminate access if you violate these terms or use
-              the service in a harmful manner. You may stop using the service at
-              any time.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s8_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s8_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">9. Disclaimers and Limitation of Liability</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              The service is provided "as is" without warranties of any kind. To
-              the maximum extent permitted by law, we are not liable for indirect
-              or consequential damages.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s9_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s9_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">10. Changes</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              We may modify these terms from time to time. Continued use of the
-              service after changes become effective constitutes acceptance of the
-              updated terms.
-            </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s10_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s10_p')}</p>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">11. Contact</h2>
-          <p className="text-gray-800 text-lg mb-6 leading-relaxed">
-              Questions about these terms? Contact us via the support channels in
-              your account.
-          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-black mb-6">{t('legal.terms.s11_title')}</h2>
+          <p className="text-gray-800 text-lg mb-6 leading-relaxed">{t('legal.terms.s11_p')}</p>
 
           <div className="bg-black/10 rounded-xl p-6 mt-8">
-            <p className="text-gray-700 text-center font-medium">
-              These terms are designed to comply with Tanzanian and Kenyan data protection and consumer protection laws.
-            </p>
+            <p className="text-gray-700 text-center font-medium">{t('legal.terms.footer_note')}</p>
           </div>
         </div>
       </div>
@@ -229,10 +191,10 @@ const Terms = () => {
 
             {/* Nav */}
             <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8 text-xs sm:text-sm text-white/90">
-              <a className="hover:underline hover:text-white" href="/#about">About</a>
-              <a className="hover:underline hover:text-white" href="/#features">Features</a>
-              <a className="hover:underline hover:text-white" href="/#pricing">Pricing</a>
-              <a href="/developer" className="hover:underline hover:text-white">Developer</a>
+              <a className="hover:underline hover:text-white" href="/#about">{t('legal.nav.about')}</a>
+              <a className="hover:underline hover:text-white" href="/#features">{t('legal.nav.features')}</a>
+              <a className="hover:underline hover:text-white" href="/#pricing">{t('legal.nav.pricing')}</a>
+              <a href="/developer" className="hover:underline hover:text-white">{t('legal.nav.developer')}</a>
             </nav>
 
             {/* Contact */}
@@ -250,7 +212,7 @@ const Terms = () => {
           </div>
 
           <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
-            <p className="text-xs sm:text-sm text-white/80">&copy; 2025 SENDA. All rights reserved.</p>
+            <p className="text-xs sm:text-sm text-white/80">{t('legal.footer.copyright')}</p>
           </div>
         </div>
       </footer>

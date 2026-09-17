@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { useLanguage } from "@/hooks/useLanguage";
 import { RefreshCw, DollarSign, Calendar } from "lucide-react";
 
 interface SMSBalanceCardProps {
@@ -19,6 +20,7 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const loadBalance = async () => {
     setIsLoading(true);
@@ -30,8 +32,8 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
     } catch (error) {
       console.error("Failed to load SMS balance:", error);
       toast({
-        title: "Failed to load balance",
-        description: "Could not fetch SMS balance.",
+        title: t("sms_balance.load_error_title"),
+        description: t("sms_balance.load_error_desc"),
         variant: "destructive",
       });
     } finally {
@@ -71,14 +73,14 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
                   </>
                 ) : balance ? (
                   <>
-                    <p className="text-xs sm:text-sm text-text-subtle">SMS Balance</p>
+                    <p className="text-xs sm:text-sm text-text-subtle">{t("sms_balance.title")}</p>
                     <p className="text-lg sm:text-xl font-bold text-foreground">
                       {balance.currency} {balance.balance.toFixed(2)}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-xs sm:text-sm text-text-subtle">No balance data</p>
+                    <p className="text-xs sm:text-sm text-text-subtle">{t("sms_balance.no_data_short")}</p>
                     <p className="text-lg sm:text-xl font-bold text-foreground">--</p>
                   </>
                 )}
@@ -105,7 +107,7 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-primary" />
-            <h3 className="font-medium text-foreground text-sm">SMS Balance</h3>
+            <h3 className="font-medium text-foreground text-sm">{t("sms_balance.title")}</h3>
           </div>
           <Button
             variant="ghost"
@@ -126,7 +128,7 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
         ) : balance ? (
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-text-subtle mb-1">Account Balance</p>
+              <p className="text-xs text-text-subtle mb-1">{t("sms_balance.account_balance")}</p>
               <p className="text-3xl font-bold text-foreground">
                 {balance.currency} {balance.balance.toFixed(2)}
               </p>
@@ -137,12 +139,12 @@ export const SMSBalanceCard: React.FC<SMSBalanceCardProps> = ({ compact = false 
 
             <div className="flex items-center gap-2 text-xs text-text-subtle">
               <Calendar className="w-3 h-3" />
-              <span>Last updated: {formatDate(balance.last_updated)}</span>
+              <span>{t("sms_balance.last_updated", { date: formatDate(balance.last_updated) })}</span>
             </div>
           </div>
         ) : (
           <div className="text-center py-4">
-            <p className="text-sm text-text-subtle">No balance data available</p>
+            <p className="text-sm text-text-subtle">{t("sms_balance.no_data")}</p>
           </div>
         )}
       </CardContent>
