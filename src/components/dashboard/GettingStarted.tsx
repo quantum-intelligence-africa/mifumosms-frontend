@@ -78,10 +78,13 @@ export function GettingStarted({
   const { user } = useAuth();
   const { t } = useLanguage();
 
-  // Sender ID is purely an SMS/messaging concept — skip that step entirely
-  // for a user who only has IVR access (no SMS access to request one for).
+  // Contacts import and Sender ID are purely SMS/messaging concepts — skip
+  // both steps for a user who only has IVR access (no SMS access to use them).
   const steps = useMemo(
-    () => (hasSmsAccess(user) ? STEPS : STEPS.filter((s) => s.key !== "sender_id_requested")),
+    () =>
+      hasSmsAccess(user)
+        ? STEPS
+        : STEPS.filter((s) => s.key !== "sender_id_requested" && s.key !== "contacts_imported"),
     [user]
   );
 
@@ -176,7 +179,11 @@ export function GettingStarted({
         <Progress value={percentage} className="h-1.5 mt-2.5" />
 
         {/* Step indicator */}
-        <ol className={`mt-3 grid gap-2 ${steps.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+        <ol
+          className={`mt-3 grid gap-2 ${
+            steps.length === 2 ? "grid-cols-2" : steps.length === 3 ? "grid-cols-3" : "grid-cols-4"
+          }`}
+        >
           {steps.map((s, idx) => {
             const done = completion[s.key];
             const active = idx === currentIndex;
