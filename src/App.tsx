@@ -245,79 +245,79 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/sms/send" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <SendSMS />
                 </ProtectedRoute>
               } />
               <Route path="/sms/purchase" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <PurchaseSMS />
                 </ProtectedRoute>
               } />
               <Route path="/sms/sender-names" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <SenderNames />
                 </ProtectedRoute>
               } />
               <Route path="/sms/purchase-history" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <PurchaseHistory />
                 </ProtectedRoute>
               } />
               {/* ── Messaging module routes (map to existing SMS components) ── */}
               <Route path="/messaging/send" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <SendSMS />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/outbox" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <Outbox />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/sent" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <Sent />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/scheduled" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <Scheduled />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/campaigns" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <Campaigns />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/contacts" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <Contacts />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/sender-names" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <SenderNames />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/purchase" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <PurchaseSMS />
                 </ProtectedRoute>
               } />
               <Route path="/messaging/history" element={
-                <ProtectedRoute>
+                <ProtectedRoute requireSmsAccess>
                   <PurchaseHistory />
                 </ProtectedRoute>
               } />
               {/* ── New channel modules ── */}
               <Route path="/whatsapp" element={
-                <ProtectedRoute>
+                <ProtectedRoute comingSoonKey="whatsapp">
                   <WhatsAppCloud />
                 </ProtectedRoute>
               } />
               <Route path="/whatsapp/templates/new" element={
-                <ProtectedRoute>
+                <ProtectedRoute comingSoonKey="whatsapp">
                   <CreateWhatsAppTemplate />
                 </ProtectedRoute>
               } />
@@ -332,47 +332,47 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
               <Route path="/voice" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <VoiceOverview />
                 </ProtectedRoute>
               } />
               <Route path="/voice/ivr" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <IvrFlowList />
                 </ProtectedRoute>
               } />
               <Route path="/voice/numbers" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <VoiceNumbers />
                 </ProtectedRoute>
               } />
               <Route path="/voice/calls" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <CallHistory />
                 </ProtectedRoute>
               } />
               <Route path="/voice/agents" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <VoiceAgentDirectory />
                 </ProtectedRoute>
               } />
               <Route path="/voice/prompts" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <AudioPrompts />
                 </ProtectedRoute>
               } />
               <Route path="/voice/recordings" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <Recordings />
                 </ProtectedRoute>
               } />
               <Route path="/voice/ai-settings" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <AISettings />
                 </ProtectedRoute>
               } />
               <Route path="/voice/ivr/:flowId" element={
-                <ProtectedRoute requireIvrAccess>
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
                   <IvrFlowBuilder />
                 </ProtectedRoute>
               } />

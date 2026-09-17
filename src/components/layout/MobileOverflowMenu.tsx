@@ -31,7 +31,8 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useRoles } from "@/hooks/useRoles";
-import { hasIvrAccess } from "@/utils/roleUtils";
+import { hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
+import { useComingSoonFeatures } from "@/hooks/useComingSoonFeatures";
 
 interface MobileOverflowMenuProps {
   open: boolean;
@@ -62,6 +63,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const { updateTheme } = usePreferences();
   const { isPartina } = useRoles();
   const { openDialer } = useDialer();
+  const { isComingSoon } = useComingSoonFeatures();
 
   // Lock body scroll while open.
   useEffect(() => {
@@ -102,7 +104,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
       { key: "outbox", label: "Outbox", icon: Inbox, onClick: () => go("/messaging/outbox") },
       { key: "sender-names", label: "Sender Names", icon: Tag, onClick: () => go("/messaging/sender-names") },
       { key: "campaigns", label: "Campaigns", icon: BarChart3, onClick: () => go("/messaging/campaigns") },
-      { key: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon, onClick: () => go("/whatsapp") },
+      { key: "whatsapp", label: "WhatsApp", icon: WhatsAppIcon, onClick: () => go("/whatsapp"), badge: isComingSoon("whatsapp") ? "Soon" : undefined },
     ],
   };
 
@@ -122,7 +124,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
             },
           ]
         : []),
-      { key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots") },
+      { key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined },
       ...(hasIvrAccess(user)
         ? [{ key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") }]
         : []),
@@ -173,7 +175,12 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     ],
   };
 
-  const sections = [messagingSection, automationSection, billingSection, accountSection, preferencesSection];
+  const sections = [
+    ...(hasSmsAccess(user) ? [messagingSection, billingSection] : []),
+    automationSection,
+    accountSection,
+    preferencesSection,
+  ];
 
   return (
     <div

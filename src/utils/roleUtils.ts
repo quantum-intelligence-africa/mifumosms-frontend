@@ -162,15 +162,29 @@ export const canAccessAdmin = (user: User | null | undefined): boolean => {
 
 /**
  * Check if user can access the Voice/IVR flow builder.
- * Deny-by-default for everyone, including tenant owners/admins and platform
- * staff — the only way in is an explicit per-user grant from a SENDA admin
- * (`ivr_access_enabled`), set from the admin dashboard's IVR Access tab.
+ * Deny-by-default for everyone — the only way in is an explicit per-user
+ * grant from a SENDA admin (`ivr_access_enabled`), set from the admin
+ * dashboard's Feature Access tab. This applies to all roles, including
+ * tenant owners/admins and platform staff.
  * @param user - The user object
  * @returns True if user can access IVR flows
  */
 export const hasIvrAccess = (user: User | null | undefined): boolean => {
 	if (!user) return false;
 	return user.ivr_access_enabled === true;
+};
+
+/**
+ * Check if user can access SMS/messaging features.
+ * Allow-by-default (unlike hasIvrAccess) since SMS is the core existing
+ * product — every user keeps access until a SENDA admin explicitly revokes
+ * it (`sms_access_enabled`) from the admin dashboard's Feature Access tab.
+ * @param user - The user object
+ * @returns True if user can access SMS/messaging features
+ */
+export const hasSmsAccess = (user: User | null | undefined): boolean => {
+	if (!user) return false;
+	return user.sms_access_enabled !== false;
 };
 
 /**

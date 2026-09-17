@@ -4062,6 +4062,24 @@ class ApiClient {
     }
   }
 
+  // Get platform-wide "Coming Soon" flags (billing/coming-soon/) — same for
+  // every user regardless of tenant or plan; admin-toggled from senda-dashboard.
+  async getComingSoonFeatures(): Promise<ApiResponse<Record<string, boolean>>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_CONFIG.ENDPOINTS.BILLING.COMING_SOON}`, {
+        headers: this.getHeaders()
+      });
+
+      return await this.handleResponse<Record<string, boolean>>(response);
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        status: 0
+      };
+    }
+  }
+
   // Get Billing Balance (new endpoint)
   async getBillingBalance(): Promise<ApiResponse<{
     credits: number;

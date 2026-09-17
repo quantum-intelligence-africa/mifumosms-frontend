@@ -230,6 +230,7 @@ export const API_CONFIG = {
 			USAGE: '/billing/usage/',
 			OVERVIEW: '/billing/overview/',
 			FEATURES: '/billing/features/',
+			COMING_SOON: '/billing/coming-soon/',
 			PAYMENTS: {
 				PROVIDERS: '/billing/payments/providers/',
 				PENDING_REMINDER_SETTINGS: '/billing/payments/pending-reminder-settings/',

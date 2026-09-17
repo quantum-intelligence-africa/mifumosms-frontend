@@ -4755,7 +4755,7 @@ function UsersTab() {
   const total = meta.total || 0;
   const pages = meta.total_pages || 1;
 
-  // Admin-granted per-user IVR access (independent of tenant role/plan) —
+  // Admin-granted per-user IVR/SMS access (independent of tenant role/plan) —
   // optimistic toggle with rollback on failure, mirrors senda_voice_backend's
   // `ivr_access_enabled` column read through its shadow model.
   const toggleIvrAccess = (u) => {
@@ -4771,6 +4771,22 @@ function UsersTab() {
       .catch(() => {
         setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
         showToast?.('Failed to update IVR access.', 'error');
+      });
+  };
+
+  const toggleSmsAccess = (u) => {
+    const next = u.sms_access_enabled === false; // defaultOn: undefined/true reads as granted
+    setItems(prev => prev.map(x => x.id === u.id ? { ...x, sms_access_enabled: next } : x));
+    adminFetch(`/users/${u.id}/sms-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, sms_access_enabled: !next } : x));
+          showToast?.(res.error?.message || 'Failed to update SMS access.', 'error');
+        }
+      })
+      .catch(() => {
+        setItems(prev => prev.map(x => x.id === u.id ? { ...x, sms_access_enabled: !next } : x));
+        showToast?.('Failed to update SMS access.', 'error');
       });
   };
 
@@ -4884,7 +4900,7 @@ function UsersTab() {
           <div style={{overflowX:'auto'}}>
             <table className="senda-table" style={{minWidth:1080}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>IVR Access</th><th>Joined</th><th>Actions</th></tr>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {items.map(u=>{
@@ -4929,6 +4945,19 @@ function UsersTab() {
                           {u.status==='active' ? 'Active' : 'Suspended'}
                         </button>
                       )}
+                    </td>
+                    <td>
+                      <button
+                        onClick={()=>toggleSmsAccess(u)}
+                        disabled={trashed}
+                        title={u.sms_access_enabled !== false ? 'Click to revoke SMS/messaging access' : 'Click to grant SMS/messaging access'}
+                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                          border:'none',cursor:trashed?'default':'pointer',fontSize:11,fontWeight:700,opacity:trashed?.5:1,
+                          background:u.sms_access_enabled!==false?'#d1fae5':'#f1f5f9',
+                          color:u.sms_access_enabled!==false?'#065f46':'#64748b'}}>
+                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                        {u.sms_access_enabled !== false ? 'Granted' : 'Off'}
+                      </button>
                     </td>
                     <td>
                       <button
@@ -5254,6 +5283,18 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
       .finally(() => setBusy(false));
   };
 
+  const toggleSms = () => {
+    const next = d.sms_access_enabled === false; // defaultOn: undefined/true reads as granted
+    setBusy(true);
+    adminFetch(`/users/${user.id}/sms-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (res.success) { showToast?.(next ? 'SMS access granted.' : 'SMS access revoked.', 'success'); refreshAll(); }
+        else showToast?.(res.error?.message || 'Failed to update SMS access.', 'error');
+      })
+      .catch(() => showToast?.('Failed to update SMS access.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
   const resetPassword = () => {
     if (!window.confirm(`Generate a new password for ${d.name}? Their current password stops working immediately.`)) return;
     setBusy(true);
@@ -5322,6 +5363,11 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
             <button style={{...actionBtn,background:d.status==='active'?'#fee2e2':'#d1fae5',color:d.status==='active'?'#dc2626':'#065f46'}} disabled={busy} onClick={toggleStatus}>
               {d.status==='active' ? <Ban size={13} strokeWidth={2.2}/> : <CheckCircle2 size={13} strokeWidth={2.2}/>}
               {d.status==='active' ? 'Suspend' : 'Activate'}
+            </button>
+          )}
+          {!d.is_deleted && (
+            <button style={{...actionBtn,background:d.sms_access_enabled!==false?'#fee2e2':'#d1fae5',color:d.sms_access_enabled!==false?'#dc2626':'#065f46'}} disabled={busy} onClick={toggleSms}>
+              {d.sms_access_enabled !== false ? 'Revoke SMS' : 'Grant SMS'}
             </button>
           )}
           {!d.is_deleted && (
@@ -5406,6 +5452,7 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
                     <Field label="Tenant" value={d.tenant_name || '—'}/>
                     <Field label="Email verified" value={d.is_verified ? 'Yes' : 'No'}/>
                     <Field label="Phone verified" value={d.phone_verified ? 'Yes' : 'No'}/>
+                    <Field label="SMS access" value={d.sms_access_enabled !== false ? 'Granted' : 'Off'}/>
                     <Field label="IVR access" value={d.ivr_access_enabled ? 'Granted' : 'Off'}/>
                     <Field label="Joined" value={d.joined_at ? new Date(d.joined_at).toLocaleString() : '—'}/>
                     <Field label="Last seen" value={d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}/>
@@ -9195,13 +9242,28 @@ function IvrFlowsTab() {
   );
 }
 
-// ─── IVR Access (mifumosms_backend) ────────────────────────────────────────────
-// Where a SENDA admin actually grants/revokes a user's access to the
-// Voice/IVR flow builder — lives under "Voice / IVR" (not buried in the
-// Customers > Users tab) since that's where an admin looks for it.
-// `ivr_access_enabled` lives on the shared `users` table (mifumosms_backend
-// is the writer; senda_voice_backend enforces it read-only via `HasIvrAccess`).
-function IvrAccessTab() {
+// ─── Feature Access (mifumosms_backend) ────────────────────────────────────────
+// Where a SENDA admin actually grants/revokes a user's access to SMS/messaging
+// and to the Voice/IVR flow builder — the place to set up what each user is
+// entitled to use. `sms_access_enabled` / `ivr_access_enabled` both live on the
+// shared `users` table (mifumosms_backend is the writer; senda_voice_backend
+// enforces `ivr_access_enabled` read-only via `HasIvrAccess`).
+// `defaultOn: true` (SMS) means a missing/undefined value from the API — e.g.
+// an older backend deploy whose response doesn't include this field yet —
+// still reads as granted, matching the backend's own default=True. IVR stays
+// defaultOn: false, since it's deny-by-default.
+const FEATURE_ACCESS_FIELDS = [
+  { key: 'sms_access_enabled', endpoint: 'sms-access', label: 'SMS Access', defaultOn: true,
+    grantedTitle: 'Click to revoke SMS/messaging access', offTitle: 'Click to grant SMS/messaging access',
+    grantedToast: 'SMS access granted to', revokedToast: 'SMS access revoked from', failToast: 'Failed to update SMS access.' },
+  { key: 'ivr_access_enabled', endpoint: 'ivr-access', label: 'IVR Access', defaultOn: false,
+    grantedTitle: 'Click to revoke Voice/IVR flow access', offTitle: 'Click to grant Voice/IVR flow access',
+    grantedToast: 'IVR access granted to', revokedToast: 'IVR access revoked from', failToast: 'Failed to update IVR access.' },
+];
+
+const isFeatureGranted = (u, field) => field.defaultOn ? u[field.key] !== false : u[field.key] === true;
+
+function FeatureAccessTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [search, setSearch]   = useState('');
   const [items, setItems]     = useState([]);
@@ -9226,21 +9288,21 @@ function IvrAccessTab() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const toggleIvrAccess = (u) => {
-    const next = !u.ivr_access_enabled;
-    setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: next } : x));
-    adminFetch(`/users/${u.id}/ivr-access`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+  const toggleAccess = (u, field) => {
+    const next = !isFeatureGranted(u, field);
+    setItems(prev => prev.map(x => x.id === u.id ? { ...x, [field.key]: next } : x));
+    adminFetch(`/users/${u.id}/${field.endpoint}`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
       .then(res => {
         if (!res.success) {
-          setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
-          showToast?.(res.error?.message || 'Failed to update IVR access.', 'error');
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, [field.key]: !next } : x));
+          showToast?.(res.error?.message || field.failToast, 'error');
         } else {
-          showToast?.(next ? `IVR access granted to ${u.name}.` : `IVR access revoked from ${u.name}.`, 'success');
+          showToast?.(`${next ? field.grantedToast : field.revokedToast} ${u.name}.`, 'success');
         }
       })
       .catch(() => {
-        setItems(prev => prev.map(x => x.id === u.id ? { ...x, ivr_access_enabled: !next } : x));
-        showToast?.('Failed to update IVR access.', 'error');
+        setItems(prev => prev.map(x => x.id === u.id ? { ...x, [field.key]: !next } : x));
+        showToast?.(field.failToast, 'error');
       });
   };
 
@@ -9253,10 +9315,12 @@ function IvrAccessTab() {
     <div style={{padding:24}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
         <div>
-          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>IVR Access</h2>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Feature Access</h2>
           <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
-            Grant or revoke each user's access to the Voice/IVR flow builder. Tenant owners/admins and
-            platform staff always have access; everyone else needs to be switched on here.
+            Grant or revoke each user's access to SMS/messaging and to the Voice/IVR flow builder —
+            give a user SMS only, IVR only, or both, based on what they've paid for. Both toggles are
+            deny/allow per user with no automatic bypass by role: SMS starts on for everyone, IVR
+            starts off until switched on here.
           </p>
         </div>
         <input className="senda-input" placeholder="Search by name, email..." value={search}
@@ -9270,37 +9334,42 @@ function IvrAccessTab() {
       ) : (
         <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:640}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:720}}>
               <thead>
                 <tr style={{background:'#f8fafc',textAlign:'left'}}>
                   <th style={th}>Name</th>
                   <th style={th}>Email</th>
                   <th style={th}>Role</th>
-                  <th style={th}>IVR Access</th>
+                  {FEATURE_ACCESS_FIELDS.map(f => <th key={f.key} style={th}>{f.label}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+                  <tr><td colSpan={3 + FEATURE_ACCESS_FIELDS.length} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No users found.</td></tr>
+                  <tr><td colSpan={3 + FEATURE_ACCESS_FIELDS.length} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No users found.</td></tr>
                 ) : items.map(u => (
                   <tr key={u.id}>
                     <td style={{...td,fontWeight:600,color:'#0f172a'}}>{u.name}</td>
                     <td style={{...td,fontSize:12,color:'#64748b'}}>{u.email}</td>
                     <td style={td}><Badge status={u.role}/></td>
-                    <td style={td}>
-                      <button
-                        onClick={()=>toggleIvrAccess(u)}
-                        title={u.ivr_access_enabled ? 'Click to revoke Voice/IVR flow access' : 'Click to grant Voice/IVR flow access'}
-                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
-                          border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
-                          background:u.ivr_access_enabled?'#d1fae5':'#f1f5f9',
-                          color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
-                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
-                        {u.ivr_access_enabled ? 'Granted' : 'Off'}
-                      </button>
-                    </td>
+                    {FEATURE_ACCESS_FIELDS.map(f => {
+                      const granted = isFeatureGranted(u, f);
+                      return (
+                      <td key={f.key} style={td}>
+                        <button
+                          onClick={()=>toggleAccess(u, f)}
+                          title={granted ? f.grantedTitle : f.offTitle}
+                          style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                            border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
+                            background:granted?'#d1fae5':'#f1f5f9',
+                            color:granted?'#065f46':'#64748b'}}>
+                          <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                          {granted ? 'Granted' : 'Off'}
+                        </button>
+                      </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -9315,6 +9384,96 @@ function IvrAccessTab() {
               </div>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Coming Soon (mifumosms_backend / billing.FeatureComingSoon) ──────────────
+// Platform-wide "Coming Soon" toggles — unlike Feature Access above, these
+// apply to every user at once (not per-user, not per-tenant plan). When on,
+// the matching nav item shows a "Soon" badge and the feature's routes show a
+// locked "Coming Soon" page instead of the real one.
+function ComingSoonTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+
+  const fetchData = useCallback(() => {
+    setLoading(true); setError(null);
+    adminFetch('/feature-flags', {}, onLogout)
+      .then(res => {
+        if (res.success) setItems(res.data || []);
+        else setError(res.error?.message || 'Failed to load feature flags.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const toggle = (item) => {
+    const next = !item.coming_soon;
+    setBusyKey(item.key);
+    setItems(prev => prev.map(x => x.key === item.key ? { ...x, coming_soon: next } : x));
+    adminFetch(`/feature-flags/${item.key}`, { method: 'PATCH', body: JSON.stringify({ coming_soon: next }) }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          setItems(prev => prev.map(x => x.key === item.key ? { ...x, coming_soon: !next } : x));
+          showToast?.(res.error?.message || 'Failed to update feature flag.', 'error');
+        } else {
+          showToast?.(next ? `${item.label} marked as Coming Soon.` : `${item.label} is live again.`, 'success');
+        }
+      })
+      .catch(() => {
+        setItems(prev => prev.map(x => x.key === item.key ? { ...x, coming_soon: !next } : x));
+        showToast?.('Failed to update feature flag.', 'error');
+      })
+      .finally(() => setBusyKey(null));
+  };
+
+  return (
+    <div style={{padding:24,maxWidth:640}}>
+      <div style={{marginBottom:18}}>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Coming Soon</h2>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+          Mark a feature as "Coming Soon" for every user at once — it stays visible in the
+          nav with a "Soon" badge, but opening it shows a locked notice instead of the real
+          page. Independent of the per-user Feature Access toggles.
+        </p>
+      </div>
+
+      {error ? (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px'}}>
+          {error}
+        </div>
+      ) : loading ? (
+        <div style={{padding:24,textAlign:'center',color:'#94a3b8',fontSize:13}}>Loading…</div>
+      ) : (
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
+          {items.map((item, i) => (
+            <div key={item.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderTop:i===0?'none':'1px solid #f1f5f9'}}>
+              <div>
+                <div style={{fontSize:13.5,fontWeight:600,color:'#0f172a'}}>{item.label}</div>
+                <div style={{fontSize:11.5,color:'#94a3b8',marginTop:2}}>{item.key}</div>
+              </div>
+              <button
+                onClick={()=>toggle(item)}
+                disabled={busyKey===item.key}
+                title={item.coming_soon ? 'Click to make this feature live again' : 'Click to mark this feature Coming Soon'}
+                style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 12px',borderRadius:99,
+                  border:'none',cursor:busyKey===item.key?'default':'pointer',fontSize:11,fontWeight:700,
+                  opacity:busyKey===item.key?.6:1,
+                  background:item.coming_soon?'#fef3c7':'#d1fae5',
+                  color:item.coming_soon?'#92400e':'#065f46'}}>
+                <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                {item.coming_soon ? 'Coming Soon' : 'Live'}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -11697,6 +11856,7 @@ const NAV_GROUPS = [
     { id:'users',         Icon:Users,        label:'Users'            },
     { id:'idleusers',     Icon:Clock,        label:'Idle Users'       },
     { id:'engagement',    Icon:MessageSquare, label:'Engagement'      },
+    { id:'featureaccess', Icon:UserCheck,    label:'Feature Access'   },
   ]},
   { title: 'Partners', items: [
     { id:'partners',      Icon:Handshake,    label:'Partners'         },
@@ -11709,12 +11869,12 @@ const NAV_GROUPS = [
   ]},
   { title: 'System', items: [
     { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
+    { id:'comingsoon',    Icon:Hourglass,    label:'Coming Soon'      },
     { id:'settings',      Icon:Settings,     label:'Settings'         },
     { id:'operations',    Icon:Globe,        label:'Operations'       },
   ]},
   { title: 'Voice / IVR', items: [
     { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
-    { id:'ivraccess',      Icon:UserCheck,   label:'IVR Access'       },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
   ]},
@@ -15866,6 +16026,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     idleusers:    <RegisteredIdleTab/>,
     whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
+    comingsoon:   <ComingSoonTab/>,
     packages:     <PackagesTab/>,
     creditalerts: <CreditAlertsTab/>,
     notifications:<PushNotificationsTab/>,
@@ -15875,7 +16036,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
     ivrflows:       <IvrFlowsTab/>,
-    ivraccess:      <IvrAccessTab/>,
+    featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,
   };

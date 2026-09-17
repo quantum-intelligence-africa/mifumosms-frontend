@@ -42,7 +42,8 @@ import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
-import { hasIvrAccess } from "@/utils/roleUtils";
+import { hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
+import { useComingSoonFeatures } from "@/hooks/useComingSoonFeatures";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import {
   Collapsible,
@@ -66,6 +67,7 @@ interface NavItem {
   icon: NavIcon;
   children?: NavItem[];
   badge?: number;
+  comingSoon?: boolean;
 }
 
 interface AppSidebarProps {
@@ -112,6 +114,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const { t } = useLanguage();
   const { isPartina } = useRoles();
   const { avatar } = useUserAvatar();
+  const { isComingSoon } = useComingSoonFeatures();
 
   // Mobile uses the bottom tab bar + 3-dot menu; the sidebar has no trigger
   // here, so keeping it mounted only causes a transition-transform flicker
@@ -134,7 +137,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
   const navigation: NavItem[] = [
     { name: t("nav.dashboard"), href: "/dashboard", icon: Home },
-    ...(inVoiceSection
+    ...(inVoiceSection || !hasSmsAccess(user)
       ? []
       : [
           {
@@ -146,7 +149,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               { name: "Scheduled", href: "/messaging/scheduled", icon: CalendarClock, badge: scheduledCount },
               { name: "Outbox", href: "/messaging/outbox", icon: Inbox, badge: outboxCount },
               { name: "Sent", href: "/messaging/sent", icon: CheckCircle2, badge: sentCount },
-              { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon },
+              { name: "WhatsApp", href: "/whatsapp", icon: WhatsAppIcon, comingSoon: isComingSoon("whatsapp") },
               { name: t("nav.campaigns"), href: "/messaging/campaigns", icon: BarChart3 },
               { name: t("nav.contacts"), href: "/messaging/contacts", icon: Users },
               { name: t("nav.sender_names"), href: "/messaging/sender-names", icon: Tag },
@@ -154,8 +157,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               { name: t("nav.purchase_history"), href: "/messaging/history", icon: History },
             ],
           },
-          { name: "AI Copilots", href: "/ai-copilots", icon: Bot },
         ]),
+    ...(inVoiceSection ? [] : [{ name: "AI Copilots", href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
     ...(hasIvrAccess(user)
       ? [
           ...(inVoiceSection ? [] : [{ name: "Voice Copilots", href: "/voice-copilots", icon: Mic }]),
@@ -163,6 +166,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             name: "Voice / IVR",
             href: "/voice",
             icon: Workflow,
+            comingSoon: isComingSoon("voice_ivr"),
             children: [
               { name: "IVR Flows", href: "/voice/ivr", icon: Workflow },
               { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
@@ -249,13 +253,15 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
         {/* ── Global CTAs: buy credits, place a call ─────── */}
         <div className="px-3 pb-3 space-y-2">
-          <button
-            onClick={() => handleNavigation("/messaging/purchase")}
-            className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"
-          >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            Buy SMS Credits
-          </button>
+          {hasSmsAccess(user) && (
+            <button
+              onClick={() => handleNavigation("/messaging/purchase")}
+              className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Buy SMS Credits
+            </button>
+          )}
           {/* The dialer lives at the app root (DialerProvider), so this opens
               it over whatever page is showing — no navigation needed. */}
           {hasIvrAccess(user) && (
@@ -304,6 +310,11 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                       <span className="flex-1 truncate">{item.name}</span>
+                      {item.comingSoon && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
+                          Soon
+                        </span>
+                      )}
                       <ChevronDown
                         className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
                           groupOpen ? "" : "-rotate-90"
@@ -333,6 +344,11 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                           >
                             <ChildIcon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
                             <span className="truncate">{child.name}</span>
+                            {child.comingSoon && (
+                              <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
+                                Soon
+                              </span>
+                            )}
                             {typeof child.badge === "number" && child.badge > 0 && (
                               <span className="ml-auto text-[9px] font-bold text-red-500 leading-none tabular-nums">
                                 {child.badge > 10 ? "10+" : child.badge}
@@ -361,6 +377,11 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               >
                 <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                 <span className="truncate">{item.name}</span>
+                {item.comingSoon && (
+                  <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
+                    Soon
+                  </span>
+                )}
               </button>
             );
           })}
