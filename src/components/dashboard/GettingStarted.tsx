@@ -25,6 +25,9 @@ interface GettingStartedProps {
   firstName?: string;
   approvedSenderIds: number;
   currentCredits: number;
+  /** Fired once, shortly after every step is complete, so the dashboard can
+   * swap the wizard out for the normal view without waiting on a page reload. */
+  onAllSet?: () => void;
 }
 
 type StepKey = "email_verified" | "profile_completed" | "contacts_imported" | "sender_id_requested";
@@ -71,6 +74,7 @@ const STEPS: StepDef[] = [
 export function GettingStarted({
   status,
   firstName,
+  onAllSet,
 }: GettingStartedProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -142,6 +146,14 @@ export function GettingStarted({
   const doneCount = steps.filter((s) => completion[s.key]).length;
   const percentage = Math.round((doneCount / totalSteps) * 100);
   const currentStep = steps[currentIndex];
+
+  // Once every step is done, hand off to the dashboard after a brief beat so
+  // the "You're all set" state is actually visible before it disappears.
+  useEffect(() => {
+    if (doneCount !== totalSteps || !onAllSet) return;
+    const timer = setTimeout(() => onAllSet(), 1200);
+    return () => clearTimeout(timer);
+  }, [doneCount, totalSteps, onAllSet]);
 
   const goNext = () => {
     if (currentIndex < totalSteps - 1) setCurrentIndex(currentIndex + 1);

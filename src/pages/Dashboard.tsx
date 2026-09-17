@@ -4,6 +4,9 @@ import {
   DollarSign,
   Hash,
   Play,
+  PhoneCall,
+  PhoneMissed,
+  Phone,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -21,10 +24,12 @@ import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview"
 import { SenderIds } from "@/components/dashboard/SenderIds";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSendaOnboarding } from "@/hooks/useSendaOnboarding";
+import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
+import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -143,6 +148,26 @@ const Dashboard = () => {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const { t } = useLanguage();
 
+  const showSms = hasSmsAccess(user);
+  const showIvr = hasIvrAccess(user);
+  const voiceStats = useVoiceDashboardStats(showIvr);
+
+  // Once the onboarding wizard reports every step complete, remember it per
+  // user so the full dashboard shows immediately — including on a later
+  // visit, before any backend "hard signal" (a sent message, an imported
+  // contact) has had a chance to flip the Senda lifecycle stage.
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    if (localStorage.getItem(`mifumo_onboarding_done_${user.id}`) === "true") {
+      setOnboardingDone(true);
+    }
+  }, [user?.id]);
+  const handleOnboardingAllSet = useCallback(() => {
+    if (user?.id) localStorage.setItem(`mifumo_onboarding_done_${user.id}`, "true");
+    setOnboardingDone(true);
+  }, [user?.id]);
+
   // A "new user" sees the Getting Started wizard. As soon as the user has ANY
   // concrete signal of activity — even a pending sender ID request, an imported
   // contact, or any sent message — they get the normal dashboard. These hard
@@ -170,6 +195,12 @@ const Dashboard = () => {
     metrics?.total_messages?.value,
   ]);
 
+  // The wizard itself can finish (all steps complete) before any of the
+  // hard signals above exist — e.g. an IVR-only user has no messages or
+  // contacts to send at all. Once it reports done, trust that over the
+  // signal-based guess.
+  const showWizard = isNewUser && !onboardingDone;
+
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
@@ -188,39 +219,89 @@ const Dashboard = () => {
 
   const approvedSenderIds = senderIds?.filter((id) => id.status?.toLowerCase() === "approved").length ?? 0;
 
+  // Metric cards are tailored to what the user can actually act on: SMS
+  // figures for SMS access, call figures for IVR access, credits for
+  // whichever (or both) they have — never a card for a feature they can't
+  // reach.
+  const smsMetricCards: MetricProps[] = showSms
+    ? [
+        {
+          title: t("dashboard.metric.total_messages"),
+          value: metrics?.total_messages?.value?.toLocaleString() || "0",
+          description: metrics?.total_messages?.description || t("dashboard.metric.last_30_days"),
+          icon: MessageSquare,
+          accentBg: "bg-blue-50",
+          accentText: "text-blue-600",
+        },
+        {
+          title: t("dashboard.metric.active_contacts"),
+          value: metrics?.active_contacts?.value?.toLocaleString() || "0",
+          description: metrics?.active_contacts?.description || t("dashboard.metric.engaged_this_month"),
+          icon: Users,
+          accentBg: "bg-emerald-50",
+          accentText: "text-emerald-600",
+        },
+      ]
+    : [];
+
+  const voiceMetricCards: MetricProps[] = showIvr
+    ? [
+        {
+          title: t("dashboard.metric.total_calls"),
+          value: voiceStats.totalCalls.toLocaleString(),
+          description: t("dashboard.metric.calls_last_30_days"),
+          icon: PhoneCall,
+          accentBg: "bg-sky-50",
+          accentText: "text-sky-600",
+        },
+        {
+          title: t("dashboard.metric.missed_calls"),
+          value: voiceStats.missedCalls.toLocaleString(),
+          description: t("dashboard.metric.missed_last_30_days"),
+          icon: PhoneMissed,
+          accentBg: "bg-rose-50",
+          accentText: "text-rose-600",
+        },
+      ]
+    : [];
+
+  const creditsCard: MetricProps = {
+    title: t("dashboard.metric.current_credits"),
+    value: metrics?.current_credits?.value?.toLocaleString() || "0",
+    description: metrics?.current_credits?.description || t("dashboard.metric.available_credits"),
+    icon: DollarSign,
+    accentBg: "bg-amber-50",
+    accentText: "text-amber-600",
+  };
+
   const metricCards: MetricProps[] = [
-    {
-      title: t("dashboard.metric.total_messages"),
-      value: metrics?.total_messages?.value?.toLocaleString() || "0",
-      description: metrics?.total_messages?.description || t("dashboard.metric.last_30_days"),
-      icon: MessageSquare,
-      accentBg: "bg-blue-50",
-      accentText: "text-blue-600",
-    },
-    {
-      title: t("dashboard.metric.active_contacts"),
-      value: metrics?.active_contacts?.value?.toLocaleString() || "0",
-      description: metrics?.active_contacts?.description || t("dashboard.metric.engaged_this_month"),
-      icon: Users,
-      accentBg: "bg-emerald-50",
-      accentText: "text-emerald-600",
-    },
-    {
-      title: t("dashboard.metric.current_credits"),
-      value: metrics?.current_credits?.value?.toLocaleString() || "0",
-      description: metrics?.current_credits?.description || t("dashboard.metric.available_credits"),
-      icon: DollarSign,
-      accentBg: "bg-amber-50",
-      accentText: "text-amber-600",
-    },
-    {
-      title: t("dashboard.metric.sender_id"),
-      value: (approvedSenderIds || metrics?.senderId?.value || 0).toString(),
-      description: t("dashboard.metric.approved_sender_names"),
-      icon: Hash,
-      accentBg: "bg-violet-50",
-      accentText: "text-violet-600",
-    },
+    ...smsMetricCards,
+    ...voiceMetricCards,
+    creditsCard,
+    ...(showSms
+      ? [
+          {
+            title: t("dashboard.metric.sender_id"),
+            value: (approvedSenderIds || metrics?.senderId?.value || 0).toString(),
+            description: t("dashboard.metric.approved_sender_names"),
+            icon: Hash,
+            accentBg: "bg-violet-50",
+            accentText: "text-violet-600",
+          },
+        ]
+      : []),
+    ...(showIvr
+      ? [
+          {
+            title: t("dashboard.metric.active_numbers"),
+            value: voiceStats.activeNumbers.toLocaleString(),
+            description: t("dashboard.metric.connected_phone_numbers"),
+            icon: Phone,
+            accentBg: "bg-indigo-50",
+            accentText: "text-indigo-600",
+          },
+        ]
+      : []),
   ];
 
   try {
@@ -238,27 +319,28 @@ const Dashboard = () => {
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* Mobile-only colored hero — only shown once the user has finished
                 onboarding (otherwise the wizard is the focus). */}
-            {!isNewUser && (
+            {!showWizard && (
               <MobileHomeHero metricCards={metricCards.slice(0, 2)} />
             )}
 
             {/* During onboarding on mobile, give the wizard breathing room from the top bar */}
-            {isNewUser && (
+            {showWizard && (
               <div className="md:hidden h-3" />
             )}
 
             <div className="p-1.5 sm:p-2.5 md:p-3.5 w-full overflow-x-hidden">
               <div className="max-w-full px-1 mx-auto space-y-2 sm:space-y-2.5">
 
-                {isNewUser ? (
+                {showWizard ? (
                   /* Onboarding wizard only — Quick Actions / Activity Feed appear
-                     once all onboarding steps are complete and isNewUser flips false. */
+                     once all onboarding steps are complete and showWizard flips false. */
                   <GettingStarted
                     status={senda.status}
                     recommendations={senda.recommendations}
                     firstName={user?.first_name || user?.full_name?.split(' ')[0]}
                     approvedSenderIds={approvedSenderIds}
                     currentCredits={metrics?.current_credits?.value ?? 0}
+                    onAllSet={handleOnboardingAllSet}
                   />
                 ) : (
                   <>
@@ -295,10 +377,12 @@ const Dashboard = () => {
                       </Card>
                     </div>
 
-                    {/* Sender IDs Section */}
-                    <Card>
-                      <SenderIds senderIds={senderIds} />
-                    </Card>
+                    {/* Sender IDs Section — SMS-only concept */}
+                    {showSms && (
+                      <Card>
+                        <SenderIds senderIds={senderIds} />
+                      </Card>
+                    )}
                   </>
                 )}
 
