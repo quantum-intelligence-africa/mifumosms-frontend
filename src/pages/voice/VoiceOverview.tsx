@@ -4,48 +4,25 @@ import { Workflow, Phone, PhoneCall, Sparkles, Voicemail, ChevronRight } from "l
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Card, CardContent } from "@/components/ui/card";
-
-// This whole page sits behind requireIvrAccess (see App.tsx's /voice route),
-// so every card here is safe to show unconditionally — reaching this page at
-// all already means the user has Voice/IVR access.
-const SECTIONS = [
-  {
-    href: "/voice/ivr",
-    icon: Workflow,
-    title: "Mtiririko wa IVR",
-    description: "Tengeneza na uchapishe mitiririko ya simu — menyu, uhamishaji, saa za kazi, ujumbe wa sauti.",
-  },
-  {
-    href: "/voice/numbers",
-    icon: Phone,
-    title: "Namba za Simu",
-    description: "Unganisha kila namba na mtiririko mmoja uliochapishwa.",
-  },
-  {
-    href: "/voice/calls",
-    icon: PhoneCall,
-    title: "Simu",
-    description: "Angalia simu zilizoingia na zilizotoka, matokeo yake, na hatua za mtiririko.",
-  },
-  {
-    href: "/voice/recordings",
-    icon: Voicemail,
-    title: "Rekodi za Simu",
-    description: "Kila simu na ujumbe wa sauti uliorekodiwa, kwenye orodha moja.",
-  },
-  {
-    href: "/voice/ai-settings",
-    icon: Sparkles,
-    title: "Uchambuzi wa AI wa Simu",
-    description: "Washa muhtasari, hisia, na sababu ya kupiga simu baada ya kila simu.",
-  },
-];
 
 export default function VoiceOverview() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // This whole page sits behind requireIvrAccess (see App.tsx's /voice
+  // route), so every card here is safe to show unconditionally — reaching
+  // this page at all already means the user has Voice/IVR access.
+  const sections = [
+    { href: "/voice/ivr", icon: Workflow, title: t("nav.ivr_flows"), description: t("voice.overview.ivr_flows_desc") },
+    { href: "/voice/numbers", icon: Phone, title: t("nav.phone_numbers"), description: t("voice.overview.phone_numbers_desc") },
+    { href: "/voice/calls", icon: PhoneCall, title: t("nav.calls"), description: t("voice.overview.calls_desc") },
+    { href: "/voice/recordings", icon: Voicemail, title: t("nav.recordings"), description: t("voice.overview.recordings_desc") },
+    { href: "/voice/ai-settings", icon: Sparkles, title: t("nav.ai_call_intelligence"), description: t("voice.overview.ai_settings_desc") },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -55,12 +32,12 @@ export default function VoiceOverview() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
           <div className="mx-auto max-w-3xl space-y-3.5">
             <header>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Simu na IVR</h1>
-              <p className="mt-0.5 text-sm text-foreground/60">Kila kitu cha kutengeneza na kuendesha huduma za simu.</p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.voice_ivr")}</h1>
+              <p className="mt-0.5 text-sm text-foreground/60">{t("voice.overview.subtitle")}</p>
             </header>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {SECTIONS.map((section) => (
+              {sections.map((section) => (
                 <Card
                   key={section.href}
                   className="cursor-pointer transition-shadow hover:shadow-md"

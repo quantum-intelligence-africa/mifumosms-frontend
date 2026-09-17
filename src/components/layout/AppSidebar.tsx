@@ -68,6 +68,9 @@ interface NavItem {
   children?: NavItem[];
   badge?: number;
   comingSoon?: boolean;
+  /** Stable key for a collapsible group's open/closed state — `name` alone
+   * isn't safe once it's a translated string that changes with `language`. */
+  id?: string;
 }
 
 interface AppSidebarProps {
@@ -79,8 +82,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    Messaging: true,
-    "Simu na IVR": location.pathname.startsWith("/voice"),
+    messaging: true,
+    "voice-ivr": location.pathname.startsWith("/voice"),
   });
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
@@ -141,7 +144,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       ? []
       : [
           {
-            name: "Messaging",
+            name: t("nav.messaging"),
+            id: "messaging",
             href: "#",
             icon: MessageSquare,
             children: [
@@ -158,23 +162,28 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
         ]),
-    ...(inVoiceSection ? [] : [{ name: "AI Copilots", href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
+    ...(inVoiceSection ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
     ...(hasIvrAccess(user)
       ? [
-          ...(inVoiceSection ? [] : [{ name: "Voice Copilots", href: "/voice-copilots", icon: Mic }]),
+          ...(inVoiceSection ? [] : [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }]),
           {
-            name: "Simu na IVR",
+            name: t("nav.voice_ivr"),
+            id: "voice-ivr",
             href: "/voice",
             icon: Workflow,
             comingSoon: isComingSoon("voice_ivr"),
             children: [
-              { name: "Mtiririko wa IVR", href: "/voice/ivr", icon: Workflow },
-              { name: "Namba za Simu", href: "/voice/numbers", icon: Phone },
-              { name: "Simu", href: "/voice/calls", icon: PhoneCall },
-              { name: "Rekodi za Simu", href: "/voice/recordings", icon: Voicemail },
-              { name: "Sauti za Mfumo", href: "/voice/prompts", icon: MessageSquareText },
-              { name: "Wakala", href: "/voice/agents", icon: Users2 },
-              { name: "Uchambuzi wa AI wa Simu", href: "/voice/ai-settings", icon: Sparkles },
+              { name: t("nav.ivr_flows"), href: "/voice/ivr", icon: Workflow },
+              { name: t("nav.phone_numbers"), href: "/voice/numbers", icon: Phone },
+              { name: t("nav.calls"), href: "/voice/calls", icon: PhoneCall },
+              // Contacts lives under /messaging but is just as useful for
+              // dialing/IVR — shown here too (not only under Messaging), as
+              // long as the user actually has access to that page.
+              ...(hasSmsAccess(user) ? [{ name: t("nav.contacts"), href: "/messaging/contacts", icon: Users }] : []),
+              { name: t("nav.recordings"), href: "/voice/recordings", icon: Voicemail },
+              { name: t("nav.audio_prompts"), href: "/voice/prompts", icon: MessageSquareText },
+              { name: t("nav.voice_agents"), href: "/voice/agents", icon: Users2 },
+              { name: t("nav.ai_call_intelligence"), href: "/voice/ai-settings", icon: Sparkles },
             ],
           },
         ]
@@ -288,13 +297,14 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             if (hasChildren) {
               const anyChildActive =
                 isActive || item.children!.some((c) => location.pathname === c.href);
-              const groupOpen = openGroups[item.name] ?? true;
+              const groupKey = item.id ?? item.name;
+              const groupOpen = openGroups[groupKey] ?? true;
 
               return (
                 <Collapsible
-                  key={item.name}
+                  key={groupKey}
                   open={groupOpen}
-                  onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [item.name]: v }))}
+                  onOpenChange={(v) => setOpenGroups((prev) => ({ ...prev, [groupKey]: v }))}
                 >
                   <CollapsibleTrigger asChild>
                     <button

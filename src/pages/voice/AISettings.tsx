@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 
 interface AISettings {
@@ -26,18 +27,11 @@ interface AISettings {
 // Radix's Select can't take an empty-string item value, so "auto" stands in
 // for "" (auto-detect) on the wire.
 const AUTO_LANGUAGE = "auto";
-const TRANSCRIPTION_LANGUAGES: Array<[string, string]> = [
-  [AUTO_LANGUAGE, "Itambue lugha yenyewe (auto)"],
-  ["sw", "Kiswahili"],
-  ["en", "Kiingereza"],
-];
-
-const CONSENT_TEXT =
-  "SENDA itatumia maudhui ya mazungumzo kuchanganua simu na kutoa muhtasari pamoja na taarifa muhimu za huduma kwa wateja.";
 
 export default function AISettings() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +45,10 @@ export default function AISettings() {
     if (res.success && res.data) {
       setSettings(res.data);
     } else {
-      setError(res.error || "Imeshindikana kupakia mipangilio ya AI");
+      setError(res.error || t("voice.ai_settings.error_loading"));
     }
     setIsLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSettings();
@@ -68,7 +62,7 @@ export default function AISettings() {
     if (res.success && res.data) {
       setSettings(res.data);
     } else {
-      toast({ title: "Imeshindikana kuhifadhi", description: res.error || "Tafadhali jaribu tena.", variant: "destructive" });
+      toast({ title: t("voice.ai_settings.save_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -78,17 +72,23 @@ export default function AISettings() {
       // First-time enable needs consent acknowledged in the same request —
       // the backend rejects `enabled: true` without it.
       await patch({ enabled: true, consent_acknowledged_at: true });
-      toast({ title: "AI Call Analysis imewashwa", description: "Uchambuzi wa AI umewashwa kwa simu zako." });
+      toast({ title: t("voice.ai_settings.enabled_toast_title"), description: t("voice.ai_settings.enabled_toast_desc") });
       return;
     }
     await patch({ enabled: checked });
   };
 
+  const TRANSCRIPTION_LANGUAGES: Array<[string, string]> = [
+    [AUTO_LANGUAGE, t("voice.ai_settings.language_auto")],
+    ["sw", t("voice.ai_settings.language_sw")],
+    ["en", t("voice.ai_settings.language_en")],
+  ];
+
   const subToggles: Array<{ key: keyof AISettings; label: string }> = [
-    { key: "post_call_summary", label: "Muhtasari wa simu" },
-    { key: "sentiment_analysis", label: "Hisia za mteja" },
-    { key: "intent_detection", label: "Sababu ya kupiga simu" },
-    { key: "auto_categorization", label: "Mada na uainishaji" },
+    { key: "post_call_summary", label: t("voice.ai_settings.toggle_summary") },
+    { key: "sentiment_analysis", label: t("voice.ai_settings.toggle_sentiment") },
+    { key: "intent_detection", label: t("voice.ai_settings.toggle_intent") },
+    { key: "auto_categorization", label: t("voice.ai_settings.toggle_categorization") },
   ];
 
   return (
@@ -99,10 +99,8 @@ export default function AISettings() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
           <div className="mx-auto max-w-2xl space-y-3.5">
             <header>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Uchambuzi wa AI wa Simu</h1>
-              <p className="mt-0.5 text-sm text-foreground/60">
-                Uchambuzi wa AI wa simu zako — hiari, umezimwa kwa default, na haihusiani na mfumo wa IVR.
-              </p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.ai_call_intelligence")}</h1>
+              <p className="mt-0.5 text-sm text-foreground/60">{t("voice.ai_settings.subtitle")}</p>
             </header>
 
             {error && (
@@ -112,7 +110,7 @@ export default function AISettings() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={fetchSettings}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Jaribu tena
+                    {t("common.try_again")}
                   </Button>
                 </CardContent>
               </Card>
@@ -127,11 +125,9 @@ export default function AISettings() {
                     <div className="flex items-start gap-3">
                       <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
                       <div>
-                        <CardTitle className="text-base">Uchambuzi wa AI wa Simu</CardTitle>
+                        <CardTitle className="text-base">{t("nav.ai_call_intelligence")}</CardTitle>
                         <CardDescription className="mt-1">
-                          {settings.enabled
-                            ? "AI inaweza kuchanganua mazungumzo ya simu ili kukusaidia kuelewa mahitaji ya wateja na kuboresha huduma."
-                            : "Uchambuzi wa AI umezimwa. Hakuna uchambuzi wa AI utakaofanywa kwenye simu zako."}
+                          {settings.enabled ? t("voice.ai_settings.enabled_desc") : t("voice.ai_settings.disabled_desc")}
                         </CardDescription>
                       </div>
                     </div>
@@ -142,7 +138,7 @@ export default function AISettings() {
                     <CardContent className="border-t border-border pt-2.5">
                       <div className="flex gap-2 rounded-md bg-muted p-2.5 text-xs text-muted-foreground">
                         <ShieldCheck className="h-4 w-4 shrink-0" />
-                        <p>{CONSENT_TEXT}</p>
+                        <p>{t("voice.ai_settings.consent_text")}</p>
                       </div>
                     </CardContent>
                   )}
@@ -150,8 +146,8 @@ export default function AISettings() {
 
                 <Card className={!settings.enabled ? "opacity-50" : undefined}>
                   <CardHeader className="pb-2.5">
-                    <CardTitle className="text-sm">Chagua unachotaka kuchambuliwa</CardTitle>
-                    <CardDescription>Kila kipengele kinaweza kuzimwa peke yake, bila kuzima uchambuzi wa AI kwa ujumla.</CardDescription>
+                    <CardTitle className="text-sm">{t("voice.ai_settings.toggles_title")}</CardTitle>
+                    <CardDescription>{t("voice.ai_settings.toggles_desc")}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-0">
                     {subToggles.map(({ key, label }) => (
@@ -170,14 +166,14 @@ export default function AISettings() {
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
                       <Label htmlFor="transcription_language" className="text-sm font-normal text-foreground">
-                        Lugha ya kuandika mazungumzo
+                        {t("voice.ai_settings.transcription_language_label")}
                       </Label>
                       <Select
                         value={settings.transcription_language || AUTO_LANGUAGE}
                         onValueChange={(value) => patch({ transcription_language: value === AUTO_LANGUAGE ? "" : value })}
                         disabled={isSaving || !settings.enabled}
                       >
-                        <SelectTrigger id="transcription_language" className="h-9 w-44" aria-label="Lugha ya kuandika mazungumzo">
+                        <SelectTrigger id="transcription_language" className="h-9 w-44" aria-label={t("voice.ai_settings.transcription_language_label")}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -191,9 +187,9 @@ export default function AISettings() {
                     </div>
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3 opacity-60">
-                      <Label className="text-sm font-normal text-foreground">Uchambuzi wa Papo Hapo</Label>
-                      <span className="text-xs text-muted-foreground" title="Inahitaji njia ya simu inayotuma sauti moja kwa moja wakati wa mazungumzo — haipatikani kwa sasa.">
-                        Haipatikani
+                      <Label className="text-sm font-normal text-foreground">{t("voice.ai_settings.realtime_label")}</Label>
+                      <span className="text-xs text-muted-foreground" title={t("voice.ai_settings.realtime_tooltip")}>
+                        {t("voice.ai_settings.realtime_unavailable")}
                       </span>
                     </div>
                   </CardContent>

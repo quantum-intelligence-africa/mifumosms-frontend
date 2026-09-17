@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 import type { IvrFlowDetail, IvrFlowSummary } from "@/components/voice/ivr-builder/types";
 import { FLOW_TEMPLATES } from "@/components/voice/ivr-builder/templates";
@@ -31,6 +32,7 @@ export default function IvrFlowList() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [flows, setFlows] = useState<IvrFlowSummary[]>([]);
   const [accounts, setAccounts] = useState<VoiceAccountLite[]>([]);
@@ -51,13 +53,13 @@ export default function IvrFlowList() {
     if (flowsRes.success && flowsRes.data) {
       setFlows(flowsRes.data);
     } else {
-      setError(flowsRes.status === 403 ? "Kifurushi chako hakina kipengele cha Simu na IVR." : flowsRes.error || "Imeshindikana kupakia mitiririko");
+      setError(flowsRes.status === 403 ? t("voice.plan.no_feature") : flowsRes.error || t("voice.ivr.error_loading"));
     }
     if (accountsRes.success && accountsRes.data) {
       setAccounts(accountsRes.data);
     }
     setIsLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchFlows();

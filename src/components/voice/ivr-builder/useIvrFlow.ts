@@ -15,6 +15,7 @@ import {
   type OnEdgesChange,
 } from "@xyflow/react";
 import { voiceApi } from "@/services/voiceApi";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, FlowDefinition, IvrFlowDetail, IvrNodeType, WireEdge, WireNode } from "./types";
 
 const AUTOSAVE_DELAY_MS = 1000;
@@ -73,6 +74,7 @@ function edgesToWire(edges: Edge[]): WireEdge[] {
 }
 
 export function useIvrFlow(flowId: string | undefined) {
+  const { t } = useLanguage();
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<AppNode>([]);
   const [edges, setEdges, onEdgesChangeRaw] = useEdgesState<Edge>([]);
   const [name, setName] = useState("");
@@ -125,13 +127,13 @@ export function useIvrFlow(flowId: string | undefined) {
       setBusinessHours(res.data.business_hours ?? "");
       hasLoaded.current = true;
     } else {
-      setLoadError(res.error || "Failed to load flow");
+      setLoadError(res.error || t("voice.ivr.error_loading_flow"));
       if (res.status === 403) {
-        setLoadError("Kifurushi chako hakina kipengele cha Simu na IVR.");
+        setLoadError(t("voice.plan.no_feature"));
       }
     }
     setIsLoading(false);
-  }, [flowId, setNodes, setEdges]);
+  }, [flowId, setNodes, setEdges, t]);
 
   useEffect(() => {
     hasLoaded.current = false;

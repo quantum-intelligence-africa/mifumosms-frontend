@@ -4,6 +4,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useComingSoonFeatures } from '@/hooks/useComingSoonFeatures';
 import { hasIvrAccess, hasSmsAccess } from '@/utils/roleUtils';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   const location = useLocation();
   const { hasFeature, isLoading: featuresLoading } = useFeatures();
   const { isComingSoon } = useComingSoonFeatures();
+  const { t } = useLanguage();
 
   // If context is not available, show loading
   if (!authContext) {
@@ -118,11 +120,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Unahitaji Ruhusa ya Simu na IVR</h2>
-          <p className="text-text-subtle mb-6">
-            Bado huna ruhusa ya kufikia Simu na IVR. Muulize msimamizi wa akaunti
-            au timu ya SENDA akuwashie kipengele hiki.
-          </p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{t("voice.access.title")}</h2>
+          <p className="text-text-subtle mb-6">{t("voice.access.desc")}</p>
         </div>
       </div>
     );

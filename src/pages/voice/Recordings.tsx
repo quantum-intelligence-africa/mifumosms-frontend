@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { voiceApi } from "@/services/voiceApi";
+import { useLanguage } from "@/hooks/useLanguage";
 import { CALL_ENDED_EVENT } from "@/contexts/DialerContext";
 import {
   AgentChip,
@@ -61,6 +62,7 @@ const otherParty = (call: RecordingCall) => (call.direction === "outbound" ? cal
 const ourNumber = (call: RecordingCall) => (call.direction === "outbound" ? call.from_number : call.to_number) || "—";
 
 export default function Recordings() {
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [count, setCount] = useState(0);
@@ -81,8 +83,8 @@ export default function Recordings() {
 
   // Search as you type, without a request per keystroke.
   useEffect(() => {
-    const t = setTimeout(() => setSearch(query.trim()), 350);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSearch(query.trim()), 350);
+    return () => clearTimeout(timer);
   }, [query]);
 
   const fetchRecordings = useCallback(
@@ -100,12 +102,12 @@ export default function Recordings() {
         setHasNext(Boolean(res.data.next));
         setPage(pageNum);
       } else {
-        setError(res.error || "Imeshindikana kupakia rekodi");
+        setError(res.error || t("voice.recordings.error_loading"));
       }
       setIsLoading(false);
       setIsLoadingMore(false);
     },
-    [search, agentId],
+    [search, agentId, t],
   );
 
   useEffect(() => {
@@ -141,9 +143,9 @@ export default function Recordings() {
           <div className="mx-auto max-w-6xl space-y-3.5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Rekodi za Simu</h1>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">{t("nav.recordings")}</h1>
                 <p className="mt-0.5 text-sm text-foreground/60">
-                  {isLoading ? "Inapakia…" : `Rekodi ${count} zimehifadhiwa`}
+                  {isLoading ? t("voice.calls.loading") : t("voice.recordings.count_subtitle", { count })}
                 </p>
               </div>
             </header>
@@ -154,17 +156,17 @@ export default function Recordings() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Tafuta mpiga simu, namba, wakala…"
+                  placeholder={t("voice.recordings.search_placeholder")}
                   className="h-10 pl-9"
-                  aria-label="Tafuta rekodi"
+                  aria-label={t("voice.recordings.search_aria")}
                 />
               </div>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger className="h-10 w-full sm:w-44" aria-label="Wakala">
-                  <SelectValue placeholder="Wakala wote" />
+                <SelectTrigger className="h-10 w-full sm:w-44" aria-label={t("voice.calls.agent_aria")}>
+                  <SelectValue placeholder={t("voice.calls.all_agents")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Wakala wote</SelectItem>
+                  <SelectItem value="all">{t("voice.calls.all_agents")}</SelectItem>
                   {agents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
@@ -181,7 +183,7 @@ export default function Recordings() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={() => fetchRecordings(1, false)}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Jaribu tena
+                    {t("common.try_again")}
                   </Button>
                 </CardContent>
               </Card>
@@ -200,12 +202,10 @@ export default function Recordings() {
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <Voicemail className="h-10 w-10 text-muted-foreground" />
                   <h3 className="text-base font-semibold text-foreground">
-                    {search || agentId !== "all" ? "Hakuna kinacholingana" : "Bado hakuna rekodi"}
+                    {search || agentId !== "all" ? t("voice.recordings.no_match_title") : t("voice.recordings.no_recordings_title")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {search || agentId !== "all"
-                      ? "Jaribu namba au wakala mwingine."
-                      : "Rekodi zitaonekana hapa mara simu itakaporekodiwa au mpiga simu ataacha ujumbe."}
+                    {search || agentId !== "all" ? t("voice.recordings.no_match_desc") : t("voice.recordings.no_recordings_desc")}
                   </p>
                 </CardContent>
               </Card>
@@ -218,13 +218,13 @@ export default function Recordings() {
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-10" />
-                        <TableHead>Mpiga simu</TableHead>
-                        <TableHead>Namba</TableHead>
-                        <TableHead>Wakala</TableHead>
-                        <TableHead>Urefu</TableHead>
-                        <TableHead>Ukubwa</TableHead>
-                        <TableHead>Ilihifadhiwa</TableHead>
-                        <TableHead className="text-right">Vitendo</TableHead>
+                        <TableHead>{t("voice.calls.col_caller")}</TableHead>
+                        <TableHead>{t("voice.recordings.col_number")}</TableHead>
+                        <TableHead>{t("voice.calls.col_agent")}</TableHead>
+                        <TableHead>{t("voice.calls.col_length")}</TableHead>
+                        <TableHead>{t("voice.recordings.col_size")}</TableHead>
+                        <TableHead>{t("voice.recordings.col_stored")}</TableHead>
+                        <TableHead className="text-right">{t("voice.recordings.col_actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -268,7 +268,7 @@ export default function Recordings() {
             {!error && !isLoading && recordings.length > 0 && hasNext && (
               <div className="flex justify-center pt-2">
                 <Button variant="outline" size="sm" onClick={() => fetchRecordings(page + 1, true)} disabled={isLoadingMore}>
-                  {isLoadingMore ? "Inapakia…" : "Pakia zaidi"}
+                  {isLoadingMore ? t("voice.calls.loading") : t("voice.calls.load_more")}
                 </Button>
               </div>
             )}
