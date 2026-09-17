@@ -127,7 +127,7 @@ export function useIvrFlow(flowId: string | undefined) {
     } else {
       setLoadError(res.error || "Failed to load flow");
       if (res.status === 403) {
-        setLoadError("Your plan does not include the Voice/IVR feature.");
+        setLoadError("Kifurushi chako hakina kipengele cha Simu na IVR.");
       }
     }
     setIsLoading(false);

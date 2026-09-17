@@ -142,7 +142,7 @@ function AgentField({
       </Select>
       {agents !== null && agents.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna mhudumu bado. Waongeze kwenye Voice / IVR &gt; Agents ili wachaguliwe hapa kwa majina.
+          Hakuna mhudumu bado. Waongeze kwenye Simu na IVR &gt; Wakala ili wachaguliwe hapa kwa majina.
         </p>
       ) : (
         helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>
@@ -189,7 +189,7 @@ function AgentMultiSelectField({
         <p className="text-[10px] text-muted-foreground">Inapakia…</p>
       ) : agents.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna mhudumu bado. Waongeze kwenye Voice / IVR &gt; Agents ili wachaguliwe hapa.
+          Hakuna mhudumu bado. Waongeze kwenye Simu na IVR &gt; Wakala ili wachaguliwe hapa.
         </p>
       ) : (
         <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
@@ -285,7 +285,7 @@ function PromptLibraryField({
       </Select>
       {prompts !== null && prompts.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Hakuna ujumbe bado. Uongeze kwenye Voice / IVR &gt; Audio Prompts ili uchaguliwe hapa kwa jina.
+          Hakuna ujumbe bado. Uongeze kwenye Simu na IVR &gt; Sauti za Mfumo ili uchaguliwe hapa kwa jina.
         </p>
       ) : (
         helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>

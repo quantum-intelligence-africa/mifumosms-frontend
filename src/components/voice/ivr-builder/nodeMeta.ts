@@ -197,7 +197,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         key: "library_prompt_id",
         label: "Tumia kutoka Maktaba ya Ujumbe",
         type: "prompt_library",
-        helpText: "Chagua ujumbe uliohifadhiwa (Voice / IVR > Audio Prompts), au andika/pakia hapa chini.",
+        helpText: "Chagua ujumbe uliohifadhiwa (Simu na IVR > Sauti za Mfumo), au andika/pakia hapa chini.",
       },
       {
         key: "prompt",
@@ -232,7 +232,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         key: "agent_id",
         label: "Mhudumu",
         type: "agent",
-        helpText: "Chagua kutoka kwenye orodha ya wahudumu (Voice / IVR > Agents). Namba na jina hujazwa yenyewe.",
+        helpText: "Chagua kutoka kwenye orodha ya wahudumu (Simu na IVR > Wakala). Namba na jina hujazwa yenyewe.",
       },
       {
         key: "destination",
@@ -347,7 +347,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         key: "agent_ids",
         label: "Wahudumu anaoweza kuunganisha nao",
         type: "agent_multiselect",
-        helpText: "Ukiacha wazi, AI itachagua kutoka kwa wahudumu wote walio hai (Voice / IVR > Agents).",
+        helpText: "Ukiacha wazi, AI itachagua kutoka kwa wahudumu wote walio hai (Simu na IVR > Wakala).",
       },
       {
         key: "default_agent_id",

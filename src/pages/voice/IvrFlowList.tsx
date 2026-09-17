@@ -51,7 +51,7 @@ export default function IvrFlowList() {
     if (flowsRes.success && flowsRes.data) {
       setFlows(flowsRes.data);
     } else {
-      setError(flowsRes.status === 403 ? "Your plan does not include the Voice/IVR feature." : flowsRes.error || "Failed to load flows");
+      setError(flowsRes.status === 403 ? "Kifurushi chako hakina kipengele cha Simu na IVR." : flowsRes.error || "Imeshindikana kupakia mitiririko");
     }
     if (accountsRes.success && accountsRes.data) {
       setAccounts(accountsRes.data);

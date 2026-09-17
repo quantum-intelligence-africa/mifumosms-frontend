@@ -100,7 +100,7 @@ export default function Recordings() {
         setHasNext(Boolean(res.data.next));
         setPage(pageNum);
       } else {
-        setError(res.error || "Failed to load recordings");
+        setError(res.error || "Imeshindikana kupakia rekodi");
       }
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -141,9 +141,9 @@ export default function Recordings() {
           <div className="mx-auto max-w-6xl space-y-3.5">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Recordings</h1>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">Rekodi za Simu</h1>
                 <p className="mt-0.5 text-sm text-foreground/60">
-                  {isLoading ? "Loading…" : `${count} recording${count === 1 ? "" : "s"} in storage`}
+                  {isLoading ? "Inapakia…" : `Rekodi ${count} zimehifadhiwa`}
                 </p>
               </div>
             </header>
@@ -154,17 +154,17 @@ export default function Recordings() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search callers, numbers, agents…"
+                  placeholder="Tafuta mpiga simu, namba, wakala…"
                   className="h-10 pl-9"
-                  aria-label="Search recordings"
+                  aria-label="Tafuta rekodi"
                 />
               </div>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger className="h-10 w-full sm:w-44" aria-label="Agent">
-                  <SelectValue placeholder="All agents" />
+                <SelectTrigger className="h-10 w-full sm:w-44" aria-label="Wakala">
+                  <SelectValue placeholder="Wakala wote" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All agents</SelectItem>
+                  <SelectItem value="all">Wakala wote</SelectItem>
                   {agents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
@@ -181,7 +181,7 @@ export default function Recordings() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={() => fetchRecordings(1, false)}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    Jaribu tena
                   </Button>
                 </CardContent>
               </Card>
@@ -200,12 +200,12 @@ export default function Recordings() {
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <Voicemail className="h-10 w-10 text-muted-foreground" />
                   <h3 className="text-base font-semibold text-foreground">
-                    {search || agentId !== "all" ? "Nothing matches" : "No recordings yet"}
+                    {search || agentId !== "all" ? "Hakuna kinacholingana" : "Bado hakuna rekodi"}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {search || agentId !== "all"
-                      ? "Try a different number or agent."
-                      : "Recordings show up here once a call is recorded or a caller leaves a voicemail."}
+                      ? "Jaribu namba au wakala mwingine."
+                      : "Rekodi zitaonekana hapa mara simu itakaporekodiwa au mpiga simu ataacha ujumbe."}
                   </p>
                 </CardContent>
               </Card>
@@ -218,13 +218,13 @@ export default function Recordings() {
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-10" />
-                        <TableHead>Caller</TableHead>
-                        <TableHead>Number</TableHead>
-                        <TableHead>Agent</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Stored</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Mpiga simu</TableHead>
+                        <TableHead>Namba</TableHead>
+                        <TableHead>Wakala</TableHead>
+                        <TableHead>Urefu</TableHead>
+                        <TableHead>Ukubwa</TableHead>
+                        <TableHead>Ilihifadhiwa</TableHead>
+                        <TableHead className="text-right">Vitendo</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -268,7 +268,7 @@ export default function Recordings() {
             {!error && !isLoading && recordings.length > 0 && hasNext && (
               <div className="flex justify-center pt-2">
                 <Button variant="outline" size="sm" onClick={() => fetchRecordings(page + 1, true)} disabled={isLoadingMore}>
-                  {isLoadingMore ? "Loading…" : "Load more"}
+                  {isLoadingMore ? "Inapakia…" : "Pakia zaidi"}
                 </Button>
               </div>
             )}

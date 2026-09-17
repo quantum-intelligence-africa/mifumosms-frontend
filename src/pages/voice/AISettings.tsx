@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { voiceApi } from "@/services/voiceApi";
 
@@ -17,9 +18,19 @@ interface AISettings {
   sentiment_analysis: boolean;
   intent_detection: boolean;
   auto_categorization: boolean;
+  transcription_language: "" | "sw" | "en";
   consent_acknowledged_at: string | null;
   updated_at: string;
 }
+
+// Radix's Select can't take an empty-string item value, so "auto" stands in
+// for "" (auto-detect) on the wire.
+const AUTO_LANGUAGE = "auto";
+const TRANSCRIPTION_LANGUAGES: Array<[string, string]> = [
+  [AUTO_LANGUAGE, "Itambue lugha yenyewe (auto)"],
+  ["sw", "Kiswahili"],
+  ["en", "Kiingereza"],
+];
 
 const CONSENT_TEXT =
   "SENDA itatumia maudhui ya mazungumzo kuchanganua simu na kutoa muhtasari pamoja na taarifa muhimu za huduma kwa wateja.";
@@ -40,7 +51,7 @@ export default function AISettings() {
     if (res.success && res.data) {
       setSettings(res.data);
     } else {
-      setError(res.error || "Failed to load AI settings");
+      setError(res.error || "Imeshindikana kupakia mipangilio ya AI");
     }
     setIsLoading(false);
   }, []);
@@ -57,7 +68,7 @@ export default function AISettings() {
     if (res.success && res.data) {
       setSettings(res.data);
     } else {
-      toast({ title: "Failed to update", description: res.error || "Please try again.", variant: "destructive" });
+      toast({ title: "Imeshindikana kuhifadhi", description: res.error || "Tafadhali jaribu tena.", variant: "destructive" });
     }
   };
 
@@ -74,10 +85,10 @@ export default function AISettings() {
   };
 
   const subToggles: Array<{ key: keyof AISettings; label: string }> = [
-    { key: "post_call_summary", label: "Muhtasari wa simu (Post-Call Summary)" },
-    { key: "sentiment_analysis", label: "Hisia za mteja (Sentiment Analysis)" },
-    { key: "intent_detection", label: "Sababu ya kupiga simu (Call Intent Detection)" },
-    { key: "auto_categorization", label: "Mada na uainishaji (Automatic Categorization)" },
+    { key: "post_call_summary", label: "Muhtasari wa simu" },
+    { key: "sentiment_analysis", label: "Hisia za mteja" },
+    { key: "intent_detection", label: "Sababu ya kupiga simu" },
+    { key: "auto_categorization", label: "Mada na uainishaji" },
   ];
 
   return (
@@ -88,9 +99,9 @@ export default function AISettings() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
           <div className="mx-auto max-w-2xl space-y-3.5">
             <header>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">AI & Call Intelligence</h1>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Uchambuzi wa AI wa Simu</h1>
               <p className="mt-0.5 text-sm text-foreground/60">
-                Optional AI analysis of your call recordings — off by default, and fully independent of the IVR engine.
+                Uchambuzi wa AI wa simu zako — hiari, umezimwa kwa default, na haihusiani na mfumo wa IVR.
               </p>
             </header>
 
@@ -101,7 +112,7 @@ export default function AISettings() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={fetchSettings}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    Jaribu tena
                   </Button>
                 </CardContent>
               </Card>
@@ -116,7 +127,7 @@ export default function AISettings() {
                     <div className="flex items-start gap-3">
                       <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
                       <div>
-                        <CardTitle className="text-base">AI Call Analysis</CardTitle>
+                        <CardTitle className="text-base">Uchambuzi wa AI wa Simu</CardTitle>
                         <CardDescription className="mt-1">
                           {settings.enabled
                             ? "AI inaweza kuchanganua mazungumzo ya simu ili kukusaidia kuelewa mahitaji ya wateja na kuboresha huduma."
@@ -139,8 +150,8 @@ export default function AISettings() {
 
                 <Card className={!settings.enabled ? "opacity-50" : undefined}>
                   <CardHeader className="pb-2.5">
-                    <CardTitle className="text-sm">Independent toggles</CardTitle>
-                    <CardDescription>Each analysis type can be switched off on its own without disabling AI entirely.</CardDescription>
+                    <CardTitle className="text-sm">Chagua unachotaka kuchambuliwa</CardTitle>
+                    <CardDescription>Kila kipengele kinaweza kuzimwa peke yake, bila kuzima uchambuzi wa AI kwa ujumla.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-0">
                     {subToggles.map(({ key, label }) => (
@@ -157,10 +168,32 @@ export default function AISettings() {
                       </div>
                     ))}
 
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <Label htmlFor="transcription_language" className="text-sm font-normal text-foreground">
+                        Lugha ya kuandika mazungumzo
+                      </Label>
+                      <Select
+                        value={settings.transcription_language || AUTO_LANGUAGE}
+                        onValueChange={(value) => patch({ transcription_language: value === AUTO_LANGUAGE ? "" : value })}
+                        disabled={isSaving || !settings.enabled}
+                      >
+                        <SelectTrigger id="transcription_language" className="h-9 w-44" aria-label="Lugha ya kuandika mazungumzo">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TRANSCRIPTION_LANGUAGES.map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3 opacity-60">
-                      <Label className="text-sm font-normal text-foreground">Real-Time Analysis</Label>
-                      <span className="text-xs text-muted-foreground" title="Requires a telephony provider with live audio streaming — not available on Africa's Talking.">
-                        Not available
+                      <Label className="text-sm font-normal text-foreground">Uchambuzi wa Papo Hapo</Label>
+                      <span className="text-xs text-muted-foreground" title="Inahitaji njia ya simu inayotuma sauti moja kwa moja wakati wa mazungumzo — haipatikani kwa sasa.">
+                        Haipatikani
                       </span>
                     </div>
                   </CardContent>

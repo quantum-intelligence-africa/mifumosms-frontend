@@ -154,8 +154,8 @@ const IntegrationGuide = () => {
                       <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
                     </a>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 text-sm">
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] uppercase tracking-wide text-blue-700 dark:text-blue-300 font-bold pt-1">Normal</p>
+                      <div className="space-y-1.5 min-w-0">
+                        <p className="text-[11px] uppercase tracking-wide text-blue-700 dark:text-blue-300 font-bold pt-1 break-words">Normal</p>
                         <a href="#integration-normal" className="group flex items-center justify-between rounded-md border border-blue-200/60 dark:border-blue-800/60 bg-blue-500/5 px-2.5 py-1.5 text-foreground font-medium hover:bg-primary/10 hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-fast">
                           <span>Overview</span>
                           <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
@@ -177,8 +177,8 @@ const IntegrationGuide = () => {
                           <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
                         </a>
                       </div>
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300 font-bold pt-1">Partina/Whitelabel</p>
+                      <div className="space-y-1.5 min-w-0">
+                        <p className="text-[11px] uppercase tracking-wide text-violet-700 dark:text-violet-300 font-bold pt-1 break-words">Partner</p>
                         <a href="#integration-partina" className="group flex items-center justify-between rounded-md border border-violet-200/60 dark:border-violet-800/60 bg-violet-500/5 px-2.5 py-1.5 text-foreground font-medium hover:bg-primary/10 hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-fast">
                           <span>Overview</span>
                           <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
@@ -192,8 +192,8 @@ const IntegrationGuide = () => {
                           <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
                         </a>
                       </div>
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] uppercase tracking-wide text-indigo-700 dark:text-indigo-300 font-bold pt-1">AI & Voice</p>
+                      <div className="space-y-1.5 min-w-0">
+                        <p className="text-[11px] uppercase tracking-wide text-indigo-700 dark:text-indigo-300 font-bold pt-1 break-words">AI & Voice</p>
                         <a href="#integration-copilots" className="group flex items-center justify-between rounded-md border border-indigo-200/60 dark:border-indigo-800/60 bg-indigo-500/5 px-2.5 py-1.5 text-foreground font-medium hover:bg-primary/10 hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-fast">
                           <span>AI Copilots</span>
                           <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
@@ -373,7 +373,7 @@ const IntegrationGuide = () => {
                   <CardContent className="p-3 sm:p-4 space-y-3">
                     <div className="space-y-1.5">
                       <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-300 font-semibold">Section 2</p>
-                      <h2 className="text-lg sm:text-xl font-semibold">Partina and whitelabel integration</h2>
+                      <h2 className="text-lg sm:text-xl font-semibold">Partner and whitelabel integration</h2>
                       <p className="text-sm text-foreground/80">
                         Parent/reseller flow for provisioning child tenants, funding accounts, and sending messages on behalf of clients.
                       </p>

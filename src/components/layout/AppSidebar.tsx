@@ -80,7 +80,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const navigate = useNavigate();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Messaging: true,
-    "Voice / IVR": location.pathname.startsWith("/voice"),
+    "Simu na IVR": location.pathname.startsWith("/voice"),
   });
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
@@ -163,18 +163,18 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       ? [
           ...(inVoiceSection ? [] : [{ name: "Voice Copilots", href: "/voice-copilots", icon: Mic }]),
           {
-            name: "Voice / IVR",
+            name: "Simu na IVR",
             href: "/voice",
             icon: Workflow,
             comingSoon: isComingSoon("voice_ivr"),
             children: [
-              { name: "IVR Flows", href: "/voice/ivr", icon: Workflow },
-              { name: "Phone Numbers", href: "/voice/numbers", icon: Phone },
-              { name: "Call History", href: "/voice/calls", icon: PhoneCall },
-              { name: "Recordings", href: "/voice/recordings", icon: Voicemail },
-              { name: "Audio Prompts", href: "/voice/prompts", icon: MessageSquareText },
-              { name: "Agents", href: "/voice/agents", icon: Users2 },
-              { name: "AI & Call Intelligence", href: "/voice/ai-settings", icon: Sparkles },
+              { name: "Mtiririko wa IVR", href: "/voice/ivr", icon: Workflow },
+              { name: "Namba za Simu", href: "/voice/numbers", icon: Phone },
+              { name: "Simu", href: "/voice/calls", icon: PhoneCall },
+              { name: "Rekodi za Simu", href: "/voice/recordings", icon: Voicemail },
+              { name: "Sauti za Mfumo", href: "/voice/prompts", icon: MessageSquareText },
+              { name: "Wakala", href: "/voice/agents", icon: Users2 },
+              { name: "Uchambuzi wa AI wa Simu", href: "/voice/ai-settings", icon: Sparkles },
             ],
           },
         ]

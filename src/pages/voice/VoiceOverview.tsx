@@ -13,32 +13,32 @@ const SECTIONS = [
   {
     href: "/voice/ivr",
     icon: Workflow,
-    title: "IVR Flows",
-    description: "Build and publish call flows — menus, transfers, business hours, voicemail.",
+    title: "Mtiririko wa IVR",
+    description: "Tengeneza na uchapishe mitiririko ya simu — menyu, uhamishaji, saa za kazi, ujumbe wa sauti.",
   },
   {
     href: "/voice/numbers",
     icon: Phone,
-    title: "Phone Numbers",
-    description: "Connect each number to exactly one published flow.",
+    title: "Namba za Simu",
+    description: "Unganisha kila namba na mtiririko mmoja uliochapishwa.",
   },
   {
     href: "/voice/calls",
     icon: PhoneCall,
-    title: "Call History",
-    description: "Browse real calls, review status, and step through flow logs.",
+    title: "Simu",
+    description: "Angalia simu zilizoingia na zilizotoka, matokeo yake, na hatua za mtiririko.",
   },
   {
     href: "/voice/recordings",
     icon: Voicemail,
-    title: "Recordings",
-    description: "Every recorded call and voicemail, in one browsable list.",
+    title: "Rekodi za Simu",
+    description: "Kila simu na ujumbe wa sauti uliorekodiwa, kwenye orodha moja.",
   },
   {
     href: "/voice/ai-settings",
     icon: Sparkles,
-    title: "AI & Call Intelligence",
-    description: "Turn on post-call AI summaries, sentiment, and intent detection.",
+    title: "Uchambuzi wa AI wa Simu",
+    description: "Washa muhtasari, hisia, na sababu ya kupiga simu baada ya kila simu.",
   },
 ];
 
@@ -55,8 +55,8 @@ export default function VoiceOverview() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
           <div className="mx-auto max-w-3xl space-y-3.5">
             <header>
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Voice / IVR</h1>
-              <p className="mt-0.5 text-sm text-foreground/60">Everything for building and running phone call experiences.</p>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Simu na IVR</h1>
+              <p className="mt-0.5 text-sm text-foreground/60">Kila kitu cha kutengeneza na kuendesha huduma za simu.</p>
             </header>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

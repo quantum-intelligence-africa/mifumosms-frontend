@@ -102,24 +102,27 @@ interface CallDetail extends CallSummary {
 type Tab = "all" | "inbound" | "outbound" | "missed";
 type Range = "7" | "30" | "90" | "all";
 
+// Plain Swahili instead of call-centre jargon: "simu zilizoingia" (calls
+// that came in) and "zilizotoka" (calls that went out) read clearly to
+// anyone, where "Inbound"/"Outbound" don't.
 const TABS: Array<[Tab, string]> = [
-  ["all", "All"],
-  ["inbound", "Inbound"],
-  ["outbound", "Outbound"],
-  ["missed", "Missed"],
+  ["all", "Zote"],
+  ["inbound", "Zilizoingia"],
+  ["outbound", "Zilizotoka"],
+  ["missed", "Zilizokosa"],
 ];
 const RANGES: Array<[Range, string]> = [
-  ["7", "7d"],
-  ["30", "30d"],
-  ["90", "90d"],
-  ["all", "All"],
+  ["7", "Siku 7"],
+  ["30", "Siku 30"],
+  ["90", "Siku 90"],
+  ["all", "Zote"],
 ];
 
 const MISSED = new Set(["noanswer", "no_answer", "notanswered", "busy", "aborted", "failed", "rejected", "cancelled", "canceled"]);
 const isMissed = (call: Pick<CallSummary, "status" | "provider_status" | "duration_seconds">) =>
   call.status === "failed" || MISSED.has((call.provider_status || "").toLowerCase()) || (call.status === "completed" && !call.duration_seconds);
 
-/** The person on the other end: the caller for inbound, the customer for outbound. */
+/** The person on the other end: the caller for a call that came in, the customer for one that went out. */
 const otherParty = (call: Pick<CallSummary, "direction" | "from_number" | "to_number">) =>
   (call.direction === "outbound" ? call.to_number : call.from_number) || "—";
 
@@ -131,8 +134,30 @@ const sentimentVariant = (s: string): "default" | "secondary" | "destructive" | 
   return "outline";
 };
 
+// Raw statuses as the telephony provider reports them — translated to plain
+// Swahili a non-technical user reads at a glance, rather than surfaced
+// verbatim (e.g. "aborted", "technical_failure").
+const OUTCOME_LABELS: Record<string, string> = {
+  success: "Imekamilika",
+  completed: "Imekamilika",
+  failed: "Haikufanikiwa",
+  busy: "Namba ilikuwa na mazungumzo",
+  noanswer: "Hakujibiwa",
+  no_answer: "Hakujibiwa",
+  notanswered: "Hakujibiwa",
+  aborted: "Ilisitishwa",
+  rejected: "Ilikataliwa",
+  cancelled: "Ilighairiwa",
+  canceled: "Ilighairiwa",
+  technical_failure: "Hitilafu ya mtandao",
+  ringing: "Inaita…",
+  in_progress: "Inaendelea…",
+};
+
 const outcomeLabel = (call: CallSummary) => {
-  const s = (call.provider_status || call.status || "").replace(/_/g, " ");
+  const raw = (call.provider_status || call.status || "").trim().toLowerCase();
+  if (OUTCOME_LABELS[raw]) return OUTCOME_LABELS[raw];
+  const s = raw.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
@@ -185,7 +210,7 @@ export default function CallHistory() {
         setHasNext(Boolean(res.data.next));
         setPage(pageNum);
       } else {
-        setError(res.error || "Failed to load call history");
+        setError(res.error || "Imeshindikana kupakia orodha ya simu");
       }
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -242,12 +267,12 @@ export default function CallHistory() {
           <div className="mx-auto max-w-6xl space-y-3">
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">Calls</h1>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">Simu</h1>
                 <p className="mt-0.5 text-sm text-foreground/60">
-                  {isLoading ? "Loading…" : `${count} call${count === 1 ? "" : "s"}, recorded and searchable`}
+                  {isLoading ? "Inapakia…" : `Simu ${count}, zimerekodiwa na zinaweza kutafutwa`}
                 </p>
               </div>
-              <div className="inline-flex rounded-lg border border-border bg-card p-0.5" role="group" aria-label="Time range">
+              <div className="inline-flex rounded-lg border border-border bg-card p-0.5" role="group" aria-label="Muda">
                 {RANGES.map(([value, label]) => (
                   <button
                     key={value}
@@ -288,17 +313,17 @@ export default function CallHistory() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search callers, topics, transcripts…"
+                  placeholder="Tafuta mpiga simu, mada, maandishi ya mazungumzo…"
                   className="h-10 pl-9"
-                  aria-label="Search calls"
+                  aria-label="Tafuta simu"
                 />
               </div>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger className="h-10 w-full sm:w-40" aria-label="Agent">
-                  <SelectValue placeholder="All agents" />
+                <SelectTrigger className="h-10 w-full sm:w-40" aria-label="Wakala">
+                  <SelectValue placeholder="Wakala wote" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All agents</SelectItem>
+                  <SelectItem value="all">Wakala wote</SelectItem>
                   {agents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
@@ -307,14 +332,14 @@ export default function CallHistory() {
                 </SelectContent>
               </Select>
               <Select value={sentiment} onValueChange={setSentiment}>
-                <SelectTrigger className="h-10 w-full sm:w-40" aria-label="Sentiment">
-                  <SelectValue placeholder="Any sentiment" />
+                <SelectTrigger className="h-10 w-full sm:w-40" aria-label="Hisia">
+                  <SelectValue placeholder="Hisia zote" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any sentiment</SelectItem>
-                  <SelectItem value="positive">Positive</SelectItem>
-                  <SelectItem value="neutral">Neutral</SelectItem>
-                  <SelectItem value="negative">Negative</SelectItem>
+                  <SelectItem value="any">Hisia zote</SelectItem>
+                  <SelectItem value="positive">Chanya</SelectItem>
+                  <SelectItem value="neutral">Wastani</SelectItem>
+                  <SelectItem value="negative">Hasi</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -326,7 +351,7 @@ export default function CallHistory() {
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={() => fetchCalls(1, false)}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    Jaribu tena
                   </Button>
                 </CardContent>
               </Card>
@@ -344,9 +369,9 @@ export default function CallHistory() {
               <Card>
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <PhoneCall className="h-10 w-10 text-muted-foreground" />
-                  <h3 className="text-base font-semibold text-foreground">{filtered ? "No calls match" : "No calls yet"}</h3>
+                  <h3 className="text-base font-semibold text-foreground">{filtered ? "Hakuna simu zinazolingana" : "Bado hakuna simu"}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {filtered ? "Try another filter or a wider time range." : "Real inbound or outbound calls will show up here."}
+                    {filtered ? "Jaribu kichujio kingine au muda mrefu zaidi." : "Simu halisi zitakazoingia au kutoka zitaonekana hapa."}
                   </p>
                 </CardContent>
               </Card>
@@ -359,12 +384,12 @@ export default function CallHistory() {
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-12" />
-                        <TableHead>Caller</TableHead>
-                        <TableHead>Agent</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Length</TableHead>
-                        <TableHead className="min-w-[260px]">AI Summary</TableHead>
-                        <TableHead>Sentiment</TableHead>
+                        <TableHead>Mpiga simu</TableHead>
+                        <TableHead>Wakala</TableHead>
+                        <TableHead>Muda</TableHead>
+                        <TableHead>Urefu</TableHead>
+                        <TableHead className="min-w-[260px]">Muhtasari wa AI</TableHead>
+                        <TableHead>Hisia</TableHead>
                         <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
@@ -387,7 +412,7 @@ export default function CallHistory() {
                                 {rec ? (
                                   <PlayButton active={player.isCurrent(rec.id)} playing={player.isPlaying(rec.id)} onClick={() => playCall(call, rec)} />
                                 ) : (
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground/50" title="No recording">
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground/50" title="Hakuna rekodi">
                                     <Icon className="h-3.5 w-3.5" />
                                   </span>
                                 )}
@@ -398,7 +423,7 @@ export default function CallHistory() {
                                   {otherParty(call)}
                                 </div>
                                 <p className="mt-0.5 pl-5 text-xs text-muted-foreground">
-                                  {call.analysis?.intent || (missed ? outcomeLabel(call) : call.direction === "outbound" ? "Outbound call" : "Inbound call")}
+                                  {call.analysis?.intent || (missed ? outcomeLabel(call) : call.direction === "outbound" ? "Simu iliyotoka" : "Simu iliyoingia")}
                                 </p>
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
@@ -441,19 +466,19 @@ export default function CallHistory() {
                                   {detail && (
                                     <div className="grid gap-4 lg:grid-cols-2">
                                       <div className="space-y-2">
-                                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Taarifa</p>
                                         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                                          <dt className="text-muted-foreground">From</dt>
+                                          <dt className="text-muted-foreground">Kutoka</dt>
                                           <dd className="font-mono text-foreground">{detail.from_number || "—"}</dd>
-                                          <dt className="text-muted-foreground">To</dt>
+                                          <dt className="text-muted-foreground">Kwenda</dt>
                                           <dd className="font-mono text-foreground">{detail.to_number || "—"}</dd>
-                                          <dt className="text-muted-foreground">Outcome</dt>
+                                          <dt className="text-muted-foreground">Matokeo</dt>
                                           <dd>
                                             <Badge variant={missed ? "destructive" : "default"}>{outcomeLabel(call)}</Badge>
                                           </dd>
                                           {detail.agent && (
                                             <>
-                                              <dt className="text-muted-foreground">Agent</dt>
+                                              <dt className="text-muted-foreground">Wakala</dt>
                                               <dd className="text-foreground">
                                                 {detail.agent.department && detail.agent.department !== detail.agent.name
                                                   ? `${detail.agent.name} · ${detail.agent.department}`
@@ -463,9 +488,9 @@ export default function CallHistory() {
                                           )}
                                           {detail.recordings[0] && (
                                             <>
-                                              <dt className="text-muted-foreground">Recording</dt>
+                                              <dt className="text-muted-foreground">Rekodi</dt>
                                               <dd className="text-foreground">
-                                                {formatSize(detail.recordings[0].size_bytes)} · stored{" "}
+                                                {formatSize(detail.recordings[0].size_bytes)} · ilihifadhiwa{" "}
                                                 {new Date(detail.recordings[0].created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
                                               </dd>
                                             </>
@@ -473,7 +498,7 @@ export default function CallHistory() {
                                         </dl>
 
                                         {detail.recordings.length === 0 && (
-                                          <p className="pt-2 text-xs text-muted-foreground">No recording for this call.</p>
+                                          <p className="pt-2 text-xs text-muted-foreground">Hakuna rekodi kwa simu hii.</p>
                                         )}
 
                                         {/* The row's own play button already covers the first (usual) recording;
@@ -481,7 +506,7 @@ export default function CallHistory() {
                                         {detail.recordings.length > 1 && (
                                           <div className="space-y-1.5 pt-2">
                                             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                              Other recordings on this call
+                                              Rekodi nyingine za simu hii
                                             </p>
                                             {detail.recordings.slice(1).map((r) => (
                                               <div key={r.id} className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
@@ -505,7 +530,7 @@ export default function CallHistory() {
 
                                         {detail.recordings.some((r) => r.analysis?.result?.transcript) && (
                                           <details className="pt-1">
-                                            <summary className="cursor-pointer text-xs font-medium text-primary">Transcript</summary>
+                                            <summary className="cursor-pointer text-xs font-medium text-primary">Maandishi ya mazungumzo</summary>
                                             <p className="mt-1 whitespace-pre-wrap rounded-md bg-background p-2 text-xs text-foreground/80">
                                               {detail.recordings.find((r) => r.analysis?.result?.transcript)?.analysis?.result?.transcript}
                                             </p>
@@ -514,7 +539,7 @@ export default function CallHistory() {
                                       </div>
 
                                       <div className="space-y-1">
-                                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Journey</p>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Mwenendo wa simu</p>
                                         {detail.execution_log.length > 0 ? (
                                           <ol className="max-h-56 space-y-1 overflow-y-auto rounded-md bg-background p-2">
                                             {detail.execution_log.map((entry, i) => (
@@ -545,7 +570,7 @@ export default function CallHistory() {
             {!error && !isLoading && calls.length > 0 && hasNext && (
               <div className="flex justify-center pt-2">
                 <Button variant="outline" size="sm" onClick={() => fetchCalls(page + 1, true)} disabled={isLoadingMore}>
-                  {isLoadingMore ? "Loading…" : "Load more"}
+                  {isLoadingMore ? "Inapakia…" : "Pakia zaidi"}
                 </Button>
               </div>
             )}
