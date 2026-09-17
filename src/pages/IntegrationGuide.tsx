@@ -3,6 +3,9 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Copy, Check } from "lucide-react";
+import { ApiSandbox } from "@/components/integration-guide/ApiSandbox";
 
 const methodClass = (method: string) => {
   if (method === "GET") return "bg-emerald-200 text-emerald-900 dark:bg-emerald-300 dark:text-emerald-950";
@@ -12,6 +15,26 @@ const methodClass = (method: string) => {
   if (method === "DELETE") return "bg-red-600 text-white dark:bg-red-500";
   return "bg-muted text-foreground border border-border-subtle";
 };
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 absolute top-2 right-2 text-foreground/50 hover:text-foreground"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }}
+      aria-label="Copy to clipboard"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+    </Button>
+  );
+}
 
 type EndpointProps = {
   id?: string;
@@ -47,18 +70,24 @@ const Endpoint = ({ id, method, path, description, request, response }: Endpoint
     {request && (
       <div className="mt-4 space-y-1.5">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground/70">Request</p>
-        <pre className="text-xs bg-muted/50 border border-border-subtle/80 rounded-xl p-3 overflow-auto scrollbar-premium whitespace-pre-wrap shadow-inner">
-          {request}
-        </pre>
+        <div className="relative">
+          <pre className="text-xs bg-muted/50 border border-border-subtle/80 rounded-xl p-3 pr-9 overflow-auto scrollbar-premium whitespace-pre-wrap shadow-inner">
+            {request}
+          </pre>
+          <CopyButton text={request} />
+        </div>
       </div>
     )}
 
     {response && (
       <div className="mt-4 space-y-1.5">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground/70">Sample Response</p>
-        <pre className="text-xs bg-zinc-900 text-zinc-100 dark:bg-zinc-950 rounded-xl p-3 overflow-auto scrollbar-premium whitespace-pre-wrap border border-zinc-700/60 dark:border-zinc-800 shadow-inner">
-          {response}
-        </pre>
+        <div className="relative">
+          <pre className="text-xs bg-zinc-900 text-zinc-100 dark:bg-zinc-950 rounded-xl p-3 pr-9 overflow-auto scrollbar-premium whitespace-pre-wrap border border-zinc-700/60 dark:border-zinc-800 shadow-inner">
+            {response}
+          </pre>
+          <CopyButton text={response} />
+        </div>
       </div>
     )}
   </article>
@@ -110,11 +139,17 @@ const IntegrationGuide = () => {
               </CardContent>
             </Card>
 
+            <ApiSandbox />
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-3.5">
               <aside className="lg:col-span-3">
                 <Card className="glass border border-border-subtle lg:sticky lg:top-4">
                   <CardContent className="p-3 space-y-2.5">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/75">On This Page</h2>
+                    <a href="#integration-sandbox" className="group flex items-center justify-between rounded-md border border-teal-200/60 dark:border-teal-800/60 bg-teal-500/5 px-2.5 py-1.5 text-foreground font-medium hover:bg-primary/10 hover:border-primary/30 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-fast text-sm">
+                      <span>✦ Live Sandbox</span>
+                      <span className="text-xs text-foreground/45 group-hover:text-primary/80">↗</span>
+                    </a>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 text-sm">
                       <div className="space-y-1.5">
                         <p className="text-[11px] uppercase tracking-wide text-blue-700 dark:text-blue-300 font-bold pt-1">Normal</p>
@@ -197,12 +232,20 @@ const IntegrationGuide = () => {
                     {/* Response format */}
                     <div className="rounded-xl border border-border-subtle/80 bg-muted/30 p-4 space-y-2">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-foreground/60">Standard Response Envelope</p>
-                      <pre className="text-xs bg-zinc-900 text-zinc-100 rounded-xl p-3 overflow-auto whitespace-pre-wrap border border-zinc-700/60">{`{
+                      <div className="relative">
+                        <pre className="text-xs bg-zinc-900 text-zinc-100 rounded-xl p-3 pr-9 overflow-auto whitespace-pre-wrap border border-zinc-700/60">{`{
   "success": true,
   "timestamp": "2026-04-09T10:30:00+03:00",
   "message": "Human readable message",
   "data": {}
 }`}</pre>
+                        <CopyButton text={`{
+  "success": true,
+  "timestamp": "2026-04-09T10:30:00+03:00",
+  "message": "Human readable message",
+  "data": {}
+}`} />
+                      </div>
                       <p className="text-xs text-foreground/60">On errors, an <code>error_code</code> field is included alongside <code>"success": false</code>.</p>
                     </div>
 
@@ -266,7 +309,10 @@ const IntegrationGuide = () => {
     "successful_sends": 1,
     "failed_sends": 0,
     "total_recipients": 1,
-    "status": "sent"
+    "status": "sent",
+    "cost": 18.0,
+    "currency": "TZS",
+    "provider": "beem"
   }
 }`}
                     />
@@ -452,7 +498,7 @@ const IntegrationGuide = () => {
                       </p>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-semibold pt-2">AI Copilots — /api/early-access/ai-copilots/</h3>
+                    <h3 id="ep-ai-copilots" className="text-base sm:text-lg font-semibold pt-2">AI Copilots — /api/early-access/ai-copilots/</h3>
                     <Endpoint method="GET" path="/api/early-access/ai-copilots/status/" description="Check if the authenticated user has AI Copilot access or is on the waitlist."
                       response={`{
   "data": {

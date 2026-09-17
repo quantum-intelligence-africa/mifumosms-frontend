@@ -79,6 +79,8 @@ export interface User {
   is_owner?: boolean;
   // Admin-granted per-user access to the Voice/IVR flow builder
   ivr_access_enabled?: boolean;
+  // Admin-controlled per-user access to SMS/messaging features (defaults true)
+  sms_access_enabled?: boolean;
   // Memberships - user's tenant memberships with roles
   memberships?: Membership[];
 }
@@ -1626,11 +1628,10 @@ class ApiClient {
 
   // New API Key Management (matching backend docs)
   async generateApiKey(keyData: { name: string; permissions?: string[] }): Promise<ApiResponse<{
-    key_id: string;
-    key: string;
-    name: string;
-    created_at: string;
-    expires_at?: string;
+    id: string;
+    api_key: string;
+    secret_key: string;
+    key_name: string;
   }>> {
     return this.request(API_CONFIG.ENDPOINTS.AUTH.API_KEY_GENERATE, {
       method: 'POST',
