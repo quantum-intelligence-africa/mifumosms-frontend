@@ -27,11 +27,13 @@ import {
   EyeOff,
   ExternalLink,
   FileText,
+  GitMerge,
   Gift,
   Globe,
   Handshake,
   Hourglass,
   Key,
+  Layers,
   LogOut,
   Mail,
   Megaphone,
@@ -41,6 +43,7 @@ import {
   MoreHorizontal,
   Package,
   Phone,
+  PlusCircle,
   RefreshCw,
   RotateCcw,
   Search,
@@ -49,7 +52,9 @@ import {
   ShieldCheck,
   Sparkles,
   Tag,
+  Target,
   Trash2,
+  TrendingUp,
   UserCheck,
   UserPlus,
   UserX,
@@ -6724,6 +6729,8 @@ function SmsBySenderSummary() {
   const [bLoading, setBLoading] = useState(false);
   const [bError, setBError]     = useState(null);
   const [busy, setBusy]         = useState(''); // message_id being resent/notified
+  const [selected, setSelected] = useState(() => new Set()); // message_ids checked in the drawer
+  const [resendingSelected, setResendingSelected] = useState(false);
   const [search, setSearch]     = useState('');
   const [debounced, setDebounced] = useState('');
   const [statusF, setStatusF]   = useState('all');
@@ -6779,7 +6786,7 @@ function SmsBySenderSummary() {
   // Open the failed-batches drawer for a sender and load its failed sends.
   const openSender = (sender) => {
     setDetailSender(sender);
-    setBatches([]); setBError(null); setBLoading(true);
+    setBatches([]); setBError(null); setBLoading(true); setSelected(new Set());
     const qs = new URLSearchParams({ sender, limit:'50' });
     if (debTenant.trim()) qs.set('tenant', debTenant.trim());
     if (dateFrom) qs.set('date_from', dateFrom);
@@ -6820,6 +6827,51 @@ function SmsBySenderSummary() {
         res.success ? 'success' : 'error'))
       .catch(e => showToast(e.message, 'error'))
       .finally(() => setBusy(''));
+  };
+
+  const toggleSelect = (mid) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(mid)) next.delete(mid); else next.add(mid);
+      return next;
+    });
+  };
+  const allSelected = batches.length > 0 && selected.size === batches.length;
+  const toggleSelectAll = () => {
+    setSelected(allSelected ? new Set() : new Set(batches.map(b => b.message_id)));
+  };
+
+  // Resend every checked batch, one after another (same endpoint as a single
+  // "Resend N failed" click), then reload the drawer once at the end.
+  const doResendSelected = async () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!window.confirm(`Resend the failed recipients of ${ids.length} selected batch(es)?\n\nThis re-sends only the numbers that failed in each batch and charges each batch's tenant SMS balance.`)) return;
+    setResendingSelected(true);
+    let batchesOk = 0, batchesErr = 0, sentTotal = 0, failedTotal = 0;
+    for (const mid of ids) {
+      setBusy(mid);
+      try {
+        const res = await adminFetch('/api/admin/v1/system-sms-logs/resend-batch',
+          { method:'POST', body: JSON.stringify({ message_id: mid }) }, onLogout);
+        if (res.success) {
+          batchesOk++;
+          sentTotal += res.data?.sent || 0;
+          failedTotal += res.data?.failed || 0;
+        } else {
+          batchesErr++;
+        }
+      } catch {
+        batchesErr++;
+      }
+    }
+    setBusy(''); setResendingSelected(false); setSelected(new Set());
+    showToast(
+      `Resent ${ids.length} batch(es): ${sentTotal} recipient(s) sent, ${failedTotal} still failed`
+        + (batchesErr ? `, ${batchesErr} batch(es) errored` : ''),
+      batchesErr ? 'error' : 'success',
+    );
+    refreshBatches(); fetchData();
   };
 
   const StatChip = ({ label, value, color }) => (
@@ -6968,17 +7020,34 @@ function SmsBySenderSummary() {
               </div>
               <button className="senda-btn senda-btn-sm" onClick={()=>setDetailSender(null)} style={{height:32,border:'1.5px solid #e2e8f0',background:'#fff'}}><X size={16}/></button>
             </div>
+            {batches.length > 0 && (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,padding:'10px 20px',borderBottom:'1px solid #eef2f7',background:'#f8fafc'}}>
+                <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,fontWeight:600,color:'#334155',cursor:'pointer'}}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{width:15,height:15}}/>
+                  {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
+                </label>
+                <button className="senda-btn senda-btn-sm" disabled={selected.size===0 || resendingSelected}
+                  onClick={doResendSelected}
+                  style={{height:32,background:BRAND,color:'#fff',border:'none',opacity:(selected.size===0||resendingSelected)?.5:1}}>
+                  {resendingSelected ? 'Resending…' : `Resend ${selected.size || ''} selected`}
+                </button>
+              </div>
+            )}
             <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
               {bLoading ? <LoadingState/> : bError ? <ErrorState message={bError} onRetry={refreshBatches}/> :
                batches.length === 0 ? (
                  <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No failed batches for this sender. 🎉</div>
                ) : batches.map(b => (
-                <div key={b.message_id} className="senda-card" style={{padding:14,marginBottom:12}}>
+                <div key={b.message_id} className="senda-card" style={{padding:14,marginBottom:12,...(selected.has(b.message_id) ? {outline:`2px solid ${BRAND}`} : {})}}>
                   <div style={{display:'flex',justifyContent:'space-between',gap:10,marginBottom:8,flexWrap:'wrap'}}>
-                    <div style={{fontSize:12,color:'#64748b'}}>
+                    <div style={{fontSize:12,color:'#64748b',display:'flex',alignItems:'center',gap:8}}>
+                      <input type="checkbox" checked={selected.has(b.message_id)} onChange={()=>toggleSelect(b.message_id)} style={{width:15,height:15,flexShrink:0}}/>
                       <b style={{color:'#0f172a'}}>{b.tenant_name || '—'}</b>
                       {b.is_partner ? <span style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#7c3aed',background:'#f3e8ff',padding:'1px 6px',borderRadius:999}}>Partner</span> : null}
                       <span style={{marginLeft:8}}>{b.created_at ? new Date(b.created_at).toLocaleString() : ''}</span>
+                      <span style={{marginLeft:8,fontFamily:'monospace',color:'#0f172a',background:'#f1f5f9',padding:'1px 6px',borderRadius:6}} title="Sender ID this batch was sent with — resend uses the same one">
+                        Sender: {b.sender || '—'}
+                      </span>
                     </div>
                     <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap'}}>
                       <span style={{color:GREEN}}>{b.sent_count} sent</span>
@@ -7606,6 +7675,721 @@ function SystemSmsLogTab() {
             </div>
           </div>
         </div>, document.body)}
+    </div>
+  );
+}
+
+// ─── SMS Intelligence ───────────────────────────────────────────────────────
+// "Hivi ndivyo wateja wako wanavyotumia SENDA." — one admin page answering:
+// what they send, why, who sends most, what repeats, what segments exist, and
+// what SENDA could build next. All AI/embedding machinery stays server-side;
+// this tab only ever reads the cached SmsIntel* tables.
+
+const SMS_INTEL_RANGE_OPTIONS = [
+  { value: '7d',    label: 'Last 7 days' },
+  { value: '30d',   label: 'Last 30 days' },
+  { value: '90d',   label: 'Last 90 days' },
+  { value: '6m',    label: 'Last 6 months' },
+  { value: 'custom', label: 'Custom range' },
+  { value: 'all',   label: 'All time' },
+];
+
+const CONFIDENCE_COLORS = { high: GREEN, medium: AMBER, low: RED };
+const CATEGORY_PALETTE = [BRAND, VIOLET, GREEN, AMBER, CYAN, PINK, ORANGE, RED, BRAND2, '#64748b'];
+
+function ConfidenceBadge({ level }) {
+  const color = CONFIDENCE_COLORS[level] || '#94a3b8';
+  const label = level === 'high' ? 'High' : level === 'medium' ? 'Medium' : 'Low';
+  return (
+    <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:999, background:`${color}18`, color, whiteSpace:'nowrap' }}>
+      {label}
+    </span>
+  );
+}
+
+function SmsIntelSectionLabel({ children }) {
+  return <div style={{ fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:8 }}>{children}</div>;
+}
+
+function SmsIntelMiniStat({ label, value }) {
+  return (
+    <div style={{ background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:10, padding:'10px 12px' }}>
+      <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.05em' }}>{label}</div>
+      <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', marginTop:2 }}>{value}</div>
+    </div>
+  );
+}
+
+// ─── Group detail drawer ────────────────────────────────────────────────────
+function SmsIntelGroupDrawer({ groupId, onClose }) {
+  const { onLogout } = React.useContext(AppContext);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [data, setData]       = useState(null);
+
+  useEffect(() => {
+    if (!groupId) return;
+    let alive = true;
+    setLoading(true); setError(null); setData(null);
+    adminFetch(`/api/admin/v1/sms-intelligence/groups/${groupId}`, {}, onLogout)
+      .then(res => {
+        if (!alive) return;
+        if (res.success) setData(res.data);
+        else setError(res.error?.message || 'Failed to load group.');
+      })
+      .catch(e => alive && setError(e.message))
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
+  }, [groupId, onLogout]);
+
+  if (!groupId) return null;
+
+  return createPortal(
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', justifyContent:'flex-end', zIndex:1000 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:'min(640px,100%)', height:'100%', background:'#fff', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+          <div>
+            <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0 }}>{data?.name || 'Group'}</h3>
+            {data?.category_name && <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{data.category_name}</div>}
+          </div>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={16}/></button>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
+          {loading ? <LoadingState/> : error ? <ErrorState message={error}/> : data && (
+            <>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:20 }}>
+                <SmsIntelMiniStat label="SMS" value={compactNumber(data.sms_count)} />
+                <SmsIntelMiniStat label="Clients" value={compactNumber(data.client_count)} />
+                <SmsIntelMiniStat label="Credits used" value={compactNumber(data.credits_used)} />
+                <SmsIntelMiniStat label="Share of usage" value={`${Number(data.usage_pct || 0).toFixed(1)}%`} />
+              </div>
+
+              {Array.isArray(data.growth_over_time) && data.growth_over_time.length > 1 && (
+                <>
+                  <SmsIntelSectionLabel>Usage growth</SmsIntelSectionLabel>
+                  <div style={{ height:120, marginBottom:20 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data.growth_over_time}>
+                        <defs>
+                          <linearGradient id="smsIntelGrowthFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={BRAND} stopOpacity={0.35}/>
+                            <stop offset="100%" stopColor={BRAND} stopOpacity={0.02}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="month" tick={{ fontSize:11, fill:'#94a3b8' }} axisLine={false} tickLine={false}/>
+                        <YAxis hide/>
+                        <Tooltip content={<ChartTooltip/>}/>
+                        <Area type="monotone" dataKey="sms_count" name="SMS" stroke={BRAND} fill="url(#smsIntelGrowthFill)" strokeWidth={2} isAnimationActive={false}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+
+              <SmsIntelSectionLabel>Common intent</SmsIntelSectionLabel>
+              <p style={{ fontSize:13, color:'#334155', marginBottom:16, marginTop:0 }}>{data.common_intent || '—'}</p>
+
+              <SmsIntelSectionLabel>Common variables</SmsIntelSectionLabel>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 }}>
+                {(data.common_variables || []).length === 0
+                  ? <span style={{ fontSize:12, color:'#94a3b8' }}>—</span>
+                  : data.common_variables.map(v => (
+                    <span key={v} style={{ fontSize:11, fontFamily:'monospace', background:'#f1f5f9', color:'#475569', padding:'3px 8px', borderRadius:6 }}>{v}</span>
+                  ))}
+              </div>
+
+              <SmsIntelSectionLabel>Example messages</SmsIntelSectionLabel>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+                {(data.example_messages || []).length === 0
+                  ? <span style={{ fontSize:12, color:'#94a3b8' }}>No examples yet.</span>
+                  : data.example_messages.map((m, i) => (
+                    <div key={i} style={{ fontSize:12.5, color:'#334155', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:8, padding:'10px 12px' }}>{m}</div>
+                  ))}
+              </div>
+
+              <SmsIntelSectionLabel>{`Businesses using this group (${data.businesses?.length || 0})`}</SmsIntelSectionLabel>
+              <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                {(data.businesses || []).length === 0
+                  ? <span style={{ fontSize:12, color:'#94a3b8' }}>—</span>
+                  : data.businesses.map(b => (
+                    <div key={b.tenant_id} style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, padding:'6px 0', borderBottom:'1px solid #f8fafc' }}>
+                      <span style={{ color:'#0f172a' }}>{b.name || b.tenant_id}</span>
+                      <span style={{ color:'#94a3b8' }}>{compactNumber(b.sms_count)} SMS</span>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>, document.body
+  );
+}
+
+// ─── Small "list clients" / "list messages" modal (segments + opportunities) ──
+function SmsIntelListModal({ title, items, renderItem, onClose, empty }) {
+  if (!items) return null;
+  return createPortal(
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:'min(480px,100%)', maxHeight:'80vh', background:'#fff', borderRadius:14, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', borderBottom:'1px solid #eef2f7' }}>
+          <h3 style={{ fontSize:14, fontWeight:800, color:'#0f172a', margin:0 }}>{title}</h3>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{ height:30, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={15}/></button>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 18px' }}>
+          {items.length === 0
+            ? <div style={{ fontSize:13, color:'#94a3b8', textAlign:'center', padding:'24px 0' }}>{empty || 'Nothing here yet.'}</div>
+            : items.map(renderItem)}
+        </div>
+      </div>
+    </div>, document.body
+  );
+}
+
+function SmsIntelligenceTab() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const toast = (msg, type) => { try { showToast?.(msg, type); } catch {} };
+
+  // ── Filters ────────────────────────────────────────────────────────────
+  const [range, setRange]         = useState('30d');
+  const [dateFrom, setDateFrom]   = useState('');
+  const [dateTo, setDateTo]       = useState('');
+  const [clientF, setClientF]     = useState('');
+  const [senderF, setSenderF]     = useState('');
+  const [debFilters, setDebFilters] = useState({ client:'', sender:'' });
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebFilters({ client: clientF, sender: senderF }), 400);
+    return () => clearTimeout(t);
+  }, [clientF, senderF]);
+
+  const baseQuery = useCallback(() => {
+    const qs = new URLSearchParams({ range });
+    if (range === 'custom') {
+      if (dateFrom) qs.set('date_from', dateFrom);
+      if (dateTo)   qs.set('date_to', dateTo);
+    }
+    if (debFilters.client.trim()) qs.set('client', debFilters.client.trim());
+    if (debFilters.sender.trim()) qs.set('sender_id', debFilters.sender.trim());
+    return qs;
+  }, [range, dateFrom, dateTo, debFilters]);
+
+  const resetFilters = () => { setRange('30d'); setDateFrom(''); setDateTo(''); setClientF(''); setSenderF(''); };
+
+  // ── Overview: summary + by-purpose ────────────────────────────────────
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [byPurpose, setByPurpose] = useState(null);
+
+  const fetchOverview = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = baseQuery();
+    Promise.all([
+      adminFetch(`/api/admin/v1/sms-intelligence/summary?${qs.toString()}`, {}, onLogout),
+      adminFetch(`/api/admin/v1/sms-intelligence/by-purpose?${qs.toString()}`, {}, onLogout),
+    ]).then(([s, p]) => {
+      if (s.success) setSummary(s.data); else setError(s.error?.message || 'Failed to load SMS Intelligence summary.');
+      if (p.success) setByPurpose(p.data);
+    }).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [baseQuery, onLogout]);
+
+  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+
+  // ── Categories (for the Needs Review correction dropdown) ────────────
+  const [categories, setCategories] = useState([]);
+  useEffect(() => {
+    adminFetch('/api/admin/v1/sms-intelligence/categories', {}, onLogout)
+      .then(res => { if (res.success) setCategories(res.data || []); }).catch(() => {});
+  }, [onLogout]);
+
+  // ── Message Groups ─────────────────────────────────────────────────────
+  const [groups, setGroups]         = useState([]);
+  const [groupsMeta, setGroupsMeta] = useState({});
+  const [groupsPage, setGroupsPage] = useState(1);
+  const [openGroupId, setOpenGroupId] = useState(null);
+  const [allGroups, setAllGroups]   = useState([]); // flat list, used by the merge dropdown
+
+  const fetchGroups = useCallback(() => {
+    const qs = new URLSearchParams({ page:String(groupsPage), limit:'10' });
+    adminFetch(`/api/admin/v1/sms-intelligence/groups?${qs.toString()}`, {}, onLogout)
+      .then(res => { if (res.success) { setGroups(res.data || []); setGroupsMeta(res.meta || {}); } })
+      .catch(() => {});
+  }, [groupsPage, onLogout]);
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+
+  useEffect(() => {
+    adminFetch('/api/admin/v1/sms-intelligence/groups?limit=100', {}, onLogout)
+      .then(res => { if (res.success) setAllGroups(res.data || []); }).catch(() => {});
+  }, [onLogout, groups.length]);
+
+  // ── Client Segmentation ────────────────────────────────────────────────
+  const [segments, setSegments]           = useState([]);
+  const [segmentModal, setSegmentModal]   = useState(null); // { title, clients }
+
+  const fetchSegments = useCallback(() => {
+    adminFetch('/api/admin/v1/sms-intelligence/segments', {}, onLogout)
+      .then(res => { if (res.success) setSegments(res.data || []); }).catch(() => {});
+  }, [onLogout]);
+  useEffect(() => { fetchSegments(); }, [fetchSegments]);
+
+  const viewSegmentClients = (segment) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/segments/${segment.id}/clients`, {}, onLogout)
+      .then(res => setSegmentModal({ title: `Wateja — ${segment.name}`, clients: res.success ? (res.data || []) : [] }))
+      .catch(() => setSegmentModal({ title: `Wateja — ${segment.name}`, clients: [] }));
+  };
+
+  const pinSegment = (segment) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/segments/${segment.id}/pin`, { method:'POST' }, onLogout)
+      .then(res => {
+        if (res.success) { toast('Kundi limehifadhiwa.', 'success'); fetchSegments(); }
+        else toast(res.error?.message || 'Imeshindwa kuhifadhi kundi.', 'error');
+      }).catch(e => toast(e.message, 'error'));
+  };
+
+  // ── Campaign Opportunities ─────────────────────────────────────────────
+  const [opportunities, setOpportunities] = useState([]);
+  const [messagesModal, setMessagesModal] = useState(null); // { title, messages }
+
+  const fetchOpportunities = useCallback(() => {
+    adminFetch('/api/admin/v1/sms-intelligence/campaign-opportunities?status=pending', {}, onLogout)
+      .then(res => { if (res.success) setOpportunities(res.data || []); }).catch(() => {});
+  }, [onLogout]);
+  useEffect(() => { fetchOpportunities(); }, [fetchOpportunities]);
+
+  const viewOpportunityMessages = (opp) => {
+    const firstGroup = (opp.related_groups || [])[0];
+    if (!firstGroup) {
+      setMessagesModal({ title: opp.title, messages: [] });
+      return;
+    }
+    adminFetch(`/api/admin/v1/sms-intelligence/groups/${firstGroup.id}`, {}, onLogout)
+      .then(res => setMessagesModal({ title: opp.title, messages: res.success ? (res.data?.example_messages || []) : [] }))
+      .catch(() => setMessagesModal({ title: opp.title, messages: [] }));
+  };
+
+  const dismissOpportunity = (opp) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/campaign-opportunities/${opp.id}/dismiss`, { method:'POST' }, onLogout)
+      .then(res => {
+        if (res.success) { toast('Fursa imeondolewa.', 'info'); setOpportunities(prev => prev.filter(o => o.id !== opp.id)); }
+      }).catch(e => toast(e.message, 'error'));
+  };
+
+  const actionOpportunity = (opp) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/campaign-opportunities/${opp.id}/action`, { method:'POST' }, onLogout)
+      .then(res => {
+        if (res.success) {
+          toast('Umeshughulikia fursa hii. Tumia Broadcast kuunda kampeni.', 'success');
+          setOpportunities(prev => prev.filter(o => o.id !== opp.id));
+        }
+      }).catch(e => toast(e.message, 'error'));
+  };
+
+  // ── New Pattern Suggestions ────────────────────────────────────────────
+  const [patterns, setPatterns] = useState([]);
+  const [mergingId, setMergingId] = useState(null);
+  const [mergeChoice, setMergeChoice] = useState('');
+
+  const fetchPatterns = useCallback(() => {
+    adminFetch('/api/admin/v1/sms-intelligence/new-patterns', {}, onLogout)
+      .then(res => { if (res.success) setPatterns(res.data || []); }).catch(() => {});
+  }, [onLogout]);
+  useEffect(() => { fetchPatterns(); }, [fetchPatterns]);
+
+  const createGroupFromPattern = (pattern) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/new-patterns/${pattern.id}/create-group`, {
+      method:'POST', body: JSON.stringify({ name: pattern.name }),
+    }, onLogout).then(res => {
+      if (res.success) {
+        toast(`Kikundi "${res.data.name}" kimeundwa.`, 'success');
+        setPatterns(prev => prev.filter(p => p.id !== pattern.id));
+        fetchGroups();
+      } else toast(res.error?.message || 'Imeshindwa kuunda kikundi.', 'error');
+    }).catch(e => toast(e.message, 'error'));
+  };
+
+  const mergePattern = (pattern) => {
+    if (!mergeChoice) { toast('Chagua kikundi cha kuunganisha nacho.', 'error'); return; }
+    adminFetch(`/api/admin/v1/sms-intelligence/new-patterns/${pattern.id}/merge`, {
+      method:'POST', body: JSON.stringify({ target_group_id: mergeChoice }),
+    }, onLogout).then(res => {
+      if (res.success) {
+        toast(`Imeunganishwa na "${res.data.name}".`, 'success');
+        setPatterns(prev => prev.filter(p => p.id !== pattern.id));
+        setMergingId(null); setMergeChoice('');
+        fetchGroups();
+      } else toast(res.error?.message || 'Imeshindwa kuunganisha.', 'error');
+    }).catch(e => toast(e.message, 'error'));
+  };
+
+  const ignorePattern = (pattern) => {
+    adminFetch(`/api/admin/v1/sms-intelligence/new-patterns/${pattern.id}/ignore`, { method:'POST' }, onLogout)
+      .then(res => { if (res.success) setPatterns(prev => prev.filter(p => p.id !== pattern.id)); })
+      .catch(e => toast(e.message, 'error'));
+  };
+
+  // ── Needs Review ────────────────────────────────────────────────────────
+  const [reviewItems, setReviewItems] = useState([]);
+  const [reviewMeta, setReviewMeta]   = useState({});
+  const [reviewPage, setReviewPage]   = useState(1);
+  const [correctionChoice, setCorrectionChoice] = useState({});
+
+  const fetchReview = useCallback(() => {
+    const qs = new URLSearchParams({ page:String(reviewPage), limit:'10' });
+    adminFetch(`/api/admin/v1/sms-intelligence/needs-review?${qs.toString()}`, {}, onLogout)
+      .then(res => { if (res.success) { setReviewItems(res.data || []); setReviewMeta(res.meta || {}); } })
+      .catch(() => {});
+  }, [reviewPage, onLogout]);
+  useEffect(() => { fetchReview(); }, [fetchReview]);
+
+  const correctTemplate = (item) => {
+    const categoryId = correctionChoice[item.id];
+    if (!categoryId) { toast('Chagua kategoria sahihi kwanza.', 'error'); return; }
+    adminFetch(`/api/admin/v1/sms-intelligence/needs-review/${item.id}/correct`, {
+      method:'POST', body: JSON.stringify({ category_id: categoryId }),
+    }, onLogout).then(res => {
+      if (res.success) { toast('Imesahihishwa.', 'success'); setReviewItems(prev => prev.filter(r => r.id !== item.id)); }
+      else toast(res.error?.message || 'Imeshindwa kusahihisha.', 'error');
+    }).catch(e => toast(e.message, 'error'));
+  };
+
+  // ── Run analysis now ────────────────────────────────────────────────────
+  const [running, setRunning] = useState(false);
+  const runAnalysisNow = () => {
+    setRunning(true);
+    adminFetch('/api/admin/v1/sms-intelligence/run-now', { method:'POST' }, onLogout)
+      .then(res => {
+        if (res.success) toast('Uchambuzi umeanzishwa — matokeo yatasasishwa hivi karibuni.', 'success');
+        else toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
+      }).catch(e => toast(e.message, 'error')).finally(() => setRunning(false));
+  };
+
+  if (loading && !summary) return <LoadingState label="Loading SMS Intelligence…"/>;
+  if (error && !summary)   return <ErrorState message={error} onRetry={fetchOverview}/>;
+
+  const maxCategoryPct = Math.max(1, ...(byPurpose?.categories || []).map(c => c.usage_pct));
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader
+        title="SMS Intelligence"
+        subtitle="Hivi ndivyo wateja wako wanavyotumia SENDA — makundi ya SMS, wanaotumia zaidi, na fursa za kampeni."
+        actions={
+          <button className="senda-btn senda-btn-sm" onClick={runAnalysisNow} disabled={running}
+            style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
+            {running ? <Spinner size={14}/> : <RefreshCw size={14} strokeWidth={2.2}/>} Run Analysis Now
+          </button>
+        }
+      />
+
+      {/* Filters */}
+      <div className="senda-card" style={{ padding:14, marginBottom:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))', gap:10 }}>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>Date range</label>
+            <select className="senda-input" value={range} onChange={e=>setRange(e.target.value)} style={{ height:36, fontSize:13 }}>
+              {SMS_INTEL_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          {range === 'custom' && (
+            <>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>From</label>
+                <input type="date" className="senda-input" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ height:36, fontSize:13 }}/>
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>To</label>
+                <input type="date" className="senda-input" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ height:36, fontSize:13 }}/>
+              </div>
+            </>
+          )}
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>Client</label>
+            <input className="senda-input" placeholder="Business name or ID…" value={clientF} onChange={e=>setClientF(e.target.value)} style={{ height:36, fontSize:13 }}/>
+          </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>Sender ID</label>
+            <input className="senda-input" placeholder="e.g. SENDA" value={senderF} onChange={e=>setSenderF(e.target.value)} style={{ height:36, fontSize:13 }}/>
+          </div>
+          <div style={{ display:'flex', alignItems:'flex-end', gap:8 }}>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={resetFilters} style={{ height:36 }}>Reset</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:16 }}>
+        <StatCard title="SMS Analyzed" value={compactNumber(summary?.total_sms_analyzed)} icon={MessageSquare} accent={BRAND}/>
+        <StatCard title="Clients Analyzed" value={compactNumber(summary?.total_clients_analyzed)} icon={Users} accent={VIOLET}/>
+        <StatCard title="Use Cases" value={compactNumber(summary?.total_use_cases)} icon={Target} accent={CYAN}/>
+        <StatCard title="Most Common Category" value={summary?.most_common_category || '—'} icon={Sparkles} accent={AMBER}/>
+        <StatCard title="Message Groups" value={compactNumber(summary?.total_groups)} icon={Layers} accent={GREEN}/>
+        <StatCard title="Needs Review" value={compactNumber(summary?.needs_review_count)} icon={AlertTriangle} accent={RED}/>
+      </div>
+
+      {/* SMS by Purpose */}
+      <div className="senda-card" style={{ padding:18, marginBottom:16 }}>
+        <SectionHeader title="SMS by Purpose" subtitle="Share of analyzed SMS volume per business-use category."/>
+        {(byPurpose?.categories || []).length === 0 ? (
+          <div style={{ fontSize:13, color:'#94a3b8', padding:'12px 0' }}>No classified SMS yet for this filter.</div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'1.1fr 1fr', gap:24 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {byPurpose.categories.map((c, i) => (
+                <div key={c.category_id}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, marginBottom:4 }}>
+                    <span style={{ color:'#0f172a', fontWeight:600 }}>{c.category_name}</span>
+                    <span style={{ color:'#64748b' }}>{c.usage_pct}%</span>
+                  </div>
+                  <div style={{ height:8, borderRadius:6, background:'#f1f5f9', overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${(c.usage_pct / maxCategoryPct) * 100}%`, background: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length], borderRadius:6 }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ overflowX:'auto' }}>
+              <table className="senda-table" style={{ fontSize:12.5 }}>
+                <thead><tr><th>Category</th><th>Clients</th><th>SMS</th><th>Credits</th><th>%</th></tr></thead>
+                <tbody>
+                  {byPurpose.categories.map(c => (
+                    <tr key={c.category_id}>
+                      <td style={{ fontWeight:600, color:'#0f172a' }}>{c.category_name}</td>
+                      <td>{compactNumber(c.client_count)}</td>
+                      <td>{compactNumber(c.sms_count)}</td>
+                      <td>{compactNumber(c.credits_used)}</td>
+                      <td>{c.usage_pct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Message Groups */}
+      <div className="senda-card senda-table-wrap" style={{ overflow:'hidden', marginBottom:16 }}>
+        <div style={{ padding:'16px 18px 4px' }}>
+          <SectionHeader title="Message Groups" subtitle="Semantic use-case clusters — click a row for detail."/>
+        </div>
+        <div style={{ overflowX:'auto' }}>
+          <table className="senda-table" style={{ minWidth:640 }}>
+            <thead><tr><th>Group</th><th>Category</th><th>SMS</th><th>Clients</th><th>Credits</th><th>Usage %</th></tr></thead>
+            <tbody>
+              {groups.map(g => (
+                <tr key={g.id} onClick={()=>setOpenGroupId(g.id)} style={{ cursor:'pointer' }}>
+                  <td style={{ fontWeight:600, color:'#0f172a' }}>{g.name}</td>
+                  <td style={{ color:'#64748b' }}>{g.category_name}</td>
+                  <td>{compactNumber(g.sms_count)}</td>
+                  <td>{compactNumber(g.client_count)}</td>
+                  <td>{compactNumber(g.credits_used)}</td>
+                  <td>{g.usage_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {groups.length === 0 && <div style={{ padding:'28px 20px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No approved groups yet — approve a suggestion below to create one.</div>}
+        {(groupsMeta.total_pages || 1) > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', borderTop:'1px solid #f1f5f9' }}>
+            <span style={{ fontSize:12, color:'#94a3b8' }}>Page {groupsMeta.page || groupsPage} of {groupsMeta.total_pages}</span>
+            <div style={{ display:'flex', gap:4 }}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!groupsMeta.has_prev} onClick={()=>setGroupsPage(p=>Math.max(1,p-1))}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!groupsMeta.has_next} onClick={()=>setGroupsPage(p=>p+1)}>Next →</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Client Segmentation */}
+      <div style={{ marginBottom:16 }}>
+        <SectionHeader title="Client Segmentation" subtitle="Businesses that repeatedly send similar SMS use cases."/>
+        {segments.length === 0 ? (
+          <div className="senda-card" style={{ padding:18, fontSize:13, color:'#94a3b8' }}>No segments yet — needs at least 3 clients sharing a dominant use case.</div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12 }}>
+            {segments.map(s => (
+              <div key={s.id} className="senda-card" style={{ padding:16 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                  <h4 style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', margin:0 }}>{s.name}</h4>
+                  {s.is_pinned && <CheckCircle2 size={15} color={GREEN}/>}
+                </div>
+                <p style={{ fontSize:12, color:'#64748b', margin:'0 0 10px' }}>{s.description}</p>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>Common SMS</div>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
+                  {s.common_groups.length === 0
+                    ? <span style={{ fontSize:12, color:'#94a3b8' }}>Not yet approved as groups</span>
+                    : s.common_groups.map(g => <span key={g.id} style={{ fontSize:11, background:'#f1f5f9', color:'#475569', padding:'3px 8px', borderRadius:6 }}>{g.name}</span>)}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:12, color:'#64748b' }}><Users size={12} style={{ verticalAlign:-2 }}/> {s.client_count} clients</span>
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>viewSegmentClients(s)} style={{ height:28, fontSize:12 }}>View Clients</button>
+                </div>
+                {s.opportunity_title && (
+                  <div style={{ marginTop:10, fontSize:11.5, color:BRAND, fontWeight:600 }}>💡 {s.opportunity_title}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Campaign Opportunities */}
+      <div style={{ marginBottom:16 }}>
+        <SectionHeader title="Campaign Opportunities" subtitle="Ideas surfaced from real usage — nothing is ever sent automatically."/>
+        {opportunities.length === 0 ? (
+          <div className="senda-card" style={{ padding:18, fontSize:13, color:'#94a3b8' }}>No pending opportunities right now.</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {opportunities.map(o => (
+              <div key={o.id} className="senda-card" style={{ padding:16 }}>
+                <h4 style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', margin:'0 0 6px' }}>{o.title}</h4>
+                <p style={{ fontSize:12.5, color:'#475569', margin:'0 0 8px' }}>{o.observation}</p>
+                <div style={{ fontSize:12.5, color:'#0f172a', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:8, padding:'8px 10px', marginBottom:10 }}>
+                  {o.suggested_campaign}
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {o.target_segment && (
+                    <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12 }}
+                      onClick={()=>viewSegmentClients(o.target_segment)}>View Clients</button>
+                  )}
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12 }}
+                    onClick={()=>viewOpportunityMessages(o)}>View Messages</button>
+                  {o.target_segment && (
+                    <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12 }}
+                      onClick={()=>pinSegment(o.target_segment)}>Create Segment</button>
+                  )}
+                  <button className="senda-btn senda-btn-sm" style={{ height:28, fontSize:12, background:BRAND, color:'#fff', border:'none' }}
+                    onClick={()=>actionOpportunity(o)}>Create Campaign</button>
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12, color:'#94a3b8' }}
+                    onClick={()=>dismissOpportunity(o)}>Dismiss</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* New Pattern Suggestions */}
+      <div style={{ marginBottom:16 }}>
+        <SectionHeader title="Suggested New Groups" subtitle="Recurring patterns that don't fit an existing group yet."/>
+        {patterns.length === 0 ? (
+          <div className="senda-card" style={{ padding:18, fontSize:13, color:'#94a3b8' }}>No new patterns pending review.</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {patterns.map(p => (
+              <div key={p.id} className="senda-card" style={{ padding:16 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6, flexWrap:'wrap', gap:8 }}>
+                  <h4 style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', margin:0 }}>{p.name}</h4>
+                  <span style={{ fontSize:12, color:'#64748b' }}>{compactNumber(p.detected_count)} messages detected</span>
+                </div>
+                {p.suggested_category && (
+                  <div style={{ fontSize:12, color:'#64748b', marginBottom:8 }}>Suggested category: <strong style={{ color:'#0f172a' }}>{p.suggested_category.name}</strong></div>
+                )}
+                <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:10 }}>
+                  {(p.example_messages || []).slice(0, 3).map((m, i) => (
+                    <div key={i} style={{ fontSize:12, color:'#334155', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:8, padding:'8px 10px' }}>{m}</div>
+                  ))}
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                  <button className="senda-btn senda-btn-sm" style={{ height:28, fontSize:12, background:GREEN, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:5 }}
+                    onClick={()=>createGroupFromPattern(p)}><PlusCircle size={13}/> Create Group</button>
+                  {mergingId === p.id ? (
+                    <>
+                      <select className="senda-input" value={mergeChoice} onChange={e=>setMergeChoice(e.target.value)} style={{ height:28, fontSize:12 }}>
+                        <option value="">Chagua kikundi…</option>
+                        {allGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                      <button className="senda-btn senda-btn-sm" style={{ height:28, fontSize:12, background:BRAND, color:'#fff', border:'none' }}
+                        onClick={()=>mergePattern(p)}>Confirm Merge</button>
+                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12 }}
+                        onClick={()=>{ setMergingId(null); setMergeChoice(''); }}>Cancel</button>
+                    </>
+                  ) : (
+                    <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12, display:'inline-flex', alignItems:'center', gap:5 }}
+                      onClick={()=>{ setMergingId(p.id); setMergeChoice(''); }}><GitMerge size={13}/> Merge with Existing</button>
+                  )}
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{ height:28, fontSize:12, color:'#94a3b8' }}
+                    onClick={()=>ignorePattern(p)}>Ignore</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Needs Review */}
+      <div className="senda-card senda-table-wrap" style={{ overflow:'hidden' }}>
+        <div style={{ padding:'16px 18px 4px' }}>
+          <SectionHeader title="Needs Review" subtitle="Low-confidence classifications — correct once, and future matches reuse it."/>
+        </div>
+        <div style={{ overflowX:'auto' }}>
+          <table className="senda-table" style={{ minWidth:760 }}>
+            <thead><tr><th>Message pattern</th><th>Suggested category</th><th>Confidence</th><th>Occurrences</th><th>Correct to</th><th></th></tr></thead>
+            <tbody>
+              {reviewItems.map(item => (
+                <tr key={item.id}>
+                  <td style={{ maxWidth:280, fontSize:12.5, color:'#334155' }}>{item.masked_text}</td>
+                  <td style={{ fontSize:12.5, color:'#64748b' }}>{item.category_name || '—'}</td>
+                  <td><ConfidenceBadge level={item.confidence_level}/></td>
+                  <td>{compactNumber(item.occurrence_count)}</td>
+                  <td>
+                    <select className="senda-input" style={{ height:30, fontSize:12 }}
+                      value={correctionChoice[item.id] || ''}
+                      onChange={e=>setCorrectionChoice(prev => ({ ...prev, [item.id]: e.target.value }))}>
+                      <option value="">Chagua kategoria…</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name_sw}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <button className="senda-btn senda-btn-sm" style={{ height:30, fontSize:12, background:BRAND, color:'#fff', border:'none' }}
+                      onClick={()=>correctTemplate(item)}>Save</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {reviewItems.length === 0 && <div style={{ padding:'28px 20px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>Nothing needs review right now.</div>}
+        {(reviewMeta.total_pages || 1) > 1 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', borderTop:'1px solid #f1f5f9' }}>
+            <span style={{ fontSize:12, color:'#94a3b8' }}>Page {reviewMeta.page || reviewPage} of {reviewMeta.total_pages}</span>
+            <div style={{ display:'flex', gap:4 }}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!reviewMeta.has_prev} onClick={()=>setReviewPage(p=>Math.max(1,p-1))}>← Prev</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!reviewMeta.has_next} onClick={()=>setReviewPage(p=>p+1)}>Next →</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {openGroupId && <SmsIntelGroupDrawer groupId={openGroupId} onClose={()=>setOpenGroupId(null)}/>}
+
+      {segmentModal && (
+        <SmsIntelListModal
+          title={segmentModal.title}
+          items={segmentModal.clients}
+          empty="No clients in this segment yet."
+          onClose={()=>setSegmentModal(null)}
+          renderItem={c => (
+            <div key={c.tenant_id} style={{ display:'flex', justifyContent:'space-between', fontSize:13, padding:'8px 0', borderBottom:'1px solid #f8fafc' }}>
+              <span style={{ color:'#0f172a' }}>{c.name || c.tenant_id}</span>
+              <span style={{ color:'#94a3b8', fontSize:11 }}>{c.joined_at ? new Date(c.joined_at).toLocaleDateString() : ''}</span>
+            </div>
+          )}
+        />
+      )}
+
+      {messagesModal && (
+        <SmsIntelListModal
+          title={`Messages — ${messagesModal.title}`}
+          items={messagesModal.messages}
+          empty="Bado hakuna kikundi kilichoidhinishwa kwa fursa hii."
+          onClose={()=>setMessagesModal(null)}
+          renderItem={(m, i) => (
+            <div key={i} style={{ fontSize:12.5, color:'#334155', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:8, padding:'10px 12px', marginBottom:8 }}>{m}</div>
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -11838,6 +12622,7 @@ const NAV_GROUPS = [
   { title: 'Analytics', items: [
     { id:'overview',      Icon:BarChart3,    label:'Overview'         },
     { id:'insights',      Icon:Activity,     label:'Insights'         },
+    { id:'smsintelligence', Icon:Sparkles,   label:'SMS Intelligence' },
   ]},
   { title: 'Messaging', items: [
     { id:'broadcast',     Icon:Megaphone,    label:'Broadcast'        },
@@ -16014,6 +16799,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   const tabMap = {
     overview:     <OverviewTab/>,
     insights:     <InsightsTab/>,
+    smsintelligence: <SmsIntelligenceTab/>,
     engagement:   <EngagementTab/>,
     broadcast:    <BroadcastTab/>,
     users:        <UsersTab/>,
