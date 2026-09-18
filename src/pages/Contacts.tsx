@@ -1792,14 +1792,19 @@ className="pl-10 glass-subtle border-0 text-sm"
     )}
   </div>
 </div>
-<div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:items-center gap-2">
+{/* flex-wrap (not a fixed-column grid) so a button whose label doesn't fit its
+    slot wraps to the next line instead of overflowing its column and painting
+    over the next button — grid-cols-N with w-auto/whitespace-nowrap buttons
+    forced overlap here since "Send WhatsApp" doesn't reliably fit a 1/3 or 1/2
+    width column at narrow/medium viewports. */}
+<div className="flex flex-wrap items-center gap-2">
 <Button
 variant="outline"
 size="sm"
 onClick={handleBulkAddTag}
 disabled={isBulkActionLoading || selectAllMatchingFilter}
 title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
-className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Add Tag
@@ -1808,7 +1813,7 @@ Add Tag
 variant="outline"
 size="sm"
 onClick={handleBulkSendMessage}
-className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Send SMS
@@ -1817,7 +1822,7 @@ Send SMS
 variant="outline"
 size="sm"
 onClick={handleBulkSendWhatsApp}
-className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 border-[#25D366]/40 text-[#1ebe5d] hover:bg-[#25D366]/10 hover:text-[#1ebe5d]"
+className="text-xs sm:text-sm h-8 sm:h-9 border-[#25D366]/40 text-[#1ebe5d] hover:bg-[#25D366]/10 hover:text-[#1ebe5d]"
 >
 <WhatsAppIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Send WhatsApp
@@ -1828,7 +1833,7 @@ size="sm"
 onClick={handleExportSelected}
 disabled={selectAllMatchingFilter}
 title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
-className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Export Selected
@@ -1836,7 +1841,7 @@ Export Selected
 <Button
 variant="outline"
 size="sm"
-className="text-destructive hover:text-destructive w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+className="text-destructive hover:text-destructive text-xs sm:text-sm h-8 sm:h-9"
 onClick={handleBulkDelete}
 disabled={isBulkActionLoading || selectAllMatchingFilter}
 title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
