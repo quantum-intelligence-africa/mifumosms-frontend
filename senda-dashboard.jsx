@@ -7870,7 +7870,19 @@ function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
           setSettings(res.data);
           setLlmProvider(res.data.llm_provider);
           setEmbeddingProvider(res.data.embedding_provider);
-          setFieldValues({});
+          // Non-secret fields (model pickers) always have a real value — pre-fill
+          // from whatever's already configured, else the recommended default —
+          // so a dropdown never shows blank. Secret fields (API keys) stay blank;
+          // the masked preview is shown as a placeholder instead (see renderFields).
+          const previewMap = {};
+          (res.data.configured_fields || []).forEach(f => { previewMap[f.key] = f.preview; });
+          const initial = {};
+          Object.values(res.data.credential_fields || {}).forEach(fields => {
+            fields.forEach(f => {
+              if (!f.secret) initial[f.key] = previewMap[f.key] ?? f.default ?? '';
+            });
+          });
+          setFieldValues(initial);
         } else setError(res.error?.message || 'Failed to load provider settings.');
       })
       .catch(e => setError(e.message))
@@ -7893,10 +7905,67 @@ function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
   (settings?.configured_fields || []).forEach(f => { previewByKey[f.key] = f.preview; });
   const credentialFieldsByProvider = settings?.credential_fields || {};
 
+  const CUSTOM_OPTION = '__custom__';
+
   const renderFields = (fields, seenKeys) => fields.filter(f => !seenKeys.has(f.key)).map(f => {
     seenKeys.add(f.key);
     const current = fieldValues[f.key] ?? '';
     const preview = previewByKey[f.key];
+
+    // Model pickers: a plain dropdown of known-good choices, so the admin never
+    // has to know/guess an exact model id string. Defaults to the recommended one.
+    if (f.type === 'select') {
+      return (
+        <div key={f.key} style={{ marginBottom:10 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>{f.label}</label>
+          <select
+            className="senda-input"
+            value={current || f.default || ''}
+            onChange={e=>setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+            style={{ height:36, fontSize:13, width:'100%' }}
+          >
+            {(f.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      );
+    }
+
+    // Model pickers with an escape hatch (e.g. Hugging Face repo ids) — curated
+    // choices plus "Custom…" for anything not in the list.
+    if (f.type === 'select_custom') {
+      const isKnown = (f.options || []).some(o => o.value === current);
+      const selectValue = current && !isKnown ? CUSTOM_OPTION : (current || f.default || '');
+      return (
+        <div key={f.key} style={{ marginBottom:10 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>{f.label}</label>
+          <select
+            className="senda-input"
+            value={selectValue}
+            onChange={e=>{
+              const v = e.target.value;
+              setFieldValues(prev => ({ ...prev, [f.key]: v === CUSTOM_OPTION ? '' : v }));
+            }}
+            style={{ height:36, fontSize:13, width:'100%', marginBottom: selectValue === CUSTOM_OPTION ? 6 : 0 }}
+          >
+            {(f.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <option value={CUSTOM_OPTION}>Custom model ID…</option>
+          </select>
+          {selectValue === CUSTOM_OPTION && (
+            <input
+              className="senda-input"
+              type="text"
+              value={current}
+              onChange={e=>setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+              placeholder="e.g. org-name/model-name"
+              style={{ height:36, fontSize:13, width:'100%' }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // API keys and anything else: plain text/password input. Secrets never
+    // prefill the real value — leaving it blank keeps whatever's already stored.
     return (
       <div key={f.key} style={{ marginBottom:10 }}>
         <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>{f.label}</label>
@@ -7949,7 +8018,7 @@ function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
           {error ? <ErrorState message={error} onRetry={load}/> : (
             <>
               <SmsIntelSectionLabel>LLM Provider (classification)</SmsIntelSectionLabel>
-              <select className="senda-input" value={llmProvider} onChange={e=>{ setLlmProvider(e.target.value); setFieldValues({}); }}
+              <select className="senda-input" value={llmProvider} onChange={e=>setLlmProvider(e.target.value)}
                 style={{ height:38, fontSize:13, width:'100%', marginBottom:12 }}>
                 {(settings?.llm_provider_choices || []).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -7963,7 +8032,7 @@ function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
               )}
 
               <SmsIntelSectionLabel>Embedding Provider (semantic similarity)</SmsIntelSectionLabel>
-              <select className="senda-input" value={embeddingProvider} onChange={e=>{ setEmbeddingProvider(e.target.value); setFieldValues({}); }}
+              <select className="senda-input" value={embeddingProvider} onChange={e=>setEmbeddingProvider(e.target.value)}
                 style={{ height:38, fontSize:13, width:'100%', marginBottom:12 }}>
                 {(settings?.embedding_provider_choices || []).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
