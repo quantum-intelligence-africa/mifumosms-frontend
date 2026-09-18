@@ -188,6 +188,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   // the same campaign pipeline underneath so sends of any size are handled
   // the same way (chunked, batched, no URL/id-list limits).
   const [isQuickSendMode, setIsQuickSendMode] = useState(false);
+  const [quickSendWhen, setQuickSendWhen] = useState<'now' | 'later'>('now');
   const [matchingCount, setMatchingCount] = useState<number | null>(null);
   const [isLoadingMatchingCount, setIsLoadingMatchingCount] = useState(false);
   const { toast } = useToast();
@@ -278,6 +279,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         const hasExplicitIds = (initialTargeting.target_contact_ids?.length ?? 0) > 0;
         setAudienceMode(hasExplicitIds ? 'individual' : 'all_matching');
         setIsQuickSendMode(true);
+        setQuickSendWhen('now');
         const channelLabel = initialTargeting.campaign_type === 'whatsapp' ? 'WhatsApp' : 'SMS';
         setFormData({
           ...base,
@@ -768,12 +770,40 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 )}
               </div>
 
-              {formData.message_text.trim() && effectiveRecipientCount > 0 && formData.campaign_type !== 'whatsapp' && (
-                <div className="rounded-lg border border-success/30 bg-success/5 p-3 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{t('total_cost')}</span>
-                  <span className="text-sm font-bold text-success">{t('campaigns.create_dialog.tzs_amount', { amount: estimatedCost.toLocaleString() })}</span>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-foreground">When</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={quickSendWhen === 'now' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      setQuickSendWhen('now');
+                      handleInputChange('scheduled_at', null);
+                    }}
+                  >
+                    Now
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={quickSendWhen === 'later' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setQuickSendWhen('later')}
+                  >
+                    Later
+                  </Button>
                 </div>
-              )}
+                {quickSendWhen === 'later' && (
+                  <Input
+                    type="datetime-local"
+                    value={formData.scheduled_at || ''}
+                    onChange={(e) => handleInputChange('scheduled_at', e.target.value || null)}
+                    className="h-9"
+                  />
+                )}
+              </div>
             </div>
           ) : (
           <>
@@ -1234,7 +1264,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <Button variant="ghost" onClick={requestClose} className="h-9 px-3">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting} className="h-9 px-4 gap-1.5">
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting || (quickSendWhen === 'later' && !formData.scheduled_at)}
+              className="h-9 px-4 gap-1.5"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1243,7 +1277,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  Send
+                  {quickSendWhen === 'later' ? 'Schedule' : 'Send'}
                 </>
               )}
             </Button>
