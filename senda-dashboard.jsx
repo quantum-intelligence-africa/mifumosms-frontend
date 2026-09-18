@@ -10269,6 +10269,123 @@ function IvrFlowsTab() {
   );
 }
 
+function VoiceNumbersTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [search, setSearch]   = useState('');
+  const [busyId, setBusyId]   = useState(null);
+
+  const fetchAll = useCallback(() => {
+    setLoading(true); setError(null);
+    // voiceAdminFetch always normalizes to {success, data, error, status} —
+    // `data` here is the bare array this ListAPIView returns (pagination_class=None).
+    voiceAdminFetch('/voice/accounts/admin/all/', {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(Array.isArray(res.data) ? res.data : (res.data?.results || [])); return; }
+        setError(res.error || 'Failed to load voice numbers.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const release = (row) => {
+    if (!window.confirm(`Release ${row.phone_number} from ${row.tenant_name}? They will lose this number until assigned a new one.`)) return;
+    setBusyId(row.id);
+    voiceAdminFetch(`/voice/accounts/admin/${row.id}/release/`, { method: 'POST' }, onLogout)
+      .then(res => {
+        if (!res.success) {
+          showToast?.(res.error || 'Failed to release number.', 'error');
+          return;
+        }
+        setRows(prev => prev.map(r => r.id === row.id ? { ...r, phone_number: '', provider_credential_detail: null } : r));
+        showToast?.(`${row.phone_number} released — it's back in the unassigned pool.`, 'success');
+      })
+      .catch(() => showToast?.('Failed to release number.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
+  const filtered = rows.filter(r => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (r.tenant_name || '').toLowerCase().includes(q) || (r.phone_number || '').toLowerCase().includes(q) || (r.display_name || '').toLowerCase().includes(q);
+  });
+
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const td = {padding:'12px 16px',verticalAlign:'middle'};
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Voice Numbers</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Every tenant's number assignment across the platform — release one to free it back into the unassigned pool.
+          </p>
+        </div>
+        <input className="senda-input" placeholder="Search by tenant, number, or label..." value={search}
+          onChange={e=>setSearch(e.target.value)} style={{width:260,height:36,fontSize:13}}/>
+      </div>
+
+      {error && (
+        <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
+          {error}
+        </div>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead>
+            <tr style={{background:'#f8fafc',textAlign:'left'}}>
+              <th style={th}>Tenant</th>
+              <th style={th}>Label</th>
+              <th style={th}>Phone number</th>
+              <th style={th}>Active flow</th>
+              <th style={th}>Status</th>
+              <th style={th}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
+            ) : filtered.map(row => {
+              const assigned = !!row.provider_credential_detail;
+              return (
+                <tr key={row.id}>
+                  <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.tenant_name || '—'}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.display_name || '—'}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.phone_number || '—'}</td>
+                  <td style={{...td,fontSize:12,color:'#64748b'}}>{row.active_flow_detail?.name || '—'}</td>
+                  <td style={td}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,
+                      fontSize:11,fontWeight:600,background:assigned?'#ecfdf5':'#f1f5f9',color:assigned?'#059669':'#64748b'}}>
+                      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{assigned ? 'Assigned' : 'Unassigned'}
+                    </span>
+                  </td>
+                  <td style={td}>
+                    {assigned && (
+                      <button className="senda-btn senda-btn-sm" disabled={busyId === row.id}
+                        onClick={() => release(row)}
+                        style={{background:'#fef2f2',color:'#b91c1c',border:'1px solid #fecaca'}}>
+                        {busyId === row.id ? 'Releasing…' : 'Release'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Feature Access (mifumosms_backend) ────────────────────────────────────────
 // Where a SENDA admin actually grants/revokes a user's access to SMS/messaging
 // and to the Voice/IVR flow builder — the place to set up what each user is
@@ -12903,6 +13020,7 @@ const NAV_GROUPS = [
   ]},
   { title: 'Voice / IVR', items: [
     { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
+    { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
   ]},
@@ -17065,6 +17183,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     settings:     <SettingsTab/>,
     operations:   <OperationsTab/>,
     ivrflows:       <IvrFlowsTab/>,
+    voicenumbers:   <VoiceNumbersTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,
