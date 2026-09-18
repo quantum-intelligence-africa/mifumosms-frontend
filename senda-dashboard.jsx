@@ -7846,9 +7846,159 @@ function SmsIntelListModal({ title, items, renderItem, onClose, empty }) {
   );
 }
 
+// ─── SMS Intelligence: Provider Settings drawer ────────────────────────────
+// Lets an admin pick/edit the LLM + embedding provider from the dashboard
+// instead of editing .env — mirrors the existing AI Provider credentials
+// screen's masked-field / "leave blank to keep" UX (see AIProviderEditDrawer).
+function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const toast = (msg, type) => { try { showToast?.(msg, type); } catch {} };
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState(null);
+  const [settings, setSettings] = useState(null); // full GET payload
+  const [llmProvider, setLlmProvider] = useState('mock');
+  const [embeddingProvider, setEmbeddingProvider] = useState('local');
+  const [fieldValues, setFieldValues] = useState({}); // key -> typed value (only changed fields)
+
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    adminFetch('/api/admin/v1/sms-intelligence/settings', {}, onLogout)
+      .then(res => {
+        if (res.success) {
+          setSettings(res.data);
+          setLlmProvider(res.data.llm_provider);
+          setEmbeddingProvider(res.data.embedding_provider);
+          setFieldValues({});
+        } else setError(res.error?.message || 'Failed to load provider settings.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!settings && loading) {
+    return createPortal(
+      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', justifyContent:'flex-end', zIndex:1000 }}>
+        <div onClick={e=>e.stopPropagation()} style={{ width:'min(520px,100%)', height:'100%', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <LoadingState label="Loading provider settings…"/>
+        </div>
+      </div>, document.body
+    );
+  }
+
+  const previewByKey = {};
+  (settings?.configured_fields || []).forEach(f => { previewByKey[f.key] = f.preview; });
+  const credentialFieldsByProvider = settings?.credential_fields || {};
+
+  const renderFields = (fields, seenKeys) => fields.filter(f => !seenKeys.has(f.key)).map(f => {
+    seenKeys.add(f.key);
+    const current = fieldValues[f.key] ?? '';
+    const preview = previewByKey[f.key];
+    return (
+      <div key={f.key} style={{ marginBottom:10 }}>
+        <label style={{ fontSize:11, fontWeight:700, color:'#475569', display:'block', marginBottom:4 }}>{f.label}</label>
+        <input
+          className="senda-input"
+          type={f.secret ? 'password' : 'text'}
+          value={current}
+          onChange={e=>setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+          placeholder={preview ? (f.secret ? `Configured: ${preview} — leave blank to keep` : preview) : (f.placeholder || '')}
+          style={{ height:36, fontSize:13, width:'100%' }}
+        />
+      </div>
+    );
+  });
+
+  const seenKeys = new Set();
+  const llmFields = renderFields(credentialFieldsByProvider[llmProvider] || [], seenKeys);
+  const embeddingFields = renderFields(credentialFieldsByProvider[embeddingProvider] || [], seenKeys);
+
+  const handleSave = () => {
+    setSaving(true);
+    const credentials = {};
+    Object.entries(fieldValues).forEach(([k, v]) => { if (String(v || '').trim()) credentials[k] = v; });
+    adminFetch('/api/admin/v1/sms-intelligence/settings/update', {
+      method: 'PUT',
+      body: JSON.stringify({ llm_provider: llmProvider, embedding_provider: embeddingProvider, credentials }),
+    }, onLogout).then(res => {
+      if (res.success) {
+        toast('Mipangilio ya AI imehifadhiwa.', 'success');
+        onSaved?.();
+        load();
+      } else {
+        toast(res.error?.message || 'Imeshindwa kuhifadhi mipangilio.', 'error');
+      }
+    }).catch(e => toast(e.message, 'error')).finally(() => setSaving(false));
+  };
+
+  return createPortal(
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.45)', display:'flex', justifyContent:'flex-end', zIndex:1000 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:'min(520px,100%)', height:'100%', background:'#fff', display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #eef2f7' }}>
+          <div>
+            <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0 }}>Provider Settings</h3>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>Powers SMS classification + similarity grouping — stored encrypted, editable here instead of .env.</div>
+          </div>
+          <button className="senda-btn senda-btn-sm" onClick={onClose} style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff' }}><X size={16}/></button>
+        </div>
+
+        <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
+          {error ? <ErrorState message={error} onRetry={load}/> : (
+            <>
+              <SmsIntelSectionLabel>LLM Provider (classification)</SmsIntelSectionLabel>
+              <select className="senda-input" value={llmProvider} onChange={e=>{ setLlmProvider(e.target.value); setFieldValues({}); }}
+                style={{ height:38, fontSize:13, width:'100%', marginBottom:12 }}>
+                {(settings?.llm_provider_choices || []).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              {llmFields.length > 0 && (
+                <div style={{ background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:10, padding:'12px 14px', marginBottom:20 }}>
+                  {llmFields}
+                </div>
+              )}
+              {llmProvider === 'mock' && (
+                <div style={{ fontSize:12, color:'#94a3b8', marginBottom:20 }}>No key needed — classifications will be low-confidence stubs, landing in Needs Review.</div>
+              )}
+
+              <SmsIntelSectionLabel>Embedding Provider (semantic similarity)</SmsIntelSectionLabel>
+              <select className="senda-input" value={embeddingProvider} onChange={e=>{ setEmbeddingProvider(e.target.value); setFieldValues({}); }}
+                style={{ height:38, fontSize:13, width:'100%', marginBottom:12 }}>
+                {(settings?.embedding_provider_choices || []).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              {embeddingFields.length > 0 && (
+                <div style={{ background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:10, padding:'12px 14px', marginBottom:20 }}>
+                  {embeddingFields}
+                </div>
+              )}
+              {embeddingProvider === 'local' && (
+                <div style={{ fontSize:12, color:'#94a3b8', marginBottom:20 }}>No key needed — dependency-free vectorizer, good for near-duplicate grouping.</div>
+              )}
+
+              {settings?.updated_at && (
+                <div style={{ fontSize:11, color:'#94a3b8', marginBottom:8 }}>Last updated {new Date(settings.updated_at).toLocaleString()}</div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div style={{ display:'flex', gap:8, padding:'14px 20px', borderTop:'1px solid #eef2f7' }}>
+          <button className="senda-btn senda-btn-sm" onClick={handleSave} disabled={saving || !!error}
+            style={{ height:36, flex:1, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+            {saving ? <Spinner size={14}/> : null} Save
+          </button>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onClose} style={{ height:36 }}>Cancel</button>
+        </div>
+      </div>
+    </div>, document.body
+  );
+}
+
 function SmsIntelligenceTab() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const toast = (msg, type) => { try { showToast?.(msg, type); } catch {} };
+  const [providerSettingsOpen, setProviderSettingsOpen] = useState(false);
 
   // ── Filters ────────────────────────────────────────────────────────────
   const [range, setRange]         = useState('30d');
@@ -8075,12 +8225,22 @@ function SmsIntelligenceTab() {
         title="SMS Intelligence"
         subtitle="Hivi ndivyo wateja wako wanavyotumia SENDA — makundi ya SMS, wanaotumia zaidi, na fursa za kampeni."
         actions={
-          <button className="senda-btn senda-btn-sm" onClick={runAnalysisNow} disabled={running}
-            style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
-            {running ? <Spinner size={14}/> : <RefreshCw size={14} strokeWidth={2.2}/>} Run Analysis Now
-          </button>
+          <>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setProviderSettingsOpen(true)}
+              style={{ height:34, border:'1.5px solid #e2e8f0', background:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
+              <Settings size={14} strokeWidth={2.2}/> Provider Settings
+            </button>
+            <button className="senda-btn senda-btn-sm" onClick={runAnalysisNow} disabled={running}
+              style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
+              {running ? <Spinner size={14}/> : <RefreshCw size={14} strokeWidth={2.2}/>} Run Analysis Now
+            </button>
+          </>
         }
       />
+
+      {providerSettingsOpen && (
+        <SmsIntelProviderSettingsDrawer onClose={()=>setProviderSettingsOpen(false)} onSaved={()=>{}}/>
+      )}
 
       {/* Filters */}
       <div className="senda-card" style={{ padding:14, marginBottom:16 }}>
