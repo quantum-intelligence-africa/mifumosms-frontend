@@ -45,7 +45,21 @@ interface CreateCampaignDialogProps {
   onOpenChange?: (open: boolean) => void;
   /** When set, the dialog resumes an existing (usually draft) campaign instead of starting a new one. */
   draftId?: string | null;
+  /**
+   * Pre-seed the audience/channel for a fresh (non-draft) open — e.g. the
+   * Contacts page's "Send to selected" bulk actions hand off their current
+   * selection here instead of re-fetching contacts and navigating away.
+   * Ignored when resuming a draft via `draftId`.
+   */
+  initialTargeting?: {
+    campaign_type?: 'sms' | 'whatsapp';
+    target_contact_ids?: string[];
+    /** Non-empty tags (or none, meaning "all active contacts") switches the dialog into "all matching filters" mode. */
+    target_criteria_tags?: string[];
+  } | null;
 }
+
+type AudienceMode = 'individual' | 'all_matching';
 
 type CampaignFormData = {
   name: string;
@@ -157,7 +171,7 @@ function writePendingNewDraftId(id: string | null) {
   }
 }
 
-export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange, draftId }: CreateCampaignDialogProps) {
+export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, onOpenChange, draftId, initialTargeting }: CreateCampaignDialogProps) {
   const { t } = useLanguage();
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,6 +179,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const [smsBalance, setSmsBalance] = useState<number | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
+  const [audienceMode, setAudienceMode] = useState<AudienceMode>('individual');
+  const [matchingCount, setMatchingCount] = useState<number | null>(null);
+  const [isLoadingMatchingCount, setIsLoadingMatchingCount] = useState(false);
   const { toast } = useToast();
 
   // Use external open state if provided, otherwise use internal state
@@ -247,9 +264,24 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
     if (!resumeId) {
       setCurrentDraftId(null);
-      setFormData(blankFormData());
+      const base = blankFormData();
+      if (initialTargeting) {
+        const seededTags = initialTargeting.target_criteria_tags ?? [];
+        const hasExplicitIds = (initialTargeting.target_contact_ids?.length ?? 0) > 0;
+        setAudienceMode(hasExplicitIds ? 'individual' : 'all_matching');
+        setFormData({
+          ...base,
+          campaign_type: initialTargeting.campaign_type ?? base.campaign_type,
+          target_contact_ids: initialTargeting.target_contact_ids ?? [],
+          target_criteria: { ...base.target_criteria, tags: seededTags },
+        });
+      } else {
+        setAudienceMode('individual');
+        setFormData(base);
+      }
       return;
     }
+    setAudienceMode('individual');
 
     setCurrentDraftId(resumeId);
     setIsLoadingDraft(true);
@@ -300,6 +332,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       }
       setIsLoadingDraft(false);
     });
+    // initialTargeting is intentionally excluded: it should only seed the form
+    // on the open transition, not re-run (and clobber user edits) if the caller
+    // re-renders with a new object identity while the dialog is already open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, draftId]);
 
   // Mirror form state to localStorage as a lightweight offline backstop.
@@ -311,6 +347,27 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     }, 300);
     return () => clearTimeout(timer);
   }, [formData, open, currentDraftId]);
+
+  // Live "how many contacts does this match" preview for "all matching filters"
+  // mode. Cheap: page_size=1 just needs the paginated response's `count`, no
+  // rows — safe to run on every tag change, unlike walking every page of
+  // results (which is what selecting contacts individually used to do).
+  useEffect(() => {
+    if (!open || audienceMode !== 'all_matching') return;
+    setIsLoadingMatchingCount(true);
+    const timer = setTimeout(() => {
+      apiClient
+        .getContacts({
+          tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
+          is_active: true,
+          page_size: 1,
+        })
+        .then((res) => setMatchingCount(res.success && res.data ? res.data.count : null))
+        .catch(() => setMatchingCount(null))
+        .finally(() => setIsLoadingMatchingCount(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [open, audienceMode, formData.target_criteria.tags]);
 
   const handleDraftCreated = useCallback((id: string) => {
     try {
@@ -377,12 +434,16 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     requestClose();
   };
 
-  const estimatedCost = calculateCampaignCost(formData.message_text, formData.target_contact_ids.length, 25);
+  const effectiveRecipientCount = audienceMode === 'all_matching'
+    ? (matchingCount ?? 0)
+    : formData.target_contact_ids.length;
+
+  const estimatedCost = calculateCampaignCost(formData.message_text, effectiveRecipientCount, 25);
 
   const weeklyCost = formData.is_recurring
     ? calculateRecurringWeeklyCost(
         formData.message_text,
-        formData.target_contact_ids.length,
+        effectiveRecipientCount,
         formData.recurring_schedule.type as 'single' | 'daily' | 'weekly' | 'monthly',
         formData.recurring_schedule.days?.length || 1,
         25
@@ -467,6 +528,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         tags: formData.target_criteria.tags.length > 0 ? formData.target_criteria.tags : undefined,
         opt_in_status: formData.target_criteria.opt_in_status,
       };
+      // "All matching filters" mode never sends an explicit ID list — the
+      // backend resolves target_criteria into a queryset at send time
+      // (messaging/targeting.py), which is what makes targeting 500k+ contacts
+      // practical (no id array to build, transmit, or store).
       const commonFields = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
@@ -474,7 +539,9 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         message_text: formData.message_text.trim(),
         template: formData.template || null,
         scheduled_at: formData.scheduled_at || null,
-        target_contact_ids: formData.target_contact_ids.length > 0 ? formData.target_contact_ids : undefined,
+        target_contact_ids: audienceMode === 'individual' && formData.target_contact_ids.length > 0
+          ? formData.target_contact_ids
+          : undefined,
         target_segment_ids: formData.target_segment_ids.length > 0 ? formData.target_segment_ids : undefined,
         target_criteria: targetCriteria,
         settings: { send_time: formData.settings.send_time, timezone: formData.settings.timezone },
@@ -516,7 +583,11 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   };
 
   const canProceedToStep2 = formData.name.trim() && formData.message_text.trim() && formData.sender_id;
-  const canSubmit = canProceedToStep2 && formData.target_contact_ids.length > 0;
+  const canSubmit = canProceedToStep2 && (
+    audienceMode === 'individual'
+      ? formData.target_contact_ids.length > 0
+      : (matchingCount ?? 0) > 0
+  );
 
   const saveStatusLabel = (() => {
     if (autosaveError) return null; // shown separately, as a dismissible inline alert
@@ -846,7 +917,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 </div>
               )}
 
-              {formData.message_text && formData.target_contact_ids.length > 0 && (
+              {formData.message_text && effectiveRecipientCount > 0 && (
                 <div className="rounded-lg border border-success/30 bg-success/5 p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <DollarSign className="w-4 h-4 text-success" />
@@ -859,7 +930,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     </div>
                     <div className="flex items-center justify-between bg-background rounded-md px-2.5 py-1.5">
                       <span className="text-muted-foreground">{t('campaigns.details_modal.recipients')}</span>
-                      <span className="font-semibold text-foreground">{t('campaigns.create_dialog.contacts_count', { count: formData.target_contact_ids.length })}</span>
+                      <span className="font-semibold text-foreground">{t('campaigns.create_dialog.contacts_count', { count: effectiveRecipientCount })}</span>
                     </div>
                     <div className="flex items-center justify-between bg-success/10 rounded-md px-2.5 py-1.5 border border-success/30">
                       <span className="font-semibold text-foreground">{t('total_cost')}</span>
@@ -893,10 +964,50 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <h3 className="text-sm font-semibold text-foreground">{t('campaigns.create_dialog.select_target_audience')}</h3>
                   <p className="text-[11px] text-muted-foreground">{t('campaigns.create_dialog.choose_recipients_desc')}</p>
                 </div>
-                <Badge className="text-[11px] font-semibold">{t('campaigns.create_dialog.selected_count', { count: formData.target_contact_ids.length })}</Badge>
+                <Badge className="text-[11px] font-semibold">
+                  {audienceMode === 'individual'
+                    ? t('campaigns.create_dialog.selected_count', { count: formData.target_contact_ids.length })
+                    : isLoadingMatchingCount
+                      ? '…'
+                      : t('campaigns.create_dialog.selected_count', { count: matchingCount ?? 0 })}
+                </Badge>
               </div>
 
-              {contactsLoading ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={audienceMode === 'individual' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 flex-1"
+                  onClick={() => setAudienceMode('individual')}
+                >
+                  Choose contacts individually
+                </Button>
+                <Button
+                  type="button"
+                  variant={audienceMode === 'all_matching' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 flex-1"
+                  onClick={() => setAudienceMode('all_matching')}
+                >
+                  All contacts matching filters
+                </Button>
+              </div>
+
+              {audienceMode === 'all_matching' ? (
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                  <p className="text-xs font-semibold text-foreground">
+                    {isLoadingMatchingCount
+                      ? 'Counting matching contacts…'
+                      : `${(matchingCount ?? 0).toLocaleString()} contact(s) will be targeted`}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formData.target_criteria.tags.length > 0
+                      ? 'Every active contact with the tag(s) below, no matter how many pages that spans.'
+                      : 'Every active contact in your account (no tag filter set below). Add a tag below to narrow this down.'}
+                  </p>
+                </div>
+              ) : contactsLoading ? (
                 <div className="text-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   <p className="text-xs text-muted-foreground mt-2">{t('campaigns.create_dialog.loading_contacts')}</p>

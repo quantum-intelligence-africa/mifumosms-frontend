@@ -78,6 +78,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useToast } from "@/hooks/use-toast";
 import { Contact, CreateContactRequest, ImportContactsRequest, apiClient } from "@/lib/api";
 import { CSVImportDialog } from "@/components/contacts/CSVImportDialog";
+import { CreateCampaignDialog } from "@/components/campaigns/CreateCampaignDialog";
 import { normalizePhoneNumber, formatPhoneNumber, validatePhoneNumber, getPhonePlaceholder } from "@/utils/phoneUtils";
 import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportMessage, type NormalizedContact } from "@/utils/contactPicker";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -127,6 +128,14 @@ const [selectedTags, setSelectedTags] = useState<string[]>([]);
 const [tagInput, setTagInput] = useState<string>("");
 const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
 const [isSelectingAll, setIsSelectingAll] = useState(false);
+// True once the user picks "select all N matching filters" for an audience too
+// large to materialize as an explicit id list (see SELECT_ALL_EXPLICIT_MAX below).
+// selectedContacts stays empty in this mode — Send SMS/WhatsApp read the current
+// search/tag filters instead; actions that need real ids (Add Tag/Delete/Export)
+// are disabled while this is true.
+const [selectAllMatchingFilter, setSelectAllMatchingFilter] = useState(false);
+const [isBulkCampaignDialogOpen, setIsBulkCampaignDialogOpen] = useState(false);
+const [bulkCampaignChannel, setBulkCampaignChannel] = useState<'sms' | 'whatsapp'>('sms');
 const [bulkEditData, setBulkEditData] = useState<Partial<CreateContactRequest>>({
   name: "",
   email: "",
@@ -176,135 +185,27 @@ setNewTag("");
 setIsCreateDialogOpen(true);
 };
 
-const handleBulkSendMessage = async () => {
-if (selectedContacts.length === 0) {
-toast({
-title: "No contacts selected",
-description: "Please select contacts to send a message to",
-variant: "destructive"
-});
-return;
-}
-
-try {
-setIsBulkActionLoading(true);
-
-// Fetch phone numbers for all selected contacts (fetch all pages without filters since we have specific IDs)
-const phoneNumbers: string[] = [];
-const selectedIdsSet = new Set(selectedContacts);
-let currentPageNum = 1;
-let hasMore = true;
-const pageSizeForFetch = 100;
-
-while (hasMore && phoneNumbers.length < selectedContacts.length) {
-  const response = await apiClient.getContacts({
-    page: currentPageNum,
-    page_size: pageSizeForFetch,
-    // Don't apply filters - we're looking for specific contact IDs
-  });
-
-  if (response.success && response.data) {
-    // Get phone numbers for selected contacts on this page
-    const pagePhoneNumbers = response.data.results
-      .filter(contact => selectedIdsSet.has(contact.id))
-      .map(contact => contact.phone_e164)
-      .filter(phone => phone); // Filter out empty phone numbers
-    phoneNumbers.push(...pagePhoneNumbers);
-
-    hasMore = !!response.data.next;
-    currentPageNum++;
-
-    if (currentPageNum > 1000) break;
-  } else {
-    break;
+// Both bulk-send actions now create (and let the user finish/start) a Campaign
+// instead of walking every page for phone numbers and stuffing them into a URL
+// query string — that approach hit real URL-length limits well under 500k and
+// required a full extra contact fetch. CreateCampaignDialog is opened pre-seeded
+// with the current selection (explicit ids, or the active tag filter when in
+// "select all matching filters" mode) via initialTargeting.
+const openBulkCampaignDialog = (channel: 'sms' | 'whatsapp') => {
+  if (selectedContacts.length === 0 && !selectAllMatchingFilter) {
+    toast({
+      title: "No contacts selected",
+      description: `Please select contacts to send a ${channel === 'sms' ? 'message' : 'WhatsApp message'} to`,
+      variant: "destructive"
+    });
+    return;
   }
-}
-
-if (phoneNumbers.length === 0) {
-  toast({
-    title: "No valid contacts",
-    description: "Selected contacts don't have phone numbers",
-    variant: "destructive"
-  });
-  return;
-}
-
-// Navigate to SMS send page with selected contact phone numbers
-const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
-window.location.href = `/sms/send?contacts=${phoneNumbersParam}`;
-} catch (error) {
-  console.error('Error fetching contacts for bulk send:', error);
-  toast({
-    title: "Failed to send message",
-    description: "An error occurred while preparing contacts. Please try again.",
-    variant: "destructive"
-  });
-} finally {
-  setIsBulkActionLoading(false);
-}
+  setBulkCampaignChannel(channel);
+  setIsBulkCampaignDialogOpen(true);
 };
 
-// WhatsApp counterpart: same lookup pipeline, lands on /whatsapp which reads
-// the ?contacts=… param and pre-selects them in Bulk Send mode.
-const handleBulkSendWhatsApp = async () => {
-if (selectedContacts.length === 0) {
-toast({
-title: "No contacts selected",
-description: "Please select contacts to send a WhatsApp to",
-variant: "destructive"
-});
-return;
-}
-
-try {
-setIsBulkActionLoading(true);
-const phoneNumbers: string[] = [];
-const selectedIdsSet = new Set(selectedContacts);
-let currentPageNum = 1;
-let hasMore = true;
-const pageSizeForFetch = 100;
-
-while (hasMore && phoneNumbers.length < selectedContacts.length) {
-  const response = await apiClient.getContacts({
-    page: currentPageNum,
-    page_size: pageSizeForFetch,
-  });
-  if (response.success && response.data) {
-    const pagePhoneNumbers = response.data.results
-      .filter(contact => selectedIdsSet.has(contact.id))
-      .map(contact => contact.phone_e164)
-      .filter(phone => phone);
-    phoneNumbers.push(...pagePhoneNumbers);
-    hasMore = !!response.data.next;
-    currentPageNum++;
-    if (currentPageNum > 1000) break;
-  } else {
-    break;
-  }
-}
-
-if (phoneNumbers.length === 0) {
-  toast({
-    title: "No valid contacts",
-    description: "Selected contacts don't have phone numbers",
-    variant: "destructive"
-  });
-  return;
-}
-
-const phoneNumbersParam = phoneNumbers.map(phone => encodeURIComponent(phone)).join(',');
-window.location.href = `/whatsapp?contacts=${phoneNumbersParam}`;
-} catch (error) {
-  console.error('Error fetching contacts for WhatsApp bulk send:', error);
-  toast({
-    title: "Failed to send WhatsApp",
-    description: "An error occurred while preparing contacts. Please try again.",
-    variant: "destructive"
-  });
-} finally {
-  setIsBulkActionLoading(false);
-}
-};
+const handleBulkSendMessage = () => openBulkCampaignDialog('sms');
+const handleBulkSendWhatsApp = () => openBulkCampaignDialog('whatsapp');
 
 
 const handleDeleteContact = async () => {
@@ -489,14 +390,35 @@ if (allCurrentPageSelected) {
 }
 };
 
+// Above this many contacts we stop materializing an explicit id array (each id
+// is a UUID string; walking every page to build one doesn't scale to hundreds
+// of thousands of contacts, even with the pagination fix). Below it, we still
+// fetch all ids so Add Tag/Delete/Export/Bulk Edit — which only understand an
+// explicit id list — keep working exactly as before.
+const SELECT_ALL_EXPLICIT_MAX = 2000;
+
 const handleSelectAllContacts = async () => {
-  // Check if all contacts are already selected
-  if (selectedContacts.length === totalCount && totalCount > 0) {
-    // Deselect all
+  // Already covering everything (either mode) — deselect.
+  if (selectAllMatchingFilter || (selectedContacts.length === totalCount && totalCount > 0)) {
     setSelectedContacts([]);
+    setSelectAllMatchingFilter(false);
     toast({
       title: "Deselected all contacts",
       description: `Deselected ${totalCount} contact(s)`,
+    });
+    return;
+  }
+
+  // A free-text search isn't representable as campaign target_criteria
+  // (server-side filtering only supports tags/opt-in status), so the instant
+  // filter-based path only applies when just the tag dropdown is in play.
+  if (!searchQuery.trim() && totalCount > SELECT_ALL_EXPLICIT_MAX) {
+    setSelectedContacts([]);
+    setSelectAllMatchingFilter(true);
+    toast({
+      title: "Selected all matching contacts",
+      description: `Selected all ${totalCount.toLocaleString()} contact(s) matching the current filter. `
+        + `Send SMS/WhatsApp can target all of them; Add Tag/Delete/Export need a smaller, explicit selection.`,
     });
     return;
   }
@@ -508,7 +430,7 @@ const handleSelectAllContacts = async () => {
     const allContactIds: string[] = [];
     let currentPageNum = 1;
     let hasMore = true;
-    const pageSizeForFetch = 100; // Use larger page size for fetching IDs
+    const pageSizeForFetch = 200; // matches the backend's API_MAX_PAGE_SIZE ceiling
 
     while (hasMore) {
       const response = await apiClient.getContacts({
@@ -537,6 +459,7 @@ const handleSelectAllContacts = async () => {
     }
 
     // Select all fetched contact IDs
+    setSelectAllMatchingFilter(false);
     setSelectedContacts(allContactIds);
 
     toast({
@@ -1825,25 +1748,28 @@ className="pl-10 glass-subtle border-0 text-sm"
 </div>
 
 {/* Bulk Actions */}
-{selectedContacts.length > 0 && (
+{(selectedContacts.length > 0 || selectAllMatchingFilter) && (
 <div className="mb-4 p-3 sm:p-4 glass rounded-lg border border-border-subtle">
 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
   <span className="text-sm text-foreground font-medium">
-    {selectedContacts.length} contact(s) selected
+    {selectAllMatchingFilter ? totalCount.toLocaleString() : selectedContacts.length} contact(s) selected
+    {selectAllMatchingFilter && " (all matching current filters)"}
   </span>
   <div className="flex items-center gap-2">
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleSelectAll}
-      className="text-xs h-7"
-    >
-      {filteredContacts.every(contact => selectedContacts.includes(contact.id))
-        ? "Deselect Page"
-        : "Select Page"
-      }
-    </Button>
+    {!selectAllMatchingFilter && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSelectAll}
+        className="text-xs h-7"
+      >
+        {filteredContacts.every(contact => selectedContacts.includes(contact.id))
+          ? "Deselect Page"
+          : "Select Page"
+        }
+      </Button>
+    )}
     {totalCount > pageSize && (
       <Button
         variant="outline"
@@ -1857,7 +1783,7 @@ className="pl-10 glass-subtle border-0 text-sm"
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
             Loading...
           </>
-        ) : selectedContacts.length === totalCount && totalCount > 0 ? (
+        ) : selectAllMatchingFilter || (selectedContacts.length === totalCount && totalCount > 0) ? (
           `Deselect All (${totalCount})`
         ) : (
           `Select All (${totalCount})`
@@ -1867,21 +1793,12 @@ className="pl-10 glass-subtle border-0 text-sm"
   </div>
 </div>
 <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:items-center gap-2">
-{/* <Button
-variant="outline"
-size="sm"
-onClick={handleBulkEdit}
-disabled={isBulkActionLoading}
-className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
->
-<Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Edit
-</Button> */}
 <Button
 variant="outline"
 size="sm"
 onClick={handleBulkAddTag}
-disabled={isBulkActionLoading}
+disabled={isBulkActionLoading || selectAllMatchingFilter}
+title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
 className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
 >
 <Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -1909,6 +1826,8 @@ Send WhatsApp
 variant="outline"
 size="sm"
 onClick={handleExportSelected}
+disabled={selectAllMatchingFilter}
+title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
 className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
 >
 <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -1919,7 +1838,8 @@ variant="outline"
 size="sm"
 className="text-destructive hover:text-destructive w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
 onClick={handleBulkDelete}
-disabled={isBulkActionLoading}
+disabled={isBulkActionLoading || selectAllMatchingFilter}
+title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
 >
 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Delete
@@ -1928,6 +1848,23 @@ Delete
 </div>
             </div>
           )}
+
+          <CreateCampaignDialog
+            open={isBulkCampaignDialogOpen}
+            onOpenChange={setIsBulkCampaignDialogOpen}
+            initialTargeting={{
+              campaign_type: bulkCampaignChannel,
+              target_contact_ids: selectAllMatchingFilter ? [] : selectedContacts,
+              target_criteria_tags: selectAllMatchingFilter && filterTag !== "all" ? [filterTag] : [],
+            }}
+            onSuccess={() => {
+              setIsBulkCampaignDialogOpen(false);
+              setSelectedContacts([]);
+              setSelectAllMatchingFilter(false);
+            }}
+          >
+            <span className="hidden" />
+          </CreateCampaignDialog>
 
 {/* Mobile-only: iOS grouped contact list */}
 {!isLoading && !isLoadingMobileAllContacts && (
