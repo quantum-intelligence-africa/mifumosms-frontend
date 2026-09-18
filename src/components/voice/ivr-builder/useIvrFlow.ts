@@ -314,6 +314,21 @@ export function useIvrFlow(flowId: string | undefined) {
     URL.revokeObjectURL(url);
   }, [definition, name]);
 
+  /** Replaces the canvas with a pasted/uploaded `{nodes, edges}` definition —
+   * same wire format `load()` reads and `exportDefinition()` writes. Doesn't
+   * touch `lastSavedJson`, so the existing autosave effect sees a diff
+   * against what the backend has and persists it on its normal debounce,
+   * exactly as if the change had been made by hand on the canvas. */
+  const importDefinition = useCallback(
+    (def: FlowDefinition) => {
+      const importedNodes = wireToNodes(def.nodes ?? []);
+      const importedEdges = wireToEdges(def.edges ?? []);
+      setNodes(importedNodes.length === 0 ? [defaultStartNode()] : importedNodes);
+      setEdges(importedEdges);
+    },
+    [setNodes, setEdges],
+  );
+
   return {
     isLoading,
     loadError,
@@ -342,6 +357,7 @@ export function useIvrFlow(flowId: string | undefined) {
     saveNow,
     applyHighlight,
     exportDefinition,
+    importDefinition,
     reload: load,
   };
 }

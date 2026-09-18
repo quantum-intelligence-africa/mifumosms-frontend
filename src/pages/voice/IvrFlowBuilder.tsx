@@ -12,6 +12,7 @@ import { NodePalette } from "@/components/voice/ivr-builder/NodePalette";
 import { FlowToolbar } from "@/components/voice/ivr-builder/FlowToolbar";
 import { NodeInspector } from "@/components/voice/ivr-builder/NodeInspector";
 import { SimulatePanel } from "@/components/voice/ivr-builder/SimulatePanel";
+import { ImportFlowDialog } from "@/components/voice/ivr-builder/ImportFlowDialog";
 import { validateFlow } from "@/components/voice/ivr-builder/validation";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, PublishResponse, ValidateResponse, ValidationError } from "@/components/voice/ivr-builder/types";
@@ -22,6 +23,7 @@ export default function IvrFlowBuilder() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [simulateOpen, setSimulateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [serverErrors, setServerErrors] = useState<ValidationError[] | null>(null);
@@ -127,6 +129,7 @@ export default function IvrFlowBuilder() {
               onBusinessIdentityChange={flow.saveBusinessIdentity}
               onSave={flow.saveNow}
               onExport={flow.exportDefinition}
+              onImport={() => setImportOpen(true)}
               onSimulate={() => setSimulateOpen(true)}
               onValidate={handleValidate}
               onPublish={handlePublish}
@@ -198,6 +201,8 @@ export default function IvrFlowBuilder() {
               onOpenChange={setSimulateOpen}
               onPathChange={flow.applyHighlight}
             />
+
+            <ImportFlowDialog open={importOpen} onOpenChange={setImportOpen} onImport={flow.importDefinition} />
           </>
         )}
       </div>

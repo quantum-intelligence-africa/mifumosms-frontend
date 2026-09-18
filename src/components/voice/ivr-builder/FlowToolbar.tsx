@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Download,
+  FileUp,
   PlayCircle,
   CheckCircle2,
   Check,
@@ -65,6 +66,7 @@ interface FlowToolbarProps {
   onBusinessIdentityChange: (patch: { company_name?: string; business_hours?: string }) => void;
   onSave: () => void;
   onExport: () => void;
+  onImport: () => void;
   onSimulate: () => void;
   onValidate: () => void;
   onPublish: () => void;
@@ -89,6 +91,7 @@ export function FlowToolbar({
   onBusinessIdentityChange,
   onSave,
   onExport,
+  onImport,
   onSimulate,
   onValidate,
   onPublish,
@@ -318,6 +321,10 @@ export function FlowToolbar({
         >
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <Save className="h-3.5 w-3.5 sm:mr-1.5" />}
           <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.save")}</span>
+        </Button>
+        <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onImport}>
+          <FileUp className="h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.import")}</span>
         </Button>
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onExport}>
           <Download className="h-3.5 w-3.5 sm:mr-1.5" />
