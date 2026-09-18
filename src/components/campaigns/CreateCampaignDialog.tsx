@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useContacts } from '@/hooks/useContacts';
 import { useSenderNames } from '@/hooks/useSenderNames';
@@ -180,6 +181,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [scheduleErrors, setScheduleErrors] = useState<string[]>([]);
   const [audienceMode, setAudienceMode] = useState<AudienceMode>('individual');
+  // Bulk "Send SMS/WhatsApp" from the Contacts page opens this dialog seeded
+  // with initialTargeting — in that context we skip the name/description/
+  // scheduling/audience-picker wizard and show one compact compose screen
+  // instead (see the isQuickSendMode branch below), while still going through
+  // the same campaign pipeline underneath so sends of any size are handled
+  // the same way (chunked, batched, no URL/id-list limits).
+  const [isQuickSendMode, setIsQuickSendMode] = useState(false);
   const [matchingCount, setMatchingCount] = useState<number | null>(null);
   const [isLoadingMatchingCount, setIsLoadingMatchingCount] = useState(false);
   const { toast } = useToast();
@@ -269,19 +277,27 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         const seededTags = initialTargeting.target_criteria_tags ?? [];
         const hasExplicitIds = (initialTargeting.target_contact_ids?.length ?? 0) > 0;
         setAudienceMode(hasExplicitIds ? 'individual' : 'all_matching');
+        setIsQuickSendMode(true);
+        const channelLabel = initialTargeting.campaign_type === 'whatsapp' ? 'WhatsApp' : 'SMS';
         setFormData({
           ...base,
+          // Quick send skips the name/description step entirely, but the
+          // backend still requires a name — auto-fill one so the user is
+          // never asked for it.
+          name: `${channelLabel} quick send – ${new Date().toLocaleString()}`,
           campaign_type: initialTargeting.campaign_type ?? base.campaign_type,
           target_contact_ids: initialTargeting.target_contact_ids ?? [],
           target_criteria: { ...base.target_criteria, tags: seededTags },
         });
       } else {
         setAudienceMode('individual');
+        setIsQuickSendMode(false);
         setFormData(base);
       }
       return;
     }
     setAudienceMode('individual');
+    setIsQuickSendMode(false);
 
     setCurrentDraftId(resumeId);
     setIsLoadingDraft(true);
@@ -612,14 +628,22 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         <DialogHeader className="flex-shrink-0 px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-4 h-4 text-primary" />
+              {isQuickSendMode && formData.campaign_type === 'whatsapp' ? (
+                <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+              ) : (
+                <MessageSquare className="w-4 h-4 text-primary" />
+              )}
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">
-                {draftId ? t('campaigns.create_dialog.edit_draft_title') : t('campaigns.create_dialog.create_campaign_title')}
+                {isQuickSendMode
+                  ? (formData.campaign_type === 'whatsapp' ? 'Send WhatsApp' : 'Send SMS')
+                  : draftId ? t('campaigns.create_dialog.edit_draft_title') : t('campaigns.create_dialog.create_campaign_title')}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                {t('campaigns.create_dialog.subtitle')}
+                {isQuickSendMode
+                  ? `Sending to ${effectiveRecipientCount.toLocaleString()} contact(s)`
+                  : t('campaigns.create_dialog.subtitle')}
               </DialogDescription>
             </div>
           </div>
@@ -678,6 +702,81 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             </Alert>
           )}
 
+          {isQuickSendMode ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="qs_sender_id" className="text-xs font-medium text-foreground">
+                    {t('sender_id')} <span className="text-destructive">*</span>
+                  </Label>
+                  {!loadingBalance && smsBalance !== null && (
+                    <span className={`text-[11px] font-medium ${smsBalance < 100 ? 'text-warning' : 'text-muted-foreground'}`}>
+                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString() })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
+                    </span>
+                  )}
+                </div>
+                {approvedSenders.length > 0 ? (
+                  <Select value={formData.sender_id} onValueChange={(value) => handleInputChange('sender_id', value)}>
+                    <SelectTrigger id="qs_sender_id" className="h-9">
+                      <SelectValue placeholder={t('campaigns.create_dialog.choose_sender_placeholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approvedSenders.map((sender) => (
+                        <SelectItem key={sender.id} value={sender.sender_name}>
+                          {sender.sender_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : sendersLoading ? (
+                  <div className="h-9 bg-muted rounded-md animate-pulse" />
+                ) : (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-destructive">{t('campaigns.create_dialog.no_approved_senders')}</p>
+                      <Link to="/sms/sender-names?action=request" className="text-[11px] font-semibold text-destructive underline">
+                        {t('campaigns.create_dialog.request_sender_approval')}
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="qs_message_text" className="text-xs font-medium text-foreground">
+                  {t('campaigns.create_dialog.message_text_label')} <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="qs_message_text"
+                  placeholder={t('campaigns.create_dialog.message_placeholder')}
+                  value={formData.message_text}
+                  onChange={(e) => handleInputChange('message_text', e.target.value)}
+                  rows={5}
+                  className="text-sm resize-none"
+                  maxLength={formData.campaign_type === 'whatsapp' ? undefined : 160}
+                />
+                {formData.campaign_type !== 'whatsapp' && (
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground">
+                      {t('campaigns.create_dialog.sms_segments_count', { count: calculateSMSSegments(formData.message_text) })} {formData.message_text.length > 0 ? t('campaigns.create_dialog.chars_paren', { count: formData.message_text.length }) : ''}
+                    </span>
+                    <span className={formData.message_text.length > 140 ? 'text-warning font-semibold' : 'text-muted-foreground'}>
+                      {formData.message_text.length}/160
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {formData.message_text.trim() && effectiveRecipientCount > 0 && formData.campaign_type !== 'whatsapp' && (
+                <div className="rounded-lg border border-success/30 bg-success/5 p-3 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{t('total_cost')}</span>
+                  <span className="text-sm font-bold text-success">{t('campaigns.create_dialog.tzs_amount', { amount: estimatedCost.toLocaleString() })}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+          <>
           {/* Step 1: Basic Information */}
           {step === 1 && (
             <div className="space-y-3">
@@ -1116,6 +1215,8 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
 
         {autosaveError && (
@@ -1128,6 +1229,26 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         )}
 
         {/* Navigation footer */}
+        {isQuickSendMode ? (
+          <div className="flex-shrink-0 flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/20">
+            <Button variant="ghost" onClick={requestClose} className="h-9 px-3">
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting} className="h-9 px-4 gap-1.5">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('campaigns.create_dialog.creating')}
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Send
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
         <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-border bg-muted/20">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -1176,6 +1297,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             )}
           </div>
         </div>
+        )}
         </>
         )}
       </DialogContent>
