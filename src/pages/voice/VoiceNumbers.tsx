@@ -19,9 +19,6 @@ import type { IvrFlowSummary } from "@/components/voice/ivr-builder/types";
 
 interface VoiceAccount {
   id: string;
-  provider: string;
-  provider_credential: string | null;
-  provider_credential_detail: { id: string; name: string; provider_type: string } | null;
   active_flow: string | null;
   active_flow_detail: { id: string; name: string; status: string } | null;
   webhook_url: string | null;
@@ -29,6 +26,11 @@ interface VoiceAccount {
   phone_number: string;
   always_record_calls: boolean;
   is_active: boolean;
+}
+
+interface AvailableNumber {
+  id: string;
+  phone_number: string;
 }
 
 const NONE = "__none__";
@@ -40,30 +42,33 @@ export default function VoiceNumbers() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accounts, setAccounts] = useState<VoiceAccount[]>([]);
   const [flows, setFlows] = useState<IvrFlowSummary[]>([]);
+  const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [phoneDrafts, setPhoneDrafts] = useState<Record<string, string>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
-  const [newPhoneNumber, setNewPhoneNumber] = useState("");
+  const [selectedNumberId, setSelectedNumberId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const [accountsRes, flowsRes] = await Promise.all([
+    const [accountsRes, flowsRes, numbersRes] = await Promise.all([
       voiceApi.get<VoiceAccount[]>("/voice/accounts/"),
       voiceApi.get<IvrFlowSummary[]>("/voice/ivr/"),
+      voiceApi.get<AvailableNumber[]>("/voice/available-numbers/"),
     ]);
     if (accountsRes.success && accountsRes.data) {
       setAccounts(accountsRes.data);
-      setPhoneDrafts(Object.fromEntries(accountsRes.data.map((a) => [a.id, a.phone_number ?? ""])));
     } else {
       setError(accountsRes.error || t("voice.numbers.error_loading"));
     }
     if (flowsRes.success && flowsRes.data) {
       setFlows(flowsRes.data.filter((f) => f.status === "published"));
+    }
+    if (numbersRes.success && numbersRes.data) {
+      setAvailableNumbers(numbersRes.data);
     }
     setIsLoading(false);
   }, [t]);
@@ -72,24 +77,23 @@ export default function VoiceNumbers() {
     fetchData();
   }, [fetchData]);
 
-  // Self-service: no provider credential or flow is required up front — a
-  // user can register a number with "no relation" yet and connect a
-  // provider/flow to it afterwards from this same page.
+  // A tenant picks one of the numbers already set up for this service —
+  // there's nothing left to configure, so the account is fully usable the
+  // moment it's created.
   const createAccount = async () => {
-    const phone = newPhoneNumber.trim();
-    if (!phone) return;
+    if (!selectedNumberId) return;
     setIsCreating(true);
     const res = await voiceApi.post<VoiceAccount>("/voice/accounts/", {
-      display_name: newDisplayName.trim() || phone,
-      phone_number: phone,
+      display_name: newDisplayName.trim(),
+      provider_credential: selectedNumberId,
     });
     setIsCreating(false);
     if (res.success && res.data) {
       const created = res.data;
       setAccounts((prev) => [created, ...prev]);
-      setPhoneDrafts((prev) => ({ ...prev, [created.id]: created.phone_number }));
+      setAvailableNumbers((prev) => prev.filter((n) => n.id !== selectedNumberId));
       setNewDisplayName("");
-      setNewPhoneNumber("");
+      setSelectedNumberId("");
       setShowAddForm(false);
       toast({ title: t("voice.numbers.created_toast_title"), description: t("voice.numbers.created_toast_desc") });
     } else {
@@ -108,22 +112,6 @@ export default function VoiceNumbers() {
       toast({ title: t("voice.numbers.flow_connected_title"), description: t("voice.numbers.flow_connected_desc") });
     } else {
       toast({ title: t("voice.numbers.update_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
-    }
-  };
-
-  const savePhoneNumber = async (accountId: string) => {
-    const current = accounts.find((a) => a.id === accountId);
-    const draft = (phoneDrafts[accountId] ?? "").trim();
-    if (!current || draft === current.phone_number) return;
-
-    setSavingId(accountId);
-    const res = await voiceApi.patch<VoiceAccount>(`/voice/accounts/${accountId}/`, { phone_number: draft });
-    setSavingId(null);
-    if (res.success && res.data) {
-      setAccounts((prev) => prev.map((a) => (a.id === accountId ? res.data as VoiceAccount : a)));
-      toast({ title: t("voice.numbers.number_saved") });
-    } else {
-      toast({ title: t("voice.numbers.save_number_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -188,28 +176,39 @@ export default function VoiceNumbers() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   <p className="text-xs text-muted-foreground">{t("voice.numbers.add_number_desc")}</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.phone_label")}</label>
-                      <Input
-                        className="mt-1"
-                        placeholder="+255700000000"
-                        value={newPhoneNumber}
-                        onChange={(e) => setNewPhoneNumber(e.target.value)}
-                        disabled={isCreating}
-                      />
+                  {availableNumbers.length === 0 ? (
+                    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                      {t("voice.numbers.no_numbers_available")}
+                    </p>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.phone_label")}</label>
+                        <Select value={selectedNumberId} onValueChange={setSelectedNumberId} disabled={isCreating}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder={t("voice.numbers.choose_number_placeholder")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableNumbers.map((n) => (
+                              <SelectItem key={n.id} value={n.id}>
+                                {n.phone_number}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.display_name_label")}</label>
+                        <Input
+                          className="mt-1"
+                          placeholder={t("voice.numbers.display_name_placeholder")}
+                          value={newDisplayName}
+                          onChange={(e) => setNewDisplayName(e.target.value)}
+                          disabled={isCreating}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.display_name_label")}</label>
-                      <Input
-                        className="mt-1"
-                        placeholder={t("voice.numbers.display_name_placeholder")}
-                        value={newDisplayName}
-                        onChange={(e) => setNewDisplayName(e.target.value)}
-                        disabled={isCreating}
-                      />
-                    </div>
-                  </div>
+                  )}
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
@@ -218,13 +217,13 @@ export default function VoiceNumbers() {
                       onClick={() => {
                         setShowAddForm(false);
                         setNewDisplayName("");
-                        setNewPhoneNumber("");
+                        setSelectedNumberId("");
                       }}
                       disabled={isCreating}
                     >
                       {t("voice.numbers.cancel")}
                     </Button>
-                    <Button type="button" size="sm" onClick={createAccount} disabled={isCreating || !newPhoneNumber.trim()}>
+                    <Button type="button" size="sm" onClick={createAccount} disabled={isCreating || !selectedNumberId}>
                       {isCreating ? t("voice.numbers.creating") : t("voice.numbers.save_number")}
                     </Button>
                   </div>
@@ -278,9 +277,6 @@ export default function VoiceNumbers() {
                           {account.display_name}
                         </span>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className="capitalize">
-                            {account.provider === "none" ? t("voice.numbers.provider_none") : account.provider.replace(/_/g, " ")}
-                          </Badge>
                           <Badge variant={account.is_active ? "default" : "secondary"}>
                             {account.is_active ? t("voice.numbers.status_active") : t("voice.numbers.status_inactive")}
                           </Badge>
@@ -288,23 +284,11 @@ export default function VoiceNumbers() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 pt-0">
-                      {account.provider === "none" && (
-                        <div className="flex items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-200">
-                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                          {t("voice.numbers.no_provider_notice")}
-                        </div>
-                      )}
-
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.phone_label")}</label>
-                        <Input
-                          className="mt-1"
-                          placeholder="+255700000000"
-                          value={phoneDrafts[account.id] ?? ""}
-                          onChange={(e) => setPhoneDrafts((prev) => ({ ...prev, [account.id]: e.target.value }))}
-                          onBlur={() => savePhoneNumber(account.id)}
-                          disabled={savingId === account.id}
-                        />
+                        <p className="mt-1 rounded-md border border-input bg-muted px-3 py-2 text-sm text-foreground">
+                          {account.phone_number}
+                        </p>
                       </div>
 
                       <div>
