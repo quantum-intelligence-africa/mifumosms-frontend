@@ -6849,6 +6849,9 @@ function SmsBySenderSummary() {
     if (!window.confirm(`Resend the failed recipients of ${ids.length} selected batch(es)?\n\nThis re-sends only the numbers that failed in each batch and charges each batch's tenant SMS balance.`)) return;
     setResendingSelected(true);
     let batchesOk = 0, batchesErr = 0, sentTotal = 0, failedTotal = 0;
+    // Real per-batch error reasons (e.g. "NO_PROVIDER: ...", "INSUFFICIENT_CREDITS: ...")
+    // instead of just a count — a bare "N errored" gives no way to diagnose why.
+    const errorMessages = new Set();
     for (const mid of ids) {
       setBusy(mid);
       try {
@@ -6860,17 +6863,19 @@ function SmsBySenderSummary() {
           failedTotal += res.data?.failed || 0;
         } else {
           batchesErr++;
+          errorMessages.add(res.error?.message || 'Unknown error');
         }
-      } catch {
+      } catch (e) {
         batchesErr++;
+        errorMessages.add(e.message || 'Network error');
       }
     }
     setBusy(''); setResendingSelected(false); setSelected(new Set());
-    showToast(
-      `Resent ${ids.length} batch(es): ${sentTotal} recipient(s) sent, ${failedTotal} still failed`
-        + (batchesErr ? `, ${batchesErr} batch(es) errored` : ''),
-      batchesErr ? 'error' : 'success',
-    );
+    let msg = `Resent ${ids.length} batch(es): ${sentTotal} recipient(s) sent, ${failedTotal} still failed`;
+    if (batchesErr) {
+      msg += `, ${batchesErr} batch(es) errored — ${[...errorMessages].join(' | ')}`;
+    }
+    showToast(msg, batchesErr ? 'error' : 'success');
     refreshBatches(); fetchData();
   };
 
