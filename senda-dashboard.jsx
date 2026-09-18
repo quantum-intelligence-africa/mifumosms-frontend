@@ -8273,13 +8273,27 @@ function SmsIntelligenceTab() {
   };
 
   // ── Run analysis now ────────────────────────────────────────────────────
+  // Runs synchronously on the backend and returns real counts (see
+  // run_analysis_now in sms_intelligence.py) — so this refetches every
+  // section immediately instead of just showing a "queued" toast that never
+  // gets followed up.
   const [running, setRunning] = useState(false);
   const runAnalysisNow = () => {
     setRunning(true);
     adminFetch('/api/admin/v1/sms-intelligence/run-now', { method:'POST' }, onLogout)
       .then(res => {
-        if (res.success) toast('Uchambuzi umeanzishwa — matokeo yatasasishwa hivi karibuni.', 'success');
-        else toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
+        if (res.success) {
+          const scanned = res.data?.scanned ?? 0;
+          toast(
+            scanned > 0
+              ? (res.message || `Uchambuzi umekamilika — jumbe ${scanned} zimechambuliwa.`)
+              : 'Uchambuzi umekamilika — hakuna jumbe mpya za kuchambua.',
+            'success'
+          );
+          fetchOverview(); fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns(); fetchReview();
+        } else {
+          toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
+        }
       }).catch(e => toast(e.message, 'error')).finally(() => setRunning(false));
   };
 
