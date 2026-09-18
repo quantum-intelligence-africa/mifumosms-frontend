@@ -8283,13 +8283,7 @@ function SmsIntelligenceTab() {
     adminFetch('/api/admin/v1/sms-intelligence/run-now', { method:'POST' }, onLogout)
       .then(res => {
         if (res.success) {
-          const scanned = res.data?.scanned ?? 0;
-          toast(
-            scanned > 0
-              ? (res.message || `Uchambuzi umekamilika — jumbe ${scanned} zimechambuliwa.`)
-              : 'Uchambuzi umekamilika — hakuna jumbe mpya za kuchambua.',
-            'success'
-          );
+          toast(res.message || 'Uchambuzi umekamilika.', 'success');
           fetchOverview(); fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns(); fetchReview();
         } else {
           toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
