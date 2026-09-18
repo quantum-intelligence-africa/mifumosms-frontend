@@ -269,7 +269,12 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
 
     // Resume either an explicitly-passed draft, or one this same dialog
     // instance already autosave-created earlier in the browser session.
-    const resumeId = draftId ?? pendingNewDraftIdRef.current;
+    // Quick send (opened with initialTargeting, e.g. from the Contacts bulk
+    // send buttons) is a one-off action and must never resume an unrelated
+    // leftover draft from a previous "+ New Campaign" session — that made it
+    // pop up the full wizard pre-filled with old data instead of the compact
+    // quick-send screen.
+    const resumeId = initialTargeting ? null : (draftId ?? pendingNewDraftIdRef.current);
 
     if (!resumeId) {
       setCurrentDraftId(null);
@@ -428,7 +433,10 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   } = useCampaignDraftAutosave({
     formData: autosaveFormData,
     draftId: currentDraftId,
-    enabled: open && !isSubmitting,
+    // Quick send is a one-off action, not something to autosave as a draft
+    // campaign — doing so left a stray draft behind that the *next* quick
+    // send (or the unrelated "+ New Campaign" button) would then resume.
+    enabled: open && !isSubmitting && !isQuickSendMode,
     onDraftCreated: handleDraftCreated,
   });
 
