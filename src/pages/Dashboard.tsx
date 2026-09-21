@@ -22,12 +22,10 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
 import { SenderIds } from "@/components/dashboard/SenderIds";
-import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
-import { useSendaOnboarding } from "@/hooks/useSendaOnboarding";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
 import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -143,7 +141,6 @@ function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boole
 const Dashboard = () => {
   const { user } = useAuth();
   const { metrics, recentCampaigns, performanceOverview, senderIds, isLoading } = useDashboard();
-  const senda = useSendaOnboarding();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const { t } = useLanguage();
@@ -151,55 +148,6 @@ const Dashboard = () => {
   const showSms = hasSmsAccess(user);
   const showIvr = hasIvrAccess(user);
   const voiceStats = useVoiceDashboardStats(showIvr);
-
-  // Once the onboarding wizard reports every step complete, remember it per
-  // user so the full dashboard shows immediately — including on a later
-  // visit, before any backend "hard signal" (a sent message, an imported
-  // contact) has had a chance to flip the Senda lifecycle stage.
-  const [onboardingDone, setOnboardingDone] = useState(false);
-  useEffect(() => {
-    if (!user?.id) return;
-    if (localStorage.getItem(`mifumo_onboarding_done_${user.id}`) === "true") {
-      setOnboardingDone(true);
-    }
-  }, [user?.id]);
-  const handleOnboardingAllSet = useCallback(() => {
-    if (user?.id) localStorage.setItem(`mifumo_onboarding_done_${user.id}`, "true");
-    setOnboardingDone(true);
-  }, [user?.id]);
-
-  // A "new user" sees the Getting Started wizard. As soon as the user has ANY
-  // concrete signal of activity — even a pending sender ID request, an imported
-  // contact, or any sent message — they get the normal dashboard. These hard
-  // signals take priority over the Senda lifecycle stage (which can lag).
-  const isNewUser = useMemo(() => {
-    const hasAnySenderId = (senderIds?.length ?? 0) > 0;
-    const hasContacts = (metrics?.active_contacts?.value ?? 0) > 0;
-    const hasSentMessages = (metrics?.total_messages?.value ?? 0) > 0;
-
-    // Any of these → not a new user, full dashboard.
-    if (hasAnySenderId || hasContacts || hasSentMessages) return false;
-
-    // Otherwise, fall back to the Senda lifecycle stage when available.
-    const stage = senda.scores?.stage;
-    if (stage) {
-      return stage === "new_user" || stage === "onboarding" || stage === "exploring";
-    }
-
-    // No signals + no stage info → assume fresh sign-up.
-    return true;
-  }, [
-    senda.scores?.stage,
-    senderIds,
-    metrics?.active_contacts?.value,
-    metrics?.total_messages?.value,
-  ]);
-
-  // The wizard itself can finish (all steps complete) before any of the
-  // hard signals above exist — e.g. an IVR-only user has no messages or
-  // contacts to send at all. Once it reports done, trust that over the
-  // signal-based guess.
-  const showWizard = isNewUser && !onboardingDone;
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -317,32 +265,13 @@ const Dashboard = () => {
           <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            {/* Mobile-only colored hero — only shown once the user has finished
-                onboarding (otherwise the wizard is the focus). */}
-            {!showWizard && (
-              <MobileHomeHero metricCards={metricCards.slice(0, 2)} />
-            )}
-
-            {/* During onboarding on mobile, give the wizard breathing room from the top bar */}
-            {showWizard && (
-              <div className="md:hidden h-3" />
-            )}
+            {/* Mobile-only colored hero */}
+            <MobileHomeHero metricCards={metricCards.slice(0, 2)} />
 
             <div className="p-1.5 sm:p-2.5 md:p-3.5 w-full overflow-x-hidden">
               <div className="max-w-full px-1 mx-auto space-y-2 sm:space-y-2.5">
 
-                {showWizard ? (
-                  /* Onboarding wizard only — Quick Actions / Activity Feed appear
-                     once all onboarding steps are complete and showWizard flips false. */
-                  <GettingStarted
-                    status={senda.status}
-                    recommendations={senda.recommendations}
-                    firstName={user?.first_name || user?.full_name?.split(' ')[0]}
-                    approvedSenderIds={approvedSenderIds}
-                    currentCredits={metrics?.current_credits?.value ?? 0}
-                    onAllSet={handleOnboardingAllSet}
-                  />
-                ) : (
+                {(
                   <>
                     {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
                     <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
