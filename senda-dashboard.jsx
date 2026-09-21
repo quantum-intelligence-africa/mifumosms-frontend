@@ -4853,9 +4853,11 @@ function UsersTab() {
   };
 
   const resetPassword = (u) => {
-    if (!window.confirm(`Generate a new password for ${u.name}? Their current password stops working immediately.`)) return;
+    const pwd = window.prompt(`Set a new password for ${u.name} (min 8 characters). Their current password stops working immediately.\n\nLeave blank to auto-generate one instead.`);
+    if (pwd === null) return;
+    if (pwd && pwd.length < 8) { showToast?.('Password must be at least 8 characters.', 'error'); return; }
     setBusyId(u.id);
-    adminFetch(`/users/${u.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) }, onLogout)
+    adminFetch(`/users/${u.id}/reset-password`, { method: 'POST', body: JSON.stringify(pwd ? { password: pwd } : {}) }, onLogout)
       .then(res => {
         if (res.success && res.data?.password) {
           window.prompt(`New password for ${u.name} — copy it now, it won't be shown again:`, res.data.password);
@@ -5301,9 +5303,11 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
   };
 
   const resetPassword = () => {
-    if (!window.confirm(`Generate a new password for ${d.name}? Their current password stops working immediately.`)) return;
+    const pwd = window.prompt(`Set a new password for ${d.name} (min 8 characters). Their current password stops working immediately.\n\nLeave blank to auto-generate one instead.`);
+    if (pwd === null) return;
+    if (pwd && pwd.length < 8) { showToast?.('Password must be at least 8 characters.', 'error'); return; }
     setBusy(true);
-    adminFetch(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) }, onLogout)
+    adminFetch(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify(pwd ? { password: pwd } : {}) }, onLogout)
       .then(res => {
         if (res.success && res.data?.password) {
           window.prompt(`New password for ${d.name} — copy it now, it won't be shown again:`, res.data.password);
