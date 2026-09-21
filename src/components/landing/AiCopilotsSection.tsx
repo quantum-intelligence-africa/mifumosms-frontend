@@ -190,9 +190,6 @@ const KnowledgeBaseBlock = ({ t }: { t: TFn }) => {
     <div className="relative grid grid-cols-1 items-center gap-6 rounded-2xl border border-white/70 bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/40 p-5 sm:p-7 shadow-[0_15px_40px_-15px_rgba(37,99,235,0.18)] backdrop-blur-sm md:grid-cols-12">
       {/* Sources */}
       <div className="md:col-span-5 space-y-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-          {t("landing.ai_copilots.kb_step1_eyebrow")}
-        </p>
         <h3 className="font-heading text-xl font-bold text-gray-900">
           {t("landing.ai_copilots.kb_step1_title")}
         </h3>
@@ -287,17 +284,12 @@ const AiCopilotsSection = () => {
   return (
     <section
       id="ai"
-      className="relative overflow-hidden bg-gradient-to-br from-blue-100 via-blue-50/80 to-indigo-100 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-blue-50 py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-blue-300/40 blur-3xl" />
-        <div className="absolute bottom-0 right-1/3 h-72 w-72 translate-y-1/3 rounded-full bg-indigo-300/40 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={t("landing.ai_copilots.eyebrow")}
             align="center"
             title={
               <>
@@ -310,7 +302,7 @@ const AiCopilotsSection = () => {
         </div>
 
         {/* KPI ribbon */}
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
           {kpis.map((k) => {
             const tone = KPI_TONES[k.tone];
             return (
@@ -347,15 +339,12 @@ const AiCopilotsSection = () => {
         </div>
 
         {/* Chatbot mockup + capability list */}
-        <div className="mt-14 grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
+        <div className="mt-8 grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-6 order-2 lg:order-1">
             <ChatbotPhone t={t} />
           </div>
           <div className="lg:col-span-6 order-1 lg:order-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-              {t("landing.ai_copilots.live_channel_eyebrow")}
-            </p>
-            <h3 className="mt-2 font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+            <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
               <>
                 {t("landing.ai_copilots.conversations_title_line1")}{" "}
                 <span className="text-blue-600">{t("landing.ai_copilots.conversations_title_line2")}</span>
@@ -392,7 +381,7 @@ const AiCopilotsSection = () => {
         </div>
 
         {/* Knowledge base block */}
-        <div className="mt-14">
+        <div className="mt-8">
           <KnowledgeBaseBlock t={t} />
         </div>
       </div>

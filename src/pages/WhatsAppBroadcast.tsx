@@ -17,7 +17,6 @@ import {
   PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { LandingHeader } from "@/components/layout/LandingHeader";
 import { LandingFooter } from "@/components/layout/LandingFooter";
 import { LanguageContext } from "@/contexts/LanguageContext";
@@ -92,8 +91,8 @@ const getFeatures = (lang: Lang) => [
     title: lang === "sw" ? "Yenye Wepesi" : "Flexible",
     desc:
       lang === "sw"
-        ? "Lipa kadri unavyotumia kwa punguzo la kiotomatiki la kiasi — hakuna mikataba au ahadi."
-        : "Pay-as-you-go with automatic volume discounts — no contracts or commitments needed.",
+        ? "Lipa kadri unavyotumia kwa punguzo la kiotomatiki la kiasi, hakuna mikataba au ahadi."
+        : "Pay-as-you-go with automatic volume discounts, no contracts or commitments needed.",
     accent: "text-purple-600",
     bg: "bg-purple-50",
   },
@@ -263,7 +262,7 @@ export default function WhatsAppBroadcast() {
       <LandingHeader heroSectionId="overview" />
 
       {/* ── Hero ── */}
-      <section id="overview" className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 overflow-hidden min-h-screen flex items-center">
+      <section id="overview" className="relative pt-28 pb-10 sm:pt-36 sm:pb-12 overflow-hidden min-h-screen flex items-center">
         {/* Background — same zoomed style as Landing page */}
         <div className="absolute inset-0 overflow-hidden z-0">
         {/* Background Image */}
@@ -287,12 +286,6 @@ export default function WhatsAppBroadcast() {
 
             {/* Left */}
             <div className="flex-1 text-center lg:text-left space-y-6">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3.5 py-1.5 backdrop-blur-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse" />
-                <span className="text-xs font-medium text-white">
-                  {isSw ? "Inaendeshwa na Meta WhatsApp Business API" : "Powered by Meta WhatsApp Business API"}
-                </span>
-              </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
                 {isSw ? (
@@ -312,8 +305,8 @@ export default function WhatsAppBroadcast() {
 
               <p className="text-base sm:text-lg text-gray-100 max-w-lg mx-auto lg:mx-0 leading-relaxed">
                 {isSw
-                  ? "Fikia maelfu — au mamilioni — ya wateja kwa wakati mmoja kwa usimbaji wa mwisho-hadi-mwisho, ufuatiliaji wa uwasilishaji wa wakati halisi, na muda wa juu wa kiwango cha biashara kubwa."
-                  : "Reach thousands — or millions — of customers simultaneously with end-to-end encryption, real-time delivery tracking, and enterprise-grade uptime."}
+                  ? "Fikia maelfu, au mamilioni, ya wateja kwa wakati mmoja kwa usimbaji wa mwisho-hadi-mwisho, ufuatiliaji wa uwasilishaji wa wakati halisi, na muda wa juu wa kiwango cha biashara kubwa."
+                  : "Reach thousands, or millions, of customers simultaneously with end-to-end encryption, real-time delivery tracking, and enterprise-grade uptime."}
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
@@ -395,19 +388,16 @@ export default function WhatsAppBroadcast() {
       </section>
 
       {/* ── Pricing tiers ── */}
-      <section id="pricing" className="py-16 sm:py-24 bg-gray-50">
+      <section id="pricing" className="py-10 sm:py-12 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10 space-y-2">
-            <Badge className="bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20 hover:bg-[#25D366]/10 text-xs">
-              {isSw ? "Lipa kadri unavyotumia" : "Pay-as-you-go"}
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <div className="text-center mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {isSw ? "Viwango vya Bei kwa Wingi" : "Volume Pricing Tiers"}
             </h2>
             <p className="text-gray-500 text-sm sm:text-base max-w-md mx-auto">
               {isSw
-                ? "Kadiri unavyotuma zaidi, ndivyo unavyolipa kidogo. Punguzo linatumika kiotomatiki — hakuna viwango vya kusimamia kwa mkono."
-                : "The more you send, the less you pay. Discounts apply automatically — no manual tiers to manage."}
+                ? "Kadiri unavyotuma zaidi, ndivyo unavyolipa kidogo. Punguzo linatumika kiotomatiki, hakuna viwango vya kusimamia kwa mkono."
+                : "The more you send, the less you pay. Discounts apply automatically, no manual tiers to manage."}
             </p>
           </div>
 
@@ -459,8 +449,7 @@ export default function WhatsAppBroadcast() {
                 <div key={tier.label} className="group relative flex">
                   {tier.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-[#25D366] to-[#1ebe5d] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_20px_-6px_rgba(37,211,102,0.5)] ring-1 ring-white/20">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1 text-xs font-semibold text-white">
                         {isSw ? "Maarufu zaidi" : "Most popular"}
                       </span>
                     </div>
@@ -534,7 +523,7 @@ export default function WhatsAppBroadcast() {
 
                     {/* What's included */}
                     <div className="px-7 pt-6 pb-7 flex-1 flex flex-col">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-4">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">
                         {isSw ? "Kinajumuisha" : "What's included"}
                       </p>
 
@@ -602,13 +591,10 @@ export default function WhatsAppBroadcast() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="py-16 sm:py-24 bg-white">
+      <section id="features" className="py-10 sm:py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10 space-y-2">
-            <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 text-xs">
-              {isSw ? "Kwa Nini Senda" : "Why Senda"}
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <div className="text-center mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {isSw ? "Kila kitu unachohitaji kutangaza" : "Everything you need to broadcast"}
             </h2>
             <p className="text-gray-500 text-sm sm:text-base max-w-md mx-auto">
@@ -641,12 +627,12 @@ export default function WhatsAppBroadcast() {
                 ? [
                     { step: "01", title: "Unganisha akaunti yako ya Meta", desc: "Unganisha akaunti yako ya WhatsApp Business kwenye Mipangilio. Senda inatambua kiotomatiki Phone Number ID na Access Token yako." },
                     { step: "02", title: "Pakia au chagua mawasiliano", desc: "Tumia kisimamizi cha mawasiliano cha Senda au bandika namba za simu moja kwa moja. Gawanya kwa kategoria, masafa ya tarehe, au uchaguzi binafsi." },
-                    { step: "03", title: "Andika & tangaza", desc: "Andika ujumbe wa bure au chagua kiolezo kilichoidhinishwa na Meta. Bonyeza tuma — Senda inashughulikia mengine yote pamoja na hali ya wakati halisi." },
+                    { step: "03", title: "Andika & tangaza", desc: "Andika ujumbe wa bure au chagua kiolezo kilichoidhinishwa na Meta. Bonyeza tuma. Senda inashughulikia mengine yote pamoja na hali ya wakati halisi." },
                   ]
                 : [
                     { step: "01", title: "Connect your Meta account", desc: "Link your WhatsApp Business account in Settings. Senda auto-detects your Phone Number ID and Access Token." },
                     { step: "02", title: "Upload or select contacts", desc: "Use Senda's contact manager or paste phone numbers directly. Segment by category, date range, or individual selection." },
-                    { step: "03", title: "Compose & broadcast", desc: "Write a free-form message or pick an approved Meta template. Hit send — Senda handles the rest with real-time status." },
+                    { step: "03", title: "Compose & broadcast", desc: "Write a free-form message or pick an approved Meta template. Hit send. Senda handles the rest with real-time status." },
                   ]
               ).map((item) => (
                 <div key={item.step} className="flex gap-4">
@@ -696,19 +682,16 @@ export default function WhatsAppBroadcast() {
       </section>
 
       {/* ── New Capabilities ── */}
-      <section id="capabilities" className="py-16 sm:py-24 bg-white">
+      <section id="capabilities" className="py-10 sm:py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10 space-y-2">
-            <Badge className="bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20 hover:bg-[#25D366]/10 text-xs">
-              {isSw ? "Mpya" : "New"}
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <div className="text-center mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {isSw ? "Zaidi ya maandishi tu" : "Beyond plain text"}
             </h2>
             <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto">
               {isSw
-                ? "Pakia faili moja kwa moja, tuma RSVP zinazoshirikisha, na fuatilia majibu — yote kutoka kwenye dashibodi moja ya matangazo."
-                : "Upload media directly, send interactive RSVPs, and track responses — all from the same broadcast dashboard."}
+                ? "Pakia faili moja kwa moja, tuma RSVP zinazoshirikisha, na fuatilia majibu, yote kutoka kwenye dashibodi moja ya matangazo."
+                : "Upload media directly, send interactive RSVPs, and track responses, all from the same broadcast dashboard."}
             </p>
           </div>
 
@@ -718,21 +701,21 @@ export default function WhatsAppBroadcast() {
                   {
                     icon: Upload,
                     title: "Upakuaji wa moja kwa moja",
-                    desc: "Chagua picha, PDF, au video kutoka kwa kifaa chako — hakuna URL ya umma inayohitajika. Backend inapakia mara moja, inatumia tena kwa wapokeaji wote.",
+                    desc: "Chagua picha, PDF, au video kutoka kwa kifaa chako, hakuna URL ya umma inayohitajika. Backend inapakia mara moja, inatumia tena kwa wapokeaji wote.",
                     accent: "text-blue-600",
                     bg: "bg-blue-50",
                   },
                   {
                     icon: Vote,
                     title: "Kura zinazoshirikisha",
-                    desc: "Tuma vifungo vya Ndio / Labda / Hapana badala ya maswali tu. Wapokeaji wanagusa kifungo — majibu yanarudi kwenye dashibodi yako kiotomatiki.",
+                    desc: "Tuma vifungo vya Ndio / Labda / Hapana badala ya maswali tu. Wapokeaji wanagusa kifungo, majibu yanarudi kwenye dashibodi yako kiotomatiki.",
                     accent: "text-[#25D366]",
                     bg: "bg-[#25D366]/10",
                   },
                   {
                     icon: FileText,
                     title: "Vigae vya hati za PDF",
-                    desc: "Tuma PDF kama vigae vya WhatsApp vyenye jina maalum la faili — mialiko, risiti, mikataba inaonyeshwa kama faili safi zilizotajwa.",
+                    desc: "Tuma PDF kama vigae vya WhatsApp vyenye jina maalum la faili, mialiko, risiti, mikataba inaonyeshwa kama faili safi zilizotajwa.",
                     accent: "text-orange-600",
                     bg: "bg-orange-50",
                   },
@@ -748,21 +731,21 @@ export default function WhatsAppBroadcast() {
                   {
                     icon: Upload,
                     title: "Direct file upload",
-                    desc: "Pick an image, PDF, or video from your device — no public URL needed. Backend uploads once, reuses across all recipients.",
+                    desc: "Pick an image, PDF, or video from your device, no public URL needed. Backend uploads once, reuses across all recipients.",
                     accent: "text-blue-600",
                     bg: "bg-blue-50",
                   },
                   {
                     icon: Vote,
                     title: "Interactive polls",
-                    desc: "Send Yes / Maybe / No buttons instead of plain questions. Recipients tap a button — replies land back in your dashboard automatically.",
+                    desc: "Send Yes / Maybe / No buttons instead of plain questions. Recipients tap a button and replies land back in your dashboard automatically.",
                     accent: "text-[#25D366]",
                     bg: "bg-[#25D366]/10",
                   },
                   {
                     icon: FileText,
                     title: "PDF document tiles",
-                    desc: "Send PDFs as proper WhatsApp document tiles with a custom filename — invitations, receipts, contracts render as clean, named files.",
+                    desc: "Send PDFs as proper WhatsApp document tiles with a custom filename, invitations, receipts, contracts render as clean, named files.",
                     accent: "text-orange-600",
                     bg: "bg-orange-50",
                   },
@@ -799,21 +782,21 @@ export default function WhatsAppBroadcast() {
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">
                 {isSw
-                  ? "Ambatanisha kura kwa tangazo lolote — kutuma kimoja, kutuma kwa wingi, au kwa kuzingatia hadhira. Wapokeaji wanaona vifungo vya majibu yanayoshirikisha badala ya kuombwa kuandika jibu."
-                  : "Attach a poll to any broadcast — single send, bulk send, or audience-based. Recipients see interactive reply buttons instead of being asked to type a response."}
+                  ? "Ambatanisha kura kwa tangazo lolote, kutuma kimoja, kutuma kwa wingi, au kwa kuzingatia hadhira. Wapokeaji wanaona vifungo vya majibu yanayoshirikisha badala ya kuombwa kuandika jibu."
+                  : "Attach a poll to any broadcast, single send, bulk send, or audience-based. Recipients see interactive reply buttons instead of being asked to type a response."}
               </p>
               <ul className="space-y-2 text-sm text-gray-600">
                 {(isSw
                   ? [
                       "Hadi vifungo 3 vya majibu kwa kila ujumbe",
                       "Kichwa cha hiari cha media (picha au PDF) juu ya vifungo",
-                      "Inaondoa marudio kwa ID ya ujumbe ya Meta — hakuna kuhesabu mara mbili",
+                      "Inaondoa marudio kwa ID ya ujumbe ya Meta, hakuna kuhesabu mara mbili",
                       "Matokeo yamegawanywa kwa kurasa, yanaweza kuchujwa kwa chaguo",
                     ]
                   : [
                       "Up to 3 reply buttons per message",
                       "Optional media header (image or PDF) above the buttons",
-                      "Dedupes on Meta's message ID — no double-counting",
+                      "Dedupes on Meta's message ID, no double-counting",
                       "Results paginated, filterable by option",
                     ]
                 ).map((b) => (
@@ -861,13 +844,10 @@ export default function WhatsAppBroadcast() {
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className="py-16 sm:py-24 bg-gray-50">
+      <section id="faq" className="py-10 sm:py-12 bg-gray-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10 space-y-2">
-            <Badge className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-50 text-xs">
-              {isSw ? "Maswali" : "FAQ"}
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <div className="text-center mb-8 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {isSw ? "Maswali yanayoulizwa mara kwa mara" : "Common questions"}
             </h2>
           </div>
@@ -894,13 +874,7 @@ export default function WhatsAppBroadcast() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-white overflow-hidden">
-        {/* Background decorations — same as Landing */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-blue-300/25 rounded-full animate-pulse" />
-          <div className="absolute bottom-10 right-10 w-16 h-16 bg-blue-200/25 rounded-full animate-bounce" />
-          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-blue-100/30 rounded-lg rotate-45 animate-ping" />
-        </div>
+      <section className="py-8 sm:py-10 lg:py-12 px-3 sm:px-4 lg:px-6 relative bg-white overflow-hidden">
 
         <div className="max-w-3xl mx-auto text-center relative z-10 space-y-4">
           <h2 className="font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight">
@@ -918,13 +892,13 @@ export default function WhatsAppBroadcast() {
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-gray-700 max-w-2xl mx-auto leading-relaxed">
             {isSw
-              ? "Jiunge na mashirika kote Tanzania yanayotumia Senda kuwasilisha mamilioni ya ujumbe wa WhatsApp — kwa uaminifu, usalama, na bei nafuu."
-              : "Join organisations across Tanzania using Senda to deliver millions of WhatsApp messages — reliably, securely, and affordably."}
+              ? "Jiunge na mashirika kote Tanzania yanayotumia Senda kuwasilisha mamilioni ya ujumbe wa WhatsApp, kwa uaminifu, usalama, na bei nafuu."
+              : "Join organisations across Tanzania using Senda to deliver millions of WhatsApp messages, reliably, securely, and affordably."}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-2">
             <Button
               onClick={() => navigate("/signup")}
-              className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group flex items-center gap-2"
+              className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-200 group flex items-center gap-2"
             >
               {isSw ? "Anza bila malipo" : "Get started free"}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />

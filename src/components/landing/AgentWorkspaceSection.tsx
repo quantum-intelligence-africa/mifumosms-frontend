@@ -129,15 +129,11 @@ const AgentWorkspaceSection = () => {
   return (
     <section
       id="agents"
-      className="relative overflow-hidden bg-white py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-white py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-24 right-1/4 h-64 w-64 rounded-full bg-blue-100/50 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-72 w-72 -translate-x-1/3 translate-y-1/3 rounded-full bg-indigo-100/60 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           {/* Mockup — left on desktop */}
           <div className="lg:col-span-7 order-1">
             <MockupFrame
@@ -319,7 +315,6 @@ const AgentWorkspaceSection = () => {
           {/* Copy — right on desktop */}
           <div className="lg:col-span-5 order-2">
             <SectionHeader
-              eyebrow={t("landing.agent_workspace.eyebrow")}
               title={
                 <>
                   {t("landing.agent_workspace.title_line1")}{" "}

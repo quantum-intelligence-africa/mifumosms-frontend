@@ -218,17 +218,12 @@ const IntegrationsSection = () => {
   return (
     <section
       id="integrations"
-      className="relative overflow-hidden bg-gray-50 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-gray-50 py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-20 left-1/4 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 h-64 w-64 translate-x-1/2 translate-y-1/3 rounded-full bg-indigo-200/30 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={t("landing.integrations.eyebrow")}
             align="center"
             title={
               <>
@@ -240,7 +235,7 @@ const IntegrationsSection = () => {
           />
         </div>
 
-        <div className="mt-12 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+        <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
           {/* Use-case cards */}
           <div className="lg:col-span-6 space-y-4">
             {useCases.map(({ Icon, index, title, body, bullets }) => (

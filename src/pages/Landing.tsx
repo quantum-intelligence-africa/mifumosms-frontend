@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { logger } from "@/utils/logger";
 import {
   MessageSquare,
+  Phone,
+  Bot,
   Users,
   Send,
   TrendingUp,
@@ -242,7 +244,22 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     { name: "Pro", min: 250000, rate: 12, rangeLabel: "250,000 SMS and above" },
   ], []);
 
+  const MIN_CREDITS = 1000;
+  const MAX_CREDITS = 10_000_000;
+
   const parsedCredits = useMemo(() => Math.max(parseInt(customCredits || "0", 10) || 0, 0), [customCredits]);
+  const belowMinimum = parsedCredits > 0 && parsedCredits < MIN_CREDITS;
+  const atMaximum = parsedCredits >= MAX_CREDITS;
+
+  const handleCreditsChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").replace(/^0+/, "");
+    if (!digits) {
+      setCustomCredits("");
+      return;
+    }
+    // Clamp in the string domain first so absurdly long pastes never reach parseInt.
+    setCustomCredits(digits.length > 8 || parseInt(digits, 10) > MAX_CREDITS ? String(MAX_CREDITS) : digits);
+  };
   const tierNameKey = (name: string) => {
     if (name === 'Lite') return t('landing.pricing.lite.name');
     if (name === 'Standard') return t('landing.pricing.standard.name');
@@ -722,7 +739,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       <LandingHeader scrollToSection={scrollToSection} />
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-6 lg:pt-32 lg:pb-8 z-10">
+      <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
         <div className="w-full relative max-w-full pl-6 sm:pl-8 md:pl-12 lg:pl-20">
           {/* Content - Two column layout on desktop */}
           <div className="relative z-10 w-full flex flex-col lg:flex-row items-center lg:items-start lg:justify-between gap-8 lg:gap-12">
@@ -737,6 +754,22 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <p className="lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal text-left">
                 {t('landing.hero.subtitle')}
               </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { Icon: Send, label: t('landing.hero.channel_sms') },
+                  { Icon: MessageSquare, label: t('landing.hero.channel_whatsapp') },
+                  { Icon: Phone, label: t('landing.hero.channel_voice') },
+                  { Icon: Bot, label: t('landing.hero.channel_ai') },
+                ].map(({ Icon, label }) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs sm:text-sm font-medium text-white backdrop-blur-sm"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:justify-start pt-2 w-full lg:w-auto justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
@@ -744,7 +777,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     to="/signup">
     <Button
       variant="outline"
-      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-200 shadow-lg"
     >
       {t('landing.hero.start_free')}
     </Button>
@@ -753,7 +786,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   {/* View Tutorial Button - Blue */}
   <Button
     onClick={() => navigate("/watch-tutorial")}
-    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
+    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
     {t('landing.hero.how_to_use')}
@@ -968,9 +1001,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 relative bg-gray-50 shadow-lg border-t border-gray-200">
+      <section id="features" className="py-8 sm:py-10 lg:py-12 px-4 sm:px-6 lg:px-8 relative bg-gray-50 shadow-lg border-t border-gray-200">
         {/* Mobile block (unchanged) */}
-        <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-yellow-50 shadow-sm px-4 py-5 sm:hidden">
+        <div className="max-w-6xl mx-auto border-2 border-gray-200 rounded-2xl bg-white shadow-sm px-4 py-5 sm:hidden">
           <div className="text-left mb-8">
                 <h2 className="font-heading text-xl font-bold text-gray-900 mb-2 leading-tight">
                   {t('landing.features.heading_line1')}
@@ -982,7 +1015,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   {t('landing.features.subtitle')}
                 </p>
           </div>
-          <div className="space-y-8">
+          <div className="space-y-6">
             {features.map((feature, index) => {
               const colorSchemes = [
                 { bg: 'bg-white', border: 'border-gray-300', icon: 'text-gray-700', title: 'text-gray-800' },
@@ -1014,7 +1047,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         {/* Desktop block matching reference image */}
         <div className="hidden sm:block">
           <div className="max-w-7xl mx-auto px-2 lg:px-0">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-10 lg:gap-14">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-10">
               <div
                 ref={featuresReveal.containerRef}
                 className={`flex-1 max-w-xl text-left transition-all duration-800 ${
@@ -1035,11 +1068,11 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               </div>
 
               <div className="flex-1 w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
                   {features.map((feature, index) => (
                     <Card
                       key={index}
-                      className={`group relative bg-white border border-gray-100 shadow-md lg:shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1.5 hover:scale-[1.02] rounded-2xl overflow-hidden ${
+                      className={`group relative bg-white border border-gray-100 shadow-md lg:shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden ${
                         featuresReveal.isVisible
                           ? 'animate-slide-in-bottom'
                           : 'reveal-hidden'
@@ -1049,9 +1082,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                         animationFillMode: 'both'
                       }}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <CardContent className="relative p-6 lg:p-7 flex flex-col h-full min-h-[160px] lg:min-h-[180px]">
-                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-4 shadow-md group-hover:scale-110 group-hover:rotate-2 transition-all duration-300">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center mb-4">
                           <feature.icon className="w-5 h-5 text-white" />
                         </div>
                         <h3 className="font-heading text-sm lg:text-base font-bold text-blue-500 mb-2">
@@ -1093,23 +1125,19 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       {/* Pricing */}
       <section
         id="pricing"
-        className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-600 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+        className="relative overflow-hidden bg-blue-700 py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
       >
-        <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/4 h-80 w-80 -translate-x-1/2 -translate-y-1/3 rounded-full bg-blue-400/30 blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 h-72 w-72 translate-x-1/2 translate-y-1/3 rounded-full bg-blue-300/25 blur-3xl" />
-        </div>
 
         <div className="max-w-7xl mx-auto">
           {/* Section header */}
           <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
-            <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-[1.1]">
+            <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
               {t('landing.pricing.heading_line1')}{' '}
               <span className="text-blue-200">
                 {t('landing.pricing.heading_line2')}
               </span>
             </h2>
-            <p className="mt-5 text-base sm:text-lg text-white leading-relaxed">
+            <p className="mt-3 text-base text-white leading-relaxed">
               {t('landing.pricing.subtitle')}
             </p>
           </div>
@@ -1117,7 +1145,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           {/* Plan cards */}
           <div
             ref={pricingReveal.containerRef}
-            className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-7 items-stretch"
+            className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 items-stretch"
           >
             {pricing.map((plan, index) => {
               const [priceMain, priceSuffix] = plan.rate.split('/');
@@ -1155,8 +1183,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-blue-600 to-blue-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.5)] ring-1 ring-white/20">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
                         {t('landing.pricing.most_popular')}
                       </span>
                     </div>
@@ -1234,7 +1261,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
                     {/* "What's included" + features */}
                     <div className="px-7 pt-6 pb-7 flex-1 flex flex-col">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-4">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">
                         {t('landing.pricing.whats_included')}
                       </p>
 
@@ -1270,8 +1297,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           </div>
 
           {/* Included-in-every-plan strip */}
-          <div className="mt-12 flex flex-col items-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+          <div className="mt-8 flex flex-col items-center">
+            <p className="text-sm font-medium text-blue-100">
               {t('landing.pricing.included_in_every_plan')}
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -1296,10 +1323,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       </section>
 
       {/* Custom Amount Calculator (public view) */}
-      <section className="py-12 sm:py-16 px-3 sm:px-4 lg:px-6 relative bg-white">
+      <section className="py-8 sm:py-10 px-3 sm:px-4 lg:px-6 relative bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-
+          <div className="text-center mb-6">
             <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
               <span className="block text-blue-600">
                 {t('landing.calculator.title')}
@@ -1310,7 +1336,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             </p>
           </div>
 
-          <Card className="p-6 sm:p-8 bg-gradient-to-br from-blue-50/50 to-white border-2 border-blue-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <Card className="p-6 sm:p-8 bg-white border border-gray-200 shadow-sm">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1319,13 +1345,24 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                       {t('landing.calculator.sms_credits_label')}
                     </Label>
                 <Input
-                  type="number"
-                  placeholder="e.g., 5000"
-                  value={customCredits}
-                  onChange={(e) => setCustomCredits(e.target.value)}
-                    className="h-12 text-base border-2 border-blue-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-blue-50/30 transition-all duration-300"
-                  min="100"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="e.g., 5,000"
+                  value={parsedCredits ? parsedCredits.toLocaleString('en-US') : ''}
+                  onChange={(e) => handleCreditsChange(e.target.value)}
+                  aria-invalid={belowMinimum}
+                  className={`h-12 text-base border-2 bg-blue-50/30 focus:ring-2 ${
+                    belowMinimum
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                      : 'border-blue-200 focus:border-blue-600 focus:ring-blue-200'
+                  }`}
                 />
+                {atMaximum && (
+                  <p className="text-xs text-gray-600">
+                    {t('landing.calculator.max_notice', { max: MAX_CREDITS.toLocaleString('en-US') })}
+                  </p>
+                )}
                 </div>
 
                 <div className="space-y-2">
@@ -1333,9 +1370,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                       <TrendingUp className="w-4 h-4 text-green-500" />
                       {t('landing.calculator.total_cost_label')}
                     </Label>
-                  <div className="h-12 px-4 rounded-lg bg-gradient-to-r from-blue-100 to-blue-50 border-2 border-blue-300 flex items-center justify-between">
-                    <span className="text-lg font-bold text-blue-900">TZS {customPrice.toLocaleString()}</span>
-                    <div className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
+                  <div className="h-12 px-4 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-lg font-bold text-blue-900">TZS {customPrice.toLocaleString('en-US')}</span>
+                    <div className="flex-shrink-0 text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
                       {activeTier ? tierNameKey(activeTier.name) : t('landing.calculator.select_amount')}
                     </div>
                   </div>
@@ -1343,7 +1380,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
                     {t('landing.calculator.pricing_details')}
@@ -1370,27 +1407,27 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                   </div>
                 </div>
 
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className={`p-4 rounded-lg border ${belowMinimum ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-start gap-2">
-                    <Shield className="w-4 h-4 text-red-600 mt-0.5" />
+                    <Shield className={`w-4 h-4 mt-0.5 ${belowMinimum ? 'text-red-600' : 'text-gray-500'}`} />
                     <div>
-                      <p className="text-xs font-semibold text-red-800">{t('landing.calculator.minimum_purchase')}</p>
-                      <p className="text-xs text-red-700">{t('landing.calculator.minimum_purchase_desc')}</p>
+                      <p className={`text-xs font-semibold ${belowMinimum ? 'text-red-800' : 'text-gray-800'}`}>{t('landing.calculator.minimum_purchase')}</p>
+                      <p className={`text-xs ${belowMinimum ? 'text-red-700' : 'text-gray-600'}`}>{t('landing.calculator.minimum_purchase_desc')}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {parsedCredits > 0 && (
+            {parsedCredits >= MIN_CREDITS && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-center sm:text-left">
                     <p className="text-sm text-gray-600">{t('landing.calculator.ready_to_start')}</p>
-                    <p className="text-xs text-gray-500">{t('landing.calculator.purchase_credits', { count: parsedCredits.toLocaleString() })}</p>
+                    <p className="text-xs text-gray-500">{t('landing.calculator.purchase_credits', { count: parsedCredits.toLocaleString('en-US') })}</p>
                   </div>
                   <Link to="/signup">
-                    <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-6 py-2 h-10 transition-all duration-300 hover:scale-105">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 h-10 transition-all duration-200">
                       {t('landing.calculator.buy_now')}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
@@ -1403,13 +1440,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="py-8 sm:py-12 lg:py-16 px-3 sm:px-4 lg:px-6 relative bg-white overflow-hidden">
-        {/* Background decorations */}
-        <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-blue-300/25 rounded-full animate-pulse" />
-          <div className="absolute bottom-10 right-10 w-16 h-16 bg-blue-200/25 rounded-full animate-bounce" />
-          <div className="absolute top-1/2 left-1/4 w-12 h-12 bg-blue-100/30 rounded-lg rotate-45 animate-ping" />
-        </div>
+      <section id="contact" className="py-8 sm:py-10 lg:py-12 px-3 sm:px-4 lg:px-6 relative bg-white overflow-hidden">
 
         <div ref={ctaReveal.elementRef} className="max-w-3xl mx-auto text-center relative z-10">
           <h2 className={`font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 leading-tight transition-all duration-800 ${
@@ -1438,7 +1469,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <Link to="/signup">
               <Button
                 size="lg"
-                className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 group"
+                className="text-sm sm:text-base h-10 sm:h-12 px-5 sm:px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all duration-200 group"
               >
                 {t('landing.cta.get_started')}
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />

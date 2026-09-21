@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 
 interface SectionHeaderProps {
-  eyebrow: string;
   title: React.ReactNode;
   lead?: React.ReactNode;
   align?: "left" | "center";
@@ -11,7 +10,6 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader = ({
-  eyebrow,
   title,
   lead,
   align = "left",
@@ -28,25 +26,9 @@ export const SectionHeader = ({
         className
       )}
     >
-      <div
-        className={cn(
-          "flex items-center gap-2 mb-4",
-          isCenter && "justify-center"
-        )}
-      >
-        <span className={cn("h-px w-6", isDark ? "bg-blue-400" : "bg-blue-600")} />
-        <p
-          className={cn(
-            "text-xs font-semibold tracking-[0.18em] uppercase",
-            isDark ? "text-blue-300" : "text-blue-600"
-          )}
-        >
-          {eyebrow}
-        </p>
-      </div>
       <h2
         className={cn(
-          "font-heading text-3xl sm:text-4xl lg:text-5xl font-bold leading-[1.1]",
+          "font-heading text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight",
           isDark ? "text-white" : "text-gray-900"
         )}
       >
@@ -55,7 +37,7 @@ export const SectionHeader = ({
       {lead && (
         <p
           className={cn(
-            "mt-5 text-base sm:text-lg leading-relaxed",
+            "mt-3 text-base leading-relaxed",
             isDark ? "text-white" : "text-gray-600"
           )}
         >

@@ -78,19 +78,14 @@ const OmnichannelInboxSection = () => {
   return (
     <section
       id="inbox"
-      className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-600 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-blue-700 py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute top-0 left-1/4 h-80 w-80 -translate-x-1/2 -translate-y-1/3 rounded-full bg-blue-400/30 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 h-72 w-72 translate-x-1/2 translate-y-1/3 rounded-full bg-blue-300/25 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           {/* Copy */}
           <div className="lg:col-span-5 order-2 lg:order-1">
             <SectionHeader
-              eyebrow={t("landing.omnichannel_inbox.eyebrow")}
               tone="dark"
               title={
                 <>

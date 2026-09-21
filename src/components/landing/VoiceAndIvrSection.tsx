@@ -239,7 +239,6 @@ const SentimentVisual = ({ t }: { t: TFn }) => {
 
 interface PillarProps {
   index: number;
-  eyebrow: string;
   title: string;
   description: string;
   features: string[];
@@ -248,13 +247,12 @@ interface PillarProps {
 
 const Pillar = ({
   index,
-  eyebrow,
   title,
   description,
   features,
   visual,
 }: PillarProps) => (
-  <article className="group relative flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_20px_40px_-20px_rgba(37,99,235,0.25)]">
+  <article className="group relative flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:border-blue-200 hover:shadow-[0_20px_40px_-20px_rgba(37,99,235,0.25)]">
     <div className="absolute -top-3 left-5 inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-blue-600 px-2 text-[10px] font-bold text-white">
       0{index}
     </div>
@@ -262,10 +260,7 @@ const Pillar = ({
     {visual}
 
     <div className="mt-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-600">
-        {eyebrow}
-      </p>
-      <h3 className="mt-1 font-heading text-lg font-bold text-gray-900">{title}</h3>
+      <h3 className="font-heading text-lg font-bold text-gray-900">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-gray-600">{description}</p>
     </div>
 
@@ -295,17 +290,12 @@ const VoiceAndIvrSection = () => {
   return (
     <section
       id="voice"
-      className="relative overflow-hidden bg-gray-50 py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-gray-50 py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute top-0 left-1/3 h-72 w-72 -translate-y-1/2 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute bottom-0 right-10 h-56 w-56 translate-y-1/3 rounded-full bg-indigo-200/30 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={t("landing.voice_ivr_section.eyebrow")}
             align="center"
             title={
               <>
@@ -322,10 +312,9 @@ const VoiceAndIvrSection = () => {
           </div>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-7">
+        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-7">
           <Pillar
             index={1}
-            eyebrow={t("landing.voice_ivr_section.pillar_routing_eyebrow")}
             title={t("landing.voice_ivr_section.pillar_routing_title")}
             description={t("landing.voice_ivr_section.pillar_routing_description")}
             features={pillarFeatures.routing}
@@ -333,7 +322,6 @@ const VoiceAndIvrSection = () => {
           />
           <Pillar
             index={2}
-            eyebrow={t("landing.voice_ivr_section.pillar_telephony_eyebrow")}
             title={t("landing.voice_ivr_section.pillar_telephony_title")}
             description={t("landing.voice_ivr_section.pillar_telephony_description")}
             features={pillarFeatures.telephony}
@@ -341,7 +329,6 @@ const VoiceAndIvrSection = () => {
           />
           <Pillar
             index={3}
-            eyebrow={t("landing.voice_ivr_section.pillar_surveys_eyebrow")}
             title={t("landing.voice_ivr_section.pillar_surveys_title")}
             description={t("landing.voice_ivr_section.pillar_surveys_description")}
             features={pillarFeatures.surveys}
@@ -349,8 +336,8 @@ const VoiceAndIvrSection = () => {
           />
         </div>
 
-        <div className="mt-12 flex flex-col items-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+        <div className="mt-8 flex flex-col items-center">
+          <p className="text-sm font-medium text-gray-600">
             {t("landing.voice_ivr_section.also_included")}
           </p>
           <FeaturePillStrip

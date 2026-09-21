@@ -429,17 +429,12 @@ const AnalyticsSection = () => {
   return (
     <section
       id="analytics"
-      className="relative overflow-hidden bg-white py-20 sm:py-24 lg:py-28 px-3 sm:px-4 lg:px-6"
+      className="relative overflow-hidden bg-white py-10 sm:py-12 lg:py-14 px-3 sm:px-4 lg:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute top-1/4 right-0 h-72 w-72 translate-x-1/3 rounded-full bg-blue-100/60 blur-3xl" />
-        <div className="absolute bottom-0 left-1/4 h-64 w-64 -translate-x-1/2 translate-y-1/3 rounded-full bg-emerald-100/50 blur-3xl" />
-      </div>
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col items-center">
           <SectionHeader
-            eyebrow={t("landing.analytics.eyebrow")}
             align="center"
             title={
               <>
@@ -479,7 +474,7 @@ const AnalyticsSection = () => {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+        <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
           {/* Mockup */}
           <div className="lg:col-span-7">
             <MockupFrame
@@ -498,12 +493,7 @@ const AnalyticsSection = () => {
 
           {/* Metric list */}
           <div className="lg:col-span-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-600">
-              {tab === "chat"
-                ? t("landing.analytics.chat_reports_eyebrow")
-                : t("landing.analytics.voice_reports_eyebrow")}
-            </p>
-            <h3 className="mt-2 font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+            <h3 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
               {tab === "chat" ? (
                 <>
                   {t("landing.analytics.chat_reports_title_line1")}{" "}
