@@ -286,25 +286,33 @@ const Dashboard = () => {
                       {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
 
-                    {/* Middle Section: Quick Actions + Performance */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
-                      <div className="lg:col-span-1 h-full min-w-0">
+                    {/* Middle Section: Quick Actions + Performance. Performance
+                        (message volume / delivery rate) is an SMS concept —
+                        an IVR-only account gets Quick Actions at full width
+                        instead of an empty/irrelevant messaging chart. */}
+                    <div className={`grid grid-cols-1 ${showSms ? "lg:grid-cols-3" : ""} gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden`}>
+                      <div className={`${showSms ? "lg:col-span-1" : ""} h-full min-w-0`}>
                         <QuickActions />
                       </div>
-                      <div className="lg:col-span-2 h-full min-w-0">
-                        <Card>
-                          <PerformanceOverview performance={performanceOverview} />
-                        </Card>
-                      </div>
+                      {showSms && (
+                        <div className="lg:col-span-2 h-full min-w-0">
+                          <Card>
+                            <PerformanceOverview performance={performanceOverview} />
+                          </Card>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Bottom Section: Activity + Campaigns */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
-                      <ActivityFeed />
-                      <Card>
-                        <RecentCampaigns campaigns={recentCampaigns || []} />
-                      </Card>
-                    </div>
+                    {/* Bottom Section: Activity + Campaigns — both SMS/WhatsApp
+                        messaging concepts (message activity feed, campaigns). */}
+                    {showSms && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
+                        <ActivityFeed />
+                        <Card>
+                          <RecentCampaigns campaigns={recentCampaigns || []} />
+                        </Card>
+                      </div>
+                    )}
 
                     {/* Sender IDs Section — SMS-only concept */}
                     {showSms && (

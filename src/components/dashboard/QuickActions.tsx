@@ -1,9 +1,12 @@
-import { Send, MessageSquare, Users, FileText, Rocket, Play, X } from "lucide-react";
+import { Send, MessageSquare, Users, FileText, Rocket, Play, X, PhoneOutgoing, Workflow, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDialer } from "@/contexts/DialerContext";
+import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
 import {
   Dialog,
   DialogContent,
@@ -12,39 +15,87 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+type QuickAction = {
+  name: string;
+  description: string;
+  icon: typeof MessageSquare;
+  variant: "default" | "secondary" | "outline";
+  to?: string;
+  onClick?: () => void;
+};
+
 export function QuickActions() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const { openDialer } = useDialer();
   const [showVideoModal, setShowVideoModal] = useState(false);
-  const quickActions = [
+  const showSms = hasSmsAccess(user);
+  const showIvr = hasIvrAccess(user);
+
+  // Contacts are shared by SMS and Voice/IVR alike, so it always shows —
+  // everything else here is specific to whichever product(s) this account
+  // actually has access to (accounts.sms_access_enabled / ivr_access_enabled).
+  const contactsAction: QuickAction = {
+    name: t("dashboard.quick_actions.add_contacts"),
+    description: t("dashboard.quick_actions.add_contacts_desc"),
+    icon: Users,
+    variant: "outline",
+    to: "/contacts?action=create",
+  };
+
+  const smsActions: QuickAction[] = [
     {
       name: t("dashboard.quick_actions.send_message"),
       description: t("dashboard.quick_actions.send_message_desc"),
       icon: MessageSquare,
-      variant: "default" as const,
+      variant: "default",
       to: "/sms/send?mode=single",
     },
     {
       name: t("dashboard.quick_actions.add_sender_id"),
       description: t("dashboard.quick_actions.add_sender_id_desc"),
       icon: Send,
-      variant: "secondary" as const,
+      variant: "secondary",
       to: "/sms/sender-names?action=request",
-    },
-    {
-      name: t("dashboard.quick_actions.add_contacts"),
-      description: t("dashboard.quick_actions.add_contacts_desc"),
-      icon: Users,
-      variant: "outline" as const,
-      to: "/contacts?action=create",
     },
     {
       name: t("dashboard.quick_actions.add_campaign"),
       description: t("dashboard.quick_actions.add_campaign_desc"),
       icon: FileText,
-      variant: "outline" as const,
+      variant: "outline",
       to: "/campaigns?new=true",
-    }
+    },
+  ];
+
+  const ivrActions: QuickAction[] = [
+    {
+      name: t("dashboard.quick_actions.make_call"),
+      description: t("dashboard.quick_actions.make_call_desc"),
+      icon: PhoneOutgoing,
+      variant: "default",
+      onClick: () => openDialer(),
+    },
+    {
+      name: t("dashboard.quick_actions.add_ivr_flow"),
+      description: t("dashboard.quick_actions.add_ivr_flow_desc"),
+      icon: Workflow,
+      variant: "secondary",
+      to: "/voice/ivr",
+    },
+    {
+      name: t("dashboard.quick_actions.add_phone_number"),
+      description: t("dashboard.quick_actions.add_phone_number_desc"),
+      icon: Phone,
+      variant: "outline",
+      to: "/voice/numbers",
+    },
+  ];
+
+  const quickActions: QuickAction[] = [
+    ...(showSms ? smsActions : []),
+    ...(showIvr ? ivrActions : []),
+    contactsAction,
   ];
   return (
     <Card className="p-3 glass border border-border-subtle">
@@ -65,7 +116,7 @@ export function QuickActions() {
               key={action.name}
               variant={action.variant}
               className="h-[78px] sm:h-[86px] p-2.5 flex-col items-start text-left whitespace-normal hover:scale-[1.02] transition-all shadow-sm hover:shadow-md"
-              onClick={() => action.to && navigate(action.to)}
+              onClick={() => (action.onClick ? action.onClick() : action.to && navigate(action.to))}
             >
               <div className="flex items-center gap-1.5 w-full mb-1">
                 <Icon className="w-3 h-3 flex-shrink-0" />
