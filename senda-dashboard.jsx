@@ -2688,7 +2688,21 @@ function TextifySenderNamesTab() {
                     <td><TextifyStatusPill value={r.status}/></td>
                     <td>{r.is_default ? <CheckCircle2 size={15} strokeWidth={2.2} color={GREEN}/> : <span style={{color:'#cbd5e1'}}>—</span>}</td>
                     <td>{r.is_disabled ? <XCircle size={15} strokeWidth={2.2} color={RED}/> : <span style={{color:'#cbd5e1'}}>—</span>}</td>
-                    <td style={{fontSize:11.5,color:'#64748b'}}>{r.created_by_name || '—'}</td>
+                    <td style={{fontSize:11.5,color:'#64748b',maxWidth:220}}>
+                      {(r.local_owners && r.local_owners.length > 0) ? (
+                        <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                          {r.local_owners.map((o,i) => (
+                            <div key={o.request_id || i} title={`${o.request_id || ''} · ${o.status || ''}`}
+                              style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                              <span style={{color:'#334155',fontWeight:600}}>{o.user_email || o.user_name || 'Unknown user'}</span>
+                              {o.tenant_name && <span style={{color:'#94a3b8'}}> · {o.tenant_name}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{color:'#cbd5e1'}} title="No matching sender-name request found in our database">No local request</span>
+                      )}
+                    </td>
                     <td style={{fontSize:12,color:'#475569'}}>{(r.users || []).length || 0}</td>
                     <td style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
                     <td style={{whiteSpace:'nowrap'}}>
