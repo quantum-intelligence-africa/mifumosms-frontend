@@ -1919,6 +1919,7 @@ function SenderIdsTab() {
   const [selected, setSelected]       = useState(() => new Set()); // selected row ids for bulk
   const [providers, setProviders]     = useState([]);
   const [bulkBusy, setBulkBusy]       = useState(false);
+  const [pushingId, setPushingId]     = useState(null); // sender ID currently being pushed to Textify
   const PER_PAGE = 50;
 
   // Open the detail drawer for one sender ID and fetch its KYC documents + history.
@@ -1980,6 +1981,22 @@ function SenderIdsTab() {
   const resolveOwner = React.useMemo(() => buildOwnerResolver(users, partners), [users, partners]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Submit (or resubmit) one sender ID straight to Textify — reuses whatever
+  // provider/name/sample content is already on the request, nothing to retype.
+  const pushToTextify = useCallback(async (row) => {
+    setPushingId(row.id);
+    try {
+      const res = await adminFetch(`/sender-ids/${encodeURIComponent(row.id)}/push-textify`, { method:'POST' }, onLogout);
+      if (res.success) {
+        showToast?.(res.message || 'Pushed to Textify.', 'success');
+        fetchData();
+      } else {
+        showToast?.(res.error?.message || 'Push to Textify failed.', 'error');
+      }
+    } catch (e) { showToast?.(e.message || 'Push to Textify failed.', 'error'); }
+    finally { setPushingId(null); }
+  }, [onLogout, showToast, fetchData]);
 
   // Accept / reject / change the status of the sender ID open in the drawer.
   // `spec` is a status spec key (approved | rejected | require_changes | processing |
@@ -2237,7 +2254,7 @@ function SenderIdsTab() {
         return (
         <div ref={tableRef} className="senda-card senda-table-wrap" style={{overflow:'hidden',scrollMarginTop:80}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:1020}}>
+            <table className="senda-table" style={{minWidth:1140}}>
               <thead>
                 <tr>
                   <th style={{width:34}}>
@@ -2246,7 +2263,7 @@ function SenderIdsTab() {
                   </th>
                   <th>ID</th><th>Sender Name</th><th>Company</th><th>Owner</th><th>Phone</th>
                   <th>Type</th><th>Network</th><th>SMS Sent</th>
-                  <th>Status</th><th>Invoice</th><th>Created</th><th>KYC</th>
+                  <th>Status</th><th>Provider Status</th><th>Invoice</th><th>Created</th><th>KYC</th>
                 </tr>
               </thead>
               <tbody>
@@ -2285,10 +2302,29 @@ function SenderIdsTab() {
                     <td style={{fontSize:11,color:'#475569'}}>{s.network}</td>
                     <td style={{fontWeight:600}}>{(s.sms_count||0).toLocaleString()}</td>
                     <td><Badge status={s.status}/></td>
+                    <td style={{fontSize:11}}>
+                      {s.provider_status ? (
+                        <span title={`${s.provider_status.provider}${s.provider_status.raw_status ? ' · ' + s.provider_status.raw_status : ''}`}>
+                          <Badge status={{requested:'pending', declined:'rejected', not_registered:'skipped'}[s.provider_status.raw_status] || s.provider_status.raw_status || 'skipped'}/>
+                        </span>
+                      ) : <span style={{color:'#cbd5e1'}}>—</span>}
+                    </td>
                     <td style={{fontSize:11,color:s.invoice_no?ORANGE:'#cbd5e1',fontWeight:s.invoice_no?600:400}}>{s.invoice_no||'—'}</td>
                     <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
-                    <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }}>
-                      <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
+                    <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }} style={{whiteSpace:'nowrap'}}>
+                      <div style={{display:'flex',gap:6}}>
+                        <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
+                        {s.provider_status?.provider === 'textify' && (
+                          <button
+                            className="senda-btn senda-btn-sm"
+                            disabled={pushingId === s.id}
+                            onClick={(e)=>{ e.stopPropagation(); pushToTextify(s); }}
+                            title="Submit this sender name to Textify now"
+                            style={{height:28,fontSize:11,whiteSpace:'nowrap',background:BRAND,color:'#fff',border:`1px solid ${BRAND}`,opacity:pushingId===s.id?.6:1,cursor:pushingId===s.id?'default':'pointer'}}>
+                            {pushingId === s.id ? 'Pushing…' : 'Push to Textify'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );})}
@@ -2344,6 +2380,363 @@ function SenderIdsTab() {
 
       <SenderKycDrawer detail={detail} onClose={()=>setDetail(null)} onProcess={processSender} processing={processing}/>
 
+    </div>
+  );
+}
+
+// ─── Textify Sender Names ───────────────────────────────────────────────────
+// Direct CRUD against Textify's own Sender Names API (docs.textify.africa/sender-names)
+// — separate from the local SenderIDRequest review flow in SenderIdsTab above.
+// Useful for names that don't need a local Mifumo request, or for correcting/
+// managing a name straight on Textify's platform (rename, assign users, delete).
+const TEXTIFY_STATUS_STYLE = {
+  requested: { bg:'#fef3c7', color:'#92400e', label:'Requested' },
+  approved:  { bg:'#d1fae5', color:'#065f46', label:'Approved' },
+  declined:  { bg:'#fee2e2', color:'#991b1b', label:'Declined' },
+};
+
+function TextifyStatusPill({ value }) {
+  const key = (value || '').toLowerCase();
+  const s = TEXTIFY_STATUS_STYLE[key] || { bg:'#f1f5f9', color:'#475569', label:value || '—' };
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,
+      fontSize:11,fontWeight:600,background:s.bg,color:s.color}}>
+      <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{s.label}
+    </span>
+  );
+}
+
+function TextifySenderNameModal({ onClose, onSaved, editing }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [name, setName]           = useState(editing?.name || '');
+  const [reason, setReason]       = useState('');
+  const [isDefault, setIsDefault] = useState(!!editing?.is_default);
+  const [linkRequestId, setLinkRequestId] = useState('');
+  const [saving, setSaving]       = useState(false);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prevOverflow; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) { showToast('Name is required', 'error'); return; }
+    if (trimmed.length > 11) { showToast('Name must be at most 11 characters', 'error'); return; }
+    if (!editing && !reason.trim()) { showToast('Reason is required', 'error'); return; }
+
+    setSaving(true);
+    try {
+      const res = editing
+        ? await adminFetch(`/textify/sender-names/${encodeURIComponent(editing.id)}/update`, {
+            method: 'PUT', body: JSON.stringify({ name: trimmed, is_default: isDefault }),
+          }, onLogout)
+        : await adminFetch('/textify/sender-names/create', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: trimmed, reason: reason.trim(), is_default: isDefault,
+              ...(linkRequestId.trim() ? { link_request_id: linkRequestId.trim() } : {}),
+            }),
+          }, onLogout);
+      if (res.success) {
+        showToast(res.message || (editing ? 'Sender name updated.' : 'Sender name requested.'), 'success');
+        onSaved && onSaved(); onClose();
+      } else {
+        showToast(res.error?.message || 'Save failed.', 'error');
+      }
+    } catch (e) { showToast(e.message || 'Network error.', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const inputSm = { height:42, fontSize:13.5, borderRadius:10 };
+
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',
+      backdropFilter:'blur(3px)',display:'flex',alignItems:'flex-start',justifyContent:'center',
+      padding:'24px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up"
+        style={{width:'100%',maxWidth:440,margin:'auto',background:'#fff',borderRadius:18,
+          boxShadow:'0 24px 70px rgba(15,23,42,.28)',display:'flex',flexDirection:'column',
+          maxHeight:'calc(100vh - 48px)',overflow:'hidden'}}>
+
+        <div style={{display:'flex',alignItems:'center',gap:13,padding:'20px 22px',borderBottom:'1px solid #eef2f7',flexShrink:0}}>
+          <div style={{width:42,height:42,borderRadius:12,flexShrink:0,
+            background:`linear-gradient(135deg,${BRAND},${BRAND2})`,boxShadow:`0 6px 16px ${BRAND}40`,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Send size={19} strokeWidth={2.3} color="#fff"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:'#0f172a',letterSpacing:'-.2px'}}>{editing ? 'Edit sender name' : 'Request sender name'}</h3>
+            <p style={{fontSize:12,color:'#94a3b8',marginTop:1}}>{editing ? 'Updates this name directly on Textify' : 'Submits a new name request to Textify'}</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{border:'none',background:'#f1f5f9',borderRadius:9,
+            width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748b',flexShrink:0}}>
+            <X size={16}/>
+          </button>
+        </div>
+
+        <div style={{padding:'18px 22px',overflowY:'auto',flex:1}}>
+          <label style={FIELD_LABEL}>Sender name <span style={{color:'#cbd5e1',fontWeight:500}}>· max 11 chars</span></label>
+          <input className="senda-input" value={name} onChange={e=>setName(e.target.value)} maxLength={11}
+            placeholder="e.g. MYBRAND" style={{...inputSm,marginBottom:14,textTransform:'uppercase'}}/>
+
+          {!editing && (
+            <>
+              <label style={FIELD_LABEL}>Reason</label>
+              <textarea value={reason} onChange={e=>setReason(e.target.value)} rows={3}
+                placeholder="Why you're requesting it — shown to the reviewing admin"
+                className="senda-input" style={{height:'auto',fontSize:13.5,borderRadius:10,padding:'10px 14px',marginBottom:14,resize:'vertical',lineHeight:1.55}}/>
+
+              <label style={FIELD_LABEL}>Link to a local sender request <span style={{color:'#cbd5e1',fontWeight:500}}>· optional</span></label>
+              <input className="senda-input" value={linkRequestId} onChange={e=>setLinkRequestId(e.target.value)}
+                placeholder="SID-xxxxxxxx" style={{...inputSm,marginBottom:14}}/>
+            </>
+          )}
+
+          <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#334155',fontWeight:600}}>
+            <input type="checkbox" checked={isDefault} onChange={e=>setIsDefault(e.target.checked)} style={{width:16,height:16,cursor:'pointer'}}/>
+            Set as account default sender
+          </label>
+        </div>
+
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'14px 22px',borderTop:'1px solid #eef2f7',flexShrink:0,background:'#fff'}}>
+          <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={submit} disabled={saving}>
+            {saving ? <><Spinner size={14} color="#fff"/> Saving…</> : (editing ? 'Save changes' : 'Submit request')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+function TextifyAssignUsersModal({ onClose, onSaved, row }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [value, setValue] = useState((row.users || []).join(', '));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = async () => {
+    const users = value.split(',').map(s => s.trim()).filter(Boolean);
+    setSaving(true);
+    try {
+      const res = await adminFetch(`/textify/sender-names/${encodeURIComponent(row.id)}/assign`, {
+        method: 'PATCH', body: JSON.stringify({ users }),
+      }, onLogout);
+      if (res.success) { showToast(res.message || 'Assigned users updated.', 'success'); onSaved && onSaved(); onClose(); }
+      else showToast(res.error?.message || 'Failed to update assigned users.', 'error');
+    } catch (e) { showToast(e.message || 'Network error.', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return createPortal((
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(15,23,42,0.55)',
+      backdropFilter:'blur(3px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 16px'}}>
+      <div onClick={e=>e.stopPropagation()} className="senda-fade-up"
+        style={{width:'100%',maxWidth:420,background:'#fff',borderRadius:18,boxShadow:'0 24px 70px rgba(15,23,42,.28)',padding:22}}>
+        <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',marginBottom:4}}>Assign users — {row.name}</h3>
+        <p style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>Textify user ids allowed to send with this name. Replaces the full list each time.</p>
+        <label style={FIELD_LABEL}>User ids <span style={{color:'#cbd5e1',fontWeight:500}}>· comma-separated</span></label>
+        <textarea value={value} onChange={e=>setValue(e.target.value)} rows={3}
+          placeholder="c62f7e2a-..., d81a9b3c-..." className="senda-input"
+          style={{height:'auto',fontSize:13,borderRadius:10,padding:'10px 14px',resize:'vertical',lineHeight:1.5,marginBottom:16}}/>
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+          <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={submit} disabled={saving}>
+            {saving ? <><Spinner size={14} color="#fff"/> Saving…</> : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), document.body);
+}
+
+function TextifySenderNamesTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
+
+  const [rows, setRows]       = useState([]);
+  const [meta, setMeta]       = useState({ page:1, total_pages:1, total:0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  const [search, setSearch]   = useState('');
+  const [statusF, setStatusF] = useState('');
+  const [page, setPage]       = useState(1);
+
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [assignRow, setAssignRow] = useState(null);
+  const [selected, setSelected]   = useState(() => new Set());
+  const [bulkBusy, setBulkBusy]   = useState(false);
+
+  const fetchRows = useCallback(() => {
+    setLoading(true); setError(null);
+    const qs = new URLSearchParams({ page:String(page), limit:'25' });
+    if (search.trim()) qs.set('search', search.trim());
+    if (statusF) qs.set('status', statusF);
+    adminFetch(`/textify/sender-names?${qs}`, {}, onLogout)
+      .then(res => {
+        if (res.success) { setRows(res.data || []); setMeta(res.meta || { page:1, total_pages:1, total:0 }); }
+        else setError(res.error?.message || 'Failed to load Textify sender names.');
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout, page, search, statusF]);
+
+  useEffect(() => { fetchRows(); }, [fetchRows]);
+  useEffect(() => { setPage(1); }, [search, statusF]);
+
+  const toggleSelect = (id) => setSelected(prev => {
+    const n = new Set(prev);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+
+  const deleteRow = async (row) => {
+    if (!window.confirm(`Delete sender name "${row.name}" on Textify? This cannot be undone.`)) return;
+    const res = await adminFetch(`/textify/sender-names/${encodeURIComponent(row.id)}/delete`, { method:'DELETE' }, onLogout);
+    if (res.success) { showToast(res.message || 'Deleted.', 'success'); fetchRows(); }
+    else showToast(res.error?.message || 'Delete failed.', 'error');
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length} sender name(s) on Textify? This cannot be undone.`)) return;
+    setBulkBusy(true);
+    try {
+      const res = await adminFetch('/textify/sender-names/bulk-delete', { method:'POST', body: JSON.stringify({ ids }) }, onLogout);
+      if (res.success) { showToast(res.message || 'Deleted.', 'success'); setSelected(new Set()); fetchRows(); }
+      else showToast(res.error?.message || 'Bulk delete failed.', 'error');
+    } catch (e) { showToast(e.message || 'Network error.', 'error'); }
+    finally { setBulkBusy(false); }
+  };
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader
+        title="Textify Sender Names"
+        subtitle="Request, edit, assign and delete sender names directly on Textify's own platform."
+        actions={
+          <>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" onClick={fetchRows}>
+              <RefreshCw size={14} strokeWidth={2.2}/> Refresh
+            </button>
+            <button className="senda-btn senda-btn-primary senda-btn-sm" onClick={()=>{ setEditing(null); setShowModal(true); }}>
+              <Send size={14} strokeWidth={2.2}/> Request sender name
+            </button>
+          </>
+        }
+      />
+
+      <div className="senda-card" style={{padding:14,marginBottom:16,display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+        <div style={{position:'relative',flex:'1 1 220px',minWidth:180}}>
+          <Search size={15} strokeWidth={2} color="#94a3b8" style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}/>
+          <input className="senda-input" value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search name…" style={{height:38,paddingLeft:36,fontSize:13}}/>
+        </div>
+        <select className="senda-input" value={statusF} onChange={e=>setStatusF(e.target.value)} style={{height:38,width:'auto',fontSize:13}}>
+          <option value="">All statuses</option>
+          <option value="requested">Requested</option>
+          <option value="approved">Approved</option>
+          <option value="declined">Declined</option>
+        </select>
+        {selected.size > 0 && (
+          <button className="senda-btn senda-btn-danger senda-btn-sm" onClick={bulkDelete} disabled={bulkBusy} style={{marginLeft:'auto'}}>
+            {bulkBusy ? <><Spinner size={13} color="#fff"/> Deleting…</> : <><Trash2 size={13} strokeWidth={2.2}/> Delete {selected.size} selected</>}
+          </button>
+        )}
+      </div>
+
+      <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
+        {loading ? (
+          <div style={{padding:'60px 0',display:'flex',justifyContent:'center'}}><Spinner size={26} color={BRAND}/></div>
+        ) : error ? (
+          <div style={{padding:'40px 20px',textAlign:'center',color:RED,fontSize:13}}>{error}</div>
+        ) : rows.length === 0 ? (
+          <div style={{padding:'48px 20px',textAlign:'center',color:'#94a3b8'}}>
+            <Send size={28} strokeWidth={1.6} style={{opacity:.4,marginBottom:8}}/>
+            <p style={{fontSize:13}}>No Textify sender names match your filters yet.</p>
+          </div>
+        ) : (
+          <div style={{overflowX:'auto'}}>
+            <table className="senda-table" style={{minWidth:920}}>
+              <thead>
+                <tr>
+                  <th style={{width:34}}></th>
+                  <th>Name</th><th>Status</th><th>Default</th><th>Disabled</th>
+                  <th>Requested by</th><th>Users</th><th>Created</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.id} style={{background:selected.has(r.id)?`${BRAND}0d`:undefined}}>
+                    <td onClick={e=>e.stopPropagation()} style={{width:34}}>
+                      <input type="checkbox" checked={selected.has(r.id)} onChange={()=>toggleSelect(r.id)} style={{cursor:'pointer'}}/>
+                    </td>
+                    <td style={{fontWeight:700,color:'#0f172a',fontSize:13}}>{r.name}</td>
+                    <td><TextifyStatusPill value={r.status}/></td>
+                    <td>{r.is_default ? <CheckCircle2 size={15} strokeWidth={2.2} color={GREEN}/> : <span style={{color:'#cbd5e1'}}>—</span>}</td>
+                    <td>{r.is_disabled ? <XCircle size={15} strokeWidth={2.2} color={RED}/> : <span style={{color:'#cbd5e1'}}>—</span>}</td>
+                    <td style={{fontSize:11.5,color:'#64748b'}}>{r.created_by_name || '—'}</td>
+                    <td style={{fontSize:12,color:'#475569'}}>{(r.users || []).length || 0}</td>
+                    <td style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
+                    <td style={{whiteSpace:'nowrap'}}>
+                      <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                        <button className="senda-btn senda-btn-ghost senda-btn-sm" style={{height:28,fontSize:11}}
+                          onClick={()=>{ setEditing(r); setShowModal(true); }} title="Edit on Textify">
+                          <Edit2 size={12} strokeWidth={2.2}/>{!isMobile && ' Edit'}
+                        </button>
+                        <button className="senda-btn senda-btn-ghost senda-btn-sm" style={{height:28,fontSize:11}}
+                          onClick={()=>setAssignRow(r)} title="Assign users">
+                          <Users size={12} strokeWidth={2.2}/>{!isMobile && ' Assign'}
+                        </button>
+                        <button className="senda-btn senda-btn-danger senda-btn-sm" style={{height:28,fontSize:11}}
+                          onClick={()=>deleteRow(r)} title="Delete on Textify (super admin only)">
+                          <Trash2 size={12} strokeWidth={2.2}/>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {!loading && !error && rows.length > 0 && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:14,flexWrap:'wrap',gap:8}}>
+          <span style={{fontSize:12,color:'#94a3b8'}}>
+            Page {meta.page} of {meta.total_pages} · {Number(meta.total||0).toLocaleString()} total
+          </span>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Previous</button>
+            <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={page>=(meta.total_pages||1)} onClick={()=>setPage(p=>p+1)}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <TextifySenderNameModal
+          editing={editing}
+          onClose={()=>{ setShowModal(false); setEditing(null); }}
+          onSaved={fetchRows}
+        />
+      )}
+      {assignRow && (
+        <TextifyAssignUsersModal row={assignRow} onClose={()=>setAssignRow(null)} onSaved={fetchRows}/>
+      )}
     </div>
   );
 }
@@ -12999,6 +13392,7 @@ const NAV_GROUPS = [
     { id:'senderids',     Icon:Tag,          label:'Sender IDs'       },
     { id:'kyc',           Icon:FileText,     label:'KYC Documents'    },
     { id:'approvedsenders', Icon:ShieldCheck, label:'Approved Senders' },
+    { id:'textifysendernames', Icon:Send,    label:'Textify Sender Names' },
   ]},
   { title: 'Customers', items: [
     { id:'users',         Icon:Users,        label:'Users'            },
@@ -17170,6 +17564,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
     kyc:          <KycPage/>,
+    textifysendernames: <TextifySenderNamesTab/>,
     partners:     <PartnersTab/>,
     partnersenders: <PartnerSendersTab/>,
     approvedsenders: <ApprovedSendersTab/>,
