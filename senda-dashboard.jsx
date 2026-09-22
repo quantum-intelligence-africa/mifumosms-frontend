@@ -1224,6 +1224,32 @@ function isoDaysAgo(d) { const x = new Date(); x.setDate(x.getDate() - d); retur
 function firstOfMonth(){ const x = new Date(); x.setDate(1); return x.toISOString().slice(0,10); }
 function firstOfYear() { return `${new Date().getFullYear()}-01-01`; }
 
+function timeAgo(iso) {
+  if (!iso) return 'never';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return 'just now';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// Beem's summary uses {active, rejected}, Textify's {approved, rejected} —
+// normalize both into one short "N approved, N rejected" line.
+function summarizeProviderSync(p) {
+  if (!p.last_sync_at) return null;
+  const s = p.last_sync_summary || {};
+  const approved = s.approved ?? s.active ?? 0;
+  const rejected = s.rejected ?? 0;
+  const errors = s.errors ?? 0;
+  const parts = [`${approved} approved`];
+  if (rejected) parts.push(`${rejected} rejected`);
+  if (errors) parts.push(`${errors} error${errors===1?'':'s'}`);
+  return parts.join(', ');
+}
+
 function TransactionsTab() {
   const { onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
@@ -1794,7 +1820,7 @@ function SenderKycDrawer({ detail, onClose, onProcess, processing }) {
                       <select value={providerId} onChange={e=>setProviderId(e.target.value)}
                         className="senda-input" style={{height:38,fontSize:13,cursor:'pointer'}}>
                         <option value="">Select a provider…</option>
-                        {providers.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
+                        {providers.filter(p=>p.id).map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
                       </select>
                       {providers.length === 0 && <span style={{fontSize:11,color:'#94a3b8'}}>Loading providers…</span>}
                       <span style={{fontSize:11,color:'#94a3b8'}}>The sender registers with this gateway; the approval SMS goes out from it.</span>
@@ -1865,7 +1891,7 @@ function SenderBulkBar({ count, providers, busy, onApprove, onReject, onClear })
             <select value={providerId} onChange={e=>setProviderId(e.target.value)} className="senda-input"
               style={{height:34,fontSize:12,width:'auto',minWidth:180,cursor:'pointer'}}>
               <option value="">Select provider…</option>
-              {providers.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
+              {providers.filter(p=>p.id).map(p => <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' · default' : ''}</option>)}
             </select>
             <label style={{fontSize:11,color:'#475569',display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
               <input type="checkbox" checked={notify} onChange={e=>setNotify(e.target.checked)}/> Notify + credits
@@ -1919,7 +1945,10 @@ function SenderIdsTab() {
   const [selected, setSelected]       = useState(() => new Set()); // selected row ids for bulk
   const [providers, setProviders]     = useState([]);
   const [bulkBusy, setBulkBusy]       = useState(false);
-  const [pushingId, setPushingId]     = useState(null); // sender ID currently being pushed to Textify
+  const [pushingId, setPushingId]     = useState(null); // sender ID currently being pushed to a provider
+  const [pushMenuId, setPushMenuId]   = useState(null); // sender ID whose provider-picker menu is open
+  const [providerFilter, setProviderFilter] = useState(''); // '' | 'none' | provider uuid
+  const [syncingProvider, setSyncingProvider] = useState(null); // 'beem' | 'textify' currently syncing
   const PER_PAGE = 50;
 
   // Open the detail drawer for one sender ID and fetch its KYC documents + history.
@@ -1950,13 +1979,14 @@ function SenderIdsTab() {
     const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
-  // Switching status filter or audience also restarts at page 1.
-  useEffect(() => { setPage(1); }, [filter, excludePartner]);
+  // Switching status filter, audience or provider also restarts at page 1.
+  useEffect(() => { setPage(1); }, [filter, excludePartner, providerFilter]);
 
   // Server-side pagination: load only the current 50-row page. This replaces the
   // old "fetch all 15 pages in parallel" approach that hammered the backend into
-  // 504s. Status / search / audience are all pushed to the server. The all-time
-  // summary + audience breakdown ride along on the first page and are reused.
+  // 504s. Status / search / audience / provider are all pushed to the server.
+  // The all-time summary + audience breakdown ride along on the first page and
+  // are reused.
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -1964,6 +1994,7 @@ function SenderIdsTab() {
       if (filter !== 'all') qs.set('status', filter);
       if (debounced) qs.set('search', debounced);
       if (excludePartner) qs.set('audience', 'direct');
+      if (providerFilter) qs.set('provider_id', providerFilter);
       const res = await adminFetch(`/sender-ids?${qs.toString()}`, {}, onLogout);
       if (!res.success) { setError(res.error?.message || 'Failed to load sender IDs.'); return; }
       setItems(res.data || []);
@@ -1975,28 +2006,64 @@ function SenderIdsTab() {
       }
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-  }, [page, filter, debounced, excludePartner, onLogout]);
+  }, [page, filter, debounced, excludePartner, providerFilter, onLogout]);
 
   // Single owner resolver shared by every row.
   const resolveOwner = React.useMemo(() => buildOwnerResolver(users, partners), [users, partners]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Submit (or resubmit) one sender ID straight to Textify — reuses whatever
-  // provider/name/sample content is already on the request, nothing to retype.
-  const pushToTextify = useCallback(async (row) => {
+  // Provider list — used for the bulk-approve dropdown, the provider filter,
+  // the push-to-provider picker, and the health strip's last-sync info.
+  // Re-callable so a manual "Sync now" or push can refresh the last-sync
+  // numbers without a full page reload.
+  const fetchProviders = useCallback(() => {
+    adminFetch('/sms-providers', {}, onLogout)
+      .then(res => { if (res.success) setProviders(res.data || []); })
+      .catch(() => {});
+  }, [onLogout]);
+  useEffect(() => { fetchProviders(); }, [fetchProviders]);
+
+  // Submit (or resubmit) one sender ID straight to a provider — reuses
+  // whatever name/sample content is already on the request, nothing to
+  // retype. providerId is omitted when the row already has one assigned
+  // (the backend just uses that); supplied when picked from the menu below.
+  const pushToProvider = useCallback(async (row, providerId) => {
     setPushingId(row.id);
+    setPushMenuId(null);
     try {
-      const res = await adminFetch(`/sender-ids/${encodeURIComponent(row.id)}/push-textify`, { method:'POST' }, onLogout);
+      const res = await adminFetch(
+        `/sender-ids/${encodeURIComponent(row.id)}/push-provider`,
+        { method:'POST', body: providerId ? JSON.stringify({ provider_id: providerId }) : undefined },
+        onLogout,
+      );
       if (res.success) {
-        showToast?.(res.message || 'Pushed to Textify.', 'success');
+        showToast?.(res.message || 'Pushed to provider.', 'success');
         fetchData();
+        fetchProviders();
       } else {
-        showToast?.(res.error?.message || 'Push to Textify failed.', 'error');
+        showToast?.(res.error?.message || 'Push failed.', 'error');
       }
-    } catch (e) { showToast?.(e.message || 'Push to Textify failed.', 'error'); }
+    } catch (e) { showToast?.(e.message || 'Push failed.', 'error'); }
     finally { setPushingId(null); }
-  }, [onLogout, showToast, fetchData]);
+  }, [onLogout, showToast, fetchData, fetchProviders]);
+
+  // Manual "Sync now" for Beem/Textify — same routine the 5-minute Celery
+  // task runs, exposed so staff can trigger it immediately and see the result.
+  const syncProviderNow = useCallback(async (providerType) => {
+    setSyncingProvider(providerType);
+    try {
+      const res = await adminFetch(`/sender-ids/sync-${providerType}`, { method:'POST' }, onLogout);
+      if (res.success) {
+        showToast?.(res.message || `Synced with ${providerType}.`, 'success');
+        fetchData();
+        fetchProviders();
+      } else {
+        showToast?.(res.error?.message || `${providerType} sync failed.`, 'error');
+      }
+    } catch (e) { showToast?.(e.message || `${providerType} sync failed.`, 'error'); }
+    finally { setSyncingProvider(null); }
+  }, [onLogout, showToast, fetchData, fetchProviders]);
 
   // Accept / reject / change the status of the sender ID open in the drawer.
   // `spec` is a status spec key (approved | rejected | require_changes | processing |
@@ -2042,13 +2109,7 @@ function SenderIdsTab() {
     }
   }, [detail, onLogout, showToast, fetchData]);
 
-  // Load the global provider list once, for the bulk-approve dropdown.
-  useEffect(() => {
-    adminFetch('/sms-providers', {}, onLogout)
-      .then(res => { if (res.success) setProviders(res.data || []); })
-      .catch(() => {});
-  }, [onLogout]);
-
+  // Provider list — used for the bulk-approve dropdown, the provider filter,
   // ── Bulk selection helpers ──
   const toggleSelect = useCallback((id) => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -2205,6 +2266,50 @@ function SenderIdsTab() {
         </div>
       )}
 
+      {/* ── Provider health · counts + last background sync per provider ── */}
+      {providers.length > 0 && (
+        <div className="senda-card" style={{padding:16,marginBottom:20}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:12}}>
+            Provider Health
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'repeat(auto-fill,minmax(220px,1fr))',gap:12}}>
+            {providers.map(p => {
+              const canSync = p.type === 'beem' || p.type === 'textify';
+              const summary = summarizeProviderSync(p);
+              return (
+                <div key={p.id || 'unassigned'} style={{border:'1px solid #eef2f7',borderRadius:12,padding:'12px 14px'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:800,color:'#0f172a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                      <div style={{fontSize:10,color:'#94a3b8',marginTop:1}}>
+                        {p.local_count.toLocaleString()} sender ID{p.local_count===1?'':'s'}
+                      </div>
+                    </div>
+                    {canSync && (
+                      <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={syncingProvider===p.type}
+                        onClick={()=>syncProviderNow(p.type)} style={{height:26,fontSize:10,whiteSpace:'nowrap',flexShrink:0}}>
+                        {syncingProvider===p.type ? 'Syncing…' : 'Sync now'}
+                      </button>
+                    )}
+                  </div>
+                  {p.id ? (
+                    <div style={{fontSize:10.5,color:p.last_sync_error?RED:'#94a3b8',marginTop:8}}>
+                      {p.last_sync_error
+                        ? `Sync error: ${p.last_sync_error}`.slice(0,80)
+                        : summary
+                          ? `Synced ${timeAgo(p.last_sync_at)} · ${summary}`
+                          : canSync ? `Never synced` : 'No live sync for this provider'}
+                    </div>
+                  ) : (
+                    <div style={{fontSize:10.5,color:'#94a3b8',marginTop:8}}>No provider chosen — use "Push" on a row to assign one.</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Filters ── */}
       <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
         <input className="senda-input" placeholder="Search name, owner, company, ID…" value={search}
@@ -2222,6 +2327,11 @@ function SenderIdsTab() {
             </button>
           ))}
         </div>
+        <select className="senda-input" value={providerFilter} onChange={e=>setProviderFilter(e.target.value)}
+          style={{height:38,width:'auto',fontSize:13}} title="Filter by provider">
+          <option value="">All providers</option>
+          {providers.map(p => <option key={p.id || 'none'} value={p.id || 'none'}>{p.name} ({p.local_count})</option>)}
+        </select>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto',display:'flex',alignItems:'center',gap:6}}>
           {(meta.total||0).toLocaleString()} record{meta.total!==1?'s':''}
           {loading && (
@@ -2307,22 +2417,43 @@ function SenderIdsTab() {
                         <span title={`${s.provider_status.provider}${s.provider_status.raw_status ? ' · ' + s.provider_status.raw_status : ''}`}>
                           <Badge status={{requested:'pending', declined:'rejected', not_registered:'skipped'}[s.provider_status.raw_status] || s.provider_status.raw_status || 'skipped'}/>
                         </span>
-                      ) : <span style={{color:'#cbd5e1'}}>—</span>}
+                      ) : <span style={{color:'#cbd5e1'}} title="No provider chosen yet">Unassigned</span>}
                     </td>
                     <td style={{fontSize:11,color:s.invoice_no?ORANGE:'#cbd5e1',fontWeight:s.invoice_no?600:400}}>{s.invoice_no||'—'}</td>
                     <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}</td>
-                    <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }} style={{whiteSpace:'nowrap'}}>
-                      <div style={{display:'flex',gap:6}}>
+                    <td onClick={(e)=>{ e.stopPropagation(); if (pushMenuId !== s.id) openDetail(s); }} style={{whiteSpace:'nowrap'}}>
+                      <div style={{display:'flex',gap:6,alignItems:'center'}}>
                         <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
-                        {(!s.provider_status || s.provider_status.provider === 'textify') && (s.status === 'pending' || s.status === 'rejected') && (
-                          <button
-                            className="senda-btn senda-btn-sm"
-                            disabled={pushingId === s.id}
-                            onClick={(e)=>{ e.stopPropagation(); pushToTextify(s); }}
-                            title="Submit this sender name to Textify now"
-                            style={{height:28,fontSize:11,whiteSpace:'nowrap',background:BRAND,color:'#fff',border:`1px solid ${BRAND}`,opacity:pushingId===s.id?.6:1,cursor:pushingId===s.id?'default':'pointer'}}>
-                            {pushingId === s.id ? 'Pushing…' : 'Push to Textify'}
-                          </button>
+                        {(s.status === 'pending' || s.status === 'rejected') && (
+                          s.provider_status ? (
+                            <button
+                              className="senda-btn senda-btn-sm"
+                              disabled={pushingId === s.id}
+                              onClick={(e)=>{ e.stopPropagation(); pushToProvider(s); }}
+                              title={`Submit this sender name to ${s.network} now`}
+                              style={{height:28,fontSize:11,whiteSpace:'nowrap',background:BRAND,color:'#fff',border:`1px solid ${BRAND}`,opacity:pushingId===s.id?.6:1,cursor:pushingId===s.id?'default':'pointer'}}>
+                              {pushingId === s.id ? 'Pushing…' : `Push to ${s.network}`}
+                            </button>
+                          ) : pushMenuId === s.id ? (
+                            <div onClick={e=>e.stopPropagation()} style={{display:'flex',gap:4,alignItems:'center'}}>
+                              <select autoFocus className="senda-input" style={{height:28,fontSize:11,width:130}}
+                                defaultValue="" onChange={e=>{ if (e.target.value) pushToProvider(s, e.target.value); }}>
+                                <option value="" disabled>Choose provider…</option>
+                                {providers.filter(p=>p.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                              </select>
+                              <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,padding:'0 8px'}}
+                                onClick={()=>setPushMenuId(null)} title="Cancel">✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              className="senda-btn senda-btn-sm"
+                              disabled={pushingId === s.id}
+                              onClick={(e)=>{ e.stopPropagation(); setPushMenuId(s.id); }}
+                              title="Choose a provider to push this sender name to"
+                              style={{height:28,fontSize:11,whiteSpace:'nowrap',background:BRAND,color:'#fff',border:`1px solid ${BRAND}`}}>
+                              Push ▾
+                            </button>
+                          )
                         )}
                       </div>
                     </td>
