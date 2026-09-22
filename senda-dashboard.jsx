@@ -2314,7 +2314,7 @@ function SenderIdsTab() {
                     <td onClick={(e)=>{ e.stopPropagation(); openDetail(s); }} style={{whiteSpace:'nowrap'}}>
                       <div style={{display:'flex',gap:6}}>
                         <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{height:28,fontSize:11,whiteSpace:'nowrap'}}>View KYC</button>
-                        {s.provider_status?.provider === 'textify' && (
+                        {s.provider_status?.provider === 'textify' && (s.status === 'pending' || s.status === 'rejected') && (
                           <button
                             className="senda-btn senda-btn-sm"
                             disabled={pushingId === s.id}
