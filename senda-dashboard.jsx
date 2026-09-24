@@ -13158,6 +13158,8 @@ function ApprovedSendersTab() {
   const [downloading, setDownloading] = useState(false);
   const [rows, setRows]           = useState([]);
   const [summary, setSummary]     = useState({ total:0, no_provider:0, with_provider:0 });
+  const [stats, setStats]         = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [meta, setMeta]           = useState({ total:0, page:1, total_pages:1, has_next:false, has_prev:false });
   const [page, setPage]           = useState(1);
   const [loading, setLoading]     = useState(false);
@@ -13190,6 +13192,15 @@ function ApprovedSendersTab() {
       if (res.success) { setRows(res.data || []); setMeta(res.meta || meta); setSummary(res.summary || { total:0, no_provider:0, with_provider:0 }); }
     } catch {} finally { setLoading(false); }
   }, [buildParams, page, onLogout]);
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/approved-senders/provider-stats`, { method:'GET' }, onLogout);
+      if (res.success) setStats(res.data);
+    } catch {} finally { setStatsLoading(false); }
+  }, [onLogout]);
+  useEffect(() => { loadStats(); }, [loadStats]);
 
   const downloadCsv = useCallback(async () => {
     setDownloading(true);
@@ -13296,6 +13307,50 @@ function ApprovedSendersTab() {
           <div style={{ display:'flex', gap:10, marginTop:12 }}>
             <Chip label="Total approved" value={summary.total} active={!noProvider} onClick={()=>setNoProvider(false)}/>
             <Chip label="No provider" value={summary.no_provider} active={noProvider} onClick={()=>setNoProvider(!noProvider)} color="#d97706"/>
+          </div>
+
+          <div style={{ marginTop:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+              <div style={{ fontSize:11, color:'#64748b', fontWeight:700, textTransform:'uppercase', letterSpacing:.4 }}>
+                Unique approved sender IDs by provider
+                <span style={{ fontWeight:500, textTransform:'none', letterSpacing:0, color:'#94a3b8' }}>
+                  {' '}· counted on the provider's platform · a name shared by several users counts once
+                </span>
+              </div>
+              <button onClick={loadStats} disabled={statsLoading} className="senda-btn senda-btn-sm"
+                style={{ height:26, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontSize:11 }}>
+                {statsLoading ? 'Fetching…' : 'Refresh'}
+              </button>
+            </div>
+            {!stats ? (
+              <div style={{ fontSize:12, color:'#94a3b8' }}>{statsLoading ? 'Fetching live counts from providers…' : 'Provider counts unavailable.'}</div>
+            ) : (
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                {stats.providers.map(p => (
+                  <div key={p.provider} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', minWidth:130 }}>
+                    <div style={{ fontSize:18, fontWeight:800, color:'#0f172a' }}>{(p.unique_approved||0).toLocaleString()}</div>
+                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>{p.provider}</div>
+                    <div style={{ fontSize:10, color: p.error ? '#dc2626' : '#94a3b8', marginTop:2 }} title={p.error || ''}>
+                      {p.error ? 'Live fetch failed — showing Senda records'
+                        : p.source === 'live' ? `Live from ${p.provider_type === 'beem' ? 'Beem' : p.provider_type === 'textify' ? 'Textify' : 'provider'} · ${p.in_senda} in Senda`
+                        : 'Senda records (no provider API)'}
+                    </div>
+                  </div>
+                ))}
+                {stats.no_provider > 0 && (
+                  <div style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #d9770655', background:'#fff', minWidth:130 }}>
+                    <div style={{ fontSize:18, fontWeight:800, color:'#d97706' }}>{stats.no_provider.toLocaleString()}</div>
+                    <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>No provider</div>
+                    <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Senda records</div>
+                  </div>
+                )}
+                <div style={{ padding:'8px 14px', borderRadius:10, border:`1.5px solid ${BRAND}`, background:`${BRAND}0d`, minWidth:130 }}>
+                  <div style={{ fontSize:18, fontWeight:800, color:BRAND }}>{(stats.unique_total_in_senda||0).toLocaleString()}</div>
+                  <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Unique in total</div>
+                  <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Senda records</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap', alignItems:'center' }}>
