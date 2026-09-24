@@ -13202,6 +13202,21 @@ function ApprovedSendersTab() {
   }, [onLogout]);
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  const [shared, setShared]               = useState(null);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [sharedError, setSharedError]     = useState('');
+  const [sharedOpen, setSharedOpen]       = useState(false);
+  const [sharedProvider, setSharedProvider] = useState('');
+  const [sharedSearch, setSharedSearch]   = useState('');
+  const loadShared = useCallback(async () => {
+    setSharedLoading(true); setSharedError('');
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/approved-senders/shared`, { method:'GET' }, onLogout);
+      if (res.success) { setShared(res.data); setSharedProvider(p => p || res.data.providers[0]?.provider || ''); }
+      else setSharedError(res.error?.message || 'Failed to load shared sender IDs.');
+    } catch (e) { setSharedError(e.message); } finally { setSharedLoading(false); }
+  }, [onLogout]);
+
   const downloadCsv = useCallback(async () => {
     setDownloading(true);
     try {
@@ -13349,6 +13364,64 @@ function ApprovedSendersTab() {
                   <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Unique in total</div>
                   <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Senda records</div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop:14 }}>
+            <button className="senda-btn senda-btn-sm" style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}
+              onClick={()=>{ const o=!sharedOpen; setSharedOpen(o); if (o && !shared) loadShared(); }}>
+              {sharedOpen ? '▾' : '▸'} Sender IDs shared by multiple users{shared ? ` (${shared.total_shared_names})` : ''}
+            </button>
+            {sharedOpen && (
+              <div style={{ marginTop:10, border:'1px solid #eef2f7', borderRadius:10, padding:12 }}>
+                {sharedLoading ? <div style={{ fontSize:12, color:'#94a3b8' }}>Analyzing…</div>
+                 : sharedError ? <div style={{ fontSize:12, color:'#dc2626' }}>{sharedError}</div>
+                 : !shared ? null
+                 : shared.providers.length === 0 ? <div style={{ fontSize:12, color:'#94a3b8' }}>No approved sender ID is shared by more than one user.</div>
+                 : (() => {
+                    const cur = shared.providers.find(p => p.provider === sharedProvider) || shared.providers[0];
+                    const q = sharedSearch.trim().toLowerCase();
+                    const names = cur.names.filter(n => !q || n.name.toLowerCase().includes(q)
+                      || n.holders.some(h => (h.email||'').toLowerCase().includes(q) || (h.account||'').toLowerCase().includes(q)));
+                    return (
+                      <>
+                        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:10 }}>
+                          {shared.providers.map(p => (
+                            <button key={p.provider} onClick={()=>setSharedProvider(p.provider)} className="senda-btn senda-btn-sm"
+                              style={{ height:30, background: cur.provider===p.provider ? BRAND : '#fff', color: cur.provider===p.provider ? '#fff' : '#475569',
+                                border:`1.5px solid ${cur.provider===p.provider ? BRAND : '#e2e8f0'}` }}>
+                              {p.provider} · {p.shared_names}
+                            </button>
+                          ))}
+                          <input value={sharedSearch} onChange={e=>setSharedSearch(e.target.value)} placeholder="Search name, email, account…"
+                            className="senda-input" style={{ height:30, width:220, marginLeft:'auto' }}/>
+                        </div>
+                        <div style={{ fontSize:12, color:'#64748b', marginBottom:8 }}>
+                          {cur.provider}: {cur.shared_names} sender name{cur.shared_names!==1?'s':''} assigned to more than one user.
+                        </div>
+                        <div style={{ maxHeight:360, overflowY:'auto' }}>
+                          {names.map(n => (
+                            <div key={n.name} style={{ padding:'8px 0', borderTop:'1px solid #f1f5f9' }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                <span style={{ padding:'2px 10px', borderRadius:99, fontSize:12, fontWeight:700, background:`${BRAND}1a`, color:BRAND }}>{n.name}</span>
+                                <span style={{ fontSize:12, color:'#64748b' }}>assigned to {n.users_count} users</span>
+                              </div>
+                              <div style={{ marginTop:4, paddingLeft:4 }}>
+                                {n.holders.map((h,i) => (
+                                  <div key={i} style={{ fontSize:12, color:'#475569' }}>
+                                    • {h.email || '—'}{h.account ? ` · ${h.account}` : ''}{h.partner ? ` (partner: ${h.partner})` : ''}
+                                    {h.approved_at ? <span style={{ color:'#94a3b8' }}> · approved {new Date(h.approved_at).toLocaleDateString()}</span> : null}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                          {names.length === 0 && <div style={{ fontSize:12, color:'#94a3b8' }}>No matches.</div>}
+                        </div>
+                      </>
+                    );
+                  })()}
               </div>
             )}
           </div>
