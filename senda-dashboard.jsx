@@ -13202,6 +13202,35 @@ function ApprovedSendersTab() {
   }, [onLogout]);
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  const [listProvider, setListProvider] = useState('');
+  const [listScope, setListScope]       = useState('all');
+  const [listData, setListData]         = useState(null);
+  const [listLoading, setListLoading]   = useState(false);
+  const [listError, setListError]       = useState('');
+  const [listSearch, setListSearch]     = useState('');
+  const loadList = useCallback(async (provider, scope) => {
+    if (!provider) return;
+    setListLoading(true); setListError('');
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/approved-senders/provider-names?provider=${encodeURIComponent(provider)}&scope=${scope}`, { method:'GET' }, onLogout);
+      if (res.success) setListData(res.data); else setListError(res.error?.message || 'Failed to load sender names.');
+    } catch (e) { setListError(e.message); } finally { setListLoading(false); }
+  }, [onLogout]);
+  useEffect(() => { if (listProvider) loadList(listProvider, listScope); }, [listProvider, listScope, loadList]);
+  const downloadList = useCallback(async () => {
+    try {
+      const token = getToken();
+      const resp = await fetch(`${BASE_URL}${BROADCAST_API}/approved-senders/provider-names?provider=${encodeURIComponent(listProvider)}&scope=${listScope}&export=csv`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials:'include',
+      });
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `sender_ids_${listProvider}_${listScope}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch {}
+  }, [listProvider, listScope]);
+
   const [shared, setShared]               = useState(null);
   const [sharedLoading, setSharedLoading] = useState(false);
   const [sharedError, setSharedError]     = useState('');
@@ -13342,7 +13371,9 @@ function ApprovedSendersTab() {
             ) : (
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                 {stats.providers.map(p => (
-                  <div key={p.provider} style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', minWidth:130 }}>
+                  <div key={p.provider} onClick={()=>{ setListScope('all'); setListSearch(''); setListProvider(p.provider); }}
+                    title="Click to list this provider's sender names"
+                    style={{ padding:'8px 14px', borderRadius:10, border:`1.5px solid ${listProvider===p.provider ? BRAND : '#e2e8f0'}`, background:'#fff', minWidth:130, cursor:'pointer' }}>
                     <div style={{ fontSize:18, fontWeight:800, color:'#0f172a' }}>{(p.unique_approved||0).toLocaleString()}</div>
                     <div style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>{p.provider}</div>
                     <div style={{ fontSize:10, color: p.error ? '#dc2626' : '#94a3b8', marginTop:2 }} title={p.error || ''}>
@@ -13373,6 +13404,55 @@ function ApprovedSendersTab() {
               </div>
             )}
           </div>
+
+          {listProvider && (
+            <div style={{ marginTop:12, border:'1px solid #eef2f7', borderRadius:10, padding:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
+                <div style={{ fontWeight:800, fontSize:13, color:'#0f172a' }}>{listProvider} · sender names</div>
+                {[['all','All'],['both','On provider & in Senda'],['provider_only','On provider, not in Senda'],['senda_only','In Senda, not on provider']].map(([id,label]) => (
+                  <button key={id} onClick={()=>setListScope(id)} className="senda-btn senda-btn-sm"
+                    style={{ height:28, background: listScope===id ? BRAND : '#fff', color: listScope===id ? '#fff' : '#475569',
+                      border:`1.5px solid ${listScope===id ? BRAND : '#e2e8f0'}` }}>
+                    {label}{listData?.counts ? ` · ${listData.counts[id]}` : ''}
+                  </button>
+                ))}
+                <input value={listSearch} onChange={e=>setListSearch(e.target.value)} placeholder="Search name or user…"
+                  className="senda-input" style={{ height:28, width:180, marginLeft:'auto' }}/>
+                <button onClick={downloadList} className="senda-btn senda-btn-sm"
+                  style={{ height:28, border:`1.5px solid ${BRAND}`, color:BRAND, background:'#fff', fontWeight:700 }}>Download CSV</button>
+                <button onClick={()=>{ setListProvider(''); setListData(null); }} className="senda-btn senda-btn-sm"
+                  style={{ height:28, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b' }}>Close</button>
+              </div>
+              {listLoading ? <div style={{ fontSize:12, color:'#94a3b8' }}>Fetching from {listProvider}…</div>
+               : listError ? <div style={{ fontSize:12, color:'#dc2626' }}>{listError}</div>
+               : listData && (
+                <>
+                  {!listData.live && <div style={{ fontSize:12, color:'#d97706', marginBottom:8 }}>
+                    {listData.error || 'No live provider list available'} — showing Senda records only.</div>}
+                  <div style={{ maxHeight:340, overflowY:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                      <thead><tr style={{ background:'#f8fafc' }}>
+                        {['Sender ID','On provider','In Senda','Users'].map(h => <th key={h} style={{ textAlign:'left', padding:'6px 10px', color:'#64748b', fontWeight:700 }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {listData.rows.filter(r => { const q = listSearch.trim().toLowerCase();
+                          return !q || r.name.toLowerCase().includes(q) || r.users.some(u => u.toLowerCase().includes(q)); }).map(r => (
+                          <tr key={r.name} style={{ borderTop:'1px solid #f1f5f9' }}>
+                            <td style={{ padding:'6px 10px', fontWeight:700, color:BRAND }}>{r.name}</td>
+                            <td style={{ padding:'6px 10px', color: r.on_provider ? '#16a34a' : r.on_provider === false ? '#dc2626' : '#94a3b8' }}>
+                              {r.on_provider == null ? '—' : r.on_provider ? 'Yes' : 'No'}</td>
+                            <td style={{ padding:'6px 10px', color: r.in_senda ? '#16a34a' : '#dc2626' }}>{r.in_senda ? 'Yes' : 'No'}</td>
+                            <td style={{ padding:'6px 10px', color:'#475569' }}>{r.users.join(', ') || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {listData.rows.length === 0 && <div style={{ fontSize:12, color:'#94a3b8', padding:8 }}>No sender names in this view.</div>}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <div style={{ marginTop:14 }}>
             <button className="senda-btn senda-btn-sm" style={{ height:32, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569', fontWeight:700 }}
