@@ -13350,6 +13350,12 @@ function ApprovedSendersTab() {
                         : p.source === 'live' ? `Live from ${p.provider_type === 'beem' ? 'Beem' : p.provider_type === 'textify' ? 'Textify' : 'provider'} · ${p.in_senda} in Senda`
                         : 'Senda records (no provider API)'}
                     </div>
+                    {p.source === 'live' && p.in_senda_not_on_provider > 0 && (
+                      <div style={{ fontSize:10, color:'#d97706', marginTop:2 }}
+                        title={`Examples: ${(p.in_senda_not_on_provider_sample || []).join(', ')}`}>
+                        {p.in_senda_not_on_provider} approved in Senda but not on {p.provider_type === 'beem' ? 'Beem' : 'provider'}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {stats.no_provider > 0 && (
