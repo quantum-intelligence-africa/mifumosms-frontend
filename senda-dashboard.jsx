@@ -8837,7 +8837,7 @@ function SmsIntelligenceTab() {
     adminFetch('/api/admin/v1/sms-intelligence/run-now', { method:'POST' }, onLogout)
       .then(res => {
         if (res.success) {
-          toast(res.message || 'Uchambuzi umekamilika.', 'success');
+          toast(res.message || 'Analysis complete.', 'success');
           setRunResult({ ...res.data, message: res.message });
           fetchOverview(); fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns(); fetchReview();
         } else {
@@ -8846,6 +8846,47 @@ function SmsIntelligenceTab() {
         }
       }).catch(e => { toast(e.message, 'error'); setRunResult({ error: e.message }); })
       .finally(() => setRunning(false));
+  };
+
+  // ── Process entire backlog (background) ─────────────────────────────────
+  // "Run Analysis Now" is capped at a couple of items per click so the
+  // request can't outrun gunicorn/nginx's timeout — fine for topping up, but
+  // a large never-scanned backlog would take hundreds of clicks. This instead
+  // queues a Celery task (see run_full_backlog in sms_intelligence.py) that
+  // keeps working through the whole backlog with no HTTP timeout involved.
+  // There's no push channel for task progress, so this just polls the normal
+  // summary endpoint every few seconds and stops once the backlog hits 0.
+  const [queuingFull, setQueuingFull] = useState(false);
+  const [fullBacklogActive, setFullBacklogActive] = useState(false);
+
+  useEffect(() => {
+    if (!fullBacklogActive) return;
+    const poll = setInterval(() => {
+      fetchOverview();
+      fetchReview();
+    }, 8000);
+    return () => clearInterval(poll);
+  }, [fullBacklogActive, fetchOverview, fetchReview]);
+
+  useEffect(() => {
+    if (fullBacklogActive && summary && (summary.pending_classification_count || 0) === 0) {
+      setFullBacklogActive(false);
+      toast('Backlog fully processed.', 'success');
+      fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns();
+    }
+  }, [fullBacklogActive, summary, fetchGroups, fetchSegments, fetchOpportunities, fetchPatterns]);
+
+  const runFullBacklog = () => {
+    setQueuingFull(true);
+    adminFetch('/api/admin/v1/sms-intelligence/run-full-backlog', { method:'POST' }, onLogout)
+      .then(res => {
+        if (res.success) {
+          toast(res.message || 'Started.', 'success');
+          if (res.data?.queued) setFullBacklogActive(true);
+        } else {
+          toast(res.error?.message || 'Failed to start.', 'error');
+        }
+      }).catch(e => toast(e.message, 'error')).finally(() => setQueuingFull(false));
   };
 
   if (loading && !summary) return <LoadingState label="Loading SMS Intelligence…"/>;
@@ -8868,9 +8909,35 @@ function SmsIntelligenceTab() {
               style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6, opacity:running?0.85:1 }}>
               {running ? <><Spinner size={14}/> Analyzing…</> : <><RefreshCw size={14} strokeWidth={2.2}/> Run Analysis Now</>}
             </button>
+            {summary?.pending_classification_count > 2 && (
+              <button className="senda-btn senda-btn-sm" onClick={runFullBacklog} disabled={queuingFull || fullBacklogActive}
+                title="Process the entire backlog in the background instead of a couple of items at a time"
+                style={{ height:34, background:'#fff', color:BRAND, border:`1.5px solid ${BRAND}`, display:'inline-flex', alignItems:'center', gap:6, opacity:(queuingFull||fullBacklogActive)?0.7:1 }}>
+                {fullBacklogActive
+                  ? <><Spinner size={14} color={BRAND}/> Processing in background…</>
+                  : queuingFull
+                    ? <><Spinner size={14} color={BRAND}/> Starting…</>
+                    : <>Process Entire Backlog</>}
+              </button>
+            )}
           </>
         }
       />
+
+      {fullBacklogActive && (
+        <div className="senda-card" style={{
+          display:'flex', alignItems:'center', gap:12, padding:'14px 18px', marginBottom:16,
+          background:'#eff6ff', border:'1px solid #bfdbfe',
+        }}>
+          <Spinner size={20} color={BRAND}/>
+          <div>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#1e40af' }}>Processing the entire backlog in the background</div>
+            <div style={{ fontSize:12, color:'#3b5c92' }}>
+              {compactNumber(summary?.pending_classification_count)} pattern(s) still awaiting their first scan — this page refreshes automatically every few seconds. You can navigate away; it keeps running on the server either way.
+            </div>
+          </div>
+        </div>
+      )}
 
       {!running && summary && summary.llm_provider === 'mock' && (
         <div className="senda-card" style={{
