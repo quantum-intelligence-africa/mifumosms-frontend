@@ -8864,9 +8864,18 @@ function SmsIntelligenceTab() {
     const poll = setInterval(() => {
       fetchOverview();
       fetchReview();
+      // Group/segment/opportunity stats refresh server-side every few chunks
+      // during the run (see FULL_BACKLOG_REFRESH_EVERY_N_CHUNKS in
+      // tasks_sms_intel.py), not just once at the very end — pull them here
+      // too so the Message Groups table shows live progress instead of
+      // sitting at 0 for the whole run.
+      fetchGroups();
+      fetchSegments();
+      fetchOpportunities();
+      fetchPatterns();
     }, 8000);
     return () => clearInterval(poll);
-  }, [fullBacklogActive, fetchOverview, fetchReview]);
+  }, [fullBacklogActive, fetchOverview, fetchReview, fetchGroups, fetchSegments, fetchOpportunities, fetchPatterns]);
 
   useEffect(() => {
     if (fullBacklogActive && summary && (summary.pending_classification_count || 0) === 0) {
