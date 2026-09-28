@@ -8541,11 +8541,11 @@ function SmsIntelProviderSettingsDrawer({ onClose, onSaved }) {
       body: JSON.stringify({ llm_provider: llmProvider, embedding_provider: embeddingProvider, credentials }),
     }, onLogout).then(res => {
       if (res.success) {
-        toast('Mipangilio ya AI imehifadhiwa.', 'success');
+        toast('AI provider settings saved.', 'success');
         onSaved?.();
         load();
       } else {
-        toast(res.error?.message || 'Imeshindwa kuhifadhi mipangilio.', 'error');
+        toast(res.error?.message || 'Failed to save settings.', 'error');
       }
     }).catch(e => toast(e.message, 'error')).finally(() => setSaving(false));
   };
@@ -8617,7 +8617,12 @@ function SmsIntelligenceTab() {
   const [providerSettingsOpen, setProviderSettingsOpen] = useState(false);
 
   // ── Filters ────────────────────────────────────────────────────────────
-  const [range, setRange]         = useState('30d');
+  // Defaults to "All time" rather than "Last 30 days": on a fresh or
+  // historically-backlogged account the pipeline ingests oldest-first, so a
+  // 30-day window can show all-zero stats for weeks while a large backlog is
+  // still being classified — "All time" always reflects real progress instead
+  // of looking broken.
+  const [range, setRange]         = useState('all');
   const [dateFrom, setDateFrom]   = useState('');
   const [dateTo, setDateTo]       = useState('');
   const [clientF, setClientF]     = useState('');
@@ -8640,7 +8645,7 @@ function SmsIntelligenceTab() {
     return qs;
   }, [range, dateFrom, dateTo, debFilters]);
 
-  const resetFilters = () => { setRange('30d'); setDateFrom(''); setDateTo(''); setClientF(''); setSenderF(''); };
+  const resetFilters = () => { setRange('all'); setDateFrom(''); setDateTo(''); setClientF(''); setSenderF(''); };
 
   // ── Overview: summary + by-purpose ────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -8701,15 +8706,15 @@ function SmsIntelligenceTab() {
 
   const viewSegmentClients = (segment) => {
     adminFetch(`/api/admin/v1/sms-intelligence/segments/${segment.id}/clients`, {}, onLogout)
-      .then(res => setSegmentModal({ title: `Wateja — ${segment.name}`, clients: res.success ? (res.data || []) : [] }))
-      .catch(() => setSegmentModal({ title: `Wateja — ${segment.name}`, clients: [] }));
+      .then(res => setSegmentModal({ title: `Clients — ${segment.name}`, clients: res.success ? (res.data || []) : [] }))
+      .catch(() => setSegmentModal({ title: `Clients — ${segment.name}`, clients: [] }));
   };
 
   const pinSegment = (segment) => {
     adminFetch(`/api/admin/v1/sms-intelligence/segments/${segment.id}/pin`, { method:'POST' }, onLogout)
       .then(res => {
-        if (res.success) { toast('Kundi limehifadhiwa.', 'success'); fetchSegments(); }
-        else toast(res.error?.message || 'Imeshindwa kuhifadhi kundi.', 'error');
+        if (res.success) { toast('Segment pinned.', 'success'); fetchSegments(); }
+        else toast(res.error?.message || 'Failed to pin segment.', 'error');
       }).catch(e => toast(e.message, 'error'));
   };
 
@@ -8737,7 +8742,7 @@ function SmsIntelligenceTab() {
   const dismissOpportunity = (opp) => {
     adminFetch(`/api/admin/v1/sms-intelligence/campaign-opportunities/${opp.id}/dismiss`, { method:'POST' }, onLogout)
       .then(res => {
-        if (res.success) { toast('Fursa imeondolewa.', 'info'); setOpportunities(prev => prev.filter(o => o.id !== opp.id)); }
+        if (res.success) { toast('Opportunity dismissed.', 'info'); setOpportunities(prev => prev.filter(o => o.id !== opp.id)); }
       }).catch(e => toast(e.message, 'error'));
   };
 
@@ -8745,7 +8750,7 @@ function SmsIntelligenceTab() {
     adminFetch(`/api/admin/v1/sms-intelligence/campaign-opportunities/${opp.id}/action`, { method:'POST' }, onLogout)
       .then(res => {
         if (res.success) {
-          toast('Umeshughulikia fursa hii. Tumia Broadcast kuunda kampeni.', 'success');
+          toast('Marked as actioned — use Broadcast to create the campaign.', 'success');
           setOpportunities(prev => prev.filter(o => o.id !== opp.id));
         }
       }).catch(e => toast(e.message, 'error'));
@@ -8767,24 +8772,24 @@ function SmsIntelligenceTab() {
       method:'POST', body: JSON.stringify({ name: pattern.name }),
     }, onLogout).then(res => {
       if (res.success) {
-        toast(`Kikundi "${res.data.name}" kimeundwa.`, 'success');
+        toast(`Group "${res.data.name}" created.`, 'success');
         setPatterns(prev => prev.filter(p => p.id !== pattern.id));
         fetchGroups();
-      } else toast(res.error?.message || 'Imeshindwa kuunda kikundi.', 'error');
+      } else toast(res.error?.message || 'Failed to create group.', 'error');
     }).catch(e => toast(e.message, 'error'));
   };
 
   const mergePattern = (pattern) => {
-    if (!mergeChoice) { toast('Chagua kikundi cha kuunganisha nacho.', 'error'); return; }
+    if (!mergeChoice) { toast('Choose a group to merge into first.', 'error'); return; }
     adminFetch(`/api/admin/v1/sms-intelligence/new-patterns/${pattern.id}/merge`, {
       method:'POST', body: JSON.stringify({ target_group_id: mergeChoice }),
     }, onLogout).then(res => {
       if (res.success) {
-        toast(`Imeunganishwa na "${res.data.name}".`, 'success');
+        toast(`Merged into "${res.data.name}".`, 'success');
         setPatterns(prev => prev.filter(p => p.id !== pattern.id));
         setMergingId(null); setMergeChoice('');
         fetchGroups();
-      } else toast(res.error?.message || 'Imeshindwa kuunganisha.', 'error');
+      } else toast(res.error?.message || 'Failed to merge.', 'error');
     }).catch(e => toast(e.message, 'error'));
   };
 
@@ -8810,12 +8815,12 @@ function SmsIntelligenceTab() {
 
   const correctTemplate = (item) => {
     const categoryId = correctionChoice[item.id];
-    if (!categoryId) { toast('Chagua kategoria sahihi kwanza.', 'error'); return; }
+    if (!categoryId) { toast('Choose the correct category first.', 'error'); return; }
     adminFetch(`/api/admin/v1/sms-intelligence/needs-review/${item.id}/correct`, {
       method:'POST', body: JSON.stringify({ category_id: categoryId }),
     }, onLogout).then(res => {
-      if (res.success) { toast('Imesahihishwa.', 'success'); setReviewItems(prev => prev.filter(r => r.id !== item.id)); }
-      else toast(res.error?.message || 'Imeshindwa kusahihisha.', 'error');
+      if (res.success) { toast('Corrected.', 'success'); setReviewItems(prev => prev.filter(r => r.id !== item.id)); }
+      else toast(res.error?.message || 'Failed to correct.', 'error');
     }).catch(e => toast(e.message, 'error'));
   };
 
@@ -8836,8 +8841,8 @@ function SmsIntelligenceTab() {
           setRunResult({ ...res.data, message: res.message });
           fetchOverview(); fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns(); fetchReview();
         } else {
-          toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
-          setRunResult({ error: res.error?.message || 'Imeshindwa kuanzisha uchambuzi.' });
+          toast(res.error?.message || 'Failed to run analysis.', 'error');
+          setRunResult({ error: res.error?.message || 'Failed to run analysis.' });
         }
       }).catch(e => { toast(e.message, 'error'); setRunResult({ error: e.message }); })
       .finally(() => setRunning(false));
@@ -8852,7 +8857,7 @@ function SmsIntelligenceTab() {
     <div className="senda-fade-in">
       <SectionHeader
         title="SMS Intelligence"
-        subtitle="Hivi ndivyo wateja wako wanavyotumia SENDA — makundi ya SMS, wanaotumia zaidi, na fursa za kampeni."
+        subtitle="How your clients are using SENDA — SMS groups, top senders, and campaign opportunities."
         actions={
           <>
             <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setProviderSettingsOpen(true)}
@@ -8861,11 +8866,27 @@ function SmsIntelligenceTab() {
             </button>
             <button className="senda-btn senda-btn-sm" onClick={runAnalysisNow} disabled={running}
               style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6, opacity:running?0.85:1 }}>
-              {running ? <><Spinner size={14}/> Inachambua…</> : <><RefreshCw size={14} strokeWidth={2.2}/> Run Analysis Now</>}
+              {running ? <><Spinner size={14}/> Analyzing…</> : <><RefreshCw size={14} strokeWidth={2.2}/> Run Analysis Now</>}
             </button>
           </>
         }
       />
+
+      {!running && summary && summary.llm_provider === 'mock' && (
+        <div className="senda-card" style={{
+          display:'flex', alignItems:'center', gap:12, padding:'14px 18px', marginBottom:16,
+          background:'#fffbeb', border:'1px solid #fde68a',
+        }}>
+          <AlertTriangle size={20} color={AMBER}/>
+          <div>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#92400e' }}>No AI provider configured</div>
+            <div style={{ fontSize:12, color:'#92400e' }}>
+              Classification is running in Mock mode — every message lands in Needs Review with 0% confidence, so "SMS Analyzed" and "Message Groups" will stay empty until a real provider is set.{' '}
+              <button onClick={()=>setProviderSettingsOpen(true)} style={{ background:'none', border:'none', padding:0, color:BRAND, fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12 }}>Open Provider Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {running && (
         <div className="senda-card" style={{
@@ -8874,9 +8895,9 @@ function SmsIntelligenceTab() {
         }}>
           <Spinner size={20} color={BRAND}/>
           <div>
-            <div style={{ fontSize:13.5, fontWeight:700, color:'#1e40af' }}>Inachambua SMS mpya…</div>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#1e40af' }}>Analyzing new SMS…</div>
             <div style={{ fontSize:12, color:'#3b5c92' }}>
-              Kila ujumbe mpya unatumwa kwa mtoa huduma wa AI kuchambuliwa — hii inaweza kuchukua sekunde chache mpaka dakika moja au mbili. Usifunge au kubofya tena mpaka ikamilike.
+              Each new message pattern is sent to the AI provider for classification — this can take a few seconds up to a minute or two. Please don't close the page or click again until it finishes.
             </div>
           </div>
         </div>
@@ -8892,7 +8913,7 @@ function SmsIntelligenceTab() {
           <div style={{ fontSize:12.5, color: runResult.error ? '#991b1b' : '#166534' }}>
             {runResult.error || runResult.message}
             {!runResult.error && runResult.pending_remaining > 0 && (
-              <> — <button onClick={runAnalysisNow} style={{ background:'none', border:'none', padding:0, color:BRAND, fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12.5 }}>bofya tena kuendelea</button></>
+              <> — <button onClick={runAnalysisNow} style={{ background:'none', border:'none', padding:0, color:BRAND, fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12.5 }}>click again to continue</button></>
             )}
           </div>
         </div>
@@ -8944,7 +8965,8 @@ function SmsIntelligenceTab() {
         <StatCard title="Use Cases" value={compactNumber(summary?.total_use_cases)} icon={Target} accent={CYAN}/>
         <StatCard title="Most Common Category" value={summary?.most_common_category || '—'} icon={Sparkles} accent={AMBER}/>
         <StatCard title="Message Groups" value={compactNumber(summary?.total_groups)} icon={Layers} accent={GREEN}/>
-        <StatCard title="Needs Review" value={compactNumber(summary?.needs_review_count)} icon={AlertTriangle} accent={RED}/>
+        <StatCard title="Needs Review" value={compactNumber(summary?.needs_review_count)} desc="All-time backlog, not filtered by date" icon={AlertTriangle} accent={RED}/>
+        <StatCard title="Awaiting First Scan" value={compactNumber(summary?.pending_classification_count)} desc="Never sent to the AI provider yet" icon={Clock} accent={AMBER}/>
       </div>
 
       {/* SMS by Purpose */}
@@ -9117,7 +9139,7 @@ function SmsIntelligenceTab() {
                   {mergingId === p.id ? (
                     <>
                       <select className="senda-input" value={mergeChoice} onChange={e=>setMergeChoice(e.target.value)} style={{ height:28, fontSize:12 }}>
-                        <option value="">Chagua kikundi…</option>
+                        <option value="">Choose group…</option>
                         {allGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                       </select>
                       <button className="senda-btn senda-btn-sm" style={{ height:28, fontSize:12, background:BRAND, color:'#fff', border:'none' }}
@@ -9157,8 +9179,8 @@ function SmsIntelligenceTab() {
                     <select className="senda-input" style={{ height:30, fontSize:12 }}
                       value={correctionChoice[item.id] || ''}
                       onChange={e=>setCorrectionChoice(prev => ({ ...prev, [item.id]: e.target.value }))}>
-                      <option value="">Chagua kategoria…</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name_sw}</option>)}
+                      <option value="">Choose category…</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name_en}</option>)}
                     </select>
                   </td>
                   <td>
@@ -9203,7 +9225,7 @@ function SmsIntelligenceTab() {
         <SmsIntelListModal
           title={`Messages — ${messagesModal.title}`}
           items={messagesModal.messages}
-          empty="Bado hakuna kikundi kilichoidhinishwa kwa fursa hii."
+          empty="No group has been linked to this opportunity yet."
           onClose={()=>setMessagesModal(null)}
           renderItem={(m, i) => (
             <div key={i} style={{ fontSize:12.5, color:'#334155', background:'#f8fafc', border:'1px solid #eef2f7', borderRadius:8, padding:'10px 12px', marginBottom:8 }}>{m}</div>
