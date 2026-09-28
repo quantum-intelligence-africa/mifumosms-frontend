@@ -8825,17 +8825,22 @@ function SmsIntelligenceTab() {
   // section immediately instead of just showing a "queued" toast that never
   // gets followed up.
   const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState(null); // last {scanned, classified, pending_remaining} or {error}
   const runAnalysisNow = () => {
     setRunning(true);
+    setRunResult(null);
     adminFetch('/api/admin/v1/sms-intelligence/run-now', { method:'POST' }, onLogout)
       .then(res => {
         if (res.success) {
           toast(res.message || 'Uchambuzi umekamilika.', 'success');
+          setRunResult({ ...res.data, message: res.message });
           fetchOverview(); fetchGroups(); fetchSegments(); fetchOpportunities(); fetchPatterns(); fetchReview();
         } else {
           toast(res.error?.message || 'Imeshindwa kuanzisha uchambuzi.', 'error');
+          setRunResult({ error: res.error?.message || 'Imeshindwa kuanzisha uchambuzi.' });
         }
-      }).catch(e => toast(e.message, 'error')).finally(() => setRunning(false));
+      }).catch(e => { toast(e.message, 'error'); setRunResult({ error: e.message }); })
+      .finally(() => setRunning(false));
   };
 
   if (loading && !summary) return <LoadingState label="Loading SMS Intelligence…"/>;
@@ -8855,12 +8860,43 @@ function SmsIntelligenceTab() {
               <Settings size={14} strokeWidth={2.2}/> Provider Settings
             </button>
             <button className="senda-btn senda-btn-sm" onClick={runAnalysisNow} disabled={running}
-              style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
-              {running ? <Spinner size={14}/> : <RefreshCw size={14} strokeWidth={2.2}/>} Run Analysis Now
+              style={{ height:34, background:BRAND, color:'#fff', border:'none', display:'inline-flex', alignItems:'center', gap:6, opacity:running?0.85:1 }}>
+              {running ? <><Spinner size={14}/> Inachambua…</> : <><RefreshCw size={14} strokeWidth={2.2}/> Run Analysis Now</>}
             </button>
           </>
         }
       />
+
+      {running && (
+        <div className="senda-card" style={{
+          display:'flex', alignItems:'center', gap:12, padding:'14px 18px', marginBottom:16,
+          background:'#eff6ff', border:'1px solid #bfdbfe',
+        }}>
+          <Spinner size={20} color={BRAND}/>
+          <div>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#1e40af' }}>Inachambua SMS mpya…</div>
+            <div style={{ fontSize:12, color:'#3b5c92' }}>
+              Kila ujumbe mpya unatumwa kwa mtoa huduma wa AI kuchambuliwa — hii inaweza kuchukua sekunde chache mpaka dakika moja au mbili. Usifunge au kubofya tena mpaka ikamilike.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!running && runResult && (
+        <div className="senda-card" style={{
+          display:'flex', alignItems:'center', gap:10, padding:'12px 18px', marginBottom:16,
+          background: runResult.error ? '#fef2f2' : '#f0fdf4',
+          border: `1px solid ${runResult.error ? '#fecaca' : '#bbf7d0'}`,
+        }}>
+          {runResult.error ? <AlertTriangle size={18} color="#dc2626"/> : <CheckCircle2 size={18} color="#16a34a"/>}
+          <div style={{ fontSize:12.5, color: runResult.error ? '#991b1b' : '#166534' }}>
+            {runResult.error || runResult.message}
+            {!runResult.error && runResult.pending_remaining > 0 && (
+              <> — <button onClick={runAnalysisNow} style={{ background:'none', border:'none', padding:0, color:BRAND, fontWeight:700, cursor:'pointer', textDecoration:'underline', fontSize:12.5 }}>bofya tena kuendelea</button></>
+            )}
+          </div>
+        </div>
+      )}
 
       {providerSettingsOpen && (
         <SmsIntelProviderSettingsDrawer onClose={()=>setProviderSettingsOpen(false)} onSaved={()=>{}}/>
