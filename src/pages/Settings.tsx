@@ -968,14 +968,12 @@ const Settings = () => {
     }
   ];
 
-  const copyToClipboard = (text: string, toastOverride?: { title: string; description: string }) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast(
-      toastOverride ?? {
-        title: "Copied to clipboard",
-        description: "The API key has been copied to your clipboard."
-      }
-    );
+    toast({
+      title: "Copied to clipboard",
+      description: "The API key has been copied to your clipboard."
+    });
   };
 
 
