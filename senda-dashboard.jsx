@@ -2554,7 +2554,7 @@ function TextifySenderNameModal({ onClose, onSaved, editing }) {
   }, [onClose]);
 
   const submit = async () => {
-    const trimmed = name.trim();
+    const trimmed = name.trim().toUpperCase();
     if (!trimmed) { showToast('Name is required', 'error'); return; }
     if (trimmed.length > 11) { showToast('Name must be at most 11 characters', 'error'); return; }
     if (!editing && !reason.trim()) { showToast('Reason is required', 'error'); return; }
@@ -2611,7 +2611,7 @@ function TextifySenderNameModal({ onClose, onSaved, editing }) {
 
         <div style={{padding:'18px 22px',overflowY:'auto',flex:1}}>
           <label style={FIELD_LABEL}>Sender name <span style={{color:'#cbd5e1',fontWeight:500}}>· max 11 chars</span></label>
-          <input className="senda-input" value={name} onChange={e=>setName(e.target.value)} maxLength={11}
+          <input className="senda-input" value={name} onChange={e=>setName(e.target.value.toUpperCase())} maxLength={11}
             placeholder="e.g. MYBRAND" style={{...inputSm,marginBottom:14,textTransform:'uppercase'}}/>
 
           {!editing && (
