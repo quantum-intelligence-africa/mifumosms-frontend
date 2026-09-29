@@ -76,7 +76,7 @@ interface SettingsAPIProps {
   setNewWebhookForm: (form: { url: string; events: string[] }) => void;
   showApiKey: Record<string, boolean>;
   setShowApiKey: (state: Record<string, boolean>) => void;
-  copyToClipboard: (text: string) => void;
+  copyToClipboard: (text: string, toastOverride?: { title: string; description: string }) => void;
   handleCreateAPIKey: () => void;
   handleRevokeAPIKey: (keyId: string) => void;
   handleRegenerateAPIKey: (keyId: string) => void;
@@ -215,18 +215,30 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                     </DropdownMenu>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <code className="text-xs bg-gradient-surface px-2 py-1 rounded flex-1 font-mono break-all">
+                    <code
+                      className="text-xs bg-gradient-surface px-2 py-1 rounded flex-1 font-mono break-all"
+                      title={t("settings.api.preview_masked_hint")}
+                    >
                       {key.api_key_preview}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => copyToClipboard(key.api_key_preview)}
+                      title={t("settings.api.preview_masked_hint")}
+                      onClick={() =>
+                        copyToClipboard(key.api_key_preview, {
+                          title: t("settings.api.preview_copied_title"),
+                          description: t("settings.api.preview_copied_description"),
+                        })
+                      }
                       className="h-6 w-6"
                     >
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>
+                  <p className="text-[11px] text-text-subtle mb-2">
+                    {t("settings.api.preview_masked_hint")}
+                  </p>
                   <div className="flex items-center justify-between text-xs text-text-subtle">
                     <span>{t("settings.api.last_used", { date: formatDate(key.last_used) })}</span>
                     <Badge
