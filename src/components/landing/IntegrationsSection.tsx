@@ -143,7 +143,7 @@ const CodeSnippet = ({ t }: { t: TFn }) => {
       </div>
 
       {/* Snippet body */}
-      <pre className="overflow-x-auto px-4 py-4 font-mono text-[11px] leading-relaxed text-white">
+      <pre className="overflow-x-auto whitespace-pre-wrap break-all px-4 py-4 font-mono text-[10px] sm:text-[11px] leading-relaxed text-white">
         <code>
           <span className="font-semibold text-blue-300">POST</span>{" "}
           <span className="text-emerald-300">
@@ -182,7 +182,7 @@ const CodeSnippet = ({ t }: { t: TFn }) => {
         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white">
           {t("landing.integrations.response_200")}
         </p>
-        <pre className="mt-1 font-mono text-[10px] leading-relaxed text-white">
+        <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-white">
           <code>
             <span className="text-white">{"{ "}</span>
             <span className="text-sky-300">"success"</span>

@@ -123,22 +123,22 @@ const IvrTreeVisual = ({ t }: { t: TFn }) => (
 );
 
 const SoftphoneVisual = ({ t }: { t: TFn }) => (
-  <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-5 py-4 text-white">
-    <div className="flex items-center justify-between">
+  <div className="relative h-60 w-full overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-5 py-4 text-white">
+    <div className="flex items-center justify-between gap-2">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
         {t("landing.voice_ivr_section.softphone_on_call")}
       </span>
-      <span className="text-[10px] text-gray-400">SIP · TZ-DAR-01</span>
+      <span className="text-[10px] text-white/60">SIP · TZ-DAR-01</span>
     </div>
 
     <div className="mt-4 flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-semibold">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-semibold">
         FM
       </div>
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-semibold">Fatuma Mwakalinga</p>
-        <p className="truncate text-[11px] text-gray-400">
+        <p className="truncate text-[11px] text-white/60">
           +255 754 118 220 · {t("landing.voice_ivr_section.premier_customer")}
         </p>
       </div>
@@ -151,8 +151,8 @@ const SoftphoneVisual = ({ t }: { t: TFn }) => (
         { Icon: PhoneForwarded, label: t("landing.voice_ivr_section.softphone_transfer") },
         { Icon: Users, label: t("landing.voice_ivr_section.softphone_conf") },
       ].map(({ Icon, label }) => (
-        <div key={label} className="flex flex-col items-center gap-1 text-gray-300">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+        <div key={label} className="flex flex-col items-center gap-1 text-gray-200">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
             <Icon className="h-3.5 w-3.5" />
           </span>
           <span className="text-[9px] font-medium">{label}</span>
@@ -200,10 +200,10 @@ const SentimentVisual = ({ t }: { t: TFn }) => {
         </span>
       </div>
 
-      <div className="mt-4 flex h-28 items-end justify-between gap-1.5">
+      <div className="mt-4 flex items-end justify-between gap-1.5">
         {dayLabels.map((label, i) => (
           <div key={label} className="flex flex-1 flex-col items-center gap-1">
-            <div className="flex h-full w-full items-end">
+            <div className="flex h-28 w-full items-end">
               <div
                 className={cn("w-full rounded-t-md bg-gradient-to-t shadow-sm", tones[i])}
                 style={{ height: `${values[i]}%` }}

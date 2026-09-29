@@ -180,10 +180,10 @@ const ChatDashboard = ({ t }: { t: TFn }) => {
               {t("landing.analytics.conversations_unit")}
             </span>
           </div>
-          <div className="mt-3 flex h-24 items-end justify-between gap-1.5">
+          <div className="mt-3 flex items-end justify-between gap-1.5">
             {volumeBars.map((b) => (
               <div key={b.d} className="flex flex-1 flex-col items-center gap-1">
-                <div className="flex h-full w-full items-end">
+                <div className="flex h-24 w-full items-end">
                   <div
                     className="w-full rounded-t-md bg-gradient-to-t from-blue-500 to-blue-400 shadow-sm"
                     style={{ height: `${b.v}%` }}

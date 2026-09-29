@@ -28,6 +28,7 @@ import { LandingHeader } from "@/components/layout/LandingHeader";
 import { LandingFooter } from "@/components/layout/LandingFooter";
 import OmnichannelInboxSection from "@/components/landing/OmnichannelInboxSection";
 import VoiceAndIvrSection from "@/components/landing/VoiceAndIvrSection";
+import IvrPricingSection from "@/components/landing/IvrPricingSection";
 import AgentWorkspaceSection from "@/components/landing/AgentWorkspaceSection";
 import AiCopilotsSection from "@/components/landing/AiCopilotsSection";
 import AnalyticsSection from "@/components/landing/AnalyticsSection";
@@ -101,6 +102,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   const [currentBusiness, setCurrentBusiness] = useState(0);
   const [isPhoneHovered, setIsPhoneHovered] = useState(false);
   const [businessCycleCount, setBusinessCycleCount] = useState(0); // Track cycles for companies with many messages
+  const [pricingTab, setPricingTab] = useState<'sms' | 'ivr'>('sms');
   const location = useLocation();
 
   // Scroll-based animations for the desktop section
@@ -840,7 +842,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
               </button>
 
-              <div className="animate-fade-in-right scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden">
+              <div className="animate-fade-in-right origin-top scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden -mb-16 sm:-mb-10 md:mb-0">
               <SMSAnimation />
               </div>
             </div>
@@ -1024,9 +1026,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 { bg: 'bg-green-50', border: 'border-green-300', icon: 'text-green-600', title: 'text-green-700' },
               ];
               const colors = colorSchemes[index % colorSchemes.length];
-              const isEven = index % 2 === 0;
               return (
-                <div key={index} className={`flex items-start gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
+                <div key={index} className="flex items-start gap-4">
                   <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 ${colors.bg} ${colors.border} flex flex-col items-center justify-center shadow-sm`}>
                     <feature.icon className={`w-8 h-8 mb-2 ${colors.icon}`} />
                     <h3 className={`font-bold text-xs text-center leading-tight px-1 ${colors.title}`}>
@@ -1132,16 +1133,61 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           {/* Section header */}
           <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
             <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
-              {t('landing.pricing.heading_line1')}{' '}
-              <span className="text-blue-200">
-                {t('landing.pricing.heading_line2')}
-              </span>
+              {pricingTab === 'sms' ? (
+                <>
+                  {t('landing.pricing.heading_line1')}{' '}
+                  <span className="text-blue-200">{t('landing.pricing.heading_line2')}</span>
+                </>
+              ) : (
+                <>
+                  {t('landing.ivr_pricing.heading_line1')}{' '}
+                  <span className="text-blue-200">{t('landing.ivr_pricing.heading_line2')}</span>
+                </>
+              )}
             </h2>
-            <p className="mt-3 text-base text-white leading-relaxed">
-              {t('landing.pricing.subtitle')}
-            </p>
+            {pricingTab === 'sms' && (
+              <p className="mt-3 text-base text-white leading-relaxed">
+                {t('landing.pricing.subtitle')}
+              </p>
+            )}
           </div>
 
+          {/* Tab switcher */}
+          <div className="mt-6 flex items-center justify-center">
+            <div className="inline-flex items-center gap-1 rounded-full bg-white/10 p-1 backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => setPricingTab('sms')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  pricingTab === 'sms'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                {t('landing.pricing.tab_sms')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPricingTab('ivr')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  pricingTab === 'ivr'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                {t('landing.pricing.tab_ivr')}
+              </button>
+            </div>
+          </div>
+
+          {pricingTab === 'ivr' && (
+            <div className="mt-8">
+              <IvrPricingSection />
+            </div>
+          )}
+
+          {pricingTab === 'sms' && (
+          <>
           {/* Plan cards */}
           <div
             ref={pricingReveal.containerRef}
@@ -1319,6 +1365,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       </section>
 
