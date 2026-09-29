@@ -1,5 +1,5 @@
 import React from "react";
-import { Key, Webhook, Plus, MoreVertical, Copy, RefreshCw, Trash2, Link2 } from "lucide-react";
+import { Key, Webhook, Plus, MoreVertical, Copy, Eye, RefreshCw, Trash2, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +80,7 @@ interface SettingsAPIProps {
   handleCreateAPIKey: () => void;
   handleRevokeAPIKey: (keyId: string) => void;
   handleRegenerateAPIKey: (keyId: string) => void;
+  handleRevealAPIKey: (keyId: string) => void;
   handleCreateWebhook: () => void;
   handleToggleWebhook: (webhookId: string) => void;
   handleDeleteWebhook: (webhookId: string) => void;
@@ -103,6 +104,7 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
   handleCreateAPIKey,
   handleRevokeAPIKey,
   handleRegenerateAPIKey,
+  handleRevealAPIKey,
   handleCreateWebhook,
   handleToggleWebhook,
   handleDeleteWebhook,
@@ -197,6 +199,13 @@ export const SettingsAPI: React.FC<SettingsAPIProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="glass">
+                        <DropdownMenuItem
+                          className="text-xs"
+                          onClick={() => handleRevealAPIKey(key.id)}
+                        >
+                          <Eye className="w-3 h-3 mr-2" />
+                          {t("settings.api.view_key")}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-xs"
                           onClick={() => handleRegenerateAPIKey(key.id)}

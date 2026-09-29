@@ -292,6 +292,7 @@ const Settings = () => {
     secret_key: string;
   } | null>(null);
   const [showCreatedKeyDialog, setShowCreatedKeyDialog] = useState(false);
+  const [createdKeyDialogMode, setCreatedKeyDialogMode] = useState<'created' | 'regenerated' | 'revealed'>('created');
 
   // Notification settings state (separate for backwards compatibility)
   const [notificationSettings, setNotificationSettings] = useState({
@@ -752,6 +753,7 @@ const Settings = () => {
           api_key: response.data.key,
           secret_key: response.data.key // API returns single key, not separate secret
         });
+        setCreatedKeyDialogMode('created');
         setShowCreatedKeyDialog(true);
         setShowApiKeyDialog(false);
         setNewApiKeyForm({ key_name: "", permissions: {} });
@@ -802,6 +804,7 @@ const Settings = () => {
           api_key: response.data.api_key,
           secret_key: response.data.secret_key || response.data.api_key
         });
+        setCreatedKeyDialogMode('regenerated');
         setShowCreatedKeyDialog(true);
         await loadAPISettings();
       }
@@ -810,6 +813,30 @@ const Settings = () => {
       toast({
         title: "Failed to regenerate API key",
         description: "An error occurred while regenerating the API key.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRevealAPIKey = async (keyId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.revealApiKey(keyId);
+      if (response.success && response.data) {
+        setNewlyCreatedKey({
+          api_key: response.data.api_key,
+          secret_key: response.data.secret_key || response.data.api_key
+        });
+        setCreatedKeyDialogMode('revealed');
+        setShowCreatedKeyDialog(true);
+      }
+    } catch (error) {
+      console.error('Failed to reveal API key:', error);
+      toast({
+        title: "Failed to view API key",
+        description: "An error occurred while retrieving the API key.",
         variant: "destructive"
       });
     } finally {
@@ -2227,6 +2254,7 @@ const Settings = () => {
             handleCreateAPIKey={handleCreateAPIKey}
             handleRevokeAPIKey={handleRevokeAPIKey}
             handleRegenerateAPIKey={handleRegenerateAPIKey}
+            handleRevealAPIKey={handleRevealAPIKey}
             handleCreateWebhook={handleCreateWebhook}
             handleToggleWebhook={handleToggleWebhook}
             handleDeleteWebhook={handleDeleteWebhook}
@@ -3110,18 +3138,33 @@ const Settings = () => {
       <Dialog open={showCreatedKeyDialog} onOpenChange={setShowCreatedKeyDialog}>
         <DialogContent className="glass">
           <DialogHeader>
-            <DialogTitle className="text-sm">API Key Created Successfully!</DialogTitle>
+            <DialogTitle className="text-sm">
+              {createdKeyDialogMode === 'created' && "API Key Created Successfully!"}
+              {createdKeyDialogMode === 'regenerated' && "API Key Regenerated"}
+              {createdKeyDialogMode === 'revealed' && "Your API Key"}
+            </DialogTitle>
             <DialogDescription className="text-xs">
-              Copy these credentials now. You won't be able to see them again.
+              {createdKeyDialogMode === 'revealed'
+                ? "This is the key already in use. Copy it now if you need it elsewhere."
+                : "Copy these credentials now. You won't be able to see them again unless you view or regenerate this key."}
             </DialogDescription>
           </DialogHeader>
           {newlyCreatedKey && (
             <div className="space-y-3">
-              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
-                <p className="text-xs text-yellow-800 font-medium">
-                  ⚠️ Important: Save these credentials securely!
-                </p>
-              </div>
+              {createdKeyDialogMode === 'regenerated' && (
+                <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                  <p className="text-xs text-yellow-800 font-medium">
+                    ⚠️ Important: This replaces the old key. Update any integration using the previous value.
+                  </p>
+                </div>
+              )}
+              {createdKeyDialogMode === 'created' && (
+                <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                  <p className="text-xs text-yellow-800 font-medium">
+                    ⚠️ Important: Save these credentials securely!
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-xs">API Key</Label>
                 <div className="flex items-center gap-2">

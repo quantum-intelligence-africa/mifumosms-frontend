@@ -38,6 +38,7 @@ export const API_CONFIG = {
 					CREATE: '/auth/keys/create/',
 					REVOKE: (keyId: string) => `/auth/keys/${keyId}/revoke/`,
 					REGENERATE: (keyId: string) => `/auth/keys/${keyId}/regenerate/`,
+					REVEAL: (keyId: string) => `/auth/keys/${keyId}/reveal/`,
 				},
 				WEBHOOKS: {
 					CREATE: '/auth/webhooks/create/',

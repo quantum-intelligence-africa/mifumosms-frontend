@@ -1626,6 +1626,16 @@ class ApiClient {
     });
   }
 
+  async revealApiKey(keyId: string): Promise<ApiResponse<{
+    id: string;
+    api_key: string;
+    secret_key: string;
+  }>> {
+    return this.request(API_CONFIG.ENDPOINTS.AUTH.SETTINGS.KEYS.REVEAL(keyId), {
+      method: 'POST',
+    });
+  }
+
   // New API Key Management (matching backend docs)
   async generateApiKey(keyData: { name: string; permissions?: string[] }): Promise<ApiResponse<{
     id: string;
