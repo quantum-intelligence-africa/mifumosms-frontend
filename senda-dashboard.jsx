@@ -11925,6 +11925,10 @@ function BroadcastTab() {
 
   const [preview, setPreview]         = useState(null);
   const [previewing, setPreviewing]   = useState(false);
+  // Tenant ids the admin manually removed from the preview list — kept out of the
+  // send even though they're otherwise eligible. Cleared whenever a fresh preview
+  // is loaded (new audience/segment/sender choice, or a manual refresh).
+  const [excludedIds, setExcludedIds] = useState(() => new Set());
 
   const [sending, setSending]         = useState(false);
   const [progress, setProgress]       = useState(null);
@@ -11948,7 +11952,7 @@ function BroadcastTab() {
 
   // Re-resolve eligibility whenever audience, partner, segment, or sender identity
   // changes; clears the stale preview so the sender column always reflects the choice.
-  useEffect(() => { setPreview(null); }, [audience, partnerId, segment, senderMode, customSenderId]);
+  useEffect(() => { setPreview(null); setExcludedIds(new Set()); }, [audience, partnerId, segment, senderMode, customSenderId]);
 
   // Load the partner list the first time the admin targets Partners.
   useEffect(() => {
@@ -11998,7 +12002,7 @@ function BroadcastTab() {
           sender_mode: senderMode, custom_sender_id: senderMode === 'custom' ? customSenderId : undefined,
         }),
       }, onLogout);
-      if (res.success) setPreview(res.data);
+      if (res.success) { setPreview(res.data); setExcludedIds(new Set()); }
       else showToast(res.error?.message || 'Failed to load recipients', 'error');
     } catch { showToast('Network error loading preview', 'error'); }
     finally { setPreviewing(false); }
@@ -12034,6 +12038,7 @@ function BroadcastTab() {
         body: JSON.stringify({
           audience, partner_id: partnerId || undefined, segment, message, skip_already_sent: skipSent,
           sender_mode: senderMode, custom_sender_id: senderMode === 'custom' ? customSenderId : undefined,
+          excluded_tenant_ids: excludedIds.size ? Array.from(excludedIds) : undefined,
         }),
       }, onLogout);
       if (res.success) {
@@ -12048,7 +12053,7 @@ function BroadcastTab() {
         showToast(res.error?.message || 'Failed to start broadcast', 'error');
       }
     } catch { setSending(false); showToast('Network error starting broadcast', 'error'); }
-  }, [audience, partnerId, segment, message, skipSent, senderMode, customSenderId, onLogout, showToast, pollProgress]);
+  }, [audience, partnerId, segment, message, skipSent, senderMode, customSenderId, excludedIds, onLogout, showToast, pollProgress]);
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -12267,10 +12272,13 @@ function BroadcastTab() {
 
   const seg = smsSegments(message);
   const stats = preview?.stats;
+  const visibleRecipients = (preview?.recipients || []).filter(r => !excludedIds.has(r.tenant_id));
+  const eligibleCount = stats ? Math.max(0, stats.eligible - excludedIds.size) : 0;
+  const removeRecipient = (tenantId) => setExcludedIds(prev => new Set(prev).add(tenantId));
   const live = progress && !progress.is_complete && sending;
   const partnerNeeded = audience === 'partners' && !partnerId;
   const canPreview = !partnerNeeded && !previewing && !live;
-  const canSend = !!stats && stats.eligible > 0 && message.trim().length > 0 && !partnerNeeded && !sending;
+  const canSend = !!stats && eligibleCount > 0 && message.trim().length > 0 && !partnerNeeded && !sending;
   const weekdaysOk = frequency !== 'weekly' || weekdays.length > 0;
   const canSchedule = message.trim().length > 0 && !partnerNeeded && !!sendTime && weekdaysOk && !savingSchedule;
   const toggleWeekday = (d) => setWeekdays(w => w.includes(d) ? w.filter(x=>x!==d) : [...w, d].sort((a,b)=>a-b));
@@ -12517,28 +12525,29 @@ function BroadcastTab() {
               <div className="senda-card" style={{ padding:20 }}>
                 <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>Eligible recipients</h3>
                 <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4 }}>
-                  <span style={{ fontSize:40, fontWeight:800, color:BRAND, lineHeight:1 }}>{stats.eligible.toLocaleString()}</span>
+                  <span style={{ fontSize:40, fontWeight:800, color:BRAND, lineHeight:1 }}>{eligibleCount.toLocaleString()}</span>
                   <span style={{ fontSize:13, color:'#64748b' }}>of {stats.total_in_audience.toLocaleString()} in audience</span>
                 </div>
                 <div style={{ fontSize:12, color:'#64748b', marginBottom:14 }}>
                   Excluded: <b>{stats.excluded_no_phone}</b> with no phone
                   {senderMode !== 'custom' && <>, <b>{stats.excluded_no_sender}</b> with no approved sender ID</>}
-                  {segment !== 'all' && <>, <b>{stats.excluded_by_segment}</b> outside “{SEGMENTS.find(s=>s.id===segment)?.label}” (of {stats.with_approved_sender} eligible before this filter)</>}.
+                  {segment !== 'all' && <>, <b>{stats.excluded_by_segment}</b> outside “{SEGMENTS.find(s=>s.id===segment)?.label}” (of {stats.with_approved_sender} eligible before this filter)</>}
+                  {excludedIds.size > 0 && <>, <b>{excludedIds.size}</b> you removed below</>}.
                   These will <b>not</b> receive the message.
                 </div>
-                {message.trim() && preview.recipients?.[0]?.tenant_name && (
+                {message.trim() && visibleRecipients[0]?.tenant_name && (
                   <div style={{ marginBottom:14, padding:'10px 12px', borderRadius:10, background:'#f0f9ff', border:'1px solid #e0f2fe' }}>
                     <div style={{ fontSize:10, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>
-                      Example — as {preview.recipients[0].tenant_name} will receive it
+                      Example — as {visibleRecipients[0].tenant_name} will receive it
                     </div>
                     <div style={{ fontSize:12.5, color:'#0f172a', lineHeight:1.55, whiteSpace:'pre-wrap' }}>
                       {message
-                        .replace(/\{\{\s*(name|business_name)\s*\}\}/g, preview.recipients[0].tenant_name)
-                        .replace(/\{\s*(name|business_name)\s*\}/g, preview.recipients[0].tenant_name)}
+                        .replace(/\{\{\s*(name|business_name)\s*\}\}/g, visibleRecipients[0].tenant_name)
+                        .replace(/\{\s*(name|business_name)\s*\}/g, visibleRecipients[0].tenant_name)}
                     </div>
                   </div>
                 )}
-                {preview.recipients?.length > 0 ? (
+                {visibleRecipients.length > 0 ? (
                   <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid #eef2f7', borderRadius:10 }}>
                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                       <thead>
@@ -12548,16 +12557,25 @@ function BroadcastTab() {
                           <th style={{ textAlign:'left', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Sender Name</th>
                           <th style={{ textAlign:'right', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Credits</th>
                           <th style={{ textAlign:'right', padding:'8px 12px', color:'#64748b', fontWeight:700 }}>Used</th>
+                          <th style={{ width:36 }}></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {preview.recipients.map((r,i) => (
-                          <tr key={i} style={{ borderTop:'1px solid #f1f5f9' }}>
+                        {visibleRecipients.map((r,i) => (
+                          <tr key={r.tenant_id || i} style={{ borderTop:'1px solid #f1f5f9' }}>
                             <td style={{ padding:'8px 12px', color:'#0f172a' }}>{r.tenant_name || '—'}</td>
                             <td style={{ padding:'8px 12px', color:'#64748b', fontFamily:'monospace' }}>{r.phone_masked}</td>
                             <td style={{ padding:'8px 12px' }}><Pill color={BRAND}>{r.sender_name}</Pill></td>
                             <td style={{ padding:'8px 12px', textAlign:'right', color:'#0f172a' }}>{(r.credits||0).toLocaleString()}</td>
                             <td style={{ padding:'8px 12px', textAlign:'right', color:'#64748b' }}>{(r.used||0).toLocaleString()}</td>
+                            <td style={{ padding:'8px 6px', textAlign:'center' }}>
+                              <button type="button" title="Remove from this send" onClick={()=>removeRecipient(r.tenant_id)}
+                                style={{ background:'none', border:'none', cursor:'pointer', padding:4, borderRadius:6, color:'#94a3b8', display:'inline-flex' }}
+                                onMouseEnter={e=>{e.currentTarget.style.color=RED; e.currentTarget.style.background='#fef2f2';}}
+                                onMouseLeave={e=>{e.currentTarget.style.color='#94a3b8'; e.currentTarget.style.background='none';}}>
+                                <X size={14} strokeWidth={2.2}/>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -12853,12 +12871,13 @@ function BroadcastTab() {
           <div onClick={e=>e.stopPropagation()} className="senda-card" style={{ padding:24, maxWidth:420, width:'100%' }}>
             <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:10 }}>Send broadcast?</h3>
             <p style={{ fontSize:13, color:'#475569', lineHeight:1.6 }}>
-              This will message <b>{stats.eligible.toLocaleString()}</b> recipient{stats.eligible!==1?'s':''}
+              This will message <b>{eligibleCount.toLocaleString()}</b> recipient{eligibleCount!==1?'s':''}
               {audience === 'partners' && preview?.partner_name ? <> from partner <b>{preview.partner_name}</b></> : ' (direct users)'}
               {senderMode === 'custom'
                 ? <>, all under the shared sender <b>{preview?.shared_sender_id || customSenderId || 'SENDA'}</b>.</>
                 : <>, each under their own approved sender name.</>}
               {stats.excluded_no_sender>0 && <> <b>{stats.excluded_no_sender}</b> without an approved sender ID will be skipped.</>}
+              {excludedIds.size>0 && <> <b>{excludedIds.size}</b> you removed will be skipped.</>}
             </p>
             <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'flex-end' }}>
               <button className="senda-btn senda-btn-sm" onClick={()=>setConfirmOpen(false)} style={{ height:38, border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>Cancel</button>
