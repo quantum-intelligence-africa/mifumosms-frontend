@@ -12366,7 +12366,7 @@ function BroadcastTab() {
                 <input value={customSenderId} onChange={e=>setCustomSenderId(e.target.value)} disabled={live}
                   placeholder="SENDA" maxLength={64} className="senda-input"/>
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>
-                  Everyone still needs an approved sender ID to be eligible, but the SMS is sent under this one name (defaults to SENDA). It must be an approved sender ID so the gateway accepts it.
+                  Every recipient with a phone number is eligible — their own sender ID status doesn't matter, since the SMS is sent under this one shared name (defaults to SENDA). The name itself must be an approved sender ID so the gateway accepts it.
                 </div>
               </div>
             )}
@@ -12521,8 +12521,9 @@ function BroadcastTab() {
                   <span style={{ fontSize:13, color:'#64748b' }}>of {stats.total_in_audience.toLocaleString()} in audience</span>
                 </div>
                 <div style={{ fontSize:12, color:'#64748b', marginBottom:14 }}>
-                  Excluded: <b>{stats.excluded_no_sender}</b> with no approved sender ID, <b>{stats.excluded_no_phone}</b> with no phone
-                  {segment !== 'all' && <>, <b>{stats.excluded_by_segment}</b> outside “{SEGMENTS.find(s=>s.id===segment)?.label}” (of {stats.with_approved_sender} with an approved sender)</>}.
+                  Excluded: <b>{stats.excluded_no_phone}</b> with no phone
+                  {senderMode !== 'custom' && <>, <b>{stats.excluded_no_sender}</b> with no approved sender ID</>}
+                  {segment !== 'all' && <>, <b>{stats.excluded_by_segment}</b> outside “{SEGMENTS.find(s=>s.id===segment)?.label}” (of {stats.with_approved_sender} eligible before this filter)</>}.
                   These will <b>not</b> receive the message.
                 </div>
                 {message.trim() && preview.recipients?.[0]?.tenant_name && (
