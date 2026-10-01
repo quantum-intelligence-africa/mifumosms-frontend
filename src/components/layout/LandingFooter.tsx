@@ -83,6 +83,9 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
             <Link to="/developer" className="hover:underline hover:text-white">
               {t("landing.nav.developer")}
             </Link>
+            <Link to="/download" className="hover:underline hover:text-white">
+              {t("landing.nav.download_app")}
+            </Link>
             <Link
               to="/whatsapp-broadcast"
               className="hover:underline hover:text-[#25D366] flex items-center gap-1"

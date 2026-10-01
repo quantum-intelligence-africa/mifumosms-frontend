@@ -47,6 +47,7 @@ const PertinaIntegration = lazy(() => import("./pages/PertinaIntegration"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const DownloadApp = lazy(() => import("./pages/DownloadApp"));
 const PertinaInsights = lazy(() => import("./pages/PertinaInsights"));
 const Developer = lazy(() => import("./pages/Developer"));
 const AIAgents = lazy(() => import("./pages/AIAgents"));
@@ -178,6 +179,7 @@ const AppContent = () => {
               <Route path="/smsactivation" element={<Smsactivation />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/download" element={<DownloadApp />} />
               <Route path="/developer" element={<Developer />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>

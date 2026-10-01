@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, ChevronDown } from "lucide-react";
+import { Menu, ChevronDown, Download } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { BrandLogo } from "@/components/layout/BrandLogo";
@@ -199,6 +199,13 @@ export const LandingHeader = ({
               className={`transition-colors duration-300 ${linkColor}`}
             >
               {t("landing.nav.developer")}
+            </Link>
+            <Link
+              to="/download"
+              className={`transition-colors duration-300 flex items-center gap-1.5 ${linkColor}`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              {t("landing.nav.download_app")}
             </Link>
             <Link
               to="/whatsapp-broadcast"

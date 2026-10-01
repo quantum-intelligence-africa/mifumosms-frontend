@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { X, ChevronRight, ChevronDown, MessageSquare } from "lucide-react";
+import { X, ChevronRight, ChevronDown, MessageSquare, Download } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { PLATFORM_LINKS } from "@/components/landing/shared/platformLinks";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -152,6 +152,25 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
                 >
                   <span className="text-base font-semibold text-foreground dark:text-foreground group-hover:text-primary transition-colors">
                     {t("landing.nav.developer")}
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </Link>
+              </motion.div>
+
+              {/* Download App */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.18, duration: 0.2 }}
+              >
+                <Link
+                  to="/download"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-between py-4 border-b border-border dark:border-border/60 group touch-manipulation"
+                >
+                  <span className="text-base font-semibold text-foreground dark:text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                    <Download className="w-4 h-4 text-primary" />
+                    {t("landing.nav.download_app")}
                   </span>
                   <ChevronRight className="w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </Link>
