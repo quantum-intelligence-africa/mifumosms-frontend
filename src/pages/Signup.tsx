@@ -31,8 +31,9 @@ const Signup = () => {
     lastName: "",
     email: "",
     phone: "",
-    company: "",
-    country: "",
+    referralSource: "",
+    // Country field is hidden from the form — every signup defaults to Tanzania.
+    country: "tz",
     password: "",
     confirmPassword: "",
   });
@@ -133,9 +134,11 @@ const Signup = () => {
     }
   }, [isAuthenticated, navigate, location]);
 
-  const countries = [
-    { value: "ke", label: "Kenya" },
-    { value: "tz", label: "Tanzania" }
+  const referralSources = [
+    { value: "tiktok", label: t("auth.signup.referral_source_tiktok") },
+    { value: "instagram", label: t("auth.signup.referral_source_instagram") },
+    { value: "friends_referral", label: t("auth.signup.referral_source_friends_referral") },
+    { value: "other", label: t("auth.signup.referral_source_other") },
   ];
 
   const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword.length > 0;
@@ -221,7 +224,7 @@ const Signup = () => {
         first_name: string;
         last_name: string;
         phone_number: string;
-        company_name: string;
+        referral_source?: string;
         country?: string;
       } = {
         email: formData.email.trim(),
@@ -230,8 +233,11 @@ const Signup = () => {
         first_name: formData.firstName.trim(),
         last_name: formData.lastName.trim(),
         phone_number: processedPhone,
-        company_name: formData.company.trim()
       };
+
+      if (formData.referralSource) {
+        registerData.referral_source = formData.referralSource;
+      }
 
       if (formData.country) {
         registerData.country = formData.country;
@@ -485,32 +491,20 @@ const Signup = () => {
                 />
               </div>
 
-              {/* Country and Company Row */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Select onValueChange={(value) => handleInputChange("country", value)}>
-                    <SelectTrigger className="h-10 pl-3 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm">
-                      <SelectValue placeholder={t("auth.signup.country_label")} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      {countries.map((country) => (
-                        <SelectItem key={country.value} value={country.value}>
-                          {country.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="relative">
-                  <Input
-                    name="company"
-                    placeholder={t("auth.signup.company_placeholder_mobile")}
-                    value={formData.company}
-                    onChange={(e) => handleInputChange("company", e.target.value)}
-                    required
-                    className="h-10 px-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm"
-                  />
-                </div>
+              {/* Referral Source */}
+              <div className="relative">
+                <Select onValueChange={(value) => handleInputChange("referralSource", value)}>
+                  <SelectTrigger className="h-10 pl-3 pr-3 border-0 border-b-2 border-gray-200 rounded-none bg-transparent text-gray-800 focus:border-blue-500 focus:ring-0 transition-all duration-300 text-sm">
+                    <SelectValue placeholder={t("auth.signup.referral_source_label")} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                    {referralSources.map((source) => (
+                      <SelectItem key={source.value} value={source.value}>
+                        {source.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Password Input */}
@@ -809,52 +803,39 @@ const Signup = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
-                      {t("phone_number")} {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder={t("auth.signup.phone_placeholder_desktop")}
-                      value={formData.phone || ''}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      required
-                      className={`h-9 border rounded-lg text-sm ${
-                        formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8
-                          ? 'border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                          : 'border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
-                      }`}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="country" className="text-xs font-medium text-gray-700">{t("auth.signup.country_label")}</Label>
-                    <Select onValueChange={(value) => handleInputChange("country", value)}>
-                      <SelectTrigger className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm">
-                        <SelectValue placeholder={t("auth.signup.select_placeholder")} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                        {countries.map((country) => (
-                          <SelectItem key={country.value} value={country.value}>
-                            {country.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-1">
+                  <Label htmlFor="phone" className="text-xs font-medium text-gray-700">
+                    {t("phone_number")} {formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8 ? '✓' : ''}
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder={t("auth.signup.phone_placeholder_desktop")}
+                    value={formData.phone || ''}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    required
+                    className={`h-9 border rounded-lg text-sm ${
+                      formData.phone && formData.phone.trim() && formData.phone.trim().length >= 8
+                        ? 'border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200'
+                        : 'border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                    }`}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="company" className="text-xs font-medium text-gray-700">{t("auth.signup.company_label")}</Label>
-                  <Input
-                    id="company"
-                    placeholder={t("auth.signup.company_placeholder_desktop")}
-                    value={formData.company}
-                    onChange={(e) => handleInputChange("company", e.target.value)}
-                    required
-                    className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm"
-                  />
+                  <Label htmlFor="referralSource" className="text-xs font-medium text-gray-700">{t("auth.signup.referral_source_label")}</Label>
+                  <Select onValueChange={(value) => handleInputChange("referralSource", value)}>
+                    <SelectTrigger className="h-9 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm">
+                      <SelectValue placeholder={t("auth.signup.select_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                      {referralSources.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">

@@ -108,6 +108,7 @@ export interface RegisterRequest {
   company_name?: string;
   business_name?: string; // Alias for company_name
   country?: string;
+  referral_source?: string; // How the user found Senda (tiktok, instagram, friends_referral, other)
 }
 
 export interface LoginResponse {
