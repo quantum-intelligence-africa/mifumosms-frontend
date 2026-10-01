@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Link } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useComingSoonFeatures } from '@/hooks/useComingSoonFeatures';
@@ -105,6 +105,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
           <p className="text-text-subtle mb-6">
             This feature isn't available yet — we're still working on it. Check back soon.
           </p>
+          <Link to="/dashboard" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+            Back to Dashboard
+          </Link>
         </div>
       </div>
     );
