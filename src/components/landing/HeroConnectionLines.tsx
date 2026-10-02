@@ -18,6 +18,16 @@ import { Send, MessageCircle, Phone, Bot, Mail, Globe } from "lucide-react";
  * Icons live inside the SVG via <foreignObject> so they stay pixel-locked
  * to their line's start point at every screen size. Purely ambient:
  * absolute, pointer-events-none, sits behind hero content.
+ *
+ * preserveAspectRatio="none" (stretch-to-fill, not "slice") on purpose: with
+ * "slice", any browser window wider than the viewBox's own 1440:900 ratio
+ * (i.e. most real monitors — 1920x1080 is already wider) scales the viewBox
+ * up to cover and crops its top/bottom to compensate, and both fans live
+ * right at the top/bottom edge — so they got cropped out almost entirely on
+ * a typical wide window even though they rendered fine in narrower test
+ * viewports. "none" stretches instead of cropping, so nothing ever
+ * disappears; the minor non-uniform stretch on the curves/circles is an
+ * easy trade for the whole pattern actually staying visible.
  */
 export default function HeroConnectionLines() {
   // Light-blue tint rather than plain white — reads as its own decorative
@@ -88,7 +98,7 @@ export default function HeroConnectionLines() {
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
       viewBox="0 0 1440 900"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="none"
       fill="none"
       aria-hidden="true"
     >
