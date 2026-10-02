@@ -809,7 +809,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             {/* Stats - Below buttons, centered */}
             <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 pt-8 lg:pt-12 w-full max-w-xl mx-auto justify-items-center">
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1200+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_businesses')}</div>
                 </div>
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
