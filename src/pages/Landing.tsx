@@ -813,15 +813,6 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
             </div>
 
-            {/* Hero Banner - Absolutely positioned on right side for desktop */}
-            <div className="hidden lg:block absolute top-1/2 right-8 transform -translate-y-1/2 z-10">
-              <img
-                src="/hero-section-banner.svg"
-                alt="Hero banner"
-                className="w-99 h-auto object-contain opacity-50"
-              />
-            </div>
-
             {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
             <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full overflow-x-hidden relative">
               {/* Navigation Button - Left */}
@@ -1000,6 +991,8 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           </div>
         </div>
 
+        {/* White strip border — separates the hero from the section below */}
+        <div className="absolute bottom-0 left-0 right-0 h-1.5 sm:h-2 bg-white" />
       </section>
 
       {/* Features Section */}
