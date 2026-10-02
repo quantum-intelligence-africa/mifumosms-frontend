@@ -106,8 +106,14 @@ export const LandingHeader = ({
 
   return (
     <>
-      <header className="fixed top-0 left-0 z-[50] w-full bg-transparent py-4 backdrop-blur-xl">
-        <section className="px-0 pl-6 sm:pl-8 md:pl-12 lg:pl-20 flex items-center justify-between max-w-full pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+      <header className="fixed top-0 left-0 z-[50] w-full px-3 sm:px-5 lg:px-8 pt-3 sm:pt-4">
+        <section
+          className={`mx-auto max-w-7xl flex items-center justify-between gap-2 rounded-2xl px-3 sm:px-5 lg:px-7 py-2.5 sm:py-3 transition-all duration-300 ${
+            isScrolled
+              ? "bg-white/95 backdrop-blur-xl border border-gray-200 shadow-lg shadow-black/5"
+              : "bg-white/10 backdrop-blur-xl border border-white/15 shadow-lg shadow-black/10"
+          }`}
+        >
           {/* Logo */}
           <div
             onClick={() => handleAnchor("about")}
