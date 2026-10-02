@@ -34,11 +34,11 @@ export default function HeroConnectionLines() {
     return `M ${edge.x} ${edge.y} L ${c.x} ${c.y} Q ${midX} ${c.y}, ${target.x} ${target.y}`;
   };
 
-  const BADGE = 44;
+  const BADGE = 52;
 
   return (
     <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.4]"
+      className="pointer-events-none absolute inset-0 h-full w-full"
       viewBox="0 0 1440 900"
       preserveAspectRatio="xMidYMid slice"
       fill="none"
@@ -49,24 +49,25 @@ export default function HeroConnectionLines() {
           key={i}
           d={pathFor(c)}
           stroke="white"
-          strokeWidth={1.5}
-          strokeDasharray="2 8"
+          strokeOpacity={0.85}
+          strokeWidth={2.5}
+          strokeDasharray="3 7"
           strokeLinecap="round"
         />
       ))}
 
       {channels.map(({ x, y, Icon }, i) => (
         <foreignObject key={i} x={x - BADGE / 2} y={y - BADGE / 2} width={BADGE} height={BADGE}>
-          <div className="flex h-full w-full items-center justify-center rounded-full border border-white/25 bg-white/10 backdrop-blur-sm">
-            <Icon className="h-5 w-5 text-white" strokeWidth={1.75} />
+          <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-white/70 bg-white/25 shadow-lg backdrop-blur-sm">
+            <Icon className="h-6 w-6 text-white" strokeWidth={2} />
           </div>
         </foreignObject>
       ))}
 
       {/* Convergence point — every channel flows into Senda's one inbox */}
-      <foreignObject x={target.x - 18} y={target.y - 18} width={36} height={36}>
-        <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-lg">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+      <foreignObject x={target.x - 22} y={target.y - 22} width={44} height={44}>
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-white shadow-xl ring-4 ring-white/30">
+          <span className="h-3.5 w-3.5 rounded-full bg-blue-600" />
         </div>
       </foreignObject>
     </svg>
