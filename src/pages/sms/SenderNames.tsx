@@ -324,6 +324,16 @@ const SenderNames = () => {
   const [requestType, setRequestType] = useState("custom");
   const [submitting, setSubmitting] = useState(false);
   const [kycDocuments, setKycDocuments] = useState<File[]>([]);
+  // If the typed sender ID matches one of this user's own requests that's
+  // already awaiting payment, submitting just resumes that same request to
+  // payment (the backend ignores whatever sample content gets sent in that
+  // case) — so the extra fields below shouldn't gate the button for it.
+  const trimmedRequestedSenderId = requestedSenderId.trim().toLowerCase();
+  const existingAwaitingPayment = trimmedRequestedSenderId
+    ? senderNames.find(
+        (s) => s.status === "awaiting_payment" && s.sender_name?.trim().toLowerCase() === trimmedRequestedSenderId
+      )
+    : undefined;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(new AbortController());
@@ -758,7 +768,7 @@ const SenderNames = () => {
       return;
     }
 
-    if (!sampleContent.trim()) {
+    if (!sampleContent.trim() && !existingAwaitingPayment) {
       toast({
         title: "Sample content required",
         description: "Please provide an example SMS message",
@@ -1925,6 +1935,15 @@ const SenderNames = () => {
                     </div>
                   </div>
 
+                  {existingAwaitingPayment && (
+                    <div className="rounded-lg bg-primary/[0.06] dark:bg-primary/10 border border-primary/20 dark:border-primary/30 px-2.5 py-2 flex items-start gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                      <p className="text-[11px] text-foreground/80 leading-snug">
+                        You already have a request for <span className="font-semibold">{existingAwaitingPayment.sender_name}</span> awaiting payment — confirm your phone number and continue, no need to fill in the rest.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Hidden type field - preserved for state */}
                   <div className="hidden">
                     <select
@@ -2065,7 +2084,7 @@ const SenderNames = () => {
                   </Button>
                   <Button
                     onClick={handleRequestSenderName}
-                    disabled={submitting || !requestedSenderId.trim() || !phoneNumber.trim() || !sampleContent.trim()}
+                    disabled={submitting || !requestedSenderId.trim() || !phoneNumber.trim() || (!sampleContent.trim() && !existingAwaitingPayment)}
                     className="flex-1 h-10 rounded-lg text-[12.5px] font-semibold shadow-md"
                   >
                     {submitting ? (
