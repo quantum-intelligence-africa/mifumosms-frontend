@@ -742,24 +742,25 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
-        {/* White strip borders — frame the hero's left and right edges */}
+        {/* White strip borders — frame the hero's top, left and right edges */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 sm:h-2 bg-white z-20" />
         <div className="absolute top-0 bottom-0 left-0 w-1.5 sm:w-2 bg-white z-20" />
         <div className="absolute top-0 bottom-0 right-0 w-1.5 sm:w-2 bg-white z-20" />
-        <div className="w-full relative max-w-full pl-6 sm:pl-8 md:pl-12 lg:pl-20">
-          {/* Content - Two column layout on desktop */}
-          <div className="relative z-10 w-full flex flex-col lg:flex-row items-center lg:items-start lg:justify-between gap-8 lg:gap-12">
-            {/* Text Content - Left side on desktop, centered on mobile */}
-            <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+        <div className="w-full relative max-w-full px-6 sm:px-8 md:px-12 lg:px-20">
+          {/* Content - Single centered column */}
+          <div className="relative z-10 w-full flex flex-col items-center gap-8 lg:gap-12">
+            {/* Text Content - Centered */}
+            <div className="w-full max-w-3xl mx-auto space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 mt-24 sm:mt-0 text-center">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
-                <h1 className="font-heading lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-left">
+                <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-center">
                   {t('landing.hero.title_line1')}
                   <br />
                   <span className="text-blue-200">{t('landing.hero.title_line2')}</span>
               </h1>
-                <p className="lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal text-left">
+                <p className="text-sm sm:text-base md:text-lg text-gray-100 max-w-2xl mx-auto leading-relaxed font-normal text-center">
                 {t('landing.hero.subtitle')}
               </p>
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="flex flex-wrap justify-center gap-2 pt-1">
                 {[
                   { Icon: Send, label: t('landing.hero.channel_sms') },
                   { Icon: MessageSquare, label: t('landing.hero.channel_whatsapp') },
@@ -777,7 +778,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               </div>
             </div>
 
-            <div className="flex flex-row gap-2 sm:gap-3 md:gap-4 lg:justify-start pt-2 w-full lg:w-auto justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+            <div className="flex flex-row flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 pt-2 w-full">
   <Link
     to="/signup">
     <Button
@@ -798,17 +799,17 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   </Button>
 </div>
 
-            {/* Stats - Below buttons in the left column */}
-            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 pt-8 lg:pt-12 w-full justify-start pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-                <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
+            {/* Stats - Below buttons, centered */}
+            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 pt-8 lg:pt-12 w-full max-w-xl mx-auto justify-items-center">
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">50+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_businesses')}</div>
                 </div>
-                <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1M+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_messages')}</div>
                 </div>
-                <div className={`text-left ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
+                <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">98%</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_delivery')}</div>
                 </div>
