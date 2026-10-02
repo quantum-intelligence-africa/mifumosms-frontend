@@ -10800,6 +10800,252 @@ function PendingPaymentCustomersPanel() {
   );
 }
 
+// ─── Email Reports ──────────────────────────────────────────────────────────
+// Who gets the daily admin emails (KYC uploads, sender-ID follow-up, signups &
+// requests) plus assignable system issues that email the assignee.
+// Backed by /api/admin/v1/email-reports/* (see senda_admin/views/email_reports.py).
+const EMAIL_REPORT_SUBS = [
+  { key: 'receive_kyc',     label: 'KYC uploads' },
+  { key: 'receive_sender',  label: 'Sender ID follow-up' },
+  { key: 'receive_signups', label: 'Signups & requests' },
+];
+const ISSUE_SEVERITY_COLOR = { low: '#64748b', medium: AMBER, high: '#f97316', critical: RED };
+
+function EmailReportsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [sub, setSub] = useState('recipients');
+  const [data, setData] = useState({ settings: null, recipients: [], issues: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [newRec, setNewRec] = useState({ email: '', name: '' });
+  const [newIssue, setNewIssue] = useState({ title: '', description: '', severity: 'medium', assignee_id: '' });
+  const [busy, setBusy] = useState(false);
+  const [previewType, setPreviewType] = useState('kyc');
+  const [preview, setPreview] = useState(null);
+
+  const call = (path, method, body) => adminFetch(`/api/admin/v1/email-reports${path}`, {
+    method, ...(body ? { body: JSON.stringify(body) } : {}),
+  }, onLogout);
+
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    return call('', 'GET')
+      .then(res => { if (res.success) setData(res.data); else setError(res.error?.message || 'Failed to load.'); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [onLogout]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
+
+  // Run an action, toast the server message, then refresh the lists.
+  const act = async (fn, okFallback) => {
+    if (busy) return false;
+    setBusy(true);
+    try {
+      const res = await fn();
+      if (res.success) { showToast(res.message || okFallback, 'success'); await load(); return true; }
+      showToast(res.error?.message || 'Request failed.', 'error');
+    } catch (e) { showToast('Network error.', 'error'); }
+    finally { setBusy(false); }
+    return false;
+  };
+
+  const addRecipient = async () => {
+    if (!newRec.email.trim()) { showToast('Enter an email address.', 'error'); return; }
+    if (await act(() => call('/recipients', 'POST', newRec), 'Recipient added.')) setNewRec({ email: '', name: '' });
+  };
+  const patchRecipient = (r, patch) => act(() => call(`/recipients/${r.id}`, 'PATCH', patch), 'Updated.');
+  const removeRecipient = (r) => { if (window.confirm(`Remove ${r.email}?`)) act(() => call(`/recipients/${r.id}`, 'DELETE'), 'Removed.'); };
+  const patchSettings = (patch) => act(() => call('/settings', 'PATCH', patch), 'Settings saved.');
+  const sendNow = (type) => { if (window.confirm('Email this report now to all subscribed recipients?')) act(() => call('/send-now', 'POST', { type }), 'Sent.'); };
+
+  const createIssue = async () => {
+    if (!newIssue.title.trim()) { showToast('Give the issue a title.', 'error'); return; }
+    const body = { ...newIssue, assignee_id: newIssue.assignee_id ? Number(newIssue.assignee_id) : null };
+    if (await act(() => call('/issues', 'POST', body), 'Issue created.'))
+      setNewIssue({ title: '', description: '', severity: 'medium', assignee_id: '' });
+  };
+  const patchIssue = (i, patch) => act(() => call(`/issues/${i.id}`, 'PATCH', patch), 'Issue updated.');
+  const removeIssue = (i) => { if (window.confirm('Delete this issue?')) act(() => call(`/issues/${i.id}`, 'DELETE'), 'Deleted.'); };
+  const resendIssue = (i) => act(() => call(`/issues/${i.id}/resend`, 'POST'), 'Email sent.');
+
+  useEffect(() => {
+    if (sub !== 'reports') return;
+    let alive = true;
+    setPreview(null);
+    call(`/preview/${previewType}`, 'GET').then(res => { if (alive) setPreview(res.success ? res.data : { error: res.error?.message }); });
+    return () => { alive = false; };
+  }, [sub, previewType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const s = data.settings;
+  const tabs = [
+    { id: 'recipients', label: 'Recipients', Icon: Mail },
+    { id: 'reports',    label: 'Daily Reports', Icon: FileText },
+    { id: 'issues',     label: 'Issues', Icon: AlertTriangle },
+  ];
+  const label = { fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 };
+  const activeRecipients = data.recipients.filter(r => r.is_active);
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader title="Email Reports" subtitle="Choose who receives the daily admin reports and assign system issues by email"/>
+      <div style={{display:'flex',gap:4,marginBottom:16,flexWrap:'wrap'}}>
+        {tabs.map(t => (
+          <button key={t.id} className="senda-btn senda-btn-sm" onClick={() => setSub(t.id)}
+            style={{background:sub===t.id?BRAND:'#f1f5f9',color:sub===t.id?'#fff':'#64748b',border:'none',display:'flex',alignItems:'center',gap:6}}>
+            <t.Icon size={13}/> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <p style={{fontSize:13,color:'#94a3b8'}}>Loading…</p>
+        : error ? <p style={{fontSize:13,color:RED}}>{error}</p>
+        : <>
+        {sub === 'recipients' && (
+          <div className="senda-card" style={{padding:24}}>
+            <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'0 0 12px'}}>Add a recipient</h3>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end'}}>
+              <div style={{flex:'1 1 220px'}}><label style={label}>Email</label>
+                <input className="senda-input" value={newRec.email} placeholder="name@company.com"
+                  onChange={e => setNewRec(p => ({ ...p, email: e.target.value }))}/></div>
+              <div style={{flex:'1 1 160px'}}><label style={label}>Name (optional)</label>
+                <input className="senda-input" value={newRec.name}
+                  onChange={e => setNewRec(p => ({ ...p, name: e.target.value }))}/></div>
+              <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={busy} onClick={addRecipient}>Add</button>
+            </div>
+
+            <div className="senda-table-wrap" style={{marginTop:20}}>
+              <table className="senda-table">
+                <thead><tr><th>Recipient</th>{EMAIL_REPORT_SUBS.map(x => <th key={x.key}>{x.label}</th>)}<th>Active</th><th/></tr></thead>
+                <tbody>
+                  {data.recipients.length === 0 && <tr><td colSpan={6} style={{color:'#94a3b8'}}>No recipients yet.</td></tr>}
+                  {data.recipients.map(r => (
+                    <tr key={r.id} style={{opacity:r.is_active?1:0.55}}>
+                      <td><div style={{fontWeight:600}}>{r.name || r.email}</div>{r.name && <div style={{fontSize:12,color:'#64748b'}}>{r.email}</div>}</td>
+                      {EMAIL_REPORT_SUBS.map(x => (
+                        <td key={x.key}><input type="checkbox" checked={!!r[x.key]} disabled={busy}
+                          onChange={e => patchRecipient(r, { [x.key]: e.target.checked })}/></td>
+                      ))}
+                      <td><input type="checkbox" checked={!!r.is_active} disabled={busy}
+                        onChange={e => patchRecipient(r, { is_active: e.target.checked })}/></td>
+                      <td><button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={busy} onClick={() => removeRecipient(r)}><Trash2 size={13}/></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {sub === 'reports' && s && (
+          <>
+            <div className="senda-card" style={{padding:24,marginBottom:16}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}>
+                <div>
+                  <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Send daily reports</p>
+                  <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0'}}>
+                    Each report covers the last 24 hours and is skipped when empty.
+                    {s.last_sent_date ? ` Last sent ${s.last_sent_date}.` : ''}
+                  </p>
+                </div>
+                <button role="switch" aria-checked={!!s.enabled} aria-label="Enabled" disabled={busy}
+                  onClick={() => patchSettings({ enabled: !s.enabled })}
+                  style={{position:'relative',width:46,height:26,borderRadius:13,border:'none',cursor:'pointer',background:s.enabled?BRAND:'#cbd5e1',flexShrink:0}}>
+                  <span style={{position:'absolute',top:3,left:s.enabled?23:3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease'}}/>
+                </button>
+              </div>
+              <div style={{display:'flex',gap:16,flexWrap:'wrap',marginTop:16}}>
+                <div><label style={label}>Send at (hour, 0–23)</label>
+                  <input className="senda-input" type="number" min={0} max={23} defaultValue={s.send_hour} key={'h'+s.send_hour} style={{width:110}}
+                    onBlur={e => { const v = Number(e.target.value); if (v !== s.send_hour) patchSettings({ send_hour: v }); }}/></div>
+                <div><label style={label}>"Many users" threshold (Kuza clients per sender ID)</label>
+                  <input className="senda-input" type="number" min={1} defaultValue={s.many_users_threshold} key={'t'+s.many_users_threshold} style={{width:110}}
+                    onBlur={e => { const v = Number(e.target.value); if (v !== s.many_users_threshold) patchSettings({ many_users_threshold: v }); }}/></div>
+              </div>
+            </div>
+
+            <div className="senda-card" style={{padding:24}}>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
+                {s.report_types.map(t => (
+                  <button key={t.key} className="senda-btn senda-btn-sm" onClick={() => setPreviewType(t.key)}
+                    style={{background:previewType===t.key?'#eff6ff':'#f1f5f9',color:previewType===t.key?BRAND:'#64748b',border:'none'}}>{t.label}</button>
+                ))}
+                <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={busy} onClick={() => sendNow(previewType)} style={{marginLeft:'auto'}}>
+                  <Send size={13}/> Send now ({activeRecipients.length} active recipients)
+                </button>
+              </div>
+              {!preview ? <p style={{fontSize:13,color:'#94a3b8'}}>Loading preview…</p>
+                : preview.error ? <p style={{fontSize:13,color:RED}}>{preview.error}</p>
+                : preview.sections.map(sec => (
+                  <div key={sec.heading} style={{marginTop:14}}>
+                    <p style={{fontSize:13,fontWeight:700,color:'#0f172a',margin:'0 0 6px'}}>{sec.heading}</p>
+                    {sec.rows.length === 0 ? <p style={{fontSize:12,color:'#94a3b8',margin:0}}>Nothing to report.</p> : (
+                      <div className="senda-table-wrap"><table className="senda-table">
+                        <thead><tr>{sec.columns.map(c => <th key={c}>{c}</th>)}</tr></thead>
+                        <tbody>{sec.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{String(cell)}</td>)}</tr>)}</tbody>
+                      </table></div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
+
+        {sub === 'issues' && (
+          <div className="senda-card" style={{padding:24}}>
+            <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'0 0 12px'}}>Assign a new issue</h3>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10}}>
+              <div><label style={label}>Title</label>
+                <input className="senda-input" value={newIssue.title} onChange={e => setNewIssue(p => ({ ...p, title: e.target.value }))}/></div>
+              <div><label style={label}>Severity</label>
+                <select className="senda-input" value={newIssue.severity} onChange={e => setNewIssue(p => ({ ...p, severity: e.target.value }))}>
+                  {['low','medium','high','critical'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select></div>
+              <div><label style={label}>Assign to (gets an email)</label>
+                <select className="senda-input" value={newIssue.assignee_id} onChange={e => setNewIssue(p => ({ ...p, assignee_id: e.target.value }))}>
+                  <option value="">— unassigned —</option>
+                  {activeRecipients.map(r => <option key={r.id} value={r.id}>{r.name || r.email}</option>)}
+                </select></div>
+            </div>
+            <label style={{...label,marginTop:10}}>Description</label>
+            <textarea className="senda-input" rows={3} value={newIssue.description}
+              onChange={e => setNewIssue(p => ({ ...p, description: e.target.value }))} style={{resize:'vertical'}}/>
+            <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={busy} onClick={createIssue} style={{marginTop:10}}>Create & email</button>
+
+            <div className="senda-table-wrap" style={{marginTop:20}}>
+              <table className="senda-table">
+                <thead><tr><th>Issue</th><th>Severity</th><th>Status</th><th>Assignee</th><th/></tr></thead>
+                <tbody>
+                  {data.issues.length === 0 && <tr><td colSpan={5} style={{color:'#94a3b8'}}>No issues yet.</td></tr>}
+                  {data.issues.map(i => (
+                    <tr key={i.id}>
+                      <td><div style={{fontWeight:600}}>{i.title}</div>
+                        {i.description && <div style={{fontSize:12,color:'#64748b'}}>{i.description}</div>}
+                        {i.emailed_at && <div style={{fontSize:11,color:'#94a3b8'}}>Emailed {new Date(i.emailed_at).toLocaleString()}</div>}</td>
+                      <td><span style={{fontWeight:700,color:ISSUE_SEVERITY_COLOR[i.severity]}}>{i.severity}</span></td>
+                      <td><select className="senda-input" value={i.status} disabled={busy} onChange={e => patchIssue(i, { status: e.target.value })}>
+                        <option value="open">open</option><option value="in_progress">in progress</option><option value="resolved">resolved</option></select></td>
+                      <td><select className="senda-input" value={i.assignee_id || ''} disabled={busy}
+                        onChange={e => patchIssue(i, { assignee_id: e.target.value ? Number(e.target.value) : null })}>
+                        <option value="">— unassigned —</option>
+                        {data.recipients.map(r => <option key={r.id} value={r.id}>{r.name || r.email}</option>)}
+                      </select></td>
+                      <td style={{whiteSpace:'nowrap'}}>
+                        {i.assignee_id && <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={busy} onClick={() => resendIssue(i)} title="Resend email"><Send size={13}/></button>}
+                        <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={busy} onClick={() => removeIssue(i)}><Trash2 size={13}/></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </>}
+    </div>
+  );
+}
+
 function CreditAlertsTab() {
   const [sub, setSub] = useState('all_balances');
   const tabs = [
@@ -13921,6 +14167,9 @@ const NAV_GROUPS = [
     { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
     { id:'packages',      Icon:Package,      label:'Packages'         },
     { id:'creditalerts',  Icon:Wallet,       label:'Credit Alerts'    },
+  ]},
+  { title: 'Reports', items: [
+    { id:'emailreports',  Icon:Mail,         label:'Email Reports'    },
   ]},
   { title: 'System', items: [
     { id:'loginactivity', Icon:ShieldCheck,  label:'Login Activity'   },
@@ -18087,6 +18336,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     comingsoon:   <ComingSoonTab/>,
     packages:     <PackagesTab/>,
     creditalerts: <CreditAlertsTab/>,
+    emailreports: <EmailReportsTab/>,
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
     smsbysender:  <SmsBySenderPage/>,
