@@ -742,6 +742,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
+        {/* White strip borders — frame the hero's left and right edges */}
+        <div className="absolute top-0 bottom-0 left-0 w-1.5 sm:w-2 bg-white z-20" />
+        <div className="absolute top-0 bottom-0 right-0 w-1.5 sm:w-2 bg-white z-20" />
         <div className="w-full relative max-w-full pl-6 sm:pl-8 md:pl-12 lg:pl-20">
           {/* Content - Two column layout on desktop */}
           <div className="relative z-10 w-full flex flex-col lg:flex-row items-center lg:items-start lg:justify-between gap-8 lg:gap-12">
