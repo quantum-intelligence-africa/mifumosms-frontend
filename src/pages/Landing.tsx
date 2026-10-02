@@ -47,26 +47,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Wraps the channel/product words (SMS, WhatsApp, Voice/Simu) inside a translated
-// hero headline in a highlighted chip — same per-word "marker highlight" treatment
-// as the SemaCall-style benchmark, without needing separate per-word translation
-// keys. Matches the literal words already present in both the EN and SW strings.
-const HERO_HIGHLIGHT_WORD_SET = new Set(["SMS", "WhatsApp", "Voice", "Simu"]);
-function renderHeroHighlight(text: string) {
-  return text.split(/(SMS|WhatsApp|Voice|Simu)/g).map((part, i) =>
-    HERO_HIGHLIGHT_WORD_SET.has(part) ? (
-      <span
-        key={i}
-        className="inline-block rounded-md bg-white px-2 py-0.5 mx-0.5 text-blue-700"
-      >
-        {part}
-      </span>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
-}
-
 const Landing = () => {
   const context = useContext(LanguageContext);
   const { t } = context || { t: (s: string) => s };
@@ -768,10 +748,10 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             {/* Text Content - Left side on desktop, centered on mobile */}
             <div className="lg:text-left w-full lg:w-1/2 space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 lg:max-w-none mt-24 sm:mt-0 px-0 text-left pr-4 sm:pr-6 md:pr-8 lg:pr-12">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
-                <h1 className="font-heading lg:text-left text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight text-left">
-                  {renderHeroHighlight(t('landing.hero.title_line1'))}
+                <h1 className="font-heading lg:text-left text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-left">
+                  {t('landing.hero.title_line1')}
                   <br />
-                  {t('landing.hero.title_line2')}
+                  <span className="text-blue-200">{t('landing.hero.title_line2')}</span>
               </h1>
                 <p className="lg:text-left text-sm sm:text-base md:text-lg text-gray-100 max-w-3xl lg:max-w-none leading-relaxed font-normal text-left">
                 {t('landing.hero.subtitle')}
@@ -799,7 +779,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
     to="/signup">
     <Button
       variant="outline"
-      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-5 sm:px-7 md:px-9 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-full transition-all duration-200 shadow-lg"
+      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-200 shadow-lg"
     >
       {t('landing.hero.start_free')}
     </Button>
@@ -808,7 +788,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   {/* View Tutorial Button - Blue */}
   <Button
     onClick={() => navigate("/watch-tutorial")}
-    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-5 sm:px-7 md:px-9 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all duration-200 shadow-lg flex items-center gap-2"
+    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-lg flex items-center gap-2"
   >
     <Play className="w-3 h-3 sm:w-4 sm:h-4" />
     {t('landing.hero.how_to_use')}
