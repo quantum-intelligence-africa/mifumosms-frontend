@@ -741,7 +741,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
       <LandingHeader scrollToSection={scrollToSection} />
 
       {/* Hero Section - Full Viewport */}
-      <section id="about" className="min-h-screen flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
+      <section id="about" className="h-screen overflow-hidden flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
         {/* White strip borders — frame the hero's top, left and right edges */}
         <div className="absolute top-0 left-0 right-0 h-1.5 sm:h-2 bg-white z-20" />
         <div className="absolute top-0 bottom-0 left-0 w-1.5 sm:w-2 bg-white z-20" />
@@ -819,31 +819,34 @@ const [showVideoModal, setShowVideoModal] = useState(false);
               </div>
 
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* SMS Animation - Visible on mobile, hidden on desktop where we show device mockups */}
-            <div className="flex justify-center lg:hidden order-2 -mt-4 sm:-mt-6 md:-mt-8 w-full overflow-x-hidden relative">
-              {/* Navigation Button - Left */}
-              <button
-                onClick={goToPreviousBusiness}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
-                aria-label="Previous company"
-              >
-                <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
-              </button>
+      {/* Product preview — device mockups, shown below the hero fold */}
+      <section className="relative bg-gradient-to-b from-blue-700 to-blue-600 py-10 lg:py-16 overflow-hidden">
+        {/* Mobile: SMS animation carousel (hidden on desktop where we show device mockups instead) */}
+        <div className="flex justify-center lg:hidden w-full overflow-x-hidden relative">
+          {/* Navigation Button - Left */}
+          <button
+            onClick={goToPreviousBusiness}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
+            aria-label="Previous company"
+          >
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+          </button>
 
-              {/* Navigation Button - Right */}
-              <button
-                onClick={goToNextBusiness}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
-                aria-label="Next company"
-              >
-                <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
-              </button>
+          {/* Navigation Button - Right */}
+          <button
+            onClick={goToNextBusiness}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-blue-600 active:bg-blue-800 lg:hover:bg-blue-700 rounded-full w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 flex items-center justify-center shadow-lg active:shadow-md lg:hover:shadow-xl transition-all duration-200 active:scale-90 lg:hover:scale-110 touch-manipulation"
+            aria-label="Next company"
+          >
+            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+          </button>
 
-              <div className="animate-fade-in-right origin-top scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden -mb-16 sm:-mb-10 md:mb-0">
-              <SMSAnimation />
-              </div>
-            </div>
+          <div className="animate-fade-in-right origin-top scale-[0.8] sm:scale-[0.9] md:scale-100 relative z-10 w-full max-w-[480px] sm:max-w-[540px] md:max-w-[600px] overflow-x-hidden">
+          <SMSAnimation />
           </div>
         </div>
 
