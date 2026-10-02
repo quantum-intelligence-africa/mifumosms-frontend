@@ -750,12 +750,15 @@ const [showVideoModal, setShowVideoModal] = useState(false);
           {/* Content - Single centered column */}
           <div className="relative z-10 w-full flex flex-col items-center gap-8 lg:gap-12">
             {/* Text Content - Centered */}
-            <div className="w-full max-w-3xl mx-auto space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 mt-24 sm:mt-0 text-center">
+            <div className="w-full max-w-5xl mx-auto space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 mt-24 sm:mt-0 text-center">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
-                <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight text-center">
-                  {t('landing.hero.title_line1')}
-                  <br />
-                  <span className="text-blue-200">{t('landing.hero.title_line2')}</span>
+                <h1 className="font-heading font-bold text-white leading-tight text-center">
+                  <span className="block whitespace-nowrap text-xl sm:text-3xl md:text-4xl lg:text-5xl">
+                    {t('landing.hero.title_line1')}
+                  </span>
+                  <span className="block whitespace-nowrap text-blue-200 text-base sm:text-xl md:text-2xl lg:text-3xl mt-1">
+                    {t('landing.hero.title_line2')}
+                  </span>
               </h1>
                 <p className="text-sm sm:text-base md:text-lg text-gray-100 max-w-2xl mx-auto leading-relaxed font-normal text-center">
                 {t('landing.hero.subtitle')}
