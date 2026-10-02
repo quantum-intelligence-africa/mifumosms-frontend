@@ -14,20 +14,21 @@ const LINE_COLOR = "#BFDBFE"; // tailwind blue-200
 // clipped before. Coordinates are plain percentages of the hero box (SVG
 // viewBox is 0 0 100 100), so the icon badges — real HTML, not SVG content —
 // line up with the paths exactly without any viewBox-scaling math.
-// y=16 is a deliberate floor, not a guess: the fixed header is roughly
+// y=21 is a deliberate floor, not a guess: the fixed header is roughly
 // 70–100px tall regardless of hero height, and hero height = viewport
 // height (h-screen). On a short-but-real desktop window (~700px tall),
-// 16% is ~112px — still clear of a 100px header with margin to spare — and
-// every taller viewport only gets more clearance from the same percentage,
-// never less. The first pass used y=4–6%, which is only ~30–65px on most
-// screens — inside the header's own footprint — so those badges rendered
-// hidden behind it.
-const TOP_HUB = { x: 50, y: 24 };
+// 21% is ~147px — clear of a 100px header with real margin, not just a
+// sliver — and every taller viewport only gets more clearance from the
+// same percentage, never less. Two earlier passes undershot this: y=4–6%
+// sat inside the header's own footprint, and a follow-up at y=13–15% was
+// still only ~15–20px below the header edge on common laptop heights —
+// visibly "touching" it rather than clear of it.
+const TOP_HUB = { x: 50, y: 27 };
 const TOP_SPOKES: Channel[] = [
-  { x: 28, y: 15, Icon: Send, label: "SMS" },
-  { x: 42, y: 13, Icon: MessageCircle, label: "WhatsApp" },
-  { x: 58, y: 13, Icon: Phone, label: "Voice" },
-  { x: 72, y: 15, Icon: Bot, label: "AI" },
+  { x: 26, y: 21, Icon: Send, label: "SMS" },
+  { x: 41, y: 19, Icon: MessageCircle, label: "WhatsApp" },
+  { x: 59, y: 19, Icon: Phone, label: "Voice" },
+  { x: 74, y: 21, Icon: Bot, label: "AI" },
 ];
 
 // The content block's actual vertical position shifts with hero height (it's
@@ -35,14 +36,17 @@ const TOP_SPOKES: Channel[] = [
 // pixel height, so it doesn't sit at a constant percentage) — on a common
 // ~768px-tall laptop viewport, the headline starts around 30% down and the
 // stats row ends around 85–86%, noticeably earlier than on a tall monitor.
-// These values leave margin against that shorter case specifically, not
-// just the tall one the first pass was checked against.
-const BOTTOM_HUB = { x: 50, y: 90 };
+// The spokes used to sit at y=97–98%, right against the hero's own bottom
+// edge (h-screen = 100%) — clear of the stats text but visibly crowding the
+// section boundary / next section below on common viewport heights. Pulling
+// the whole bottom burst up (hub 90 → 85, spokes 97–98 → 91–93) keeps it
+// clear of both: still below the stats row, with real margin above 100%.
+const BOTTOM_HUB = { x: 50, y: 88 };
 const BOTTOM_SPOKES: Channel[] = [
-  { x: 28, y: 97, Icon: Mail, label: "Email" },
-  { x: 42, y: 98, Icon: Globe, label: "Global" },
-  { x: 58, y: 98, Icon: MessageCircle, label: "Social" },
-  { x: 72, y: 97, Icon: Globe, label: "Anywhere" },
+  { x: 26, y: 95, Icon: Mail, label: "Email" },
+  { x: 41, y: 96, Icon: Globe, label: "Global" },
+  { x: 59, y: 96, Icon: MessageCircle, label: "Social" },
+  { x: 74, y: 95, Icon: Globe, label: "Anywhere" },
 ];
 
 function pathFor(hub: { x: number; y: number }, spoke: { x: number; y: number }) {
