@@ -33,6 +33,7 @@ import AgentWorkspaceSection from "@/components/landing/AgentWorkspaceSection";
 import AiCopilotsSection from "@/components/landing/AiCopilotsSection";
 import AnalyticsSection from "@/components/landing/AnalyticsSection";
 import IntegrationsSection from "@/components/landing/IntegrationsSection";
+import HeroConnectionLines from "@/components/landing/HeroConnectionLines";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState, useRef, useContext } from "react";
 import { LanguageContext } from "@/contexts/LanguageContext";
@@ -742,6 +743,9 @@ const [showVideoModal, setShowVideoModal] = useState(false);
 
       {/* Hero Section - Full Viewport */}
       <section id="about" className="h-screen overflow-hidden flex flex-col justify-center px-0 relative pt-20 pb-3 sm:pt-24 sm:pb-4 md:pt-28 md:pb-4 lg:pt-32 lg:pb-6 z-10">
+        {/* Decorative connection lines — every channel, everywhere, converging into one inbox */}
+        <HeroConnectionLines />
+
         {/* White strip borders — frame the hero's top, left and right edges */}
         <div className="absolute top-0 left-0 right-0 h-1.5 sm:h-2 bg-white z-20" />
         <div className="absolute top-0 bottom-0 left-0 w-1.5 sm:w-2 bg-white z-20" />
