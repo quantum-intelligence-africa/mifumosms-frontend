@@ -1346,29 +1346,6 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             })}
           </div>
 
-          {/* Included-in-every-plan strip */}
-          <div className="mt-8 flex flex-col items-center">
-            <p className="text-sm font-medium text-blue-100">
-              {t('landing.pricing.included_in_every_plan')}
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              {[
-                { label: t('landing.pricing.perk_no_contracts') },
-                { label: t('landing.pricing.perk_transparent_pricing') },
-                { label: t('landing.pricing.perk_delivery_reports') },
-                { label: t('landing.pricing.perk_support') },
-                { label: t('landing.pricing.perk_api_webhooks') },
-              ].map((item) => (
-                <span
-                  key={item.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-white/85 hover:border-blue-400/40 hover:text-white transition-colors"
-                >
-                  <Check className="h-3 w-3 text-blue-300" strokeWidth={3} />
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
           </>
           )}
         </div>

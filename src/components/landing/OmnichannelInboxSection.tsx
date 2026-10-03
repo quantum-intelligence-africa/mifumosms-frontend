@@ -1,7 +1,6 @@
-import { Inbox, Users, Zap, Shield, Search, Filter, Send } from "lucide-react";
+import { Inbox, Search, Filter, Send } from "lucide-react";
 import {
   SectionHeader,
-  FeaturePillStrip,
   MockupFrame,
   ChannelBadge,
   type Channel,
@@ -64,16 +63,8 @@ const ACTIVE_THREAD: Array<{
   { from: "them", text: "Asante! Nimepokea ankara. Nitalipa leo.", time: "10:46" },
 ];
 
-const getFeatures = (t: (key: any, params?: any) => string) => [
-  { label: t("landing.omnichannel_inbox.feature_shared_inbox"), icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.omnichannel_inbox.feature_auto_routing"), icon: <Zap className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.omnichannel_inbox.feature_saved_replies"), icon: <Send className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.omnichannel_inbox.feature_customer_context"), icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
-];
-
 const OmnichannelInboxSection = () => {
   const { t } = useLanguage();
-  const features = getFeatures(t);
 
   return (
     <section
@@ -107,8 +98,6 @@ const OmnichannelInboxSection = () => {
                 />
               ))}
             </div>
-
-            <FeaturePillStrip items={features} tone="default" className="mt-6" />
 
             <div className="mt-8 grid grid-cols-2 gap-4 max-w-md">
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">

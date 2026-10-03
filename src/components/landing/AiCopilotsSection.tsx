@@ -4,26 +4,14 @@ import {
   FileText,
   Globe2,
   MessageSquare,
-  Languages,
   Workflow,
-  Clock3,
-  Image as ImageIcon,
   CheckCheck,
 } from "lucide-react";
-import { SectionHeader, FeaturePillStrip } from "./shared";
+import { SectionHeader } from "./shared";
 import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
 type TFn = (key: any, params?: any) => string;
-
-const getCapabilityStrip = (t: TFn) => [
-  { label: t("landing.ai_copilots.capability_genai"), icon: <Bot className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.ai_copilots.capability_kb_fed"), icon: <Brain className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.ai_copilots.capability_rich_media"), icon: <ImageIcon className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.ai_copilots.capability_multilanguage"), icon: <Languages className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.ai_copilots.capability_workflow_mapping"), icon: <Workflow className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.ai_copilots.capability_round_the_clock"), icon: <Clock3 className="h-3.5 w-3.5 text-blue-600" /> },
-];
 
 const getKpis = (
   t: TFn
@@ -278,7 +266,6 @@ const KnowledgeBaseBlock = ({ t }: { t: TFn }) => {
 
 const AiCopilotsSection = () => {
   const { t } = useLanguage();
-  const capabilityStrip = getCapabilityStrip(t);
   const kpis = getKpis(t);
 
   return (
@@ -371,12 +358,6 @@ const AiCopilotsSection = () => {
                 </li>
               ))}
             </ul>
-
-            <FeaturePillStrip
-              items={capabilityStrip}
-              tone="default"
-              className="mt-7"
-            />
           </div>
         </div>
 

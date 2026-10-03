@@ -1,34 +1,16 @@
 import {
-  Headphones,
   Ear,
   MessageCircle,
   Zap,
-  Shield,
   GripVertical,
   PhoneIncoming,
   PhoneCall,
-  CircleDot,
-  UserCheck,
-  GaugeCircle,
-  Tags,
-  FileBarChart,
 } from "lucide-react";
-import { SectionHeader, FeaturePillStrip, MockupFrame } from "./shared";
+import { SectionHeader, MockupFrame } from "./shared";
 import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
 type TFn = (key: any, params?: any) => string;
-
-const getCapabilityStrip = (t: TFn) => [
-  { label: t("landing.agent_workspace.capability_role_access"), icon: <Shield className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_contact_matching"), icon: <UserCheck className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_status_management"), icon: <CircleDot className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_drag_transfer"), icon: <GripVertical className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_coaching_tools"), icon: <Headphones className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_missed_call_labeling"), icon: <Tags className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_sla_tracking"), icon: <GaugeCircle className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.agent_workspace.capability_per_agent_reports"), icon: <FileBarChart className="h-3.5 w-3.5 text-blue-600" /> },
-];
 
 const getKpis = (
   t: TFn
@@ -120,7 +102,6 @@ const getStatusMeta = (
 
 const AgentWorkspaceSection = () => {
   const { t } = useLanguage();
-  const capabilityStrip = getCapabilityStrip(t);
   const kpis = getKpis(t);
   const waiting = getWaiting(t);
   const active = getActive(t);
@@ -343,12 +324,6 @@ const AgentWorkspaceSection = () => {
                 </div>
               ))}
             </div>
-
-            <FeaturePillStrip
-              items={capabilityStrip}
-              tone="default"
-              className="mt-6"
-            />
           </div>
         </div>
       </div>

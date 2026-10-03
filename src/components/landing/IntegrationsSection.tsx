@@ -4,16 +4,11 @@ import {
   Workflow,
   PlugZap,
   Code2,
-  Webhook,
   ArrowRight,
   Copy,
   Check,
-  ShieldCheck,
-  Boxes,
-  Sigma,
-  Cable,
 } from "lucide-react";
-import { SectionHeader, FeaturePillStrip } from "./shared";
+import { SectionHeader } from "./shared";
 import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
@@ -28,15 +23,6 @@ Content-Type: application/json
   "message": "Karibu Senda — hello from the API",
   "sender_id": "Mifumosms"
 }`;
-
-const getCapabilityStrip = (t: TFn) => [
-  { label: "REST API", icon: <Code2 className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: "Webhooks", icon: <Webhook className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: "SDKs", icon: <Boxes className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.integrations.capability_crm_connectors"), icon: <Cable className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.integrations.capability_multichannel"), icon: <Sigma className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.integrations.capability_sandbox_keys"), icon: <ShieldCheck className="h-3.5 w-3.5 text-blue-600" /> },
-];
 
 const getUseCases = (
   t: TFn
@@ -213,7 +199,6 @@ const CodeSnippet = ({ t }: { t: TFn }) => {
 const IntegrationsSection = () => {
   const { t } = useLanguage();
   const useCases = getUseCases(t);
-  const capabilityStrip = getCapabilityStrip(t);
 
   return (
     <section
@@ -238,7 +223,7 @@ const IntegrationsSection = () => {
         <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
           {/* Use-case cards */}
           <div className="lg:col-span-6 space-y-4">
-            {useCases.map(({ Icon, index, title, body, bullets }) => (
+            {useCases.map(({ Icon, index, title, body }) => (
               <article
                 key={index}
                 className="group relative flex gap-4 rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_18px_40px_-18px_rgba(37,99,235,0.25)]"
@@ -252,16 +237,6 @@ const IntegrationsSection = () => {
                 <div className="min-w-0 flex-1">
                   <h3 className="font-heading text-lg font-bold text-gray-900">{title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{body}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {bullets.map((b) => (
-                      <span
-                        key={b}
-                        className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700"
-                      >
-                        {b}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </article>
             ))}
@@ -282,12 +257,6 @@ const IntegrationsSection = () => {
           {/* Code snippet */}
           <div className="lg:col-span-6 lg:sticky lg:top-24">
             <CodeSnippet t={t} />
-
-            <FeaturePillStrip
-              items={capabilityStrip}
-              tone="default"
-              className="mt-6 justify-center lg:justify-start"
-            />
           </div>
         </div>
       </div>

@@ -1,32 +1,15 @@
 import {
-  Phone,
   PhoneCall,
   MicOff,
   Pause,
   PhoneForwarded,
   Users,
-  Voicemail,
-  Music2,
-  Megaphone,
-  Bell,
-  Star,
-  Code2,
 } from "lucide-react";
-import { SectionHeader, FeaturePillStrip } from "./shared";
+import { SectionHeader } from "./shared";
 import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/lib/utils";
 
 type TFn = (key: any, params?: any) => string;
-
-const getCapabilityStrip = (t: TFn) => [
-  { label: t("landing.voice_ivr_section.capability_voicemail"), icon: <Voicemail className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_music_on_hold"), icon: <Music2 className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_auto_greeting"), icon: <Megaphone className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_queue_callbacks"), icon: <Bell className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_crm_popup"), icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_post_call_csat"), icon: <Star className="h-3.5 w-3.5 text-blue-600" /> },
-  { label: t("landing.voice_ivr_section.capability_api_integration"), icon: <Code2 className="h-3.5 w-3.5 text-blue-600" /> },
-];
 
 const getPillarFeatures = (
   t: TFn
@@ -285,7 +268,6 @@ const Pillar = ({
 const VoiceAndIvrSection = () => {
   const { t } = useLanguage();
   const pillarFeatures = getPillarFeatures(t);
-  const capabilityStrip = getCapabilityStrip(t);
 
   return (
     <section
@@ -305,11 +287,6 @@ const VoiceAndIvrSection = () => {
             }
             lead={t("landing.voice_ivr_section.lead")}
           />
-
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm">
-            <Phone className="h-3.5 w-3.5 text-blue-600" />
-            SIP · FXO · WebRTC · {t("landing.voice_ivr_section.mobile")} · {t("landing.voice_ivr_section.desk")}
-          </div>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-7">
@@ -333,17 +310,6 @@ const VoiceAndIvrSection = () => {
             description={t("landing.voice_ivr_section.pillar_surveys_description")}
             features={pillarFeatures.surveys}
             visual={<SentimentVisual t={t} />}
-          />
-        </div>
-
-        <div className="mt-8 flex flex-col items-center">
-          <p className="text-sm font-medium text-gray-600">
-            {t("landing.voice_ivr_section.also_included")}
-          </p>
-          <FeaturePillStrip
-            items={capabilityStrip}
-            tone="default"
-            className="mt-3 justify-center"
           />
         </div>
       </div>
