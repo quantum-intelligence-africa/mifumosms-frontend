@@ -1,4 +1,4 @@
-import { useState } from "react";
+import * as Accordion from "@radix-ui/react-accordion";
 import { Link } from "react-router-dom";
 import { X, ChevronRight, ChevronDown, MessageSquare, Download } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,7 +13,6 @@ interface MobileMenuProps {
 
 const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
   const { t, language } = useLanguage();
-  const [platformOpen, setPlatformOpen] = useState(false);
 
   const handleNavClick = (sectionId: string) => {
     if (scrollToSection) {
@@ -68,57 +67,58 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
                 </Link>
               </motion.div>
 
-              {/* Platform — expandable group */}
+              {/* Platform — expandable group. Built on Radix Accordion (not a
+                  hand-rolled useState + framer-motion height:"auto" toggle)
+                  because Radix measures the content height itself via
+                  ResizeObserver instead of guessing during React's render
+                  pass — the previous version could mis-measure (or appear to
+                  do nothing) if a tap landed while the menu's own entrance
+                  animation was still settling, which only shows up on real
+                  touch devices, not in a scripted click test. */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.08, duration: 0.2 }}
-                className="border-b border-border dark:border-border/60"
               >
-                <button
-                  type="button"
-                  onClick={() => setPlatformOpen((v) => !v)}
-                  aria-expanded={platformOpen}
-                  className="w-full flex items-center justify-between py-4 group touch-manipulation"
+                <Accordion.Root
+                  type="single"
+                  collapsible
+                  className="border-b border-border dark:border-border/60"
                 >
-                  <span className="text-base font-semibold text-foreground dark:text-foreground group-hover:text-primary transition-colors">
-                    {t("landing.nav.platform")}
-                  </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary transition-transform duration-200 ${
-                      platformOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                <AnimatePresence initial={false}>
-                  {platformOpen && (
-                    <motion.ul
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden pb-3"
-                    >
-                      {PLATFORM_LINKS.map(({ id, anchor, label, labelSw, Icon }) => (
-                        <li key={id}>
-                          <button
-                            type="button"
-                            onClick={() => handleNavClick(anchor)}
-                            className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/40 touch-manipulation"
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                              <Icon className="h-4 w-4" />
-                            </span>
-                            <span className="text-sm font-medium text-foreground dark:text-foreground">
-                              {language === "sw" ? labelSw : label}
-                            </span>
-                            <ChevronRight className="ml-auto w-4 h-4 text-foreground/40" />
-                          </button>
-                        </li>
-                      ))}
-                    </motion.ul>
-                  )}
-                </AnimatePresence>
+                  <Accordion.Item value="platform" className="border-none">
+                    <Accordion.Header>
+                      <Accordion.Trigger
+                        className="w-full flex items-center justify-between py-4 group touch-manipulation [&[data-state=open]>svg]:rotate-180"
+                      >
+                        <span className="text-base font-semibold text-foreground dark:text-foreground group-hover:text-primary transition-colors">
+                          {t("landing.nav.platform")}
+                        </span>
+                        <ChevronDown className="w-5 h-5 text-foreground/40 dark:text-foreground/30 group-hover:text-primary transition-transform duration-200" />
+                      </Accordion.Trigger>
+                    </Accordion.Header>
+                    <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                      <ul className="pb-3">
+                        {PLATFORM_LINKS.map(({ id, anchor, label, labelSw, Icon }) => (
+                          <li key={id}>
+                            <button
+                              type="button"
+                              onClick={() => handleNavClick(anchor)}
+                              className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/40 touch-manipulation"
+                            >
+                              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                                <Icon className="h-4 w-4" />
+                              </span>
+                              <span className="text-sm font-medium text-foreground dark:text-foreground">
+                                {language === "sw" ? labelSw : label}
+                              </span>
+                              <ChevronRight className="ml-auto w-4 h-4 text-foreground/40" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </Accordion.Content>
+                  </Accordion.Item>
+                </Accordion.Root>
               </motion.div>
 
               {/* Pricing */}
