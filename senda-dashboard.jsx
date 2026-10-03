@@ -34,6 +34,7 @@ import {
   Hourglass,
   Key,
   Layers,
+  LayoutTemplate,
   LogOut,
   Mail,
   Megaphone,
@@ -492,7 +493,7 @@ async function voiceAdminFetch(path, options = {}, onLogout) {
 }
 
 // ─── App Context ───────────────────────────────────────────────────────────────
-const AppContext = React.createContext({ showToast: () => {}, onLogout: () => {}, adminInfo: null });
+const AppContext = React.createContext({ showToast: () => {}, onLogout: () => {}, adminInfo: null, setActive: () => {} });
 
 // ─── CSS Injection ────────────────────────────────────────────────────────────
 const CSS = `
@@ -12145,6 +12146,9 @@ function BroadcastTab() {
   const [customSenderId, setCustomSenderId] = useState('SENDA');
   const [templates, setTemplates]     = useState([]);
   const [savingTpl, setSavingTpl]     = useState(false);
+  // Which saved template (if any) is behind the current draft — sent along with
+  // the broadcast so the backend can count this as a real use of that template.
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
 
   // Scheduling (recurring/automatic broadcasts)
   const [scheduleOn, setScheduleOn]   = useState(false);
@@ -12221,8 +12225,20 @@ function BroadcastTab() {
 
   const applyTemplate = useCallback((id) => {
     const t = templates.find(x => x.id === id);
-    if (t) setMessage(t.body);
+    if (t) { setMessage(t.body); setSelectedTemplateId(t.id); }
   }, [templates]);
+
+  // The SMS Templates tab's "Use for broadcast" button stashes a draft here
+  // instead of lifting shared state — picked up once, on mount, then cleared.
+  useEffect(() => {
+    let draft = null;
+    try { draft = JSON.parse(sessionStorage.getItem('senda_broadcast_draft') || 'null'); } catch {}
+    if (draft && draft.body) {
+      setMessage(draft.body);
+      setSelectedTemplateId(draft.id || null);
+      sessionStorage.removeItem('senda_broadcast_draft');
+    }
+  }, []);
 
   const saveTemplate = useCallback(async () => {
     if (!message.trim()) { showToast('Write a message first', 'error'); return; }
@@ -12285,6 +12301,7 @@ function BroadcastTab() {
           audience, partner_id: partnerId || undefined, segment, message, skip_already_sent: skipSent,
           sender_mode: senderMode, custom_sender_id: senderMode === 'custom' ? customSenderId : undefined,
           excluded_tenant_ids: excludedIds.size ? Array.from(excludedIds) : undefined,
+          template_id: selectedTemplateId || undefined,
         }),
       }, onLogout);
       if (res.success) {
@@ -12299,7 +12316,7 @@ function BroadcastTab() {
         showToast(res.error?.message || 'Failed to start broadcast', 'error');
       }
     } catch { setSending(false); showToast('Network error starting broadcast', 'error'); }
-  }, [audience, partnerId, segment, message, skipSent, senderMode, customSenderId, excludedIds, onLogout, showToast, pollProgress]);
+  }, [audience, partnerId, segment, message, skipSent, senderMode, customSenderId, excludedIds, selectedTemplateId, onLogout, showToast, pollProgress]);
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -12646,6 +12663,15 @@ function BroadcastTab() {
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>
               {seg.len} chars · {seg.segments} SMS segment{seg.segments!==1?'s':''} · optional: add <code style={{ background:'#f1f5f9', padding:'1px 5px', borderRadius:4, color:'#475569' }}>{'{{name}}'}</code> to insert each recipient's name from the database
             </div>
+            {selectedTemplateId && (
+              <div style={{ fontSize:11, color:'#2563eb', marginTop:6, display:'flex', alignItems:'center', gap:6 }}>
+                Using template: {templates.find(t=>t.id===selectedTemplateId)?.name || selectedTemplateId} — sending will count as a use of it.
+                <button type="button" onClick={()=>setSelectedTemplateId(null)} disabled={live}
+                  style={{ border:'none', background:'none', color:'#64748b', textDecoration:'underline', cursor:'pointer', fontSize:11, padding:0 }}>
+                  Detach
+                </button>
+              </div>
+            )}
 
             <label style={{ fontSize:12, fontWeight:700, color:'#334155', display:'block', margin:'18px 0 8px' }}>Recipient segment</label>
             <select value={segment} onChange={e=>setSegment(e.target.value)} disabled={live}
@@ -13239,6 +13265,162 @@ function BroadcastTab() {
             </div>
           </div>
         </div>, document.body)}
+    </div>
+  );
+}
+
+// ─── SMS Templates (ready-made broadcast messages) ──────────────────────────
+const TEMPLATE_CATEGORIES = [
+  { id:'A', label:'Kuanzisha matumizi' },
+  { id:'B', label:'Kushawishi kununua credits' },
+  { id:'C', label:'Kurudisha watumiaji' },
+  { id:'D', label:'Kuongeza matumizi' },
+  { id:'E', label:'Ofa na mauzo' },
+  { id:'F', label:'Kujenga uaminifu' },
+];
+
+function SmsTemplatesTab() {
+  const { showToast, onLogout, setActive } = React.useContext(AppContext);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState('A');
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/templates`, { method:'GET' }, onLogout);
+      if (res.success) setTemplates(res.data || []);
+    } catch {} finally { setLoading(false); }
+  }, [onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (t) => { setEditingId(t.id); setEditBody(t.body); };
+  const cancelEdit = () => { setEditingId(null); setEditBody(''); };
+
+  const saveEdit = async (t) => {
+    const body = editBody.trim();
+    if (!body) { showToast('Message cannot be empty', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = await adminFetch(`${BROADCAST_API}/broadcasts/templates/${t.id}`, {
+        method:'PATCH', body: JSON.stringify({ body }),
+      }, onLogout);
+      if (res.success) { showToast('Template updated', 'success'); cancelEdit(); load(); }
+      else showToast(res.error?.message || 'Failed to update template', 'error');
+    } catch { showToast('Network error updating template', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const useForBroadcast = (t) => {
+    try {
+      sessionStorage.setItem('senda_broadcast_draft', JSON.stringify({ id: t.id, body: t.body }));
+    } catch {}
+    setActive('broadcast');
+  };
+
+  const grouped = templates.filter(t => (t.category || '') === category);
+  const uncategorized = templates.filter(t => !t.category);
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader title="SMS Templates" subtitle="Ready-made Swahili marketing SMS — edit any of them, then send straight to the Broadcast composer. Usage count only ticks up on an actual send, not on preview." />
+
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, margin:'14px 0' }}>
+        {TEMPLATE_CATEGORIES.map(c => (
+          <button key={c.id} type="button" onClick={() => setCategory(c.id)}
+            className="senda-btn senda-btn-sm"
+            style={{
+              border: category===c.id ? `1.5px solid ${BRAND}` : '1.5px solid #e2e8f0',
+              background: category===c.id ? `${BRAND}14` : '#fff',
+              color: category===c.id ? BRAND : '#475569', fontWeight:700,
+            }}>
+            {c.id}. {c.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p style={{ color:'#94a3b8', fontSize:13 }}>Loading…</p>
+      ) : (
+        <div style={{ display:'grid', gap:10 }}>
+          {grouped.length === 0 && (
+            <p style={{ color:'#94a3b8', fontSize:13 }}>No templates in this category.</p>
+          )}
+          {grouped.map(t => {
+            const isEditing = editingId === t.id;
+            return (
+              <div key={t.id} className="senda-card" style={{ padding:'14px 16px' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#0f172a' }}>{t.name}</span>
+                  <span className="senda-badge" style={{ background:'#eff6ff', color:BRAND }}>
+                    Used {t.usage_count || 0}×
+                  </span>
+                </div>
+                {isEditing ? (
+                  <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} rows={4}
+                    className="senda-input" style={{ height:'auto', padding:'10px 12px', resize:'vertical', lineHeight:1.5, fontSize:13 }}/>
+                ) : (
+                  <p style={{ fontSize:13, color:'#334155', lineHeight:1.6, margin:0, whiteSpace:'pre-wrap' }}>{t.body}</p>
+                )}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10, gap:8, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:11, color:'#94a3b8' }}>
+                    {t.last_used_at ? `Last used ${new Date(t.last_used_at).toLocaleString()}` : 'Never used yet'}
+                  </span>
+                  <div style={{ display:'flex', gap:8 }}>
+                    {isEditing ? (
+                      <>
+                        <button type="button" onClick={cancelEdit} disabled={saving}
+                          className="senda-btn senda-btn-sm" style={{ border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b' }}>
+                          Cancel
+                        </button>
+                        <button type="button" onClick={()=>saveEdit(t)} disabled={saving}
+                          className="senda-btn senda-btn-sm" style={{ border:'none', background:BRAND, color:'#fff', fontWeight:700 }}>
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={()=>startEdit(t)}
+                          className="senda-btn senda-btn-sm" style={{ border:'1.5px solid #e2e8f0', background:'#fff', color:'#475569' }}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={()=>useForBroadcast(t)}
+                          className="senda-btn senda-btn-sm" style={{ border:'none', background:BRAND, color:'#fff', fontWeight:700 }}>
+                          Use for broadcast
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {category === 'A' && uncategorized.length > 0 && (
+            <>
+              <p style={{ fontSize:12, fontWeight:700, color:'#94a3b8', marginTop:14 }}>Uncategorized (saved from the Broadcast composer)</p>
+              {uncategorized.map(t => (
+                <div key={t.id} className="senda-card" style={{ padding:'14px 16px' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#0f172a' }}>{t.name}</span>
+                    <span className="senda-badge" style={{ background:'#eff6ff', color:BRAND }}>Used {t.usage_count || 0}×</span>
+                  </div>
+                  <p style={{ fontSize:13, color:'#334155', lineHeight:1.6, margin:0, whiteSpace:'pre-wrap' }}>{t.body}</p>
+                  <div style={{ display:'flex', justifyContent:'flex-end', marginTop:10 }}>
+                    <button type="button" onClick={()=>useForBroadcast(t)}
+                      className="senda-btn senda-btn-sm" style={{ border:'none', background:BRAND, color:'#fff', fontWeight:700 }}>
+                      Use for broadcast
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -14141,6 +14323,7 @@ const NAV_GROUPS = [
   ]},
   { title: 'Messaging', items: [
     { id:'broadcast',     Icon:Megaphone,    label:'Broadcast'        },
+    { id:'smstemplates',  Icon:LayoutTemplate, label:'SMS Templates'  },
     { id:'whatsapp',      Icon:Send,         label:'WhatsApp'         },
     { id:'notifications', Icon:Bell,         label:'Push Notifications' },
     { id:'systemsms',     Icon:Mail,         label:'System SMS Log'   },
@@ -18322,6 +18505,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     smsintelligence: <SmsIntelligenceTab/>,
     engagement:   <EngagementTab/>,
     broadcast:    <BroadcastTab/>,
+    smstemplates: <SmsTemplatesTab/>,
     users:        <UsersTab/>,
     transactions: <TransactionsTab/>,
     senderids:    <SenderIdsTab/>,
@@ -18351,7 +18535,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   };
 
   return (
-    <AppContext.Provider value={{ showToast: showToast || (()=>{}), onLogout, adminInfo }}>
+    <AppContext.Provider value={{ showToast: showToast || (()=>{}), onLogout, adminInfo, setActive }}>
     <div style={{display:'flex',height:'100vh',background:'#f8fafc',overflow:'hidden'}}>
       <Sidebar active={active} setActive={setActive} onLogout={onLogout} mode={sidebarMode}/>
 
