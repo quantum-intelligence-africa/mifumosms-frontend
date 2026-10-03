@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, ChevronDown, Download } from "lucide-react";
+import { Menu, X, ChevronDown, Download } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { BrandLogo } from "@/components/layout/BrandLogo";
@@ -39,6 +39,20 @@ export const LandingHeader = ({
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(forceScrolled);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Measured (not guessed) so the mobile sheet always starts exactly where
+  // this floating pill-shaped header ends, at any breakpoint or font size.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setHeaderHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Cross-page anchor navigation: in-page smooth scroll on /, otherwise route to /#anchor.
   const handleAnchor = (anchor: string) => {
@@ -106,7 +120,10 @@ export const LandingHeader = ({
 
   return (
     <>
-      <header className="fixed top-0 left-0 z-[50] w-full px-3 sm:px-5 lg:px-8 pt-3 sm:pt-4">
+      <header
+        ref={headerRef}
+        className="fixed top-0 left-0 z-[1000] w-full px-3 sm:px-5 lg:px-8 pt-3 sm:pt-4"
+      >
         <section
           className={`mx-auto max-w-7xl flex items-center justify-between gap-2 rounded-2xl px-3 sm:px-5 lg:px-7 py-2.5 sm:py-3 transition-all duration-300 ${
             isScrolled
@@ -264,7 +281,11 @@ export const LandingHeader = ({
               aria-expanded={isMobileMenuOpen}
               aria-label={t("landing.header.toggle_mobile_menu")}
             >
-              <Menu className="w-5 h-5" />
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
         </section>
@@ -273,6 +294,7 @@ export const LandingHeader = ({
       <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+        topOffset={headerHeight}
         scrollToSection={(id) => {
           handleAnchor(id);
         }}

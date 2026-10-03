@@ -1,6 +1,6 @@
 import * as Accordion from "@radix-ui/react-accordion";
 import { Link } from "react-router-dom";
-import { X, ChevronRight, ChevronDown, MessageSquare, Download } from "lucide-react";
+import { ChevronRight, ChevronDown, MessageSquare, Download } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { PLATFORM_LINKS } from "@/components/landing/shared/platformLinks";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -8,11 +8,15 @@ import { useLanguage } from "@/hooks/useLanguage";
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Measured height (px) of the floating header pill, so the sheet lines up
+   *  with it exactly instead of guessing a fixed offset. */
+  topOffset?: number;
   scrollToSection?: (sectionId: string) => void;
 }
 
-const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
+const MobileMenu = ({ isOpen, onClose, topOffset = 60, scrollToSection }: MobileMenuProps) => {
   const { t, language } = useLanguage();
+  const sheetTop = topOffset + 10;
 
   const handleNavClick = (sectionId: string) => {
     if (scrollToSection) {
@@ -31,24 +35,29 @@ const MobileMenu = ({ isOpen, onClose, scrollToSection }: MobileMenuProps) => {
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[999] lg:hidden"
         >
-          {/* Backdrop - Semi-transparent to show page behind */}
+          {/* Backdrop — starts below the header pill (not inset-0) so the
+              header stays crisp instead of getting dimmed along with it. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/30"
+            className="absolute left-0 right-0 bottom-0 bg-black/30"
+            style={{ top: topOffset }}
             onClick={onClose}
           />
 
-          {/* Menu Panel - Responsive height for tablets and mobile */}
+          {/* Menu Panel — same horizontal insets as the floating header pill
+              and fully rounded, so it reads as one cohesive floating stack
+              instead of a plain rectangle dropped below a pill-shaped bar. */}
           <motion.div
-            initial={{ y: '-100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '-100%' }}
+            initial={{ y: '-20px', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '-20px', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="absolute top-[60px] left-0 right-0 bg-card dark:bg-background shadow-2xl flex flex-col overflow-hidden rounded-b-2xl max-h-[calc(100vh-80px)] md:max-h-[70vh] lg:max-h-[60vh]"
+            className="absolute left-3 right-3 sm:left-5 sm:right-5 lg:left-8 lg:right-8 bg-card dark:bg-background shadow-2xl flex flex-col overflow-hidden rounded-2xl border border-border/60 dark:border-border/40"
+            style={{ top: sheetTop, maxHeight: `calc(100vh - ${sheetTop + 24}px)` }}
           >
-            <nav className="flex-1 px-4 py-4 overflow-y-auto sm:overflow-y-visible">
+            <nav className="flex-1 px-4 py-4 overflow-y-auto">
               {/* Features */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
