@@ -757,14 +757,14 @@ const [showVideoModal, setShowVideoModal] = useState(false);
             <div className="w-full max-w-5xl mx-auto space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6 mt-24 sm:mt-0 text-center">
               <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 <h1 className="font-heading font-bold text-white leading-tight text-center">
-                  <span className="block whitespace-nowrap text-xl sm:text-3xl md:text-4xl lg:text-5xl">
+                  <span className="block whitespace-nowrap text-[clamp(1.25rem,6.8vw,1.75rem)] sm:text-4xl md:text-5xl lg:text-6xl">
                     {t('landing.hero.title_line1')}
                   </span>
-                  <span className="block whitespace-nowrap text-blue-200 text-base sm:text-xl md:text-2xl lg:text-3xl mt-1">
+                  <span className="block whitespace-nowrap text-blue-200 text-[clamp(1rem,5.2vw,1.125rem)] sm:text-2xl md:text-3xl lg:text-4xl mt-1">
                     {t('landing.hero.title_line2')}
                   </span>
               </h1>
-                <p className="text-sm sm:text-base md:text-lg text-gray-100 max-w-2xl mx-auto leading-relaxed font-normal text-center">
+                <p className="text-base sm:text-lg md:text-xl text-gray-100 max-w-2xl mx-auto leading-relaxed font-normal text-center">
                 {t('landing.hero.subtitle')}
               </p>
               <div className="flex flex-wrap justify-center gap-2 pt-1">
@@ -776,21 +776,21 @@ const [showVideoModal, setShowVideoModal] = useState(false);
                 ].map(({ Icon, label }) => (
                   <span
                     key={label}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs sm:text-sm font-medium text-white backdrop-blur-sm"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-sm sm:text-base font-medium text-white backdrop-blur-sm"
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-4 w-4" />
                     {label}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-row flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 pt-2 w-full">
+            <div className="flex flex-row flex-wrap justify-center gap-3 sm:gap-3 md:gap-4 pt-2 w-full">
   <Link
     to="/signup">
     <Button
       variant="outline"
-      className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-200 shadow-lg"
+      className="text-sm sm:text-base md:text-lg h-12 sm:h-12 md:h-14 px-6 sm:px-7 md:px-8 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 rounded-lg transition-all duration-200 shadow-lg font-semibold"
     >
       {t('landing.hero.start_free')}
     </Button>
@@ -799,25 +799,25 @@ const [showVideoModal, setShowVideoModal] = useState(false);
   {/* View Tutorial Button - Blue */}
   <Button
     onClick={() => navigate("/watch-tutorial")}
-    className="text-xs sm:text-sm md:text-base h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-lg flex items-center gap-2"
+    className="text-sm sm:text-base md:text-lg h-12 sm:h-12 md:h-14 px-6 sm:px-7 md:px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 shadow-lg flex items-center gap-2 font-semibold"
   >
-    <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+    <Play className="w-4 h-4 sm:w-5 sm:h-5" />
     {t('landing.hero.how_to_use')}
   </Button>
 </div>
 
             {/* Stats - Below buttons, centered */}
-            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 pt-8 lg:pt-12 w-full max-w-xl mx-auto justify-items-center">
+            <div ref={heroStatsReveal.containerRef} className="grid grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12 pt-6 lg:pt-12 w-full max-w-xl mx-auto justify-items-center">
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '0ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1200+</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">1200+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_businesses')}</div>
                 </div>
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '200ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">1M+</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">1M+</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_messages')}</div>
                 </div>
                 <div className={`text-center ${heroStatsReveal.isVisible ? 'animate-bounce-in' : 'reveal-hidden'}`} style={{ animationDelay: heroStatsReveal.isVisible ? '400ms' : '0ms' }}>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white">98%</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">98%</div>
                   <div className="text-xs sm:text-sm md:text-base text-gray-200 leading-tight mt-1">{t('landing.hero.stat_delivery')}</div>
                 </div>
               </div>
