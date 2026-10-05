@@ -11179,143 +11179,84 @@ function CreditAlertsTab() {
 }
 
 // ─── Net Profit (revenue − real SMS provider cost) ─────────────────────────
-// A brand-new rate defaults its "Effective from" to well in the past (not
-// today) so the FIRST rate an admin ever adds covers all the historical
-// months already shown on this page, instead of only applying from today
-// forward and leaving every past month stuck on "No rate". Once at least
-// one rate exists, a newly-added one defaults to today instead — that's
-// now a genuine rate *change* (e.g. the provider's price went up), which
-// should only apply going forward, not rewrite past months' cost.
-function netProfitDefaultEffectiveFrom(hasExistingRates) {
-  if (hasExistingRates) return todayIso();
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - 3);
-  return d.toISOString().slice(0, 10);
-}
-
+// Cost is a single current rate (what we pay the provider), admin-set and
+// applied uniformly to every month shown — no effective-dating. The sell
+// side is never a fixed number: "Avg sell price" below is always derived
+// live from real revenue ÷ real segments sent, so it moves on its own as
+// the mix of package tiers/volumes customers actually buy changes.
 function NetProfitTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [months, setMonths] = useState(12);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [rates, setRates] = useState([]);
-  const [newRate, setNewRate] = useState({ cost_per_segment:'', effective_from: todayIso(), note:'' });
+  const [rate, setRate] = useState({ cost_per_segment: 0, has_rate: false, updated_at: null });
+  const [costDraft, setCostDraft] = useState('');
   const [savingRate, setSavingRate] = useState(false);
-  const didDefaultDate = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profitRes, ratesRes] = await Promise.all([
+      const [profitRes, rateRes] = await Promise.all([
         adminFetch(`/api/admin/v1/net-profit?months=${months}`, { method:'GET' }, onLogout),
-        adminFetch(`/api/admin/v1/net-profit/cost-rates`, { method:'GET' }, onLogout),
+        adminFetch(`/api/admin/v1/net-profit/cost-rate`, { method:'GET' }, onLogout),
       ]);
       if (profitRes.success) setData(profitRes.data);
-      if (ratesRes.success) {
-        const loadedRates = ratesRes.data || [];
-        setRates(loadedRates);
-        // Only on the very first load — don't fight the admin's own typing
-        // on later reloads (e.g. switching the "Last N months" dropdown).
-        if (!didDefaultDate.current) {
-          didDefaultDate.current = true;
-          setNewRate(r => ({ ...r, effective_from: netProfitDefaultEffectiveFrom(loadedRates.length > 0) }));
-        }
+      if (rateRes.success) {
+        setRate(rateRes.data);
+        setCostDraft(rateRes.data.has_rate ? String(rateRes.data.cost_per_segment) : '');
       }
     } catch {} finally { setLoading(false); }
   }, [months, onLogout]);
   useEffect(() => { load(); }, [load]);
 
-  const addRate = async () => {
-    const cost = parseFloat(newRate.cost_per_segment);
-    if (!cost || cost <= 0) { showToast('Enter a valid cost per SMS', 'error'); return; }
+  const saveRate = async () => {
+    const cost = parseFloat(costDraft);
+    if (isNaN(cost) || cost <= 0) { showToast('Enter a valid cost per SMS', 'error'); return; }
     setSavingRate(true);
     try {
-      const res = await adminFetch('/api/admin/v1/net-profit/cost-rates', {
-        method:'POST', body: JSON.stringify({ ...newRate, cost_per_segment: cost }),
+      const res = await adminFetch('/api/admin/v1/net-profit/cost-rate', {
+        method:'PATCH', body: JSON.stringify({ cost_per_segment: cost }),
       }, onLogout);
-      if (res.success) {
-        showToast('Cost rate saved', 'success');
-        setNewRate({ cost_per_segment:'', effective_from: netProfitDefaultEffectiveFrom(true), note:'' });
-        load();
-      } else showToast(res.error?.message || 'Failed to save rate', 'error');
+      if (res.success) { showToast('Cost rate saved — applied to every month shown.', 'success'); setRate(res.data); load(); }
+      else showToast(res.error?.message || 'Failed to save rate', 'error');
     } catch { showToast('Network error saving rate', 'error'); }
     finally { setSavingRate(false); }
   };
 
-  const removeRate = async (id) => {
-    if (!window.confirm('Delete this cost rate? Months priced from it will fall back to the next-older rate (or show "No rate" if none remain before them).')) return;
-    try {
-      const res = await adminFetch(`/api/admin/v1/net-profit/cost-rates/${id}`, { method:'DELETE' }, onLogout);
-      if (res.success) { showToast('Rate deleted', 'success'); load(); }
-      else showToast(res.error?.message || 'Failed to delete rate', 'error');
-    } catch { showToast('Network error deleting rate', 'error'); }
-  };
-
   const fmtTzs = (n) => (n == null ? '—' : `TZS ${Math.round(n).toLocaleString()}`);
+  const dirty = costDraft !== (rate.has_rate ? String(rate.cost_per_segment) : '');
 
   return (
     <div className="senda-fade-in">
-      <SectionHeader title="Net Profit" subtitle="Revenue minus what we actually pay the SMS provider — based on segments sent and the cost rate you set below, not a guess." />
+      <SectionHeader title="Net Profit" subtitle="Revenue minus what we actually pay the SMS provider. Cost is the one rate you set below, applied to every month. Sell price is never fixed — it's always the real average from what customers actually paid." />
 
       {/* Cost rate panel */}
       <div className="senda-card" style={{ padding:'16px 18px', marginBottom:16 }}>
         <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:10 }}>Cost per SMS segment (what we pay the provider)</div>
-        {rates.length === 0 && (
+        {!rate.has_rate && (
           <div style={{ fontSize:12, color:'#b91c1c', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 12px', marginBottom:10 }}>
-            No cost rate set yet — profit can't be computed until you add one (e.g. 13 for 13 TZS/SMS).
+            No cost rate set yet — profit can't be computed until you set one (e.g. 13 for 13 TZS/SMS).
           </div>
         )}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'flex-end', marginBottom: rates.length ? 14 : 0 }}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'flex-end' }}>
           <div>
             <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Cost per SMS (TZS)</label>
-            <input type="number" min="0" step="0.01" value={newRate.cost_per_segment}
-              onChange={e=>setNewRate(r=>({ ...r, cost_per_segment:e.target.value }))}
-              placeholder="13" className="senda-input" style={{ width:120, height:34 }}/>
+            <input type="number" min="0" step="0.01" value={costDraft}
+              onChange={e=>setCostDraft(e.target.value)}
+              placeholder="13" className="senda-input" style={{ width:140, height:34 }}/>
           </div>
-          <div>
-            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Effective from</label>
-            <input type="date" value={newRate.effective_from}
-              onChange={e=>setNewRate(r=>({ ...r, effective_from:e.target.value }))}
-              className="senda-input" style={{ height:34 }}/>
-          </div>
-          <div style={{ flex:1, minWidth:160 }}>
-            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Note (optional)</label>
-            <input value={newRate.note} onChange={e=>setNewRate(r=>({ ...r, note:e.target.value }))}
-              placeholder="e.g. Beem rate change" className="senda-input" style={{ height:34 }}/>
-          </div>
-          <button type="button" onClick={addRate} disabled={savingRate}
-            className="senda-btn senda-btn-sm" style={{ height:34, border:'none', background:BRAND, color:'#fff', fontWeight:700 }}>
-            {savingRate ? 'Saving…' : 'Add rate'}
+          <button type="button" onClick={saveRate} disabled={savingRate || !dirty}
+            className="senda-btn senda-btn-sm" style={{ height:34, border:'none', background:BRAND, color:'#fff', fontWeight:700, opacity:(savingRate||!dirty)?0.6:1 }}>
+            {savingRate ? 'Saving…' : 'Save'}
           </button>
+          {rate.has_rate && rate.updated_at && (
+            <span style={{ fontSize:11, color:'#94a3b8' }}>Last changed {new Date(rate.updated_at).toLocaleString()}</span>
+          )}
         </div>
-        <p style={{ fontSize:11, color:'#94a3b8', margin: rates.length ? '8px 0 0' : '2px 0 0' }}>
-          A rate only applies to the month it's effective from and every month after it — a month before your
-          earliest rate's date always shows "No rate" (there's nothing to backdate it to). To cover older months,
-          set "Effective from" further back; to record a provider price change, add a new rate dated from when the
-          change actually happened instead of editing this one.
+        <p style={{ fontSize:11, color:'#94a3b8', margin:'8px 0 0' }}>
+          One current value — changing it recomputes cost and profit for every month shown, past and future, not
+          just going forward. There's no separate rate per month to manage.
         </p>
-        {rates.length > 0 && (
-          <div className="senda-table-wrap">
-            <table className="senda-table">
-              <thead><tr><th>Effective from</th><th>Cost / SMS</th><th>Note</th><th></th></tr></thead>
-              <tbody>
-                {rates.map(r => (
-                  <tr key={r.id}>
-                    <td>{r.effective_from}</td>
-                    <td>TZS {r.cost_per_segment}</td>
-                    <td>{r.note || '—'}</td>
-                    <td>
-                      <button type="button" onClick={()=>removeRate(r.id)}
-                        className="senda-btn senda-btn-sm" style={{ border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626' }}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
       {/* Monthly breakdown */}
@@ -11337,6 +11278,10 @@ function NetProfitTab() {
               <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Revenue</div>
               <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.revenue)}</div>
             </div>
+            <div className="senda-card" style={{ padding:16 }} title="Real revenue ÷ real segments sent — never a fixed assumed price, moves with your actual package/volume mix.">
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Avg sell price / SMS</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{data.totals.avg_sell_price != null ? `TZS ${data.totals.avg_sell_price}` : '—'}</div>
+            </div>
             <div className="senda-card" style={{ padding:16 }}>
               <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Provider cost</div>
               <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.cost)}</div>
@@ -11356,7 +11301,7 @@ function NetProfitTab() {
               <table className="senda-table">
                 <thead>
                   <tr>
-                    <th>Month</th><th>Revenue</th><th>Segments sent</th><th>Cost/SMS used</th><th>Provider cost</th><th>Net profit</th><th>Margin</th>
+                    <th>Month</th><th>Revenue</th><th>Segments sent</th><th>Avg sell/SMS</th><th>Cost/SMS</th><th>Provider cost</th><th>Net profit</th><th>Margin</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -11365,11 +11310,8 @@ function NetProfitTab() {
                       <td style={{ fontWeight:700 }}>{m.label}</td>
                       <td>{fmtTzs(m.revenue)}</td>
                       <td>{(m.segments_sent || 0).toLocaleString()}</td>
-                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : (
-                        <span style={{ color:'#dc2626' }} title={rates.length ? `Your earliest rate starts ${[...rates].map(r=>r.effective_from).sort()[0]} — this month is before that.` : 'No cost rate has been added yet.'}>
-                          No rate
-                        </span>
-                      )}</td>
+                      <td>{m.avg_sell_price != null ? `TZS ${m.avg_sell_price}` : '—'}</td>
+                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : <span style={{ color:'#dc2626' }}>No rate</span>}</td>
                       <td>{fmtTzs(m.cost)}</td>
                       <td style={{ fontWeight:700, color: m.profit==null ? '#94a3b8' : m.profit>=0 ? '#059669' : '#dc2626' }}>{fmtTzs(m.profit)}</td>
                       <td>{m.margin_pct==null ? '—' : `${m.margin_pct}%`}</td>
