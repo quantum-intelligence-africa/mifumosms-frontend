@@ -11076,6 +11076,179 @@ function CreditAlertsTab() {
   );
 }
 
+// ─── Net Profit (revenue − real SMS provider cost) ─────────────────────────
+function NetProfitTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [months, setMonths] = useState(12);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [rates, setRates] = useState([]);
+  const [newRate, setNewRate] = useState({ cost_per_segment:'', effective_from: todayIso(), note:'' });
+  const [savingRate, setSavingRate] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [profitRes, ratesRes] = await Promise.all([
+        adminFetch(`/api/admin/v1/net-profit?months=${months}`, { method:'GET' }, onLogout),
+        adminFetch(`/api/admin/v1/net-profit/cost-rates`, { method:'GET' }, onLogout),
+      ]);
+      if (profitRes.success) setData(profitRes.data);
+      if (ratesRes.success) setRates(ratesRes.data || []);
+    } catch {} finally { setLoading(false); }
+  }, [months, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const addRate = async () => {
+    const cost = parseFloat(newRate.cost_per_segment);
+    if (!cost || cost <= 0) { showToast('Enter a valid cost per SMS', 'error'); return; }
+    setSavingRate(true);
+    try {
+      const res = await adminFetch('/api/admin/v1/net-profit/cost-rates', {
+        method:'POST', body: JSON.stringify({ ...newRate, cost_per_segment: cost }),
+      }, onLogout);
+      if (res.success) {
+        showToast('Cost rate saved', 'success');
+        setNewRate({ cost_per_segment:'', effective_from: todayIso(), note:'' });
+        load();
+      } else showToast(res.error?.message || 'Failed to save rate', 'error');
+    } catch { showToast('Network error saving rate', 'error'); }
+    finally { setSavingRate(false); }
+  };
+
+  const removeRate = async (id) => {
+    if (!window.confirm('Delete this cost rate? Months priced from it will fall back to the next-older rate (or show "No rate" if none remain before them).')) return;
+    try {
+      const res = await adminFetch(`/api/admin/v1/net-profit/cost-rates/${id}`, { method:'DELETE' }, onLogout);
+      if (res.success) { showToast('Rate deleted', 'success'); load(); }
+      else showToast(res.error?.message || 'Failed to delete rate', 'error');
+    } catch { showToast('Network error deleting rate', 'error'); }
+  };
+
+  const fmtTzs = (n) => (n == null ? '—' : `TZS ${Math.round(n).toLocaleString()}`);
+
+  return (
+    <div className="senda-fade-in">
+      <SectionHeader title="Net Profit" subtitle="Revenue minus what we actually pay the SMS provider — based on segments sent and the cost rate you set below, not a guess." />
+
+      {/* Cost rate panel */}
+      <div className="senda-card" style={{ padding:'16px 18px', marginBottom:16 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:10 }}>Cost per SMS segment (what we pay the provider)</div>
+        {rates.length === 0 && (
+          <div style={{ fontSize:12, color:'#b91c1c', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 12px', marginBottom:10 }}>
+            No cost rate set yet — profit can't be computed until you add one (e.g. 13 for 13 TZS/SMS).
+          </div>
+        )}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'flex-end', marginBottom: rates.length ? 14 : 0 }}>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Cost per SMS (TZS)</label>
+            <input type="number" min="0" step="0.01" value={newRate.cost_per_segment}
+              onChange={e=>setNewRate(r=>({ ...r, cost_per_segment:e.target.value }))}
+              placeholder="13" className="senda-input" style={{ width:120, height:34 }}/>
+          </div>
+          <div>
+            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Effective from</label>
+            <input type="date" value={newRate.effective_from}
+              onChange={e=>setNewRate(r=>({ ...r, effective_from:e.target.value }))}
+              className="senda-input" style={{ height:34 }}/>
+          </div>
+          <div style={{ flex:1, minWidth:160 }}>
+            <label style={{ fontSize:11, color:'#64748b', display:'block', marginBottom:4 }}>Note (optional)</label>
+            <input value={newRate.note} onChange={e=>setNewRate(r=>({ ...r, note:e.target.value }))}
+              placeholder="e.g. Beem rate change" className="senda-input" style={{ height:34 }}/>
+          </div>
+          <button type="button" onClick={addRate} disabled={savingRate}
+            className="senda-btn senda-btn-sm" style={{ height:34, border:'none', background:BRAND, color:'#fff', fontWeight:700 }}>
+            {savingRate ? 'Saving…' : 'Add rate'}
+          </button>
+        </div>
+        {rates.length > 0 && (
+          <div className="senda-table-wrap">
+            <table className="senda-table">
+              <thead><tr><th>Effective from</th><th>Cost / SMS</th><th>Note</th><th></th></tr></thead>
+              <tbody>
+                {rates.map(r => (
+                  <tr key={r.id}>
+                    <td>{r.effective_from}</td>
+                    <td>TZS {r.cost_per_segment}</td>
+                    <td>{r.note || '—'}</td>
+                    <td>
+                      <button type="button" onClick={()=>removeRate(r.id)}
+                        className="senda-btn senda-btn-sm" style={{ border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626' }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Monthly breakdown */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, flexWrap:'wrap', gap:8 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>Monthly breakdown</div>
+        <select value={months} onChange={e=>setMonths(Number(e.target.value))} className="senda-input" style={{ width:'auto', height:32 }}>
+          <option value={6}>Last 6 months</option>
+          <option value={12}>Last 12 months</option>
+          <option value={24}>Last 24 months</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <p style={{ color:'#94a3b8', fontSize:13 }}>Loading…</p>
+      ) : data && (
+        <>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:16 }}>
+            <div className="senda-card" style={{ padding:16 }}>
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Revenue</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.revenue)}</div>
+            </div>
+            <div className="senda-card" style={{ padding:16 }}>
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Provider cost</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{fmtTzs(data.totals.cost)}</div>
+            </div>
+            <div className="senda-card" style={{ padding:16 }}>
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Net profit</div>
+              <div style={{ fontSize:22, fontWeight:800, color: data.totals.profit>=0 ? '#059669':'#dc2626', marginTop:4 }}>{fmtTzs(data.totals.profit)}</div>
+            </div>
+            <div className="senda-card" style={{ padding:16 }}>
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>Segments sent</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginTop:4 }}>{(data.totals.segments_sent || 0).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div className="senda-card" style={{ overflow:'hidden' }}>
+            <div className="senda-table-wrap">
+              <table className="senda-table">
+                <thead>
+                  <tr>
+                    <th>Month</th><th>Revenue</th><th>Segments sent</th><th>Cost/SMS used</th><th>Provider cost</th><th>Net profit</th><th>Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.months.map(m => (
+                    <tr key={`${m.year}-${m.month}`}>
+                      <td style={{ fontWeight:700 }}>{m.label}</td>
+                      <td>{fmtTzs(m.revenue)}</td>
+                      <td>{(m.segments_sent || 0).toLocaleString()}</td>
+                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : <span style={{ color:'#dc2626' }}>No rate</span>}</td>
+                      <td>{fmtTzs(m.cost)}</td>
+                      <td style={{ fontWeight:700, color: m.profit==null ? '#94a3b8' : m.profit>=0 ? '#059669' : '#dc2626' }}>{fmtTzs(m.profit)}</td>
+                      <td>{m.margin_pct==null ? '—' : `${m.margin_pct}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── IVR Flows (senda_voice_backend) ───────────────────────────────────────────
 // Read-only, cross-tenant view of actual IVR flow *content* — kept as its own
 // tab (separate from the Messaging group's SMS/message-content tabs above) so
@@ -14350,6 +14523,7 @@ const NAV_GROUPS = [
     { id:'transactions',  Icon:CreditCard,   label:'Transactions'     },
     { id:'packages',      Icon:Package,      label:'Packages'         },
     { id:'creditalerts',  Icon:Wallet,       label:'Credit Alerts'    },
+    { id:'netprofit',     Icon:DollarSign,   label:'Net Profit'       },
   ]},
   { title: 'Reports', items: [
     { id:'emailreports',  Icon:Mail,         label:'Email Reports'    },
@@ -18520,6 +18694,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     comingsoon:   <ComingSoonTab/>,
     packages:     <PackagesTab/>,
     creditalerts: <CreditAlertsTab/>,
+    netprofit:    <NetProfitTab/>,
     emailreports: <EmailReportsTab/>,
     notifications:<PushNotificationsTab/>,
     systemsms:    <SystemSmsLogTab/>,
