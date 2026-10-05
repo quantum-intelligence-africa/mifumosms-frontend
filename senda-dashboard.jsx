@@ -10625,14 +10625,21 @@ function LowBalanceCustomersPanel() {
   );
 }
 
+const FREE_CREDIT_SOURCES = [
+  { id:'all', label:'All' },
+  { id:'purchase_backed', label:'✓ Purchase-backed' },
+  { id:'legacy', label:'Legacy (approval-only)' },
+];
+
 function FreeCreditExpiryCustomersPanel() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [status, setStatus] = useState('all');
+  const [source, setSource] = useState('all');
   const [search, setSearch] = useState('');
   const [resending, setResending] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
-    usePagedList('/api/admin/v1/free-credit-expiry/customers', { search, status }, onLogout);
+    usePagedList('/api/admin/v1/free-credit-expiry/customers', { search, status, source }, onLogout);
 
   const resend = async (grantId, type) => {
     const key = `${grantId}:${type}`;
@@ -10692,6 +10699,15 @@ function FreeCreditExpiryCustomersPanel() {
           style={{marginLeft:'auto',opacity:syncing?0.6:1}} title="Historical reconciliation only — backfills a tracking row for customers who already received the bonus under the OLD approval-only rule, before the purchase requirement existed. It does not grant new bonuses and ignores the purchase requirement, by design.">
           {syncing ? 'Syncing…' : 'Sync legacy grants'}
         </button>
+      </div>
+      <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <span style={{fontSize:11,color:'#94a3b8',fontWeight:700,marginRight:2}}>SOURCE</span>
+        {FREE_CREDIT_SOURCES.map(f=>(
+          <button key={f.id} className="senda-btn senda-btn-sm" onClick={()=>setSource(f.id)}
+            style={{background:source===f.id?(f.id==='purchase_backed'?'#16a34a':BRAND):'#f1f5f9',color:source===f.id?'#fff':'#64748b',border:'none'}}>
+            {f.label}
+          </button>
+        ))}
       </div>
       {summary && (
         <div style={{display:'flex',gap:16,marginBottom:14,flexWrap:'wrap'}}>
