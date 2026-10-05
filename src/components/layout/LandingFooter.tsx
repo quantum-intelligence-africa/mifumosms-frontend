@@ -136,7 +136,7 @@ export const LandingFooter = ({ scrollToSection }: LandingFooterProps) => {
 
         <div className="border-t border-white/20 mt-3 sm:mt-4 pt-3 sm:pt-4 text-center">
           <p className="text-xs sm:text-sm text-white/80">
-            &copy; 2025 SENDA.{" "}
+            &copy; {new Date().getFullYear()} SENDA.{" "}
             {t("landing.footer.rights_reserved")}
           </p>
         </div>
