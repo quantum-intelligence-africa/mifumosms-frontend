@@ -1,11 +1,12 @@
 /**
  * SENDA Admin Dashboard — senda-dashboard.jsx
  * Single-file standalone React component
- * Dependencies: react, recharts
+ * Dependencies: react, recharts, react-router-dom (mounted at /admin/* in App.tsx)
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -18755,9 +18756,28 @@ function WhatsAppTab() {
   );
 }
 
+// Reads the tab id from the URL ("/admin/netprofit" -> "netprofit"); bare
+// "/admin" (or any trailing slash) has no segment, treated as "no tab yet".
+function tabIdFromPath(pathname) {
+  const seg = (pathname || '').replace(/^\/admin\/?/, '').split('/')[0];
+  return seg || null;
+}
+
 function Dashboard({ onLogout, adminInfo, showToast }) {
   const bp = useBreakpoint();
-  const [active, setActive] = useState('overview');
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Every tab is a real URL (/admin/<id>) instead of only ever showing
+  // "/admin" — so the current page is visible in the address bar, and
+  // refresh/back/forward/bookmark/share all land on the right tab.
+  const [active, setActiveState] = useState(() => {
+    const seg = tabIdFromPath(location.pathname);
+    return (seg && NAV.some(n => n.id === seg)) ? seg : 'overview';
+  });
+  const setActive = useCallback((id) => {
+    setActiveState(id);
+    navigate(`/admin/${id}`);
+  }, [navigate]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = bp === 'mobile';
   const isTablet = bp === 'tablet';
@@ -18773,6 +18793,19 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [active]);
+
+  // Bare "/admin" normalizes to "/admin/overview"; a direct link to an
+  // unknown tab id falls back the same way. Also keeps `active` in sync
+  // with the URL on browser back/forward, since those change the URL
+  // without going through setActive().
+  useEffect(() => {
+    const seg = tabIdFromPath(location.pathname);
+    if (!seg || !NAV.some(n => n.id === seg)) {
+      navigate(`/admin/${active}`, { replace: true });
+    } else if (seg !== active) {
+      setActiveState(seg);
+    }
+  }, [location.pathname]);
 
   const tabMap = {
     overview:     <OverviewTab/>,

@@ -379,7 +379,9 @@ const AppContent = () => {
                 </ProtectedRoute>
               } />
         {/* ── SENDA Admin Dashboard (standalone, no auth guard) ── */}
-        <Route path="/admin" element={<SendaAdmin />} />
+        {/* Wildcard so /admin/<tab> (e.g. /admin/netprofit) resolves to the
+            same component — SendaAdmin reads the tab from the URL itself. */}
+        <Route path="/admin/*" element={<SendaAdmin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
