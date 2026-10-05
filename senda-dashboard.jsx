@@ -11179,6 +11179,20 @@ function CreditAlertsTab() {
 }
 
 // ─── Net Profit (revenue − real SMS provider cost) ─────────────────────────
+// A brand-new rate defaults its "Effective from" to well in the past (not
+// today) so the FIRST rate an admin ever adds covers all the historical
+// months already shown on this page, instead of only applying from today
+// forward and leaving every past month stuck on "No rate". Once at least
+// one rate exists, a newly-added one defaults to today instead — that's
+// now a genuine rate *change* (e.g. the provider's price went up), which
+// should only apply going forward, not rewrite past months' cost.
+function netProfitDefaultEffectiveFrom(hasExistingRates) {
+  if (hasExistingRates) return todayIso();
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 3);
+  return d.toISOString().slice(0, 10);
+}
+
 function NetProfitTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [months, setMonths] = useState(12);
@@ -11187,6 +11201,7 @@ function NetProfitTab() {
   const [rates, setRates] = useState([]);
   const [newRate, setNewRate] = useState({ cost_per_segment:'', effective_from: todayIso(), note:'' });
   const [savingRate, setSavingRate] = useState(false);
+  const didDefaultDate = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -11196,7 +11211,16 @@ function NetProfitTab() {
         adminFetch(`/api/admin/v1/net-profit/cost-rates`, { method:'GET' }, onLogout),
       ]);
       if (profitRes.success) setData(profitRes.data);
-      if (ratesRes.success) setRates(ratesRes.data || []);
+      if (ratesRes.success) {
+        const loadedRates = ratesRes.data || [];
+        setRates(loadedRates);
+        // Only on the very first load — don't fight the admin's own typing
+        // on later reloads (e.g. switching the "Last N months" dropdown).
+        if (!didDefaultDate.current) {
+          didDefaultDate.current = true;
+          setNewRate(r => ({ ...r, effective_from: netProfitDefaultEffectiveFrom(loadedRates.length > 0) }));
+        }
+      }
     } catch {} finally { setLoading(false); }
   }, [months, onLogout]);
   useEffect(() => { load(); }, [load]);
@@ -11211,7 +11235,7 @@ function NetProfitTab() {
       }, onLogout);
       if (res.success) {
         showToast('Cost rate saved', 'success');
-        setNewRate({ cost_per_segment:'', effective_from: todayIso(), note:'' });
+        setNewRate({ cost_per_segment:'', effective_from: netProfitDefaultEffectiveFrom(true), note:'' });
         load();
       } else showToast(res.error?.message || 'Failed to save rate', 'error');
     } catch { showToast('Network error saving rate', 'error'); }
@@ -11264,6 +11288,12 @@ function NetProfitTab() {
             {savingRate ? 'Saving…' : 'Add rate'}
           </button>
         </div>
+        <p style={{ fontSize:11, color:'#94a3b8', margin: rates.length ? '8px 0 0' : '2px 0 0' }}>
+          A rate only applies to the month it's effective from and every month after it — a month before your
+          earliest rate's date always shows "No rate" (there's nothing to backdate it to). To cover older months,
+          set "Effective from" further back; to record a provider price change, add a new rate dated from when the
+          change actually happened instead of editing this one.
+        </p>
         {rates.length > 0 && (
           <div className="senda-table-wrap">
             <table className="senda-table">
@@ -11335,7 +11365,11 @@ function NetProfitTab() {
                       <td style={{ fontWeight:700 }}>{m.label}</td>
                       <td>{fmtTzs(m.revenue)}</td>
                       <td>{(m.segments_sent || 0).toLocaleString()}</td>
-                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : <span style={{ color:'#dc2626' }}>No rate</span>}</td>
+                      <td>{m.has_rate ? `TZS ${m.cost_per_segment}` : (
+                        <span style={{ color:'#dc2626' }} title={rates.length ? `Your earliest rate starts ${[...rates].map(r=>r.effective_from).sort()[0]} — this month is before that.` : 'No cost rate has been added yet.'}>
+                          No rate
+                        </span>
+                      )}</td>
                       <td>{fmtTzs(m.cost)}</td>
                       <td style={{ fontWeight:700, color: m.profit==null ? '#94a3b8' : m.profit>=0 ? '#059669' : '#dc2626' }}>{fmtTzs(m.profit)}</td>
                       <td>{m.margin_pct==null ? '—' : `${m.margin_pct}%`}</td>
