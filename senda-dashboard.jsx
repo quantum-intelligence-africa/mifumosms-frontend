@@ -9321,11 +9321,11 @@ const LOW_CREDIT_PLACEHOLDERS = ['{credits}', '{name}', '{threshold}'];
 function LowCreditWarningSettings() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [settings, setSettings] = useState({
-    enabled: true, threshold: 100, sender_id: '', message: '', resend_cooldown_days: 2,
-    campaign: { enabled: true, last_run_at: null, last_checked: 0, last_sent: 0 },
+    enabled: true, threshold: 100, sender_id: '', message: '', zero_credit_message: '', resend_cooldown_days: 2,
+    campaign: { enabled: false, last_run_at: null, last_checked: 0, last_sent: 0 },
     defaults: {}, placeholders: LOW_CREDIT_PLACEHOLDERS,
   });
-  const [drafts, setDrafts]   = useState({ threshold: '100', sender_id: '', message: '', resend_cooldown_days: '2' });
+  const [drafts, setDrafts]   = useState({ threshold: '100', sender_id: '', message: '', zero_credit_message: '', resend_cooldown_days: '2' });
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [savingToggle, setSavingToggle] = useState(false);
@@ -9340,6 +9340,7 @@ function LowCreditWarningSettings() {
       threshold: String(d.threshold ?? 100),
       sender_id: d.sender_id || '',
       message: d.message || '',
+      zero_credit_message: d.zero_credit_message || '',
       resend_cooldown_days: String(d.resend_cooldown_days ?? 2),
     });
   };
@@ -9418,9 +9419,14 @@ function LowCreditWarningSettings() {
     if (isNaN(resendCooldownDays) || resendCooldownDays < 1) { showToast('Resend interval must be a number ≥ 1.', 'error'); return; }
     const message = drafts.message.trim();
     if (!message) { showToast('Message cannot be empty.', 'error'); return; }
+    const zeroCreditMessage = drafts.zero_credit_message.trim();
+    if (!zeroCreditMessage) { showToast('Zero-credit message cannot be empty.', 'error'); return; }
     setSavingForm(true);
     try {
-      const res = await patch({ threshold, sender_id: drafts.sender_id.trim(), message, resend_cooldown_days: resendCooldownDays });
+      const res = await patch({
+        threshold, sender_id: drafts.sender_id.trim(), message,
+        zero_credit_message: zeroCreditMessage, resend_cooldown_days: resendCooldownDays,
+      });
       if (res.success) { applyServer(res.data); showToast('Settings saved.', 'success'); }
       else { showToast(res.error?.message || 'Failed to save.', 'error'); }
     } catch (e) {
@@ -9434,9 +9440,16 @@ function LowCreditWarningSettings() {
     setDrafts(prev => ({ ...prev, message: def }));
   };
 
+  const resetZeroCreditMessage = () => {
+    const def = (settings.defaults && settings.defaults.zero_credit_message) || '';
+    if (!def) { showToast('No default available.', 'error'); return; }
+    setDrafts(prev => ({ ...prev, zero_credit_message: def }));
+  };
+
   const dirty = drafts.threshold !== String(settings.threshold ?? '')
     || (drafts.sender_id || '') !== (settings.sender_id || '')
     || (drafts.message || '') !== (settings.message || '')
+    || (drafts.zero_credit_message || '') !== (settings.zero_credit_message || '')
     || drafts.resend_cooldown_days !== String(settings.resend_cooldown_days ?? '');
 
   const preview = (drafts.message || '')
@@ -9444,6 +9457,12 @@ function LowCreditWarningSettings() {
     .replace(/\{name\}/g, 'Asha')
     .replace(/\{threshold\}/g, String(parseInt(drafts.threshold, 10) || 0));
   const segs = smsSegments(drafts.message || '').segments;
+
+  const zeroPreview = (drafts.zero_credit_message || '')
+    .replace(/\{credits\}/g, '0')
+    .replace(/\{name\}/g, 'Asha')
+    .replace(/\{threshold\}/g, String(parseInt(drafts.threshold, 10) || 0));
+  const zeroSegs = smsSegments(drafts.zero_credit_message || '').segments;
 
   return (
     <div className="senda-card" style={{padding:24, marginBottom:20}}>
@@ -9460,9 +9479,10 @@ function LowCreditWarningSettings() {
         Warn <strong>any tenant</strong> — direct customers and partner/white-label clients alike —
         when their SMS credits drop to or below the threshold, always using the tenant's own
         approved sender ID when they have one (never a generic sender for a white-label client).
-        The first SMS goes out on the downward threshold crossing; while the tenant stays at/below
-        the threshold it's <strong>resent automatically</strong> every "Resend every" days below
-        (checked at least once a day) so a customer isn't only ever notified once and forgotten.
+        Each tenant gets exactly <strong>two SMS per low-balance episode</strong>, each sent once:
+        one the moment credits cross the threshold, and a separate one the moment credits actually
+        reach zero — not a repeating resend. (The "Recurring reminder campaign" below is an optional
+        extra on top of those two, off by default.)
         A <strong>push / in-app</strong> notification is also sent on each drop while low, for tenants
         with a dashboard login (partner/white-label clients don't have one, so SMS-only for them).
         The list below shows only tenants that <strong>already have an approved sender ID</strong> and have
@@ -9588,24 +9608,69 @@ function LowCreditWarningSettings() {
                 <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{preview || '—'}</p>
               </div>
 
-              <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
-                <button className="senda-btn senda-btn-primary senda-btn-sm"
-                  disabled={!dirty || savingForm}
-                  onClick={saveForm}
-                  style={{opacity:(!dirty||savingForm)?0.5:1}}>
-                  {savingForm ? 'Saving…' : 'Save changes'}
-                </button>
-                {dirty && (
-                  <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
-                    onClick={() => applyServer(settings)}>
-                    Cancel
-                  </button>
-                )}
+              <div style={{marginTop:8}}>
                 <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
-                  onClick={resetMessage} style={{marginLeft:'auto'}}>
+                  onClick={resetMessage}>
                   Reset message
                 </button>
               </div>
+            </div>
+
+            {/* Zero-credit message — the second, separate one-shot notice */}
+            <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>
+                Zero-credit message text
+              </label>
+              <p style={{fontSize:11,color:'#94a3b8',margin:'0 0 8px'}}>
+                Sent once, separately from the message above, the moment a tenant's credits actually reach zero.
+              </p>
+              <textarea
+                value={drafts.zero_credit_message} rows={3}
+                onChange={e => setDrafts(prev => ({ ...prev, zero_credit_message: e.target.value }))}
+                placeholder="Enter the zero-credit notice…"
+                style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:'10px 12px',borderRadius:8,border:'1px solid #e2e8f0',fontSize:13,lineHeight:1.5,color:'#0f172a',fontFamily:'inherit',outline:'none'}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:6,flexWrap:'wrap'}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Placeholders:</span>
+                  {LOW_CREDIT_PLACEHOLDERS.map(p => (
+                    <button key={p} type="button"
+                      onClick={() => setDrafts(prev => ({ ...prev, zero_credit_message: (prev.zero_credit_message || '') + p }))}
+                      style={{fontSize:11,fontFamily:'monospace',color:BRAND,background:'#eff6ff',border:'1px solid #dbeafe',borderRadius:6,padding:'2px 6px',cursor:'pointer'}}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <span style={{fontSize:11,color:(drafts.zero_credit_message||'').length>800?RED:'#94a3b8'}}>
+                  {(drafts.zero_credit_message||'').length} chars · {zeroSegs} SMS{zeroSegs===1?'':'s'}
+                </span>
+              </div>
+
+              <div style={{marginTop:10,padding:'10px 12px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:8}}>
+                <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',margin:'0 0 4px'}}>Preview</p>
+                <p style={{fontSize:13,color:'#334155',margin:0,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{zeroPreview || '—'}</p>
+              </div>
+
+              <div style={{marginTop:8}}>
+                <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                  onClick={resetZeroCreditMessage}>
+                  Reset zero-credit message
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:16,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
+              <button className="senda-btn senda-btn-primary senda-btn-sm"
+                disabled={!dirty || savingForm}
+                onClick={saveForm}
+                style={{opacity:(!dirty||savingForm)?0.5:1}}>
+                {savingForm ? 'Saving…' : 'Save changes'}
+              </button>
+              {dirty && (
+                <button className="senda-btn senda-btn-ghost senda-btn-sm" disabled={savingForm}
+                  onClick={() => applyServer(settings)}>
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -10013,7 +10078,8 @@ function SenderIdNudgeSettingsCard() {
 
 // ─── Free Credit Expiry Settings ────────────────────────────────────────────
 // Admin control for the 200-free-SMS trial grant (given once per direct
-// customer when their sender ID is first approved) and its 21-day expiry.
+// customer, on their first completed SMS purchase of at least the configured
+// minimum, after their sender ID is approved) and its 21-day expiry.
 // Backed by /api/admin/v1/free-credit-expiry (GET + /update PATCH).
 const FREE_CREDIT_WARNING_PLACEHOLDERS = ['{name}', '{remaining_credits}', '{days_left}', '{expiry_date}'];
 const FREE_CREDIT_EXPIRED_PLACEHOLDERS = ['{name}'];
@@ -10022,6 +10088,7 @@ function FreeCreditExpirySettings() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const empty = {
     warning_enabled: true, expired_enabled: true,
+    min_purchase_credits_for_bonus: 1000,
     period_days: 21, warning_days_before: 3,
     warning_sender_id: '', warning_message: '',
     expired_sender_id: '', expired_message: '',
@@ -10033,6 +10100,7 @@ function FreeCreditExpirySettings() {
   };
   const [settings, setSettings] = useState(empty);
   const [drafts, setDrafts]     = useState({
+    min_purchase_credits_for_bonus: '1000',
     period_days: '21', warning_days_before: '3',
     warning_sender_id: '', warning_message: '',
     expired_sender_id: '', expired_message: '',
@@ -10047,6 +10115,7 @@ function FreeCreditExpirySettings() {
     const d = data || {};
     setSettings(d);
     setDrafts({
+      min_purchase_credits_for_bonus: String(d.min_purchase_credits_for_bonus ?? 1000),
       period_days: String(d.period_days ?? 21),
       warning_days_before: String(d.warning_days_before ?? 3),
       warning_sender_id: d.warning_sender_id || '',
@@ -10110,8 +10179,10 @@ function FreeCreditExpirySettings() {
 
   const saveForm = async () => {
     if (savingForm) return;
+    const min_purchase_credits_for_bonus = parseInt(drafts.min_purchase_credits_for_bonus, 10);
     const period_days = parseInt(drafts.period_days, 10);
     const warning_days_before = parseInt(drafts.warning_days_before, 10);
+    if (isNaN(min_purchase_credits_for_bonus) || min_purchase_credits_for_bonus < 1) { showToast('Minimum purchase must be a number ≥ 1 credit.', 'error'); return; }
     if (isNaN(period_days) || period_days < 1) { showToast('Expiry period must be a number ≥ 1 day.', 'error'); return; }
     if (isNaN(warning_days_before) || warning_days_before < 0) { showToast('Warning days-before must be a number ≥ 0.', 'error'); return; }
     if (!drafts.warning_message.trim()) { showToast('Warning message cannot be empty.', 'error'); return; }
@@ -10120,7 +10191,7 @@ function FreeCreditExpirySettings() {
     setSavingForm(true);
     try {
       const res = await patch({
-        period_days, warning_days_before,
+        min_purchase_credits_for_bonus, period_days, warning_days_before,
         warning_sender_id: drafts.warning_sender_id.trim(),
         warning_message: drafts.warning_message,
         expired_sender_id: drafts.expired_sender_id.trim(),
@@ -10133,7 +10204,8 @@ function FreeCreditExpirySettings() {
     } finally { setSavingForm(false); }
   };
 
-  const dirty = drafts.period_days !== String(settings.period_days ?? '')
+  const dirty = drafts.min_purchase_credits_for_bonus !== String(settings.min_purchase_credits_for_bonus ?? '')
+    || drafts.period_days !== String(settings.period_days ?? '')
     || drafts.warning_days_before !== String(settings.warning_days_before ?? '')
     || (drafts.warning_sender_id || '') !== (settings.warning_sender_id || '')
     || (drafts.warning_message || '') !== (settings.warning_message || '')
@@ -10159,8 +10231,10 @@ function FreeCreditExpirySettings() {
         </div>
       </div>
       <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
-        Direct customers get a one-time free SMS credit grant when their (first) sender ID is
-        approved, expiring after the period below. A warning is sent before expiry, and a
+        Direct customers get a one-time 200-credit free SMS grant, but only once they have
+        <strong> both</strong> an approved sender ID <strong>and</strong> complete their first real
+        purchase of at least the minimum below — approval alone no longer grants it. The 21-day
+        expiry (below) counts from that purchase. A warning is sent before expiry, and a
         final notice once credits become unavailable.
       </p>
 
@@ -10170,12 +10244,18 @@ function FreeCreditExpirySettings() {
         <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p>
       ) : (
         <div style={{marginTop:8}}>
-          {/* Amount (fixed) + period */}
+          {/* Amount (fixed) + eligibility + period */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,padding:'16px 0',borderTop:'1px solid #f1f5f9'}}>
             <div>
               <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Free credits granted</label>
-              <input type="text" disabled value="200 (fixed on sender ID approval)" className="senda-input"
+              <input type="text" disabled value="200 (fixed)" className="senda-input"
                 style={{height:40,fontSize:13,color:'#94a3b8',cursor:'not-allowed'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Min. first purchase (credits)</label>
+              <input type="number" min="1" className="senda-input" value={drafts.min_purchase_credits_for_bonus}
+                onChange={e => setDrafts(prev => ({ ...prev, min_purchase_credits_for_bonus: e.target.value }))}
+                style={{height:40,fontSize:13}}/>
             </div>
             <div>
               <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Expires after (days)</label>
