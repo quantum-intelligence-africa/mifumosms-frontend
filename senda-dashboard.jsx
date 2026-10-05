@@ -10465,17 +10465,37 @@ function PagerFooter({ page, setPage, hasNext, count, label }) {
   );
 }
 
+// Shared across the "All Customers" and "Low Balance" panels — direct
+// customers and partner/white-label clients are tracked in the same
+// tables, so admins need a way to see just one or the other instead of
+// everything mixed together. Defaults to "direct" since that's the
+// primary audience for credit-related admin review.
+const CUSTOMER_TYPE_FILTERS = [
+  { id:'direct', label:'Direct' },
+  { id:'partner', label:'Partner' },
+  { id:'all', label:'All' },
+];
+
 function AllBalancesPanel() {
   const { onLogout } = React.useContext(AppContext);
   const [search, setSearch] = useState('');
+  const [type, setType] = useState('direct');
   const { rows, loading, error, page, setPage, hasNext, count, reload } =
-    usePagedList('/api/admin/v1/sms-balances/customers', { search }, onLogout);
+    usePagedList('/api/admin/v1/sms-balances/customers', { search, type }, onLogout);
 
   return (
     <div>
       <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
         <input className="senda-input" placeholder="Search customer…" value={search}
           onChange={e=>setSearch(e.target.value)} style={{width:260,height:38,fontSize:13}}/>
+        <div style={{display:'flex',gap:4}}>
+          {CUSTOMER_TYPE_FILTERS.map(f=>(
+            <button key={f.id} className="senda-btn senda-btn-sm" onClick={()=>setType(f.id)}
+              style={{background:type===f.id?BRAND:'#f1f5f9',color:type===f.id?'#fff':'#64748b',border:'none'}}>
+              {f.label}
+            </button>
+          ))}
+        </div>
         <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={reload}>
           <RefreshCw size={13}/> Refresh
         </button>
@@ -10519,10 +10539,11 @@ function LowBalanceCustomersPanel() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [type, setType] = useState('direct');
   const [resending, setResending] = useState(null);
   const [broadcasting, setBroadcasting] = useState(false);
   const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
-    usePagedList('/api/admin/v1/low-credit-warning/customers', { search, status: statusFilter }, onLogout);
+    usePagedList('/api/admin/v1/low-credit-warning/customers', { search, status: statusFilter, type }, onLogout);
 
   const resend = async (tenantId) => {
     if (resending) return;
@@ -10538,11 +10559,12 @@ function LowBalanceCustomersPanel() {
   const sendToAll = async () => {
     if (broadcasting || count === 0) return;
     const label = statusFilter==='all' ? 'all' : statusFilter==='low' ? 'the "Still has credits"' : 'the "Used it all"';
-    if (!window.confirm(`Send the low-balance SMS to ${label} ${count} customer${count===1?'':'s'} shown by this filter${search?` matching "${search}"`:''}?\n\nEach customer is notified through their own approved sender ID.`)) return;
+    const typeLabel = type==='all' ? '' : ` ${type}`;
+    if (!window.confirm(`Send the low-balance SMS to ${label}${typeLabel} ${count} customer${count===1?'':'s'} shown by this filter${search?` matching "${search}"`:''}?\n\nEach customer is notified through their own approved sender ID.`)) return;
     setBroadcasting(true);
     try {
       const res = await adminFetch('/api/admin/v1/low-credit-warning/customers/broadcast', {
-        method: 'POST', body: JSON.stringify({ status: statusFilter, search }),
+        method: 'POST', body: JSON.stringify({ status: statusFilter, type, search }),
       }, onLogout);
       if (res.success) {
         const d = res.data || {};
@@ -10565,6 +10587,14 @@ function LowBalanceCustomersPanel() {
             <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setStatusFilter(f)}
               style={{background:statusFilter===f?BRAND:'#f1f5f9',color:statusFilter===f?'#fff':'#64748b',border:'none'}}>
               {f==='all'?'All':f==='low'?`Still has credits${summary?.low!=null?` (${summary.low})`:''}`:`Used it all${summary?.exhausted!=null?` (${summary.exhausted})`:''}`}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:4}}>
+          {CUSTOMER_TYPE_FILTERS.map(f=>(
+            <button key={f.id} className="senda-btn senda-btn-sm" onClick={()=>setType(f.id)}
+              style={{background:type===f.id?BRAND:'#f1f5f9',color:type===f.id?'#fff':'#64748b',border:'none'}}>
+              {f.label}
             </button>
           ))}
         </div>
