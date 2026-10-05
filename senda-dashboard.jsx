@@ -10688,8 +10688,8 @@ function FreeCreditExpiryCustomersPanel() {
           <RefreshCw size={13}/> Refresh
         </button>
         <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={syncing} onClick={sync}
-          style={{marginLeft:'auto',opacity:syncing?0.6:1}} title="Create a tracking row for any direct customer with an approved sender ID that's missing one — use this if the list looks incomplete.">
-          {syncing ? 'Syncing…' : 'Sync missing grants'}
+          style={{marginLeft:'auto',opacity:syncing?0.6:1}} title="Historical reconciliation only — backfills a tracking row for customers who already received the bonus under the OLD approval-only rule, before the purchase requirement existed. It does not grant new bonuses and ignores the purchase requirement, by design.">
+          {syncing ? 'Syncing…' : 'Sync legacy grants'}
         </button>
       </div>
       {summary && (
@@ -10698,6 +10698,16 @@ function FreeCreditExpiryCustomersPanel() {
             <div style={{fontSize:11,color:'#94a3b8'}}>Total granted</div>
             <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.total}</div>
           </div>
+          <div className="senda-card" style={{padding:'10px 16px'}} title="Grants proven by a real, paid, completed purchase — the current rule.">
+            <div style={{fontSize:11,color:'#16a34a'}}>✓ Purchase-backed</div>
+            <div style={{fontSize:18,fontWeight:700,color:'#16a34a'}}>{summary.purchase_backed ?? 0} <span style={{fontSize:12,fontWeight:400,color:'#94a3b8'}}>of {summary.total}</span></div>
+          </div>
+          {!!(summary.legacy_approval_only) && (
+            <div className="senda-card" style={{padding:'10px 16px'}} title="Created before the purchase requirement existed — no purchase to show.">
+              <div style={{fontSize:11,color:'#94a3b8'}}>Legacy (approval-only)</div>
+              <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.legacy_approval_only}</div>
+            </div>
+          )}
           <div className="senda-card" style={{padding:'10px 16px'}}>
             <div style={{fontSize:11,color:'#94a3b8'}}>Have used some free credits</div>
             <div style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>{summary.used_any} <span style={{fontSize:12,fontWeight:400,color:'#94a3b8'}}>of {summary.total}</span></div>
@@ -10711,11 +10721,11 @@ function FreeCreditExpiryCustomersPanel() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={reload}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:1320}}>
+            <table className="senda-table" style={{minWidth:1480}}>
               <thead>
                 <tr>
                   <th>Customer</th><th>Email</th><th>Free Credits Left</th><th>Used</th><th>SMS Used</th><th>SMS Balance</th><th>Sender ID</th>
-                  <th>Granted</th><th>Expires</th><th>Status</th><th></th>
+                  <th>Triggered by</th><th>Granted</th><th>Expires</th><th>Status</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -10728,6 +10738,17 @@ function FreeCreditExpiryCustomersPanel() {
                     <td style={{fontSize:12,color:'#64748b'}}>{r.sms_used}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{r.sms_balance}</td>
                     <td style={{fontSize:12,color:'#64748b'}}>{r.sender_id || '—'}</td>
+                    <td style={{fontSize:11,whiteSpace:'nowrap'}}>
+                      {r.triggering_purchase ? (
+                        <span style={{color:'#16a34a',fontWeight:600}} title={`Invoice ${r.triggering_purchase.invoice_number} — ${r.triggering_purchase.credits} credits for TZS ${r.triggering_purchase.amount.toLocaleString()}, completed ${r.triggering_purchase.completed_at ? new Date(r.triggering_purchase.completed_at).toLocaleString() : '—'}`}>
+                          ✓ {r.triggering_purchase.credits} credits · TZS {r.triggering_purchase.amount.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span style={{color:'#94a3b8'}} title="No linked purchase — this grant predates the purchase requirement (created by the one-time backfill under the old approval-only rule).">
+                          Legacy (approval-only)
+                        </span>
+                      )}
+                    </td>
                     <td style={{fontSize:11,color:'#94a3b8'}}>{r.granted_at ? new Date(r.granted_at).toLocaleDateString() : '—'}</td>
                     <td style={{fontSize:11,color:'#94a3b8'}}>{r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}</td>
                     <td><Badge status={r.status}/></td>
