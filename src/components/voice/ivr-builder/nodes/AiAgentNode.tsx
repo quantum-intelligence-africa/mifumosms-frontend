@@ -10,13 +10,14 @@ export function AiAgentNode({ data, selected }: NodeProps) {
   const { t } = useLanguage();
   const fields = (data as AppNodeData).fields ?? {};
   const prompt = typeof fields.prompt === "string" ? fields.prompt : "";
+  const audioUrl = typeof fields.audio_url === "string" ? fields.audio_url : "";
 
   return (
     <BaseNode
       icon={meta.icon}
       iconClass={meta.iconClass}
       title={meta.label}
-      subtitle={prompt || t("voice.ivr_nodes.ai_agent.subtitle_empty")}
+      subtitle={audioUrl ? "Salamu iliyorekodiwa" : prompt || t("voice.ivr_nodes.ai_agent.subtitle_empty")}
       outputs={meta.outputs}
       data={data as AppNodeData}
       selected={selected}

@@ -159,6 +159,14 @@ export default function AudioPrompts() {
       samples.set(chunk, offset);
       offset += chunk.length;
     });
+    const peak = samples.reduce((maximum, sample) => Math.max(maximum, Math.abs(sample)), 0);
+    const rms = Math.sqrt(
+      samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length,
+    );
+    if (peak < 0.003 || rms < 0.0005) {
+      setFormError("Rekodi iko kimya. Hakikisha kipaza sauti kimeruhusiwa na ongea karibu nacho, kisha rekodi tena.");
+      return;
+    }
     const buffer = new ArrayBuffer(44 + samples.length * 2);
     const view = new DataView(buffer);
     const write = (position: number, value: string) => {
