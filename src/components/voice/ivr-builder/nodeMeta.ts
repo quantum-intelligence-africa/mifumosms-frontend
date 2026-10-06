@@ -235,12 +235,20 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         helpText: "Chagua kutoka kwenye orodha ya wahudumu (Simu na IVR > Wakala). Namba na jina hujazwa yenyewe.",
       },
       {
+        key: "agent_ids",
+        label: "Wahudumu wa kuita kwa pamoja (si lazima)",
+        type: "agent_multiselect",
+        helpText:
+          "Chagua wahudumu kadhaa ili simu iwafikie kwa wakati mmoja. Anayepokea kwanza ataunganishwa; ukiacha wazi, namba iliyoandikwa hapo juu itatumika.",
+      },
+      {
         key: "destination",
         label: "Namba ya mhudumu",
         type: "text",
         required: true,
-        placeholder: "+255700000000",
-        helpText: "Unaweza pia kuandika {ai_destination} kama namba hii inatoka kwenye kisanduku cha Wakala wa AI kilichotangulia.",
+        placeholder: "+255700000000, +255711111111",
+        helpText:
+          "Weka namba moja au namba kadhaa zikitenganishwa kwa koma. Namba kadhaa zitaaita kwa wakati mmoja na anayepokea kwanza ataunganishwa. Unaweza pia kuandika {ai_destination} kama namba hii inatoka kwenye kisanduku cha Wakala wa AI kilichotangulia.",
       },
       {
         key: "agent_name",
