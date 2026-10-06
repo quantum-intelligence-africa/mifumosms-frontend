@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, PhoneOff, Send, TimerOff } from "lucide-react";
+import { Loader2, PhoneOff, Send, TimerOff, Volume2, VolumeX, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useIvrSimulate } from "./useIvrSimulate";
@@ -26,8 +26,13 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
   const { t } = useLanguage();
   const sim = useIvrSimulate(flowId);
   const [speechValue, setSpeechValue] = useState("");
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  const spokenEntryIdsRef = useRef(new Set<string>());
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     if (open && !startedRef.current) {
@@ -50,6 +55,69 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sim.transcript]);
 
+  useEffect(() => {
+    if (!audioEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const newAssistantEntries = sim.transcript.filter(
+      (entry) => entry.role === "assistant" && !spokenEntryIdsRef.current.has(entry.id),
+    );
+    if (newAssistantEntries.length === 0) return;
+
+    newAssistantEntries.forEach((entry) => spokenEntryIdsRef.current.add(entry.id));
+    window.speechSynthesis.cancel();
+    const text = newAssistantEntries.map((entry) => entry.text).join(" ");
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "sw-TZ";
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    const voices = window.speechSynthesis.getVoices();
+    const swahiliVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith("sw"));
+    if (swahiliVoice) utterance.voice = swahiliVoice;
+    window.speechSynthesis.speak(utterance);
+  }, [audioEnabled, sim.transcript]);
+
+  useEffect(() => {
+    if (!open) {
+      window.speechSynthesis?.cancel();
+      recognitionRef.current?.abort();
+      setIsSpeaking(false);
+      setIsListening(false);
+      spokenEntryIdsRef.current.clear();
+    }
+    return () => {
+      window.speechSynthesis?.cancel();
+      recognitionRef.current?.abort();
+    };
+  }, [open]);
+
+  const toggleListening = () => {
+    const Recognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setSpeechValue("");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const recognition = new Recognition();
+    recognition.lang = "sw-TZ";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onresult = (event) => {
+      setSpeechValue(event.results[0][0].transcript);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
   const disabled = sim.isLoading || sim.isTerminal;
 
   return (
@@ -58,6 +126,21 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
         <SheetHeader>
           <SheetTitle>{t("voice.ivr_builder.simulate.title")}</SheetTitle>
           <SheetDescription>{t("voice.ivr_builder.simulate.desc")}</SheetDescription>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setAudioEnabled((enabled) => !enabled);
+                if (audioEnabled) window.speechSynthesis?.cancel();
+              }}
+            >
+              {audioEnabled ? <Volume2 className="mr-1.5 h-3.5 w-3.5" /> : <VolumeX className="mr-1.5 h-3.5 w-3.5" />}
+              {audioEnabled ? "Sikiliza sauti" : "Sauti imezimwa"}
+            </Button>
+            {isSpeaking && <span className="text-xs text-muted-foreground">Inazungumza...</span>}
+          </div>
         </SheetHeader>
 
         <div className="flex-1 space-y-2 overflow-y-auto rounded-lg border border-border-subtle bg-muted/30 p-3">
@@ -135,6 +218,17 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
                 disabled={disabled}
                 className="h-9 text-xs"
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                disabled={disabled}
+                onClick={toggleListening}
+                title="Ongea badala ya kuandika"
+              >
+                {isListening ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </Button>
               <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={disabled || !speechValue.trim()}>
                 <Send className="h-4 w-4" />
               </Button>
