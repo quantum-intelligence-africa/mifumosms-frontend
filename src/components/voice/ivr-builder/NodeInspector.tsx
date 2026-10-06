@@ -526,7 +526,9 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
           }
 
           if (field.type === "select") {
-            const current = (value as string) ?? (field.defaultValue as string) ?? "";
+            const current = nodeType === "ai_agent" && field.key === "response_mode"
+              ? responseMode
+              : (value as string) ?? (field.defaultValue as string) ?? "";
             return (
               <div key={field.key} className="space-y-1">
                 <Label htmlFor={fieldId} className="text-xs">
