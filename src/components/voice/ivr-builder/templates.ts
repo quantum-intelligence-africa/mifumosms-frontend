@@ -55,9 +55,8 @@
 // finally handed to voicemail rather than being cut off or left looping.
 import type { FlowDefinition, WireEdge, WireNode } from "./types";
 
-// Africa's Talking supplies the compatible phone voice. Google Cloud/Chirp
-// identifiers are not valid in its <Say voice="..."> attribute.
-const SW_VOICE = "sw-KE-Chirp3-HD-Aoede";
+// Let Africa's Talking select its default provider voice.
+const SW_VOICE = "";
 
 export interface FlowTemplate {
   id: string;
@@ -707,6 +706,7 @@ const aiReceptionist: FlowTemplate = {
           agent_name: "{ai_agent_name}",
           announcement: "{ai_reply}",
           announce_transfer: true,
+          voice: SW_VOICE,
           voicemail_if_unanswered: true,
         },
       },

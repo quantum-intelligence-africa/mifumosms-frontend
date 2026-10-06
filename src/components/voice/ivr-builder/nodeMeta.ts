@@ -93,7 +93,7 @@ const voiceField: NodeField = {
   key: "voice",
   label: "Sauti ya kusoma ujumbe (si lazima)",
   type: "text",
-  placeholder: "sw-KE-Chirp3-HD-Aoede",
+  placeholder: "Africa’s Talking default voice",
   helpText:
     "Tumia sauti ya mfumo kwa ujumbe wa maandishi. Kwa sauti yako mwenyewe, chagua ujumbe uliorekodiwa kwenye Maktaba ya Ujumbe.",
 };
