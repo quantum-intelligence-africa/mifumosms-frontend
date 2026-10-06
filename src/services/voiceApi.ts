@@ -4,6 +4,20 @@
 // its own small client instead of being bolted onto it.
 import { apiClient, type ApiResponse } from '@/lib/api';
 
+// DRF serializer errors come back as {"field_name": ["message"], ...} with
+// no "detail"/"message" wrapper — without this, a validation error (e.g.
+// "this flow hasn't been published yet") silently collapsed into the
+// generic "An error occurred" fallback below, with the actual reason
+// thrown away. Picks the first message off the first field that has one.
+function extractDrfFieldError(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  for (const value of Object.values(data as Record<string, unknown>)) {
+    if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+    if (typeof value === 'string') return value;
+  }
+  return undefined;
+}
+
 // In dev, go through Vite's proxy (see vite.config.ts) so requests stay
 // same-origin on localhost:8080 and never hit the live server's CORS check.
 const VOICE_API_URL = import.meta.env.DEV
@@ -67,7 +81,7 @@ class VoiceApiClient {
 
       return {
         success: false,
-        error: typeof data === 'string' ? data : data?.detail || data?.message || 'An error occurred',
+        error: typeof data === 'string' ? data : data?.detail || data?.message || extractDrfFieldError(data) || 'An error occurred',
         errors: data?.errors,
         status: response.status,
       };
