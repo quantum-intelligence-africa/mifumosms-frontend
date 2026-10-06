@@ -56,7 +56,7 @@
 import type { FlowDefinition, WireEdge, WireNode } from "./types";
 
 // Let Africa's Talking select its default provider voice.
-const SW_VOICE = "";
+const SW_VOICE = "sw-KE-Chirp3-HD-Zephyr";
 
 export interface FlowTemplate {
   id: string;
