@@ -57,7 +57,7 @@ import type { FlowDefinition, WireEdge, WireNode } from "./types";
 
 // Africa's Talking supplies the compatible phone voice. Google Cloud/Chirp
 // identifiers are not valid in its <Say voice="..."> attribute.
-const SW_VOICE = "";
+const SW_VOICE = "sw-KE-Chirp3-HD-Aoede";
 
 export interface FlowTemplate {
   id: string;
