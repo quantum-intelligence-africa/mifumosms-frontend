@@ -26,7 +26,6 @@ interface PerformanceOverviewProps {
   performance?: {
     metrics: {
       total_messages: number;
-      delivery_rate: number;
       response_rate?: number;
       active_conversations?: number;
       campaign_success_rate?: number;
@@ -81,13 +80,11 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     navigate('/analytics');
   };
 
-  // Transform data for Bar/Line charts (time-series data)
-  // Use message_volume and delivery_rates for bar/line charts
+  // Transform sent-message volume data for Bar/Line charts.
   const currentChartData = performance?.charts?.message_volume ?
     performance.charts.message_volume.labels.map((label, index) => ({
       name: label,
       message_volume: performance.charts.message_volume.data[index] || 0,
-      delivery_rate: performance.charts.delivery_rates?.data[index] || 0,
     })) : [];
 
   // Transform data for Pie chart (status distribution)
@@ -112,16 +109,8 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     return '#8B7FE8';
   })();
 
-  const deliveryRateColor = (() => {
-    const bgColor = performance?.charts?.delivery_rates?.backgroundColor;
-    if (Array.isArray(bgColor)) return bgColor[0] || '#5DD39E';
-    if (typeof bgColor === 'string') return bgColor;
-    return '#5DD39E';
-  })();
-
   // Get labels from API
   const messageVolumeLabel = performance?.charts?.message_volume?.label || t("dashboard.performance.message_volume");
-  const deliveryRateLabel = performance?.charts?.delivery_rates?.label || t("dashboard.performance.delivery_rate");
 
   // Check if we have data to display
   const hasChartData = currentChartData.length > 0;
@@ -163,8 +152,7 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
     : (chartType === 'pie'
       ? currentPieData.map(item => ({ label: item.name, color: item.color }))
       : [
-          { label: messageVolumeLabel, color: messageVolumeColor },
-          { label: deliveryRateLabel, color: deliveryRateColor }
+          { label: messageVolumeLabel, color: messageVolumeColor }
         ]);
 
   const renderLegendContent = () => {
@@ -303,12 +291,6 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                 radius={[4, 4, 0, 0]}
                 name={messageVolumeLabel}
               />
-              <Bar
-                dataKey="delivery_rate"
-                fill={deliveryRateColor}
-                radius={[4, 4, 0, 0]}
-                name={deliveryRateLabel}
-              />
             </RechartsBarChart>
           </ResponsiveContainer>
         );
@@ -350,14 +332,6 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
                 strokeWidth={isMobile ? 1.5 : 2}
                 dot={{ r: isMobile ? 3 : 4 }}
                 name={messageVolumeLabel}
-              />
-              <Line
-                type="monotone"
-                dataKey="delivery_rate"
-                stroke={deliveryRateColor}
-                strokeWidth={isMobile ? 1.5 : 2}
-                dot={{ r: isMobile ? 3 : 4 }}
-                name={deliveryRateLabel}
               />
             </RechartsLineChart>
           </ResponsiveContainer>
@@ -450,7 +424,6 @@ export function PerformanceOverview({ performance }: PerformanceOverviewProps) {
               {hasData
                 ? t("dashboard.performance.summary", {
                     total: performance.metrics.total_messages,
-                    rate: performance.metrics.delivery_rate,
                   })
                 : t("dashboard.performance.summary_loading")}
             </p>
