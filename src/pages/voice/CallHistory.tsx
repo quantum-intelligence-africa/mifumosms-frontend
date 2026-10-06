@@ -523,6 +523,34 @@ export default function CallHistory() {
                                           <p className="pt-2 text-xs text-muted-foreground">{t("voice.calls.no_recording_for_call")}</p>
                                         )}
 
+                                        {detail.recordings[0]?.analysis?.result && (
+                                          <div className="space-y-2 rounded-md border border-border bg-background p-3">
+                                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                              Uchambuzi wa ujumbe
+                                            </p>
+                                            <div className="space-y-1.5 text-sm">
+                                              <div>
+                                                <span className="font-medium text-foreground">Mteja alisema: </span>
+                                                <span className="text-foreground/80">
+                                                  {detail.recordings[0].analysis.result.transcript || "Hakuna maneno yaliyotambuliwa."}
+                                                </span>
+                                              </div>
+                                              <div>
+                                                <span className="font-medium text-foreground">Anachohitaji: </span>
+                                                <span className="text-foreground/80">
+                                                  {detail.recordings[0].analysis.result.detected_intent || "Hitaji halijaweza kutambuliwa."}
+                                                </span>
+                                              </div>
+                                              <div>
+                                                <span className="font-medium text-foreground">Muhtasari: </span>
+                                                <span className="text-foreground/80">
+                                                  {detail.recordings[0].analysis.result.summary || "Muhtasari haupatikani."}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+
                                         {/* The row's own play button already covers the first (usual) recording;
                                             list only additional ones here, for the rare multi-recording call. */}
                                         {detail.recordings.length > 1 && (
