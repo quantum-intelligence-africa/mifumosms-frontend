@@ -385,6 +385,12 @@ function AudioPromptField({ fieldId, label, helpText, value, onChange }: {
         onChange={(event) => onChange({ library_prompt_id: "", audio_url: event.target.value, prompt: "" })}
         className="h-8 text-xs"
       />
+      {typeof fieldsValue(value) === "string" && fieldsValue(value) ? (
+        <div className="space-y-1 rounded-md border bg-muted/30 p-2">
+          <p className="text-[10px] font-medium text-muted-foreground">Hakiki salamu kabla ya kuhifadhi</p>
+          <audio controls preload="metadata" src={fieldsValue(value) as string} className="h-8 w-full" />
+        </div>
+      ) : null}
       <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(event) => {
         const file = event.target.files?.[0];
         if (file) void upload(file);
