@@ -4,7 +4,7 @@
 // audio file (played verbatim). Built here once, then picked by name from
 // any flow's "Ujumbe wa Sauti" box instead of retyping or re-pasting a URL.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileAudio, Type, Plus, Pencil, Trash2, AlertCircle, RefreshCw, Search, Upload, MessageSquareText, Mic, Square } from "lucide-react";
+import { FileAudio, Type, Plus, Pencil, Trash2, AlertCircle, RefreshCw, Search, Upload, MessageSquareText, Mic, Square, Link } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -35,17 +35,19 @@ export interface AudioPrompt {
   duration_seconds: number | null;
   created_at: string;
   updated_at: string;
+  external_url: string;
 }
 
 const SW_VOICE = "sw-KE-Chirp3-HD-Aoede";
 
-type Mode = "text" | "audio";
+type Mode = "text" | "audio" | "url";
 interface Draft {
   name: string;
   text: string;
   voice: string;
+  url: string;
 }
-const EMPTY: Draft = { name: "", text: "", voice: SW_VOICE };
+const EMPTY: Draft = { name: "", text: "", voice: SW_VOICE, url: "" };
 
 export default function AudioPrompts() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,7 +102,7 @@ export default function AudioPrompts() {
   const startEdit = (prompt: AudioPrompt) => {
     setEditing(prompt);
     setMode(prompt.kind);
-    setDraft({ name: prompt.name, text: prompt.text, voice: prompt.voice || SW_VOICE });
+    setDraft({ name: prompt.name, text: prompt.text, voice: prompt.voice || SW_VOICE, url: prompt.external_url || "" });
     setFile(null);
     setFormError(null);
     setOpen(true);
@@ -195,6 +197,42 @@ export default function AudioPrompts() {
       if (!draft.text.trim()) {
         setFormError(t("voice.audio_prompts.err_text_required"));
         setSaving(false);
+        return;
+      }
+
+      if (mode === "url") {
+        let parsed: URL;
+        try {
+          parsed = new URL(draft.url.trim());
+        } catch {
+          setFormError("Weka kiungo halali cha sauti, kinachoanza na https://.");
+          setSaving(false);
+          return;
+        }
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+          setFormError("Kiungo lazima kiwe cha http:// au https://.");
+          setSaving(false);
+          return;
+        }
+        const res = editing
+          ? await voiceApi.patch<AudioPrompt>(`/voice/ivr/prompts/${editing.id}/`, {
+              name: draft.name.trim(),
+              kind: "audio",
+              external_url: draft.url.trim(),
+            })
+          : await voiceApi.post<AudioPrompt>("/voice/ivr/prompts/", {
+              name: draft.name.trim(),
+              kind: "audio",
+              external_url: draft.url.trim(),
+            });
+        setSaving(false);
+        if (!res.success) {
+          setFormError(res.error || "Imeshindikana kuhifadhi kiungo.");
+          return;
+        }
+        setOpen(false);
+        toast({ title: editing ? "Kiungo kimesasishwa" : "Kiungo kimeongezwa", description: draft.name });
+        load();
         return;
       }
       const body = { name: draft.name.trim(), kind: "text", text: draft.text.trim(), voice: draft.voice };
@@ -429,6 +467,7 @@ export default function AudioPrompts() {
                 [
                   ["text", Type, t("voice.audio_prompts.mode_text")],
                   ["audio", FileAudio, t("voice.audio_prompts.upload")],
+                  ["url", Link, "Weka kiungo"],
                 ] as Array<[Mode, typeof Type, string]>
               ).map(([m, Icon, label]) => (
                 <button
@@ -465,6 +504,20 @@ export default function AudioPrompts() {
                   className="text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.vars_help")}</p>
+              </div>
+            ) : mode === "url" ? (
+              <div className="space-y-1">
+                <Label htmlFor="prompt-url">Kiungo cha moja kwa moja cha sauti</Label>
+                <Input
+                  id="prompt-url"
+                  value={draft.url}
+                  onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+                  placeholder="https://example.com/salamu.mp3"
+                  className="text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Tumia kiungo cha faili la sauti linalopatikana moja kwa moja, si kiungo cha ukurasa wa YouTube, Dropbox au tovuti nyingine.
+                </p>
               </div>
             ) : (
               <div className="space-y-1">
