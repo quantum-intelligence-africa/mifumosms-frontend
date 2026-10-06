@@ -289,6 +289,15 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         helpText:
           "Mhudumu asipopokea simu, mteja ataambiwa \"hakuna mhudumu anayepatikana\" na kuachiwa nafasi ya kuacha ujumbe wa sauti, unaoonekana kwenye Rekodi.",
       },
+      {
+        key: "voicemail_prompt",
+        label: "Ujumbe kwa mteja asipopokea (si lazima)",
+        type: "textarea",
+        placeholder:
+          "Samahani, mhudumu hakupokea simu. Baada ya mlio, tafadhali tueleze unachohitaji na namba yako ya simu.",
+        helpText:
+          "Huu ndio ujumbe utakaosomwa kabla ya kurekodi sauti ya mteja. Usiache tupu kama unataka maelekezo maalum ya biashara yako.",
+      },
     ],
   },
   http_request: {

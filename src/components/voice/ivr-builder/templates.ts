@@ -708,6 +708,8 @@ const aiReceptionist: FlowTemplate = {
           announce_transfer: true,
           voice: SW_VOICE,
           voicemail_if_unanswered: true,
+          voicemail_prompt:
+            "Samahani, mhudumu hakupokea simu. Baada ya mlio, tafadhali tueleze unachohitaji na namba yako ya simu.",
         },
       },
     ],
