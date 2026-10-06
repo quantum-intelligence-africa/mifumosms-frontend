@@ -38,7 +38,7 @@ export interface AudioPrompt {
   external_url: string;
 }
 
-const SW_VOICE = "sw-KE-Chirp3-HD-Aoede";
+const SW_VOICE = "";
 
 type Mode = "text" | "audio" | "url";
 interface Draft {

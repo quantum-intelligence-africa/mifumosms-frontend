@@ -87,15 +87,14 @@ export interface NodeMeta {
 
 const singleOutput: NodeOutput[] = [{ id: "out", label: "", color: "hsl(var(--primary))" }];
 
-// Repeated on every node that speaks. Kept as one constant so the guidance
-// on writing natural, branded prompts is identical everywhere it appears.
+// Repeated on every node that speaks. Africa's Talking selects the phone voice.
 const voiceField: NodeField = {
   key: "voice",
   label: "Sauti ya kusoma ujumbe (si lazima)",
   type: "text",
-  placeholder: "Acha wazi kutumia sauti ya Africa's Talking",
+  placeholder: "Africa's Talking huchagua sauti yenyewe",
   helpText:
-    "Acha wazi kwa sauti inayotolewa na Africa's Talking. Usitumie majina ya Google Cloud/Chirp hapa; yanaweza kusomwa kama herufi.",
+    "Acha wazi. Africa's Talking ndiyo huchagua na kutoa sauti ya Kiswahili kwenye simu.",
 };
 
 const PLACEHOLDER_HELP =
