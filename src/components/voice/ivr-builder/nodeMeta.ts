@@ -87,14 +87,14 @@ export interface NodeMeta {
 
 const singleOutput: NodeOutput[] = [{ id: "out", label: "", color: "hsl(var(--primary))" }];
 
-// Repeated on every node that speaks. Africa's Talking selects the phone voice.
+// Repeated on every node that speaks.
 const voiceField: NodeField = {
   key: "voice",
   label: "Sauti ya kusoma ujumbe (si lazima)",
   type: "text",
-  placeholder: "Africa's Talking huchagua sauti yenyewe",
+  placeholder: "sw-KE-Chirp3-HD-Aoede",
   helpText:
-    "Acha wazi. Africa's Talking ndiyo huchagua na kutoa sauti ya Kiswahili kwenye simu.",
+    "Tumia sauti ya mfumo kwa ujumbe wa maandishi. Kwa sauti yako mwenyewe, chagua ujumbe uliorekodiwa kwenye Maktaba ya Ujumbe.",
 };
 
 const PLACEHOLDER_HELP =
@@ -328,7 +328,6 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         key: "prompt",
         label: "Ujumbe wa kwanza (AI itajitambulisha na biashara)",
         type: "textarea",
-        required: true,
         placeholder:
           "Karibu {company_name}. Tunatoa huduma za kutuma ujumbe kwa biashara. Naweza kukusaidia na nini leo?",
         // Spoken by the flow, not by the AI: the first thing a caller hears
@@ -338,6 +337,12 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         // answers a long greeting is talking into a closed microphone —
         // keep it short and point at the beep.
         helpText: `Mteja atasikia hii kabla hajaanza kuzungumza, hivyo eleza kwa ufupi kampuni yako inafanya nini kisha muulize anachohitaji. Iwe fupi na mwambie aanze kuzungumza baada ya mlio — simu haisikilizi wakati bado inaongea. Hakuna haja ya kumwambia abonyeze kitufe chochote. ${PLACEHOLDER_HELP}`,
+      },
+      {
+        key: "library_prompt_id",
+        label: "Salamu yako iliyorekodiwa (si lazima)",
+        type: "prompt_library",
+        helpText: "Chagua sauti uliyoirekodi au kupakia kwenye Sauti za Mfumo. Itachezwa badala ya kusoma ujumbe wa kwanza.",
       },
       {
         key: "business_description",
