@@ -435,6 +435,11 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
           <p className="text-xs text-muted-foreground">{t("voice.ivr_builder.inspector.no_settings")}</p>
         )}
         {meta.fields.map((field) => {
+          const responseMode = nodeType === "ai_agent"
+            ? ((fields.response_mode as string) || (fields.audio_url ? "audio" : "text"))
+            : "";
+          if (nodeType === "ai_agent" && field.key === "prompt" && responseMode === "audio") return null;
+          if (nodeType === "ai_agent" && field.type === "audio_prompt" && responseMode === "text") return null;
           const value = fields[field.key];
           const fieldId = `${nodeId}-${field.key}`;
 
@@ -528,14 +533,31 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                   {field.label}
                   {field.required && <span className="text-destructive"> *</span>}
                 </Label>
-                <Select value={current} onValueChange={(v) => onChange({ [field.key]: v })}>
+                <Select
+                  value={current}
+                  onValueChange={(v) => {
+                    if (nodeType === "ai_agent" && field.key === "response_mode") {
+                      onChange(
+                        v === "audio"
+                          ? { response_mode: v, prompt: "" }
+                          : { response_mode: v, audio_url: "", library_prompt_id: "" },
+                      );
+                    } else {
+                      onChange({ [field.key]: v });
+                    }
+                  }}
+                >
                   <SelectTrigger id={fieldId} className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {(field.options ?? []).map((opt) => (
                       <SelectItem key={opt} value={opt} className="text-xs">
-                        {opt}
+                        {field.key === "response_mode"
+                          ? opt === "audio"
+                            ? "Sauti iliyorekodiwa / iliyopakiwa"
+                            : "Maandishi (sauti ya mfumo)"
+                          : opt}
                       </SelectItem>
                     ))}
                   </SelectContent>

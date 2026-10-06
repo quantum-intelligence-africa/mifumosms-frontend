@@ -326,8 +326,16 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
     outputs: singleOutput,
     fields: [
       {
+        key: "response_mode",
+        label: "Aina ya salamu ya kwanza",
+        type: "select",
+        options: ["text", "audio"],
+        defaultValue: "text",
+        helpText: "Chagua kama salamu ya kwanza isomwe kwa sauti ya mfumo au ichezwe kama rekodi yako.",
+      },
+      {
         key: "prompt",
-        label: "Ujumbe wa kwanza (AI itajitambulisha na biashara)",
+        label: "Ujumbe wa maandishi wa kwanza (sauti ya mfumo)",
         type: "textarea",
         placeholder:
           "Karibu {company_name}. Tunatoa huduma za kutuma ujumbe kwa biashara. Naweza kukusaidia na nini leo?",
@@ -341,7 +349,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
       },
       {
         key: "library_prompt_id",
-        label: "Salamu yako iliyorekodiwa (si lazima)",
+        label: "Salamu ya sauti uliyorekodi au kupakia",
         type: "audio_prompt",
         helpText: "Rekodi sasa, pakia faili, weka URL ya MP3/WAV, au chagua sauti iliyohifadhiwa. Itachezwa badala ya kusoma ujumbe wa kwanza.",
       },
