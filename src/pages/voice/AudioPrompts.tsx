@@ -4,7 +4,7 @@
 // audio file (played verbatim). Built here once, then picked by name from
 // any flow's "Ujumbe wa Sauti" box instead of retyping or re-pasting a URL.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileAudio, Type, Plus, Pencil, Trash2, AlertCircle, RefreshCw, Search, Upload, MessageSquareText } from "lucide-react";
+import { FileAudio, Type, Plus, Pencil, Trash2, AlertCircle, RefreshCw, Search, Upload, MessageSquareText, Mic, Square } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,13 @@ export default function AudioPrompts() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Float32Array[]>([]);
+  const recordingSampleRateRef = useRef(44100);
+  const [recording, setRecording] = useState(false);
 
   const { toast } = useToast();
   const player = useRecordingPlayer();
@@ -97,6 +104,83 @@ export default function AudioPrompts() {
     setFile(null);
     setFormError(null);
     setOpen(true);
+  };
+
+  const stopRecording = () => {
+    processorRef.current?.disconnect();
+    sourceRef.current?.disconnect();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    void audioContextRef.current?.close();
+    processorRef.current = null;
+    sourceRef.current = null;
+    streamRef.current = null;
+    audioContextRef.current = null;
+    setRecording(false);
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setFormError("Kivinjari hiki hakiwezi kurekodi sauti. Tumia faili la MP3 au WAV.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      recordedChunksRef.current = [];
+      recordingSampleRateRef.current = audioContext.sampleRate;
+      processor.onaudioprocess = (event) => {
+        recordedChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+      };
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      streamRef.current = stream;
+      audioContextRef.current = audioContext;
+      sourceRef.current = source;
+      processorRef.current = processor;
+      setFormError(null);
+      setRecording(true);
+    } catch {
+      setFormError("Ruhusu matumizi ya kipaza sauti ili kurekodi ujumbe.");
+    }
+  };
+
+  const finishRecording = () => {
+    const chunks = recordedChunksRef.current;
+    stopRecording();
+    if (!chunks.length) return;
+    const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
+    const samples = new Float32Array(length);
+    let offset = 0;
+    chunks.forEach((chunk) => {
+      samples.set(chunk, offset);
+      offset += chunk.length;
+    });
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const write = (position: number, value: string) => {
+      for (let index = 0; index < value.length; index += 1) view.setUint8(position + index, value.charCodeAt(index));
+    };
+    const sampleRate = recordingSampleRateRef.current;
+    write(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    for (let index = 0; index < samples.length; index += 1) {
+      const sample = Math.max(-1, Math.min(1, samples[index]));
+      view.setInt16(44 + index * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    }
+    setFile(new File([buffer], "rekodiwa.wav", { type: "audio/wav" }));
   };
 
   const save = async () => {
@@ -194,6 +278,10 @@ export default function AudioPrompts() {
                 <Button variant="outline" onClick={() => startAdd("audio")}>
                   <Upload className="mr-1.5 h-4 w-4" />
                   {t("voice.audio_prompts.upload")}
+                </Button>
+                <Button variant="outline" onClick={() => startAdd("audio")}>
+                  <Mic className="mr-1.5 h-4 w-4" />
+                  Rekodi sauti
                 </Button>
                 <Button onClick={() => startAdd("text")}>
                   <Plus className="mr-1.5 h-4 w-4" />
@@ -320,7 +408,13 @@ export default function AudioPrompts() {
         </main>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && recording) stopRecording();
+          setOpen(next);
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? t("voice.audio_prompts.edit_title") : mode === "audio" ? t("voice.audio_prompts.upload") : t("voice.audio_prompts.write")}</DialogTitle>
@@ -386,6 +480,13 @@ export default function AudioPrompts() {
                 {file && <p className="text-[11px] text-muted-foreground">{file.name} · {formatSize(file.size)}</p>}
                 {!file && editing && <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.no_new_file_note")}</p>}
                 <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.file_format_note")}</p>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={recording ? finishRecording : startRecording}>
+                    {recording ? <Square className="mr-1.5 h-3.5 w-3.5" /> : <Mic className="mr-1.5 h-3.5 w-3.5" />}
+                    {recording ? "Maliza kurekodi" : "Rekodi kupitia kipaza sauti"}
+                  </Button>
+                  {recording && <span className="text-xs text-destructive">Inarekodi...</span>}
+                </div>
               </div>
             )}
 

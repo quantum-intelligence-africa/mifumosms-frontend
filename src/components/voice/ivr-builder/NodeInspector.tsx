@@ -168,7 +168,7 @@ function AgentMultiSelectField({
   label: string;
   helpText?: string;
   value: unknown;
-  onChange: (ids: string[]) => void;
+  onChange: (ids: string[], agents: AgentOption[]) => void;
 }) {
   const { t } = useLanguage();
   const [agents, setAgents] = useState<AgentOption[] | null>(null);
@@ -205,7 +205,10 @@ function AgentMultiSelectField({
                   const next = new Set(selected);
                   if (checked) next.add(a.id);
                   else next.delete(a.id);
-                  onChange(Array.from(next));
+                  onChange(
+                    Array.from(next),
+                    agents.filter((agent) => next.has(agent.id)),
+                  );
                 }}
               />
               <Label htmlFor={`${fieldId}-${a.id}`} className="text-xs font-normal">
@@ -349,7 +352,17 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                 label={field.label}
                 helpText={field.helpText}
                 value={value}
-                onChange={(ids) => onChange({ [field.key]: ids })}
+                onChange={(ids, selectedAgents) =>
+                  onChange({
+                    [field.key]: ids,
+                    ...(nodeType === "call_forward"
+                      ? {
+                          destination: selectedAgents.map((agent) => agent.phone_number).join(", "),
+                          agent_name: selectedAgents.map((agent) => agent.name).join(", "),
+                        }
+                      : {}),
+                  })
+                }
               />
             );
           }
