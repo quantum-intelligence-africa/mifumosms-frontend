@@ -1,8 +1,8 @@
 // Property panel for the currently-selected node. Renders form fields driven
 // entirely by nodeMeta.ts's per-type `fields` list, so adding a new field to
 // a node type only requires touching nodeMeta.ts.
-import { useEffect, useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Trash2, Mic, Square, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -301,6 +301,113 @@ function PromptLibraryField({
   );
 }
 
+function AudioPromptField({ fieldId, label, helpText, value, onChange }: {
+  fieldId: string;
+  label: string;
+  helpText?: string;
+  value: unknown;
+  onChange: (patch: Record<string, unknown>) => void;
+}) {
+  const [prompts, setPrompts] = useState<PromptOption[] | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    let cancelled = false;
+    voiceApi.get<PromptOption[]>("/voice/ivr/prompts/").then((res) => {
+      if (!cancelled) setPrompts(res.success && res.data ? res.data : []);
+    });
+    return () => {
+      cancelled = true;
+      recorderRef.current?.stop();
+    };
+  }, []);
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    const form = new FormData();
+    form.set("name", `Salamu ya AI ${new Date().toISOString()}`);
+    form.set("audio_file", file);
+    const res = await voiceApi.postForm<PromptOption>("/voice/ivr/prompts/upload/", form);
+    setBusy(false);
+    if (res.success && res.data) {
+      onChange({ library_prompt_id: res.data.id, audio_url: res.data.audio_url, prompt: "" });
+      setPrompts((current) => [...(current ?? []), res.data!]);
+    }
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    chunksRef.current = [];
+    recorder.ondataavailable = (event) => chunksRef.current.push(event.data);
+    recorder.onstop = () => {
+      stream.getTracks().forEach((track) => track.stop());
+      const type = recorder.mimeType || "audio/webm";
+      void upload(new File([new Blob(chunksRef.current, { type })], "ai-greeting.webm", { type }));
+    };
+    recorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
+  };
+
+  const current = typeof value === "string" && value ? value : TYPE_MANUALLY;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={fieldId} className="text-xs">{label}</Label>
+      <Select value={current} onValueChange={(v) => {
+        const prompt = prompts?.find((item) => item.id === v);
+        if (prompt) onChange({ library_prompt_id: prompt.id, audio_url: prompt.audio_url, prompt: "" });
+        else onChange({ library_prompt_id: "" });
+      }} disabled={prompts === null || busy}>
+        <SelectTrigger id={fieldId} className="h-8 text-xs"><SelectValue placeholder={t("voice.ivr_builder.inspector.enter_manually_below")} /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={TYPE_MANUALLY} className="text-xs">Weka URL au tumia kurekodi hapa chini</SelectItem>
+          {(prompts ?? []).filter((p) => p.kind === "audio").map((p) => (
+            <SelectItem key={p.id} value={p.id} className="text-xs">🔊 {p.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input
+        value={typeof fieldsValue(value) === "string" ? fieldsValue(value) : ""}
+        placeholder="https://example.com/salamu.mp3"
+        onChange={(event) => onChange({ library_prompt_id: "", audio_url: event.target.value, prompt: "" })}
+        className="h-8 text-xs"
+      />
+      <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(event) => {
+        const file = event.target.files?.[0];
+        if (file) void upload(file);
+        event.currentTarget.value = "";
+      }} />
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={busy} onClick={() => fileRef.current?.click()}>
+          <Upload className="mr-1 h-3 w-3" /> Pakia
+        </Button>
+        <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={busy} onClick={recording ? stopRecording : () => void startRecording()}>
+          {recording ? <Square className="mr-1 h-3 w-3" /> : <Mic className="mr-1 h-3 w-3" />}
+          {recording ? "Maliza" : "Rekodi"}
+        </Button>
+      </div>
+      {helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>}
+    </div>
+  );
+}
+
+function fieldsValue(value: unknown) {
+  return value;
+}
+
 export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDelete }: NodeInspectorProps) {
   const { t } = useLanguage();
   const meta = NODE_META[nodeType];
@@ -386,6 +493,10 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                 }
               />
             );
+          }
+
+          if (field.type === "audio_prompt") {
+            return <AudioPromptField key={field.key} fieldId={fieldId} label={field.label} helpText={field.helpText} value={fields["audio_url"]} onChange={onChange} />;
           }
 
           if (field.type === "checkbox") {

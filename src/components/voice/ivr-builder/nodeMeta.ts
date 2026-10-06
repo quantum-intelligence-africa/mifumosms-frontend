@@ -57,7 +57,8 @@ export type FieldType =
   | "list"
   | "agent"
   | "agent_multiselect"
-  | "prompt_library";
+  | "prompt_library"
+  | "audio_prompt";
 
 export interface NodeField {
   key: string;
@@ -341,8 +342,8 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
       {
         key: "library_prompt_id",
         label: "Salamu yako iliyorekodiwa (si lazima)",
-        type: "prompt_library",
-        helpText: "Chagua sauti uliyoirekodi au kupakia kwenye Sauti za Mfumo. Itachezwa badala ya kusoma ujumbe wa kwanza.",
+        type: "audio_prompt",
+        helpText: "Rekodi sasa, pakia faili, weka URL ya MP3/WAV, au chagua sauti iliyohifadhiwa. Itachezwa badala ya kusoma ujumbe wa kwanza.",
       },
       {
         key: "business_description",
