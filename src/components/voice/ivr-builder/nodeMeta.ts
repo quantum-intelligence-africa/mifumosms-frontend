@@ -93,9 +93,9 @@ const voiceField: NodeField = {
   key: "voice",
   label: "Sauti ya kusoma ujumbe (si lazima)",
   type: "text",
-  placeholder: "mf. sw-KE-Chirp3-HD-Aoede",
+  placeholder: "Acha wazi kutumia sauti ya Africa's Talking",
   helpText:
-    "Jina la sauti ya Google Cloud TTS — ukiacha wazi, itatumika sauti ya kawaida. Sauti za Kiswahili zina muundo sw-KE-Chirp3-HD-<jina>.",
+    "Acha wazi kwa sauti inayotolewa na Africa's Talking. Usitumie majina ya Google Cloud/Chirp hapa; yanaweza kusomwa kama herufi.",
 };
 
 const PLACEHOLDER_HELP =
