@@ -298,6 +298,14 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         helpText:
           "Huu ndio ujumbe utakaosomwa kabla ya kurekodi sauti ya mteja. Usiache tupu kama unataka maelekezo maalum ya biashara yako.",
       },
+      {
+        key: "voicemail_silence_timeout_seconds",
+        label: "Ukimya wa kumaliza ujumbe (sekunde)",
+        type: "number",
+        defaultValue: 4,
+        helpText:
+          "Baada ya mteja kumaliza kuzungumza na kukaa kimya kwa muda huu, kurekodi kunafungwa na simu inamalizika.",
+      },
     ],
   },
   http_request: {

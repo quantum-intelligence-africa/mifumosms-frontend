@@ -710,6 +710,7 @@ const aiReceptionist: FlowTemplate = {
           voicemail_if_unanswered: true,
           voicemail_prompt:
             "Samahani, mhudumu hakupokea simu. Baada ya mlio, tafadhali tueleze unachohitaji na namba yako ya simu.",
+          voicemail_silence_timeout_seconds: 4,
         },
       },
     ],
