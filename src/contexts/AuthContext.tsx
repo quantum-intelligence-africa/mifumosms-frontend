@@ -33,6 +33,7 @@ interface AuthContextType {
   register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean; message?: string; smsFailed?: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
+  completeOAuthLogin: (user: User) => void;
   updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   sendAccountVerification: (phoneNumber?: string) => Promise<{ success: boolean; error?: string }>;
   verifyAccount: (code: string) => Promise<{ success: boolean; error?: string }>;
@@ -111,6 +112,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       persistUser(merged);
       return merged;
     });
+  };
+
+  const completeOAuthLogin = (data: User) => {
+    markSessionActive();
+    recordActivity();
+    updateUserState(data);
   };
 
   const clearUserState = () => {
@@ -823,6 +830,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshToken,
+    completeOAuthLogin,
     updateProfile,
     sendAccountVerification: sendAccountVerificationSMS,
     verifyAccount: verifyAccountCode,

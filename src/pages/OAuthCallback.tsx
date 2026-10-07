@@ -1,9 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function OAuthCallback() {
   const navigate = useNavigate();
+  const { completeOAuthLogin } = useAuth();
   const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
@@ -32,6 +34,7 @@ export default function OAuthCallback() {
 
       localStorage.setItem("user", JSON.stringify(profile.data));
       localStorage.setItem("user_profile", JSON.stringify(profile.data));
+      completeOAuthLogin(profile.data);
       if (!profile.data.phone_number) {
         setNeedsPhone(true);
         return;
@@ -58,6 +61,7 @@ export default function OAuthCallback() {
       if (profile.data) {
         localStorage.setItem("user", JSON.stringify(profile.data));
         localStorage.setItem("user_profile", JSON.stringify(profile.data));
+        completeOAuthLogin(profile.data);
       }
       navigate("/dashboard", { replace: true });
     } catch {
