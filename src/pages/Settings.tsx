@@ -72,7 +72,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getToastVariant, getToastTitle } from "@/utils/toastUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient, User as UserType } from "@/lib/api";
-import { canManageUsers } from "@/utils/roleUtils";
 import { useSecurity } from "@/hooks/useSecurity";
 import { generate2FAQRCode, generateRandomSecretKey, QRCodeData } from "@/utils/qrCodeUtils";
 import { SettingsAPI } from "./SettingsAPI";
@@ -260,10 +259,8 @@ const Settings = () => {
   }, [currentCategory]);
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
-  // Regular agents can look up but not change the account's phone number —
-  // it's how SMS/voice verification and owner/admin identity checks find
-  // this account, so only an owner or admin may edit it.
-  const canEditPhone = canManageUsers(user);
+  // Every authenticated tenant user can update their own phone number.
+  const canEditPhone = Boolean(user);
   const { avatar: selectedAvatar } = useUserAvatar();
   const { language, setLanguage, t } = useLanguage();
   const { theme: currentTheme, setTheme } = useTheme();
@@ -1444,7 +1441,7 @@ const Settings = () => {
                       <p className="text-xs text-text-subtle">
                         {canEditPhone
                           ? "Enter phone number in international format."
-                          : "Only an account owner or admin can change the phone number. Ask them if it needs updating."}
+                          : "Sign in to update your phone number."}
                       </p>
                     </div>
                   </div>
