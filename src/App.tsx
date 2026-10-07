@@ -68,7 +68,17 @@ const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
 // @ts-ignore — standalone JSX admin dashboard
 const SendaAdmin = lazy(() => import("../senda-dashboard.jsx"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 const CANONICAL_BASE_URL = "https://sms.mifumolabs.com";
 const CHUNK_RELOAD_KEY = "senda_chunk_reload_attempted";
