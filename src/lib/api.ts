@@ -95,6 +95,7 @@ export interface LoginRequest {
   password: string;
   /** Client-side only: controls session persistence (not sent to the backend). */
   rememberMe?: boolean;
+  recaptchaToken?: string;
 }
 
 export interface RegisterRequest {
@@ -109,6 +110,7 @@ export interface RegisterRequest {
   business_name?: string; // Alias for company_name
   country?: string;
   referral_source?: string; // How the user found Senda (tiktok, instagram, friends_referral, other)
+  recaptcha_token?: string;
 }
 
 export interface LoginResponse {
@@ -117,6 +119,9 @@ export interface LoginResponse {
   access?: string;
   refresh?: string;
   tokens?: AuthTokens;
+  requires_2fa?: boolean;
+  challenge_id?: string;
+  channel?: 'sms' | 'email';
 }
 
 export interface RegisterResponse {
@@ -1409,10 +1414,17 @@ class ApiClient {
 
   async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
     // rememberMe is a client-side concern only; don't forward it to the backend.
-    const { email, password } = credentials;
+    const { email, password, recaptchaToken } = credentials;
     return this.request<LoginResponse>('/auth/login/', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, recaptcha_token: recaptchaToken || "" }),
+    });
+  }
+
+  async verifyLoginOTP(challengeId: string, code: string): Promise<ApiResponse<LoginResponse>> {
+    return this.request<LoginResponse>('/auth/login/verify-otp/', {
+      method: 'POST',
+      body: JSON.stringify({ challenge_id: challengeId, code }),
     });
   }
 

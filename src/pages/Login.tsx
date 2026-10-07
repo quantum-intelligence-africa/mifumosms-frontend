@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { API_CONFIG } from "@/config/api";
+import { getRecaptchaToken } from "@/lib/recaptcha";
 
 // Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
 // routes the login attempt to the admin endpoint and drops the user on /admin
@@ -22,6 +23,7 @@ const ADMIN_SUFFIX = ".admin";
 const ADMIN_SESSION_KEY = "senda_admin_auth";
 // /auth/admin/login lives at the root of mifumosms.mifumolabs.com, not under /api.
 const ADMIN_BASE_URL = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
+const GOOGLE_LOGIN_URL = `${ADMIN_BASE_URL}/accounts/google/login/`;
 
 const Login = () => {
   const isMobile = useIsMobile();
@@ -29,6 +31,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [otpChallenge, setOtpChallenge] = useState<{ id: string; channel: string } | null>(null);
+  const [otpCode, setOtpCode] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -119,9 +123,11 @@ const Login = () => {
     }
 
     try {
+      const recaptchaToken = await getRecaptchaToken("login");
       const result = await login({
         email: formData.email,
         password: formData.password,
+        recaptchaToken,
         rememberMe: formData.rememberMe,
       });
 
@@ -133,6 +139,9 @@ const Login = () => {
 
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
+      } else if (result.requires2FA && result.challengeId) {
+        setOtpChallenge({ id: result.challengeId, channel: result.channel || "email" });
+        toast({ title: "Verification code sent", description: `Check your ${result.channel || "email"} for the one-time code.` });
       } else {
         const errorMessage = result.error || t("auth.login.toast_credentials_error");
 
@@ -193,6 +202,19 @@ const Login = () => {
     }
   };
 
+  const handleVerifyLoginOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const response = await apiClient.verifyLoginOTP(otpChallenge!.id, otpCode);
+    if (response.data?.tokens) {
+      localStorage.setItem("access_token", response.data.tokens.access);
+      localStorage.setItem("refresh_token", response.data.tokens.refresh);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      window.location.assign("/dashboard");
+    } else {
+      toast({ title: "Verification failed", description: response.error || "Invalid or expired code.", variant: "destructive" });
+    }
+  };
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -212,6 +234,27 @@ const Login = () => {
       </div>
     );
   };
+
+  if (otpChallenge) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <form onSubmit={handleVerifyLoginOTP} className="w-full max-w-md space-y-5 rounded-xl bg-white p-8 shadow">
+          <h1 className="text-2xl font-bold text-gray-900">Verify your sign-in</h1>
+          <p className="text-sm text-gray-600">Enter the one-time code sent by {otpChallenge.channel}.</p>
+          <Input
+            value={otpCode}
+            onChange={(event) => setOtpCode(event.target.value)}
+            inputMode="numeric"
+            maxLength={6}
+            pattern="[0-9]{6}"
+            placeholder="6-digit code"
+            required
+          />
+          <Button type="submit" className="w-full">Verify and continue</Button>
+        </form>
+      </div>
+    );
+  }
 
   // Desktop Sliding Background Component
   const SlidingBackground = () => {
@@ -308,6 +351,9 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            <a href={GOOGLE_LOGIN_URL} className="block w-full rounded-full border border-gray-300 py-3 text-center text-sm font-semibold text-gray-700">
+              Continue with Google
+            </a>
             {/* Email Input */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
@@ -491,6 +537,9 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <a href={GOOGLE_LOGIN_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
+                Continue with Google
+              </a>
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>
                 <Input

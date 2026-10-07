@@ -14,6 +14,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { getRecaptchaToken } from "@/lib/recaptcha";
+import { API_CONFIG } from "@/config/api";
+
+const GOOGLE_SIGNUP_URL = `${API_CONFIG.BASE_URL.replace(/\/api\/?$/, "")}/accounts/google/login/`;
 
 const Signup = () => {
   const isMobile = useIsMobile();
@@ -226,6 +230,7 @@ const Signup = () => {
         phone_number: string;
         referral_source?: string;
         country?: string;
+        recaptcha_token?: string;
       } = {
         email: formData.email.trim(),
         password: formData.password,
@@ -233,6 +238,7 @@ const Signup = () => {
         first_name: formData.firstName.trim(),
         last_name: formData.lastName.trim(),
         phone_number: processedPhone,
+        recaptcha_token: await getRecaptchaToken("signup"),
       };
 
       if (formData.referralSource) {
@@ -436,6 +442,9 @@ const Signup = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
+                <a href={GOOGLE_SIGNUP_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
+                  Sign up with Google
+                </a>
                 {/* Name Fields */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
@@ -765,6 +774,9 @@ const Signup = () => {
 
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
+                <a href={GOOGLE_SIGNUP_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
+                  Sign up with Google
+                </a>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">
                     <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">{t("auth.signup.first_name")}</Label>
