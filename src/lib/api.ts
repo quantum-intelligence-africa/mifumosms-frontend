@@ -1486,6 +1486,13 @@ class ApiClient {
     return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }
 
+  async setOAuthPhone(phone_number: string): Promise<ApiResponse<{ phone_number: string }>> {
+    return this.request<{ phone_number: string }>('/auth/oauth/phone/', {
+      method: 'POST',
+      body: JSON.stringify({ phone_number }),
+    });
+  }
+
   async updateProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
     return this.request<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE, {
       method: 'PUT',
