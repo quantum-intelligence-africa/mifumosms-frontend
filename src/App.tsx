@@ -21,6 +21,7 @@ import { PendingPaymentReminder } from "@/components/sms/PendingPaymentReminder"
 // route that uses them is visited.
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
+const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -173,6 +174,7 @@ const AppContent = () => {
         <Route path="/watch-tutorial" element={<Landing />} />
         <Route path="/tutorial" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
