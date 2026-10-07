@@ -1434,13 +1434,13 @@ const Settings = () => {
                         value={profileData.phone}
                         onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
                         className="glass-subtle border-0 text-sm"
-                        placeholder="e.g. +255712345678"
+                        placeholder="06..., 07..., 255..., or +255..."
                         disabled={!canEditPhone}
                         readOnly={!canEditPhone}
                       />
                       <p className="text-xs text-text-subtle">
                         {canEditPhone
-                          ? "Enter phone number in international format."
+                          ? "Accepted formats: 06..., 07..., 255..., or +255...."
                           : "Sign in to update your phone number."}
                       </p>
                     </div>
