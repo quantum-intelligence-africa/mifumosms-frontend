@@ -14,6 +14,7 @@ import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { API_CONFIG } from "@/config/api";
 import { getRecaptchaToken } from "@/lib/recaptcha";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 // Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
 // routes the login attempt to the admin endpoint and drops the user on /admin
@@ -351,10 +352,9 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <a href={GOOGLE_LOGIN_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-full border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
-              <span>Continue with Google</span>
-            </a>
+            <GoogleButton href={GOOGLE_LOGIN_URL} roundedClassName="rounded-full">
+              Continue with Google
+            </GoogleButton>
             {/* Email Input */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
@@ -538,10 +538,9 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <a href={GOOGLE_LOGIN_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
-                <span>Continue with Google</span>
-              </a>
+              <GoogleButton href={GOOGLE_LOGIN_URL} roundedClassName="rounded-lg">
+                Continue with Google
+              </GoogleButton>
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>
                 <Input

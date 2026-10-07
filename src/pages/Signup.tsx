@@ -16,6 +16,7 @@ import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { API_CONFIG } from "@/config/api";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 const GOOGLE_SIGNUP_URL = `${API_CONFIG.BASE_URL.replace(/\/api\/?$/, "")}/accounts/google/login/`;
 
@@ -442,10 +443,9 @@ const Signup = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-                <a href={GOOGLE_SIGNUP_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
-                  <span>Continue with Google</span>
-                </a>
+                <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
+                  Continue with Google
+                </GoogleButton>
                 {/* Name Fields */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
@@ -775,10 +775,9 @@ const Signup = () => {
 
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-                <a href={GOOGLE_SIGNUP_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
-                  <span>Continue with Google</span>
-                </a>
+                <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
+                  Continue with Google
+                </GoogleButton>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">
                     <Label htmlFor="firstName" className="text-xs font-medium text-gray-700">{t("auth.signup.first_name")}</Label>
