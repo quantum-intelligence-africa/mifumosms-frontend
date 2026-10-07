@@ -71,6 +71,7 @@ const SendaAdmin = lazy(() => import("../senda-dashboard.jsx"));
 const queryClient = new QueryClient();
 
 const CANONICAL_BASE_URL = "https://sms.mifumolabs.com";
+const CHUNK_RELOAD_KEY = "senda_chunk_reload_attempted";
 
 // Shown while a lazily-loaded route chunk is being fetched.
 const RouteFallback = () => (
@@ -144,6 +145,32 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
 
 // Main app content component that initializes global auth error handling
 const AppContent = () => {
+  useEffect(() => {
+    const reloadOnStaleChunk = (event: PromiseRejectionEvent) => {
+      const message = String(event.reason?.message || event.reason || "");
+      if (
+        !/dynamically imported module|Failed to fetch dynamically imported module/i.test(
+          message
+        ) ||
+        sessionStorage.getItem(CHUNK_RELOAD_KEY)
+      ) {
+        return;
+      }
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");
+      window.location.reload();
+    };
+
+    window.addEventListener("unhandledrejection", reloadOnStaleChunk);
+    const clearReloadGuard = window.setTimeout(
+      () => sessionStorage.removeItem(CHUNK_RELOAD_KEY),
+      10000
+    );
+    return () => {
+      window.removeEventListener("unhandledrejection", reloadOnStaleChunk);
+      window.clearTimeout(clearReloadGuard);
+    };
+  }, []);
+
   // Initialize global authentication error handler
   // This listens for auth errors across ALL endpoints and redirects to login
   useGlobalAuthErrorHandler();

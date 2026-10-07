@@ -1,6 +1,8 @@
 # Netlify redirects for SPA (Single Page Application)
 # Netlify automatically serves static files that exist, so we only need to redirect non-existent routes
 # This ensures all routes are handled by index.html for client-side routing
+# Assets are emitted with content hashes; index.html must not be cached because
+# it is the manifest for the current set of hashed chunks.
 
 # Handle all routes by serving index.html (static files are served automatically if they exist)
 /*    /index.html   200
