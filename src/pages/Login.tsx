@@ -351,8 +351,9 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <a href={GOOGLE_LOGIN_URL} className="block w-full rounded-full border border-gray-300 py-3 text-center text-sm font-semibold text-gray-700">
-              Continue with Google
+            <a href={GOOGLE_LOGIN_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-full border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
+              <span>Continue with Google</span>
             </a>
             {/* Email Input */}
             <div className="relative">
@@ -537,8 +538,9 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <a href={GOOGLE_LOGIN_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
-                Continue with Google
+              <a href={GOOGLE_LOGIN_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
+                <span>Continue with Google</span>
               </a>
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>

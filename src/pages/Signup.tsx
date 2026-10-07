@@ -442,8 +442,9 @@ const Signup = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-                <a href={GOOGLE_SIGNUP_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
-                  Sign up with Google
+                <a href={GOOGLE_SIGNUP_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
+                  <span>Continue with Google</span>
                 </a>
                 {/* Name Fields */}
               <div className="grid grid-cols-2 gap-2">
@@ -774,8 +775,9 @@ const Signup = () => {
 
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-                <a href={GOOGLE_SIGNUP_URL} className="block w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-700">
-                  Sign up with Google
+                <a href={GOOGLE_SIGNUP_URL} aria-label="Continue with Google" className="flex w-full items-center justify-center gap-3 rounded-lg border border-blue-200 bg-white py-3 text-center text-sm font-semibold text-gray-800 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-blue-600 shadow ring-1 ring-blue-100">G</span>
+                  <span>Continue with Google</span>
                 </a>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">

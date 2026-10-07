@@ -1,5 +1,3 @@
-import { API_CONFIG } from "@/config/api";
-
 declare global {
   interface Window {
     grecaptcha?: {
