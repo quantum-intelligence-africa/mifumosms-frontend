@@ -3,7 +3,7 @@
 // what the AI made of it. One play button per row; playback lives in the
 // bar at the bottom of the page.
 import { useCallback, useEffect, useState, Fragment } from "react";
-import { ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -182,6 +182,9 @@ export default function CallHistory() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [agentId, setAgentId] = useState("all");
   const [sentiment, setSentiment] = useState("any");
+  const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
   const player = useRecordingPlayer();
 
   useEffect(() => {
@@ -245,6 +248,36 @@ export default function CallHistory() {
     return () => window.removeEventListener(CALL_ENDED_EVENT, refresh);
   }, [fetchCalls]);
 
+  useEffect(() => {
+    setSelectedCallIds(new Set());
+    setAnalysisMessage(null);
+  }, [tab, range, search, agentId, sentiment]);
+
+  const toggleSelected = (callId: string) => {
+    setSelectedCallIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(callId)) next.delete(callId);
+      else next.add(callId);
+      return next;
+    });
+  };
+
+  const analyzeSelected = async (callIds: string[]) => {
+    if (!callIds.length || analyzing) return;
+    setAnalyzing(true);
+    setAnalysisMessage(null);
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: callIds });
+    if (res.success && res.data) {
+      setAnalysisMessage(t("voice.calls.analysis_queued", { count: res.data.queued }));
+      setSelectedCallIds(new Set());
+      await fetchCalls(1, false);
+      setDetails({});
+    } else {
+      setError(res.error || t("voice.calls.analysis_error"));
+    }
+    setAnalyzing(false);
+  };
+
   const toggleExpand = async (callId: string) => {
     if (expandedId === callId) {
       setExpandedId(null);
@@ -272,6 +305,8 @@ export default function CallHistory() {
   };
 
   const filtered = search || tab !== "all" || range !== "all" || agentId !== "all" || sentiment !== "any";
+  const selectableCalls = calls.filter((call) => Boolean(call.recording));
+  const allSelectableSelected = selectableCalls.length > 0 && selectableCalls.every((call) => selectedCallIds.has(call.id));
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -333,6 +368,20 @@ export default function CallHistory() {
                   aria-label={t("voice.calls.search_aria")}
                 />
               </div>
+
+              {(analysisMessage || selectedCallIds.size > 0) && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                  <p className="text-sm text-foreground/80">
+                    {analysisMessage || t("voice.calls.selected_count", { count: selectedCallIds.size })}
+                  </p>
+                  {selectedCallIds.size > 0 && (
+                    <Button size="sm" onClick={() => analyzeSelected([...selectedCallIds])} disabled={analyzing}>
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      {analyzing ? t("voice.calls.analysis_running") : t("voice.calls.analyze_selected")}
+                    </Button>
+                  )}
+                </div>
+              )}
               <Select value={agentId} onValueChange={setAgentId}>
                 <SelectTrigger className="h-10 w-full sm:w-40" aria-label={t("voice.calls.agent_aria")}>
                   <SelectValue placeholder={t("voice.calls.all_agents")} />
@@ -400,14 +449,27 @@ export default function CallHistory() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="w-12" />
+                        <TableHead className="w-12">
+                          <input
+                            type="checkbox"
+                            aria-label={t("voice.calls.select_all_recorded")}
+                            checked={allSelectableSelected}
+                            onChange={() => {
+                              setSelectedCallIds(
+                                allSelectableSelected ? new Set() : new Set(selectableCalls.map((call) => call.id)),
+                              );
+                            }}
+                            disabled={!selectableCalls.length}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                          />
+                        </TableHead>
                         <TableHead>{t("voice.calls.col_caller")}</TableHead>
                         <TableHead>{t("voice.calls.col_agent")}</TableHead>
                         <TableHead>{t("voice.calls.col_time")}</TableHead>
                         <TableHead>{t("voice.calls.col_length")}</TableHead>
                         <TableHead className="min-w-[260px]">{t("voice.calls.col_ai_summary")}</TableHead>
                         <TableHead>{t("voice.calls.col_sentiment")}</TableHead>
-                        <TableHead className="w-10" />
+                        <TableHead className="w-28 text-right">{t("voice.calls.actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -425,6 +487,16 @@ export default function CallHistory() {
                               className={cn("cursor-pointer", rec && player.isCurrent(rec.id) && "bg-primary/5 hover:bg-primary/5")}
                               onClick={() => toggleExpand(call.id)}
                             >
+                              <TableCell className="pr-0" onClick={(event) => event.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  aria-label={t("voice.calls.select_call")}
+                                  checked={selectedCallIds.has(call.id)}
+                                  onChange={() => toggleSelected(call.id)}
+                                  disabled={!rec}
+                                  className="h-4 w-4 rounded border-border accent-primary"
+                                />
+                              </TableCell>
                               <TableCell className="pr-0">
                                 {rec ? (
                                   <PlayButton active={player.isCurrent(rec.id)} playing={player.isPlaying(rec.id)} onClick={() => playCall(call, rec)} />
@@ -476,14 +548,30 @@ export default function CallHistory() {
                                   <span className="text-sm text-muted-foreground">—</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">
-                                {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                              <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1">
+                                  {rec && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      title={t("voice.calls.analyze_call")}
+                                      aria-label={t("voice.calls.analyze_call")}
+                                      onClick={() => analyzeSelected([call.id])}
+                                      disabled={analyzing}
+                                    >
+                                      <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
+                                      <span className="text-xs">{t("voice.calls.analyze_short")}</span>
+                                    </Button>
+                                  )}
+                                  {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                </div>
                               </TableCell>
                             </TableRow>
 
                             {expanded && (
                               <TableRow className="hover:bg-transparent">
-                                <TableCell colSpan={8} className="bg-muted/30 p-4">
+                                <TableCell colSpan={9} className="bg-muted/30 p-4">
                                   {detailLoading === call.id && <Skeleton className="h-20" />}
                                   {detail && (
                                     <div className="grid gap-4 lg:grid-cols-2">
