@@ -195,6 +195,10 @@ export default function Overview() {
   }, []);
 
   const live = cc.socketState === "ready";
+  // An older voice service (mid-deploy) doesn't send the call numbers yet — show zeros instead of crashing.
+  const today = snap?.today ?? { inbound: 0, answered: 0, missed: 0, outbound: 0, avg_talk_seconds: 0 };
+  const recentCalls = snap?.recent_calls ?? [];
+  const openMissed = snap?.open_missed ?? 0;
 
   return (
     <PageFrame
@@ -231,21 +235,21 @@ export default function Overview() {
           <div>
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.board.today")}</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <Kpi label={t("cc.board.inbound_today")} value={snap.today.inbound} />
-              <Kpi label={t("cc.board.answered_today")} value={snap.today.answered} tone="text-green-600" />
-              <Link to="/call-center/missed" className="block" title={t("cc.board.follow_up", { n: snap.open_missed })}>
+              <Kpi label={t("cc.board.inbound_today")} value={today.inbound} />
+              <Kpi label={t("cc.board.answered_today")} value={today.answered} tone="text-green-600" />
+              <Link to="/call-center/missed" className="block" title={t("cc.board.follow_up", { n: openMissed })}>
                 <Card className="h-full transition-colors hover:bg-accent/40">
                   <CardContent className="p-4">
-                    <p className="text-3xl font-bold leading-none text-red-600">{snap.today.missed}</p>
+                    <p className="text-3xl font-bold leading-none text-red-600">{today.missed}</p>
                     <p className="mt-1.5 text-xs text-muted-foreground">{t("cc.board.missed_today")}</p>
-                    {snap.open_missed > 0 && <p className="mt-1 text-[11px] font-medium text-red-600">{t("cc.board.follow_up", { n: snap.open_missed })}</p>}
+                    {openMissed > 0 && <p className="mt-1 text-[11px] font-medium text-red-600">{t("cc.board.follow_up", { n: openMissed })}</p>}
                   </CardContent>
                 </Card>
               </Link>
-              <Kpi label={t("cc.board.outbound_today")} value={snap.today.outbound} />
+              <Kpi label={t("cc.board.outbound_today")} value={today.outbound} />
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-3xl font-bold leading-none">{snap.today.avg_talk_seconds ? formatDuration(snap.today.avg_talk_seconds) : "—"}</p>
+                  <p className="text-3xl font-bold leading-none">{today.avg_talk_seconds ? formatDuration(today.avg_talk_seconds) : "—"}</p>
                   <p className="mt-1.5 text-xs text-muted-foreground">{t("cc.board.avg_talk")}</p>
                 </CardContent>
               </Card>
@@ -258,8 +262,8 @@ export default function Overview() {
               <Link to="/call-center/history" className="text-xs font-medium text-primary underline">{t("cc.board.view_all")}</Link>
             </CardHeader>
             <CardContent className="space-y-1.5">
-              {snap.recent_calls.length === 0 && <p className="text-sm text-muted-foreground">{t("cc.board.recent_empty")}</p>}
-              {snap.recent_calls.map((c) => (
+              {recentCalls.length === 0 && <p className="text-sm text-muted-foreground">{t("cc.board.recent_empty")}</p>}
+              {recentCalls.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     {c.direction === "outbound" ? <PhoneOutgoing className="h-4 w-4 shrink-0 text-violet-600" /> : <PhoneIncoming className="h-4 w-4 shrink-0 text-blue-600" />}
