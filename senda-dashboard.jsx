@@ -3366,11 +3366,26 @@ function LoginActivityTab() {
 
   // ── Events view state (driven by /auth/activity) ──────────────────────────
   const [evItems,    setEvItems]    = useState([]);
+  const [evSummary,  setEvSummary]  = useState({});
+  const [evMeta,     setEvMeta]     = useState({});
   const [dailyData,  setDailyData]  = useState([]);
+  const [blockedIps, setBlockedIps] = useState([]);
   const [evLoading,  setEvLoading]  = useState(true);
   const [evError,    setEvError]    = useState(null);
-  const [evFilter,   setEvFilter]   = useState('all');
+  const [evFilter,   setEvFilter]   = useState('all');        // status
   const [evSearch,   setEvSearch]   = useState('');
+  const [evSearchQ,  setEvSearchQ]  = useState('');           // debounced evSearch
+  const [evDisposable, setEvDisposable] = useState('all');    // all | yes | no
+  const [evRole,     setEvRole]     = useState('all');
+  const [evBlocked,  setEvBlocked]  = useState('all');        // all | yes | no
+  const [evDateFrom, setEvDateFrom] = useState('');
+  const [evDateTo,   setEvDateTo]   = useState('');
+  const [evIp,       setEvIp]       = useState('');
+  const [evPage,     setEvPage]     = useState(1);
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [evNotice,   setEvNotice]   = useState(null);         // { type:'ok'|'err', text }
+  const [evBusy,     setEvBusy]     = useState(false);
+  const EV_PER = 25;
 
   // ── Recency fetch ────────────────────────────────────────────────────────
   const fetchRecency = useCallback(() => {
@@ -3415,20 +3430,130 @@ function LoginActivityTab() {
   useEffect(() => { setPage(1); }, [search, recencyChip, statusFilter, roleFilter, sortField, sortOrder]);
 
   // ── Events fetch (audit trail) ───────────────────────────────────────────
+  // Filters shared by the table query and the CSV export, so the file always
+  // matches what the admin is looking at.
+  const evFilterParams = useCallback(() => {
+    const qs = new URLSearchParams();
+    if (evSearchQ.trim())        qs.set('search', evSearchQ.trim());
+    if (evFilter !== 'all')      qs.set('status', evFilter);
+    if (evDisposable !== 'all')  qs.set('disposable', evDisposable);
+    if (evRole !== 'all')        qs.set('role', evRole);
+    if (evBlocked !== 'all')     qs.set('blocked', evBlocked);
+    if (evDateFrom)              qs.set('date_from', evDateFrom);
+    if (evDateTo)                qs.set('date_to', evDateTo);
+    if (evIp.trim())             qs.set('ip', evIp.trim());
+    return qs;
+  }, [evSearchQ, evFilter, evDisposable, evRole, evBlocked, evDateFrom, evDateTo, evIp]);
+
   const fetchEvents = useCallback(() => {
     setEvLoading(true); setEvError(null);
+    const qs = evFilterParams();
+    qs.set('page', String(evPage));
+    qs.set('limit', String(EV_PER));
     Promise.all([
-      adminFetch('/auth/activity', {}, onLogout),
+      adminFetch(`/auth/activity?${qs}`, {}, onLogout),
       adminFetch('/auth/activity/daily?days=7', {}, onLogout),
-    ]).then(([actRes, dailyRes]) => {
-      if (actRes.success) setEvItems(actRes.data || []);
-      else setEvError(actRes.error?.message || 'Failed to load activity.');
+      adminFetch('/auth/activity/blocked-ips', {}, onLogout),
+    ]).then(([actRes, dailyRes, blockedRes]) => {
+      if (actRes.success) {
+        setEvItems(actRes.data || []);
+        setEvSummary(actRes.summary || {});
+        setEvMeta(actRes.meta || {});
+      } else setEvError(actRes.error?.message || 'Failed to load activity.');
       if (dailyRes.success) setDailyData(dailyRes.data || []);
+      if (blockedRes.success) setBlockedIps(blockedRes.data || []);
     }).catch(e => setEvError(e.message))
       .finally(() => setEvLoading(false));
-  }, [onLogout]);
+  }, [onLogout, evFilterParams, evPage]);
 
   useEffect(() => { if (view === 'events') fetchEvents(); }, [view, fetchEvents]);
+
+  // Debounce free-text search so we don't query on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setEvSearchQ(evSearch), 300);
+    return () => clearTimeout(t);
+  }, [evSearch]);
+  // Any filter change returns to the first page.
+  useEffect(() => { setEvPage(1); }, [evSearchQ, evFilter, evDisposable, evRole, evBlocked, evDateFrom, evDateTo, evIp]);
+
+  const flash = (type, text) => {
+    setEvNotice({ type, text });
+    setTimeout(() => setEvNotice(n => (n && n.text === text ? null : n)), 5000);
+  };
+
+  // Authenticated CSV download of the *filtered* audit trail (server-side, up to 20k rows).
+  const handleExportEvents = async () => {
+    setEvBusy(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/auth/activity/export?${evFilterParams()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        let msg = 'Export failed.';
+        try { msg = (await res.json()).error?.message || msg; } catch {}
+        flash('err', msg);
+        return;
+      }
+      const total = Number(res.headers.get('X-Total-Rows') || 0);
+      const exported = Number(res.headers.get('X-Exported-Rows') || 0);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `senda-login-audit-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      flash('ok', total > exported
+        ? `Exported the newest ${exported.toLocaleString()} of ${total.toLocaleString()} rows — narrow the filters to get the rest.`
+        : `Exported ${exported.toLocaleString()} rows.`);
+    } catch (e) {
+      flash('err', e.message || 'Export failed.');
+    } finally {
+      setEvBusy(false);
+    }
+  };
+
+  // Security actions. Each confirms first because they take effect immediately.
+  const runAction = async (path, options, okText) => {
+    setEvBusy(true);
+    try {
+      const res = await adminFetch(path, options, onLogout);
+      if (res.success) { flash('ok', res.data?.message || res.message || okText); fetchEvents(); }
+      else flash('err', res.error?.message || 'Action failed.');
+    } catch (e) {
+      flash('err', e.message || 'Action failed.');
+    } finally {
+      setEvBusy(false);
+    }
+  };
+
+  const handleBlockIp = (ip) => {
+    const input = window.prompt(`Block ${ip} for how many days? (0 = permanent)`, '30');
+    if (input === null) return;
+    const days = Number(input.trim());
+    if (!Number.isInteger(days) || days < 0) { flash('err', 'Enter a whole number of days (0 for permanent).'); return; }
+    runAction('/auth/activity/block-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip, days, reason: 'Blocked from login activity review' }),
+    }, `${ip} blocked.`);
+  };
+
+  const handleUnblockIp = (ip) => {
+    if (!window.confirm(`Unblock ${ip}?`)) return;
+    runAction(`/auth/activity/block-ip/${encodeURIComponent(ip)}`, { method: 'DELETE' }, `${ip} unblocked.`);
+  };
+
+  const handleToggleUser = (l) => {
+    const suspend = l.user_status !== 'suspended';
+    const verb = suspend ? 'Suspend' : 'Reactivate';
+    if (!window.confirm(`${verb} account ${l.user_email}?`)) return;
+    runAction('/auth/activity/block-user', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: l.raw_user_id, email: l.user_email, action: suspend ? 'suspend' : 'activate' }),
+    }, `${l.user_email} ${suspend ? 'suspended' : 'reactivated'}.`);
+  };
 
   // ── CSV export of the current recency page ───────────────────────────────
   const handleDownloadCsv = () => {
@@ -3460,14 +3585,15 @@ function LoginActivityTab() {
   };
 
   // ── Filtered events list (client-side text/status filters) ───────────────
-  const evFiltered = evItems.filter(l => {
-    const m = evFilter === 'all' || l.status === evFilter;
-    const q = evSearch.toLowerCase();
-    return m && (!q || (l.user||'').toLowerCase().includes(q) || (l.ip||'').includes(q) || (l.location||'').toLowerCase().includes(q));
-  });
-  const evSuccessRate = evItems.length > 0
-    ? ((evItems.filter(l=>l.status==='success').length / evItems.length)*100).toFixed(1)
-    : '—';
+  // Filtering, paging and KPIs now come from the server (/auth/activity).
+  const evSuccessRate = evSummary.total > 0 ? Number(evSummary.success_rate).toFixed(1) : '—';
+  const evTotalPages  = evMeta.total_pages || 1;
+  const evFiltersActive = !!(evSearchQ || evFilter !== 'all' || evDisposable !== 'all' || evRole !== 'all'
+    || evBlocked !== 'all' || evDateFrom || evDateTo || evIp);
+  const clearEvFilters = () => {
+    setEvSearch(''); setEvSearchQ(''); setEvFilter('all'); setEvDisposable('all'); setEvRole('all');
+    setEvBlocked('all'); setEvDateFrom(''); setEvDateTo(''); setEvIp('');
+  };
 
   // ── Pagination derived from server meta ───────────────────────────────────
   const totalPages = recencyMeta.total_pages || 1;
@@ -3663,23 +3789,68 @@ function LoginActivityTab() {
             <div className="senda-card" style={{padding:20,display:'flex',flexDirection:'column',gap:12}}>
               <SectionHeader title="Auth Health" subtitle="From login event log"/>
               {[
-                {l:'Total Attempts', v:evItems.length,                                       c:BRAND},
-                {l:'Successful',     v:evItems.filter(l=>l.status==='success').length,      c:GREEN},
-                {l:'Failed',         v:evItems.filter(l=>l.status==='failed').length,       c:RED},
-                {l:'Success Rate',   v:`${evSuccessRate}%`,                                 c:Number(evSuccessRate)>90?GREEN:AMBER},
+                {l:'Total Attempts',     v:evSummary.total,                       c:BRAND},
+                {l:'Successful',         v:evSummary.success,                     c:GREEN},
+                {l:'Failed',             v:evSummary.failed,                      c:RED},
+                {l:'Success Rate',       v:evSuccessRate === '—' ? '—' : `${evSuccessRate}%`, c:Number(evSuccessRate)>90?GREEN:AMBER},
+                {l:'Disposable Emails',  v:evSummary.disposable_count,            c:AMBER},
+                {l:'Unique IPs',         v:evSummary.unique_ips,                  c:BRAND},
+                {l:'Blocked IPs',        v:evSummary.blocked_ips_count,           c:RED},
               ].map(x=>(
-                <div key={x.l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}>
+                <div key={x.l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid #f1f5f9'}}>
                   <span style={{fontSize:12,color:'#64748b'}}>{x.l}</span>
-                  <span style={{fontSize:14,fontWeight:700,color:x.c}}>{x.v}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:x.c}}>{x.v != null ? (typeof x.v === 'number' ? x.v.toLocaleString() : x.v) : '—'}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-            <input className="senda-input" placeholder="Search user, IP, location..." value={evSearch}
+          {/* ── Triage: noisiest IPs (24h) + most-used disposable domains ───── */}
+          {((evSummary.top_failed_ips || []).length > 0 || (evSummary.top_disposable_domains || []).length > 0) && (
+            <div style={{display:'grid',gridTemplateColumns:bp==='mobile'?'1fr':'1fr 1fr',gap:16,marginBottom:18}}>
+              <div className="senda-card" style={{padding:20}}>
+                <SectionHeader title="Top Failing IPs" subtitle="Last 24 hours — candidates to block"/>
+                {(evSummary.top_failed_ips || []).length === 0 && <div style={{fontSize:12,color:'#94a3b8'}}>No failed attempts in the last 24 hours.</div>}
+                {(evSummary.top_failed_ips || []).map(r => (
+                  <div key={r.ip} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid #f1f5f9'}}>
+                    <button onClick={()=>{ setEvIp(r.ip); }} title="Filter events to this IP"
+                      style={{fontFamily:'monospace',fontSize:12,color:BRAND,background:'none',border:'none',cursor:'pointer',padding:0}}>{r.ip}</button>
+                    <span style={{fontSize:11,color:'#64748b'}}>{r.failed} failed · {r.distinct_emails} email{r.distinct_emails === 1 ? '' : 's'}</span>
+                    <span style={{marginLeft:'auto'}}>
+                      {r.is_blocked
+                        ? <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={evBusy} onClick={()=>handleUnblockIp(r.ip)} style={{fontSize:11}}>Unblock</button>
+                        : <button className="senda-btn senda-btn-sm" disabled={evBusy} onClick={()=>handleBlockIp(r.ip)} style={{fontSize:11,background:RED,color:'#fff',border:'none'}}>Block</button>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="senda-card" style={{padding:20}}>
+                <SectionHeader title="Disposable Domains" subtitle="Most-used temporary email providers"/>
+                {(evSummary.top_disposable_domains || []).length === 0 && <div style={{fontSize:12,color:'#94a3b8'}}>No disposable-domain activity recorded.</div>}
+                {(evSummary.top_disposable_domains || []).map(d => (
+                  <div key={d.domain} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid #f1f5f9'}}>
+                    <button onClick={()=>{ setEvDisposable('yes'); setEvSearch(d.domain); }} title="Filter events to this domain"
+                      style={{fontSize:12,color:'#b45309',background:'none',border:'none',cursor:'pointer',padding:0}}>{d.domain}</button>
+                    <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'#0f172a'}}>{Number(d.count).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {evNotice && (
+            <div role="status" style={{marginBottom:12,padding:'10px 14px',borderRadius:8,fontSize:12,fontWeight:600,
+              background: evNotice.type === 'ok' ? '#ecfdf5' : '#fef2f2',
+              color: evNotice.type === 'ok' ? '#047857' : '#b91c1c',
+              border: `1px solid ${evNotice.type === 'ok' ? '#a7f3d0' : '#fecaca'}`}}>
+              {evNotice.text}
+            </div>
+          )}
+
+          <div style={{display:'flex',gap:10,marginBottom:10,flexWrap:'wrap',alignItems:'center'}}>
+            <input className="senda-input" placeholder="Search email, domain, IP, device, reason..." value={evSearch}
               onChange={e=>setEvSearch(e.target.value)}
-              style={{width:bp==='mobile'?'100%':260,height:38,fontSize:13}}/>
+              style={{width:bp==='mobile'?'100%':280,height:38,fontSize:13}}/>
             <div style={{display:'flex',gap:4}}>
               {['all','success','failed'].map(f=>(
                 <button key={f} className="senda-btn senda-btn-sm" onClick={()=>setEvFilter(f)}
@@ -3688,34 +3859,119 @@ function LoginActivityTab() {
                 </button>
               ))}
             </div>
-            <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{evFiltered.length} events</span>
+            <span style={{fontSize:12,color:'#94a3b8',marginLeft:'auto'}}>{Number(evMeta.total || 0).toLocaleString()} events</span>
             <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={fetchEvents} style={{fontSize:12}}>↻ Refresh</button>
+            <button onClick={handleExportEvents} disabled={evBusy || !evMeta.total}
+              title="Download every event matching the current filters"
+              style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 12px',
+                background: (evBusy || !evMeta.total) ? '#f1f5f9' : BRAND, color: (evBusy || !evMeta.total) ? '#94a3b8' : '#fff',
+                border:'none',borderRadius:7,fontSize:11,fontWeight:700,cursor:(evBusy || !evMeta.total) ? 'not-allowed' : 'pointer'}}>
+              <Download size={13} strokeWidth={2.4}/> Export CSV
+            </button>
           </div>
+
+          <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+            {[
+              { label:'Email',   value:evDisposable, set:setEvDisposable, opts:[['all','All emails'],['yes','Disposable only'],['no','Standard only']] },
+              { label:'Role',    value:evRole,       set:setEvRole,       opts:[['all','All roles'],['admin','Admin'],['partner','Partner'],['user','User']] },
+              { label:'IP',      value:evBlocked,    set:setEvBlocked,    opts:[['all','Any IP'],['yes','Blocked IPs'],['no','Not blocked']] },
+            ].map(f => (
+              <select key={f.label} aria-label={f.label} className="senda-input" value={f.value} onChange={e=>f.set(e.target.value)}
+                style={{height:34,fontSize:12,width:'auto'}}>
+                {f.opts.map(([v,t]) => <option key={v} value={v}>{t}</option>)}
+              </select>
+            ))}
+            <input className="senda-input" placeholder="Exact IP" value={evIp} onChange={e=>setEvIp(e.target.value)}
+              style={{width:130,height:34,fontSize:12,fontFamily:'monospace'}}/>
+            <label style={{fontSize:11,color:'#64748b',display:'inline-flex',alignItems:'center',gap:5}}>From
+              <input type="date" className="senda-input" value={evDateFrom} max={evDateTo || undefined} onChange={e=>setEvDateFrom(e.target.value)} style={{height:34,fontSize:12,width:'auto'}}/>
+            </label>
+            <label style={{fontSize:11,color:'#64748b',display:'inline-flex',alignItems:'center',gap:5}}>To
+              <input type="date" className="senda-input" value={evDateTo} min={evDateFrom || undefined} onChange={e=>setEvDateTo(e.target.value)} style={{height:34,fontSize:12,width:'auto'}}/>
+            </label>
+            {evFiltersActive && (
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={clearEvFilters} style={{fontSize:11}}>Clear filters</button>
+            )}
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={()=>setShowBlocked(s=>!s)} style={{fontSize:11,marginLeft:'auto'}}>
+              {showBlocked ? 'Hide' : 'Manage'} blocked IPs ({blockedIps.filter(b=>b.is_active !== false).length})
+            </button>
+          </div>
+
+          {showBlocked && (
+            <div className="senda-card" style={{padding:16,marginBottom:14}}>
+              <SectionHeader title="Blocked IPs" subtitle="Blocked addresses are refused at login and recorded as failed attempts"/>
+              {blockedIps.length === 0 && <div style={{fontSize:12,color:'#94a3b8'}}>No IPs are blocked.</div>}
+              {blockedIps.map(b => (
+                <div key={b.ip} style={{display:'flex',alignItems:'center',gap:12,padding:'7px 0',borderBottom:'1px solid #f1f5f9',flexWrap:'wrap'}}>
+                  <span style={{fontFamily:'monospace',fontSize:12,fontWeight:600}}>{b.ip}</span>
+                  <span style={{fontSize:11,color:'#64748b',flex:'1 1 200px'}}>{b.reason || '—'}</span>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>{b.expires_at ? `until ${new Date(b.expires_at).toLocaleDateString()}` : 'permanent'}</span>
+                  <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={evBusy} onClick={()=>handleUnblockIp(b.ip)} style={{fontSize:11}}>Unblock</button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {evLoading ? <LoadingState/> : evError ? <ErrorState message={evError} onRetry={fetchEvents}/> : (
             <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
               <div style={{overflowX:'auto'}}>
-                <table className="senda-table" style={{minWidth:680}}>
+                <table className="senda-table" style={{minWidth:960}}>
                   <thead>
-                    <tr><th>Log ID</th><th>User</th><th>IP Address</th><th>Device</th><th>Location</th><th>Role</th><th>Status</th><th>Time</th></tr>
+                    <tr><th>Log ID</th><th>Email</th><th>IP Address</th><th>Device</th><th>Role</th><th>Status</th><th>Reason</th><th>Time</th><th>Actions</th></tr>
                   </thead>
                   <tbody>
-                    {evFiltered.map(l=>(
-                      <tr key={l.id}>
+                    {evItems.map(l=>(
+                      <tr key={l.id} style={l.is_disposable ? {background:'#fffbeb'} : undefined}>
                         <td style={{fontWeight:600,color:BRAND,fontSize:12}}>{l.id}</td>
-                        <td style={{maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12}}>{l.user_email||l.user}</td>
-                        <td style={{fontFamily:'monospace',fontSize:12,color:'#475569'}}>{l.ip}</td>
+                        <td style={{maxWidth:220,fontSize:12}}>
+                          <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.user_email}>{l.user_email||l.user}</div>
+                          {l.is_disposable && (
+                            <span title={`${l.domain} is a disposable / temporary email provider`}
+                              style={{display:'inline-block',marginTop:2,padding:'1px 6px',borderRadius:4,fontSize:9,fontWeight:800,letterSpacing:'.05em',background:'#fef3c7',color:'#92400e'}}>
+                              DISPOSABLE · {l.domain}
+                            </span>
+                          )}
+                          {l.user_status === 'suspended' && (
+                            <span style={{display:'inline-block',marginTop:2,marginLeft:l.is_disposable?4:0,padding:'1px 6px',borderRadius:4,fontSize:9,fontWeight:800,letterSpacing:'.05em',background:'#fee2e2',color:'#991b1b'}}>SUSPENDED</span>
+                          )}
+                        </td>
+                        <td style={{fontFamily:'monospace',fontSize:12,color:'#475569'}}>
+                          {l.ip}
+                          {l.is_ip_blocked && (
+                            <span style={{marginLeft:6,padding:'1px 6px',borderRadius:4,fontSize:9,fontWeight:800,fontFamily:'inherit',background:'#fee2e2',color:'#991b1b'}}>BLOCKED</span>
+                          )}
+                        </td>
                         <td style={{fontSize:12,maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.device}</td>
-                        <td style={{fontSize:12}}>{l.location}</td>
                         <td><Badge status={l.role}/></td>
                         <td><Badge status={l.status}/></td>
-                        <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}}>{l.time ? new Date(l.time).toLocaleString() : '—'}</td>
+                        <td style={{fontSize:11,color:'#64748b',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.reason}>{l.reason || '—'}</td>
+                        <td style={{fontSize:11,color:'#64748b',whiteSpace:'nowrap'}} title={l.time ? new Date(l.time).toLocaleString() : ''}>{l.time_relative || (l.time ? new Date(l.time).toLocaleString() : '—')}</td>
+                        <td style={{whiteSpace:'nowrap'}}>
+                          {l.is_ip_blocked
+                            ? <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={evBusy} onClick={()=>handleUnblockIp(l.ip)} style={{fontSize:10}}>Unblock IP</button>
+                            : <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={evBusy} onClick={()=>handleBlockIp(l.ip)} style={{fontSize:10,color:RED}}>Block IP</button>}
+                          {l.raw_user_id && (
+                            <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={evBusy} onClick={()=>handleToggleUser(l)}
+                              style={{fontSize:10,marginLeft:4,color:l.user_status === 'suspended' ? GREEN : RED}}>
+                              {l.user_status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              {evFiltered.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No activity records found.</div>}
+              {evItems.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No activity records found.</div>}
+              {evTotalPages > 1 && (
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderTop:'1px solid #f1f5f9'}}>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>Page {evPage} of {evTotalPages}</span>
+                  <div style={{display:'flex',gap:6}}>
+                    {pageBtn('← Prev', () => setEvPage(p => Math.max(1, p - 1)), evPage <= 1)}
+                    {pageBtn('Next →', () => setEvPage(p => Math.min(evTotalPages, p + 1)), evPage >= evTotalPages)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
