@@ -46,6 +46,7 @@ export interface Membership {
   id?: string;
   tenant: string;
   tenant_id?: string;
+  tenant_name?: string;
   role: UserRole;
   status: MembershipStatus;
   joined_at?: string;
@@ -2026,6 +2027,14 @@ class ApiClient {
   /** Invite someone by email as an agent/supervisor; they get a link, set their own password and join. */
   async inviteCallCenterMember(tenantId: string, email: string, role: 'agent' | 'supervisor'): Promise<ApiResponse<unknown>> {
     return this.request(`/tenants/${tenantId}/team/invite/`, { method: 'POST', body: JSON.stringify({ email, role }) });
+  }
+
+  /** Owner/admin: give the organization a proper name. */
+  async renameOrganization(tenantId: string, name: string): Promise<ApiResponse<{ id: string; name: string }>> {
+    return this.request<{ id: string; name: string }>(`/tenants/${tenantId}/rename/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    });
   }
 
   // Buying a plan with mobile money, and the invoices that come with it

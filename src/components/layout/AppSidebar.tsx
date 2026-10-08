@@ -22,6 +22,7 @@ import {
   Workflow,
   Phone,
   PhoneCall,
+  PhoneForwarded,
   PhoneOutgoing,
   Sparkles,
   Voicemail,
@@ -87,8 +88,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const navigate = useNavigate();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     messaging: true,
-    "voice-ivr": location.pathname.startsWith("/voice"),
-    "call-center": location.pathname.startsWith("/call-center"),
+    "voice-ivr": location.pathname.startsWith("/voice") || location.pathname.startsWith("/call-center"),
   });
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
@@ -141,32 +141,57 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // While working inside Voice/IVR, hide the unrelated top-level sections
   // (Messaging, AI Copilots) and "Voice Copilots" so the sidebar stays
   // focused — Dashboard and Voice/IVR itself always stay visible.
-  const inVoiceSection = location.pathname.startsWith("/voice");
+  const inVoiceSection = location.pathname.startsWith("/voice") || location.pathname.startsWith("/call-center");
 
   // Call-center-only agents get a deliberately small menu: their workspace, their
   // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).
   const agentOnly = getCallCenterRole(user) === "agent";
 
-  const callCenterGroup: NavItem[] = canUseCallCenter(user)
+  // Call center and Voice/IVR are one product: a single menu group. The call-center pages come
+  // first (what people do day to day), then the IVR tools. Each half appears only for people
+  // who may use it, so an agent sees just their own pages.
+  const callCenterItems: NavItem[] = canUseCallCenter(user)
     ? [
-        {
-          name: t("cc.nav.section"),
-          id: "call-center",
-          href: "/call-center",
-          icon: Headphones,
-          comingSoon: isComingSoon("voice_ivr"),
-          children: [
-            { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
-            ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.live"), href: "/call-center/live", icon: BarChart3 }] : []),
-            { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed },
-            { name: t("cc.nav.history"), href: "/call-center/history", icon: History },
-            ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.teams"), href: "/call-center/teams", icon: Users }] : []),
-            ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.agents"), href: "/call-center/agents", icon: Users2 }] : []),
-            ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.plans"), href: "/call-center/plans", icon: CreditCard }] : []),
-          ],
-        },
+        { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
+        ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.live"), href: "/call-center/live", icon: BarChart3 }] : []),
+        { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed },
+        { name: t("cc.nav.history"), href: "/call-center/history", icon: History },
+        ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.teams"), href: "/call-center/teams", icon: Users }] : []),
+        ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.agents"), href: "/call-center/agents", icon: Users2 }] : []),
+        ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.plans"), href: "/call-center/plans", icon: CreditCard }] : []),
       ]
     : [];
+
+  const ivrItems: NavItem[] = hasIvrAccess(user)
+    ? [
+        { name: t("nav.ivr_flows"), href: "/voice/ivr", icon: Workflow },
+        { name: t("nav.phone_numbers"), href: "/voice/numbers", icon: Phone },
+        { name: t("nav.calls"), href: "/voice/calls", icon: PhoneCall },
+        // Contacts lives under /messaging but is just as useful for
+        // dialing/IVR — shown here too (not only under Messaging), as
+        // long as the user actually has access to that page.
+        ...(hasSmsAccess(user) ? [{ name: t("nav.contacts"), href: "/messaging/contacts", icon: Users }] : []),
+        { name: t("nav.recordings"), href: "/voice/recordings", icon: Voicemail },
+        { name: t("nav.audio_prompts"), href: "/voice/prompts", icon: MessageSquareText },
+        // Numbers a flow's "transfer" box can ring — not logins (those are Call Center → Agents).
+        { name: t("cc.nav.transfer_numbers"), href: "/voice/agents", icon: PhoneForwarded },
+        { name: t("nav.ai_call_intelligence"), href: "/voice/ai-settings", icon: Sparkles },
+      ]
+    : [];
+
+  const callCenterGroup: NavItem[] =
+    callCenterItems.length + ivrItems.length === 0
+      ? []
+      : [
+          {
+            name: t("cc.nav.section_combined"),
+            id: "voice-ivr",
+            href: callCenterItems.length ? "/call-center" : "/voice",
+            icon: Headphones,
+            comingSoon: isComingSoon("voice_ivr"),
+            children: [...callCenterItems, ...ivrItems],
+          },
+        ];
 
   const navigation: NavItem[] = [
     ...(agentOnly ? [] : [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }]),
@@ -194,31 +219,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           },
         ]),
     ...(inVoiceSection || agentOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
-    ...(hasIvrAccess(user)
-      ? [
-          ...(inVoiceSection ? [] : [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }]),
-          {
-            name: t("nav.voice_ivr"),
-            id: "voice-ivr",
-            href: "/voice",
-            icon: Workflow,
-            comingSoon: isComingSoon("voice_ivr"),
-            children: [
-              { name: t("nav.ivr_flows"), href: "/voice/ivr", icon: Workflow },
-              { name: t("nav.phone_numbers"), href: "/voice/numbers", icon: Phone },
-              { name: t("nav.calls"), href: "/voice/calls", icon: PhoneCall },
-              // Contacts lives under /messaging but is just as useful for
-              // dialing/IVR — shown here too (not only under Messaging), as
-              // long as the user actually has access to that page.
-              ...(hasSmsAccess(user) ? [{ name: t("nav.contacts"), href: "/messaging/contacts", icon: Users }] : []),
-              { name: t("nav.recordings"), href: "/voice/recordings", icon: Voicemail },
-              { name: t("nav.audio_prompts"), href: "/voice/prompts", icon: MessageSquareText },
-              { name: t("nav.voice_agents"), href: "/voice/agents", icon: Users2 },
-              { name: t("nav.ai_call_intelligence"), href: "/voice/ai-settings", icon: Sparkles },
-            ],
-          },
-        ]
-      : []),
+    ...(hasIvrAccess(user) && !inVoiceSection ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },

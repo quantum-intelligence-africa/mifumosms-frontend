@@ -323,6 +323,8 @@ export const ccEn = {
 
   // ── navigation / IVR builder ─────────────────────────────────────────────
   "cc.nav.section": "Call Center",
+  "cc.nav.section_combined": "Call Center & IVR",
+  "cc.nav.transfer_numbers": "Transfer numbers",
   "cc.nav.workspace": "My workspace",
   "cc.nav.live": "Live board",
   "cc.nav.teams": "Teams",
@@ -903,6 +905,8 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.password.sign_out": "Toka",
 
   "cc.nav.section": "Kituo cha Simu",
+  "cc.nav.section_combined": "Kituo cha Simu na IVR",
+  "cc.nav.transfer_numbers": "Namba za kuhamishia",
   "cc.nav.workspace": "Eneo langu la kazi",
   "cc.nav.live": "Ubao wa mubashara",
   "cc.nav.teams": "Timu",

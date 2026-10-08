@@ -43,6 +43,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarPicker } from "@/components/settings/AvatarPicker";
+import { OrganizationNameCard } from "@/components/settings/OrganizationNameCard";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -1340,6 +1341,7 @@ const Settings = () => {
       case "profile":
         return (
           <div className="space-y-4">
+            <OrganizationNameCard />
             <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">

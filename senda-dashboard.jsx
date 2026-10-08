@@ -3570,15 +3570,28 @@ function CallCenterPlansTab() {
   );
 }
 
-function CcModal({ title, onClose, children, footer, width = 560 }) {
-  return (
-    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(15,23,42,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:width, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,.25)' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', fontSize:16, fontWeight:800, color:'#0f172a' }}>{title}</div>
-        <div style={{ padding:20, overflowY:'auto', display:'flex', flexDirection:'column', gap:12 }}>{children}</div>
-        <div style={{ padding:'12px 20px', borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'flex-end', gap:8 }}>{footer}</div>
+// Compact controls: the global .senda-input is sized for page-level forms, too big for a dialog.
+const CC_INPUT = { height:38, minHeight:0, fontSize:14, padding:'0 12px' };
+
+function CcModal({ title, onClose, children, footer, width = 520 }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return createPortal(
+    <div onMouseDown={onClose} style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(15,23,42,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div role="dialog" aria-modal="true" aria-label={title} onMouseDown={e => e.stopPropagation()}
+        style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:width, maxHeight:'calc(100vh - 32px)', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,.28)' }}>
+        <div style={{ padding:'14px 18px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>{title}</div>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ border:'none', background:'#f1f5f9', width:28, height:28, borderRadius:8, cursor:'pointer', fontSize:16, lineHeight:1, color:'#475569' }}>×</button>
+        </div>
+        <div style={{ padding:18, overflowY:'auto', display:'flex', flexDirection:'column', gap:12, minHeight:0 }}>{children}</div>
+        <div style={{ padding:'12px 18px', borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'flex-end', gap:8 }}>{footer}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -3628,23 +3641,23 @@ function CcPlanEditor({ plan, onClose, onSaved, onLogout }) {
         <button className="senda-btn senda-btn-primary" onClick={save} disabled={busy || !f.name.trim() || (isNew && !f.key.trim())} style={{ height:34, padding:'0 16px' }}>{busy ? 'Saving…' : 'Save'}</button>
       </>}>
       {err && <div style={{ background:'#fee2e2', color:'#991b1b', padding:'8px 12px', borderRadius:8, fontSize:12 }}>{err}</div>}
-      {isNew && <CcField label="Key" hint="Short and permanent, e.g. enterprise. Cannot be changed later."><input className="senda-input" value={f.key} onChange={e => set('key', e.target.value)}/></CcField>}
+      {isNew && <CcField label="Key" hint="Short and permanent, e.g. enterprise. Cannot be changed later."><input className="senda-input" style={CC_INPUT} value={f.key} onChange={e => set('key', e.target.value)}/></CcField>}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-        <CcField label="Name"><input className="senda-input" value={f.name} onChange={e => set('name', e.target.value)}/></CcField>
-        <CcField label="Sort order" hint="Lower shows first."><input className="senda-input" type="number" value={f.sort_order} onChange={e => set('sort_order', e.target.value)}/></CcField>
+        <CcField label="Name"><input className="senda-input" style={CC_INPUT} value={f.name} onChange={e => set('name', e.target.value)}/></CcField>
+        <CcField label="Sort order" hint="Lower shows first."><input className="senda-input" style={CC_INPUT} type="number" value={f.sort_order} onChange={e => set('sort_order', e.target.value)}/></CcField>
       </div>
-      <CcField label="Tagline"><input className="senda-input" value={f.tagline} onChange={e => set('tagline', e.target.value)} maxLength={200}/></CcField>
+      <CcField label="Tagline"><input className="senda-input" style={CC_INPUT} value={f.tagline} onChange={e => set('tagline', e.target.value)} maxLength={200}/></CcField>
       <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10 }}>
-        <CcField label="Price" hint="Empty = custom pricing."><input className="senda-input" type="number" min="0" value={f.price} onChange={e => set('price', e.target.value)}/></CcField>
-        <CcField label="Currency"><input className="senda-input" value={f.currency} maxLength={3} onChange={e => set('currency', e.target.value.toUpperCase())}/></CcField>
+        <CcField label="Price" hint="Empty = custom pricing."><input className="senda-input" style={CC_INPUT} type="number" min="0" value={f.price} onChange={e => set('price', e.target.value)}/></CcField>
+        <CcField label="Currency"><input className="senda-input" style={CC_INPUT} value={f.currency} maxLength={3} onChange={e => set('currency', e.target.value.toUpperCase())}/></CcField>
         <CcField label="Billing">
-          <select className="senda-input" value={f.billing_cycle} onChange={e => set('billing_cycle', e.target.value)}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+          <select className="senda-input" style={CC_INPUT} value={f.billing_cycle} onChange={e => set('billing_cycle', e.target.value)}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
         </CcField>
       </div>
       <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginTop:4 }}>Limits <span style={{ fontWeight:500, color:'#94a3b8' }}>— leave empty for unlimited</span></div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
         {CC_LIMIT_FIELDS.map(([k, label]) => (
-          <CcField key={k} label={label}><input className="senda-input" type="number" min="0" placeholder="Unlimited" value={f[k]} onChange={e => set(k, e.target.value)}/></CcField>
+          <CcField key={k} label={label}><input className="senda-input" style={CC_INPUT} type="number" min="0" placeholder="Unlimited" value={f[k]} onChange={e => set(k, e.target.value)}/></CcField>
         ))}
       </div>
       <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginTop:4 }}>Included features</div>
@@ -3678,49 +3691,82 @@ function CcActivateDialog({ sub, onClose, onConfirm }) {
           onClick={async () => { setBusy(true); await onConfirm({ months: Number(months) || 1, payment_reference: ref, notes }); setBusy(false); }}>{busy ? 'Activating…' : 'Activate'}</button>
       </>}>
       <div style={{ fontSize:12, color:'#64748b' }}>Confirm the payment first — activating switches the plan on straight away and replaces any plan they currently have.</div>
-      <CcField label="Months paid for" hint="Custom plans with no months entered have no end date."><input className="senda-input" type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
-      <CcField label="Payment reference"><input className="senda-input" value={ref} maxLength={120} onChange={e => setRef(e.target.value)} placeholder="e.g. M-Pesa transaction code"/></CcField>
-      <CcField label="Notes (internal)"><input className="senda-input" value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
+      <CcField label="Months paid for" hint="Custom plans with no months entered have no end date."><input className="senda-input" style={CC_INPUT} type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
+      <CcField label="Payment reference"><input className="senda-input" style={CC_INPUT} value={ref} maxLength={120} onChange={e => setRef(e.target.value)} placeholder="e.g. M-Pesa transaction code"/></CcField>
+      <CcField label="Notes (internal)"><input className="senda-input" style={CC_INPUT} value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
     </CcModal>
   );
 }
 
-// Find an organization by name or a member's email, instead of pasting a UUID.
+// Pick an organization from the full list (newest sign-ups included); typing narrows it.
 function CcTenantPicker({ onPick, onLogout }) {
+  const PAGE = 50;
   const [q, setQ] = useState('');
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState(null);
+
+  const load = useCallback((offset, replace) => {
+    setLoading(true);
+    return adminFetch(`/call-center/tenants?q=${encodeURIComponent(q.trim())}&limit=${PAGE}&offset=${offset}`, {}, onLogout)
+      .then(res => {
+        if (!res.success) return;
+        setRows(prev => replace ? (res.data || []) : [...prev, ...(res.data || [])]);
+        setTotal(res.total ?? 0);
+        setHasMore(!!res.has_more);
+      })
+      .finally(() => setLoading(false));
+  }, [q, onLogout]);
+
   useEffect(() => {
-    if (picked || q.trim().length < 2) { setRows([]); return; }
-    const t = setTimeout(() => {
-      adminFetch(`/call-center/tenants?q=${encodeURIComponent(q.trim())}`, {}, onLogout)
-        .then(res => setRows(res.success ? (res.data || []) : []));
-    }, 250);
+    if (picked) return undefined;
+    const t = setTimeout(() => load(0, true), q ? 250 : 0);
     return () => clearTimeout(t);
-  }, [q, picked, onLogout]);
-  const choose = (t) => { setPicked(t); onPick(t.id); setRows([]); };
-  return (
-    <CcField label="Organization" hint="Type a name or a member's email.">
-      {picked ? (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', fontSize:13 }}>
-          <span><strong>{picked.name}</strong> <span style={{ color:'#94a3b8' }}>{picked.owner_email}</span></span>
-          <button type="button" onClick={() => { setPicked(null); onPick(''); setQ(''); }} style={{ border:'none', background:'none', cursor:'pointer', color:BRAND, fontSize:12 }}>Change</button>
+  }, [q, picked, load]);
+
+  const choose = (t) => { setPicked(t); onPick(t.id); };
+  const planBadge = (t) => t.plan
+    ? <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:99, background: t.is_trial ? '#ede9fe' : '#dcfce7', color: t.is_trial ? '#6d28d9' : '#166534', whiteSpace:'nowrap' }}>{t.plan}{t.is_trial ? ' · trial' : ''}</span>
+    : <span style={{ fontSize:11, color:'#94a3b8', whiteSpace:'nowrap' }}>no plan</span>;
+
+  if (picked) {
+    return (
+      <CcField label="Organization">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'8px 12px', fontSize:13 }}>
+          <span style={{ minWidth:0 }}><strong>{picked.name}</strong><br/><span style={{ color:'#64748b', fontSize:12 }}>{picked.owner_email}</span></span>
+          <span style={{ display:'flex', alignItems:'center', gap:10 }}>
+            {planBadge(picked)}
+            <button type="button" onClick={() => { setPicked(null); onPick(''); }} style={{ border:'none', background:'none', cursor:'pointer', color:BRAND, fontSize:12, fontWeight:700 }}>Change</button>
+          </span>
         </div>
-      ) : (
-        <>
-          <input className="senda-input" value={q} onChange={e => setQ(e.target.value)} placeholder="e.g. Greenfield School"/>
-          {rows.length > 0 && (
-            <div style={{ border:'1px solid #e2e8f0', borderRadius:8, marginTop:4, maxHeight:180, overflowY:'auto' }}>
-              {rows.map(t => (
-                <div key={t.id} onClick={() => choose(t)} style={{ padding:'8px 10px', cursor:'pointer', fontSize:13, borderBottom:'1px solid #f1f5f9' }}>
-                  <strong>{t.name}</strong> <span style={{ color:'#94a3b8' }}>{t.owner_email}</span>
-                  {t.plan && <span style={{ float:'right', fontSize:11, color:'#64748b' }}>{t.plan}{t.is_trial ? ' (trial)' : ''}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      </CcField>
+    );
+  }
+  return (
+    <CcField label={`Organization${total ? ` (${total.toLocaleString()})` : ''}`}>
+      <input className="senda-input" style={CC_INPUT} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name or a member's email"/>
+      <div style={{ border:'1px solid #e2e8f0', borderRadius:8, marginTop:6, maxHeight:220, overflowY:'auto', background:'#fff' }}>
+        {rows.map(t => (
+          <div key={t.id} onClick={() => choose(t)}
+            onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }} onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+            style={{ padding:'8px 12px', cursor:'pointer', fontSize:13, borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+            <span style={{ minWidth:0 }}>
+              <strong style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</strong>
+              <span style={{ color:'#94a3b8', fontSize:12 }}>{t.owner_email || '—'}</span>
+            </span>
+            {planBadge(t)}
+          </div>
+        ))}
+        {loading && <div style={{ padding:10, textAlign:'center', color:'#94a3b8', fontSize:12 }}>Loading…</div>}
+        {!loading && rows.length === 0 && <div style={{ padding:14, textAlign:'center', color:'#94a3b8', fontSize:13 }}>No organizations found.</div>}
+        {!loading && hasMore && (
+          <button type="button" onClick={() => load(rows.length, false)} style={{ width:'100%', padding:10, border:'none', background:'#f8fafc', color:BRAND, fontWeight:700, fontSize:12, cursor:'pointer' }}>
+            Load more
+          </button>
+        )}
+      </div>
     </CcField>
   );
 }
@@ -3751,8 +3797,8 @@ function CcTrialDialog({ plans, onClose, onConfirm, onLogout }) {
       </div>
       <CcTenantPicker onPick={setTenantId} onLogout={onLogout}/>
       <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
-        <CcField label="Plan (limits)"><select className="senda-input" value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
-        <CcField label="Days" hint="1–90"><input className="senda-input" type="number" min="1" max="90" value={days} onChange={e => setDays(e.target.value)}/></CcField>
+        <CcField label="Plan (limits)"><select className="senda-input" style={CC_INPUT} value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
+        <CcField label="Days" hint="1–90"><input className="senda-input" style={CC_INPUT} type="number" min="1" max="90" value={days} onChange={e => setDays(e.target.value)}/></CcField>
       </div>
       <div style={{ fontSize:12, fontWeight:800, color:'#0f172a' }}>Features during the trial</div>
       {[['all', 'Every feature'], ['plan', "Only what the plan includes"], ['some', 'Only the features I choose']].map(([v, label]) => (
@@ -3769,7 +3815,7 @@ function CcTrialDialog({ plans, onClose, onConfirm, onLogout }) {
           ))}
         </div>
       )}
-      <CcField label="Notes (internal)"><input className="senda-input" value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
+      <CcField label="Notes (internal)"><input className="senda-input" style={CC_INPUT} value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
       <label style={{ display:'flex', gap:8, alignItems:'center', fontSize:12, color:'#92400e' }}>
         <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)}/>
         Override: allow a repeat trial, or replace a paid plan
@@ -3792,9 +3838,9 @@ function CcAssignDialog({ plans, onClose, onConfirm, onLogout }) {
           onClick={async () => { setBusy(true); await onConfirm({ tenant_id: tenantId.trim(), plan, months: Number(months) || 1, payment_reference: ref }); setBusy(false); }}>{busy ? 'Saving…' : 'Assign'}</button>
       </>}>
       <CcTenantPicker onPick={setTenantId} onLogout={onLogout}/>
-      <CcField label="Plan"><select className="senda-input" value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
-      <CcField label="Months paid for"><input className="senda-input" type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
-      <CcField label="Payment reference"><input className="senda-input" value={ref} maxLength={120} onChange={e => setRef(e.target.value)}/></CcField>
+      <CcField label="Plan"><select className="senda-input" style={CC_INPUT} value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
+      <CcField label="Months paid for"><input className="senda-input" style={CC_INPUT} type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
+      <CcField label="Payment reference"><input className="senda-input" style={CC_INPUT} value={ref} maxLength={120} onChange={e => setRef(e.target.value)}/></CcField>
     </CcModal>
   );
 }
