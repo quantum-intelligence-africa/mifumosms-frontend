@@ -2,7 +2,7 @@
 // behind a single entry and are reached through a row of tabs at the top of each page:
 //
 //   Calls    — Call history · Call log · Recordings
-//   Manage   — Live board · Teams · Agents · Plans & usage
+//   Manage   — Teams · Agents · Plans & usage
 //   Set up   — Phone numbers · IVR flows · Audio prompts · Transfer numbers · AI insights
 //
 // Both the sidebar and the tab strip read this one list, so they can never disagree.
@@ -44,7 +44,6 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
       labelKey: "cc.nav.h_manage",
       icon: Users2,
       tabs: [
-        ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.live", href: "/call-center/live" }] : []),
         ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.teams", href: "/call-center/teams" }] : []),
         ...(cc && isCallCenterAdmin(user) ? [{ labelKey: "cc.nav.agents", href: "/call-center/agents" }] : []),
         ...(cc && isCallCenterAdmin(user) ? [{ labelKey: "cc.nav.plans", href: "/call-center/plans" }] : []),

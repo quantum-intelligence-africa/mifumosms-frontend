@@ -5,7 +5,9 @@
 // re-fetched every 30 s and after status changes, so a missed event can never
 // leave the board wrong for long.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Loader2, PhoneCall, RefreshCw, Rocket, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertCircle, Loader2, Mic, PhoneCall, PhoneIncoming, PhoneOutgoing, RefreshCw, Rocket, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -21,7 +23,8 @@ import { StatusDot, StatusLabel } from "@/components/callcenter/StatusDot";
 import { formatDuration } from "@/components/callcenter/callUtils";
 import { AGENT_STATUSES, callCenterApi, type AgentStatus, type CallCenterSettings, type LiveSnapshot } from "@/services/callCenterApi";
 
-const REFRESH_MS = 30_000;
+const REFRESH_MS = 30_000; // the socket keeps it current; this only repairs a missed event
+const POLL_MS = 10_000; // when the socket is down, the board refreshes itself this often
 
 function minutesSince(iso: string | null, now: number): string {
   if (!iso) return "—";
@@ -117,15 +120,16 @@ export default function Overview() {
     }
   }, [t]);
 
+  const socketUp = cc.socketState === "ready";
   useEffect(() => {
     void load();
-    const poll = setInterval(load, REFRESH_MS);
+    const poll = setInterval(load, socketUp ? REFRESH_MS : POLL_MS);
     const tick = setInterval(() => setNow(Date.now()), 15_000);
     return () => {
       clearInterval(poll);
       clearInterval(tick);
     };
-  }, [load]);
+  }, [load, socketUp]);
 
   useEffect(
     () =>
@@ -200,7 +204,7 @@ export default function Overview() {
         <>
           <span className={`inline-flex items-center gap-1.5 text-xs ${live ? "text-green-600" : "text-amber-600"}`}>
             <span className={`h-2 w-2 rounded-full ${live ? "bg-green-500" : "bg-amber-400"}`} />
-            {live ? t("cc.workspace.live") : t("cc.workspace.reconnecting")}
+            {live ? t("cc.workspace.live") : t("cc.board.polling")}
           </span>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("common.refresh")}</Button>
         </>
@@ -224,6 +228,57 @@ export default function Overview() {
 
       {snap && (
         <>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.board.today")}</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Kpi label={t("cc.board.inbound_today")} value={snap.today.inbound} />
+              <Kpi label={t("cc.board.answered_today")} value={snap.today.answered} tone="text-green-600" />
+              <Link to="/call-center/missed" className="block" title={t("cc.board.follow_up", { n: snap.open_missed })}>
+                <Card className="h-full transition-colors hover:bg-accent/40">
+                  <CardContent className="p-4">
+                    <p className="text-3xl font-bold leading-none text-red-600">{snap.today.missed}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{t("cc.board.missed_today")}</p>
+                    {snap.open_missed > 0 && <p className="mt-1 text-[11px] font-medium text-red-600">{t("cc.board.follow_up", { n: snap.open_missed })}</p>}
+                  </CardContent>
+                </Card>
+              </Link>
+              <Kpi label={t("cc.board.outbound_today")} value={snap.today.outbound} />
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-3xl font-bold leading-none">{snap.today.avg_talk_seconds ? formatDuration(snap.today.avg_talk_seconds) : "—"}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("cc.board.avg_talk")}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm">{t("cc.board.recent")}</CardTitle>
+              <Link to="/call-center/history" className="text-xs font-medium text-primary underline">{t("cc.board.view_all")}</Link>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {snap.recent_calls.length === 0 && <p className="text-sm text-muted-foreground">{t("cc.board.recent_empty")}</p>}
+              {snap.recent_calls.map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {c.direction === "outbound" ? <PhoneOutgoing className="h-4 w-4 shrink-0 text-violet-600" /> : <PhoneIncoming className="h-4 w-4 shrink-0 text-blue-600" />}
+                    <span className="truncate font-mono">{c.direction === "outbound" ? c.to_number : c.from_number}</span>
+                    {c.voicemail && <Badge variant="secondary" className="gap-1"><Mic className="h-3 w-3" />{t("cc.board.voicemail")}</Badge>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                    <span className="hidden sm:inline">{[c.team, c.agent].filter(Boolean).join(" · ")}</span>
+                    <span>{new Date(c.started_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    {c.duration_seconds > 0 && <span className="tabular-nums">{formatDuration(c.duration_seconds)}</span>}
+                    <Badge variant={c.outcome === "missed" ? "destructive" : c.outcome === "live" ? "secondary" : "default"}>
+                      {t(`cc.board.out_${c.outcome}` as const)}
+                    </Badge>
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Kpi label={t("cc.board.agents_online")} value={snap.agents_online} />
             <Kpi label={t("cc.status.available")} value={snap.by_status.available} tone="text-green-600" />

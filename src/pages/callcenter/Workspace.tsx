@@ -2,6 +2,7 @@
 // Deliberately sparse — the screen is for taking calls quickly, not for
 // browsing SENDA's other products (see the call-center spec, section 9).
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { AlertCircle, Headphones, Loader2, Phone, PhoneCall, PhoneMissed, Users, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCallCenter } from "@/contexts/CallCenterContext";
 import { useLanguage } from "@/hooks/useLanguage";
+import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { StatusPicker } from "@/components/callcenter/StatusPicker";
 import { StatusLabel } from "@/components/callcenter/StatusDot";
@@ -101,6 +103,9 @@ export default function Workspace() {
             {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             {connected ? t("cc.workspace.live") : cc.socketState === "revoked" ? t("cc.workspace.revoked") : t("cc.workspace.reconnecting")}
           </span>
+          {isCallCenterSupervisor(user) && (
+            <Button asChild variant="outline" size="sm"><Link to="/call-center/live">{t("cc.board.team_overview")}</Link></Button>
+          )}
           <StatusPicker />
         </>
       }

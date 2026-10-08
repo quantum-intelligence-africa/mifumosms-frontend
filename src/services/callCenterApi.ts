@@ -153,7 +153,23 @@ export interface CallerContext {
   last_outcome: string;
 }
 
+export interface RecentCall {
+  id: string;
+  from_number: string;
+  to_number: string;
+  direction: string;
+  started_at: string;
+  duration_seconds: number;
+  outcome: "live" | "missed" | "answered";
+  team: string;
+  agent: string;
+  voicemail: boolean;
+}
+
 export interface LiveSnapshot {
+  today: { inbound: number; answered: number; missed: number; outbound: number; avg_talk_seconds: number };
+  open_missed: number;
+  recent_calls: RecentCall[];
   agents_online: number;
   by_status: Record<AgentStatus, number>;
   calls_waiting: number;
