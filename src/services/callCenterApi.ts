@@ -194,6 +194,24 @@ export interface MissedCall {
   notes: string;
   call_started_at: string;
   created_at: string;
+  /** The message the caller left, with its AI analysis once it exists. Null when they left none. */
+  voicemail: Voicemail | null;
+}
+
+export interface VoicemailAnalysis {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  error_message: string;
+  result: { transcript: string; sentiment: string; detected_intent: string; summary: string } | null;
+}
+
+export interface Voicemail {
+  id: string;
+  /** Always an absolute, playable URL. */
+  storage_path: string;
+  duration_seconds: number | null;
+  created_at: string;
+  analysis: VoicemailAnalysis | null;
 }
 
 export interface CallNote {

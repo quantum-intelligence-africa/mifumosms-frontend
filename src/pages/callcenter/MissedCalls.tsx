@@ -1,7 +1,8 @@
 // Missed calls never just disappear: each one is a task with an owner and a
 // status (new -> assigned -> called back -> resolved/unresolved).
-import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, PhoneCall, PhoneMissed, RefreshCw, UserCheck } from "lucide-react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { AlertCircle, CheckCircle2, ChevronDown, Mic, PhoneCall, PhoneMissed, RefreshCw, Sparkles, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +16,8 @@ import { useDialer } from "@/contexts/DialerContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
-import { callCenterApi, describeError, type MissedCall, type MissedCallStatus, type Team } from "@/services/callCenterApi";
+import { PlayButton, RecordingPlayerBar, formatClock, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
+import { callCenterApi, describeError, type MissedCall, type MissedCallStatus, type Team, type Voicemail } from "@/services/callCenterApi";
 
 const STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "resolved", "unresolved"];
 const OPEN_STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back"];
@@ -43,6 +45,8 @@ export default function MissedCalls() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const player = useRecordingPlayer();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,7 +68,20 @@ export default function MissedCalls() {
   // A new missed call arrives over the socket: show it without a refresh.
   useEffect(() => cc.subscribe((e) => e.event === "missed_call" && void load()), [cc, load]);
 
-  const visible = rows.filter((r) => (status === "open" ? OPEN_STATUSES.includes(r.status) : status === "all" ? true : r.status === status));
+  const visible = rows.filter((r) => {
+    if (status === "voicemail") return !!r.voicemail;
+    return status === "open" ? OPEN_STATUSES.includes(r.status) : status === "all" ? true : r.status === status;
+  });
+
+  const listen = (row: MissedCall, vm: Voicemail) =>
+    player.toggle({
+      id: vm.id,
+      url: vm.storage_path,
+      title: row.caller_number,
+      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`,
+      direction: "inbound",
+      durationSeconds: vm.duration_seconds,
+    });
 
   const update = async (row: MissedCall, next: MissedCallStatus) => {
     setBusyId(row.id);
@@ -100,6 +117,7 @@ export default function MissedCalls() {
             <SelectContent>
               <SelectItem value="open">{t("cc.missed.filter_open")}</SelectItem>
               <SelectItem value="all">{t("cc.missed.filter_all")}</SelectItem>
+              <SelectItem value="voicemail">{t("cc.missed.filter_voicemail")}</SelectItem>
               {STATUSES.map((s) => <SelectItem key={s} value={s}>{t(`cc.missed.status_${s}` as const)}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -156,9 +174,21 @@ export default function MissedCalls() {
                 {visible.map((r) => {
                   const closed = r.status === "resolved" || r.status === "unresolved";
                   return (
-                    <TableRow key={r.id}>
+                    <Fragment key={r.id}>
+                    <TableRow>
                       <TableCell className="whitespace-nowrap font-mono text-sm">
                         <span className="inline-flex items-center gap-1.5"><PhoneMissed className="h-3.5 w-3.5 text-red-500" />{r.caller_number}</span>
+                        {r.voicemail && (
+                          <button
+                            type="button"
+                            onClick={() => setExpanded((e) => ({ ...e, [r.id]: !e[r.id] }))}
+                            className="mt-1 flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-sans text-[11px] font-medium text-primary"
+                            aria-expanded={!!expanded[r.id]}
+                          >
+                            <Mic className="h-3 w-3" />{t("cc.missed.voicemail")}
+                            <ChevronDown className={`h-3 w-3 transition-transform ${expanded[r.id] ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(r.call_started_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm">{r.team_name || "—"}</TableCell>
@@ -184,6 +214,14 @@ export default function MissedCalls() {
                         </div>
                       </TableCell>
                     </TableRow>
+                    {r.voicemail && expanded[r.id] && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={7}>
+                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   );
                 })}
               </TableBody>
@@ -191,6 +229,66 @@ export default function MissedCalls() {
           </div>
         </Card>
       )}
+      <RecordingPlayerBar track={player.track} playing={player.playing} onPlayingChange={player.setPlaying} onClose={player.close} />
     </PageFrame>
+  );
+}
+
+/** What the caller said (audio, plus the AI's transcript and summary) — separate from the agents' own notes. */
+function VoicemailPanel({ row, vm, playing, current, onListen }: { row: MissedCall; vm: Voicemail; playing: boolean; current: boolean; onListen: () => void }) {
+  const { t } = useLanguage();
+  const [showTranscript, setShowTranscript] = useState(false);
+  const ai = vm.analysis;
+  const result = ai?.status === "completed" ? ai.result : null;
+
+  return (
+    <div className="space-y-3 py-1 text-sm">
+      <div className="flex items-center gap-3">
+        <PlayButton active={current} playing={playing} onClick={onListen} label={t("cc.missed.voicemail_listen")} />
+        <div>
+          <p className="font-medium">{t("cc.missed.voicemail")}</p>
+          {vm.duration_seconds ? <p className="text-xs text-muted-foreground">{formatClock(vm.duration_seconds)}</p> : null}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-background p-3">
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" />{t("cc.missed.ai_summary")}
+        </p>
+        {result ? (
+          <div className="space-y-2">
+            <p>{result.summary || "—"}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {result.detected_intent && <Badge variant="secondary">{t("cc.missed.intent", { value: result.detected_intent.replace(/_/g, " ") })}</Badge>}
+              {result.sentiment && <Badge variant="outline">{t("cc.missed.sentiment", { value: result.sentiment })}</Badge>}
+            </div>
+            {result.transcript && (
+              <div>
+                <button type="button" className="text-xs font-medium text-primary underline" onClick={() => setShowTranscript((v) => !v)}>
+                  {t("cc.missed.ai_transcript")}
+                </button>
+                {showTranscript && <p className="mt-1 whitespace-pre-wrap rounded bg-muted/50 p-2 text-muted-foreground">{result.transcript}</p>}
+              </div>
+            )}
+          </div>
+        ) : ai && (ai.status === "pending" || ai.status === "processing") ? (
+          <p className="text-muted-foreground">{t("cc.missed.ai_working")}</p>
+        ) : ai?.status === "failed" ? (
+          <p className="text-muted-foreground">{t("cc.missed.ai_failed")}</p>
+        ) : (
+          <p className="text-muted-foreground">
+            {t("cc.missed.ai_off")}{" "}
+            <Link to="/voice/ai-settings" className="font-medium text-primary underline">{t("cc.missed.ai_settings")}</Link>
+          </p>
+        )}
+      </div>
+
+      {row.notes && (
+        <div className="rounded-lg border border-border bg-background p-3">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.missed.agent_notes")}</p>
+          <p className="whitespace-pre-wrap text-muted-foreground">{row.notes}</p>
+        </div>
+      )}
+    </div>
   );
 }
