@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { ccEn, ccSw } from "@/i18n/callCenter";
 
 const translations = {
   en: {
+    ...ccEn,
     "app.name": "SENDA",
     "app.tagline": "Communication Hub",
     "tutorial.title": "Welcome to SENDA",
@@ -3064,6 +3066,7 @@ const translations = {
     "whatsapp.cloud.meta_policy_text": "Free-form text outside the 24-hr window requires an approved template. Max 500 recipients per bulk request.",
   },
   sw: {
+    ...ccSw,
     "app.name": "SENDA",
     "app.tagline": "Kituo cha Mawasiliano",
     "tutorial.title": "Karibu SENDA",

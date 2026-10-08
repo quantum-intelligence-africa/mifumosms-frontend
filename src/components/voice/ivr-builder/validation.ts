@@ -95,6 +95,9 @@ export function validateFlow(definition: FlowDefinition): ValidationError[] {
     }
 
     for (const field of meta.fields) {
+      // A transfer routed to a call-center team needs no phone number: who
+      // answers is decided at call time (mirrors ivr/graph_validation.py).
+      if (node.type === "call_forward" && field.key === "destination" && !isEmpty((node.data ?? {}).team_id)) continue;
       if (field.required && isEmpty((node.data ?? {})[field.key])) {
         errors.push({ node_id: node.id, message: `${meta.label}: "${field.label}" inahitajika` });
       }

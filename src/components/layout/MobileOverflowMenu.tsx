@@ -12,7 +12,11 @@ import {
   LogOut,
   Mic,
   Moon,
+  Headphones,
+  Phone,
+  PhoneMissed,
   PhoneOutgoing,
+  Users,
   Send as SendIcon,
   Server,
   Sun,
@@ -31,7 +35,9 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useRoles } from "@/hooks/useRoles";
-import { hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
+import {
+  canUseCallCenter, getCallCenterRole, hasIvrAccess, hasSmsAccess, isCallCenterAdmin, isCallCenterSupervisor,
+} from "@/utils/roleUtils";
 import { useComingSoonFeatures } from "@/hooks/useComingSoonFeatures";
 
 interface MobileOverflowMenuProps {
@@ -131,6 +137,28 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     ],
   };
 
+  // Same role rules as the desktop sidebar: the backend enforces them, this only decides what to show.
+  const callCenterSection: MenuSection = {
+    title: t("cc.nav.section"),
+    items: [
+      { key: "cc-workspace", label: t("cc.nav.workspace"), icon: Phone, onClick: () => go("/call-center") },
+      ...(isCallCenterSupervisor(user)
+        ? [{ key: "cc-live", label: t("cc.nav.live"), icon: BarChart3, onClick: () => go("/call-center/live") }]
+        : []),
+      { key: "cc-missed", label: t("cc.nav.missed"), icon: PhoneMissed, onClick: () => go("/call-center/missed") },
+      { key: "cc-history", label: t("cc.nav.history"), icon: History, onClick: () => go("/call-center/history") },
+      ...(isCallCenterSupervisor(user)
+        ? [{ key: "cc-teams", label: t("cc.nav.teams"), icon: Users, onClick: () => go("/call-center/teams") }]
+        : []),
+      ...(isCallCenterAdmin(user)
+        ? [{ key: "cc-agents", label: t("cc.nav.agents"), icon: Headphones, onClick: () => go("/call-center/agents") }]
+        : []),
+      ...(isCallCenterAdmin(user)
+        ? [{ key: "cc-plans", label: t("cc.nav.plans"), icon: CreditCard, onClick: () => go("/call-center/plans") }]
+        : []),
+    ],
+  };
+
   const billingSection: MenuSection = {
     title: "Billing",
     items: [
@@ -175,9 +203,12 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     ],
   };
 
+  // Call-center-only agents see only their call center plus account/preferences.
+  const agentOnly = getCallCenterRole(user) === "agent";
   const sections = [
+    ...(canUseCallCenter(user) ? [callCenterSection] : []),
     ...(hasSmsAccess(user) ? [messagingSection, billingSection] : []),
-    automationSection,
+    ...(agentOnly ? [] : [automationSection]),
     accountSection,
     preferencesSection,
   ];

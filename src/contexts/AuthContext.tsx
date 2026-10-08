@@ -57,8 +57,8 @@ interface AuthContextType {
   canManageUsers: () => boolean;
   canAccessAdmin: () => boolean;
   getPartinaStatus: () => { isPartina: boolean; status: 'approved' | 'none' };
-  getHighestRole: () => 'owner' | 'admin' | 'agent' | null;
-  getRoleInTenant: (tenantId: string) => 'owner' | 'admin' | 'agent' | null;
+  getHighestRole: () => 'owner' | 'admin' | 'supervisor' | 'agent' | null;
+  getRoleInTenant: (tenantId: string) => 'owner' | 'admin' | 'supervisor' | 'agent' | null;
   getActiveMemberships: () => any[];
 }
 

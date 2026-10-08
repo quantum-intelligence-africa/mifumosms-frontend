@@ -27,6 +27,8 @@ import {
   Voicemail,
   Users2,
   MessageSquareText,
+  Headphones,
+  PhoneMissed,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
@@ -42,7 +44,9 @@ import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
-import { hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
+import {
+  canUseCallCenter, getCallCenterRole, hasIvrAccess, hasSmsAccess, isCallCenterAdmin, isCallCenterSupervisor,
+} from "@/utils/roleUtils";
 import { useComingSoonFeatures } from "@/hooks/useComingSoonFeatures";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import {
@@ -84,6 +88,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     messaging: true,
     "voice-ivr": location.pathname.startsWith("/voice"),
+    "call-center": location.pathname.startsWith("/call-center"),
   });
   const [outboxCount, setOutboxCount] = useState(0);
   const [sentCount, setSentCount] = useState(0);
@@ -138,8 +143,34 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // focused — Dashboard and Voice/IVR itself always stay visible.
   const inVoiceSection = location.pathname.startsWith("/voice");
 
+  // Call-center-only agents get a deliberately small menu: their workspace, their
+  // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).
+  const agentOnly = getCallCenterRole(user) === "agent";
+
+  const callCenterGroup: NavItem[] = canUseCallCenter(user)
+    ? [
+        {
+          name: t("cc.nav.section"),
+          id: "call-center",
+          href: "/call-center",
+          icon: Headphones,
+          comingSoon: isComingSoon("voice_ivr"),
+          children: [
+            { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
+            ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.live"), href: "/call-center/live", icon: BarChart3 }] : []),
+            { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed },
+            { name: t("cc.nav.history"), href: "/call-center/history", icon: History },
+            ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.teams"), href: "/call-center/teams", icon: Users }] : []),
+            ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.agents"), href: "/call-center/agents", icon: Users2 }] : []),
+            ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.plans"), href: "/call-center/plans", icon: CreditCard }] : []),
+          ],
+        },
+      ]
+    : [];
+
   const navigation: NavItem[] = [
-    { name: t("nav.dashboard"), href: "/dashboard", icon: Home },
+    ...(agentOnly ? [] : [{ name: t("nav.dashboard"), href: "/dashboard", icon: Home }]),
+    ...callCenterGroup,
     ...(inVoiceSection || !hasSmsAccess(user)
       ? []
       : [
@@ -162,7 +193,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
         ]),
-    ...(inVoiceSection ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
+    ...(inVoiceSection || agentOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
     ...(hasIvrAccess(user)
       ? [
           ...(inVoiceSection ? [] : [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }]),
@@ -194,7 +225,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           { name: t("nav.partner_reference"), href: "/partner-integration", icon: Server },
         ]
       : []),
-    { name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen },
+    ...(agentOnly ? [] : [{ name: t("nav.integration_guide"), href: "/integration-guide", icon: BookOpen }]),
     { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 

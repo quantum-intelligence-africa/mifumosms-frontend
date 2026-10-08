@@ -3341,6 +3341,464 @@ const RECENCY_FILTERS = [
   { id:'never',    label:'Never logged in',    params:{ never_logged_in:'true', order:'asc' }, summary:'never_logged_in' },
 ];
 
+// ─── Call Center Plans ─────────────────────────────────────────────────────────
+// Edit the call-center packages (price, limits, features) — a change is live for
+// customers immediately — and handle the requests customers send. There is no
+// online payment: an admin confirms payment off-platform, then activates here.
+const CC_FLAG_LABELS = {
+  smart_routing:   'Smart routing (round-robin / ring-all)',
+  working_hours:   'Working hours & after-hours rules',
+  ai_summaries:    'AI call summaries (marketing flag only)',
+  call_forwarding: 'Call forwarding / transfers',
+};
+const CC_LIMIT_FIELDS = [
+  ['max_agents',                'Agents'],
+  ['max_numbers',               'Business numbers'],
+  ['max_ivr_menus',             'IVR menus'],
+  ['included_minutes',          'Inbound minutes / period'],
+  ['included_outbound_minutes', 'Outbound minutes / period'],
+];
+
+function ccLimitText(v) { return v === null || v === undefined ? 'Unlimited' : Number(v).toLocaleString(); }
+
+function CallCenterPlansTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
+
+  const [view,    setView]    = useState('plans');   // plans | requests
+  const [plans,   setPlans]   = useState([]);
+  const [subs,    setSubs]    = useState([]);
+  const [subFilter, setSubFilter] = useState('pending');
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+  const [toast,   setToast]   = useState(null);
+  const [editing, setEditing] = useState(null);      // plan object, or {__new:true}
+  const [acting,  setActing]  = useState(null);      // subscription being activated
+  const [assign,  setAssign]  = useState(false);
+  const [trialOpen, setTrialOpen] = useState(false);
+
+  const loadPlans = useCallback(() => {
+    return adminFetch('/call-center/plans', {}, onLogout).then(res => {
+      if (res.success) setPlans(res.data || []);
+      else setError(res.error?.message || 'Failed to load plans.');
+    });
+  }, [onLogout]);
+
+  const loadSubs = useCallback(() => {
+    return adminFetch(`/call-center/subscriptions?status=${subFilter}`, {}, onLogout).then(res => {
+      if (res.success) setSubs(res.data || []);
+      else setError(res.error?.message || 'Failed to load requests.');
+    });
+  }, [onLogout, subFilter]);
+
+  useEffect(() => {
+    setLoading(true); setError(null);
+    Promise.all([loadPlans(), loadSubs()]).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [loadPlans, loadSubs]);
+
+  const post = (path, body, ok) =>
+    adminFetch(path, { method:'POST', body: JSON.stringify(body || {}) }, onLogout).then(res => {
+      if (res.success) { setToast({ type:'success', message: ok }); return loadSubs().then(loadPlans).then(() => true); }
+      setToast({ type:'error', message: res.error?.message || 'That did not work.' });
+      return false;
+    });
+
+  const pendingCount = view === 'requests' && subFilter === 'pending' ? subs.length : null;
+
+  if (loading) return <LoadingState label="Loading call-center plans..."/>;
+  if (error && plans.length === 0) return <ErrorState message={error} onRetry={() => window.location.reload()}/>;
+
+  const tabBtn = (id, label, extra) => (
+    <button key={id} onClick={() => setView(id)} className="senda-btn"
+      style={{ height:34, padding:'0 14px', fontSize:13, fontWeight:700, borderRadius:8, border:'none', cursor:'pointer',
+        background: view === id ? BRAND : '#f1f5f9', color: view === id ? '#fff' : '#475569' }}>
+      {label}{extra}
+    </button>
+  );
+
+  return (
+    <div className="senda-fade-in">
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)}/>}
+
+      <div style={{ display:'flex', flexWrap:'wrap', gap:10, alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <div style={{ display:'flex', gap:8 }}>
+          {tabBtn('plans', 'Plans')}
+          {tabBtn('requests', 'Requests', pendingCount ? ` (${pendingCount})` : '')}
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button className="senda-btn" onClick={() => setTrialOpen(true)} style={{ height:34, padding:'0 14px', fontSize:13, fontWeight:700, borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer' }}>
+            Start a free trial
+          </button>
+          <button className="senda-btn" onClick={() => setAssign(true)} style={{ height:34, padding:'0 14px', fontSize:13, fontWeight:700, borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer' }}>
+            Put an organization on a plan
+          </button>
+          <button className="senda-btn senda-btn-primary" onClick={() => setEditing({ __new:true })} style={{ height:34, padding:'0 14px', fontSize:13 }}>
+            + New plan
+          </button>
+        </div>
+      </div>
+
+      {view === 'plans' && (
+        <>
+          <div style={{ fontSize:12, color:'#64748b', marginBottom:12 }}>
+            Prices and limits are live the moment you save. An empty limit means unlimited. A plan with no price shows “Custom pricing / contact sales”.
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))', gap:14 }}>
+            {plans.map(p => (
+              <div key={p.key} className="senda-card" style={{ padding:18, borderTop:`3px solid ${p.is_popular ? BRAND : '#e2e8f0'}`, opacity: p.is_active ? 1 : 0.55 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'start', gap:8 }}>
+                  <div>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#cbd5e1', textTransform:'uppercase', letterSpacing:'.07em' }}>{p.key}</div>
+                    <div style={{ fontSize:17, fontWeight:800, color:'#0f172a' }}>{p.name}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:4, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                    {p.is_popular && <span style={{ background:BRAND, color:'#fff', fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:99 }}>POPULAR</span>}
+                    {!p.is_active && <span style={{ background:'#f1f5f9', color:'#94a3b8', fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:99 }}>HIDDEN</span>}
+                  </div>
+                </div>
+                <div style={{ fontSize:24, fontWeight:800, margin:'10px 0 2px', color:'#0f172a' }}>
+                  {p.price === null ? 'Custom' : `${p.currency} ${Number(p.price).toLocaleString()}`}
+                  {p.price !== null && <span style={{ fontSize:12, fontWeight:500, color:'#94a3b8' }}> / {p.billing_cycle === 'yearly' ? 'year' : 'month'}</span>}
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', minHeight:18, marginBottom:10 }}>{p.tagline}</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, fontSize:12, marginBottom:12 }}>
+                  {CC_LIMIT_FIELDS.map(([k, label]) => (
+                    <div key={k} style={{ background:'#f8fafc', borderRadius:8, padding:'6px 8px' }}>
+                      <div style={{ fontWeight:800, color:'#0f172a' }}>{ccLimitText(p[k])}</div>
+                      <div style={{ fontSize:9, color:'#94a3b8', fontWeight:700, textTransform:'uppercase' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:12 }}>
+                  {p.subscribers || 0} active subscriber{(p.subscribers || 0) === 1 ? '' : 's'}
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="senda-btn senda-btn-primary" style={{ height:32, fontSize:12, flex:1 }} onClick={() => setEditing(p)}>Edit</button>
+                  <button className="senda-btn" style={{ height:32, fontSize:12, borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', padding:'0 12px' }}
+                    onClick={() => post(`/call-center/plans/${p.key}/active`, { active: !p.is_active }, p.is_active ? 'Plan hidden from customers.' : 'Plan is visible to customers.')}>
+                    {p.is_active ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {view === 'requests' && (
+        <div className="senda-card" style={{ padding: isMobile ? 12 : 18 }}>
+          <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+            {['pending', 'awaiting_payment', 'active', 'trial', 'expired', 'all'].map(f => (
+              <button key={f} onClick={() => setSubFilter(f)}
+                style={{ height:28, padding:'0 12px', fontSize:12, fontWeight:700, borderRadius:99, border:'none', cursor:'pointer',
+                  background: subFilter === f ? '#0f172a' : '#f1f5f9', color: subFilter === f ? '#fff' : '#475569', textTransform:'capitalize' }}>{f.replace('_', ' ')}</button>
+            ))}
+          </div>
+          {subs.length === 0 ? (
+            <div style={{ padding:30, textAlign:'center', color:'#94a3b8', fontSize:13 }}>Nothing here.</div>
+          ) : (
+            <div className="senda-table-wrap">
+              <table className="senda-table">
+                <thead><tr><th>Organization</th><th>Plan</th><th>Type</th><th>Status</th><th>Requested by</th><th>Period</th><th>Amount</th><th>Invoice</th><th></th></tr></thead>
+                <tbody>
+                  {subs.map(s => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight:700 }}>{s.tenant?.name}</td>
+                      <td>{s.plan?.name}</td>
+                      <td style={{ fontSize:12 }}>
+                        {s.is_trial ? (
+                          <span style={{ background:'#ede9fe', color:'#6d28d9', fontWeight:700, fontSize:11, padding:'2px 8px', borderRadius:99 }}>
+                            Free trial{s.feature_overrides ? ` · ${Object.keys(s.feature_overrides).filter(k => s.feature_overrides[k]).length} features` : ''}
+                          </span>
+                        ) : ({ purchase:'Paid online', admin:'Assigned', request:'Requested' }[s.source] || s.source)}
+                      </td>
+                      <td style={{ textTransform:'capitalize' }}>{(s.status || '').replace('_', ' ')}</td>
+                      <td>{s.requested_by || '—'}<div style={{ fontSize:11, color:'#94a3b8' }}>{s.requested_at ? new Date(s.requested_at).toLocaleDateString() : ''}</div></td>
+                      <td style={{ fontSize:12 }}>{s.period_start ? `${new Date(s.period_start).toLocaleDateString()} → ${s.period_end ? new Date(s.period_end).toLocaleDateString() : 'open'}` : '—'}</td>
+                      <td style={{ fontSize:12 }}>{s.amount ? `${s.currency} ${Number(s.amount).toLocaleString()}` : (s.is_trial ? 'Free' : '—')}</td>
+                      <td style={{ fontSize:12 }}>
+                        {s.invoice_number ? (<>
+                          {s.invoice_number}
+                          <div style={{ fontSize:11, color:'#94a3b8' }}>{s.invoice_sent_at ? `emailed ${new Date(s.invoice_sent_at).toLocaleDateString()}` : 'not emailed'}</div>
+                        </>) : '—'}
+                        {s.payment_reference ? <div style={{ fontSize:11, color:'#94a3b8' }}>ref {s.payment_reference}</div> : null}
+                      </td>
+                      <td style={{ whiteSpace:'nowrap' }}>
+                        {s.status === 'pending' && (
+                          <>
+                            <button className="senda-btn senda-btn-primary" style={{ height:28, fontSize:12 }} onClick={() => setActing(s)}>Activate</button>{' '}
+                            <button className="senda-btn" style={{ height:28, fontSize:12, border:'1px solid #fecaca', color:RED, background:'#fff', borderRadius:8, cursor:'pointer', padding:'0 10px' }}
+                              onClick={() => { if (window.confirm(`Reject ${s.tenant?.name}'s request for ${s.plan?.name}?`)) post(`/call-center/subscriptions/${s.id}/reject`, {}, 'Request rejected.'); }}>Reject</button>
+                          </>
+                        )}
+                        {s.invoice_number && (
+                          <button className="senda-btn" style={{ height:28, fontSize:12, border:'1px solid #e2e8f0', background:'#fff', borderRadius:8, cursor:'pointer', padding:'0 10px', marginRight:6 }}
+                            onClick={() => post(`/call-center/subscriptions/${s.id}/resend-invoice`, {}, 'Invoice emailed.')}>Resend invoice</button>
+                        )}
+                        {s.status === 'active' && (
+                          <button className="senda-btn" style={{ height:28, fontSize:12, border:'1px solid #fecaca', color:RED, background:'#fff', borderRadius:8, cursor:'pointer', padding:'0 10px' }}
+                            onClick={() => { if (window.confirm(`Cancel ${s.tenant?.name}'s ${s.plan?.name} plan? They fall back to the entry-plan limits for anything new.`)) post(`/call-center/subscriptions/${s.id}/cancel`, {}, 'Subscription cancelled.'); }}>Cancel</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <CcPlanEditor plan={editing} onClose={() => setEditing(null)} onLogout={onLogout}
+          onSaved={(msg) => { setEditing(null); setToast({ type:'success', message: msg }); loadPlans(); }}/>
+      )}
+      {acting && (
+        <CcActivateDialog sub={acting} onClose={() => setActing(null)}
+          onConfirm={async (body) => { const ok = await post(`/call-center/subscriptions/${acting.id}/activate`, body, 'Plan activated.'); if (ok) setActing(null); }}/>
+      )}
+      {trialOpen && (
+        <CcTrialDialog plans={plans.filter(p => p.is_active)} onClose={() => setTrialOpen(false)} onLogout={onLogout}
+          onConfirm={async (body) => { const ok = await post('/call-center/subscriptions/trial', body, 'Free trial started.'); if (ok) setTrialOpen(false); }}/>
+      )}
+      {assign && (
+        <CcAssignDialog plans={plans.filter(p => p.is_active)} onClose={() => setAssign(false)} onLogout={onLogout}
+          onConfirm={async (body) => { const ok = await post('/call-center/subscriptions/assign', body, 'Organization is on the plan.'); if (ok) setAssign(false); }}/>
+      )}
+    </div>
+  );
+}
+
+function CcModal({ title, onClose, children, footer, width = 560 }) {
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(15,23,42,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:width, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,.25)' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', fontSize:16, fontWeight:800, color:'#0f172a' }}>{title}</div>
+        <div style={{ padding:20, overflowY:'auto', display:'flex', flexDirection:'column', gap:12 }}>{children}</div>
+        <div style={{ padding:'12px 20px', borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'flex-end', gap:8 }}>{footer}</div>
+      </div>
+    </div>
+  );
+}
+
+function CcField({ label, hint, children }) {
+  return (
+    <label style={{ display:'block' }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'#475569', marginBottom:4 }}>{label}</div>
+      {children}
+      {hint && <div style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>{hint}</div>}
+    </label>
+  );
+}
+
+function CcPlanEditor({ plan, onClose, onSaved, onLogout }) {
+  const isNew = !!plan.__new;
+  const [f, setF] = useState(() => isNew
+    ? { key:'', name:'', tagline:'', price:'', currency:'TZS', billing_cycle:'monthly', is_custom:false, is_popular:false, is_active:true, sort_order:100,
+        max_agents:'', max_numbers:'', max_ivr_menus:'', included_minutes:'', included_outbound_minutes:'', features:'', feature_flags:{} }
+    : { ...plan, price: plan.price ?? '', features: (plan.features || []).join('\n'),
+        ...Object.fromEntries(CC_LIMIT_FIELDS.map(([k]) => [k, plan[k] ?? ''])) });
+  const [busy, setBusy] = useState(false);
+  const [err,  setErr]  = useState(null);
+  const set = (k, v) => setF(prev => ({ ...prev, [k]: v }));
+
+  const save = () => {
+    setBusy(true); setErr(null);
+    const body = {
+      name: f.name, tagline: f.tagline, price: f.price === '' ? null : f.price, currency: f.currency, billing_cycle: f.billing_cycle,
+      is_custom: f.is_custom, is_popular: f.is_popular, is_active: f.is_active, sort_order: Number(f.sort_order) || 0,
+      features: String(f.features || '').split('\n').map(x => x.trim()).filter(Boolean),
+      feature_flags: Object.fromEntries(Object.keys(CC_FLAG_LABELS).map(k => [k, !!f.feature_flags?.[k]])),
+      ...Object.fromEntries(CC_LIMIT_FIELDS.map(([k]) => [k, f[k] === '' ? null : f[k]])),
+    };
+    const req = isNew
+      ? adminFetch('/call-center/plans/create', { method:'POST', body: JSON.stringify({ ...body, key: f.key }) }, onLogout)
+      : adminFetch(`/call-center/plans/${plan.key}`, { method:'PATCH', body: JSON.stringify(body) }, onLogout);
+    req.then(res => {
+      if (res.success) onSaved(isNew ? 'Plan created.' : 'Plan saved — live now.');
+      else setErr(res.error?.message || 'Could not save the plan.');
+    }).catch(e => setErr(e.message)).finally(() => setBusy(false));
+  };
+
+  return (
+    <CcModal title={isNew ? 'New call-center plan' : `Edit ${plan.name}`} onClose={onClose}
+      footer={<>
+        <button className="senda-btn" onClick={onClose} disabled={busy} style={{ height:34, padding:'0 14px', border:'1px solid #e2e8f0', background:'#fff', borderRadius:8, cursor:'pointer' }}>Cancel</button>
+        <button className="senda-btn senda-btn-primary" onClick={save} disabled={busy || !f.name.trim() || (isNew && !f.key.trim())} style={{ height:34, padding:'0 16px' }}>{busy ? 'Saving…' : 'Save'}</button>
+      </>}>
+      {err && <div style={{ background:'#fee2e2', color:'#991b1b', padding:'8px 12px', borderRadius:8, fontSize:12 }}>{err}</div>}
+      {isNew && <CcField label="Key" hint="Short and permanent, e.g. enterprise. Cannot be changed later."><input className="senda-input" value={f.key} onChange={e => set('key', e.target.value)}/></CcField>}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        <CcField label="Name"><input className="senda-input" value={f.name} onChange={e => set('name', e.target.value)}/></CcField>
+        <CcField label="Sort order" hint="Lower shows first."><input className="senda-input" type="number" value={f.sort_order} onChange={e => set('sort_order', e.target.value)}/></CcField>
+      </div>
+      <CcField label="Tagline"><input className="senda-input" value={f.tagline} onChange={e => set('tagline', e.target.value)} maxLength={200}/></CcField>
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10 }}>
+        <CcField label="Price" hint="Empty = custom pricing."><input className="senda-input" type="number" min="0" value={f.price} onChange={e => set('price', e.target.value)}/></CcField>
+        <CcField label="Currency"><input className="senda-input" value={f.currency} maxLength={3} onChange={e => set('currency', e.target.value.toUpperCase())}/></CcField>
+        <CcField label="Billing">
+          <select className="senda-input" value={f.billing_cycle} onChange={e => set('billing_cycle', e.target.value)}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+        </CcField>
+      </div>
+      <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginTop:4 }}>Limits <span style={{ fontWeight:500, color:'#94a3b8' }}>— leave empty for unlimited</span></div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        {CC_LIMIT_FIELDS.map(([k, label]) => (
+          <CcField key={k} label={label}><input className="senda-input" type="number" min="0" placeholder="Unlimited" value={f[k]} onChange={e => set(k, e.target.value)}/></CcField>
+        ))}
+      </div>
+      <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginTop:4 }}>Included features</div>
+      {Object.entries(CC_FLAG_LABELS).map(([k, label]) => (
+        <label key={k} style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+          <input type="checkbox" checked={!!f.feature_flags?.[k]} onChange={e => set('feature_flags', { ...f.feature_flags, [k]: e.target.checked })}/> {label}
+        </label>
+      ))}
+      <CcField label="Extra bullet points shown on the plan card" hint="One per line (max 12).">
+        <textarea className="senda-input" rows={4} style={{ height:'auto', padding:8 }} value={f.features} onChange={e => set('features', e.target.value)}/>
+      </CcField>
+      <div style={{ display:'flex', gap:18, flexWrap:'wrap', fontSize:13 }}>
+        <label><input type="checkbox" checked={f.is_popular} onChange={e => set('is_popular', e.target.checked)}/> Mark as most popular</label>
+        <label><input type="checkbox" checked={f.is_custom} onChange={e => set('is_custom', e.target.checked)}/> Custom / contact sales (no self-service request)</label>
+        <label><input type="checkbox" checked={f.is_active} onChange={e => set('is_active', e.target.checked)}/> Visible to customers</label>
+      </div>
+    </CcModal>
+  );
+}
+
+function CcActivateDialog({ sub, onClose, onConfirm }) {
+  const [months, setMonths] = useState(1);
+  const [ref, setRef] = useState('');
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <CcModal title={`Activate ${sub.plan?.name} for ${sub.tenant?.name}`} onClose={onClose} width={440}
+      footer={<>
+        <button className="senda-btn" onClick={onClose} disabled={busy} style={{ height:34, padding:'0 14px', border:'1px solid #e2e8f0', background:'#fff', borderRadius:8, cursor:'pointer' }}>Cancel</button>
+        <button className="senda-btn senda-btn-primary" disabled={busy} style={{ height:34, padding:'0 16px' }}
+          onClick={async () => { setBusy(true); await onConfirm({ months: Number(months) || 1, payment_reference: ref, notes }); setBusy(false); }}>{busy ? 'Activating…' : 'Activate'}</button>
+      </>}>
+      <div style={{ fontSize:12, color:'#64748b' }}>Confirm the payment first — activating switches the plan on straight away and replaces any plan they currently have.</div>
+      <CcField label="Months paid for" hint="Custom plans with no months entered have no end date."><input className="senda-input" type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
+      <CcField label="Payment reference"><input className="senda-input" value={ref} maxLength={120} onChange={e => setRef(e.target.value)} placeholder="e.g. M-Pesa transaction code"/></CcField>
+      <CcField label="Notes (internal)"><input className="senda-input" value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
+    </CcModal>
+  );
+}
+
+// Find an organization by name or a member's email, instead of pasting a UUID.
+function CcTenantPicker({ onPick, onLogout }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState([]);
+  const [picked, setPicked] = useState(null);
+  useEffect(() => {
+    if (picked || q.trim().length < 2) { setRows([]); return; }
+    const t = setTimeout(() => {
+      adminFetch(`/call-center/tenants?q=${encodeURIComponent(q.trim())}`, {}, onLogout)
+        .then(res => setRows(res.success ? (res.data || []) : []));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, picked, onLogout]);
+  const choose = (t) => { setPicked(t); onPick(t.id); setRows([]); };
+  return (
+    <CcField label="Organization" hint="Type a name or a member's email.">
+      {picked ? (
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', fontSize:13 }}>
+          <span><strong>{picked.name}</strong> <span style={{ color:'#94a3b8' }}>{picked.owner_email}</span></span>
+          <button type="button" onClick={() => { setPicked(null); onPick(''); setQ(''); }} style={{ border:'none', background:'none', cursor:'pointer', color:BRAND, fontSize:12 }}>Change</button>
+        </div>
+      ) : (
+        <>
+          <input className="senda-input" value={q} onChange={e => setQ(e.target.value)} placeholder="e.g. Greenfield School"/>
+          {rows.length > 0 && (
+            <div style={{ border:'1px solid #e2e8f0', borderRadius:8, marginTop:4, maxHeight:180, overflowY:'auto' }}>
+              {rows.map(t => (
+                <div key={t.id} onClick={() => choose(t)} style={{ padding:'8px 10px', cursor:'pointer', fontSize:13, borderBottom:'1px solid #f1f5f9' }}>
+                  <strong>{t.name}</strong> <span style={{ color:'#94a3b8' }}>{t.owner_email}</span>
+                  {t.plan && <span style={{ float:'right', fontSize:11, color:'#64748b' }}>{t.plan}{t.is_trial ? ' (trial)' : ''}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </CcField>
+  );
+}
+
+function CcTrialDialog({ plans, onClose, onConfirm, onLogout }) {
+  const [tenantId, setTenantId] = useState('');
+  const [plan, setPlan] = useState(plans[0]?.key || '');
+  const [days, setDays] = useState(14);
+  const [mode, setMode] = useState('all');          // all | plan | some
+  const [chosen, setChosen] = useState({});
+  const [notes, setNotes] = useState('');
+  const [force, setForce] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const picked = Object.keys(CC_FLAG_LABELS).filter(k => chosen[k]);
+  const body = () => ({
+    tenant_id: tenantId, plan, days: Number(days) || 14, notes, force,
+    ...(mode === 'all' ? { features: 'all' } : mode === 'some' ? { features: picked } : {}),
+  });
+  return (
+    <CcModal title="Start a free trial" onClose={onClose} width={500}
+      footer={<>
+        <button className="senda-btn" onClick={onClose} disabled={busy} style={{ height:34, padding:'0 14px', border:'1px solid #e2e8f0', background:'#fff', borderRadius:8, cursor:'pointer' }}>Cancel</button>
+        <button className="senda-btn senda-btn-primary" disabled={busy || !tenantId || !plan} style={{ height:34, padding:'0 16px' }}
+          onClick={async () => { setBusy(true); await onConfirm(body()); setBusy(false); }}>{busy ? 'Starting…' : 'Start trial'}</button>
+      </>}>
+      <div style={{ fontSize:12, color:'#64748b' }}>
+        The plan sets the limits (agents, numbers, menus, minutes); the options below set which features are switched on. The customer is emailed and notified in the app, and again before it ends.
+      </div>
+      <CcTenantPicker onPick={setTenantId} onLogout={onLogout}/>
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
+        <CcField label="Plan (limits)"><select className="senda-input" value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
+        <CcField label="Days" hint="1–90"><input className="senda-input" type="number" min="1" max="90" value={days} onChange={e => setDays(e.target.value)}/></CcField>
+      </div>
+      <div style={{ fontSize:12, fontWeight:800, color:'#0f172a' }}>Features during the trial</div>
+      {[['all', 'Every feature'], ['plan', "Only what the plan includes"], ['some', 'Only the features I choose']].map(([v, label]) => (
+        <label key={v} style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+          <input type="radio" name="trial-mode" checked={mode === v} onChange={() => setMode(v)}/> {label}
+        </label>
+      ))}
+      {mode === 'some' && (
+        <div style={{ paddingLeft:22, display:'flex', flexDirection:'column', gap:6 }}>
+          {Object.entries(CC_FLAG_LABELS).map(([k, label]) => (
+            <label key={k} style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+              <input type="checkbox" checked={!!chosen[k]} onChange={e => setChosen({ ...chosen, [k]: e.target.checked })}/> {label}
+            </label>
+          ))}
+        </div>
+      )}
+      <CcField label="Notes (internal)"><input className="senda-input" value={notes} onChange={e => setNotes(e.target.value)}/></CcField>
+      <label style={{ display:'flex', gap:8, alignItems:'center', fontSize:12, color:'#92400e' }}>
+        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)}/>
+        Override: allow a repeat trial, or replace a paid plan
+      </label>
+    </CcModal>
+  );
+}
+
+function CcAssignDialog({ plans, onClose, onConfirm, onLogout }) {
+  const [tenantId, setTenantId] = useState('');
+  const [plan, setPlan] = useState(plans[0]?.key || '');
+  const [months, setMonths] = useState(1);
+  const [ref, setRef] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <CcModal title="Put an organization on a plan" onClose={onClose} width={440}
+      footer={<>
+        <button className="senda-btn" onClick={onClose} disabled={busy} style={{ height:34, padding:'0 14px', border:'1px solid #e2e8f0', background:'#fff', borderRadius:8, cursor:'pointer' }}>Cancel</button>
+        <button className="senda-btn senda-btn-primary" disabled={busy || !tenantId.trim() || !plan} style={{ height:34, padding:'0 16px' }}
+          onClick={async () => { setBusy(true); await onConfirm({ tenant_id: tenantId.trim(), plan, months: Number(months) || 1, payment_reference: ref }); setBusy(false); }}>{busy ? 'Saving…' : 'Assign'}</button>
+      </>}>
+      <CcTenantPicker onPick={setTenantId} onLogout={onLogout}/>
+      <CcField label="Plan"><select className="senda-input" value={plan} onChange={e => setPlan(e.target.value)}>{plans.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></CcField>
+      <CcField label="Months paid for"><input className="senda-input" type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)}/></CcField>
+      <CcField label="Payment reference"><input className="senda-input" value={ref} maxLength={120} onChange={e => setRef(e.target.value)}/></CcField>
+    </CcModal>
+  );
+}
+
 function LoginActivityTab() {
   const { onLogout } = React.useContext(AppContext);
   const bp = useBreakpoint();
@@ -14919,6 +15377,7 @@ const NAV_GROUPS = [
     { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
+    { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
   ]},
 ];
 
@@ -19103,6 +19562,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     idleusers:    <RegisteredIdleTab/>,
     whatsapp:     <WhatsAppTab/>,
     loginactivity:<LoginActivityTab/>,
+    callcenterplans:<CallCenterPlansTab/>,
     comingsoon:   <ComingSoonTab/>,
     packages:     <PackagesTab/>,
     creditalerts: <CreditAlertsTab/>,

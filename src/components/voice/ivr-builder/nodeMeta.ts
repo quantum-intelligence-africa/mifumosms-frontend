@@ -57,6 +57,7 @@ export type FieldType =
   | "list"
   | "agent"
   | "agent_multiselect"
+  | "team"
   | "prompt_library"
   | "audio_prompt";
 
@@ -228,6 +229,13 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
     terminal: true,
     outputs: [],
     fields: [
+      {
+        key: "team_id",
+        label: "Peleka kwa timu ya kituo cha simu (si lazima)",
+        type: "team",
+        helpText:
+          "Chagua timu ili simu iwafikie wahudumu wake waliopo, kulingana na mipangilio ya timu. Ukichagua timu, huhitaji kuweka namba hapa chini.",
+      },
       {
         key: "agent_id",
         label: "Mhudumu",

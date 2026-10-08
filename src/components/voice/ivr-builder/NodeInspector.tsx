@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NODE_META } from "./nodeMeta";
 import { voiceApi } from "@/services/voiceApi";
+import { callCenterApi, type Team } from "@/services/callCenterApi";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, IvrNodeType } from "./types";
 
@@ -86,6 +87,65 @@ interface AgentOption {
 }
 
 const TYPE_MANUALLY = "__manual__";
+
+// The "Timu" picker on a transfer box: the call is routed to that team's
+// available agents at call time, so no phone number is stored on the node.
+const NO_TEAM = "__no_team__";
+
+function TeamField({
+  fieldId,
+  label,
+  helpText,
+  value,
+  onPick,
+}: {
+  fieldId: string;
+  label: string;
+  helpText?: string;
+  value: unknown;
+  onPick: (team: Team | null) => void;
+}) {
+  const { t } = useLanguage();
+  const [teams, setTeams] = useState<Team[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    callCenterApi.teams.list().then((res) => {
+      if (!cancelled) setTeams(res.success && res.data ? res.data.filter((x) => x.is_active) : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const current = typeof value === "string" && value ? value : NO_TEAM;
+  // A deleted/inactive team stays visible (so the author can see and clear it).
+  const missing = current !== NO_TEAM && teams !== null && !teams.some((x) => x.id === current);
+
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={fieldId} className="text-xs">{label}</Label>
+      <Select
+        value={current}
+        onValueChange={(v) => onPick(v === NO_TEAM ? null : teams?.find((x) => x.id === v) ?? null)}
+        disabled={teams === null}
+      >
+        <SelectTrigger id={fieldId} className="h-8 text-xs">
+          <SelectValue placeholder={teams === null ? t("voice.calls.loading") : t("cc.ivr.team_placeholder")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_TEAM} className="text-xs">{t("cc.ivr.route_number")}</SelectItem>
+          {missing && <SelectItem value={current} className="text-xs">⚠ {t("cc.ivr.team_label")}?</SelectItem>}
+          {(teams ?? []).map((x) => (
+            <SelectItem key={x.id} value={x.id} className="text-xs">{x.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {teams !== null && teams.length === 0 && <p className="text-[10px] text-amber-600">{t("cc.ivr.no_teams")}</p>}
+      {helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>}
+    </div>
+  );
+}
 
 // The "Mhudumu" picker on a transfer box: choosing a person fills in the
 // number and the spoken name, so the author never types a phone number.
@@ -442,6 +502,37 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
           if (nodeType === "ai_agent" && field.type === "audio_prompt" && responseMode === "text") return null;
           const value = fields[field.key];
           const fieldId = `${nodeId}-${field.key}`;
+
+          // Routed to a team: who answers is decided at call time, so the
+          // single-agent / multi-agent / phone-number fields don't apply.
+          if (
+            nodeType === "call_forward" &&
+            fields.team_id &&
+            ["agent_id", "agent_ids", "destination"].includes(field.key)
+          ) {
+            return null;
+          }
+
+          if (field.type === "team") {
+            return (
+              <TeamField
+                key={field.key}
+                fieldId={fieldId}
+                label={field.label}
+                helpText={field.helpText}
+                value={value}
+                onPick={(team) =>
+                  onChange(
+                    team
+                      // Choosing a team clears any hand-picked agent/number so the
+                      // saved node can't hold two conflicting destinations.
+                      ? { team_id: team.id, agent_name: team.name, agent_id: "", agent_ids: [], destination: "" }
+                      : { team_id: "", agent_name: "" },
+                  )
+                }
+              />
+            );
+          }
 
           if (field.type === "agent") {
             return (

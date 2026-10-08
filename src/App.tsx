@@ -2,10 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import React, { useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DialerProvider } from "@/contexts/DialerContext";
+import { CallCenterProvider } from "@/contexts/CallCenterContext";
+import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
+import { useAuth } from "@/contexts/AuthContext";
+import { getCallCenterRole, hasSmsAccess } from "@/utils/roleUtils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -62,6 +66,13 @@ const AudioPrompts = lazy(() => import("./pages/voice/AudioPrompts"));
 const AISettings = lazy(() => import("./pages/voice/AISettings"));
 const VoiceOverview = lazy(() => import("./pages/voice/VoiceOverview"));
 const IvrFlowBuilder = lazy(() => import("./pages/voice/IvrFlowBuilder"));
+const CallCenterHome = lazy(() => import("./pages/callcenter/Home"));
+const CallCenterOverview = lazy(() => import("./pages/callcenter/Overview"));
+const CallCenterTeams = lazy(() => import("./pages/callcenter/Teams"));
+const CallCenterAgents = lazy(() => import("./pages/callcenter/CallCenterAgents"));
+const CallCenterMissed = lazy(() => import("./pages/callcenter/MissedCalls"));
+const CallCenterHistory = lazy(() => import("./pages/callcenter/History"));
+const CallCenterPlans = lazy(() => import("./pages/callcenter/Plans"));
 const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
 const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
 const WhatsAppBroadcast = lazy(() => import("./pages/WhatsAppBroadcast"));
@@ -154,6 +165,16 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
 // }
 
 // Main app content component that initializes global auth error handling
+/** Agents are provisioned for calls only (no SMS access), so their home is the call
+ *  center — not an SMS dashboard full of things they can't use. */
+const DashboardGate = () => {
+  const { user } = useAuth();
+  if (getCallCenterRole(user) === "agent" && !hasSmsAccess(user)) {
+    return <Navigate to="/call-center" replace />;
+  }
+  return <Dashboard />;
+};
+
 const AppContent = () => {
   useEffect(() => {
     const reloadOnStaleChunk = (event: PromiseRejectionEvent) => {
@@ -222,7 +243,42 @@ const AppContent = () => {
               <Route path="/developer" element={<Developer />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <DashboardGate />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center" element={
+                <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
+                  <CallCenterHome />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/live" element={
+                <ProtectedRoute requireCallCenter="supervisor" comingSoonKey="voice_ivr">
+                  <CallCenterOverview />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/teams" element={
+                <ProtectedRoute requireCallCenter="supervisor" comingSoonKey="voice_ivr">
+                  <CallCenterTeams />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/agents" element={
+                <ProtectedRoute requireCallCenter="admin" comingSoonKey="voice_ivr">
+                  <CallCenterAgents />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/plans" element={
+                <ProtectedRoute requireCallCenter="admin" comingSoonKey="voice_ivr">
+                  <CallCenterPlans />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/missed" element={
+                <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
+                  <CallCenterMissed />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/history" element={
+                <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
+                  <CallCenterHistory />
                 </ProtectedRoute>
               } />
               <Route path="/conversations" element={
@@ -444,14 +500,18 @@ const App = () => (
             <Toaster />
             <Sonner />
             <DialerProvider>
-              <BrowserRouter
-                future={{
-                  v7_startTransition: true,
-                  v7_relativeSplatPath: true,
-                }}
-              >
-                <AppContent />
-              </BrowserRouter>
+              <CallCenterProvider>
+                <BrowserRouter
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true,
+                  }}
+                >
+                  <AppContent />
+                </BrowserRouter>
+                {/* Ringing / active-call / wrap-up UI: above every page, so a call interrupts whatever the agent is doing. */}
+                <CallCenterOverlay />
+              </CallCenterProvider>
             </DialerProvider>
           </TooltipProvider>
         </LanguageProvider>

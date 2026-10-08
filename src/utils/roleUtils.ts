@@ -226,7 +226,7 @@ export const getHighestRole = (user: User | null | undefined): UserRole | null =
 		return null;
 	}
 
-	const roles: UserRole[] = ['owner', 'admin', 'agent'];
+	const roles: UserRole[] = ['owner', 'admin', 'supervisor', 'agent'];
 	for (const role of roles) {
 		if (activeMemberships.some((m: Membership) => m.role === role)) {
 			return role;
@@ -234,4 +234,40 @@ export const getHighestRole = (user: User | null | undefined): UserRole | null =
 	}
 
 	return null;
+};
+
+// ── Call center ─────────────────────────────────────────────────────────────
+// Roles are *per organization*, and the call center is organization data, so
+// these look only at active memberships. They mirror the backend's rules in
+// senda_voice_backend/voice/cc_permissions.py — the backend is what actually
+// enforces them; these only decide what to show.
+
+const CC_ADMIN_ROLES: UserRole[] = ['owner', 'admin'];
+const CC_SUPERVISOR_ROLES: UserRole[] = ['owner', 'admin', 'supervisor'];
+
+/** The user's strongest call-center role, or null if they belong to no organization. */
+export const getCallCenterRole = (user: User | null | undefined): UserRole | null => getHighestRole(user);
+
+/** Owner/admin: may create teams and agents and change routing. */
+export const isCallCenterAdmin = (user: User | null | undefined): boolean => {
+	const role = getCallCenterRole(user);
+	return !!role && CC_ADMIN_ROLES.includes(role);
+};
+
+/** Supervisor and above: may watch the live board and see everyone's calls. */
+export const isCallCenterSupervisor = (user: User | null | undefined): boolean => {
+	const role = getCallCenterRole(user);
+	return !!role && CC_SUPERVISOR_ROLES.includes(role);
+};
+
+/**
+ * Whether the call center should be offered at all. Agents and supervisors are
+ * provisioned for it, so their role is enough; owners/admins also need the
+ * Voice/IVR grant, because the numbers and flows it routes live there.
+ */
+export const canUseCallCenter = (user: User | null | undefined): boolean => {
+	const role = getCallCenterRole(user);
+	if (!role) return false;
+	if (role === 'agent' || role === 'supervisor') return true;
+	return hasIvrAccess(user);
 };

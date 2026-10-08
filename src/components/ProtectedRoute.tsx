@@ -3,8 +3,11 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useComingSoonFeatures } from '@/hooks/useComingSoonFeatures';
-import { hasIvrAccess, hasSmsAccess } from '@/utils/roleUtils';
+import {
+  canUseCallCenter, hasIvrAccess, hasSmsAccess, isCallCenterAdmin, isCallCenterSupervisor,
+} from '@/utils/roleUtils';
 import { useLanguage } from '@/hooks/useLanguage';
+import { ForcePasswordChange } from '@/components/callcenter/ForcePasswordChange';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -12,10 +15,13 @@ interface ProtectedRouteProps {
   requireFeature?: string;
   requireIvrAccess?: boolean;
   requireSmsAccess?: boolean;
+  /** Call-center access by role: any member, supervisors and above, or owners/admins only.
+   *  The backend enforces the same rules; this just keeps people off screens that would 403. */
+  requireCallCenter?: 'member' | 'supervisor' | 'admin';
   comingSoonKey?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePartner = false, requireFeature, requireIvrAccess = false, requireSmsAccess = false, comingSoonKey }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePartner = false, requireFeature, requireIvrAccess = false, requireSmsAccess = false, requireCallCenter, comingSoonKey }) => {
   const authContext = useContext(AuthContext);
   const location = useLocation();
   const { hasFeature, isLoading: featuresLoading } = useFeatures();
@@ -57,6 +63,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       return <>{children}</>;
     }
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // An administrator issued this account a temporary password: nothing in the
+  // app is reachable until the person has replaced it with their own.
+  if (authContext.user?.must_change_password) {
+    return <ForcePasswordChange />;
   }
 
   // Check partner role if required - use context method for proper validation
@@ -128,6 +140,36 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
         </div>
       </div>
     );
+  }
+
+  // Call-center access is by organization role (agent / supervisor / owner / admin),
+  // not by the per-user IVR grant — an agent never needs the flow builder.
+  if (requireCallCenter) {
+    const user = authContext.user;
+    const allowed =
+      canUseCallCenter(user) &&
+      (requireCallCenter === 'member' ||
+        (requireCallCenter === 'supervisor' && isCallCenterSupervisor(user)) ||
+        (requireCallCenter === 'admin' && isCallCenterAdmin(user)));
+    if (!allowed) {
+      return (
+        <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <h2 className="text-2xl font-bold text-foreground mb-2">{t("voice.access.title")}</h2>
+            <p className="text-text-subtle mb-6">
+              {requireCallCenter === 'admin'
+                ? 'Only an organization owner or admin can manage this.'
+                : requireCallCenter === 'supervisor'
+                  ? 'This is for supervisors and administrators.'
+                  : t("voice.access.desc")}
+            </p>
+            <Link to="/call-center" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+              Back to Call Center
+            </Link>
+          </div>
+        </div>
+      );
+    }
   }
 
   // Check per-user SMS access grant - admin-controlled, independent of plan/billing

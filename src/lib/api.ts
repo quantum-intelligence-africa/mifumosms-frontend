@@ -39,7 +39,7 @@ export interface SMSMessageItem {
 
 // Authentication Types
 // Role Types
-export type UserRole = 'owner' | 'admin' | 'agent';
+export type UserRole = 'owner' | 'admin' | 'supervisor' | 'agent';
 export type MembershipStatus = 'active' | 'pending' | 'suspended';
 
 export interface Membership {
@@ -81,6 +81,8 @@ export interface User {
   ivr_access_enabled?: boolean;
   // Admin-controlled per-user access to SMS/messaging features (defaults true)
   sms_access_enabled?: boolean;
+  // Set when an admin issued a temporary password: the user must choose a new one first
+  must_change_password?: boolean;
   // Memberships - user's tenant memberships with roles
   memberships?: Membership[];
 }
@@ -1737,6 +1739,18 @@ class ApiClient {
     });
   }
 
+  /** Change password with the full server-side validators; field errors come back in `errors`. */
+  async changePasswordConfirmed(data: {
+    old_password: string;
+    new_password: string;
+    new_password_confirm: string;
+  }): Promise<ApiResponse<{ message: string }>> {
+    return this.request('/auth/password/change/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async changePassword(data: { old_password: string; new_password: string }): Promise<ApiResponse> {
     return this.request('/auth/password/change/', {
       method: 'POST',
@@ -1946,6 +1960,103 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ tenant_id: tenantId }),
     });
+  }
+
+  // =============================================
+  // CALL-CENTER AGENT ACCOUNTS (owner/admin provisioned logins)
+  // =============================================
+
+  async createAgentAccount(tenantId: string, body: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone_number?: string;
+    role: 'agent' | 'supervisor';
+    temporary_password?: string;
+  }): Promise<ApiResponse<{
+    user_id: number;
+    membership_id: string;
+    email: string;
+    role: string;
+    temporary_password: string;
+    must_change_password: boolean;
+  }>> {
+    return this.request(`/tenants/${tenantId}/call-center/agents/`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async resetAgentPassword(tenantId: string, userId: number): Promise<ApiResponse<{
+    user_id: number;
+    temporary_password: string;
+  }>> {
+    return this.request(`/tenants/${tenantId}/call-center/agents/${userId}/reset-password/`, { method: 'POST' });
+  }
+
+  async setAgentAccountEnabled(tenantId: string, userId: number, enabled: boolean): Promise<ApiResponse<{
+    user_id: number;
+    status: string;
+    login_active: boolean;
+  }>> {
+    return this.request(`/tenants/${tenantId}/call-center/agents/${userId}/${enabled ? 'enable' : 'disable'}/`, {
+      method: 'POST',
+    });
+  }
+
+  async changeAgentAccountRole(tenantId: string, userId: number, role: 'agent' | 'supervisor'): Promise<ApiResponse<{
+    user_id: number;
+    role: string;
+  }>> {
+    return this.request(`/tenants/${tenantId}/call-center/agents/${userId}/role/`, {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  // ── Call-center packages & invitations (main backend) ──────────────────
+  async getCallCenterSubscription(): Promise<ApiResponse<{ current: unknown | null; pending: unknown | null }>> {
+    return this.request('/billing/call-center/subscription/');
+  }
+
+  async requestCallCenterPlan(plan: string): Promise<ApiResponse<unknown>> {
+    return this.request('/billing/call-center/subscription/', { method: 'POST', body: JSON.stringify({ plan }) });
+  }
+
+  /** Invite someone by email as an agent/supervisor; they get a link, set their own password and join. */
+  async inviteCallCenterMember(tenantId: string, email: string, role: 'agent' | 'supervisor'): Promise<ApiResponse<unknown>> {
+    return this.request(`/tenants/${tenantId}/team/invite/`, { method: 'POST', body: JSON.stringify({ email, role }) });
+  }
+
+  // Buying a plan with mobile money, and the invoices that come with it
+  async quoteCallCenterPlan(plan: string): Promise<ApiResponse<unknown>> {
+    return this.request('/billing/call-center/checkout/quote/', { method: 'POST', body: JSON.stringify({ plan }) });
+  }
+
+  async startCallCenterCheckout(body: {
+    plan: string; buyer_phone: string; mobile_money_provider: string; buyer_name?: string; buyer_email?: string;
+  }): Promise<ApiResponse<unknown>> {
+    return this.request('/billing/call-center/checkout/', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  async getCallCenterCheckout(subscriptionId: string): Promise<ApiResponse<unknown>> {
+    return this.request(`/billing/call-center/checkout/${subscriptionId}/`);
+  }
+
+  async listCallCenterInvoices(): Promise<ApiResponse<unknown>> {
+    return this.request('/billing/call-center/invoices/');
+  }
+
+  async getCallCenterInvoice(subscriptionId: string): Promise<ApiResponse<unknown>> {
+    return this.request(`/billing/call-center/invoices/${subscriptionId}/`);
+  }
+
+  async emailCallCenterInvoice(subscriptionId: string): Promise<ApiResponse<unknown>> {
+    return this.request(`/billing/call-center/invoices/${subscriptionId}/`, { method: 'POST' });
+  }
+
+  async resendTeamInvitation(tenantId: string, membershipId: string): Promise<ApiResponse<unknown>> {
+    return this.request(`/tenants/${tenantId}/team/${membershipId}/resend-invitation/`, { method: 'POST' });
   }
 
   // Get team members

@@ -10,13 +10,14 @@ export function CallForwardNode({ data, selected }: NodeProps) {
   const { t } = useLanguage();
   const fields = (data as AppNodeData).fields ?? {};
   const destination = typeof fields.destination === "string" ? fields.destination : "";
+  const teamName = fields.team_id && typeof fields.agent_name === "string" ? fields.agent_name : "";
 
   return (
     <BaseNode
       icon={meta.icon}
       iconClass={meta.iconClass}
       title={meta.label}
-      subtitle={destination || t("voice.ivr_nodes.call_forward.subtitle_empty")}
+      subtitle={teamName ? `${t("cc.nav.teams")}: ${teamName}` : destination || t("voice.ivr_nodes.call_forward.subtitle_empty")}
       outputs={meta.outputs}
       data={data as AppNodeData}
       selected={selected}

@@ -3,7 +3,7 @@ import { API_CONFIG } from '@/config/api';
 
 type UUID = string;
 
-export type TeamRole = 'owner' | 'admin' | 'agent';
+export type TeamRole = 'owner' | 'admin' | 'supervisor' | 'agent';
 export type TeamStatus = 'active' | 'pending' | 'suspended';
 
 export interface TeamMember {

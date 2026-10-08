@@ -18,6 +18,19 @@ export default defineConfig(({ mode }) => ({
         secure: true,
         rewrite: (path) => path.replace(/^\/voice-api/, "/api"),
       },
+      // Call-center WebSocket (incoming-call rings, agent presence). The
+      // backend only accepts origins on its CORS allow-list, so the proxied
+      // upgrade request presents the one dev origin that is on it.
+      "/voice-ws": {
+        target: "https://voice-app.duckdns.org",
+        changeOrigin: true,
+        secure: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/voice-ws/, "/ws"),
+        configure: (proxy) => {
+          proxy.on("proxyReqWs", (proxyReq) => proxyReq.setHeader("origin", "http://localhost:3000"));
+        },
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
