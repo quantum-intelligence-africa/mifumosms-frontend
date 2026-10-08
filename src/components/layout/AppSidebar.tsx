@@ -40,6 +40,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
+import { ccKey } from "@/i18n/callCenter";
+import { getCallCenterSections, pathMatches } from "@/components/layout/callCenterSections";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -76,8 +78,8 @@ interface NavItem {
   /** Stable key for a collapsible group's open/closed state — `name` alone
    * isn't safe once it's a translated string that changes with `language`. */
   id?: string;
-  /** A non-clickable label that titles the items below it inside a group. */
-  heading?: boolean;
+  /** Extra paths that also mark this entry active (e.g. every tab of its section). */
+  matchPaths?: string[];
 }
 
 interface AppSidebarProps {
@@ -152,71 +154,35 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Call center and Voice/IVR are one product: a single menu group. The call-center pages come
   // first (what people do day to day), then the IVR tools. Each half appears only for people
   // who may use it, so an agent sees just their own pages.
-  // Grouped by purpose, so related things sit together and nothing looks duplicated:
-  //   Daily work — what an agent does all day
-  //   Manage     — people, teams and the plan (supervisors / admins)
-  //   Set up     — numbers, call flows and the prompts they play
-  //   Review     — the detailed call log, recordings and AI insights
-  const workItems: NavItem[] = canUseCallCenter(user)
+  // One group, a handful of entries. The pages behind "Calls", "Manage" and "Set up" are reached
+  // through tabs across the top of each page (see callCenterSections.ts), which keeps this short.
+  const sections = getCallCenterSections(user);
+  const sectionItems: NavItem[] = sections.map((s) => ({
+    name: t(ccKey(s.labelKey)),
+    href: s.tabs[0].href,
+    icon: s.icon,
+    matchPaths: s.tabs.map((tab) => tab.href),
+  }));
+  const callCenterItems: NavItem[] = canUseCallCenter(user)
     ? [
         { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
         { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed },
-        { name: t("cc.nav.history"), href: "/call-center/history", icon: History },
       ]
     : [];
+  const ivrItems: NavItem[] = [];
+  const groupChildren: NavItem[] = [...callCenterItems, ...sectionItems];
 
-  const manageItems: NavItem[] = canUseCallCenter(user)
-    ? [
-        ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.live"), href: "/call-center/live", icon: BarChart3 }] : []),
-        ...(isCallCenterSupervisor(user) ? [{ name: t("cc.nav.teams"), href: "/call-center/teams", icon: Users }] : []),
-        ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.agents"), href: "/call-center/agents", icon: Users2 }] : []),
-        ...(isCallCenterAdmin(user) ? [{ name: t("cc.nav.plans"), href: "/call-center/plans", icon: CreditCard }] : []),
-      ]
-    : [];
-
-  const setupItems: NavItem[] = hasIvrAccess(user)
-    ? [
-        { name: t("nav.phone_numbers"), href: "/voice/numbers", icon: Phone },
-        { name: t("nav.ivr_flows"), href: "/voice/ivr", icon: Workflow },
-        { name: t("nav.audio_prompts"), href: "/voice/prompts", icon: MessageSquareText },
-        // Numbers a flow's "transfer" box can ring — not logins (those are Manage → Agents).
-        { name: t("cc.nav.transfer_numbers"), href: "/voice/agents", icon: PhoneForwarded },
-        // Contacts lives under /messaging but is just as useful for dialing/IVR — shown
-        // here too, as long as the user actually has access to that page.
-        ...(hasSmsAccess(user) ? [{ name: t("nav.contacts"), href: "/messaging/contacts", icon: Users }] : []),
-      ]
-    : [];
-
-  const reviewItems: NavItem[] = hasIvrAccess(user)
-    ? [
-        { name: t("cc.nav.call_log"), href: "/voice/calls", icon: PhoneCall },
-        { name: t("nav.recordings"), href: "/voice/recordings", icon: Voicemail },
-        { name: t("nav.ai_call_intelligence"), href: "/voice/ai-settings", icon: Sparkles },
-      ]
-    : [];
-
-  const sections: Array<[string, NavItem[]]> = [
-    [t("cc.nav.h_work"), workItems],
-    [t("cc.nav.h_manage"), manageItems],
-    [t("cc.nav.h_setup"), setupItems],
-    [t("cc.nav.h_review"), reviewItems],
-  ].filter(([, items]) => (items as NavItem[]).length > 0) as Array<[string, NavItem[]]>;
-
-  // Titles only help when there is more than one section (an agent just sees their own pages).
-  const groupChildren: NavItem[] = sections.flatMap(([title, items]) =>
-    sections.length > 1 ? [{ name: title, href: "", icon: Phone, heading: true }, ...items] : items,
-  );
-  const callCenterItems = [...workItems, ...manageItems];
-  const ivrItems = [...setupItems, ...reviewItems];
+  const isChildActive = (child: NavItem) =>
+    child.matchPaths ? child.matchPaths.some((p) => pathMatches(location.pathname, p)) : location.pathname === child.href;
 
   const callCenterGroup: NavItem[] =
-    callCenterItems.length + ivrItems.length === 0
+    groupChildren.length === 0
       ? []
       : [
           {
             name: t("cc.nav.section_combined"),
             id: "voice-ivr",
-            href: callCenterItems.length ? "/call-center" : "/voice",
+            href: callCenterItems.length ? "/call-center" : sections[0]?.tabs[0].href ?? "/voice",
             icon: Headphones,
             comingSoon: isComingSoon("voice_ivr"),
             children: groupChildren,
@@ -358,7 +324,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 
             if (hasChildren) {
               const anyChildActive =
-                isActive || item.children!.some((c) => location.pathname === c.href);
+                isActive || item.children!.some(isChildActive);
               const groupKey = item.id ?? item.name;
               const groupOpen = openGroups[groupKey] ?? true;
 
@@ -399,15 +365,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                   <CollapsibleContent>
                     <div className="ml-6 mt-0.5 mb-1 pl-3 border-l-2 border-border/40 space-y-0.5">
                       {item.children!.map((child) => {
-                        if (child.heading) {
-                          return (
-                            <p key={`h-${child.name}`} className="px-2.5 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground/40">
-                              {child.name}
-                            </p>
-                          );
-                        }
                         const ChildIcon = child.icon;
-                        const childActive = location.pathname === child.href;
+                        const childActive = isChildActive(child);
 
                         return (
                           <button

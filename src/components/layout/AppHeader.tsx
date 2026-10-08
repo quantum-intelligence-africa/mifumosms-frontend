@@ -17,6 +17,7 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePreferences } from "@/hooks/usePreferences";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { SectionTabs } from "@/components/layout/SectionTabs";
 import { MobileMoreButton } from "@/components/layout/MobileMoreButton";
 import { useTabSwipeNavigation } from "@/hooks/useTabSwipeNavigation";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
@@ -78,14 +79,16 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   if (isMobile) {
     return (
       <>
+        <SectionTabs />
         <MobileMoreButton />
         <MobileTabBar />
       </>
     );
   }
 
-  // Desktop layout (unchanged).
+  // Desktop layout (unchanged), plus the section tabs when on a Call Center & IVR page.
   return (
+    <>
     <header className="sticky top-0 h-12 sm:h-14 lg:h-16 glass border-b border-border-subtle flex items-center justify-between px-2 sm:px-3 lg:px-6 z-50 backdrop-blur-xl">
       <div className="flex-1" />
 
@@ -177,5 +180,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         </div>
       </div>
     </header>
+    <SectionTabs />
+    </>
   );
 }
