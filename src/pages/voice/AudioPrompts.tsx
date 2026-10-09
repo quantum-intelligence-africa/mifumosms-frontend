@@ -303,6 +303,16 @@ export default function AudioPrompts() {
     }
   };
 
+  // The hosted link of an uploaded file — what a team's "Waiting music" or a forward box's music field wants.
+  const copyLink = async (prompt: AudioPrompt) => {
+    try {
+      await navigator.clipboard.writeText(prompt.audio_url);
+      toast({ title: t("cc.prompts.link_copied"), description: t("cc.prompts.link_copied_hint") });
+    } catch {
+      toast({ title: t("cc.prompts.copy_failed"), description: prompt.audio_url, variant: "destructive" });
+    }
+  };
+
   const play = (prompt: AudioPrompt) => {
     if (!prompt.audio_url) return;
     player.toggle({ id: prompt.id, url: prompt.audio_url, title: prompt.name, subtitle: formatSize(prompt.size_bytes) });
@@ -434,6 +444,11 @@ export default function AudioPrompts() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
+                                {prompt.kind === "audio" && prompt.audio_url && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(prompt)} aria-label={t("cc.prompts.copy_link")} title={t("cc.prompts.copy_link")}>
+                                    <Link className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(prompt)} aria-label={t("voice.audio_prompts.edit_aria")}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
