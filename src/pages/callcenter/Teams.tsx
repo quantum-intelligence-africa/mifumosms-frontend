@@ -391,12 +391,6 @@ export default function Teams() {
                     <Input id="q-msg" value={draft.waiting_message} maxLength={500} placeholder={t("cc.queue.message_placeholder")}
                       onChange={(e) => setDraft({ ...draft, waiting_message: e.target.value })} />
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="q-music">{t("cc.queue.music")}</Label>
-                    <Input id="q-music" value={draft.hold_music_url} placeholder="https://example.com/hold-music.mp3"
-                      onChange={(e) => setDraft({ ...draft, hold_music_url: e.target.value })} />
-                    <p className="text-xs text-muted-foreground">{t("cc.queue.music_hint")}</p>
-                  </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="q-cb">{t("cc.queue.callback")}</Label>
                     <Switch id="q-cb" checked={draft.callback_offer} onCheckedChange={(v) => setDraft({ ...draft, callback_offer: v })} />
@@ -404,6 +398,13 @@ export default function Teams() {
                   <p className="text-xs text-muted-foreground">{t("cc.queue.after_wait_hint")}</p>
                 </>
               )}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="q-music">{t("cc.queue.music")}</Label>
+              <Input id="q-music" value={draft.hold_music_url} placeholder={t("cc.queue.music_placeholder")}
+                onChange={(e) => setDraft({ ...draft, hold_music_url: e.target.value })} />
+              <p className="text-xs text-muted-foreground">{t("cc.queue.music_hint")}</p>
             </div>
 
             <div className="space-y-1">
