@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
+import { VoicePicker } from "@/components/voice/VoicePicker";
 import { PlayButton, RecordingPlayerBar, formatSize, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
 import { cn } from "@/lib/utils";
 
@@ -527,6 +528,8 @@ export default function AudioPrompts() {
                   className="text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">{t("voice.audio_prompts.vars_help")}</p>
+                <Label className="pt-1">{t("voice.picker.listen")}</Label>
+                <VoicePicker value={draft.voice} allowDefault={false} sampleText={draft.text} onChange={(voice) => setDraft({ ...draft, voice })} />
               </div>
             ) : mode === "url" ? (
               <div className="space-y-1">

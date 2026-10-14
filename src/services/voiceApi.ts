@@ -116,6 +116,22 @@ class VoiceApiClient {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
+  /** POST that answers with audio (the voice preview). Returns the audio as a Blob, or the server's message. */
+  async postAudio(endpoint: string, body: unknown): Promise<{ blob?: Blob; error?: string }> {
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: this.getHeaders(true),
+        body: JSON.stringify(body),
+      });
+      if (response.ok) return { blob: await response.blob() };
+      const data = await response.json().catch(() => null);
+      return { error: data?.detail || `Error ${response.status}` };
+    } catch (error) {
+      return { error: 'Network error: ' + (error instanceof Error ? error.message : 'Unknown error') };
+    }
+  }
+
   /** Multipart upload (a file plus fields) — `post()` always JSON-encodes
    * its body, which would mangle a File, so uploads go through this
    * instead. `getHeaders` already skips the JSON content-type header for a

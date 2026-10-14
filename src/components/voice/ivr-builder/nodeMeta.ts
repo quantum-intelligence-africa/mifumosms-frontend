@@ -59,7 +59,8 @@ export type FieldType =
   | "agent_multiselect"
   | "team"
   | "prompt_library"
-  | "audio_prompt";
+  | "audio_prompt"
+  | "voice";
 
 export interface NodeField {
   key: string;
@@ -93,8 +94,7 @@ const singleOutput: NodeOutput[] = [{ id: "out", label: "", color: "hsl(var(--pr
 const voiceField: NodeField = {
   key: "voice",
   label: "Sauti ya kusoma ujumbe (si lazima)",
-  type: "text",
-  placeholder: "Africa’s Talking default voice",
+  type: "voice",
   helpText:
     "Tumia sauti ya mfumo kwa ujumbe wa maandishi. Kwa sauti yako mwenyewe, chagua ujumbe uliorekodiwa kwenye Maktaba ya Ujumbe.",
 };

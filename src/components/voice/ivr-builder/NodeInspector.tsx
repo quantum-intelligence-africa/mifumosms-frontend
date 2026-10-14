@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NODE_META } from "./nodeMeta";
+import { VoicePicker } from "@/components/voice/VoicePicker";
 import { voiceApi } from "@/services/voiceApi";
 import { callCenterApi, type Team } from "@/services/callCenterApi";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -596,6 +597,20 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                   )
                 }
               />
+            );
+          }
+
+          if (field.type === "voice") {
+            return (
+              <div key={field.key} className="space-y-1">
+                <Label className="text-xs">{field.label}</Label>
+                <VoicePicker
+                  value={(value as string) ?? ""}
+                  onChange={(voice) => onChange({ [field.key]: voice })}
+                  sampleText={String(fields["prompt"] ?? "")}
+                />
+                {field.helpText && <p className="text-[10px] text-muted-foreground">{field.helpText}</p>}
+              </div>
             );
           }
 

@@ -12279,6 +12279,38 @@ function VoiceNumbersTab() {
   const [voices, setVoices] = useState([]);               // the voices that can read the message
   const [defaultVoice, setDefaultVoice] = useState('');
   const [voiceDraft, setVoiceDraft] = useState('');
+  const [hearing, setHearing] = useState('');            // voice id being fetched/played ('' = none)
+  const audioRef = useRef(null);
+  // Speak the text in a voice so the admin hears it before saving. The server makes the audio; no key is in the browser.
+  const hear = async (voiceId, text) => {
+    if (hearing) { audioRef.current?.pause(); setHearing(''); return; }
+    const voice = voiceId || defaultVoice || voices[0]?.id;
+    if (!voice) return;
+    setHearing(voice);
+    try {
+      const token = getToken();
+      const res = await fetch(`${VOICE_BASE_URL}/voice/ivr/voices/preview/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ voice, text: (text || '').trim() || defaultMsg || 'Namba unayopiga haipatikani kwa sasa.' }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        showToast?.(body.detail || 'Could not play the voice.', 'error');
+        setHearing('');
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      const done = () => { URL.revokeObjectURL(url); setHearing(''); };
+      audio.onended = done; audio.onerror = done;
+      await audio.play();
+    } catch {
+      showToast?.('Could not play the voice.', 'error');
+      setHearing('');
+    }
+  };
   const voiceName = (id) => (voices.find(v => v.id === id)?.label || id || '').split(' — ')[0];
   const [msgEdit, setMsgEdit] = useState(null);           // { row, text } while editing one number's message
   // Assign a number to an organization: search it, then pick a listed number or type one.
@@ -12464,6 +12496,10 @@ function VoiceNumbersTab() {
             style={{height:36,fontSize:13,minWidth:200}}>
             {voices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
           </select>
+          <button onClick={() => hear(voiceDraft, defaultDraft)} title="Hear this voice" aria-label="Hear this voice"
+            style={{height:36,width:36,borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:BRAND,fontWeight:800,cursor:'pointer'}}>
+            {hearing ? '■' : '▶'}
+          </button>
           <button disabled={!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)} onClick={saveDefault}
             style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,
               cursor:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? 'default' : 'pointer',opacity:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? .5 : 1}}>
@@ -12553,10 +12589,16 @@ function VoiceNumbersTab() {
             <textarea rows={3} maxLength={300} value={msgEdit.text} onChange={e=>setMsgEdit(m => ({ ...m, text: e.target.value }))}
               placeholder={defaultMsg} className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
             <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Voice that reads it</label>
-            <select className="senda-input" value={msgEdit.voice} onChange={e=>setMsgEdit(m => ({ ...m, voice: e.target.value }))} style={{height:38,fontSize:13}}>
-              <option value="">Default voice ({voiceName(defaultVoice)})</option>
-              {voices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-            </select>
+            <div style={{display:'flex',gap:8}}>
+              <select className="senda-input" value={msgEdit.voice} onChange={e=>setMsgEdit(m => ({ ...m, voice: e.target.value }))} style={{height:38,fontSize:13,flex:1}}>
+                <option value="">Default voice ({voiceName(defaultVoice)})</option>
+                {voices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
+              <button onClick={() => hear(msgEdit.voice, msgEdit.text || defaultMsg)} title="Hear this voice" aria-label="Hear this voice"
+                style={{height:38,width:38,borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:BRAND,fontWeight:800,cursor:'pointer'}}>
+                {hearing ? '■' : '▶'}
+              </button>
+            </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button onClick={() => setMsgEdit(null)} style={{height:36,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
               <button disabled={busyId === msgEdit.row.id} onClick={saveMessage} style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>Save</button>
