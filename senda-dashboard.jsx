@@ -3351,6 +3351,16 @@ const CC_FLAG_LABELS = {
   ai_summaries:    'AI call summaries (marketing flag only)',
   call_forwarding: 'Call forwarding / transfers',
 };
+// Capabilities every customer has today. A plan that never stored one keeps it ON (the voice service
+// treats a missing switch as ON), so the editor shows them ticked and only an explicit untick turns one off.
+const CC_CAPABILITY_LABELS = {
+  browser_calling: 'Answer calls in the browser',
+  phone_answering: 'Answer calls on a phone',
+  inbound_routing: 'Route incoming calls to teams',
+  queues:          'Waiting queues',
+  call_recording:  'Call recording',
+  reporting:       'Call reports & analytics',
+};
 const CC_LIMIT_FIELDS = [
   ['max_agents',                'Agents'],
   ['max_numbers',               'Business numbers'],
@@ -3622,7 +3632,10 @@ function CcPlanEditor({ plan, onClose, onSaved, onLogout }) {
       name: f.name, tagline: f.tagline, price: f.price === '' ? null : f.price, currency: f.currency, billing_cycle: f.billing_cycle,
       is_custom: f.is_custom, is_popular: f.is_popular, is_active: f.is_active, sort_order: Number(f.sort_order) || 0,
       features: String(f.features || '').split('\n').map(x => x.trim()).filter(Boolean),
-      feature_flags: Object.fromEntries(Object.keys(CC_FLAG_LABELS).map(k => [k, !!f.feature_flags?.[k]])),
+      feature_flags: {
+        ...Object.fromEntries(Object.keys(CC_FLAG_LABELS).map(k => [k, !!f.feature_flags?.[k]])),
+        ...Object.fromEntries(Object.keys(CC_CAPABILITY_LABELS).map(k => [k, f.feature_flags?.[k] ?? true])),
+      },
       ...Object.fromEntries(CC_LIMIT_FIELDS.map(([k]) => [k, f[k] === '' ? null : f[k]])),
     };
     const req = isNew
@@ -3664,6 +3677,12 @@ function CcPlanEditor({ plan, onClose, onSaved, onLogout }) {
       {Object.entries(CC_FLAG_LABELS).map(([k, label]) => (
         <label key={k} style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
           <input type="checkbox" checked={!!f.feature_flags?.[k]} onChange={e => set('feature_flags', { ...f.feature_flags, [k]: e.target.checked })}/> {label}
+        </label>
+      ))}
+      <div style={{ fontSize:12, fontWeight:800, color:'#0f172a', marginTop:4 }}>Call center capabilities</div>
+      {Object.entries(CC_CAPABILITY_LABELS).map(([k, label]) => (
+        <label key={k} style={{ display:'flex', gap:8, alignItems:'center', fontSize:13 }}>
+          <input type="checkbox" checked={f.feature_flags?.[k] ?? true} onChange={e => set('feature_flags', { ...f.feature_flags, [k]: e.target.checked })}/> {label}
         </label>
       ))}
       <CcField label="Extra bullet points shown on the plan card" hint="One per line (max 12).">
