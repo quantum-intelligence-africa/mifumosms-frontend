@@ -13523,7 +13523,11 @@ function HfModelFields({ creds, setCred, isNew, row, catalog }) {
           <label style={label}>Your endpoint for this model <span style={{color:RED}}>*</span></label>
           <input className="senda-input" style={{height:38,fontSize:13}} value={value('asr_endpoint_url')} placeholder="https://….endpoints.huggingface.cloud"
             onChange={e => setCred('asr_endpoint_url', e.target.value)}/>
-          <span style={{fontSize:11,color:'#b45309'}}>No hosted provider serves this model. Without an endpoint, calls will fail to transcribe.</span>
+          <span style={{fontSize:11,color:'#b45309'}}>
+            No hosted provider serves this model, so you create your own server for it: on huggingface.co open the model page, click Deploy → Inference Endpoints, create it,
+            then copy the endpoint URL here. The token above needs permission to call your Inference Endpoints. Without an endpoint, calls will fail to transcribe.
+            The recommended Whisper large-v3 needs none of this.
+          </span>
         </div>
       )}
 
