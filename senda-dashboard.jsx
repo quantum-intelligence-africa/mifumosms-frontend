@@ -12276,6 +12276,10 @@ function VoiceNumbersTab() {
   const [busyId, setBusyId]   = useState(null);
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
+  const [voices, setVoices] = useState([]);               // the voices that can read the message
+  const [defaultVoice, setDefaultVoice] = useState('');
+  const [voiceDraft, setVoiceDraft] = useState('');
+  const voiceName = (id) => (voices.find(v => v.id === id)?.label || id || '').split(' — ')[0];
   const [msgEdit, setMsgEdit] = useState(null);           // { row, text } while editing one number's message
   // Assign a number to an organization: search it, then pick a listed number or type one.
   const [assign, setAssign]   = useState(null);           // null = closed
@@ -12286,15 +12290,18 @@ function VoiceNumbersTab() {
 
   useEffect(() => {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
-      if (res.success) { setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || ''); }
+      if (res.success) {
+        setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
+        setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
+      }
     });
   }, [onLogout]);
 
   const saveDefault = () => {
-    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ inactive_message: defaultDraft }) }, onLogout).then(res => {
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ inactive_message: defaultDraft, inactive_voice: voiceDraft }) }, onLogout).then(res => {
       if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
-      setDefaultMsg(res.data.inactive_message);
-      showToast?.('Default message saved.', 'success');
+      setDefaultMsg(res.data.inactive_message); setDefaultVoice(res.data.inactive_voice);
+      showToast?.('Default message and voice saved.', 'success');
     });
   };
 
@@ -12315,7 +12322,7 @@ function VoiceNumbersTab() {
   const saveMessage = () => {
     const { row, text } = msgEdit;
     setBusyId(row.id);
-    voiceAdminFetch(`/voice/accounts/admin/${row.id}/`, { method: 'PATCH', body: JSON.stringify({ inactive_message: text }) }, onLogout)
+    voiceAdminFetch(`/voice/accounts/admin/${row.id}/`, { method: 'PATCH', body: JSON.stringify({ inactive_message: text, inactive_voice: msgEdit.voice || '' }) }, onLogout)
       .then(res => {
         if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
         setRows(prev => prev.map(r => r.id === row.id ? res.data : r));
@@ -12453,9 +12460,13 @@ function VoiceNumbersTab() {
         <div style={{display:'flex',gap:8,alignItems:'flex-start',flexWrap:'wrap'}}>
           <textarea rows={2} maxLength={300} value={defaultDraft} onChange={e=>setDefaultDraft(e.target.value)}
             className="senda-input" style={{flex:1,minWidth:260,fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
-          <button disabled={!defaultDraft.trim() || defaultDraft === defaultMsg} onClick={saveDefault}
+          <select className="senda-input" value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)} aria-label="Voice"
+            style={{height:36,fontSize:13,minWidth:200}}>
+            {voices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+          </select>
+          <button disabled={!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)} onClick={saveDefault}
             style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,
-              cursor:(!defaultDraft.trim() || defaultDraft === defaultMsg) ? 'default' : 'pointer',opacity:(!defaultDraft.trim() || defaultDraft === defaultMsg) ? .5 : 1}}>
+              cursor:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? 'default' : 'pointer',opacity:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? .5 : 1}}>
             Save
           </button>
         </div>
@@ -12541,6 +12552,11 @@ function VoiceNumbersTab() {
             <p style={{fontSize:12,color:'#94a3b8',margin:0}}>Spoken to callers while this number is switched off. Leave it empty to use the default message.</p>
             <textarea rows={3} maxLength={300} value={msgEdit.text} onChange={e=>setMsgEdit(m => ({ ...m, text: e.target.value }))}
               placeholder={defaultMsg} className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Voice that reads it</label>
+            <select className="senda-input" value={msgEdit.voice} onChange={e=>setMsgEdit(m => ({ ...m, voice: e.target.value }))} style={{height:38,fontSize:13}}>
+              <option value="">Default voice ({voiceName(defaultVoice)})</option>
+              {voices.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+            </select>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button onClick={() => setMsgEdit(null)} style={{height:36,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
               <button disabled={busyId === msgEdit.row.id} onClick={saveMessage} style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>Save</button>
@@ -12595,10 +12611,10 @@ function VoiceNumbersTab() {
                           {row.is_active ? 'Switch off' : 'Switch on'}
                         </button>
                       </div>
-                      <button className="senda-btn senda-btn-sm" onClick={() => setMsgEdit({ row, text: row.inactive_message || '' })}
+                      <button className="senda-btn senda-btn-sm" onClick={() => setMsgEdit({ row, text: row.inactive_message || '', voice: row.inactive_voice || '' })}
                         title={row.inactive_message || `Uses the default: ${defaultMsg}`}
                         style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11,textAlign:'left'}}>
-                        {row.inactive_message ? 'Message: custom' : 'Message: default'} · Edit
+                        {row.inactive_message ? 'Message: custom' : 'Message: default'} · {voiceName(row.inactive_voice || defaultVoice)} · Edit
                       </button>
                     </div>
                   </td>
