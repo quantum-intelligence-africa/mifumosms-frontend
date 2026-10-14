@@ -12386,7 +12386,7 @@ const FEATURE_ACCESS_FIELDS = [
 
 const isFeatureGranted = (u, field) => field.defaultOn ? u[field.key] !== false : u[field.key] === true;
 
-function FeatureAccessTab() {
+function UserFeatureAccessTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [search, setSearch]   = useState('');
   const [items, setItems]     = useState([]);
@@ -12510,6 +12510,310 @@ function FeatureAccessTab() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Organizations (mifumosms_backend /organizations) ──────────────────────────
+// One place per organization for: overview, plan & subscription, feature access
+// (plan vs explicit override), branding & domains, usage & limits, audit history.
+// Reuses the existing Feature Access tab (mode switch) instead of adding a nav entry.
+// Overrides sit on top of the plan: "Follow plan" removes the override; Grant/Revoke
+// pins it. Every change is written to the organization's audit history by the backend.
+const ORG_SECTIONS = ['Overview', 'Plan & Subscription', 'Feature Access', 'Branding & Domains', 'Usage & Limits', 'Audit History'];
+const SOURCE_LABEL = { override: 'Override', plan: 'From plan', default: 'Default (existing access)', off: 'Not included' };
+const LIMIT_FIELDS = [
+  ['max_agents', 'Agents'], ['sms_credits', 'SMS credits'], ['call_minutes', 'Call minutes'],
+  ['max_contacts', 'Contacts'], ['max_campaigns', 'Campaigns'], ['max_sms_per_month', 'SMS / month'],
+];
+const fmtDate = (d) => d ? new Date(d).toLocaleString() : '—';
+
+function OrganizationDetail({ orgId, onBack }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [data, setData]       = useState(null);
+  const [error, setError]     = useState(null);
+  const [section, setSection] = useState(ORG_SECTIONS[0]);
+  const [busy, setBusy]       = useState(false);
+  const [form, setForm]       = useState({});
+  const [cp, setCp]           = useState({ name: '', price: '', billing_cycle: 'monthly' });
+
+  const load = useCallback(() => {
+    adminFetch(`/organizations/${orgId}`, {}, onLogout)
+      .then(res => res.success ? setData(res.data) : setError(res.error?.message || 'Failed to load organization.'))
+      .catch(e => setError(e.message));
+  }, [orgId, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const call = (path, method, body, ok) => {
+    setBusy(true);
+    return adminFetch(`/organizations/${orgId}${path}`, { method, body: body ? JSON.stringify(body) : undefined }, onLogout)
+      .then(res => {
+        if (res.success) { if (res.data?.overview) setData(res.data); else load(); if (ok) showToast?.(ok, 'success'); }
+        else showToast?.(res.error?.message || 'Update failed.', 'error');
+        return res;
+      })
+      .catch(() => showToast?.('Update failed.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  if (error) return <div style={{padding:24,color:'#b91c1c'}}>{error} <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onBack}>Back</button></div>;
+  if (!data) return <div style={{padding:24,color:'#94a3b8'}}>Loading…</div>;
+
+  const { overview, subscription: sub, features, branding, usage, audit, call_center: cc, available_plans: plans } = data;
+  const card = {background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:16,marginBottom:14};
+  const lbl = {fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4};
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const val = (k, d) => form[k] !== undefined ? form[k] : d;
+
+  const savePlan = () => {
+    const body = { plan_id: val('plan_id', sub?.plan.id) };
+    if (form.expiry === 'none') body.no_expiry = true;
+    if (form.expiry === 'months') body.months = Number(val('months', 1));
+    if (form.is_complimentary !== undefined) body.is_complimentary = form.is_complimentary;
+    if (form.custom_price !== undefined) body.custom_price = form.custom_price;
+    if (form.trial_days !== undefined) body.trial_days = Number(form.trial_days || 0);
+    const lim = {};
+    LIMIT_FIELDS.forEach(([k]) => { const v = form['limit_' + k]; if (v !== undefined) lim[k] = v === '' ? null : Number(v); });
+    if (Object.keys(lim).length) body.limit_overrides = { ...(sub?.limit_overrides || {}), ...lim };
+    body.reason = form.reason || '';
+    call('/subscription', 'PUT', body, 'Plan saved.').then(r => r?.success && setForm({}));
+  };
+
+  return (
+    <div style={{padding:24}}>
+      <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={onBack}>← All organizations</button>
+      <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:'10px 0 12px'}}>{overview.name}</h2>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
+        {ORG_SECTIONS.map(s => (
+          <button key={s} onClick={()=>setSection(s)} className="senda-btn senda-btn-sm"
+            style={{background:section===s?'#0f172a':'#f1f5f9',color:section===s?'#fff':'#475569',border:'none'}}>{s}</button>
+        ))}
+      </div>
+
+      {section === 'Overview' && (
+        <div style={card}>
+          {[['Owner', `${overview.owner_name || ''} ${overview.owner_email}`], ['Subdomain', overview.subdomain],
+            ['Status', overview.is_active ? 'Active' : 'Inactive'], ['Created', fmtDate(overview.created_at)],
+            ['Platform plan', sub ? `${sub.plan.name} (${sub.status})` : 'None'],
+            ['Call-center plan', cc.current ? `${cc.current.plan}${cc.current.is_trial ? ' (trial)' : ''}` : 'None'],
+            ['Overrides', `${features.filter(x => x.override).length} feature(s)`],
+            ['Branding', branding.published ? `Published ${fmtDate(branding.published_at)}` : 'SENDA Copilot default']].map(([k, v]) => (
+            <div key={k} style={{display:'flex',gap:12,padding:'6px 0',borderBottom:'1px solid #f8fafc',fontSize:13}}>
+              <span style={{width:160,color:'#94a3b8'}}>{k}</span><span style={{color:'#0f172a'}}>{v}</span>
+            </div>))}
+        </div>
+      )}
+
+      {section === 'Plan & Subscription' && (
+        <>
+          <div style={card}>
+            <div style={lbl}>Current platform plan</div>
+            {sub ? (
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.8}}>
+                <b>{sub.plan.name}</b>{sub.plan.is_custom ? ' (custom)' : ''} · {sub.status}{sub.is_complimentary ? ' · complimentary' : ''}<br/>
+                Price: {sub.effective_price} {sub.plan.currency}/{sub.plan.billing_cycle}{sub.custom_price ? ' (negotiated)' : ''} ·
+                Ends: {fmtDate(sub.period_end)}{sub.trial_ends_at ? ` · Trial ends ${fmtDate(sub.trial_ends_at)}` : ''}
+              </div>
+            ) : <div style={{fontSize:13,color:'#94a3b8'}}>No plan assigned.</div>}
+            {sub && (
+              <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+                {sub.status === 'suspended'
+                  ? <button className="senda-btn senda-btn-sm" disabled={busy} onClick={()=>call('/subscription/reactivate','POST',{},'Reactivated.')}>Reactivate</button>
+                  : <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={busy} onClick={()=>window.confirm('Suspend this plan? Plan features turn off; history is kept.') && call('/subscription/suspend','POST',{},'Suspended.')}>Suspend</button>}
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={busy} onClick={()=>window.confirm('Remove the plan assignment? The record and history are kept (status: cancelled).') && call('/subscription','DELETE',{},'Plan assignment removed.')}>Remove assignment</button>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <div style={lbl}>Assign / change plan and terms</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,fontSize:13}}>
+              <label>Plan<select className="senda-input" value={val('plan_id', sub?.plan.id || '')} onChange={e=>f('plan_id',e.target.value)} style={{width:'100%'}}>
+                <option value="">Choose…</option>
+                {plans.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_custom ? ' (custom)' : ''} — {p.price} {p.currency}/{p.billing_cycle}</option>)}
+              </select></label>
+              <label>Expiry<select className="senda-input" value={val('expiry','keep')} onChange={e=>f('expiry',e.target.value)} style={{width:'100%'}}>
+                <option value="keep">Keep current</option><option value="months">Set months from now</option><option value="none">No expiry</option>
+              </select></label>
+              {val('expiry','keep')==='months' && <label>Months<input className="senda-input" type="number" min="1" max="120" value={val('months',1)} onChange={e=>f('months',e.target.value)} style={{width:'100%'}}/></label>}
+              <label>Negotiated price<input className="senda-input" placeholder={sub ? String(sub.plan.price) : ''} value={val('custom_price', sub?.custom_price ?? '')} onChange={e=>f('custom_price',e.target.value)} style={{width:'100%'}}/></label>
+              <label>Trial days (0 = none)<input className="senda-input" type="number" min="0" value={val('trial_days','')} onChange={e=>f('trial_days',e.target.value)} style={{width:'100%'}}/></label>
+              <label style={{display:'flex',gap:8,alignItems:'center'}}><input type="checkbox" checked={val('is_complimentary', !!sub?.is_complimentary)} onChange={e=>f('is_complimentary',e.target.checked)}/>Complimentary (no checkout)</label>
+            </div>
+            <div style={{...lbl,marginTop:12}}>Quota overrides (blank = plan default)</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,fontSize:13}}>
+              {LIMIT_FIELDS.map(([k, label]) => (
+                <label key={k}>{label}<input className="senda-input" type="number" min="0" placeholder={String(sub?.effective_limits?.[k] ?? '∞')}
+                  value={val('limit_' + k, sub?.limit_overrides?.[k] ?? '')} onChange={e=>f('limit_' + k, e.target.value)} style={{width:'100%'}}/></label>))}
+            </div>
+            <input className="senda-input" placeholder="Reason / notes (kept in audit history)" value={val('reason','')} onChange={e=>f('reason',e.target.value)} style={{width:'100%',marginTop:12}}/>
+            <button className="senda-btn senda-btn-sm" style={{marginTop:10}} disabled={busy || !val('plan_id', sub?.plan.id)} onClick={savePlan}>Save plan</button>
+          </div>
+
+          <div style={card}>
+            <div style={lbl}>Create customer-specific plan</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <input className="senda-input" placeholder="Plan name" value={cp.name} onChange={e=>setCp({...cp,name:e.target.value})}/>
+              <input className="senda-input" placeholder="Price" value={cp.price} onChange={e=>setCp({...cp,price:e.target.value})} style={{width:120}}/>
+              <select className="senda-input" value={cp.billing_cycle} onChange={e=>setCp({...cp,billing_cycle:e.target.value})}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+              <button className="senda-btn senda-btn-sm" disabled={busy || !cp.name || cp.price===''} onClick={()=>call('/custom-plans','POST',cp,'Custom plan created. Now assign it above.').then(r=>r?.success&&setCp({name:'',price:'',billing_cycle:'monthly'}))}>Create</button>
+            </div>
+            <div style={{fontSize:12,color:'#94a3b8',marginTop:6}}>Visible only to this organization. Set its quotas after assigning, using the overrides above.</div>
+          </div>
+
+          <div style={card}>
+            <div style={lbl}>Call-center plan (managed in Call Center Plans)</div>
+            <div style={{fontSize:13,color:'#0f172a'}}>{cc.current ? `${cc.current.plan} · ${cc.current.is_trial ? 'trial · ' : ''}ends ${fmtDate(cc.current.period_end)}` : 'No active call-center plan.'}</div>
+            {cc.history.slice(0,5).map(h => <div key={h.id} style={{fontSize:12,color:'#64748b',marginTop:2}}>{h.plan} · {h.status} · {h.source}</div>)}
+          </div>
+        </>
+      )}
+
+      {section === 'Feature Access' && (
+        <div style={{...card,padding:0,overflow:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:640}}>
+            <thead><tr style={{background:'#f8fafc',textAlign:'left'}}>
+              {['Feature','Effective','Source','Override'].map(h => <th key={h} style={{padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase'}}>{h}</th>)}
+            </tr></thead>
+            <tbody>{features.map(x => (
+              <tr key={x.key} style={{borderTop:'1px solid #f1f5f9'}}>
+                <td style={{padding:'10px 16px'}}><b>{x.name}</b><div style={{fontSize:11,color:'#94a3b8'}}>{x.key}</div></td>
+                <td style={{padding:'10px 16px'}}><span style={{padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,background:x.enabled?'#d1fae5':'#f1f5f9',color:x.enabled?'#065f46':'#64748b'}}>{x.enabled ? 'On' : 'Off'}</span></td>
+                <td style={{padding:'10px 16px',fontSize:12,color:'#64748b'}}>{SOURCE_LABEL[x.source]}</td>
+                <td style={{padding:'10px 16px'}}>
+                  {[['Grant', true], ['Revoke', false], ['Follow plan', null]].map(([label, v]) => {
+                    const active = v === null ? !x.override : x.override?.enabled === v;
+                    return <button key={label} disabled={busy || active} className="senda-btn senda-btn-sm"
+                      onClick={()=>call(`/features/${x.key}`,'PUT',{enabled:v,reason:'Changed from dashboard'},`${x.name}: ${label.toLowerCase()}.`)}
+                      style={{marginRight:4,border:'none',background:active?'#0f172a':'#f1f5f9',color:active?'#fff':'#475569'}}>{label}</button>;
+                  })}
+                </td>
+              </tr>))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {section === 'Branding & Domains' && (
+        <div style={card}>
+          <div style={{fontSize:13,color:'#0f172a',marginBottom:8}}>
+            Branding: {branding.published ? <b>published</b> : 'not published'}{branding.display_name ? ` as “${branding.display_name}”` : ''}.
+            {' '}White-label, subdomain and custom-domain access are set under <b>Feature Access</b>.
+          </div>
+          {branding.domains.length === 0 && <div style={{fontSize:13,color:'#94a3b8'}}>No white-label domains.</div>}
+          {branding.domains.map(d => (
+            <div key={d.id} style={{display:'flex',gap:10,alignItems:'center',padding:'6px 0',borderTop:'1px solid #f8fafc',fontSize:13}}>
+              <b>{d.domain}</b><span style={{color:'#64748b'}}>{d.kind}</span>
+              <span style={{color:d.verified?'#065f46':'#b45309'}}>{d.verified ? 'verified' : 'unverified'}</span>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" style={{marginLeft:'auto'}} disabled={busy}
+                onClick={()=>window.confirm(`Disconnect ${d.domain}?`) && call(`/domains/${d.id}/remove`,'POST',{reason:'Removed by SENDA staff'},'Domain disconnected.')}>Disconnect</button>
+            </div>))}
+        </div>
+      )}
+
+      {section === 'Usage & Limits' && (
+        <div style={card}>
+          {[['Active members', usage.members], ['Agents / supervisors', usage.agents], ['SMS credits remaining', usage.sms_credits],
+            ['SMS purchased (total)', usage.sms_purchased], ['SMS used (total)', usage.sms_used]].map(([k, v]) => (
+            <div key={k} style={{display:'flex',gap:12,padding:'6px 0',borderBottom:'1px solid #f8fafc',fontSize:13}}><span style={{width:200,color:'#94a3b8'}}>{k}</span><span>{v}</span></div>))}
+          <div style={{...lbl,marginTop:12}}>Effective limits</div>
+          {sub ? LIMIT_FIELDS.map(([k, label]) => (
+            <div key={k} style={{fontSize:13,padding:'3px 0'}}><span style={{display:'inline-block',width:200,color:'#94a3b8'}}>{label}</span>{sub.effective_limits[k] ?? 'Unlimited / not set'}{sub.limit_overrides?.[k] != null ? ' (override)' : ''}</div>
+          )) : <div style={{fontSize:13,color:'#94a3b8'}}>No plan assigned.</div>}
+        </div>
+      )}
+
+      {section === 'Audit History' && (
+        <div style={card}>
+          {audit.length === 0 ? <div style={{fontSize:13,color:'#94a3b8'}}>No changes recorded yet.</div> : audit.map(a => (
+            <div key={a.id} style={{padding:'8px 0',borderBottom:'1px solid #f8fafc',fontSize:13}}>
+              <b>{a.action}</b> {a.target && `· ${a.target}`} <span style={{color:'#94a3b8'}}>— {a.actor || 'system'}, {fmtDate(a.created_at)}</span>
+              {a.reason && <div style={{fontSize:12,color:'#64748b'}}>{a.reason}</div>}
+              {(a.before !== null || a.after !== null) && <div style={{fontSize:11,color:'#94a3b8',wordBreak:'break-all'}}>{JSON.stringify(a.before)} → {JSON.stringify(a.after)}</div>}
+            </div>))}
+          {data.audit_total > audit.length && <div style={{fontSize:12,color:'#94a3b8',marginTop:8}}>Showing latest {audit.length} of {data.audit_total}.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrganizationsPanel() {
+  const { onLogout } = React.useContext(AppContext);
+  const [q, setQ]         = useState('');
+  const [rows, setRows]   = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const PER = 15;
+
+  useEffect(() => {
+    if (openId) return;
+    setLoading(true); setError(null);
+    const t = setTimeout(() => {
+      adminFetch(`/organizations?${new URLSearchParams({ q: q.trim(), limit: PER, offset })}`, {}, onLogout)
+        .then(res => res.success ? (setRows(res.data || []), setTotal(res.total || 0)) : setError(res.error?.message || 'Failed to load organizations.'))
+        .catch(e => setError(e.message)).finally(() => setLoading(false));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q, offset, openId, onLogout]);
+
+  if (openId) return <OrganizationDetail orgId={openId} onBack={() => setOpenId(null)} />;
+
+  const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
+  const keys = ['white_label', 'custom_subdomain', 'custom_domain', 'advanced_call_center', 'ai_features', 'team_management'];
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:10}}>
+        <p style={{fontSize:12.5,color:'#94a3b8',margin:0,maxWidth:560}}>
+          Organization-level access. Open an organization to manage its plan, feature overrides, branding/domains, usage and audit history.
+          Per-user SMS/IVR toggles are under <b>Users</b>.
+        </p>
+        <input className="senda-input" placeholder="Search name, subdomain, member email…" value={q}
+          onChange={e=>{setQ(e.target.value);setOffset(0);}} style={{width:280,height:38,fontSize:13}}/>
+      </div>
+      {error ? <div style={{color:'#b91c1c',fontSize:13}}>{error}</div> : (
+        <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
+            <thead><tr style={{background:'#f8fafc',textAlign:'left'}}>
+              <th style={th}>Organization</th><th style={th}>Plan</th>
+              {keys.map(k => <th key={k} style={th}>{k.replace(/_/g,' ')}</th>)}
+            </tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan={2+keys.length} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+               : rows.length === 0 ? <tr><td colSpan={2+keys.length} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No organizations found.</td></tr>
+               : rows.map(r => (
+                <tr key={r.id} onClick={()=>setOpenId(r.id)} style={{cursor:'pointer',borderTop:'1px solid #f1f5f9'}}>
+                  <td style={{padding:'12px 16px'}}><b>{r.name}</b><div style={{fontSize:11,color:'#94a3b8'}}>{r.owner_email}</div></td>
+                  <td style={{padding:'12px 16px',fontSize:12}}>{r.plan ? `${r.plan} (${r.status})` : '—'}</td>
+                  {keys.map(k => <td key={k} style={{padding:'12px 16px'}}><span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:r.features[k]?'#10b981':'#cbd5e1'}} title={r.features[k]?'On':'Off'}/></td>)}
+                </tr>))}
+            </tbody>
+          </table>
+          {total > PER && (
+            <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #f1f5f9'}}>
+              <span style={{fontSize:12,color:'#94a3b8'}}>{offset + 1}–{Math.min(offset + PER, total)} of {total}</span>
+              <div style={{display:'flex',gap:4}}>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={offset===0} onClick={()=>setOffset(o=>Math.max(0,o-PER))}>← Prev</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={offset+PER>=total} onClick={()=>setOffset(o=>o+PER)}>Next →</button>
+              </div>
+            </div>)}
+        </div>)}
+    </div>
+  );
+}
+
+function FeatureAccessTab() {
+  const [mode, setMode] = useState('users');
+  const pill = (id, label) => (
+    <button onClick={()=>setMode(id)} className="senda-btn senda-btn-sm"
+      style={{background:mode===id?'#0f172a':'#f1f5f9',color:mode===id?'#fff':'#475569',border:'none'}}>{label}</button>);
+  return (
+    <>
+      <div style={{display:'flex',gap:6,padding:'18px 24px 0'}}>{pill('users','Users (SMS / IVR)')}{pill('orgs','Organizations')}</div>
+      {mode === 'users' ? <UserFeatureAccessTab/> : <OrganizationsPanel/>}
+    </>
   );
 }
 

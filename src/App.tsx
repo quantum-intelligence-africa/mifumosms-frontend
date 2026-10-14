@@ -11,6 +11,7 @@ import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCallCenterRole, hasSmsAccess } from "@/utils/roleUtils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useGlobalAuthErrorHandler } from "@/hooks/useGlobalAuthErrorHandler";
@@ -495,6 +496,7 @@ const App = () => (
       enableColorScheme
     >
       <AuthProvider>
+        <BrandingProvider>
         <LanguageProvider>
           <TooltipProvider>
             <Toaster />
@@ -515,6 +517,7 @@ const App = () => (
             </DialerProvider>
           </TooltipProvider>
         </LanguageProvider>
+        </BrandingProvider>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>

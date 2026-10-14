@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useBranding } from "@/contexts/BrandingContext";
 
 interface BrandLogoProps {
   /** Tailwind size classes, e.g. "w-8 h-8 sm:w-10 sm:h-10". */
@@ -14,10 +15,14 @@ interface BrandLogoProps {
  * blue-square + MessageSquare placeholder.
  */
 export function BrandLogo({ className, alt = "Senda", eager = true }: BrandLogoProps) {
+  // An organization with published white-label branding shows its own logo;
+  // everyone else keeps the SENDA mark.
+  const brand = useBranding();
+  const custom = brand.branded && brand.logo_url ? brand.logo_url : null;
   return (
     <img
-      src="/Senda%20Asset.1.3.png"
-      alt={alt}
+      src={custom ?? "/Senda%20Asset.1.3.png"}
+      alt={custom ? brand.display_name || alt : alt}
       className={cn("object-contain flex-shrink-0 select-none", className)}
       decoding="async"
       loading={eager ? "eager" : "lazy"}

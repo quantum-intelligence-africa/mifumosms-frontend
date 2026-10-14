@@ -22,6 +22,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
 import { SenderIds } from "@/components/dashboard/SenderIds";
+import { useBranding } from "@/contexts/BrandingContext";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -146,6 +147,9 @@ const Dashboard = () => {
   const { t } = useLanguage();
 
   const showSms = hasSmsAccess(user);
+  // White-label orgs may hide supported dashboard widgets; stock branding shows all.
+  const brand = useBranding();
+  const widgetOn = (key: string) => !(brand.branded && brand.widgets?.[key] === false);
   const showIvr = hasIvrAccess(user);
   const voiceStats = useVoiceDashboardStats(showIvr);
 
@@ -277,24 +281,30 @@ const Dashboard = () => {
                     <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
 
                     {/* Desktop: full metrics grid (4 cards). */}
+                    {widgetOn("metrics") && (
                     <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-2.5 overflow-x-hidden">
                       {metricCards.map((card) => <Metric key={card.title} {...card} />)}
                     </div>
+                    )}
 
                     {/* Mobile: remaining 2 metric cards below the hero. */}
+                    {widgetOn("metrics") && (
                     <div className="md:hidden grid grid-cols-2 gap-2 overflow-x-hidden">
                       {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
+                    )}
 
                     {/* Middle Section: Quick Actions + Performance. Performance
                         (message volume / delivery rate) is an SMS concept —
                         an IVR-only account gets Quick Actions at full width
                         instead of an empty/irrelevant messaging chart. */}
                     <div className={`grid grid-cols-1 ${showSms ? "lg:grid-cols-3" : ""} gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden`}>
+                      {widgetOn("quick_actions") && (
                       <div className={`${showSms ? "lg:col-span-1" : ""} h-full min-w-0`}>
                         <QuickActions />
                       </div>
-                      {showSms && (
+                      )}
+                      {showSms && widgetOn("performance") && (
                         <div className="lg:col-span-2 h-full min-w-0">
                           <Card>
                             <PerformanceOverview performance={performanceOverview} />
@@ -307,10 +317,12 @@ const Dashboard = () => {
                         messaging concepts (message activity feed, campaigns). */}
                     {showSms && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden">
-                        <ActivityFeed />
+                        {widgetOn("activity_feed") && <ActivityFeed />}
+                        {widgetOn("recent_campaigns") && (
                         <Card>
                           <RecentCampaigns campaigns={recentCampaigns || []} />
                         </Card>
+                        )}
                       </div>
                     )}
 

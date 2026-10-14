@@ -2037,6 +2037,55 @@ class ApiClient {
     });
   }
 
+  // ── White-label branding & domains (owner/admin of the organization) ──
+  async getBrandingState(tenantId: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/branding/`);
+  }
+  async updateBranding(tenantId: string, body: Partial<BrandingConfig>): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/branding/`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+  async uploadBrandingAsset(tenantId: string, kind: 'logo' | 'favicon', file: File): Promise<ApiResponse<BrandingState>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<BrandingState>(`/tenants/${tenantId}/branding/assets/${kind}/`, {
+      method: 'POST',
+      headers: {}, // Don't set Content-Type for FormData
+      body: formData,
+    });
+  }
+  async publishBranding(tenantId: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/branding/publish/`, { method: 'POST' });
+  }
+  async resetBranding(tenantId: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/branding/reset/`, { method: 'POST' });
+  }
+  async setSubdomain(tenantId: string, subdomain: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/domains/subdomain/`, { method: 'POST', body: JSON.stringify({ subdomain }) });
+  }
+  async addCustomDomain(tenantId: string, domain: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/domains/custom/`, { method: 'POST', body: JSON.stringify({ domain }) });
+  }
+  async verifyCustomDomain(tenantId: string, domainId: string): Promise<ApiResponse<BrandingState & { verification: { verified: boolean; message: string } }>> {
+    return this.request(`/tenants/${tenantId}/domains/${domainId}/verify/`, { method: 'POST' });
+  }
+  async removeDomain(tenantId: string, domainId: string): Promise<ApiResponse<BrandingState>> {
+    return this.request<BrandingState>(`/tenants/${tenantId}/domains/${domainId}/remove/`, { method: 'POST' });
+  }
+  /** Public (no login): branding for the host the visitor is on. */
+  async getPublicBranding(host: string): Promise<PublicBranding> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/tenants/branding/public/?host=${encodeURIComponent(host)}`);
+      return res.ok ? await res.json() : { branded: false };
+    } catch {
+      return { branded: false };
+    }
+  }
+  /** Signed-in user's own organization branding. */
+  async getCurrentBranding(): Promise<PublicBranding> {
+    const res = await this.request<PublicBranding>('/tenants/branding/current/');
+    return res.success && res.data ? res.data : { branded: false };
+  }
+
   // Buying a plan with mobile money, and the invoices that come with it
   async quoteCallCenterPlan(plan: string): Promise<ApiResponse<unknown>> {
     return this.request('/billing/call-center/checkout/quote/', { method: 'POST', body: JSON.stringify({ plan }) });
@@ -5688,3 +5737,37 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
+
+
+// ── White-label types ──
+export interface BrandingConfig {
+  display_name: string;
+  workspace_name: string;
+  logo_url: string;
+  favicon_url: string;
+  colors: { primary?: string; accent?: string; sidebar?: string };
+  theme: 'light' | 'dark' | 'system';
+  sidebar_style: 'default' | 'compact';
+  widgets: Record<string, boolean>;
+}
+
+export interface BrandingDomain {
+  id: string;
+  domain: string;
+  kind: 'subdomain' | 'custom';
+  verified: boolean;
+  last_check_error?: string;
+  dns?: { txt_host: string; txt_value: string };
+}
+
+export interface BrandingState {
+  features: { white_label: boolean; custom_subdomain: boolean; custom_domain: boolean };
+  draft: BrandingConfig;
+  published: BrandingConfig;
+  is_published: boolean;
+  published_at: string | null;
+  base_domain: string;
+  domains: BrandingDomain[];
+}
+
+export type PublicBranding = { branded: false } | ({ branded: true } & BrandingConfig);

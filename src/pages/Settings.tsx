@@ -44,6 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarPicker } from "@/components/settings/AvatarPicker";
 import { OrganizationNameCard } from "@/components/settings/OrganizationNameCard";
+import { BrandingDomainsCard } from "@/components/settings/BrandingDomainsCard";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -1342,6 +1343,7 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <OrganizationNameCard />
+            <BrandingDomainsCard />
             <Card className="glass border-0">
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
