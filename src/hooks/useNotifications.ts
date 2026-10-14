@@ -254,6 +254,8 @@ export const useNotifications = () => {
     fetchRecentNotifications();
 
     const interval = setInterval(() => {
+      // A background tab has nobody to show the result to: skip the request (saves server load).
+      if (document.hidden) return;
       // Use requestIdleCallback to avoid blocking main thread
       if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {

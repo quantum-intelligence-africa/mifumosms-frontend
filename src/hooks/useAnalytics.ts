@@ -42,6 +42,7 @@ export const useAnalytics = () => {
     // Set up polling for real-time updates every 60 seconds (increased from 30s to reduce load)
     // Use requestIdleCallback to avoid blocking main thread during heavy computations
     const interval = setInterval(() => {
+      if (document.hidden) return; // nobody is looking: skip the request
       if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
           fetchAnalytics();
