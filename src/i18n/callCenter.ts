@@ -470,6 +470,7 @@ export const ccEn = {
   "cc.nav.teams": "Teams",
   "cc.nav.agents": "Agents",
   "cc.nav.missed": "Missed calls",
+  "cc.nav.analytics": "Analytics",
   "cc.nav.history": "Call history",
   "cc.ivr.route_to": "Send callers to",
   "cc.ivr.route_number": "A phone number",

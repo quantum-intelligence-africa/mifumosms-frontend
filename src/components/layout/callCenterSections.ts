@@ -34,6 +34,8 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
       labelKey: "nav.calls",
       icon: PhoneCall,
       tabs: [
+        // Analytics: supervisors and above who already have call-center access (the server checks again).
+        ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.analytics", href: "/call-center/analytics" }] : []),
         ...(cc ? [{ labelKey: "cc.nav.history", href: "/call-center/history" }] : []),
         ...(ivr ? [{ labelKey: "cc.nav.call_log", href: "/voice/calls" }] : []),
         ...(ivr ? [{ labelKey: "nav.recordings", href: "/voice/recordings" }] : []),

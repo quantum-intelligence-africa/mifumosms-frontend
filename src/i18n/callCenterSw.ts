@@ -451,6 +451,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.nav.teams": "Timu",
   "cc.nav.agents": "Wahudumu",
   "cc.nav.missed": "Simu zilizokosekana",
+  "cc.nav.analytics": "Takwimu",
   "cc.nav.history": "Historia ya simu",
   "cc.ivr.route_to": "Peleka wapigaji kwa",
   "cc.ivr.route_number": "Namba ya simu",
