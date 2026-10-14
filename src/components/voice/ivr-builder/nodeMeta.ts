@@ -303,7 +303,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         type: "textarea",
         placeholder: "Samahani, mhudumu hakupokea simu.",
         helpText:
-          "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Tafadhali tuachie ujumbe wako baada ya mlio, una sekunde 30\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
+          "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Tafadhali tuachie ujumbe wako baada ya mlio, una sekunde 30 za kuongea\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
       },
       {
         key: "voicemail_thanks",
@@ -317,7 +317,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         label: "Sekunde za mteja kuacha ujumbe",
         type: "number",
         defaultValue: 30,
-        helpText: "Baada ya muda huu rekodi inakoma yenyewe na simu inafungwa. Kati ya sekunde 10 na 120.",
+        helpText: "Muda mteja anaoongea baada ya mlio (ujumbe wako hauhesabiwi). Baada yake rekodi inakoma yenyewe na simu inafungwa. Kati ya sekunde 10 na 120.",
       },
       {
         key: "voicemail_silence_timeout_seconds",
