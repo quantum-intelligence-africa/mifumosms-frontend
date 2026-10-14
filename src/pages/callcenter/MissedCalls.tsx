@@ -17,7 +17,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { PlayButton, RecordingPlayerBar, formatClock, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
-import { callCenterApi, describeError, type MissedCall, type MissedCallStatus, type Team, type Voicemail } from "@/services/callCenterApi";
+import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { callCenterApi, describeError, type AnalysisJobFull, type MissedCall, type MissedCallStatus, type Team, type Voicemail } from "@/services/callCenterApi";
 
 const STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "resolved", "unresolved"];
 const OPEN_STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back"];
@@ -229,7 +230,7 @@ export default function MissedCalls() {
                     {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={7}>
-                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} />
+                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void load()} />
                         </TableCell>
                       </TableRow>
                     )}
@@ -247,7 +248,7 @@ export default function MissedCalls() {
 }
 
 /** What the caller said (audio, plus the AI's transcript and summary) — separate from the agents' own notes. */
-function VoicemailPanel({ row, vm, playing, current, onListen }: { row: MissedCall; vm: Voicemail; playing: boolean; current: boolean; onListen: () => void }) {
+function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChanged }: { row: MissedCall; vm: Voicemail; playing: boolean; current: boolean; onListen: () => void; canReview: boolean; onChanged: () => void }) {
   const { t } = useLanguage();
   const [showTranscript, setShowTranscript] = useState(false);
   const ai = vm.analysis;
@@ -264,10 +265,9 @@ function VoicemailPanel({ row, vm, playing, current, onListen }: { row: MissedCa
       </div>
 
       <div className="rounded-lg border border-border bg-background p-3">
-        <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" />{t("cc.missed.ai_summary")}
-        </p>
-        {result ? (
+        {ai?.result && "analysis_status" in ai.result ? (
+          <CallAnalysisPanel job={ai as AnalysisJobFull} canReview={canReview} onChanged={onChanged} />
+        ) : result ? (
           <div className="space-y-2">
             <p>{result.summary || "—"}</p>
             <div className="flex flex-wrap gap-1.5">

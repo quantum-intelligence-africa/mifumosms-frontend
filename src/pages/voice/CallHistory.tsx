@@ -25,6 +25,10 @@ import {
   useRecordingPlayer,
 } from "@/components/voice/RecordingPlayerBar";
 import { cn } from "@/lib/utils";
+import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { useAuth } from "@/contexts/AuthContext";
+import { isCallCenterSupervisor } from "@/utils/roleUtils";
+import type { AnalysisJobFull } from "@/services/callCenterApi";
 
 interface PaginatedResponse<T> {
   count: number;
@@ -72,19 +76,7 @@ interface CallSummary {
   analysis: RowAnalysis | null;
 }
 
-interface AnalysisResult {
-  transcript: string;
-  sentiment: string;
-  detected_intent: string;
-  summary: string;
-}
-
-interface AnalysisJob {
-  id: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  error_message: string;
-  result: AnalysisResult | null;
-}
+type AnalysisJob = AnalysisJobFull;
 
 interface CallRecordingItem {
   id: string;
@@ -165,6 +157,7 @@ const outcomeLabel = (call: CallSummary, t: T) => {
 export default function CallHistory() {
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
   const [calls, setCalls] = useState<CallSummary[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -290,6 +283,11 @@ export default function CallHistory() {
       if (res.success && res.data) setDetails((prev) => ({ ...prev, [callId]: res.data as CallDetail }));
       setDetailLoading(null);
     }
+  };
+
+  const refreshDetail = async (callId: string) => {
+    const res = await voiceApi.get<CallDetail>(`/voice/calls/${callId}/`);
+    if (res.success && res.data) setDetails((prev) => ({ ...prev, [callId]: res.data as CallDetail }));
   };
 
   const playCall = (call: CallSummary, rec: { id: string; storage_path: string; duration_seconds: number | null }) => {
@@ -611,31 +609,13 @@ export default function CallHistory() {
                                           <p className="pt-2 text-xs text-muted-foreground">{t("voice.calls.no_recording_for_call")}</p>
                                         )}
 
-                                        {detail.recordings[0]?.analysis?.result && (
-                                          <div className="space-y-2 rounded-md border border-border bg-background p-3">
-                                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                              Uchambuzi wa ujumbe
-                                            </p>
-                                            <div className="space-y-1.5 text-sm">
-                                              <div>
-                                                <span className="font-medium text-foreground">Mteja alisema: </span>
-                                                <span className="text-foreground/80">
-                                                  {detail.recordings[0].analysis.result.transcript || "Hakuna maneno yaliyotambuliwa."}
-                                                </span>
-                                              </div>
-                                              <div>
-                                                <span className="font-medium text-foreground">Anachohitaji: </span>
-                                                <span className="text-foreground/80">
-                                                  {detail.recordings[0].analysis.result.detected_intent || "Hitaji halijaweza kutambuliwa."}
-                                                </span>
-                                              </div>
-                                              <div>
-                                                <span className="font-medium text-foreground">Muhtasari: </span>
-                                                <span className="text-foreground/80">
-                                                  {detail.recordings[0].analysis.result.summary || "Muhtasari haupatikani."}
-                                                </span>
-                                              </div>
-                                            </div>
+                                        {detail.recordings[0]?.analysis && (
+                                          <div className="rounded-md border border-border bg-background p-3">
+                                            <CallAnalysisPanel
+                                              job={detail.recordings[0].analysis}
+                                              canReview={isCallCenterSupervisor(user)}
+                                              onChanged={() => void refreshDetail(call.id)}
+                                            />
                                           </div>
                                         )}
 
@@ -666,14 +646,7 @@ export default function CallHistory() {
                                           </div>
                                         )}
 
-                                        {detail.recordings.some((r) => r.analysis?.result?.transcript) && (
-                                          <details className="pt-1">
-                                            <summary className="cursor-pointer text-xs font-medium text-primary">{t("voice.calls.transcript")}</summary>
-                                            <p className="mt-1 whitespace-pre-wrap rounded-md bg-background p-2 text-xs text-foreground/80">
-                                              {detail.recordings.find((r) => r.analysis?.result?.transcript)?.analysis?.result?.transcript}
-                                            </p>
-                                          </details>
-                                        )}
+                                        
                                       </div>
 
                                       <div className="space-y-1">

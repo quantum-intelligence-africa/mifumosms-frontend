@@ -219,6 +219,59 @@ export interface MissedCall {
   voicemail: Voicemail | null;
 }
 
+/** One piece of the machine transcript. Never edited in place: corrections are separate reviews. */
+export interface AnalysisSegment {
+  text: string;
+  start?: number;
+  end?: number;
+  speaker?: string | null;
+  uncertain?: boolean;
+  edited?: boolean;
+}
+
+interface Evidenced { evidence: number[]; quote: string }
+
+/** The validated structured analysis. Every claim cites transcript segments (``evidence``). */
+export interface AnalysisBody {
+  language: string;
+  call_purpose: string;
+  customer_issue: string;
+  summary: string;
+  key_findings: Array<Evidenced & { text: string }>;
+  actions_taken: Array<Evidenced & { text: string; actor: string }>;
+  decisions: Array<Evidenced & { text: string }>;
+  action_items: Array<Evidenced & { task: string; owner: string | null; deadline: string | null }>;
+  resolution_status: "resolved" | "partially_resolved" | "unresolved" | "unclear";
+  sentiment: "positive" | "neutral" | "negative" | "unknown";
+  follow_up_required: { required: boolean | null; reason: string | null };
+  uncertainties: string[];
+  transcript_quality: string;
+}
+
+export interface AnalysisResultFull {
+  transcript: string;
+  sentiment: string;
+  detected_intent: string;
+  summary: string;
+  segments: AnalysisSegment[];
+  transcription_quality: { status: "ok" | "review" | "failed"; reasons: Array<{ code: string; message: string; severity: string }> } | Record<string, never>;
+  analysis: AnalysisBody | null;
+  analysis_status: "legacy" | "ok" | "invalid" | "skipped_low_quality" | "unavailable" | "not_run";
+  analysis_problems: string[];
+  asr_model: string;
+  llm_model: string;
+  pipeline_version: string;
+  review: { id: string; reviewer_name: string; created_at: string; note: string } | null;
+  effective: { segments: AnalysisSegment[]; analysis: AnalysisBody | null; reviewed: boolean };
+}
+
+export interface AnalysisJobFull {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  error_message: string;
+  result: AnalysisResultFull | null;
+}
+
 export interface VoicemailAnalysis {
   id: string;
   status: "pending" | "processing" | "completed" | "failed";
@@ -232,7 +285,7 @@ export interface Voicemail {
   storage_path: string;
   duration_seconds: number | null;
   created_at: string;
-  analysis: VoicemailAnalysis | null;
+  analysis: AnalysisJobFull | null;
 }
 
 export interface CallNote {
