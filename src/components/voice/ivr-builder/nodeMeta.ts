@@ -303,7 +303,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         type: "textarea",
         placeholder: "Samahani, mhudumu hakupokea simu.",
         helpText:
-          "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Una sekunde 30 za kueleza shida yako baada ya mlio\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
+          "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Tafadhali tuachie ujumbe wako baada ya mlio, una sekunde 30\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
       },
       {
         key: "voicemail_max_seconds",
