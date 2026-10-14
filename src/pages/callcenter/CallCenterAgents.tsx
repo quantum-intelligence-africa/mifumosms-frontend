@@ -220,6 +220,12 @@ export default function CallCenterAgents() {
     setSaving(false);
     const name = `${draft.first_name} ${draft.last_name}`.trim();
 
+    if (result.ok === true && result.invited) {
+      setOpen(false);
+      toast({ title: t("cc.agents.invited_existing"), description: result.message || draft.email.trim() });
+      void load();
+      return;
+    }
     if (result.ok === true) {
       setOpen(false);
       setCredentials({ name, email: draft.email.trim().toLowerCase(), password: result.temporaryPassword });

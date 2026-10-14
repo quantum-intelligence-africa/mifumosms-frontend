@@ -16,6 +16,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.role.agent": "Mhudumu",
   "cc.mode.browser": "Simu ya kivinjari",
   "cc.mode.handset": "Simu ya mkononi",
+  "cc.agents.invited_existing": "Mwaliko umetumwa — barua pepe hii tayari ina akaunti",
   "cc.mode.both": "Kivinjari na simu (zote zinalia)",
   "cc.state.ringing": "Inalia",
   "cc.state.on_call": "Kwenye simu",

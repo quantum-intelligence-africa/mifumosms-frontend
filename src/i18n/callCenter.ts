@@ -23,6 +23,7 @@ export const ccEn = {
   "cc.role.agent": "Agent",
   "cc.mode.browser": "Browser softphone",
   "cc.mode.handset": "Phone handset",
+  "cc.agents.invited_existing": "Invitation sent — this email already has an account",
   "cc.mode.both": "Browser and phone (rings both)",
   "cc.state.ringing": "Ringing",
   "cc.state.on_call": "On a call",

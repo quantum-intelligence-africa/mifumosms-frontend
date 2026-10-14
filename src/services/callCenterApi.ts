@@ -625,7 +625,9 @@ export interface ProvisionAgentInput {
 }
 
 export type ProvisionAgentResult =
-  | { ok: true; agent: CCAgent; temporaryPassword: string }
+  | { ok: true; agent: CCAgent; temporaryPassword: string; invited?: false }
+  /** The email already had an account: they were invited and can be made an agent once they accept. */
+  | { ok: true; invited: true; agent: null; temporaryPassword: ""; message: string }
   | {
       ok: false;
       /** "account" — nothing was created. "profile" — the login exists but has no agent profile yet. */
@@ -636,7 +638,7 @@ export type ProvisionAgentResult =
     };
 
 export async function provisionAgent(input: ProvisionAgentInput): Promise<ProvisionAgentResult> {
-  const account: ApiResponse<{ user_id: number; temporary_password: string }> = await apiClient.createAgentAccount(
+  const account: ApiResponse<{ user_id: number; temporary_password: string; existing_user?: boolean; detail?: string }> = await apiClient.createAgentAccount(
     input.tenantId,
     {
       email: input.email.trim(),
@@ -649,6 +651,9 @@ export async function provisionAgent(input: ProvisionAgentInput): Promise<Provis
   );
   if (!account.success || !account.data) {
     return { ok: false, failedAt: "account", error: describeError(account) };
+  }
+  if (account.data.existing_user) {
+    return { ok: true, invited: true, agent: null, temporaryPassword: "", message: account.data.detail || "" };
   }
   const { user_id, temporary_password } = account.data;
   const profile = await attachAgentProfile(user_id, input);

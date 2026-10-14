@@ -2035,6 +2035,9 @@ class ApiClient {
     role: string;
     temporary_password: string;
     must_change_password: boolean;
+    /** True when the email already had an account: an invitation was sent instead of a new login. */
+    existing_user?: boolean;
+    detail?: string;
   }>> {
     return this.request(`/tenants/${tenantId}/call-center/agents/`, {
       method: 'POST',

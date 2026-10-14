@@ -371,6 +371,12 @@ function AgentStep({ agents, teams, tenantId, onCreated }: { agents: CCAgent[]; 
       phone_number: form.phone_number, audio_mode: form.audio_mode, team_ids: form.team_id ? [form.team_id] : [],
     });
     setSaving(false);
+    if (result.ok === true && result.invited) {
+      toast({ title: t("cc.agents.invited_existing"), description: result.message || form.email.trim() });
+      setForm((f) => ({ ...f, first_name: "", last_name: "", email: "", phone_number: "" }));
+      onCreated();
+      return;
+    }
     if (result.ok === true) {
       setCreds({ email: form.email.trim().toLowerCase(), password: result.temporaryPassword });
       setForm((f) => ({ ...f, first_name: "", last_name: "", email: "", phone_number: "" }));
