@@ -1,5 +1,5 @@
-import React, { useContext } from 'react';
-import { Navigate, useLocation, Link } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useComingSoonFeatures } from '@/hooks/useComingSoonFeatures';
@@ -20,6 +20,41 @@ interface ProtectedRouteProps {
   requireCallCenter?: 'member' | 'supervisor' | 'admin';
   comingSoonKey?: string;
 }
+
+const REDIRECT_DELAY_MS = 3000;
+
+/** "No access" screen that sends the user back to the dashboard after a short delay. */
+const SmsAccessDenied: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const timer = setTimeout(() => navigate('/dashboard', { replace: true }), REDIRECT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [navigate]);
+
+  return (
+    <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
+      <div className="text-center max-w-md mx-auto px-4">
+        <div className="mb-4">
+          <svg className="w-16 h-16 mx-auto text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">SMS Access Required</h2>
+        <p className="text-text-subtle mb-4">
+          You don't have access to SMS/messaging. Ask a workspace admin
+          or SENDA support to enable it for your account.
+        </p>
+        <p className="text-sm text-text-subtle mb-6">
+          Returning to the dashboard in a few seconds…
+        </p>
+        <Link to="/dashboard" replace className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+          Back to Dashboard
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePartner = false, requireFeature, requireIvrAccess = false, requireSmsAccess = false, requireCallCenter, comingSoonKey }) => {
   const authContext = useContext(AuthContext);
@@ -174,22 +209,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
 
   // Check per-user SMS access grant - admin-controlled, independent of plan/billing
   if (requireSmsAccess && !hasSmsAccess(authContext.user)) {
-    return (
-      <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="mb-4">
-            <svg className="w-16 h-16 mx-auto text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">SMS Access Required</h2>
-          <p className="text-text-subtle mb-6">
-            You don't have access to SMS/messaging. Ask a workspace admin
-            or SENDA support to enable it for your account.
-          </p>
-        </div>
-      </div>
-    );
+    return <SmsAccessDenied />;
   }
 
   // Check feature access if required - wait for the features query before deciding
