@@ -306,6 +306,13 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
           "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Tafadhali tuachie ujumbe wako baada ya mlio, una sekunde 30\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
       },
       {
+        key: "voicemail_thanks",
+        label: "Ujumbe wa shukrani baada ya mteja kuacha ujumbe",
+        type: "textarea",
+        placeholder: "Asante kwa ujumbe wako. Tutawasiliana nawe hivi karibuni. Kwaheri.",
+        helpText: "Husomwa kwa sauti ile ile ya simu hii mteja anapomaliza kuacha ujumbe, kisha simu inafungwa. Acha tupu kutumia ujumbe huu wa kawaida.",
+      },
+      {
         key: "voicemail_max_seconds",
         label: "Sekunde za mteja kuacha ujumbe",
         type: "number",
