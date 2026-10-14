@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { apiClient, Contact, CreateContactRequest, ImportContactsRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,7 +14,10 @@ export const useContacts = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPreviousPage, setHasPreviousPage] = useState(false);
 
-  const [pageSize] = useState(20); // Show 20 contacts per page for better performance
+  const [pageSize, setPageSizeState] = useState(20);
+  // fetchContacts and the page callbacks are memoized with narrow deps, so they
+  // read the current size from a ref instead of a stale closure.
+  const pageSizeRef = useRef(20);
   const { toast } = useToast();
 
 
@@ -43,7 +46,7 @@ export const useContacts = () => {
       const response = await apiClient.getContacts({
         ...params,
         page: params?.page || currentPage,
-        page_size: params?.page_size || pageSize
+        page_size: params?.page_size || pageSizeRef.current
       });
 
       // Handle response
@@ -407,6 +410,15 @@ export const useContacts = () => {
     fetchContacts({ page });
   }, []);
 
+  // Changing the page size always returns to page 1; callers pass the active
+  // search/tag filters so the new size applies to the same result set.
+  const changePageSize = useCallback((size: number, filters?: { search?: string; tags?: string[] }) => {
+    pageSizeRef.current = size;
+    setPageSizeState(size);
+    setCurrentPage(1);
+    return fetchContacts({ ...filters, page: 1, page_size: size });
+  }, [fetchContacts]);
+
   useEffect(() => {
     fetchContacts();
 
@@ -427,6 +439,7 @@ export const useContacts = () => {
     hasPreviousPage,
 
     pageSize,
+    changePageSize,
     fetchContacts,
 
     createContact,

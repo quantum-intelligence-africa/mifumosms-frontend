@@ -248,6 +248,7 @@ const predefinedTags = [
     hasNextPage,
     hasPreviousPage,
     pageSize,
+    changePageSize,
     fetchContacts,
     createContact,
     updateContact,
@@ -353,6 +354,10 @@ const timeoutId = setTimeout(() => {
 return () => clearTimeout(timeoutId);
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [searchQuery, isMobile]);
+
+// Backend caps contact pages at 1000 (ContactPagination); rendering more rows
+// than that in the table makes the browser the bottleneck, not the API.
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200, 500, 1000];
 
 // Set lookup keeps per-row checkbox state O(1) instead of scanning the id array.
 const selectedIdSet = useMemo(() => new Set(selectedContacts), [selectedContacts]);
@@ -2057,7 +2062,7 @@ Delete
 <div className={"overflow-auto h-full scrollbar-premium"}>
 {(isLoading || (isMobile && isLoadingMobileAllContacts)) ? (
 <div className="p-4 lg:p-6 space-y-4">
-{Array.from({ length: pageSize }).map((_, i) => (
+{Array.from({ length: Math.min(pageSize, 20) }).map((_, i) => (
 <Skeleton key={i} className="h-12 lg:h-16 w-full" />
 ))}
       </div>
@@ -2216,11 +2221,30 @@ Delete Contact
 </Card>
 
 {/* Pagination Controls */}
-{totalCount > pageSize && (
+{totalCount > 20 && (
   <div className="hidden sm:block mt-4 rounded-lg border border-border-subtle bg-muted/20 p-2.5 sm:p-0 sm:border-0 sm:bg-transparent sm:rounded-none">
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-      <div className="text-xs sm:text-sm text-text-subtle text-center sm:text-left">
-        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
+      <div className="flex items-center gap-3 text-xs sm:text-sm text-text-subtle text-center sm:text-left">
+        <span>
+          Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span>Per page</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => changePageSize(Number(v), currentFilter)}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="h-8 w-[84px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map(n => (
+                <SelectItem key={n} value={String(n)}>{n.toLocaleString()}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Mobile page indicator */}
