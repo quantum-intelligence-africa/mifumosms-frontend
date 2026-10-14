@@ -12274,6 +12274,33 @@ function VoiceNumbersTab() {
   const [error, setError]     = useState(null);
   const [search, setSearch]   = useState('');
   const [busyId, setBusyId]   = useState(null);
+  const [pool, setPool]       = useState([]);          // provider entries (to connect a typed number to)
+  const [pick, setPick]       = useState({});          // account id -> chosen provider entry id
+
+  const loadPool = useCallback(() => {
+    voiceAdminFetch('/voice/provider-credentials/', {}, onLogout).then(res => {
+      if (res.success) setPool(Array.isArray(res.data) ? res.data : (res.data?.results || []));
+    });
+  }, [onLogout]);
+  useEffect(() => { loadPool(); }, [loadPool]);
+
+  const connect = (row) => {
+    const credentialId = pick[row.id];
+    if (!credentialId) return;
+    setBusyId(row.id);
+    voiceAdminFetch(`/voice/accounts/admin/${row.id}/connect/`, { method: 'POST', body: JSON.stringify({ credential_id: credentialId }) }, onLogout)
+      .then(res => {
+        if (!res.success) { showToast?.(res.error || 'Could not connect.', 'error'); return; }
+        setRows(prev => prev.map(r => r.id === row.id ? res.data : r));
+        loadPool();
+        showToast?.(`${row.phone_number || 'Number'} connected. Paste its callback URL into the provider console.`, 'success');
+      })
+      .finally(() => setBusyId(null));
+  };
+
+  const copy = (text) => {
+    navigator.clipboard?.writeText(text).then(() => showToast?.('Copied.', 'success'), () => showToast?.('Could not copy.', 'error'));
+  };
 
   const fetchAll = useCallback(() => {
     setLoading(true); setError(null);
@@ -12343,16 +12370,18 @@ function VoiceNumbersTab() {
               <th style={th}>Phone number</th>
               <th style={th}>Active flow</th>
               <th style={th}>Status</th>
+              <th style={th}>Provider connection</th>
               <th style={th}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+              <tr><td colSpan={7} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
+              <tr><td colSpan={7} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
             ) : filtered.map(row => {
               const assigned = !!row.provider_credential_detail;
+              const free = pool.filter(c => c.is_active && !c.in_use && (!c.phone_number || !row.phone_number || c.phone_number === row.phone_number));
               return (
                 <tr key={row.id}>
                   <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.tenant_name || '—'}</td>
@@ -12364,6 +12393,30 @@ function VoiceNumbersTab() {
                       fontSize:11,fontWeight:600,background:assigned?'#ecfdf5':'#f1f5f9',color:assigned?'#059669':'#64748b'}}>
                       <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{assigned ? 'Assigned' : 'Unassigned'}
                     </span>
+                  </td>
+                  <td style={{...td,minWidth:230}}>
+                    {assigned ? (
+                      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                        <span style={{fontSize:11,color:'#64748b'}}>{row.provider_credential_detail.name}</span>
+                        {row.webhook_url && (
+                          <button className="senda-btn senda-btn-sm" onClick={() => copy(row.webhook_url)} title={row.webhook_url}
+                            style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11}}>Copy callback URL</button>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                        <span style={{fontSize:11,color:'#b45309'}}>Not connected — calls will not ring</span>
+                        <div style={{display:'flex',gap:4}}>
+                          <select className="senda-input" value={pick[row.id] || ''} onChange={e => setPick(p => ({ ...p, [row.id]: e.target.value }))}
+                            style={{height:30,fontSize:11,flex:1}}>
+                            <option value="">{free.length ? 'Choose provider entry…' : 'No free entry — add one in Voice Providers'}</option>
+                            {free.map(c => <option key={c.id} value={c.id}>{c.phone_number || c.name}</option>)}
+                          </select>
+                          <button className="senda-btn senda-btn-sm" disabled={!pick[row.id] || busyId === row.id} onClick={() => connect(row)}
+                            style={{background:BRAND,color:'#fff',border:'none'}}>Connect</button>
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td style={td}>
                     {assigned && (
@@ -12996,13 +13049,28 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
   const [creds, setCreds]               = useState({});
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState(null);
+  // Numbers customers can pick: one per line when adding; a single number when editing.
+  const [numbers, setNumbers]           = useState('');
+  const [phone, setPhone]               = useState(row?.phone_number || '');
+  // Africa's Talking: reuse the login already on the server (AT_USERNAME / AT_API_KEY) instead of retyping it.
+  const [useServerLogin, setUseServerLogin] = useState(false);
 
   const fields = CREDENTIAL_FIELDS[providerType] || [];
   const setCred = (key, value) => setCreds(prev => ({ ...prev, [key]: value }));
-  const canSubmit = name.trim() && !saving;
+  const serverLoginOk = isNew && providerType === 'africas_talking' && useServerLogin;
+  const canSubmit = name.trim() && !saving && (!serverLoginOk || numbers.trim());
 
   const save = async () => {
     setSaving(true); setError(null);
+
+    if (serverLoginOk) {
+      const res = await voiceAdminFetch('/voice/provider-credentials/import-env/',
+        { method: 'POST', body: JSON.stringify({ name: name.trim(), phone_numbers: numbers }) }, onLogout);
+      setSaving(false);
+      if (res.success) { showToast?.('Numbers added using the server login.', 'success'); onSaved(); }
+      else setError(res.error || 'Failed to save.');
+      return;
+    }
 
     let credentials;
     if (providerType === 'generic_sip') {
@@ -13020,10 +13088,15 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
     // Editing: only send credentials the admin actually typed (the backend merges
     // rather than replaces on update, so blank fields keep their saved value).
     if (isNew || Object.keys(credentials).length > 0) payload.credentials = credentials;
+    if (!isNew) payload.phone_number = phone.trim();
 
-    const res = isNew
-      ? await voiceAdminFetch('/voice/provider-credentials/', { method: 'POST', body: JSON.stringify(payload) }, onLogout)
-      : await voiceAdminFetch(`/voice/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
+    // Adding with numbers: one entry per number, all on this login (customers pick from these).
+    const res = isNew && numbers.trim()
+      ? await voiceAdminFetch('/voice/provider-credentials/bulk/',
+          { method: 'POST', body: JSON.stringify({ name: name.trim(), provider_type: providerType, credentials, phone_numbers: numbers, is_active: isActive }) }, onLogout)
+      : isNew
+        ? await voiceAdminFetch('/voice/provider-credentials/', { method: 'POST', body: JSON.stringify(payload) }, onLogout)
+        : await voiceAdminFetch(`/voice/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
 
     setSaving(false);
     if (res.success) { showToast?.('Voice provider saved.', 'success'); onSaved(); }
@@ -13062,7 +13135,14 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
             </div>
           )}
 
-          {fields.map(f => (
+          {isNew && providerType === 'africas_talking' && (
+            <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,color:'#475569',cursor:'pointer',background:'#f8fafc',border:'1px solid #eef2f7',borderRadius:10,padding:'10px 12px'}}>
+              <input type="checkbox" checked={useServerLogin} onChange={e=>setUseServerLogin(e.target.checked)} style={{marginTop:2}}/>
+              <span>Use the login already set on the server (AT_USERNAME / AT_API_KEY) — no need to type the key here.</span>
+            </label>
+          )}
+
+          {!serverLoginOk && fields.map(f => (
             <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4}}>
               <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>
                 {f.label}{f.required && isNew ? <span style={{color:RED}}> *</span> : ''}
@@ -13071,6 +13151,23 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
                 placeholder={isNew ? '' : '••••••••'} className="senda-input" style={{height:38,fontSize:13}}/>
             </div>
           ))}
+
+          {isNew ? (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone numbers customers can pick{serverLoginOk ? <span style={{color:RED}}> *</span> : ''}</label>
+              <textarea rows={3} value={numbers} onChange={e=>setNumbers(e.target.value)}
+                placeholder={'One per line, with country code\n+255699920006\n+255699920007'}
+                className="senda-input" style={{fontSize:13,fontFamily:'monospace',resize:'vertical',padding:'8px 10px'}}/>
+              <span style={{fontSize:11,color:'#94a3b8'}}>These must be numbers you own on this provider account. Each appears in the customer's "Add a new number" list.</span>
+            </div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone number</label>
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+255699920006"
+                className="senda-input" style={{height:38,fontSize:13,fontFamily:'monospace'}}/>
+              {row.assigned_to && <span style={{fontSize:11,color:'#94a3b8'}}>In use by {row.assigned_to}. Changing it changes the number that organization sees.</span>}
+            </div>
+          )}
 
           {providerType === 'africas_talking' && (
             <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
@@ -13163,6 +13260,8 @@ function VoiceProvidersTab() {
             <tr style={{background:'#f8fafc',textAlign:'left'}}>
               <th style={th}>Name</th>
               <th style={th}>Type</th>
+              <th style={th}>Phone number</th>
+              <th style={th}>Used by</th>
               <th style={th}>Configured fields</th>
               <th style={th}>Active</th>
               <th style={th}>Default</th>
@@ -13171,13 +13270,15 @@ function VoiceProvidersTab() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={6} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice providers configured yet.</td></tr>
+              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice providers configured yet.</td></tr>
             ) : rows.map(row => (
               <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
                 <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
                 <td style={td}>{PROVIDER_TYPES.find(p=>p.value===row.provider_type)?.label || row.provider_type}</td>
+                <td style={{...td,fontFamily:'monospace',fontSize:12}}>{row.phone_number || <span style={{color:'#f59e0b'}}>No number — customers can't pick it</span>}</td>
+                <td style={{...td,fontSize:12,color:'#64748b'}}>{row.assigned_to || (row.phone_number ? 'Free' : '—')}</td>
                 <td style={td}>
                   {(row.configured_fields||[]).length === 0
                     ? <span style={{color:'#94a3b8'}}>—</span>
@@ -13221,10 +13322,24 @@ function VoiceProvidersTab() {
 // preference plus which result fields to keep (see audioanalysis.AICallAnalysisSettings).
 // Configuring one here is what makes AI analysis actually work platform-wide.
 const AI_PROVIDER_TYPES = [
-  { value: 'openai', label: 'OpenAI' },
+  { value: 'huggingface', label: 'Hugging Face (call transcription & analysis)' },
+  { value: 'openai', label: 'OpenAI-compatible (earlier method)' },
 ];
 
 const AI_CREDENTIAL_FIELDS = {
+  huggingface: [
+    { key: 'api_key',            label: 'Hugging Face token',                    required: true, secret: true, placeholder: 'hf_…' },
+    { key: 'asr_model',          label: 'Speech model',                          placeholder: 'openai/whisper-large-v3' },
+    { key: 'asr_endpoint_url',   label: 'Dedicated endpoint URL for that model (optional)', placeholder: 'https://….endpoints.huggingface.cloud' },
+    { key: 'asr_fallback_model', label: 'Second speech model, for "re-run with another model" (optional)' },
+    { key: 'llm_model',          label: 'Analysis model (leave empty for transcript only)' },
+    { key: 'llm_base_url',       label: 'Analysis base URL (optional; default Hugging Face router)' },
+    { key: 'llm_json_mode',      label: 'Analysis model supports JSON mode', type: 'checkbox' },
+    { key: 'asr_cost_per_audio_minute',          label: 'Speech cost per audio minute (optional)', type: 'number' },
+    { key: 'llm_cost_per_1k_prompt_tokens',      label: 'Analysis cost per 1,000 input tokens (optional)', type: 'number' },
+    { key: 'llm_cost_per_1k_completion_tokens',  label: 'Analysis cost per 1,000 output tokens (optional)', type: 'number' },
+    { key: 'cost_currency',      label: 'Cost currency (optional)', placeholder: 'USD' },
+  ],
   openai: [
     { key: 'api_key', label: 'API Key',                required: true, secret: true },
     { key: 'model',   label: 'Chat model (optional)',   required: false, placeholder: 'gpt-4o-mini' },
@@ -13235,7 +13350,7 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
   const { onLogout, showToast } = React.useContext(AppContext);
   const isNew = !row;
   const [name, setName]                 = useState(row?.name || '');
-  const [providerType, setProviderType] = useState(row?.provider_type || 'openai');
+  const [providerType, setProviderType] = useState(row?.provider_type || 'huggingface');
   const [isActive, setIsActive]         = useState(row ? row.is_active : true);
   const [isDefault, setIsDefault]       = useState(row?.is_default || false);
   const [creds, setCreds]               = useState({});
@@ -13250,6 +13365,9 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
     setSaving(true); setError(null);
 
     const credentials = Object.fromEntries(Object.entries(creds).filter(([, v]) => v !== '' && v !== undefined));
+    for (const f of fields) {
+      if (f.type === 'number' && credentials[f.key] !== undefined) credentials[f.key] = Number(credentials[f.key]);
+    }
     const payload = { name: name.trim(), provider_type: providerType, is_active: isActive, is_default: isDefault };
     // Editing: only send credentials the admin actually typed (the backend
     // merges rather than replaces on update, so a blank field keeps its saved value).
@@ -13296,13 +13414,19 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
             </div>
           )}
 
-          {fields.map(f => (
+          {fields.map(f => f.type === 'checkbox' ? (
+            <label key={f.key} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+              <input type="checkbox" checked={!!creds[f.key]} onChange={e=>setCred(f.key, e.target.checked)}/>
+              {f.label}
+            </label>
+          ) : (
             <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4}}>
               <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>
                 {f.label}{f.required && isNew ? <span style={{color:RED}}> *</span> : ''}
               </label>
-              <input type={f.secret ? 'password' : 'text'} value={creds[f.key] || ''} onChange={e=>setCred(f.key, e.target.value)}
-                placeholder={isNew ? (f.placeholder || '') : '••••••••'} className="senda-input" style={{height:38,fontSize:13}}/>
+              <input type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'} step={f.type === 'number' ? 'any' : undefined}
+                value={creds[f.key] ?? ''} onChange={e=>setCred(f.key, e.target.value)}
+                placeholder={isNew || !f.secret ? (f.placeholder || '') : '••••••••'} className="senda-input" style={{height:38,fontSize:13}}/>
             </div>
           ))}
 
