@@ -101,11 +101,11 @@ export default function History() {
     await loadAnalysis(row.id);
   };
 
-  const analyseNow = async () => {
+  const analyseNow = async (force = false) => {
     if (!analysisFor) return;
     setAnalysing(true);
     setAnalysisMsg(null);
-    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [analysisFor.id] });
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [analysisFor.id], force });
     setAnalysing(false);
     if (res.success) await loadAnalysis(analysisFor.id);
     else setAnalysisMsg(res.status === 403 ? t("cc.history.analysis_unavailable") : res.error || t("cc.history.load_failed"));
@@ -423,6 +423,7 @@ export default function History() {
                     <CallAnalysisPanel
                       job={job}
                       canReview={supervisor}
+                      onRerun={() => void analyseNow(true)}
                       onChanged={() => analysisFor && void loadAnalysis(analysisFor.id)}
                       onSeek={(seconds) => analysisFor && player.seek(trackFor(analysisFor, rec), seconds)}
                     />
@@ -431,7 +432,7 @@ export default function History() {
                   ) : (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">{job?.status === "failed" ? t("cc.missed.ai_failed") : t("cc.history.analysis_none")}</p>
-                      <Button size="sm" onClick={analyseNow} disabled={analysing}>
+                      <Button size="sm" onClick={() => void analyseNow()} disabled={analysing}>
                         <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("cc.history.analyze_now")}
                       </Button>
                     </div>

@@ -53,7 +53,7 @@ function Evidence({ refs, segments, onPick }: { refs: number[]; segments: Analys
 
 const tone = (status: string) => (status === "resolved" ? "default" : status === "unresolved" ? "destructive" : "secondary");
 
-export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: AnalysisJobFull; canReview: boolean; onChanged?: () => void; onSeek?: (seconds: number) => void }) {
+export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }: { job: AnalysisJobFull; canReview: boolean; onChanged?: () => void; onSeek?: (seconds: number) => void; onRerun?: () => void }) {
   const { t } = useLanguage();
   const result = job.result;
   const [showOriginal, setShowOriginal] = useState(false);
@@ -281,7 +281,12 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: 
               </div>
             </div>
           ) : (
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={startEdit}><Pencil className="h-3.5 w-3.5" />{t("cc.analysis.correct")}</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={startEdit}><Pencil className="h-3.5 w-3.5" />{t("cc.analysis.correct")}</Button>
+              {onRerun && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={onRerun}><RefreshCw className="h-3.5 w-3.5" />{t("cc.analysis.rerun")}</Button>
+              )}
+            </div>
           )}
           {models.length > 1 && (
             <div className="flex flex-wrap items-center gap-2">

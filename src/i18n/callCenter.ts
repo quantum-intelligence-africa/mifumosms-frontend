@@ -425,6 +425,7 @@ export const ccEn = {
   "cc.history.state_missed": "Missed",
   "cc.history.state_failed": "Failed",
   "cc.history.state_live": "Live",
+  "cc.analysis.rerun": "Run the analysis again",
   "cc.history.has_recording": "Recorded",
   "cc.history.listen": "Listen to the call",
   "cc.history.analysis": "Analysis",

@@ -123,7 +123,7 @@ const translations = {
     "voice.ai_settings.save_failed": "Failed to update",
     "voice.ai_settings.enabled_toast_title": "AI Call Analysis turned on",
     "voice.ai_settings.enabled_toast_desc": "AI analysis is now on for your calls.",
-    "voice.ai_settings.language_auto": "Detect automatically",
+    "voice.ai_settings.language_auto": "Detect automatically (often wrong on Swahili calls)",
     "voice.ai_settings.language_sw": "Swahili",
     "voice.ai_settings.language_en": "English",
     "voice.ai_settings.toggle_summary": "Post-call summary",

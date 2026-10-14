@@ -122,7 +122,7 @@ const sw: Record<string, string> = {
   "voice.ai_settings.save_failed": "Imeshindikana kuhifadhi",
   "voice.ai_settings.enabled_toast_title": "AI Call Analysis imewashwa",
   "voice.ai_settings.enabled_toast_desc": "Uchambuzi wa AI umewashwa kwa simu zako.",
-  "voice.ai_settings.language_auto": "Itambue lugha yenyewe (auto)",
+  "voice.ai_settings.language_auto": "Itambue lugha yenyewe (mara nyingi hukosea kwa simu za Kiswahili)",
   "voice.ai_settings.language_sw": "Kiswahili",
   "voice.ai_settings.language_en": "Kiingereza",
   "voice.ai_settings.toggle_summary": "Muhtasari wa simu",

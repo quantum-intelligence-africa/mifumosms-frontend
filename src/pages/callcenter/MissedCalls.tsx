@@ -274,10 +274,10 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
   const [analysisMsg, setAnalysisMsg] = useState<string | null>(null);
 
   // Queue an analysis of this message by hand (the automatic one only covers messages left after it was switched on).
-  const analyseNow = async () => {
+  const analyseNow = async (force = false) => {
     setAnalysing(true);
     setAnalysisMsg(null);
-    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [row.call] });
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [row.call], force });
     setAnalysing(false);
     if (res.success) onChanged();
     else setAnalysisMsg(res.status === 403 ? t("cc.history.analysis_unavailable") : res.error || t("cc.missed.ai_failed"));
@@ -303,7 +303,7 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
 
       <div className="rounded-lg border border-border bg-background p-3">
         {ai?.result && "analysis_status" in ai.result ? (
-          <CallAnalysisPanel job={ai as AnalysisJobFull} canReview={canReview} onChanged={onChanged} onSeek={onSeek} />
+          <CallAnalysisPanel job={ai as AnalysisJobFull} canReview={canReview} onChanged={onChanged} onSeek={onSeek} onRerun={() => void analyseNow(true)} />
         ) : result ? (
           <div className="space-y-2">
             <p>{result.summary || "—"}</p>
@@ -326,7 +326,7 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
           <div className="space-y-2">
             <p className="text-muted-foreground">{ai?.status === "failed" ? t("cc.missed.ai_failed") : t("cc.history.analysis_none")}</p>
             <div className="flex flex-wrap items-center gap-3">
-              <Button size="sm" onClick={analyseNow} disabled={analysing}>
+              <Button size="sm" onClick={() => void analyseNow()} disabled={analysing}>
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("cc.history.analyze_now")}
               </Button>
               <Link to="/voice/ai-settings" className="text-xs font-medium text-primary underline">{t("cc.missed.ai_settings")}</Link>

@@ -19,7 +19,7 @@ interface AISettings {
   sentiment_analysis: boolean;
   intent_detection: boolean;
   auto_categorization: boolean;
-  transcription_language: "" | "sw" | "en";
+  transcription_language: "" | "sw" | "en" | "auto";
   consent_acknowledged_at: string | null;
   updated_at: string;
 }
@@ -79,9 +79,9 @@ export default function AISettings() {
   };
 
   const TRANSCRIPTION_LANGUAGES: Array<[string, string]> = [
-    [AUTO_LANGUAGE, t("voice.ai_settings.language_auto")],
     ["sw", t("voice.ai_settings.language_sw")],
     ["en", t("voice.ai_settings.language_en")],
+    [AUTO_LANGUAGE, t("voice.ai_settings.language_auto")],
   ];
 
   const subToggles: Array<{ key: keyof AISettings; label: string }> = [
@@ -169,8 +169,8 @@ export default function AISettings() {
                         {t("voice.ai_settings.transcription_language_label")}
                       </Label>
                       <Select
-                        value={settings.transcription_language || AUTO_LANGUAGE}
-                        onValueChange={(value) => patch({ transcription_language: value === AUTO_LANGUAGE ? "" : value })}
+                        value={settings.transcription_language || "sw"}
+                        onValueChange={(value) => patch({ transcription_language: value })}
                         disabled={isSaving || !settings.enabled}
                       >
                         <SelectTrigger id="transcription_language" className="h-9 w-44" aria-label={t("voice.ai_settings.transcription_language_label")}>
