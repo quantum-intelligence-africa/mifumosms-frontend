@@ -127,6 +127,9 @@ export default function Workspace() {
           </CardContent>
         </Card>
       )}
+      {browser && cc.softphone === "ready" && (
+        <p className="text-xs text-green-700 dark:text-green-400">{t("cc.workspace.softphone_ready")}</p>
+      )}
       {browser && cc.softphone === "connecting" && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("cc.workspace.softphone_connecting")}

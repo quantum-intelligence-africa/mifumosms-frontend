@@ -19,7 +19,7 @@ function ago(iso: string | null, t: ReturnType<typeof useLanguage>["t"]): string
  * contacts and call history (the backend only ever looks those up per tenant).
  */
 export function IncomingCallModal() {
-  const { incoming, answer, decline } = useCallCenter();
+  const { incoming, answer, decline, softphone } = useCallCenter();
   const { t } = useLanguage();
   if (!incoming) return null;
 
@@ -91,6 +91,17 @@ export function IncomingCallModal() {
             <Button variant="outline" className="w-full" onClick={decline}>{t("cc.incoming.dismiss")}</Button>
           </div>
         ) : (
+          <div className="space-y-2">
+          {!incoming.ringing && (
+            <p className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+              {softphone === "error" || softphone === "off"
+                ? t("cc.incoming.audio_error")
+                : softphone === "connecting"
+                  ? t("cc.incoming.audio_connecting")
+                  : t("cc.incoming.audio_waiting")}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3 pt-1">
             <Button variant="outline" size="lg" onClick={decline} className="h-14 gap-2 border-red-200 text-red-700 hover:bg-red-50">
               <PhoneOff className="h-5 w-5" /> {t("cc.incoming.decline")}
@@ -98,6 +109,7 @@ export function IncomingCallModal() {
             <Button size="lg" onClick={answer} disabled={!incoming.ringing} className="h-14 gap-2 bg-green-600 text-white hover:bg-green-700">
               {incoming.ringing ? <Phone className="h-5 w-5" /> : <Loader2 className="h-5 w-5 animate-spin" />} {t("cc.incoming.answer")}
             </Button>
+          </div>
           </div>
         )}
       </DialogContent>

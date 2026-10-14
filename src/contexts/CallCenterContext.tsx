@@ -404,23 +404,30 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const client = new Africastalking.Client(token.data.token);
       clientRef.current = client;
-      client.on("ready", () => !cancelled && setSoftphone("ready"));
+      client.on("ready", () => {
+        console.info("[softphone] ready — incoming calls can ring in this tab");
+        if (!cancelled) setSoftphone("ready");
+      });
       client.on("notready", () => {
+        console.warn("[softphone] notready");
         if (cancelled) return;
         setSoftphone("error");
         setSoftphoneNote("not_ready");
       });
       client.on("offline", () => {
+        console.warn("[softphone] offline");
         if (cancelled) return;
         setSoftphone("error");
         setSoftphoneNote("offline");
       });
       client.on("closed", () => {
+        console.warn("[softphone] closed");
         if (cancelled) return;
         setSoftphone((s) => (s === "ready" ? "error" : s));
         setSoftphoneNote("closed");
       });
       client.on("incomingcall", () => {
+        console.info("[softphone] incomingcall — ringing in this tab");
         if (cancelled) return;
         setIncoming((prev) =>
           prev
