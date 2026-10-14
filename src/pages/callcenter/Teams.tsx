@@ -1,3 +1,4 @@
+import { MusicPicker } from "@/components/voice/MusicPicker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, Clock, Loader2, Lock, Pencil, Plus, RefreshCw, Trash2, Users } from "lucide-react";
@@ -402,8 +403,7 @@ export default function Teams() {
 
             <div className="space-y-1">
               <Label htmlFor="q-music">{t("cc.queue.music")}</Label>
-              <Input id="q-music" value={draft.hold_music_url} placeholder={t("cc.queue.music_placeholder")}
-                onChange={(e) => setDraft({ ...draft, hold_music_url: e.target.value })} />
+              <MusicPicker value={draft.hold_music_url} onChange={(url) => setDraft({ ...draft, hold_music_url: url })} />
               <p className="text-xs text-muted-foreground">{t("cc.queue.music_hint")}</p>
             </div>
 

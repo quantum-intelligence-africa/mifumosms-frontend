@@ -60,7 +60,8 @@ export type FieldType =
   | "team"
   | "prompt_library"
   | "audio_prompt"
-  | "voice";
+  | "voice"
+  | "music";
 
 export interface NodeField {
   key: string;
@@ -284,8 +285,7 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
       {
         key: "ringback_url",
         label: "Muziki wa kusubiri (si lazima)",
-        type: "text",
-        placeholder: "https://example.com/muziki.mp3",
+        type: "music",
         helpText: "Unachezwa kwa mteja wakati simu ikiita kwa mhudumu, badala ya mlio wa kawaida.",
       },
       { key: "record", label: "Rekodi mazungumzo haya", type: "checkbox", defaultValue: false },

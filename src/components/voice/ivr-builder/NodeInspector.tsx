@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NODE_META } from "./nodeMeta";
 import { VoicePicker } from "@/components/voice/VoicePicker";
+import { MusicPicker } from "@/components/voice/MusicPicker";
 import { voiceApi } from "@/services/voiceApi";
 import { callCenterApi, type Team } from "@/services/callCenterApi";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -597,6 +598,16 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                   )
                 }
               />
+            );
+          }
+
+          if (field.type === "music") {
+            return (
+              <div key={field.key} className="space-y-1">
+                <Label className="text-xs">{field.label}</Label>
+                <MusicPicker value={(value as string) ?? ""} onChange={(url) => onChange({ [field.key]: url })} />
+                {field.helpText && <p className="text-[10px] text-muted-foreground">{field.helpText}</p>}
+              </div>
             );
           }
 
