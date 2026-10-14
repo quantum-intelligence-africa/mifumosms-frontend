@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Phone, AlertCircle, RefreshCw, Copy, ExternalLink, CheckCircle2, XCircle, Unlink, Mic, Plus } from "lucide-react";
+import { Phone, AlertCircle, RefreshCw, Copy, ExternalLink, CheckCircle2, XCircle, Unlink, Mic, Plus, Trash2 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -129,6 +129,36 @@ export default function VoiceNumbers() {
       });
     } else {
       toast({ title: t("voice.numbers.update_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
+    }
+  };
+
+  // Switch a number off/on. Off = inbound calls are refused and it stops counting
+  // against the plan; nothing is deleted, so it can be switched back on.
+  const handleActiveToggle = async (account: VoiceAccount, checked: boolean) => {
+    if (!checked && !window.confirm(t("voice.numbers.deactivate_confirm", { number: account.phone_number }))) return;
+    setSavingId(account.id);
+    const res = await voiceApi.patch<VoiceAccount>(`/voice/accounts/${account.id}/`, { is_active: checked });
+    setSavingId(null);
+    if (res.success && res.data) {
+      setAccounts((prev) => prev.map((a) => (a.id === account.id ? (res.data as VoiceAccount) : a)));
+      toast({ title: checked ? t("voice.numbers.activated_title") : t("voice.numbers.deactivated_title"), description: checked ? t("voice.numbers.activated_desc") : t("voice.numbers.deactivated_desc") });
+    } else {
+      toast({ title: t("voice.numbers.update_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
+    }
+  };
+
+  // Permanently remove the number from this organization; the line goes back to the pool.
+  const handleRemove = async (account: VoiceAccount) => {
+    if (!window.confirm(t("voice.numbers.remove_confirm", { number: account.phone_number }))) return;
+    setSavingId(account.id);
+    const res = await voiceApi.delete(`/voice/accounts/${account.id}/`);
+    setSavingId(null);
+    if (res.success) {
+      setAccounts((prev) => prev.filter((a) => a.id !== account.id));
+      toast({ title: t("voice.numbers.removed_title"), description: t("voice.numbers.removed_desc") });
+      fetchData();
+    } else {
+      toast({ title: t("voice.numbers.remove_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -276,10 +306,27 @@ export default function VoiceNumbers() {
                           <Phone className="h-4 w-4 text-muted-foreground" />
                           {account.display_name}
                         </span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <Badge variant={account.is_active ? "default" : "secondary"}>
                             {account.is_active ? t("voice.numbers.status_active") : t("voice.numbers.status_inactive")}
                           </Badge>
+                          <Switch
+                            checked={account.is_active}
+                            onCheckedChange={(checked) => handleActiveToggle(account, checked)}
+                            disabled={savingId === account.id}
+                            aria-label={t("voice.numbers.active_toggle_label")}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleRemove(account)}
+                            disabled={savingId === account.id}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {t("voice.numbers.remove")}
+                          </Button>
                         </div>
                       </CardTitle>
                     </CardHeader>
