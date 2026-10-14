@@ -375,7 +375,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
   }, [incoming?.callId, incoming?.ringing, incoming?.audioMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── browser softphone ───────────────────────────────────────────────────
-  const browserMode = isAgent && workspace?.agent.audio_mode === "browser";
+  const browserMode = isAgent && (workspace?.agent.audio_mode === "browser" || workspace?.agent.audio_mode === "both");
   useEffect(() => {
     if (!enabled || !browserMode) {
       setSoftphone("off");

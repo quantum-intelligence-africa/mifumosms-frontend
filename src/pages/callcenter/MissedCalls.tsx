@@ -179,15 +179,27 @@ export default function MissedCalls() {
                       <TableCell className="whitespace-nowrap font-mono text-sm">
                         <span className="inline-flex items-center gap-1.5"><PhoneMissed className="h-3.5 w-3.5 text-red-500" />{r.caller_number}</span>
                         {r.voicemail && (
-                          <button
-                            type="button"
-                            onClick={() => setExpanded((e) => ({ ...e, [r.id]: !e[r.id] }))}
-                            className="mt-1 flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-sans text-[11px] font-medium text-primary"
-                            aria-expanded={!!expanded[r.id]}
-                          >
-                            <Mic className="h-3 w-3" />{t("cc.missed.voicemail")}
-                            <ChevronDown className={`h-3 w-3 transition-transform ${expanded[r.id] ? "rotate-180" : ""}`} />
-                          </button>
+                          <div className="mt-1 flex items-center gap-1.5 font-sans">
+                            <button
+                              type="button"
+                              onClick={() => listen(r, r.voicemail!)}
+                              className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+                              aria-label={t("cc.missed.voicemail_listen")}
+                            >
+                              <Mic className="h-3 w-3" />
+                              {t("cc.missed.voicemail")}
+                              {r.voicemail.duration_seconds ? ` · ${formatClock(r.voicemail.duration_seconds)}` : ""}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExpanded((e) => ({ ...e, [r.id]: e[r.id] === false }))}
+                              className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+                              aria-expanded={expanded[r.id] !== false}
+                              aria-label={t("cc.missed.voicemail")}
+                            >
+                              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded[r.id] !== false ? "rotate-180" : ""}`} />
+                            </button>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(r.call_started_at).toLocaleString()}</TableCell>
@@ -214,7 +226,7 @@ export default function MissedCalls() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    {r.voicemail && expanded[r.id] && (
+                    {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={7}>
                           <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} />
