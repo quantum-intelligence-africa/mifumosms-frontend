@@ -163,7 +163,7 @@ const translations = {
     "voice.numbers.activated_title": "Number activated",
     "voice.numbers.activated_desc": "This number answers calls again.",
     "voice.numbers.remove": "Remove",
-    "voice.numbers.remove_confirm": "Remove {{number}} from your organization? Its flow connection is lost and the number returns to the pool. Past call history is kept.",
+    "voice.numbers.remove_confirm": "Remove {{number}} from your organization? The number returns to the pool. All past calls, recordings, voicemails and reports are kept.",
     "voice.numbers.removed_title": "Number removed",
     "voice.numbers.removed_desc": "The number is no longer on your account.",
     "voice.numbers.remove_failed": "Couldn't remove the number",

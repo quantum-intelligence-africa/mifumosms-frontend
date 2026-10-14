@@ -162,7 +162,7 @@ const sw: Record<string, string> = {
   "voice.numbers.activated_title": "Namba imewashwa",
   "voice.numbers.activated_desc": "Namba hii inapokea simu tena.",
   "voice.numbers.remove": "Ondoa",
-  "voice.numbers.remove_confirm": "Ondoa {{number}} kwenye shirika lako? Muunganisho wa mtiririko utapotea na namba itarudi kwenye hifadhi. Historia ya simu zilizopita itabaki.",
+  "voice.numbers.remove_confirm": "Ondoa {{number}} kwenye shirika lako? Namba itarudi kwenye hifadhi. Simu zote zilizopita, rekodi, ujumbe wa sauti na ripoti vitabaki.",
   "voice.numbers.removed_title": "Namba imeondolewa",
   "voice.numbers.removed_desc": "Namba hii haipo tena kwenye akaunti yako.",
   "voice.numbers.remove_failed": "Imeshindwa kuondoa namba",
