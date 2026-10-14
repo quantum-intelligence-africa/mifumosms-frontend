@@ -57,7 +57,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: 
   const { t } = useLanguage();
   const result = job.result;
   const [showOriginal, setShowOriginal] = useState(false);
-  const [openTranscript, setOpenTranscript] = useState(false);
+  const [openTranscript, setOpenTranscript] = useState(true); // what was said is the thing people come here for: show it open
   const [highlight, setHighlight] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
@@ -230,14 +230,14 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: 
       ) : null}
 
       <details open={openTranscript} onToggle={(e) => setOpenTranscript((e.target as HTMLDetailsElement).open)} className="rounded-md border border-border">
-        <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium text-primary">
+        <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold text-foreground">
           {t("cc.analysis.transcript")}<ChevronDown className="h-3.5 w-3.5" />
         </summary>
-        <div className="space-y-2 border-t border-border p-3">
+        <div className="max-h-96 space-y-2 overflow-y-auto border-t border-border bg-muted/30 p-3">
           {segments.length === 0 ? (
-            <p className="whitespace-pre-wrap text-xs text-muted-foreground">{result.transcript || t("cc.analysis.no_words")}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{result.transcript || t("cc.analysis.no_words")}</p>
           ) : segments.map((s, i) => (
-            <div key={i} id={`seg-${job.id}-${i}`} className={`flex gap-2 rounded px-1.5 py-1 text-xs ${highlight === i ? "bg-primary/10" : ""}`}>
+            <div key={i} id={`seg-${job.id}-${i}`} className={`flex gap-3 rounded px-1.5 py-1.5 text-sm leading-relaxed ${highlight === i ? "bg-primary/10" : ""}`}>
               {onSeek && s.start !== undefined ? (
                 <button type="button" onClick={() => { setHighlight(i); onSeek(s.start as number); }} className="w-12 shrink-0 text-left font-mono text-primary hover:underline" title={t("cc.analysis.play_from")}>
                   {clock(s.start)}
@@ -250,7 +250,7 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: 
                 {editing ? (
                   <Textarea value={draft[i] ?? ""} onChange={(e) => setDraft((d) => d.map((x, j) => (j === i ? e.target.value : x)))} rows={3} className="mt-1 text-xs" />
                 ) : (
-                  <span className={s.uncertain ? "underline decoration-amber-500 decoration-dotted underline-offset-2" : ""} title={s.uncertain ? t("cc.analysis.uncertain_segment") : undefined}>{s.text}</span>
+                  <span className={`text-foreground ${s.uncertain ? "underline decoration-amber-500 decoration-dotted underline-offset-2" : ""}`} title={s.uncertain ? t("cc.analysis.uncertain_segment") : undefined}>{s.text}</span>
                 )}
                 {s.edited && <span className="ml-1 text-[10px] text-primary">{t("cc.analysis.edited")}</span>}
               </div>
