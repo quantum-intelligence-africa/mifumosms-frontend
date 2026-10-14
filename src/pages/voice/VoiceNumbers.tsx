@@ -33,6 +33,8 @@ interface VoiceAccount {
 interface AvailableNumber {
   id: string;
   phone_number: string;
+  /** "number": pick with provider_number; "credential": an older entry, pick with provider_credential. */
+  source?: "number" | "credential";
 }
 
 const NONE = "__none__";
@@ -90,7 +92,11 @@ export default function VoiceNumbers() {
     setIsCreating(true);
     const res = await voiceApi.post<VoiceAccount>("/voice/accounts/", {
       display_name: newDisplayName.trim(),
-      ...(selectedNumberId ? { provider_credential: selectedNumberId } : { phone_number: typedNumber.trim() }),
+      ...(selectedNumberId
+        ? (availableNumbers.find((n) => n.id === selectedNumberId)?.source === "credential"
+            ? { provider_credential: selectedNumberId }
+            : { provider_number: selectedNumberId })
+        : { phone_number: typedNumber.trim() }),
     });
     setIsCreating(false);
     if (res.success && res.data) {

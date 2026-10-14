@@ -12381,7 +12381,7 @@ function VoiceNumbersTab() {
               <tr><td colSpan={7} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
             ) : filtered.map(row => {
               const assigned = !!row.provider_credential_detail;
-              const free = pool.filter(c => c.is_active && !c.in_use && (!c.phone_number || !row.phone_number || c.phone_number === row.phone_number));
+              const free = pool.filter(c => c.is_active);   // a login serves any number of numbers
               return (
                 <tr key={row.id}>
                   <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.tenant_name || '—'}</td>
@@ -12409,8 +12409,8 @@ function VoiceNumbersTab() {
                         <div style={{display:'flex',gap:4}}>
                           <select className="senda-input" value={pick[row.id] || ''} onChange={e => setPick(p => ({ ...p, [row.id]: e.target.value }))}
                             style={{height:30,fontSize:11,flex:1}}>
-                            <option value="">{free.length ? 'Choose provider entry…' : 'No free entry — add one in Voice Providers'}</option>
-                            {free.map(c => <option key={c.id} value={c.id}>{c.phone_number || c.name}</option>)}
+                            <option value="">{free.length ? 'Choose provider login…' : 'No provider yet — add one in Voice Providers'}</option>
+                            {free.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           <button className="senda-btn senda-btn-sm" disabled={!pick[row.id] || busyId === row.id} onClick={() => connect(row)}
                             style={{background:BRAND,color:'#fff',border:'none'}}>Connect</button>
@@ -13039,6 +13039,51 @@ const CREDENTIAL_FIELDS = {
   generic_sip: [],
 };
 
+function VoiceProviderNumbers({ row }) {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [numbers, setNumbers] = useState(row.numbers || []);
+  const [text, setText]       = useState('');
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState(null);
+
+  const add = async () => {
+    setBusy(true); setError(null);
+    const res = await voiceAdminFetch(`/voice/provider-credentials/${row.id}/numbers/`, { method: 'POST', body: JSON.stringify({ phone_numbers: text }) }, onLogout);
+    setBusy(false);
+    if (res.success) { setNumbers(res.data || []); setText(''); showToast?.('Numbers added.', 'success'); }
+    else setError(res.error || 'Could not add the numbers.');
+  };
+  const remove = async (n) => {
+    setBusy(true); setError(null);
+    const res = await voiceAdminFetch(`/voice/provider-credentials/${row.id}/numbers/${n.id}/`, { method: 'DELETE' }, onLogout);
+    setBusy(false);
+    if (res.success) setNumbers(prev => prev.filter(x => x.id !== n.id));
+    else setError(res.error || 'Could not remove it.');
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:8,border:'1px solid #eef2f7',borderRadius:10,padding:'12px 14px',background:'#f8fafc'}}>
+      <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone numbers on this login ({numbers.length})</label>
+      {numbers.length === 0 && <span style={{fontSize:12,color:'#94a3b8'}}>None yet — customers can still type their own number and you connect it from Voice Numbers.</span>}
+      {numbers.map(n => (
+        <div key={n.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:13,gap:8}}>
+          <span style={{fontFamily:'monospace'}}>{n.phone_number}</span>
+          <span style={{fontSize:11,color:n.used_by ? '#059669' : '#94a3b8',flex:1,textAlign:'right'}}>{n.used_by ? `Used by ${n.used_by}` : 'Free'}</span>
+          <button disabled={busy || !!n.used_by} onClick={() => remove(n)} title={n.used_by ? 'Release it from Voice Numbers first' : 'Remove from the list'}
+            style={{height:26,padding:'0 8px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:11,cursor:(busy || n.used_by) ? 'default' : 'pointer',opacity:n.used_by ? .4 : 1}}>Remove</button>
+        </div>
+      ))}
+      <textarea rows={2} value={text} onChange={e=>setText(e.target.value)} placeholder={'Add more, one per line\n+255699920009'}
+        className="senda-input" style={{fontSize:13,fontFamily:'monospace',resize:'vertical',padding:'8px 10px'}}/>
+      {error && <span style={{fontSize:12,color:'#b91c1c'}}>{error}</span>}
+      <button disabled={busy || !text.trim()} onClick={add}
+        style={{alignSelf:'flex-start',height:32,padding:'0 14px',borderRadius:8,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:12,cursor:(busy || !text.trim()) ? 'default' : 'pointer',opacity:(busy || !text.trim()) ? .5 : 1}}>
+        Add numbers
+      </button>
+    </div>
+  );
+}
+
 function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
   const { onLogout, showToast } = React.useContext(AppContext);
   const isNew = !row;
@@ -13049,16 +13094,15 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
   const [creds, setCreds]               = useState({});
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState(null);
-  // Numbers customers can pick: one per line when adding; a single number when editing.
+  // Numbers that can use this login. A login is just the username/key: any number of numbers can be listed under it.
   const [numbers, setNumbers]           = useState('');
-  const [phone, setPhone]               = useState(row?.phone_number || '');
   // Africa's Talking: reuse the login already on the server (AT_USERNAME / AT_API_KEY) instead of retyping it.
   const [useServerLogin, setUseServerLogin] = useState(false);
 
   const fields = CREDENTIAL_FIELDS[providerType] || [];
   const setCred = (key, value) => setCreds(prev => ({ ...prev, [key]: value }));
   const serverLoginOk = isNew && providerType === 'africas_talking' && useServerLogin;
-  const canSubmit = name.trim() && !saving && (!serverLoginOk || numbers.trim());
+  const canSubmit = name.trim() && !saving;
 
   const save = async () => {
     setSaving(true); setError(null);
@@ -13067,7 +13111,7 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
       const res = await voiceAdminFetch('/voice/provider-credentials/import-env/',
         { method: 'POST', body: JSON.stringify({ name: name.trim(), phone_numbers: numbers }) }, onLogout);
       setSaving(false);
-      if (res.success) { showToast?.('Numbers added using the server login.', 'success'); onSaved(); }
+      if (res.success) { showToast?.('Provider added using the server login.', 'success'); onSaved(); }
       else setError(res.error || 'Failed to save.');
       return;
     }
@@ -13088,15 +13132,12 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
     // Editing: only send credentials the admin actually typed (the backend merges
     // rather than replaces on update, so blank fields keep their saved value).
     if (isNew || Object.keys(credentials).length > 0) payload.credentials = credentials;
-    if (!isNew) payload.phone_number = phone.trim();
 
-    // Adding with numbers: one entry per number, all on this login (customers pick from these).
-    const res = isNew && numbers.trim()
+    // New: the login, plus any numbers typed (more can be added later). Editing: just the login's settings.
+    const res = isNew
       ? await voiceAdminFetch('/voice/provider-credentials/bulk/',
           { method: 'POST', body: JSON.stringify({ name: name.trim(), provider_type: providerType, credentials, phone_numbers: numbers, is_active: isActive }) }, onLogout)
-      : isNew
-        ? await voiceAdminFetch('/voice/provider-credentials/', { method: 'POST', body: JSON.stringify(payload) }, onLogout)
-        : await voiceAdminFetch(`/voice/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
+      : await voiceAdminFetch(`/voice/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify(payload) }, onLogout);
 
     setSaving(false);
     if (res.success) { showToast?.('Voice provider saved.', 'success'); onSaved(); }
@@ -13154,19 +13195,14 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
 
           {isNew ? (
             <div style={{display:'flex',flexDirection:'column',gap:4}}>
-              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone numbers customers can pick{serverLoginOk ? <span style={{color:RED}}> *</span> : ''}</label>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone numbers on this login (optional)</label>
               <textarea rows={3} value={numbers} onChange={e=>setNumbers(e.target.value)}
                 placeholder={'One per line, with country code\n+255699920006\n+255699920007'}
                 className="senda-input" style={{fontSize:13,fontFamily:'monospace',resize:'vertical',padding:'8px 10px'}}/>
-              <span style={{fontSize:11,color:'#94a3b8'}}>These must be numbers you own on this provider account. Each appears in the customer's "Add a new number" list.</span>
+              <span style={{fontSize:11,color:'#94a3b8'}}>Add as many as you own on this provider account — now or later. Customers pick from them, or type their own.</span>
             </div>
           ) : (
-            <div style={{display:'flex',flexDirection:'column',gap:4}}>
-              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Phone number</label>
-              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+255699920006"
-                className="senda-input" style={{height:38,fontSize:13,fontFamily:'monospace'}}/>
-              {row.assigned_to && <span style={{fontSize:11,color:'#94a3b8'}}>In use by {row.assigned_to}. Changing it changes the number that organization sees.</span>}
-            </div>
+            <VoiceProviderNumbers row={row} onChanged={onSaved}/>
           )}
 
           {providerType === 'africas_talking' && (
@@ -13260,8 +13296,8 @@ function VoiceProvidersTab() {
             <tr style={{background:'#f8fafc',textAlign:'left'}}>
               <th style={th}>Name</th>
               <th style={th}>Type</th>
-              <th style={th}>Phone number</th>
-              <th style={th}>Used by</th>
+              <th style={th}>Numbers</th>
+              <th style={th}>Customers</th>
               <th style={th}>Configured fields</th>
               <th style={th}>Active</th>
               <th style={th}>Default</th>
@@ -13277,8 +13313,17 @@ function VoiceProvidersTab() {
               <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
                 <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
                 <td style={td}>{PROVIDER_TYPES.find(p=>p.value===row.provider_type)?.label || row.provider_type}</td>
-                <td style={{...td,fontFamily:'monospace',fontSize:12}}>{row.phone_number || <span style={{color:'#f59e0b'}}>No number — customers can't pick it</span>}</td>
-                <td style={{...td,fontSize:12,color:'#64748b'}}>{row.assigned_to || (row.phone_number ? 'Free' : '—')}</td>
+                <td style={{...td,fontSize:12}}>
+                  {(row.numbers||[]).length === 0
+                    ? <span style={{color:'#94a3b8'}}>None listed</span>
+                    : <>
+                        {row.numbers.slice(0,3).map(n => (
+                          <span key={n.id} style={{display:'inline-block',fontFamily:'monospace',fontSize:11,background:n.used_by?'#ecfdf5':'#f1f5f9',color:n.used_by?'#059669':'#475569',borderRadius:6,padding:'2px 6px',margin:'0 4px 2px 0'}}>{n.phone_number}</span>
+                        ))}
+                        {row.numbers.length > 3 && <span style={{fontSize:11,color:'#94a3b8'}}>+{row.numbers.length - 3} more</span>}
+                      </>}
+                </td>
+                <td style={{...td,fontSize:12,color:'#64748b'}}>{row.accounts_count ? `${row.accounts_count} in use` : '—'}</td>
                 <td style={td}>
                   {(row.configured_fields||[]).length === 0
                     ? <span style={{color:'#94a3b8'}}>—</span>
