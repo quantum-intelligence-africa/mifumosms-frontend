@@ -12274,7 +12274,51 @@ function VoiceNumbersTab() {
   const [error, setError]     = useState(null);
   const [search, setSearch]   = useState('');
   const [busyId, setBusyId]   = useState(null);
+  const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
+  const [defaultDraft, setDefaultDraft] = useState('');
+  const [msgEdit, setMsgEdit] = useState(null);           // { row, text } while editing one number's message
   const [pool, setPool]       = useState([]);          // provider entries (to connect a typed number to)
+
+  useEffect(() => {
+    voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
+      if (res.success) { setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || ''); }
+    });
+  }, [onLogout]);
+
+  const saveDefault = () => {
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ inactive_message: defaultDraft }) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
+      setDefaultMsg(res.data.inactive_message);
+      showToast?.('Default message saved.', 'success');
+    });
+  };
+
+  // Switch a number on or off. Off: callers hear its message and nothing else runs; the customer cannot switch it back on.
+  const setLine = (row, active) => {
+    const heard = row.inactive_message || defaultMsg;
+    if (!active && !window.confirm(`Switch off ${row.phone_number || 'this number'}?\n\nCallers will hear: “${heard}”`)) return;
+    setBusyId(row.id);
+    voiceAdminFetch(`/voice/accounts/admin/${row.id}/`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) }, onLogout)
+      .then(res => {
+        if (!res.success) { showToast?.(res.error || 'Could not change the number.', 'error'); return; }
+        setRows(prev => prev.map(r => r.id === row.id ? res.data : r));
+        showToast?.(active ? 'Number switched on.' : 'Number switched off.', 'success');
+      })
+      .finally(() => setBusyId(null));
+  };
+
+  const saveMessage = () => {
+    const { row, text } = msgEdit;
+    setBusyId(row.id);
+    voiceAdminFetch(`/voice/accounts/admin/${row.id}/`, { method: 'PATCH', body: JSON.stringify({ inactive_message: text }) }, onLogout)
+      .then(res => {
+        if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
+        setRows(prev => prev.map(r => r.id === row.id ? res.data : r));
+        setMsgEdit(null);
+        showToast?.('Message saved.', 'success');
+      })
+      .finally(() => setBusyId(null));
+  };
   const [pick, setPick]       = useState({});          // account id -> chosen provider entry id
 
   const loadPool = useCallback(() => {
@@ -12361,6 +12405,36 @@ function VoiceNumbersTab() {
         </div>
       )}
 
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Message for switched-off numbers</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>
+          Callers hear this when a number is switched off and has no message of its own. You can set a different message for each number below.
+        </p>
+        <div style={{display:'flex',gap:8,alignItems:'flex-start',flexWrap:'wrap'}}>
+          <textarea rows={2} maxLength={300} value={defaultDraft} onChange={e=>setDefaultDraft(e.target.value)}
+            className="senda-input" style={{flex:1,minWidth:260,fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
+          <button disabled={!defaultDraft.trim() || defaultDraft === defaultMsg} onClick={saveDefault}
+            style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,
+              cursor:(!defaultDraft.trim() || defaultDraft === defaultMsg) ? 'default' : 'pointer',opacity:(!defaultDraft.trim() || defaultDraft === defaultMsg) ? .5 : 1}}>
+            Save
+          </button>
+        </div>
+      </div>
+
+      {msgEdit && createPortal(
+        <div onClick={() => setMsgEdit(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(480px,100%)',background:'#fff',borderRadius:14,padding:'18px 20px',display:'flex',flexDirection:'column',gap:10}}>
+            <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>Message for {msgEdit.row.phone_number || 'this number'}</h3>
+            <p style={{fontSize:12,color:'#94a3b8',margin:0}}>Spoken to callers while this number is switched off. Leave it empty to use the default message.</p>
+            <textarea rows={3} maxLength={300} value={msgEdit.text} onChange={e=>setMsgEdit(m => ({ ...m, text: e.target.value }))}
+              placeholder={defaultMsg} className="senda-input" style={{fontSize:13,resize:'vertical',padding:'8px 10px'}}/>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={() => setMsgEdit(null)} style={{height:36,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
+              <button disabled={busyId === msgEdit.row.id} onClick={saveMessage} style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>Save</button>
+            </div>
+          </div>
+        </div>, document.body)}
+
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
           <thead>
@@ -12370,15 +12444,16 @@ function VoiceNumbersTab() {
               <th style={th}>Phone number</th>
               <th style={th}>Active flow</th>
               <th style={th}>Status</th>
+              <th style={th}>Line</th>
               <th style={th}>Provider connection</th>
               <th style={th}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
+              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Loading…</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
+              <tr><td colSpan={8} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>No voice accounts found.</td></tr>
             ) : filtered.map(row => {
               const assigned = !!row.provider_credential_detail;
               const free = pool.filter(c => c.is_active);   // a login serves any number of numbers
@@ -12393,6 +12468,26 @@ function VoiceNumbersTab() {
                       fontSize:11,fontWeight:600,background:assigned?'#ecfdf5':'#f1f5f9',color:assigned?'#059669':'#64748b'}}>
                       <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>{assigned ? 'Assigned' : 'Unassigned'}
                     </span>
+                  </td>
+                  <td style={{...td,minWidth:190}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,
+                          background:row.is_active?'#ecfdf5':'#fef2f2',color:row.is_active?'#059669':'#b91c1c'}}>
+                          <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                          {row.is_active ? 'Active' : (row.admin_suspended ? 'Off (by SENDA)' : 'Off')}
+                        </span>
+                        <button className="senda-btn senda-btn-sm" disabled={busyId === row.id} onClick={() => setLine(row, !row.is_active)}
+                          style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11}}>
+                          {row.is_active ? 'Switch off' : 'Switch on'}
+                        </button>
+                      </div>
+                      <button className="senda-btn senda-btn-sm" onClick={() => setMsgEdit({ row, text: row.inactive_message || '' })}
+                        title={row.inactive_message || `Uses the default: ${defaultMsg}`}
+                        style={{border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11,textAlign:'left'}}>
+                        {row.inactive_message ? 'Message: custom' : 'Message: default'} · Edit
+                      </button>
+                    </div>
                   </td>
                   <td style={{...td,minWidth:230}}>
                     {assigned ? (
