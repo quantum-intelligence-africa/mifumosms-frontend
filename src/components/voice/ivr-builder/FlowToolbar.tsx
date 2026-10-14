@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Download,
   FileUp,
+  Sparkles,
   PlayCircle,
   CheckCircle2,
   Check,
@@ -67,6 +68,8 @@ interface FlowToolbarProps {
   onSave: () => void;
   onExport: () => void;
   onImport: () => void;
+  /** Opens the "describe it and AI builds it" dialog. */
+  onGenerate?: () => void;
   onSimulate: () => void;
   onValidate: () => void;
   onPublish: () => void;
@@ -92,6 +95,7 @@ export function FlowToolbar({
   onSave,
   onExport,
   onImport,
+  onGenerate,
   onSimulate,
   onValidate,
   onPublish,
@@ -322,6 +326,12 @@ export function FlowToolbar({
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <Save className="h-3.5 w-3.5 sm:mr-1.5" />}
           <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.save")}</span>
         </Button>
+        {onGenerate && (
+          <Button size="sm" className="shrink-0 px-2 sm:px-3" onClick={onGenerate}>
+            <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">{t("cc.aiflow.button")}</span>
+          </Button>
+        )}
         <Button variant="outline" size="sm" className="shrink-0 px-2 sm:px-3" onClick={onImport}>
           <FileUp className="h-3.5 w-3.5 sm:mr-1.5" />
           <span className="hidden sm:inline">{t("voice.ivr_builder.toolbar.import")}</span>

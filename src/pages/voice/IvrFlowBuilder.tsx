@@ -13,6 +13,7 @@ import { FlowToolbar } from "@/components/voice/ivr-builder/FlowToolbar";
 import { NodeInspector } from "@/components/voice/ivr-builder/NodeInspector";
 import { SimulatePanel } from "@/components/voice/ivr-builder/SimulatePanel";
 import { ImportFlowDialog } from "@/components/voice/ivr-builder/ImportFlowDialog";
+import { AiFlowDialog } from "@/components/voice/ivr-builder/AiFlowDialog";
 import { validateFlow } from "@/components/voice/ivr-builder/validation";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { AppNodeData, PublishResponse, ValidateResponse, ValidationError } from "@/components/voice/ivr-builder/types";
@@ -24,6 +25,7 @@ export default function IvrFlowBuilder() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [simulateOpen, setSimulateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [serverErrors, setServerErrors] = useState<ValidationError[] | null>(null);
@@ -130,6 +132,7 @@ export default function IvrFlowBuilder() {
               onSave={flow.saveNow}
               onExport={flow.exportDefinition}
               onImport={() => setImportOpen(true)}
+              onGenerate={() => setAiOpen(true)}
               onSimulate={() => setSimulateOpen(true)}
               onValidate={handleValidate}
               onPublish={handlePublish}
@@ -203,6 +206,15 @@ export default function IvrFlowBuilder() {
             />
 
             <ImportFlowDialog open={importOpen} onOpenChange={setImportOpen} onImport={flow.importDefinition} />
+            <AiFlowDialog
+              open={aiOpen}
+              onOpenChange={setAiOpen}
+              hasContent={flow.nodes.length > 1}
+              onApply={(definition) => {
+                flow.importDefinition(definition);
+                toast.success(t("cc.aiflow.loaded"), { description: t("cc.aiflow.loaded_desc") });
+              }}
+            />
           </>
         )}
       </div>
