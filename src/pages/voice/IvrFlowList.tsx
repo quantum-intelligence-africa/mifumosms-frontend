@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink } from "lucide-react";
+import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,10 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
-import type { IvrFlowDetail, IvrFlowSummary } from "@/components/voice/ivr-builder/types";
+import type { FlowDefinition, IvrFlowDetail, IvrFlowSummary } from "@/components/voice/ivr-builder/types";
 import { FLOW_TEMPLATES } from "@/components/voice/ivr-builder/templates";
 import { LANGUAGE_LABELS } from "@/components/voice/ivr-builder/FlowToolbar";
 
@@ -23,6 +24,36 @@ interface VoiceAccountLite {
   display_name: string;
   phone_number: string;
   active_flow: string | null;
+}
+
+const IMPORT_ID = "__import__";
+const MAX_IMPORT_BYTES = 1024 * 1024;
+
+interface ImportedFlow {
+  name: string;
+  language?: string;
+  definition: FlowDefinition;
+}
+
+// Accepts a file exported from SENDA ({ name, language, definition }) or a bare
+// { nodes, edges } definition. The server re-checks the shape on create.
+function parseImportedFlow(text: string, fallbackName: string): ImportedFlow {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("Faili hii si JSON halali.");
+  }
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const def = (obj.definition ?? obj.current_definition ?? obj) as Record<string, unknown>;
+  if (!def || !Array.isArray(def.nodes) || !Array.isArray(def.edges)) {
+    throw new Error("Faili haina mtiririko halali (inahitaji 'nodes' na 'edges').");
+  }
+  const bad = (def.nodes as Array<Record<string, unknown>>).some((n) => !n || !n.id || !n.type);
+  if (bad) throw new Error("Kila kisanduku kinahitaji 'id' na 'type'.");
+  const name = typeof obj.name === "string" && obj.name.trim() ? obj.name.trim().slice(0, 100) : fallbackName;
+  const language = typeof obj.language === "string" ? obj.language : undefined;
+  return { name, language, definition: def as unknown as FlowDefinition };
 }
 
 const statusVariant = (status: string): "default" | "outline" | "secondary" =>
@@ -42,6 +73,10 @@ export default function IvrFlowList() {
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(FLOW_TEMPLATES[0].id);
+  const [imported, setImported] = useState<ImportedFlow | null>(null);
+  const [importName, setImportName] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchFlows = useCallback(async () => {
     setIsLoading(true);
@@ -82,17 +117,69 @@ export default function IvrFlowList() {
     }
   };
 
+  const handleFile = async (file?: File) => {
+    if (!file) return;
+    setImportError(null);
+    setImported(null);
+    if (file.size > MAX_IMPORT_BYTES) {
+      setImportError("Faili ni kubwa mno (kiwango cha juu ni 1 MB).");
+      return;
+    }
+    try {
+      const fallback = file.name.replace(/\.json$/i, "").slice(0, 100) || "Mtiririko Ulioingizwa";
+      const parsed = parseImportedFlow(await file.text(), fallback);
+      setImported(parsed);
+      setImportName(parsed.name);
+      setSelectedTemplateId(IMPORT_ID);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Imeshindwa kusoma faili.");
+    }
+  };
+
+  const handleExport = async (e: React.MouseEvent, flow: IvrFlowSummary) => {
+    e.stopPropagation();
+    const res = await voiceApi.get<IvrFlowDetail>(`/voice/ivr/${flow.id}/`);
+    if (!(res.success && res.data)) {
+      toast({ title: "Failed to export", description: res.error || "Please try again.", variant: "destructive" });
+      return;
+    }
+    const payload = {
+      senda_ivr_flow: 1,
+      name: res.data.name,
+      language: res.data.language,
+      definition: res.data.current_definition,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${flow.name.replace(/[^\w-]+/g, "_") || "flow"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleCreate = async () => {
     const template = FLOW_TEMPLATES.find((t) => t.id === selectedTemplateId) ?? FLOW_TEMPLATES[0];
+    const useImport = selectedTemplateId === IMPORT_ID && imported ? imported : null;
     setIsCreating(true);
-    const res = await voiceApi.post<IvrFlowDetail>("/voice/ivr/", {
-      name: template.id === "blank" ? "Mtiririko Mpya" : template.name,
-      current_definition: template.definition,
-    });
+    const res = await voiceApi.post<IvrFlowDetail>(
+      "/voice/ivr/",
+      useImport
+        ? {
+            name: importName.trim() || useImport.name,
+            current_definition: useImport.definition,
+            ...(useImport.language && useImport.language in LANGUAGE_LABELS ? { language: useImport.language } : {}),
+          }
+        : {
+            name: template.id === "blank" ? "Mtiririko Mpya" : template.name,
+            current_definition: template.definition,
+          },
+    );
     setIsCreating(false);
     if (res.success && res.data) {
       setTemplateDialogOpen(false);
       navigate(`/voice/ivr/${res.data.id}`);
+    } else if (useImport) {
+      setImportError(res.error || "Seva imekataa mtiririko huu.");
     } else {
       setError(res.error || "Failed to create flow");
     }
@@ -164,9 +251,20 @@ export default function IvrFlowList() {
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center justify-between gap-2 text-sm">
                           <span className="truncate">{flow.name}</span>
-                          <Badge variant={statusVariant(flow.status)} className="shrink-0 capitalize">
-                            {flow.status}
-                          </Badge>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            <button
+                              type="button"
+                              title="Export flow (JSON)"
+                              aria-label="Export flow"
+                              onClick={(e) => handleExport(e, flow)}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                            <Badge variant={statusVariant(flow.status)} className="capitalize">
+                              {flow.status}
+                            </Badge>
+                          </span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2 pt-0">
@@ -213,39 +311,102 @@ export default function IvrFlowList() {
       </div>
 
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-4 sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Anza mtiririko mpya</DialogTitle>
             <DialogDescription>
-              Chagua pa kuanzia. Kila mfano unabadilika kabisa baadaye — unaweza kuongeza, kuondoa au kupanga
-              upya visanduku vyote ukishaufungua. Salamu zote hutaja jina la biashara yako lenyewe.
+              Chagua pa kuanzia, au ingiza mtiririko kutoka faili. Unaweza kubadilisha kila kitu baadaye —
+              kuongeza, kuondoa au kupanga upya visanduku vyote. Salamu zote hutaja jina la biashara yako lenyewe.
             </DialogDescription>
           </DialogHeader>
 
-          <RadioGroup value={selectedTemplateId} onValueChange={setSelectedTemplateId} className="gap-2.5 py-1">
-            {FLOW_TEMPLATES.map((template) => (
-              <label
-                key={template.id}
-                htmlFor={`template-${template.id}`}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent"
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <RadioGroup
+              value={selectedTemplateId}
+              onValueChange={setSelectedTemplateId}
+              className="grid grid-cols-1 gap-3 py-1 md:grid-cols-2"
+            >
+              {FLOW_TEMPLATES.map((template) => (
+                <label
+                  key={template.id}
+                  htmlFor={`template-${template.id}`}
+                  className="flex h-full cursor-pointer items-start gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent"
+                >
+                  <RadioGroupItem value={template.id} id={`template-${template.id}`} className="mt-0.5" />
+                  <div className="min-w-0">
+                    <Label htmlFor={`template-${template.id}`} className="cursor-pointer text-sm font-semibold text-foreground">
+                      {template.name}
+                    </Label>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{template.description}</p>
+                  </div>
+                </label>
+              ))}
+
+              <div
+                className={`flex h-full items-start gap-3 rounded-lg border border-dashed p-4 transition-colors md:col-span-2 ${
+                  selectedTemplateId === IMPORT_ID ? "border-primary bg-accent" : "border-border"
+                }`}
               >
-                <RadioGroupItem value={template.id} id={`template-${template.id}`} className="mt-0.5" />
-                <div className="min-w-0">
-                  <Label htmlFor={`template-${template.id}`} className="cursor-pointer text-sm font-semibold text-foreground">
-                    {template.name}
+                <RadioGroupItem value={IMPORT_ID} id={`template-${IMPORT_ID}`} className="mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <Label
+                    htmlFor={`template-${IMPORT_ID}`}
+                    className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-foreground"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Ingiza kutoka faili (Import)
                   </Label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{template.description}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Pakia faili ya mtiririko (.json) iliyosafirishwa kutoka SENDA — mtiririko wote unakuja kama rasimu
+                    unayoweza kuhariri.
+                  </p>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="application/json,.json"
+                    hidden
+                    onChange={(e) => {
+                      handleFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                      <FileJson className="mr-1.5 h-3.5 w-3.5" />
+                      {imported ? "Chagua faili nyingine" : "Chagua faili"}
+                    </Button>
+                    {imported && (
+                      <span className="text-xs text-muted-foreground">
+                        {imported.definition.nodes.length} visanduku · {imported.definition.edges.length} viunganisho
+                      </span>
+                    )}
+                  </div>
+                  {imported && (
+                    <div className="mt-2">
+                      <Label htmlFor="import-name" className="text-xs">
+                        Jina la mtiririko
+                      </Label>
+                      <Input
+                        id="import-name"
+                        value={importName}
+                        maxLength={100}
+                        onChange={(e) => setImportName(e.target.value)}
+                        className="mt-1 max-w-sm"
+                      />
+                    </div>
+                  )}
+                  {importError && <p className="mt-2 text-xs text-destructive">{importError}</p>}
                 </div>
-              </label>
-            ))}
-          </RadioGroup>
+              </div>
+            </RadioGroup>
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={isCreating}>
               Ghairi
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating}>
-              {isCreating ? "Tunaanzisha…" : "Anza"}
+            <Button onClick={handleCreate} disabled={isCreating || (selectedTemplateId === IMPORT_ID && !imported)}>
+              {isCreating ? "Tunaanzisha…" : selectedTemplateId === IMPORT_ID ? "Ingiza" : "Anza"}
             </Button>
           </DialogFooter>
         </DialogContent>
