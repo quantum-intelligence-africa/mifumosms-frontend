@@ -51,6 +51,8 @@ const Scheduled = lazy(() => import("./pages/sms/Scheduled"));
 const IntegrationGuide = lazy(() => import("./pages/IntegrationGuide"));
 const PertinaIntegration = lazy(() => import("./pages/PertinaIntegration"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const InviteAccept = lazy(() => import("./pages/InviteAccept"));
+const PortalUnavailable = lazy(() => import("./pages/PortalUnavailable"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const DownloadApp = lazy(() => import("./pages/DownloadApp"));
@@ -218,7 +220,7 @@ const AppContent = () => {
 
   // On an unknown hostname we first learn whether it is a white-label domain, so a customer never
   // sees a flash of the SENDA marketing page before the sign-in screen.
-  const { loaded: hostLoaded } = useHostBranding();
+  const { loaded: hostLoaded, unavailable: portalUnavailable } = useHostBranding();
 
   // Pull-to-refresh on every route, mobile only. The installed PWA strips the
   // browser's native gesture, so users have no built-in way to reload — this
@@ -237,7 +239,7 @@ const AppContent = () => {
       <PendingPaymentReminder />
       <RouteAnimator>
       <Suspense fallback={<RouteFallback />}>
-      {!hostLoaded ? <RouteFallback /> : (
+      {!hostLoaded ? <RouteFallback /> : portalUnavailable ? <PortalUnavailable /> : (
       <Routes>
         <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/whatsapp-broadcast" element={<PublicOnly><WhatsAppBroadcast /></PublicOnly>} />
@@ -247,6 +249,9 @@ const AppContent = () => {
         <Route path="/watch-tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/login" element={<Login />} />
+        {/* Team invitations: open on the inviting organization's own portal, never gated as marketing. */}
+        <Route path="/invite/:token" element={<InviteAccept />} />
+        <Route path="/invitations/accept/:token" element={<InviteAccept />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

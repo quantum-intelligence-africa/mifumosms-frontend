@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
 import { BrandLogo, BrandName } from "@/components/layout/BrandLogo";
 import { useHostBranding } from "@/contexts/BrandingContext";
+import { googleLoginUrl, inviteTokenFromNext, safeInviteNext } from "@/lib/googleLogin";
 import { API_CONFIG } from "@/config/api";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import GoogleButton from "@/components/auth/GoogleButton";
@@ -25,11 +26,6 @@ const ADMIN_SUFFIX = ".admin";
 const ADMIN_SESSION_KEY = "senda_admin_auth";
 // /auth/admin/login lives at the root of mifumosms.mifumolabs.com, not under /api.
 const ADMIN_BASE_URL = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
-const GOOGLE_LOGIN_URL = `${ADMIN_BASE_URL}/accounts/google/login/`;
-// On an organization's own address the backend must know which one, so it can admit only its members
-// and bring the person back here afterwards instead of to the main SENDA site.
-const googleLoginUrl = (whiteLabelHost: boolean) =>
-  whiteLabelHost ? `${GOOGLE_LOGIN_URL}?wl_host=${encodeURIComponent(window.location.hostname)}` : GOOGLE_LOGIN_URL;
 
 const Login = () => {
   const isMobile = useIsMobile();
@@ -50,6 +46,9 @@ const Login = () => {
   const location = useLocation();
   // A customer's white-label domain shows only the sign-in screen: no marketing links, no sign-up.
   const { branded: whiteLabelHost } = useHostBranding();
+  // An invitation page sends people here with ?next=/invite/<token>: sign in, then go straight back.
+  const nextPath = safeInviteNext(new URLSearchParams(location.search).get("next"));
+  const invitationToken = inviteTokenFromNext(nextPath);
 
   // Google sends refused people back here with ?error=not_member.
   useEffect(() => {
@@ -88,10 +87,10 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || "/dashboard";
+      const from = nextPath || location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, location, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +152,7 @@ const Login = () => {
         password: formData.password,
         recaptchaToken,
         rememberMe: formData.rememberMe,
+        invitationToken: invitationToken || undefined,
       });
 
       if (result.success) {
@@ -161,7 +161,7 @@ const Login = () => {
           description: t("auth.login.toast_login_success_desc")
         });
 
-        const from = location.state?.from?.pathname || "/dashboard";
+        const from = nextPath || location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
       } else if (result.requires2FA && result.challengeId) {
         setOtpChallenge({ id: result.challengeId, channel: result.channel || "email" });
@@ -228,12 +228,12 @@ const Login = () => {
 
   const handleVerifyLoginOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    const response = await apiClient.verifyLoginOTP(otpChallenge!.id, otpCode);
+    const response = await apiClient.verifyLoginOTP(otpChallenge!.id, otpCode, invitationToken || undefined);
     if (response.data?.tokens) {
       localStorage.setItem("access_token", response.data.tokens.access);
       localStorage.setItem("refresh_token", response.data.tokens.refresh);
       localStorage.setItem("user", JSON.stringify(response.data.user));
-      window.location.assign("/dashboard");
+      window.location.assign(nextPath || "/dashboard");
     } else {
       toast({ title: "Verification failed", description: response.error || "Invalid or expired code.", variant: "destructive" });
     }
@@ -379,7 +379,7 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <GoogleButton href={googleLoginUrl(whiteLabelHost)} roundedClassName="rounded-full">
+            <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-full">
               Continue with Google
             </GoogleButton>
             {/* Email Input */}
@@ -583,7 +583,7 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <GoogleButton href={googleLoginUrl(whiteLabelHost)} roundedClassName="rounded-lg">
+              <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-lg">
                 Continue with Google
               </GoogleButton>
               <div className="space-y-1">

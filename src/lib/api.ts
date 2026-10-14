@@ -99,6 +99,20 @@ export interface LoginRequest {
   /** Client-side only: controls session persistence (not sent to the backend). */
   rememberMe?: boolean;
   recaptchaToken?: string;
+  /** Set when signing in to accept a team invitation on an organization's own address. */
+  invitationToken?: string;
+}
+
+export interface InvitationInfo {
+  valid: boolean;
+  reason?: 'invalid' | 'expired' | 'rate_limited' | null;
+  organization?: string;
+  role?: string;
+  role_display?: string;
+  /** Masked address the invitation was sent to, e.g. "p***@example.com". */
+  email_hint?: string;
+  /** The organization's own portal; the invitation should be completed there. */
+  portal_host?: string | null;
 }
 
 export interface RegisterRequest {
@@ -1428,18 +1442,47 @@ class ApiClient {
 
   async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
     // rememberMe is a client-side concern only; don't forward it to the backend.
-    const { email, password, recaptchaToken } = credentials;
+    const { email, password, recaptchaToken, invitationToken } = credentials;
     return this.request<LoginResponse>('/auth/login/', {
       method: 'POST',
-      body: JSON.stringify({ email, password, recaptcha_token: recaptchaToken || "" }),
+      body: JSON.stringify({
+        email,
+        password,
+        recaptcha_token: recaptchaToken || "",
+        ...(invitationToken ? { invitation_token: invitationToken } : {}),
+      }),
     });
   }
 
-  async verifyLoginOTP(challengeId: string, code: string): Promise<ApiResponse<LoginResponse>> {
+  async verifyLoginOTP(challengeId: string, code: string, invitationToken?: string): Promise<ApiResponse<LoginResponse>> {
     return this.request<LoginResponse>('/auth/login/verify-otp/', {
       method: 'POST',
-      body: JSON.stringify({ challenge_id: challengeId, code }),
+      body: JSON.stringify({
+        challenge_id: challengeId,
+        code,
+        ...(invitationToken ? { invitation_token: invitationToken } : {}),
+      }),
     });
+  }
+
+  /** Public: what the invitation page may show before sign-in (organization, role, portal). */
+  async getInvitationInfo(token: string): Promise<InvitationInfo> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/tenants/invite/${encodeURIComponent(token)}/`);
+      return (await res.json()) as InvitationInfo;
+    } catch {
+      return { valid: false, reason: 'invalid' };
+    }
+  }
+
+  /** Accept the invitation for the signed-in account; the backend decides if it is theirs. */
+  async acceptInvitation(token: string): Promise<ApiResponse<{ message: string; role: string; portal_host?: string | null; tenant: { id: string; name: string } }> & { code?: string; email_hint?: string }> {
+    const res = await this.request<{ message: string; role: string; portal_host?: string | null; tenant: { id: string; name: string } }>(
+      `/tenants/invite/${encodeURIComponent(token)}/accept/`,
+      { method: 'POST' },
+    );
+    const body = (res.data ?? res.errors ?? {}) as { code?: string; email_hint?: string };
+    return { ...res, code: body.code, email_hint: body.email_hint };
   }
 
   async register(userData: RegisterRequest): Promise<ApiResponse<RegisterResponse>> {
@@ -5814,4 +5857,4 @@ export interface BrandingState {
   domains: BrandingDomain[];
 }
 
-export type PublicBranding = { branded: false } | ({ branded: true } & BrandingConfig);
+export type PublicBranding = { branded: false; unavailable?: boolean } | ({ branded: true } & BrandingConfig);

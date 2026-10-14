@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ccEn, ccSw } from "@/i18n/callCenter";
+import { useBranding } from "@/contexts/BrandingContext";
 
 const translations = {
   en: {
@@ -6194,17 +6195,23 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, [language]);
 
+  // On an organization's white-label portal the product is that organization, not SENDA: every
+  // "SENDA" / "SENDA Copilot" in a translated string becomes its name.
+  const brand = useBranding();
+  const brandName = brand.branded ? (brand.workspace_name || brand.display_name || "") : "";
+
   const t = useMemo(() => {
+    const withBrand = (text: string) => (brandName ? text.replace(/\bSENDA(?: Copilot)?\b/g, () => brandName) : text);
     return (key: keyof typeof translations.en, params?: Record<string, string | number>) => {
       const base = translations[language]?.[key] || translations.en[key] || String(key);
       if (!params) {
-        return base;
+        return withBrand(base);
       }
-      return Object.keys(params).reduce((result, paramKey) => {
+      return withBrand(Object.keys(params).reduce((result, paramKey) => {
         return result.replace(new RegExp(`{{${paramKey}}}`, "g"), String(params[paramKey]));
-      }, base);
+      }, base));
     };
-  }, [language]);
+  }, [language, brandName]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

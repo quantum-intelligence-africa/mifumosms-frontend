@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { BrandName } from "@/components/layout/BrandLogo";
+import { safeInviteNext } from "@/lib/googleLogin";
 
 export default function OAuthCallback() {
   const navigate = useNavigate();
@@ -10,12 +12,17 @@ export default function OAuthCallback() {
   const [phone, setPhone] = useState("");
   const [needsPhone, setNeedsPhone] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
+  // Where to go after sign-in: back to the invitation being accepted, otherwise the dashboard.
+  const [destination, setDestination] = useState("/dashboard");
 
   useEffect(() => {
     const completeLogin = async () => {
       const params = new URLSearchParams(window.location.hash.slice(1));
       const access = params.get("access");
       const refresh = params.get("refresh");
+      // Only an invitation path is honoured (exact shape); anything else falls back to the dashboard.
+      const next = safeInviteNext(params.get("next")) || "/dashboard";
+      setDestination(next);
 
       if (!access || !refresh) {
         setError("Google sign-in did not return valid credentials.");
@@ -39,7 +46,7 @@ export default function OAuthCallback() {
         setNeedsPhone(true);
         return;
       }
-      navigate("/dashboard", { replace: true });
+      navigate(next, { replace: true });
     };
 
     completeLogin().catch(() => {
@@ -63,7 +70,7 @@ export default function OAuthCallback() {
         localStorage.setItem("user_profile", JSON.stringify(profile.data));
         completeOAuthLogin(profile.data);
       }
-      navigate("/dashboard", { replace: true });
+      navigate(destination, { replace: true });
     } catch {
       setError("Unable to save your phone number. Please try again.");
     } finally {
@@ -78,7 +85,7 @@ export default function OAuthCallback() {
           <>
             <h1 className="text-xl font-semibold">Add your phone number</h1>
             <p className="mt-2 text-muted-foreground">
-              One phone number is required to finish setting up your SENDA account.
+              One phone number is required to finish setting up your <BrandName /> account.
             </p>
             <form className="mt-6 space-y-4 text-left" onSubmit={submitPhone}>
               <label className="block text-sm font-medium" htmlFor="oauth-phone">

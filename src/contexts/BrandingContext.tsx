@@ -33,10 +33,12 @@ interface HostBranding {
   loaded: boolean;
   /** True when this hostname is a customer's white-label domain: show only the sign-in screen. */
   branded: boolean;
+  /** True when this hostname is a registered portal that is not usable (unverified, disabled, no longer entitled). */
+  unavailable: boolean;
 }
 
 const BrandingContext = createContext<Brand>(STOCK);
-const HostContext = createContext<HostBranding>({ loaded: true, branded: false });
+const HostContext = createContext<HostBranding>({ loaded: true, branded: false, unavailable: false });
 const ControlsContext = createContext<BrandingControls>({ refresh: async () => {}, setPreview: () => {}, previewing: false });
 
 export const useBranding = () => useContext(BrandingContext);
@@ -86,6 +88,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const { setTheme } = useTheme();
   const [hostBrand, setHostBrand] = useState<Brand>(STOCK);
   const [hostLoaded, setHostLoaded] = useState(() => isStockHost(window.location.hostname));
+  const [hostUnavailable, setHostUnavailable] = useState(false);
   const [userBrand, setUserBrand] = useState<Brand | null>(null);
   const [preview, setPreview] = useState<BrandingConfig | null>(null);
 
@@ -95,6 +98,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     apiClient.getPublicBranding(window.location.hostname).then((b: PublicBranding) => {
       if (!live) return;
       setHostBrand(b);
+      setHostUnavailable(!b.branded && !!b.unavailable);
       setHostLoaded(true);
     });
     return () => { live = false; };
@@ -115,7 +119,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated && preview) return { ...preview, branded: true, display_name: preview.display_name || "Preview" };
     return isAuthenticated && userBrand ? userBrand : hostBrand;
   }, [isAuthenticated, preview, userBrand, hostBrand]);
-  const host = useMemo<HostBranding>(() => ({ loaded: hostLoaded, branded: hostBrand.branded }), [hostLoaded, hostBrand.branded]);
+  const host = useMemo<HostBranding>(
+    () => ({ loaded: hostLoaded, branded: hostBrand.branded, unavailable: hostUnavailable }),
+    [hostLoaded, hostBrand.branded, hostUnavailable],
+  );
   const controls = useMemo<BrandingControls>(() => ({ refresh, setPreview, previewing: !!preview }), [refresh, preview]);
 
   useEffect(() => {
