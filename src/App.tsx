@@ -32,6 +32,15 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Smsactivation = lazy(() => import("./pages/Smsactivation"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+// A returning visitor who opens the dashboard: start fetching its code now, in parallel with the profile
+// refresh and the rest of the boot, instead of only after the route renders.
+if (typeof window !== "undefined" && window.location.pathname === "/dashboard") {
+  try {
+    if (localStorage.getItem("access_token")) void import("./pages/Dashboard");
+  } catch {
+    /* storage unavailable */
+  }
+}
 const Conversations = lazy(() => import("./pages/Conversations"));
 const Contacts = lazy(() => import("./pages/Contacts"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));

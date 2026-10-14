@@ -125,7 +125,7 @@ const NotificationsPage = () => {
   }, []);
 
   const { t } = useLanguage();
-  const { recentActivity, isLoading } = useDashboard();
+  const { recentActivity, activityLoading: isLoading } = useDashboard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");

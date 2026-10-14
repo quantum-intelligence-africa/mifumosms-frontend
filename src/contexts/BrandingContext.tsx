@@ -28,6 +28,23 @@ const STOCK_HOSTS = new Set([
 ]);
 const isStockHost = (host: string) => STOCK_HOSTS.has(host) || host.endsWith(".netlify.app");
 
+// Last-known answer for a customer address, so a repeat visit renders its branding immediately and the
+// lookup revalidates in the background. Presentation only: every permission is enforced by the backend.
+const HOST_CACHE_PREFIX = "wl_host_brand:";
+function readHostCache(host: string): PublicBranding | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HOST_CACHE_PREFIX + host) || "null");
+    return parsed && typeof parsed.branded === "boolean" ? (parsed as PublicBranding) : null;
+  } catch {
+    return null;
+  }
+}
+function writeHostCache(host: string, value: PublicBranding) {
+  try {
+    localStorage.setItem(HOST_CACHE_PREFIX + host, JSON.stringify(value));
+  } catch { /* storage unavailable */ }
+}
+
 interface HostBranding {
   /** False until we know whether this hostname is a white-label host. */
   loaded: boolean;
@@ -86,23 +103,28 @@ const DEFAULT_TITLE = typeof document !== "undefined" ? document.title : "";
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const { setTheme } = useTheme();
-  const [hostBrand, setHostBrand] = useState<Brand>(STOCK);
-  const [hostLoaded, setHostLoaded] = useState(() => isStockHost(window.location.hostname));
-  const [hostUnavailable, setHostUnavailable] = useState(false);
+  const hostname = window.location.hostname;
+  const [cachedHost] = useState(() => (isStockHost(hostname) ? null : readHostCache(hostname)));
+  const [hostBrand, setHostBrand] = useState<Brand>((cachedHost as Brand | null) ?? STOCK);
+  const [hostLoaded, setHostLoaded] = useState(() => isStockHost(hostname) || cachedHost !== null);
+  const [hostUnavailable, setHostUnavailable] = useState(() => !!cachedHost && !cachedHost.branded && !!cachedHost.unavailable);
   const [userBrand, setUserBrand] = useState<Brand | null>(null);
   const [preview, setPreview] = useState<BrandingConfig | null>(null);
 
   // Before login (and on a branded host): branding for this hostname.
   useEffect(() => {
+    // The main SENDA hosts are never white-label: no request needed.
+    if (isStockHost(hostname)) return;
     let live = true;
-    apiClient.getPublicBranding(window.location.hostname).then((b: PublicBranding) => {
+    apiClient.getPublicBranding(hostname).then((b: PublicBranding) => {
       if (!live) return;
+      writeHostCache(hostname, b);
       setHostBrand(b);
       setHostUnavailable(!b.branded && !!b.unavailable);
       setHostLoaded(true);
     });
     return () => { live = false; };
-  }, []);
+  }, [hostname]);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) { setUserBrand(null); return; }

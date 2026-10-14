@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Send as SendIcon, CheckCircle2, Inbox, Tag, CalendarClock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { useMessageBadgeCounts } from "@/hooks/useMessageBadgeCounts";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface SubNavItem {
@@ -26,34 +25,8 @@ export function MessagesSubNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const [outboxCount, setOutboxCount] = useState(0);
-  const [sentCount, setSentCount] = useState(0);
-  const [scheduledCount, setScheduledCount] = useState(0);
-
-  // Live counts for the Outbox (failed), Sent and Scheduled badges — same source
-  // the desktop sidebar uses. Refetched whenever the route changes so a
-  // send/retry/cancel is reflected when the user hops between tabs.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [failed, sent, scheduled] = await Promise.all([
-          apiClient.getSMSMessages({ status: "failed", page: 1 }),
-          apiClient.getSMSMessages({ status__in: "sent,delivered", page: 1 }),
-          apiClient.getSMSMessages({ status: "scheduled", page: 1 }),
-        ]);
-        if (cancelled) return;
-        if (failed.success && failed.data) setOutboxCount(failed.data.count || 0);
-        if (sent.success && sent.data) setSentCount(sent.data.count || 0);
-        if (scheduled.success && scheduled.data) setScheduledCount(scheduled.data.count || 0);
-      } catch {
-        /* non-fatal: badges just stay hidden */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [location.pathname]);
+  // Same cached counts the desktop sidebar uses (one query shared across pages, see the hook).
+  const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
 
   const sw = language === "sw";
   const items: SubNavItem[] = [

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { useBranding } from "@/contexts/BrandingContext";
+import { useMessageBadgeCounts } from "@/hooks/useMessageBadgeCounts";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType, SVGAttributes } from "react";
@@ -95,35 +96,12 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
     messaging: true,
     "voice-ivr": location.pathname.startsWith("/voice") || location.pathname.startsWith("/call-center"),
   });
-  const [outboxCount, setOutboxCount] = useState(0);
-  const [sentCount, setSentCount] = useState(0);
-  const [scheduledCount, setScheduledCount] = useState(0);
+  // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
+  const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
   const brand = useBranding();
   const { openDialer } = useDialer();
 
-  // Small live counts for the Outbox (failed), Sent and Scheduled nav badges.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [failed, sent, scheduled] = await Promise.all([
-          apiClient.getSMSMessages({ status: "failed", page: 1 }),
-          apiClient.getSMSMessages({ status__in: "sent,delivered", page: 1 }),
-          apiClient.getSMSMessages({ status: "scheduled", page: 1 }),
-        ]);
-        if (cancelled) return;
-        if (failed.success && failed.data) setOutboxCount(failed.data.count || 0);
-        if (sent.success && sent.data) setSentCount(sent.data.count || 0);
-        if (scheduled.success && scheduled.data) setScheduledCount(scheduled.data.count || 0);
-      } catch {
-        /* non-fatal: badges just stay hidden */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { isPartina } = useRoles();

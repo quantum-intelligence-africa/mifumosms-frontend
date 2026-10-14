@@ -2,6 +2,7 @@ import { MessageSquare, Send, Users, CheckCircle, Activity } from "lucide-react"
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -49,7 +50,7 @@ const getActivityStatus = (type: string, isLive?: boolean) => {
 };
 
 export function ActivityFeed() {
-  const { recentActivity } = useDashboard();
+  const { recentActivity, activityLoading } = useDashboard();
   const navigate = useNavigate();
   const activities = recentActivity || [];
   const { t } = useLanguage();
@@ -73,7 +74,9 @@ export function ActivityFeed() {
       </div>
 
       <div className="space-y-2">
-        {activities.length > 0 ? (
+        {activityLoading ? (
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)
+        ) : activities.length > 0 ? (
           activities.slice(0, 4).map((activity, index) => {
             const Icon = getActivityIcon(activity.type);
             const status = getActivityStatus(activity.type, activity.is_live);

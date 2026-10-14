@@ -3154,6 +3154,8 @@ class ApiClient {
     status?: string;
     status__in?: string;
     page?: number;
+    /** Rows per page; use 1 when only `count` is needed. */
+    page_size?: number;
     search?: string;
   }): Promise<ApiResponse<{
     count: number;
@@ -3165,6 +3167,7 @@ class ApiClient {
     if (params?.status) queryParams.append('status', params.status);
     if (params?.status__in) queryParams.append('status__in', params.status__in);
     if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
     if (params?.search) queryParams.append('search', params.search);
 
     const qs = queryParams.toString();

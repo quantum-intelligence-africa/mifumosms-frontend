@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { API_CONFIG } from '@/config/api';
@@ -168,77 +170,12 @@ type Campaign = {
   created_at_human: string;
 };
 
-export const useDashboard = () => {
-  const [metrics, setMetrics] = useState<DashboardMetricsResponse['data'] | null>(null);
-  const [overview, setOverview] = useState<DashboardOverviewResponse['data'] | null>(null);
-  const [recentCampaigns, setRecentCampaigns] = useState<Campaign[] | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivityResponse['data']['activities'] | null>(null);
-  const [performanceOverview, setPerformanceOverview] = useState<PerformanceOverviewResponse['data'] | null>(null);
-  const [senderIds, setSenderIds] = useState<SenderIdsResponse['data'] | null>(null);
+type MetricsApi = NonNullable<Awaited<ReturnType<typeof apiClient.getDashboardMetrics>>['data']>;
+type OverviewApi = NonNullable<Awaited<ReturnType<typeof apiClient.getDashboardOverview>>['data']>;
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  // Track if we've already logged errors to avoid console spam
-  const errorLoggedRef = useRef({
-    metrics: false,
-    overview: false,
-    activity: false,
-    performance: false,
-    senderIds: false
-  });
-
-  const fetchDashboardData = useCallback(async (isInitialLoad = false) => {
-    try {
-      if (isInitialLoad) {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setError('No authentication token found');
-        if (isInitialLoad) {
-          toast({
-            title: "Authentication required",
-            description: "Please log in to view the dashboard",
-            variant: "destructive"
-          });
-        }
-        return;
-      }
-
-      // Use apiClient for dashboard overview and metrics
-      const [metricsResponse, overviewResponse, activityResponse, performanceResponse, senderIdsResponse] = await Promise.allSettled([
-        apiClient.getDashboardMetrics(),
-        apiClient.getDashboardOverview(),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.ACTIVITY.RECENT}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }).catch(() => null),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.PERFORMANCE.OVERVIEW}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }).catch(() => null),
-        fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_IDS.BASE}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }).catch(() => null)
-      ]);
-
-      // Handle metrics response
-      if (metricsResponse.status === 'fulfilled' && metricsResponse.value.success) {
-        const metricsData = metricsResponse.value.data;
-        if (metricsData) {
-          // Transform apiClient response to match expected format
-          setMetrics({
+/** Same transformation the dashboard has always applied to the metrics response. */
+function mapMetrics(metricsData: MetricsApi): DashboardMetricsResponse['data'] {
+          return {
             total_messages: {
               value: metricsData.total_messages?.value || 0,
               description: metricsData.total_messages?.description || ''
@@ -260,22 +197,11 @@ export const useDashboard = () => {
               value: metricsData.sender_id?.value || 0,
               description: metricsData.sender_id?.description || ''
             }
-          });
-          errorLoggedRef.current.metrics = false; // Reset error flag on success
-        }
-      } else if (!errorLoggedRef.current.metrics && isInitialLoad) {
-        // Only log once on initial load
-        console.warn('Dashboard metrics endpoint not available or returned error');
-        errorLoggedRef.current.metrics = true;
-      }
+          };
+}
 
-      // Handle overview response
-      if (overviewResponse.status === 'fulfilled' && overviewResponse.value.success) {
-        const overviewData = overviewResponse.value.data;
-        if (overviewData) {
-          setOverview(overviewData as DashboardOverviewResponse['data']);
-          // Map recent campaigns to ensure we have the correct structure
-          // Prioritize campaign_type_display and campaign_type over type field
+/** Same transformation the dashboard has always applied to the overview's recent campaigns. */
+function mapCampaigns(overviewData: OverviewApi): Campaign[] {
           const mappedCampaigns: Campaign[] = overviewData.recent_campaigns.map((campaign: {
             id: string;
             name: string;
@@ -330,146 +256,117 @@ export const useDashboard = () => {
               created_at_human: campaign.created_at_human || campaign.timeAgo || '',
             };
           });
-          setRecentCampaigns(mappedCampaigns);
-          errorLoggedRef.current.overview = false; // Reset error flag on success
-        }
-      } else if (!errorLoggedRef.current.overview && isInitialLoad) {
-        console.warn('Dashboard overview endpoint not available or returned error');
-        errorLoggedRef.current.overview = true;
-      }
+  return mappedCampaigns;
+}
 
-      // Handle activity response
-      if (activityResponse.status === 'fulfilled' && activityResponse.value) {
-        const response = activityResponse.value;
-        if (response.ok) {
-          try {
-            const activityData: RecentActivityResponse = await response.json();
-            if (activityData.success) {
-              setRecentActivity(activityData.data.activities);
-              errorLoggedRef.current.activity = false;
-            }
-          } catch (e) {
-            if (!errorLoggedRef.current.activity && isInitialLoad) {
-              console.warn('Failed to parse activity response');
-              errorLoggedRef.current.activity = true;
-            }
-          }
-        } else if (!errorLoggedRef.current.activity && isInitialLoad && response.status === 400) {
-          // Only log 400 errors once on initial load - suppress subsequent errors
-          errorLoggedRef.current.activity = true;
-        }
-      } else if (!errorLoggedRef.current.activity && isInitialLoad) {
-        console.warn('Activity endpoint request failed');
-        errorLoggedRef.current.activity = true;
-      }
+async function fetchJson<T>(url: string): Promise<T | null> {
+  const token = localStorage.getItem('access_token');
+  if (!token) return null;
+  try {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
+    return response.ok ? ((await response.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
 
-      // Handle performance response
-      if (performanceResponse.status === 'fulfilled' && performanceResponse.value) {
-        const response = performanceResponse.value;
-        if (response.ok) {
-          try {
-            const performanceData: PerformanceOverviewResponse = await response.json();
-            if (performanceData.success) {
-              setPerformanceOverview(performanceData.data);
-              errorLoggedRef.current.performance = false;
-            }
-          } catch (e) {
-            if (!errorLoggedRef.current.performance && isInitialLoad) {
-              console.warn('Failed to parse performance response');
-              errorLoggedRef.current.performance = true;
-            }
-          }
-        } else if (!errorLoggedRef.current.performance && isInitialLoad && response.status === 400) {
-          // Suppress 400 errors after first log
-          errorLoggedRef.current.performance = true;
-        }
-      } else if (!errorLoggedRef.current.performance && isInitialLoad) {
-        console.warn('Performance endpoint request failed');
-        errorLoggedRef.current.performance = true;
-      }
+const POLL_MS = 120_000;
 
-      // Handle sender IDs response
-      if (senderIdsResponse.status === 'fulfilled' && senderIdsResponse.value) {
-        const response = senderIdsResponse.value;
-        if (response.ok) {
-          try {
-            const senderIdsData: SenderIdsResponse = await response.json();
-            if (senderIdsData.success) {
-              setSenderIds(senderIdsData.data);
-              errorLoggedRef.current.senderIds = false;
-            }
-          } catch (e) {
-            if (!errorLoggedRef.current.senderIds && isInitialLoad) {
-              console.warn('Failed to parse sender IDs response');
-              errorLoggedRef.current.senderIds = true;
-            }
-          }
-        } else if (!errorLoggedRef.current.senderIds && isInitialLoad && response.status === 400) {
-          // Suppress 400 errors after first log
-          errorLoggedRef.current.senderIds = true;
-        }
-      } else if (!errorLoggedRef.current.senderIds && isInitialLoad) {
-        console.warn('Sender IDs endpoint request failed');
-        errorLoggedRef.current.senderIds = true;
-      }
+/**
+ * Dashboard data, one React Query per section.
+ *
+ * Before, this was a plain hook with its own state and its own 2-minute timer, and the dashboard used
+ * it twice (page + activity feed): every visit fired all five requests twice and the page waited for
+ * the slowest of them before drawing anything. Now:
+ *  - consumers share one cache entry per section, so each request is made once (and de-duplicated);
+ *  - the page draws as soon as the primary metrics are in (`isLoading`), other sections fill in as they
+ *    arrive (`secondaryLoading` is true while campaigns / sender IDs are still loading);
+ *  - coming back to the dashboard shows the cached data immediately and refreshes it in the background;
+ *  - polling pauses while the tab is hidden.
+ */
+export const useDashboard = () => {
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const shared = {
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+    refetchInterval: POLL_MS,
+    refetchIntervalInBackground: false,
+  } as const;
 
-      // Only show toast on initial load if critical data failed
-      if (isInitialLoad && (
-        (metricsResponse.status === 'fulfilled' && !metricsResponse.value?.success) ||
-        (overviewResponse.status === 'fulfilled' && !overviewResponse.value?.success)
-      )) {
-        toast({
-          title: "Partial data loaded",
-          description: "Some dashboard data may not be available.",
-          variant: "default"
-        });
-      }
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      setError('Network error while fetching dashboard data');
-      toast({
-        title: "Network error",
-        description: "Failed to connect to server. Please check your connection.",
-        variant: "destructive"
-      });
-    } finally {
-      if (isInitialLoad) {
-        setIsLoading(false);
-      }
-    }
-  }, [toast]);
+  const metricsQ = useQuery({
+    queryKey: ['dashboard', 'metrics'],
+    queryFn: async () => {
+      const r = await apiClient.getDashboardMetrics();
+      if (!r.success || !r.data) throw new Error('metrics unavailable');
+      return mapMetrics(r.data);
+    },
+    ...shared,
+  });
+  const overviewQ = useQuery({
+    queryKey: ['dashboard', 'overview'],
+    queryFn: async () => {
+      const r = await apiClient.getDashboardOverview();
+      if (!r.success || !r.data) throw new Error('overview unavailable');
+      return { overview: r.data as DashboardOverviewResponse['data'], campaigns: mapCampaigns(r.data) };
+    },
+    ...shared,
+  });
+  const activityQ = useQuery({
+    queryKey: ['dashboard', 'activity'],
+    queryFn: async () => {
+      const d = await fetchJson<RecentActivityResponse>(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.ACTIVITY.RECENT}`);
+      if (!d?.success) throw new Error('activity unavailable');
+      return d.data.activities;
+    },
+    ...shared,
+  });
+  const performanceQ = useQuery({
+    queryKey: ['dashboard', 'performance'],
+    queryFn: async () => {
+      const d = await fetchJson<PerformanceOverviewResponse>(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.PERFORMANCE.OVERVIEW}`);
+      if (!d?.success) throw new Error('performance unavailable');
+      return d.data;
+    },
+    ...shared,
+  });
+  const senderIdsQ = useQuery({
+    queryKey: ['dashboard', 'sender-ids'],
+    queryFn: async () => {
+      const d = await fetchJson<SenderIdsResponse>(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.MESSAGING.SENDER_IDS.BASE}`);
+      if (!d?.success) throw new Error('sender ids unavailable');
+      return d.data;
+    },
+    ...shared,
+  });
 
+  // Tell the user once if the headline data could not be loaded (same message as before).
+  const warned = useRef(false);
   useEffect(() => {
-    // Initial load with loading state
-    fetchDashboardData(true);
+    if (!warned.current && (metricsQ.isError || overviewQ.isError)) {
+      warned.current = true;
+      toast({ title: "Partial data loaded", description: "Some dashboard data may not be available.", variant: "default" });
+    }
+  }, [metricsQ.isError, overviewQ.isError, toast]);
 
-    // Set up polling for real-time updates every 120 seconds (increased from 60s to reduce load)
-    // Use requestIdleCallback to avoid blocking main thread during heavy computations
-    const interval = setInterval(() => {
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-          fetchDashboardData(false); // Silent refresh without loading state
-        }, { timeout: 5000 }); // Timeout after 5 seconds to ensure it runs
-      } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(() => {
-          fetchDashboardData(false);
-        }, 100); // Small delay to defer heavy work
-      }
-    }, 120000); // 120 seconds = 2 minutes (increased from 60s)
-
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+  const refetch = async () => {
+    await Promise.all([metricsQ.refetch(), overviewQ.refetch(), activityQ.refetch(), performanceQ.refetch(), senderIdsQ.refetch()]);
+  };
 
   return {
-    metrics,
-    overview,
-    recentCampaigns, // campaigns from overview data with all required fields
-    recentActivity,
-    performanceOverview,
-    senderIds,
-    isLoading,
-    error,
-    refetch: fetchDashboardData,
+    metrics: metricsQ.data ?? null,
+    overview: overviewQ.data?.overview ?? null,
+    recentCampaigns: overviewQ.data?.campaigns ?? null, // campaigns from overview data with all required fields
+    recentActivity: activityQ.data ?? null,
+    performanceOverview: performanceQ.data ?? null,
+    senderIds: senderIdsQ.data ?? null,
+    /** True only until the primary metrics arrive (and never when they are already cached). */
+    isLoading: metricsQ.isLoading,
+    /** True while the campaign list / sender IDs have not arrived yet. */
+    secondaryLoading: overviewQ.isLoading || senderIdsQ.isLoading,
+    /** True while the activity feed has not arrived yet. */
+    activityLoading: activityQ.isLoading,
+    error: metricsQ.isError && overviewQ.isError ? 'Network error while fetching dashboard data' : null,
+    refetch,
   };
 };

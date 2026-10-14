@@ -20,11 +20,14 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
-import { PerformanceOverview } from "@/components/dashboard/PerformanceOverview";
+// The chart pulls in the charting library (~410 kB). Load it after the metric cards are on screen.
+const PerformanceOverview = lazy(() =>
+  import("@/components/dashboard/PerformanceOverview").then((m) => ({ default: m.PerformanceOverview })),
+);
 import { SenderIds } from "@/components/dashboard/SenderIds";
 import { useBranding } from "@/contexts/BrandingContext";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
@@ -141,7 +144,7 @@ function DashboardSkeleton({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boole
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const { user } = useAuth();
-  const { metrics, recentCampaigns, performanceOverview, senderIds, isLoading } = useDashboard();
+  const { metrics, recentCampaigns, performanceOverview, senderIds, isLoading, secondaryLoading } = useDashboard();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const { t } = useLanguage();
@@ -307,7 +310,9 @@ const Dashboard = () => {
                       {showSms && widgetOn("performance") && (
                         <div className="lg:col-span-2 h-full min-w-0">
                           <Card>
-                            <PerformanceOverview performance={performanceOverview} />
+                            <Suspense fallback={<Skeleton className="m-4 h-64 rounded-xl" />}>
+                              <PerformanceOverview performance={performanceOverview} />
+                            </Suspense>
                           </Card>
                         </div>
                       )}
@@ -320,7 +325,7 @@ const Dashboard = () => {
                         {widgetOn("activity_feed") && <ActivityFeed />}
                         {widgetOn("recent_campaigns") && (
                         <Card>
-                          <RecentCampaigns campaigns={recentCampaigns || []} />
+                          {secondaryLoading ? <Skeleton className="m-4 h-40 rounded-xl" /> : <RecentCampaigns campaigns={recentCampaigns || []} />}
                         </Card>
                         )}
                       </div>
@@ -329,7 +334,7 @@ const Dashboard = () => {
                     {/* Sender IDs Section — SMS-only concept */}
                     {showSms && (
                       <Card>
-                        <SenderIds senderIds={senderIds} />
+                        {secondaryLoading ? <Skeleton className="m-4 h-24 rounded-xl" /> : <SenderIds senderIds={senderIds} />}
                       </Card>
                     )}
                   </>

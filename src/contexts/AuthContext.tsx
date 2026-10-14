@@ -147,14 +147,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     const storedUser = localStorage.getItem('user');
+    let restoredSession = false;
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
+        restoredSession = !!localStorage.getItem('access_token');
       } catch (error) {
         console.warn('Failed to parse stored user from storage:', error);
         localStorage.removeItem('user');
       }
     }
+
+    // A returning visitor already has a stored user: show the app right away and refresh the profile in
+    // the background, instead of holding every protected page behind a profile round trip. This is a
+    // display shortcut only: the backend authorizes every request, and if the token turns out to be
+    // invalid the refresh below clears the session and the user is sent to sign in, as before.
+    if (restoredSession) setIsLoading(false);
 
     const initializeAuth = async () => {
       const token = localStorage.getItem('access_token');
