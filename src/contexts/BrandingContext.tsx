@@ -21,11 +21,27 @@ interface BrandingControls {
   previewing: boolean;
 }
 
+/** Hosts that are always the stock SENDA site, so they never wait for the branding lookup. */
+const STOCK_HOSTS = new Set([
+  "localhost", "127.0.0.1", "sms.mifumolabs.com", "mifumolabs.com", "www.mifumolabs.com",
+  "sendacopilot.com", "www.sendacopilot.com",
+]);
+const isStockHost = (host: string) => STOCK_HOSTS.has(host) || host.endsWith(".netlify.app");
+
+interface HostBranding {
+  /** False until we know whether this hostname is a white-label host. */
+  loaded: boolean;
+  /** True when this hostname is a customer's white-label domain: show only the sign-in screen. */
+  branded: boolean;
+}
+
 const BrandingContext = createContext<Brand>(STOCK);
+const HostContext = createContext<HostBranding>({ loaded: true, branded: false });
 const ControlsContext = createContext<BrandingControls>({ refresh: async () => {}, setPreview: () => {}, previewing: false });
 
 export const useBranding = () => useContext(BrandingContext);
 export const useBrandingControls = () => useContext(ControlsContext);
+export const useHostBranding = () => useContext(HostContext);
 
 const BRAND_VARS = ["--primary", "--primary-hover", "--primary-dark", "--primary-light", "--sidebar-primary", "--sidebar-background"];
 
@@ -69,13 +85,18 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const { setTheme } = useTheme();
   const [hostBrand, setHostBrand] = useState<Brand>(STOCK);
+  const [hostLoaded, setHostLoaded] = useState(() => isStockHost(window.location.hostname));
   const [userBrand, setUserBrand] = useState<Brand | null>(null);
   const [preview, setPreview] = useState<BrandingConfig | null>(null);
 
   // Before login (and on a branded host): branding for this hostname.
   useEffect(() => {
     let live = true;
-    apiClient.getPublicBranding(window.location.hostname).then((b: PublicBranding) => live && setHostBrand(b));
+    apiClient.getPublicBranding(window.location.hostname).then((b: PublicBranding) => {
+      if (!live) return;
+      setHostBrand(b);
+      setHostLoaded(true);
+    });
     return () => { live = false; };
   }, []);
 
@@ -94,6 +115,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated && preview) return { ...preview, branded: true, display_name: preview.display_name || "Preview" };
     return isAuthenticated && userBrand ? userBrand : hostBrand;
   }, [isAuthenticated, preview, userBrand, hostBrand]);
+  const host = useMemo<HostBranding>(() => ({ loaded: hostLoaded, branded: hostBrand.branded }), [hostLoaded, hostBrand.branded]);
   const controls = useMemo<BrandingControls>(() => ({ refresh, setPreview, previewing: !!preview }), [refresh, preview]);
 
   useEffect(() => {
@@ -112,6 +134,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
   return (
     <ControlsContext.Provider value={controls}>
+      <HostContext.Provider value={host}>
       <BrandingContext.Provider value={brand}>
         {preview && (
           <div className="fixed bottom-3 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background px-4 py-2 text-xs shadow-lg">
@@ -121,6 +144,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         )}
         {children}
       </BrandingContext.Provider>
+      </HostContext.Provider>
     </ControlsContext.Provider>
   );
 }

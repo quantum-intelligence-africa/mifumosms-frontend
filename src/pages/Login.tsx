@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
-import { BrandLogo } from "@/components/layout/BrandLogo";
+import { BrandLogo, BrandName } from "@/components/layout/BrandLogo";
+import { useHostBranding } from "@/contexts/BrandingContext";
 import { API_CONFIG } from "@/config/api";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import GoogleButton from "@/components/auth/GoogleButton";
@@ -43,6 +44,8 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // A customer's white-label domain shows only the sign-in screen: no marketing links, no sign-up.
+  const { branded: whiteLabelHost } = useHostBranding();
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -305,29 +308,33 @@ const Login = () => {
         <header className="fixed top-0 left-0 right-0 z-[50] px-4 py-3 bg-gradient-to-b from-black/20 to-transparent">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
+            <Link to={whiteLabelHost ? "/login" : "/"} className="flex items-center gap-2">
               <BrandLogo className="h-16 w-auto -my-3 -mr-8" />
               <span className="font-heading text-lg font-bold text-white">
-                SENDA
+                <BrandName />
               </span>
             </Link>
 
-            {/* Hamburger Menu Button */}
-            <button
-              className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+            {/* Hamburger Menu Button (marketing menu: hidden on a white-label host) */}
+            {!whiteLabelHost && (
+              <button
+                className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
+                onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            )}
           </div>
         </header>
 
         {/* Mobile Menu */}
-        <MobileMenu
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-        />
+        {!whiteLabelHost && (
+          <MobileMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+          />
+        )}
 
         {/* White Curved Container */}
         <motion.div
@@ -429,7 +436,8 @@ const Login = () => {
             </motion.div>
           </form>
 
-          {/* Links */}
+          {/* Links (hidden on a white-label host) */}
+          {!whiteLabelHost && (
           <div className="mt-8 text-center space-y-4">
             <div className="flex items-center justify-center gap-4">
               <Link
@@ -450,6 +458,7 @@ const Login = () => {
               </p>
             </div>
           </div>
+          )}
         </motion.div>
       </div>
     );
@@ -458,74 +467,90 @@ const Login = () => {
   // Desktop Login UI (unchanged)
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      <SlidingBackground />
+      {!whiteLabelHost && <SlidingBackground />}
 
       <div className="flex flex-col md:flex-row w-full min-h-screen md:min-h-0">
-        {/* Left Column - Header and Image */}
-        <div className="hidden md:flex md:w-1/2 flex-col justify-center p-6 lg:p-8 relative overflow-hidden min-h-screen">
-          <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
-            <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
-              <div className="flex items-center gap-3">
-                <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
-                <div>
-                  <span className="font-heading text-2xl font-bold text-gray-900">
-                    SENDA
-                  </span>
-                  <p className="text-base text-black mt-1">
-                    {t("auth.common.tagline")}
-                  </p>
+        {/* Left Column - white-label host: the organization's own brand, nothing of SENDA's marketing */}
+        {whiteLabelHost ? (
+          <div
+            className="hidden md:flex md:w-1/2 min-h-screen flex-col items-center justify-center p-10 relative overflow-hidden text-white"
+            style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark, var(--primary))))" }}
+          >
+            <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(circle at 25% 20%, white, transparent 55%)" }} />
+            <div className="relative z-10 flex max-w-sm flex-col items-center text-center">
+              <BrandLogo large className="shadow-xl" />
+              <h1 className="mt-6 font-heading text-3xl font-bold tracking-tight">
+                <BrandName />
+              </h1>
+              <p className="mt-2 text-base text-white/80">{t("auth.login.subtitle")}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="hidden md:flex md:w-1/2 flex-col justify-center p-6 lg:p-8 relative overflow-hidden min-h-screen">
+            <div className="relative z-10 w-full max-w-lg flex-1 flex items-center">
+              <div className="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-white/90 to-transparent rounded-t-lg">
+                <div className="flex items-center gap-3">
+                  <BrandLogo className="h-24 w-auto -my-3 -mr-11" />
+                  <div>
+                    <span className="font-heading text-2xl font-bold text-gray-900">
+                      <BrandName />
+                    </span>
+                    <p className="text-base text-black mt-1">
+                      {t("auth.common.tagline")}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="absolute bottom-4 left-4 right-4 z-20">
-              <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
-                <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
-                <ul className="space-y-1 text-sm text-black">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_reliable_delivery")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_competitive_pricing")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_advanced_analytics")}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{t("auth.common.benefit_support")}</span>
-                  </li>
-                </ul>
+  
+              <div className="absolute bottom-4 left-4 right-4 z-20">
+                <div className="bg-gradient-to-t from-white/90 to-transparent rounded-b-lg p-4">
+                  <h3 className="text-base font-semibold text-black mb-2">{t("auth.common.why_choose_senda")}</h3>
+                  <ul className="space-y-1 text-sm text-black">
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>{t("auth.common.benefit_reliable_delivery")}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>{t("auth.common.benefit_competitive_pricing")}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>{t("auth.common.benefit_advanced_analytics")}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-1">•</span>
+                      <span>{t("auth.common.benefit_support")}</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
+  
+              <img
+                src="/sign in image.png"
+                className="w-full h-auto object-contain"
+                alt="Login illustration"
+              />
             </div>
-
-            <img
-              src="/sign in image.png"
-              className="w-full h-auto object-contain"
-              alt="Login illustration"
-            />
+  
+            <div className="absolute inset-0">
+              <img
+                src="/home background12.jpg"
+                alt="Login background"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
-
-          <div className="absolute inset-0">
-            <img
-              src="/home background12.jpg"
-              alt="Login background"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
+        )}
 
         {/* Right Column - Form */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 bg-white/20 backdrop-blur-sm relative z-10 min-h-screen">
+        <div className={`w-full md:w-1/2 flex items-center justify-center p-3 sm:p-4 md:p-6 lg:p-8 ${whiteLabelHost ? "bg-white" : "bg-white/20 backdrop-blur-sm"} relative z-10 min-h-screen`}>
           <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
             <div className="text-center mb-4 sm:mb-6">
               <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
                 <BrandLogo className="h-16 sm:h-20 w-auto -my-3 sm:-my-3 -mr-8 sm:-mr-10" />
                 <span className="font-heading text-base sm:text-lg font-bold text-gray-900">
-                  SENDA
+                  <BrandName />
                 </span>
               </div>
 
@@ -611,6 +636,7 @@ const Login = () => {
               </Button>
             </form>
 
+            {!whiteLabelHost && (
             <div className="text-center space-y-2 sm:space-y-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-4">
                 <Link to="/" className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-semibold">
@@ -625,6 +651,7 @@ const Login = () => {
                 </p>
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

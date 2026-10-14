@@ -273,9 +273,9 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
       >
         {/* ── Logo ─────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 pt-5 pb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             <BrandLogo className="h-14 w-auto -my-3 -mr-7" />
-            <span className="text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-none">
+            <span className="min-w-0 line-clamp-2 break-words text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-tight">
               {brand.branded && brand.display_name ? brand.display_name : t("app.name")}
             </span>
           </div>

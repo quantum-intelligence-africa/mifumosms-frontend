@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
-import React, { useEffect, lazy, Suspense } from "react";
+import React, { useEffect, lazy, Suspense, type ReactNode } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DialerProvider } from "@/contexts/DialerContext";
 import { CallCenterProvider } from "@/contexts/CallCenterContext";
@@ -11,7 +11,7 @@ import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCallCenterRole, hasSmsAccess } from "@/utils/roleUtils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { BrandingProvider } from "@/contexts/BrandingContext";
+import { BrandingProvider, useHostBranding } from "@/contexts/BrandingContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useGlobalAuthErrorHandler } from "@/hooks/useGlobalAuthErrorHandler";
@@ -176,6 +176,15 @@ const DashboardGate = () => {
   return <Dashboard />;
 };
 
+/** Marketing and sign-up pages are SENDA's own site. On a customer's white-label domain they are
+ *  replaced by the sign-in screen (or the dashboard when already signed in). */
+const PublicOnly = ({ children }: { children: ReactNode }) => {
+  const { branded } = useHostBranding();
+  const { isAuthenticated } = useAuth();
+  if (!branded) return <>{children}</>;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+};
+
 const AppContent = () => {
   useEffect(() => {
     const reloadOnStaleChunk = (event: PromiseRejectionEvent) => {
@@ -207,6 +216,10 @@ const AppContent = () => {
   // This listens for auth errors across ALL endpoints and redirects to login
   useGlobalAuthErrorHandler();
 
+  // On an unknown hostname we first learn whether it is a white-label domain, so a customer never
+  // sees a flash of the SENDA marketing page before the sign-in screen.
+  const { loaded: hostLoaded } = useHostBranding();
+
   // Pull-to-refresh on every route, mobile only. The installed PWA strips the
   // browser's native gesture, so users have no built-in way to reload — this
   // restores it uniformly across Dashboard, marketing, auth, etc.
@@ -224,24 +237,25 @@ const AppContent = () => {
       <PendingPaymentReminder />
       <RouteAnimator>
       <Suspense fallback={<RouteFallback />}>
+      {!hostLoaded ? <RouteFallback /> : (
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/whatsapp-broadcast" element={<WhatsAppBroadcast />} />
+        <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
+        <Route path="/whatsapp-broadcast" element={<PublicOnly><WhatsAppBroadcast /></PublicOnly>} />
         {/* SEO-friendly landing aliases */}
-        <Route path="/pricing" element={<Landing />} />
-        <Route path="/features" element={<Landing />} />
-        <Route path="/watch-tutorial" element={<Landing />} />
-        <Route path="/tutorial" element={<Landing />} />
+        <Route path="/pricing" element={<PublicOnly><Landing /></PublicOnly>} />
+        <Route path="/features" element={<PublicOnly><Landing /></PublicOnly>} />
+        <Route path="/watch-tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
+        <Route path="/tutorial" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/login" element={<Login />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/smsactivation" element={<Smsactivation />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/download" element={<DownloadApp />} />
-              <Route path="/developer" element={<Developer />} />
+              <Route path="/smsactivation" element={<PublicOnly><Smsactivation /></PublicOnly>} />
+              <Route path="/terms" element={<PublicOnly><Terms /></PublicOnly>} />
+              <Route path="/privacy" element={<PublicOnly><Privacy /></PublicOnly>} />
+              <Route path="/download" element={<PublicOnly><DownloadApp /></PublicOnly>} />
+              <Route path="/developer" element={<PublicOnly><Developer /></PublicOnly>} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardGate />
@@ -478,8 +492,9 @@ const AppContent = () => {
         {/* Wildcard so /admin/<tab> (e.g. /admin/netprofit) resolves to the
             same component — SendaAdmin reads the tab from the URL itself. */}
         <Route path="/admin/*" element={<SendaAdmin />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<PublicOnly><NotFound /></PublicOnly>} />
       </Routes>
+      )}
       </Suspense>
     </RouteAnimator>
     </>
