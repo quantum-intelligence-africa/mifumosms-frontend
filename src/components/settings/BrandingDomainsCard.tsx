@@ -2,7 +2,7 @@
 // permission-gated twice: the backend rejects writes when SENDA staff haven't enabled the
 // feature, and this card shows a locked state instead of the controls.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Globe, Loader2, Lock, Palette, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Copy, Eye, Globe, Loader2, Lock, Palette, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBrandingControls } from "@/contexts/BrandingContext";
 import { apiClient, type ApiResponse, type BrandingConfig, type BrandingState } from "@/lib/api";
 
 const WIDGETS: { key: string; label: string }[] = [
@@ -35,6 +36,8 @@ const errorText = (res: Partial<ApiResponse<unknown>>): string => {
 export function BrandingDomainsCard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { refresh, setPreview, previewing } = useBrandingControls();
+  const [checks, setChecks] = useState<Record<string, { ok: boolean; message: string }>>({});
   const membership = useMemo(
     () => (user?.memberships ?? []).find((m) => m.status === "active" && (m.role === "owner" || m.role === "admin")),
     [user?.memberships],
@@ -92,11 +95,17 @@ export function BrandingDomainsCard() {
   };
 
   const set = <K extends keyof BrandingConfig>(key: K, value: BrandingConfig[K]) => setDraft({ ...draft, [key]: value });
-  const saveDraft = () =>
-    run("save", () => apiClient.updateBranding(tenantId, {
+  const saveDraft = async () => {
+    const res = await run("save", () => apiClient.updateBranding(tenantId, {
       display_name: draft.display_name, workspace_name: draft.workspace_name, colors: draft.colors,
       theme: draft.theme, sidebar_style: draft.sidebar_style, widgets: draft.widgets,
     }), "Draft saved");
+    if (res.success && res.data && previewing) setPreview(res.data.draft);
+    return res;
+  };
+  // After a publish/reset the whole app must pick the new branding up straight away.
+  const applyPublished = async () => { setPreview(null); await refresh(); };
+  const copy = (text: string) => { void navigator.clipboard?.writeText(text); toast({ title: "Copied" }); };
   const upload = (kind: "logo" | "favicon", file?: File) => file && run(kind, () => apiClient.uploadBrandingAsset(tenantId, kind, file), `${kind === "logo" ? "Logo" : "Favicon"} uploaded`);
 
   const base = state.base_domain;
@@ -192,10 +201,13 @@ export function BrandingDomainsCard() {
               <Button size="sm" variant="outline" disabled={!!busy} onClick={saveDraft}>
                 {busy === "save" && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}Save draft
               </Button>
-              <Button size="sm" disabled={!!busy} onClick={async () => { const r = await saveDraft(); if (r.success) await run("publish", () => apiClient.publishBranding(tenantId), "Branding published"); }}>
+              <Button size="sm" disabled={!!busy} onClick={async () => { const r = await saveDraft(); if (r.success) { const p = await run("publish", () => apiClient.publishBranding(tenantId), "Branding published - the app now uses it"); if (p.success) await applyPublished(); } }}>
                 {busy === "publish" && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}Save &amp; publish
               </Button>
-              <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => run("reset", () => apiClient.resetBranding(tenantId), "Back to SENDA Copilot branding")}>
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setPreview(draft); toast({ title: "Previewing your draft across the app", description: "Only you see this, until you publish." }); }}>
+                <Eye className="w-3.5 h-3.5 mr-1" />Preview in app
+              </Button>
+              <Button size="sm" variant="ghost" disabled={!!busy} onClick={async () => { const r = await run("reset", () => apiClient.resetBranding(tenantId), "Back to SENDA Copilot branding"); if (r.success) await applyPublished(); }}>
                 Remove branding
               </Button>
               {unpublishedChanges && <span className="text-xs text-muted-foreground self-center">Unpublished changes</span>}
@@ -234,14 +246,17 @@ export function BrandingDomainsCard() {
               <div key={d.id} className="rounded-md border p-3 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium break-all">{d.domain}</span>
-                  <Badge variant={d.verified ? "secondary" : "outline"}>{d.verified ? "Verified" : "Not verified"}</Badge>
+                  <Badge variant={d.verified ? "secondary" : "outline"}>{d.kind === "subdomain" ? "Reserved" : d.verified ? "Ownership verified" : "Not verified"}</Badge>
                   <Badge variant="outline">{d.kind === "subdomain" ? "SENDA subdomain" : "Custom domain"}</Badge>
                   <div className="ml-auto flex gap-1">
                     {d.kind === "custom" && !d.verified && (
                       <Button size="sm" variant="outline" disabled={!!busy} onClick={async () => {
                         const r = await run("verify" + d.id, () => apiClient.verifyCustomDomain(tenantId, d.id));
-                        const v = (r as { data?: { verification?: { verified: boolean; message: string } } }).data?.verification;
-                        if (v) toast({ title: v.verified ? "Domain verified" : "Not verified yet", description: v.verified ? undefined : v.message });
+                        const v = (r as { data?: { verification?: { verified: boolean; message: string; routing_ok?: boolean; routing_message?: string } } }).data?.verification;
+                        if (v) {
+                          toast({ title: v.verified ? "Ownership verified" : "Not verified yet", description: v.verified ? (v.routing_ok ? undefined : "Now add the CNAME record so visitors reach SENDA.") : v.message });
+                          setChecks((c) => ({ ...c, [d.id]: { ok: !!v.routing_ok, message: v.routing_message || "" } }));
+                        }
                       }}>
                         <RefreshCw className="w-3.5 h-3.5 mr-1" />Verify
                       </Button>
@@ -252,10 +267,44 @@ export function BrandingDomainsCard() {
                   </div>
                 </div>
                 {d.dns && (
-                  <div className="text-xs space-y-1 text-muted-foreground">
-                    <p>Add this DNS record at your domain provider, then press Verify:</p>
-                    <p className="font-mono break-all">TXT &nbsp;{d.dns.txt_host} &nbsp;=&nbsp; {d.dns.txt_value}</p>
-                    <p>Then add a CNAME record: <span className="font-mono">{d.domain}</span> → <span className="font-mono">custom.{base}</span></p>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <p>
+                      {d.verified
+                        ? "Ownership is verified. Make sure this record exists at your domain provider so visitors reach SENDA:"
+                        : "Add these two records at your domain provider (where you bought the domain), then press Verify:"}
+                    </p>
+                    <div className="overflow-x-auto rounded border">
+                      <table className="w-full min-w-[420px] text-left">
+                        <thead className="bg-muted/50"><tr><th className="p-2">Type</th><th className="p-2">Name / Host</th><th className="p-2">Value / Points to</th><th className="p-2" /></tr></thead>
+                        <tbody className="font-mono">
+                          {!d.verified && (
+                            <tr className="border-t">
+                              <td className="p-2">TXT</td><td className="p-2 break-all">{d.dns.txt_host}</td><td className="p-2 break-all">{d.dns.txt_value}</td>
+                              <td className="p-2"><button type="button" aria-label="Copy TXT value" onClick={() => copy(d.dns!.txt_value)}><Copy className="h-3.5 w-3.5" /></button></td>
+                            </tr>
+                          )}
+                          <tr className="border-t">
+                            <td className="p-2">CNAME</td><td className="p-2 break-all">{d.dns.cname_host}</td><td className="p-2 break-all">{d.dns.cname_value}</td>
+                            <td className="p-2"><button type="button" aria-label="Copy CNAME value" onClick={() => copy(d.dns!.cname_value)}><Copy className="h-3.5 w-3.5" /></button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p>DNS changes can take a few minutes (sometimes longer) to spread. Some providers want only the part before your domain in the Name field (for example <span className="font-mono">_senda-verify.calls</span>).</p>
+                    {d.verified && (
+                      <Button size="sm" variant="outline" disabled={!!busy} onClick={async () => {
+                        const r = await run("check" + d.id, () => apiClient.verifyCustomDomain(tenantId, d.id));
+                        const v = (r as { data?: { verification?: { routing_ok?: boolean; routing_message?: string } } }).data?.verification;
+                        if (v) setChecks((c) => ({ ...c, [d.id]: { ok: !!v.routing_ok, message: v.routing_message || "" } }));
+                      }}>
+                        <RefreshCw className="w-3.5 h-3.5 mr-1" />Check connection
+                      </Button>
+                    )}
+                    {checks[d.id] && (
+                      <p className={checks[d.id].ok ? "text-emerald-600" : "text-amber-600"}>
+                        {checks[d.id].ok ? "Connected. " : "Not connected yet. "}{checks[d.id].message}
+                      </p>
+                    )}
                   </div>
                 )}
                 {d.last_check_error && !d.verified && <p className="text-xs text-destructive">{d.last_check_error}</p>}

@@ -2065,7 +2065,7 @@ class ApiClient {
   async addCustomDomain(tenantId: string, domain: string): Promise<ApiResponse<BrandingState>> {
     return this.request<BrandingState>(`/tenants/${tenantId}/domains/custom/`, { method: 'POST', body: JSON.stringify({ domain }) });
   }
-  async verifyCustomDomain(tenantId: string, domainId: string): Promise<ApiResponse<BrandingState & { verification: { verified: boolean; message: string } }>> {
+  async verifyCustomDomain(tenantId: string, domainId: string): Promise<ApiResponse<BrandingState & { verification: { verified: boolean; message: string; routing_ok?: boolean; routing_message?: string } }>> {
     return this.request(`/tenants/${tenantId}/domains/${domainId}/verify/`, { method: 'POST' });
   }
   async removeDomain(tenantId: string, domainId: string): Promise<ApiResponse<BrandingState>> {
@@ -5757,7 +5757,7 @@ export interface BrandingDomain {
   kind: 'subdomain' | 'custom';
   verified: boolean;
   last_check_error?: string;
-  dns?: { txt_host: string; txt_value: string };
+  dns?: { txt_host: string; txt_value: string; cname_host: string; cname_value: string };
 }
 
 export interface BrandingState {

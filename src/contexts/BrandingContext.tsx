@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTheme } from "next-themes";
 import { apiClient, type BrandingConfig, type PublicBranding } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,9 +12,20 @@ import { useAuth } from "@/contexts/AuthContext";
 type Brand = Partial<BrandingConfig> & { branded: boolean };
 
 const STOCK: Brand = { branded: false };
+
+interface BrandingControls {
+  /** Re-read the signed-in organization's published branding (call after publish/reset). */
+  refresh: () => Promise<void>;
+  /** Show an unpublished draft across the whole app (this tab only); null ends the preview. */
+  setPreview: (draft: BrandingConfig | null) => void;
+  previewing: boolean;
+}
+
 const BrandingContext = createContext<Brand>(STOCK);
+const ControlsContext = createContext<BrandingControls>({ refresh: async () => {}, setPreview: () => {}, previewing: false });
 
 export const useBranding = () => useContext(BrandingContext);
+export const useBrandingControls = () => useContext(ControlsContext);
 
 const BRAND_VARS = ["--primary", "--primary-hover", "--primary-dark", "--primary-light", "--sidebar-primary", "--sidebar-background"];
 
@@ -59,6 +70,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const { setTheme } = useTheme();
   const [hostBrand, setHostBrand] = useState<Brand>(STOCK);
   const [userBrand, setUserBrand] = useState<Brand | null>(null);
+  const [preview, setPreview] = useState<BrandingConfig | null>(null);
 
   // Before login (and on a branded host): branding for this hostname.
   useEffect(() => {
@@ -67,15 +79,22 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     return () => { live = false; };
   }, []);
 
-  // After login: the signed-in organization's own branding wins.
-  useEffect(() => {
-    let live = true;
+  const refresh = useCallback(async () => {
     if (!isAuthenticated) { setUserBrand(null); return; }
-    apiClient.getCurrentBranding().then((b: PublicBranding) => live && setUserBrand(b));
-    return () => { live = false; };
+    setUserBrand(await apiClient.getCurrentBranding());
   }, [isAuthenticated]);
 
-  const brand = useMemo<Brand>(() => (isAuthenticated && userBrand ? userBrand : hostBrand), [isAuthenticated, userBrand, hostBrand]);
+  // After login: the signed-in organization's own branding wins.
+  useEffect(() => {
+    if (!isAuthenticated) { setUserBrand(null); setPreview(null); return; }
+    void refresh();
+  }, [isAuthenticated, refresh]);
+
+  const brand = useMemo<Brand>(() => {
+    if (isAuthenticated && preview) return { ...preview, branded: true, display_name: preview.display_name || "Preview" };
+    return isAuthenticated && userBrand ? userBrand : hostBrand;
+  }, [isAuthenticated, preview, userBrand, hostBrand]);
+  const controls = useMemo<BrandingControls>(() => ({ refresh, setPreview, previewing: !!preview }), [refresh, preview]);
 
   useEffect(() => {
     applyBrand(brand);
@@ -91,5 +110,17 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     } catch { /* storage unavailable */ }
   }, [brand, setTheme]);
 
-  return <BrandingContext.Provider value={brand}>{children}</BrandingContext.Provider>;
+  return (
+    <ControlsContext.Provider value={controls}>
+      <BrandingContext.Provider value={brand}>
+        {preview && (
+          <div className="fixed bottom-3 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background px-4 py-2 text-xs shadow-lg">
+            <span>Previewing unpublished branding</span>
+            <button type="button" className="font-semibold text-primary underline" onClick={() => setPreview(null)}>Exit preview</button>
+          </div>
+        )}
+        {children}
+      </BrandingContext.Provider>
+    </ControlsContext.Provider>
+  );
 }

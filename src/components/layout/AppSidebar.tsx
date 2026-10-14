@@ -32,6 +32,7 @@ import {
   PhoneMissed,
 } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { useBranding } from "@/contexts/BrandingContext";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType, SVGAttributes } from "react";
@@ -98,6 +99,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const [sentCount, setSentCount] = useState(0);
   const [scheduledCount, setScheduledCount] = useState(0);
   const { user, logout, isLoading } = useAuth();
+  const brand = useBranding();
   const { openDialer } = useDialer();
 
   // Small live counts for the Outbox (failed), Sent and Scheduled nav badges.
@@ -274,7 +276,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
           <div className="flex items-center gap-2">
             <BrandLogo className="h-14 w-auto -my-3 -mr-7" />
             <span className="text-[16px] font-bold text-foreground dark:text-foreground tracking-tight leading-none">
-              {t("app.name")}
+              {brand.branded && brand.display_name ? brand.display_name : t("app.name")}
             </span>
           </div>
 
