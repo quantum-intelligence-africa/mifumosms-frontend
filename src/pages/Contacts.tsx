@@ -1872,7 +1872,7 @@ onClick={handleBulkAddTag}
 disabled={isBulkActionLoading}
 className="text-xs sm:text-sm h-8 sm:h-9"
 >
-<TagclassName="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+<Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Add Tag
 </Button>
 <Button
