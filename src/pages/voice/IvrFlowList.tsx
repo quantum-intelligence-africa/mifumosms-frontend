@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson } from "lucide-react";
+import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -59,6 +59,8 @@ function parseImportedFlow(text: string, fallbackName: string): ImportedFlow {
 const statusVariant = (status: string): "default" | "outline" | "secondary" =>
   status === "published" ? "default" : status === "archived" ? "secondary" : "outline";
 
+import { AiFlowDialog } from "@/components/voice/ivr-builder/AiFlowDialog";
+
 export default function IvrFlowList() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -72,6 +74,7 @@ export default function IvrFlowList() {
   const [isCreating, setIsCreating] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(FLOW_TEMPLATES[0].id);
   const [imported, setImported] = useState<ImportedFlow | null>(null);
   const [importName, setImportName] = useState("");
@@ -157,6 +160,18 @@ export default function IvrFlowList() {
     URL.revokeObjectURL(url);
   };
 
+  // The AI wrote the flow: create it as a draft (nothing is published) and open it to adjust.
+  const handleCreateFromAi = async (definition: FlowDefinition, name: string) => {
+    setIsCreating(true);
+    const res = await voiceApi.post<IvrFlowDetail>("/voice/ivr/", { name: name.slice(0, 100), current_definition: definition });
+    setIsCreating(false);
+    if (res.success && res.data) {
+      navigate(`/voice/ivr/${res.data.id}`);
+    } else {
+      toast({ title: "Could not create the flow", description: res.error || "Please try again.", variant: "destructive" });
+    }
+  };
+
   const handleCreate = async () => {
     const template = FLOW_TEMPLATES.find((t) => t.id === selectedTemplateId) ?? FLOW_TEMPLATES[0];
     const useImport = selectedTemplateId === IMPORT_ID && imported ? imported : null;
@@ -187,6 +202,7 @@ export default function IvrFlowList() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <AiFlowDialog open={aiOpen} onOpenChange={setAiOpen} hasContent={false} onApply={handleCreateFromAi} />
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
@@ -197,10 +213,16 @@ export default function IvrFlowList() {
                 <h1 className="text-xl font-bold tracking-tight text-foreground">IVR Flows</h1>
                 <p className="mt-0.5 text-sm text-foreground/60">Build and test call flows without a phone line</p>
               </div>
-              <Button onClick={() => setTemplateDialogOpen(true)} disabled={isCreating}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                New Flow
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setAiOpen(true)} disabled={isCreating}>
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                  {t("cc.aiflow.button")}
+                </Button>
+                <Button onClick={() => setTemplateDialogOpen(true)} disabled={isCreating}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  New Flow
+                </Button>
+              </div>
             </header>
 
             {error && (
@@ -230,10 +252,16 @@ export default function IvrFlowList() {
                   <Workflow className="h-10 w-10 text-muted-foreground" />
                   <h3 className="text-base font-semibold text-foreground">No flows yet</h3>
                   <p className="text-sm text-muted-foreground">Create your first IVR flow to get started.</p>
-                  <Button size="sm" className="mt-1" onClick={() => setTemplateDialogOpen(true)}>
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    New Flow
-                  </Button>
+                  <div className="mt-1 flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setAiOpen(true)}>
+                      <Sparkles className="mr-1.5 h-4 w-4" />
+                      {t("cc.aiflow.button")}
+                    </Button>
+                    <Button size="sm" onClick={() => setTemplateDialogOpen(true)}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      New Flow
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}

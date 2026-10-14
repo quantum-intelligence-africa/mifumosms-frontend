@@ -474,6 +474,8 @@ function fieldsValue(value: unknown) {
   return value;
 }
 
+import { AiWriteButton } from "./AiWriteButton";
+
 export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDelete }: NodeInspectorProps) {
   const { t } = useLanguage();
   const meta = NODE_META[nodeType];
@@ -674,6 +676,14 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                   rows={3}
                   className="text-xs"
                 />
+                {field.key !== "business_description" && (
+                  <AiWriteButton
+                    field={field.label}
+                    nodeType={nodeType}
+                    current={(value as string) ?? ""}
+                    onText={(text) => onChange({ [field.key]: text })}
+                  />
+                )}
               </div>
             );
           }
