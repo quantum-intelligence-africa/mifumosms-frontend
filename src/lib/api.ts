@@ -1223,6 +1223,17 @@ class ApiClient {
 
       // Handle authentication errors with token refresh
       if (response.status === 401 || response.status === 403) {
+        // Sign-in / sign-up refusals (wrong password, or "not a member of this organization" on a
+        // white-label address) are answers for the form to show, not an expired session to refresh.
+        if (endpoint.includes('/auth/login/') || endpoint.includes('/auth/register/')) {
+          return {
+            data: data,
+            error: this.extractErrorMessage(data),
+            status: response.status,
+            success: false,
+            errors: data?.errors || data,
+          };
+        }
         const refreshToken = localStorage.getItem('refresh_token');
         const hasAccessToken = !!currentToken;
 

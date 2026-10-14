@@ -26,6 +26,10 @@ const ADMIN_SESSION_KEY = "senda_admin_auth";
 // /auth/admin/login lives at the root of mifumosms.mifumolabs.com, not under /api.
 const ADMIN_BASE_URL = API_CONFIG.BASE_URL.replace(/\/api\/?$/, "");
 const GOOGLE_LOGIN_URL = `${ADMIN_BASE_URL}/accounts/google/login/`;
+// On an organization's own address the backend must know which one, so it can admit only its members
+// and bring the person back here afterwards instead of to the main SENDA site.
+const googleLoginUrl = (whiteLabelHost: boolean) =>
+  whiteLabelHost ? `${GOOGLE_LOGIN_URL}?wl_host=${encodeURIComponent(window.location.hostname)}` : GOOGLE_LOGIN_URL;
 
 const Login = () => {
   const isMobile = useIsMobile();
@@ -46,6 +50,21 @@ const Login = () => {
   const location = useLocation();
   // A customer's white-label domain shows only the sign-in screen: no marketing links, no sign-up.
   const { branded: whiteLabelHost } = useHostBranding();
+
+  // Google sends refused people back here with ?error=not_member.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("error") === "not_member") {
+      toast({
+        title: "Access denied",
+        description: "This Google account isn't a member of this organization. Ask your administrator to invite you, or sign in with the email you were invited with.",
+        variant: "destructive",
+        duration: 10000,
+      });
+      navigate("/login", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -84,7 +103,8 @@ const Login = () => {
     // through the normal login flow. The user never sees an "Admin login"
     // link or visits /admin directly.
     const trimmedEmail = formData.email.trim();
-    if (trimmedEmail.toLowerCase().endsWith(ADMIN_SUFFIX)) {
+    // Not offered on an organization's own address: staff sign in at the main SENDA site.
+    if (!whiteLabelHost && trimmedEmail.toLowerCase().endsWith(ADMIN_SUFFIX)) {
       const realEmail = trimmedEmail.slice(0, -ADMIN_SUFFIX.length);
       try {
         const res = await fetch(`${ADMIN_BASE_URL}/auth/admin/login`, {
@@ -359,7 +379,7 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <GoogleButton href={GOOGLE_LOGIN_URL} roundedClassName="rounded-full">
+            <GoogleButton href={googleLoginUrl(whiteLabelHost)} roundedClassName="rounded-full">
               Continue with Google
             </GoogleButton>
             {/* Email Input */}
@@ -563,7 +583,7 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <GoogleButton href={GOOGLE_LOGIN_URL} roundedClassName="rounded-lg">
+              <GoogleButton href={googleLoginUrl(whiteLabelHost)} roundedClassName="rounded-lg">
                 Continue with Google
               </GoogleButton>
               <div className="space-y-1">
