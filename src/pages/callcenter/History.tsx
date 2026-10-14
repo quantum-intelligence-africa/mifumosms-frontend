@@ -2,7 +2,7 @@
 // a supervisor or admin sees the whole organization's — enforced by the
 // backend, so the filters below only narrow what the server already allows.
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, ChevronLeft, ChevronRight, Mic, NotebookPen, PhoneIncoming, PhoneOutgoing, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, NotebookPen, PhoneIncoming, PhoneOutgoing, RefreshCw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,8 +16,16 @@ import { useCallCenter } from "@/contexts/CallCenterContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
+import { PlayButton, RecordingPlayerBar, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
+import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { voiceApi } from "@/services/voiceApi";
 import { formatDuration } from "@/components/callcenter/callUtils";
-import { callCenterApi, type CCAgent, type CallNote, type CallRow, type CallTimeline, type Team } from "@/services/callCenterApi";
+import { callCenterApi, type AnalysisJobFull, type CCAgent, type CallNote, type CallRow, type CallTimeline, type Team } from "@/services/callCenterApi";
+
+/** What GET /voice/calls/<id>/ returns that this page needs: each recording with its latest analysis job. */
+interface CallRecordings {
+  recordings: Array<{ id: string; storage_path: string; duration_seconds: number | null; analysis: AnalysisJobFull | null }>;
+}
 
 type CallState = "answered" | "missed" | "failed" | "live";
 
@@ -65,6 +73,51 @@ export default function History() {
   const [error, setError] = useState<string | null>(null);
   const [notesFor, setNotesFor] = useState<CallRow | null>(null);
   const [notes, setNotes] = useState<CallNote[] | null>(null);
+  const player = useRecordingPlayer();
+  const [analysisFor, setAnalysisFor] = useState<CallRow | null>(null);
+  const [analysisData, setAnalysisData] = useState<CallRecordings | null>(null);
+  const [analysisMsg, setAnalysisMsg] = useState<string | null>(null);
+  const [analysing, setAnalysing] = useState(false);
+
+  const trackFor = (c: CallRow, rec: { id: string; storage_path: string; duration_seconds: number | null }) => ({
+    id: rec.id,
+    url: rec.storage_path,
+    title: c.direction === "inbound" ? c.from_number : c.to_number,
+    subtitle: [c.agent_name || c.agent?.name, new Date(c.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · "),
+    direction: c.direction,
+    durationSeconds: rec.duration_seconds,
+  });
+
+  const loadAnalysis = useCallback(async (callId: string) => {
+    const res = await voiceApi.get<CallRecordings>(`/voice/calls/${callId}/`);
+    if (res.success && res.data) setAnalysisData(res.data);
+    return res.success ? res.data : undefined;
+  }, []);
+
+  const openAnalysis = async (row: CallRow) => {
+    setAnalysisFor(row);
+    setAnalysisData(null);
+    setAnalysisMsg(null);
+    await loadAnalysis(row.id);
+  };
+
+  const analyseNow = async () => {
+    if (!analysisFor) return;
+    setAnalysing(true);
+    setAnalysisMsg(null);
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [analysisFor.id] });
+    setAnalysing(false);
+    if (res.success) await loadAnalysis(analysisFor.id);
+    else setAnalysisMsg(res.status === 403 ? t("cc.history.analysis_unavailable") : res.error || t("cc.history.load_failed"));
+  };
+
+  // While a job is queued or running, check again every few seconds so the result appears by itself.
+  const working = analysisData?.recordings[0]?.analysis?.status;
+  useEffect(() => {
+    if (!analysisFor || (working !== "pending" && working !== "processing")) return;
+    const id = setInterval(() => void loadAnalysis(analysisFor.id), 5000);
+    return () => clearInterval(id);
+  }, [analysisFor, working, loadAnalysis]);
 
   useEffect(() => {
     if (!supervisor) return;
@@ -247,7 +300,21 @@ export default function History() {
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(c.started_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm tabular-nums">{c.duration_seconds != null ? formatDuration(c.duration_seconds) : "—"}</TableCell>
                       <TableCell><Badge variant={STATE_TONE[state]}>{t(`cc.history.state_${state}` as const)}</Badge></TableCell>
-                      <TableCell>{c.recording ? <Mic className="h-4 w-4 text-muted-foreground" aria-label={t("cc.history.has_recording")} /> : "—"}</TableCell>
+                      <TableCell>
+                        {c.recording ? (
+                          <div className="flex items-center gap-1.5">
+                            <PlayButton
+                              active={player.isCurrent(c.recording.id)}
+                              playing={player.isPlaying(c.recording.id)}
+                              onClick={() => player.toggle(trackFor(c, c.recording!))}
+                              label={t("cc.history.listen")}
+                            />
+                            <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => openAnalysis(c)}>
+                              <Sparkles className="h-3.5 w-3.5" />{t("cc.history.analysis")}
+                            </Button>
+                          </div>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell>
                         {c.notes_count > 0 ? (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => openNotes(c)}>
@@ -322,6 +389,62 @@ export default function History() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!analysisFor} onOpenChange={(v) => !v && setAnalysisFor(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("cc.history.analysis_title")}</DialogTitle>
+            <DialogDescription className="font-mono">
+              {analysisFor ? (analysisFor.direction === "inbound" ? analysisFor.from_number : analysisFor.to_number) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {analysisData === null ? (
+            <Skeleton className="h-32" />
+          ) : analysisData.recordings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("cc.history.no_recording_yet")}</p>
+          ) : (
+            (() => {
+              const rec = analysisData.recordings[0];
+              const job = rec.analysis;
+              return (
+                <div className="space-y-4">
+                  {analysisFor && (
+                    <div className="flex items-center gap-3">
+                      <PlayButton
+                        active={player.isCurrent(rec.id)}
+                        playing={player.isPlaying(rec.id)}
+                        onClick={() => player.toggle(trackFor(analysisFor, rec))}
+                        label={t("cc.history.listen")}
+                      />
+                      <span className="text-sm text-muted-foreground">{t("cc.history.listen")}</span>
+                    </div>
+                  )}
+                  {job && job.result && "analysis_status" in job.result ? (
+                    <CallAnalysisPanel
+                      job={job}
+                      canReview={supervisor}
+                      onChanged={() => analysisFor && void loadAnalysis(analysisFor.id)}
+                      onSeek={(seconds) => analysisFor && player.seek(trackFor(analysisFor, rec), seconds)}
+                    />
+                  ) : job && (job.status === "pending" || job.status === "processing") ? (
+                    <p className="text-sm text-muted-foreground">{t("cc.history.analysis_working")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">{job?.status === "failed" ? t("cc.missed.ai_failed") : t("cc.history.analysis_none")}</p>
+                      <Button size="sm" onClick={analyseNow} disabled={analysing}>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("cc.history.analyze_now")}
+                      </Button>
+                    </div>
+                  )}
+                  {analysisMsg && <p className="text-sm text-destructive">{analysisMsg}</p>}
+                </div>
+              );
+            })()
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <RecordingPlayerBar track={player.track} playing={player.playing} onPlayingChange={player.setPlaying} onClose={player.close} />
 
       <Dialog open={!!notesFor} onOpenChange={(v) => !v && setNotesFor(null)}>
         <DialogContent className="sm:max-w-md">
