@@ -432,7 +432,7 @@ const Smsactivation = () => {
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             className="w-full h-full object-cover"
             alt="Mobile background"
           />
@@ -680,7 +680,7 @@ const Smsactivation = () => {
             </div>
 
             <img
-              src="/sign in image.png"
+              src="/sign in image.webp"
               className="w-full h-auto object-contain"
               alt="SMS activation illustration"
             />
@@ -689,7 +689,7 @@ const Smsactivation = () => {
           {/* Background Image */}
           <div className="absolute inset-0">
             <img
-              src="/home background12.jpg"
+              src="/home background12.webp"
               alt="SMS activation background"
               className="w-full h-full object-cover"
             />

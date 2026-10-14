@@ -44,7 +44,7 @@ const Developer = () => {
         {/* Background Image for Hero Only */}
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             alt="Hero background"
             className="w-full h-full object-cover scale-[3]"
           />

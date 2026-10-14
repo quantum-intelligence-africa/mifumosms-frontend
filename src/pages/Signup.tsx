@@ -336,7 +336,7 @@ const Signup = () => {
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             className="w-full h-full object-cover"
             alt="Mobile background"
           />
@@ -734,7 +734,7 @@ const Signup = () => {
             </div>
 
             <img
-              src="/sign in image.png"
+              src="/sign in image.webp"
               className="w-full h-auto object-contain"
               alt="Sign up illustration"
             />
@@ -742,7 +742,7 @@ const Signup = () => {
 
           <div className="absolute inset-0">
             <img
-              src="/home background12.jpg"
+              src="/home background12.webp"
               alt="Signup background"
               className="w-full h-full object-cover"
             />

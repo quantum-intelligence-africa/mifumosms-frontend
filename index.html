@@ -48,7 +48,13 @@
     <link rel="sitemap" type="application/xml" href="https://sms.mifumolabs.com/sitemap.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Open the connection to the API while the JS downloads: TCP + TLS to it costs ~0.8 s on mobile
+         and otherwise starts only after the first API call is made. -->
+    <link rel="preconnect" href="https://mifumosms.mifumolabs.com" crossorigin>
+    <!-- Fonts must not block first paint: load the stylesheet without blocking, text shows in the
+         fallback font (display=swap) until Inter arrives. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
 
     <meta property="og:title" content="SENDA | Communication Platform for Businesses" />
     <meta property="og:description" content="Bulk SMS, WhatsApp, and Voice & IVR platform for businesses with AI agents." />

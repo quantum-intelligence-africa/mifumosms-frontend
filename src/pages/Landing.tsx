@@ -297,7 +297,7 @@ const [showVideoModal, setShowVideoModal] = useState(false);
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             alt="Hero background"
             className="w-full h-full object-cover"
           />

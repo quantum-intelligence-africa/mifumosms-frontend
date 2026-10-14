@@ -16,7 +16,8 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
-import Africastalking, { type Client as AtClient } from "africastalking-client";
+// The voice client (~120 kB) is imported only when a softphone session actually starts.
+import type { Client as AtClient } from "africastalking-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canUseCallCenter } from "@/utils/roleUtils";
 import { CallCenterSocket, type CallCenterEvent, type SocketState } from "@/services/callCenterSocket";
@@ -385,6 +386,8 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
         setSoftphoneNote(token.error || "token_failed");
         return;
       }
+      const { default: Africastalking } = await import("africastalking-client");
+      if (cancelled) return;
       const client = new Africastalking.Client(token.data.token);
       clientRef.current = client;
       client.on("ready", () => !cancelled && setSoftphone("ready"));

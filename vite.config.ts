@@ -51,42 +51,16 @@ export default defineConfig(({ mode }) => ({
         main: path.resolve(__dirname, "index.html"),
       },
       output: {
-        // Split heavy/shared dependencies into their own chunks so the main
-        // bundle stays small and vendors cache independently across deploys.
+        // Let Rollup split by dependency graph: a library used only by lazy routes (charts, the IVR
+        // flow builder, PDF/Excel export, the voice client) ships with those routes instead of in one
+        // catch-all `vendor` chunk that every page had to download, parse and run. That catch-all used
+        // to hold recharts (615 kB), chart.js (413 kB), motion-dom, lodash, canvg/pako/core-js (PDF
+        // helpers), @xyflow (IVR builder) and the Africa's Talking client — about 1.5 MB on the login page.
+        // React is not given its own chunk: react/react-dom are CommonJS, and splitting them out produced
+        // a circular chunk-init order ("Cannot read properties of undefined (reading 'forwardRef')").
+        // The automatic graph-based split has no such cycle.
         manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          // `charts` used to be its own chunk (recharts/chart.js/d3-*), but
-          // recharts pulls in a wide, tangled web of its own runtime deps
-          // (victory-vendor -> real d3-shape/d3-scale, plus react-smooth,
-          // lodash, clsx, tiny-invariant, react-is, eventemitter3...). Some
-          // of those are leaf utilities used all over the app (clsx via
-          // `lib/utils.ts`'s `cn()`, in particular), so catching all of them
-          // into a `charts` bucket would drag that chunk onto every page's
-          // initial load — worse than the bug it would fix. Only a couple
-          // of them were actually being caught, splitting the library's
-          // internals across the chunk boundary and producing a
-          // `ReferenceError: Cannot access 'X' before initialization` from
-          // a circular chunk-init order with `vendor` (same failure mode as
-          // the React note below, just for charts). Simplest fix: let charts
-          // fall through to `vendor` with everything else it needs, same as
-          // React does.
-          if (id.includes("xlsx")) return "xlsx";
-          if (id.includes("jspdf") || id.includes("html2canvas")) return "pdf";
-          if (id.includes("qrcode")) return "qrcode";
-          if (id.includes("@radix-ui")) return "radix";
-          // `motion` (framer-motion) is ~37 kB and only used on 5 routes. Splitting
-          // it out keeps it off the every-page `vendor` chunk. It's a one-directional
-          // consumer of React, so it's safe to split (unlike React core — see below).
-          if (id.includes("/motion/") || id.includes("framer-motion")) return "motion";
-          // NOTE: React core is intentionally NOT split into its own chunk.
-          // react/react-dom are CommonJS, so Rollup's interop helpers get
-          // hoisted into `vendor`; a separate react chunk then imports those
-          // helpers from `vendor` while `vendor` imports React back — a
-          // circular chunk-init order that leaves React undefined
-          // ("Cannot read properties of undefined (reading 'forwardRef')").
-          // Keeping React in `vendor` avoids the cycle. The splits above are
-          // all one-directional leaf consumers, so they're safe.
-          return "vendor";
+          if (id.includes("node_modules") && id.includes("xlsx")) return "xlsx";
         },
       },
     },

@@ -48,7 +48,7 @@ export function BrandLogo({ className, alt = "Senda", eager = true, large = fals
 
   return (
     <img
-      src="/Senda%20Asset.1.3.png"
+      src="/Senda%20Asset.1.3.webp"
       alt={alt}
       className={cn("object-contain flex-shrink-0 select-none", className)}
       decoding="async"

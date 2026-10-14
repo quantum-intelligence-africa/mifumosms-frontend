@@ -15,7 +15,8 @@
 // Either way the customer sees the business number, and the conversation is
 // recorded unless the box is unticked.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Africastalking, { type Client as AtClient, type HangupCause } from "africastalking-client";
+// The voice client (~120 kB) is imported only when a call is actually placed.
+import type { Client as AtClient, HangupCause } from "africastalking-client";
 import {
   Delete, Loader2, Phone, PhoneCall, PhoneIncoming, PhoneOff, CheckCircle2, AlertCircle, Mic, MicOff, Monitor, Smartphone,
 } from "lucide-react";
@@ -192,13 +193,15 @@ export function PlaceCallDialog({ open, onOpenChange, defaultAgentNumber = "", i
     let cancelled = false;
     setBrowserState("connecting");
     setBrowserNote(t("voice.place_call.preparing_browser"));
-    voiceApi.post<WebRtcToken>(`/voice/accounts/${account.id}/webrtc-token/`).then((res) => {
+    voiceApi.post<WebRtcToken>(`/voice/accounts/${account.id}/webrtc-token/`).then(async (res) => {
       if (cancelled) return;
       if (!res.success || !res.data) {
         setBrowserState("error");
         setBrowserNote(res.error || t("voice.place_call.browser_setup_failed"));
         return;
       }
+      const { default: Africastalking } = await import("africastalking-client");
+      if (cancelled) return;
       const client = new Africastalking.Client(res.data.token);
       clientRef.current = client;
       client.on("ready", () => {

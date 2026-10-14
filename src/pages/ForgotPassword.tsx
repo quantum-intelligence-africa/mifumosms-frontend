@@ -437,7 +437,7 @@ const ForgotPassword = () => {
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             className="w-full h-full object-cover"
             alt="Mobile background"
           />
@@ -616,7 +616,7 @@ const ForgotPassword = () => {
             </div>
 
             <img
-              src="/sign in image.png"
+              src="/sign in image.webp"
               className="w-full h-auto object-contain"
               alt="Password reset illustration"
             />
@@ -624,7 +624,7 @@ const ForgotPassword = () => {
 
           <div className="absolute inset-0">
             <img
-              src="/home background12.jpg"
+              src="/home background12.webp"
               alt="Login background"
               className="w-full h-full object-cover"
             />

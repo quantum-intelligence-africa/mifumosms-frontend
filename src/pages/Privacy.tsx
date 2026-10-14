@@ -326,7 +326,7 @@ const Privacy = () => {
         {/* Background Image for Footer */}
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="/home background12.jpg"
+            src="/home background12.webp"
             alt="Footer background"
             className="w-full h-full object-cover"
           />
