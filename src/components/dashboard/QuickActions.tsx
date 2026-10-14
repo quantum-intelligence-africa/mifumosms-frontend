@@ -32,6 +32,7 @@ export function QuickActions() {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const showSms = hasSmsAccess(user);
   const showIvr = hasIvrAccess(user);
+  const showTutorial = showSms || !showIvr; // the video is the SMS tutorial; voice-only users never see it
 
   // Contacts are shared by SMS and Voice/IVR alike, so it always shows —
   // everything else here is specific to whichever product(s) this account
@@ -134,15 +135,17 @@ export function QuickActions() {
 
       <div className="mt-2.5 pt-2 border-t border-border-subtle">
         <div className="flex flex-row gap-2">
-          <Button
-            variant="link"
-            size="sm"
-            className="flex-1 h-auto p-0 text-primary text-[10px] sm:text-xs font-semibold hover:underline justify-center"
-            onClick={() => setShowVideoModal(true)}
-          >
-            <Play className="w-3 h-3 mr-1" />
-            {t("dashboard.quick_actions.view_tutorial")}
-          </Button>
+          {showTutorial && (
+            <Button
+              variant="link"
+              size="sm"
+              className="flex-1 h-auto p-0 text-primary text-[10px] sm:text-xs font-semibold hover:underline justify-center"
+              onClick={() => setShowVideoModal(true)}
+            >
+              <Play className="w-3 h-3 mr-1" />
+              {t("dashboard.quick_actions.view_tutorial")}
+            </Button>
+          )}
           <Button
             variant="link"
             size="sm"
@@ -155,7 +158,7 @@ export function QuickActions() {
       </div>
 
       {/* Video Tutorial Modal */}
-      <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+      <Dialog open={showTutorial && showVideoModal} onOpenChange={setShowVideoModal}>
         <DialogContent className="glass w-full max-w-[95vw] sm:max-w-2xl max-h-[90vh] flex flex-col p-3 sm:p-4 rounded-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">

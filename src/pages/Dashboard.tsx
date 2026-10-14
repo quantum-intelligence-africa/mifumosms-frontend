@@ -154,12 +154,13 @@ const Dashboard = () => {
   const brand = useBranding();
   const widgetOn = (key: string) => !(brand.branded && brand.widgets?.[key] === false);
   const showIvr = hasIvrAccess(user);
+  const showTutorial = showSms || !showIvr; // the video is the SMS tutorial; voice-only users never see it
   const voiceStats = useVoiceDashboardStats(showIvr);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !showTutorial) return;
     const key = `mifumo_tutorial_seen_${user.id}`;
     if (!localStorage.getItem(key)) {
       const timer = setTimeout(() => {
@@ -168,7 +169,7 @@ const Dashboard = () => {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user?.id]);
+  }, [user?.id, showTutorial]);
 
   if (isLoading) return <DashboardSkeleton sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
 
@@ -346,7 +347,7 @@ const Dashboard = () => {
         </div>
 
         {/* Video Tutorial Modal */}
-        <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
+        <Dialog open={showTutorial && showVideoModal} onOpenChange={setShowVideoModal}>
           <DialogContent className="w-[95vw] sm:max-w-2xl lg:max-w-3xl max-h-[95vh] p-0 rounded-2xl border-0 shadow-2xl overflow-hidden bg-card dark:bg-background">
             <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-border dark:border-border/60 flex items-start justify-between">
               <div>

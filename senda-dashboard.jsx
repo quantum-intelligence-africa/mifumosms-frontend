@@ -13488,10 +13488,101 @@ const AI_CREDENTIAL_FIELDS = {
   ],
 };
 
+// Hugging Face credential: the models are chosen from a short list of recommended ones (the best is already selected),
+// not typed. Only the token is needed; everything else has a sensible default and the technical settings sit under "Advanced".
+function HfModelFields({ creds, setCred, isNew, row, catalog }) {
+  const [advanced, setAdvanced] = useState(false);
+  const saved = Object.fromEntries((row?.configured_fields || []).filter(f => f.key !== 'api_key').map(f => [f.key, f.preview]));
+  const value = (key, fallback = '') => creds[key] ?? saved[key] ?? fallback;
+  const label = { fontSize: 11, fontWeight: 700, color: '#475569' };
+  const box = { display: 'flex', flexDirection: 'column', gap: 4 };
+  const speech = catalog?.speech_models || [];
+  const analysis = (catalog?.models || []).filter(m => m.usable);
+  const chosenSpeech = speech.find(m => m.id === value('asr_model', catalog?.recommended?.speech));
+  const disabled = value('llm_disabled', false) === true || value('llm_disabled', false) === 'true';
+
+  if (!catalog) return <div style={{fontSize:12,color:'#94a3b8'}}>Loading recommended models…</div>;
+
+  return (
+    <>
+      <div style={box}>
+        <label style={label}>Speech model (turns the call audio into text)</label>
+        <select className="senda-input" style={{height:38,fontSize:13}} value={chosenSpeech?.id || value('asr_model', catalog.recommended.speech)}
+          onChange={e => setCred('asr_model', e.target.value)}>
+          {speech.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.label}{m.recommended ? ' — recommended' : ''}{m.hosting === 'dedicated' ? ' — needs your own endpoint' : ''}
+            </option>
+          ))}
+        </select>
+        {chosenSpeech && <span style={{fontSize:11,color:'#94a3b8'}}>{chosenSpeech.notes} ({chosenSpeech.license}, {chosenSpeech.size})</span>}
+      </div>
+
+      {chosenSpeech?.hosting === 'dedicated' && (
+        <div style={box}>
+          <label style={label}>Your endpoint for this model <span style={{color:RED}}>*</span></label>
+          <input className="senda-input" style={{height:38,fontSize:13}} value={value('asr_endpoint_url')} placeholder="https://….endpoints.huggingface.cloud"
+            onChange={e => setCred('asr_endpoint_url', e.target.value)}/>
+          <span style={{fontSize:11,color:'#b45309'}}>No hosted provider serves this model. Without an endpoint, calls will fail to transcribe.</span>
+        </div>
+      )}
+
+      <div style={box}>
+        <label style={label}>Analysis model (writes the summary, topics and next steps)</label>
+        <select className="senda-input" style={{height:38,fontSize:13}} value={disabled ? '__none__' : value('llm_model', catalog.recommended.analysis)}
+          onChange={e => {
+            if (e.target.value === '__none__') { setCred('llm_disabled', true); }
+            else { setCred('llm_disabled', false); setCred('llm_model', e.target.value); }
+          }}>
+          {analysis.map(m => (
+            <option key={m.id} value={m.id}>{m.label} ({m.size}){m.default ? ' — recommended' : ''}{m.gated ? ' — needs access approval' : ''}</option>
+          ))}
+          <option value="__none__">Transcript only (no analysis)</option>
+        </select>
+        {!disabled && <span style={{fontSize:11,color:'#94a3b8'}}>{analysis.find(m => m.id === value('llm_model', catalog.recommended.analysis))?.notes}</span>}
+        <span style={{fontSize:11,color:'#94a3b8'}}>You can test any of these on 4 built-in calls from this tab after saving.</span>
+      </div>
+
+      <div style={box}>
+        <label style={label}>Second speech model for "re-run with another model" (optional)</label>
+        <select className="senda-input" style={{height:38,fontSize:13}} value={value('asr_fallback_model', '')} onChange={e => setCred('asr_fallback_model', e.target.value)}>
+          <option value="">None</option>
+          {speech.filter(m => m.id !== (chosenSpeech?.id || catalog.recommended.speech)).map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+      </div>
+
+      <button type="button" onClick={() => setAdvanced(a => !a)} style={{alignSelf:'flex-start',background:'none',border:'none',color:BRAND,fontSize:12,fontWeight:700,cursor:'pointer',padding:0}}>
+        {advanced ? '▾ Hide advanced settings' : '▸ Advanced settings (rarely needed)'}
+      </button>
+      {advanced && (
+        <div style={{display:'flex',flexDirection:'column',gap:10,paddingLeft:10,borderLeft:'2px solid #eef2f7'}}>
+          {[
+            ['llm_base_url', 'Analysis service URL (default: Hugging Face)', 'text'],
+            ['asr_cost_per_audio_minute', 'Speech cost per audio minute', 'number'],
+            ['llm_cost_per_1k_prompt_tokens', 'Analysis cost per 1,000 input tokens', 'number'],
+            ['llm_cost_per_1k_completion_tokens', 'Analysis cost per 1,000 output tokens', 'number'],
+            ['cost_currency', 'Cost currency', 'text'],
+          ].map(([key, text, type]) => (
+            <div key={key} style={box}>
+              <label style={label}>{text}</label>
+              <input className="senda-input" style={{height:36,fontSize:13}} type={type} step={type === 'number' ? 'any' : undefined} value={creds[key] ?? ''} placeholder={saved[key] || ''}
+                onChange={e => setCred(key, e.target.value)}/>
+            </div>
+          ))}
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+            <input type="checkbox" checked={!!creds.llm_json_mode} onChange={e => setCred('llm_json_mode', e.target.checked)}/>
+            The analysis model supports JSON mode
+          </label>
+        </div>
+      )}
+    </>
+  );
+}
+
 function AIProviderEditDrawer({ row, onClose, onSaved }) {
   const { onLogout, showToast } = React.useContext(AppContext);
   const isNew = !row;
-  const [name, setName]                 = useState(row?.name || '');
+  const [name, setName]                 = useState(row?.name || 'Hugging Face');
   const [providerType, setProviderType] = useState(row?.provider_type || 'huggingface');
   const [isActive, setIsActive]         = useState(row ? row.is_active : true);
   const [isDefault, setIsDefault]       = useState(row?.is_default || false);
@@ -13502,6 +13593,15 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
   const fields = AI_CREDENTIAL_FIELDS[providerType] || [];
   const setCred = (key, value) => setCreds(prev => ({ ...prev, [key]: value }));
   const canSubmit = name.trim() && !saving;
+  // The recommended models, listed for picking. A new credential starts with the best of each already chosen.
+  const [catalog, setCatalog] = useState(null);
+  useEffect(() => {
+    voiceAdminFetch('/audio/models/', {}, onLogout).then(res => {
+      if (!res.success) return;
+      setCatalog(res.data);
+      if (isNew) setCreds(prev => ({ asr_model: res.data.recommended.speech, llm_model: res.data.recommended.analysis, ...prev }));
+    });
+  }, [onLogout, isNew]);
 
   const save = async () => {
     setSaving(true); setError(null);
@@ -13509,6 +13609,11 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
     const credentials = Object.fromEntries(Object.entries(creds).filter(([, v]) => v !== '' && v !== undefined));
     for (const f of fields) {
       if (f.type === 'number' && credentials[f.key] !== undefined) credentials[f.key] = Number(credentials[f.key]);
+    }
+    if (providerType === 'huggingface') {
+      for (const key of ['asr_cost_per_audio_minute', 'llm_cost_per_1k_prompt_tokens', 'llm_cost_per_1k_completion_tokens']) {
+        if (credentials[key] !== undefined) credentials[key] = Number(credentials[key]);
+      }
     }
     const payload = { name: name.trim(), provider_type: providerType, is_active: isActive, is_default: isDefault };
     // Editing: only send credentials the admin actually typed (the backend
@@ -13556,7 +13661,16 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
             </div>
           )}
 
-          {fields.map(f => f.type === 'checkbox' ? (
+          {providerType === 'huggingface' && (
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Hugging Face token{isNew ? <span style={{color:RED}}> *</span> : ''}</label>
+              <input type="password" className="senda-input" style={{height:38,fontSize:13}} value={creds.api_key ?? ''} placeholder={isNew ? 'hf_…' : '••••••••'}
+                onChange={e => setCred('api_key', e.target.value)}/>
+              <span style={{fontSize:11,color:'#94a3b8'}}>Needs permission to call Inference Providers. Kept on the server, never shown again.</span>
+            </div>
+          )}
+          {providerType === 'huggingface' && <HfModelFields creds={creds} setCred={setCred} isNew={isNew} row={row} catalog={catalog}/>}
+          {providerType !== 'huggingface' && fields.map(f => f.type === 'checkbox' ? (
             <label key={f.key} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
               <input type="checkbox" checked={!!creds[f.key]} onChange={e=>setCred(f.key, e.target.checked)}/>
               {f.label}
