@@ -53,7 +53,7 @@ function Evidence({ refs, segments, onPick }: { refs: number[]; segments: Analys
 
 const tone = (status: string) => (status === "resolved" ? "default" : status === "unresolved" ? "destructive" : "secondary");
 
-export function CallAnalysisPanel({ job, canReview, onChanged }: { job: AnalysisJobFull; canReview: boolean; onChanged?: () => void }) {
+export function CallAnalysisPanel({ job, canReview, onChanged, onSeek }: { job: AnalysisJobFull; canReview: boolean; onChanged?: () => void; onSeek?: (seconds: number) => void }) {
   const { t } = useLanguage();
   const result = job.result;
   const [showOriginal, setShowOriginal] = useState(false);
@@ -98,6 +98,8 @@ export function CallAnalysisPanel({ job, canReview, onChanged }: { job: Analysis
   const pick = (i: number) => {
     setOpenTranscript(true);
     setHighlight(i);
+    // Jump the recording to this moment, when the page has a player for it.
+    if (onSeek && segments[i]?.start !== undefined) onSeek(segments[i].start as number);
     setTimeout(() => document.getElementById(`seg-${job.id}-${i}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
   };
 
@@ -236,7 +238,13 @@ export function CallAnalysisPanel({ job, canReview, onChanged }: { job: Analysis
             <p className="whitespace-pre-wrap text-xs text-muted-foreground">{result.transcript || t("cc.analysis.no_words")}</p>
           ) : segments.map((s, i) => (
             <div key={i} id={`seg-${job.id}-${i}`} className={`flex gap-2 rounded px-1.5 py-1 text-xs ${highlight === i ? "bg-primary/10" : ""}`}>
-              <span className="w-12 shrink-0 font-mono text-muted-foreground">{clock(s.start)}</span>
+              {onSeek && s.start !== undefined ? (
+                <button type="button" onClick={() => { setHighlight(i); onSeek(s.start as number); }} className="w-12 shrink-0 text-left font-mono text-primary hover:underline" title={t("cc.analysis.play_from")}>
+                  {clock(s.start)}
+                </button>
+              ) : (
+                <span className="w-12 shrink-0 font-mono text-muted-foreground">{clock(s.start)}</span>
+              )}
               <div className="min-w-0 flex-1">
                 {s.speaker && <span className="mr-1.5 font-medium text-foreground/70">{s.speaker.replace("_", " ")}:</span>}
                 {editing ? (

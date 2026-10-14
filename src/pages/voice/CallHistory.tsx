@@ -285,6 +285,14 @@ export default function CallHistory() {
     }
   };
 
+  const seekCall = (call: CallSummary, rec: { id: string; storage_path: string; duration_seconds: number | null }, seconds: number) => {
+    const when = new Date(call.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    player.seek({
+      id: rec.id, url: rec.storage_path, title: otherParty(call), subtitle: [call.agent?.name, when].filter(Boolean).join(" · "),
+      direction: call.direction, durationSeconds: rec.duration_seconds,
+    }, seconds);
+  };
+
   const refreshDetail = async (callId: string) => {
     const res = await voiceApi.get<CallDetail>(`/voice/calls/${callId}/`);
     if (res.success && res.data) setDetails((prev) => ({ ...prev, [callId]: res.data as CallDetail }));
@@ -615,6 +623,7 @@ export default function CallHistory() {
                                               job={detail.recordings[0].analysis}
                                               canReview={isCallCenterSupervisor(user)}
                                               onChanged={() => void refreshDetail(call.id)}
+                                              onSeek={(seconds) => seekCall(call, detail.recordings[0], seconds)}
                                             />
                                           </div>
                                         )}

@@ -24,6 +24,7 @@ export const ccEn = {
   "cc.mode.browser": "Browser softphone",
   "cc.mode.handset": "Phone handset",
   "cc.agents.invited_existing": "Invitation sent — this email already has an account",
+  "cc.analysis.play_from": "Play from here",
   "cc.analysis.title": "AI analysis",
   "cc.analysis.ai_generated": "AI-generated",
   "cc.analysis.working": "Analysing the recording…",

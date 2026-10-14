@@ -84,6 +84,16 @@ export default function MissedCalls() {
       durationSeconds: vm.duration_seconds,
     });
 
+  const seek = (row: MissedCall, vm: Voicemail, seconds: number) =>
+    player.seek({
+      id: vm.id,
+      url: vm.storage_path,
+      title: row.caller_number,
+      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`,
+      direction: "inbound",
+      durationSeconds: vm.duration_seconds,
+    }, seconds);
+
   const update = async (row: MissedCall, next: MissedCallStatus) => {
     setBusyId(row.id);
     const res = await callCenterApi.missed.update(row.id, { status: next });
@@ -230,7 +240,7 @@ export default function MissedCalls() {
                     {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={7}>
-                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void load()} />
+                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void load()} onSeek={(seconds) => seek(r, r.voicemail!, seconds)} />
                         </TableCell>
                       </TableRow>
                     )}
@@ -248,7 +258,7 @@ export default function MissedCalls() {
 }
 
 /** What the caller said (audio, plus the AI's transcript and summary) — separate from the agents' own notes. */
-function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChanged }: { row: MissedCall; vm: Voicemail; playing: boolean; current: boolean; onListen: () => void; canReview: boolean; onChanged: () => void }) {
+function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChanged, onSeek }: { row: MissedCall; vm: Voicemail; playing: boolean; current: boolean; onListen: () => void; canReview: boolean; onChanged: () => void; onSeek: (seconds: number) => void }) {
   const { t } = useLanguage();
   const [showTranscript, setShowTranscript] = useState(false);
   const ai = vm.analysis;
@@ -266,7 +276,7 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
 
       <div className="rounded-lg border border-border bg-background p-3">
         {ai?.result && "analysis_status" in ai.result ? (
-          <CallAnalysisPanel job={ai as AnalysisJobFull} canReview={canReview} onChanged={onChanged} />
+          <CallAnalysisPanel job={ai as AnalysisJobFull} canReview={canReview} onChanged={onChanged} onSeek={onSeek} />
         ) : result ? (
           <div className="space-y-2">
             <p>{result.summary || "—"}</p>

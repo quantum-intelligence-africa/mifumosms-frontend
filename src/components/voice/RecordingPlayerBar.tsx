@@ -17,7 +17,11 @@ export interface PlayerTrack {
   subtitle?: string;
   direction?: "inbound" | "outbound";
   durationSeconds?: number | null;
+  /** Begin playback here (seconds) instead of at the top — used when a transcript timestamp is clicked. */
+  startAtSeconds?: number;
 }
+
+export const SEEK_EVENT = "recording-seek";
 
 interface RecordingPlayerBarProps {
   track: PlayerTrack | null;
@@ -105,11 +109,29 @@ export function RecordingPlayerBar({ track, playing, onPlayingChange, onClose }:
     }
     audio.src = track.url;
     audio.load();
-    setCurrent(0);
+    setCurrent(track.startAtSeconds ?? 0);
+    if (track.startAtSeconds) {
+      // The position can only be set once the file's length is known.
+      audio.addEventListener("loadedmetadata", () => { audio.currentTime = track.startAtSeconds ?? 0; }, { once: true });
+    }
     setDuration(track.durationSeconds ?? 0);
     audio.play().then(() => onPlayingChange(true)).catch(() => onPlayingChange(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.id]);
+
+  // A click on a transcript timestamp while this recording is already loaded: jump there and play.
+  useEffect(() => {
+    const onSeek = (event: Event) => {
+      const { id, seconds } = (event as CustomEvent<{ id: string; seconds: number }>).detail;
+      const audio = audioRef.current;
+      if (!audio || !track || track.id !== id) return;
+      audio.currentTime = seconds;
+      setCurrent(seconds);
+      audio.play().then(() => onPlayingChange(true)).catch(() => onPlayingChange(false));
+    };
+    window.addEventListener(SEEK_EVENT, onSeek);
+    return () => window.removeEventListener(SEEK_EVENT, onSeek);
+  }, [track, onPlayingChange]);
 
   // Leaving the page (route change) must not leave audio running.
   useEffect(() => () => silence(), []);
@@ -225,6 +247,16 @@ export function useRecordingPlayer() {
       setPlaying(true);
     }
   };
+  /** Play ``next`` from ``seconds``: jump if it is already loaded, otherwise start it there. */
+  const seek = (next: PlayerTrack, seconds: number) => {
+    if (track?.id === next.id) {
+      window.dispatchEvent(new CustomEvent(SEEK_EVENT, { detail: { id: next.id, seconds } }));
+      setPlaying(true);
+    } else {
+      setTrack({ ...next, startAtSeconds: seconds });
+      setPlaying(true);
+    }
+  };
   const close = () => {
     setTrack(null);
     setPlaying(false);
@@ -232,7 +264,7 @@ export function useRecordingPlayer() {
   const isPlaying = (id: string) => track?.id === id && playing;
   const isCurrent = (id: string) => track?.id === id;
 
-  return { track, playing, setPlaying, toggle, close, isPlaying, isCurrent };
+  return { track, playing, setPlaying, toggle, seek, close, isPlaying, isCurrent };
 }
 
 /** The per-row button: play, or pause when this row is the one playing. */

@@ -17,6 +17,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.mode.browser": "Simu ya kivinjari",
   "cc.mode.handset": "Simu ya mkononi",
   "cc.agents.invited_existing": "Mwaliko umetumwa — barua pepe hii tayari ina akaunti",
+  "cc.analysis.play_from": "Cheza kuanzia hapa",
   "cc.analysis.title": "Uchambuzi wa AI",
   "cc.analysis.ai_generated": "Imetengenezwa na AI",
   "cc.analysis.working": "Inachambua rekodi…",
