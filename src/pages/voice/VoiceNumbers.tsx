@@ -24,6 +24,8 @@ interface VoiceAccount {
   webhook_url: string | null;
   display_name: string;
   phone_number: string;
+  /** Linked to a provider, so calls can reach it. A number typed by hand starts unconnected. */
+  connected?: boolean;
   always_record_calls: boolean;
   is_active: boolean;
 }
@@ -50,6 +52,9 @@ export default function VoiceNumbers() {
   const [newDisplayName, setNewDisplayName] = useState("");
   const [selectedNumberId, setSelectedNumberId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [typedNumber, setTypedNumber] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -81,11 +86,11 @@ export default function VoiceNumbers() {
   // there's nothing left to configure, so the account is fully usable the
   // moment it's created.
   const createAccount = async () => {
-    if (!selectedNumberId) return;
+    if (!selectedNumberId && !typedNumber.trim()) return;
     setIsCreating(true);
     const res = await voiceApi.post<VoiceAccount>("/voice/accounts/", {
       display_name: newDisplayName.trim(),
-      provider_credential: selectedNumberId,
+      ...(selectedNumberId ? { provider_credential: selectedNumberId } : { phone_number: typedNumber.trim() }),
     });
     setIsCreating(false);
     if (res.success && res.data) {
@@ -94,10 +99,24 @@ export default function VoiceNumbers() {
       setAvailableNumbers((prev) => prev.filter((n) => n.id !== selectedNumberId));
       setNewDisplayName("");
       setSelectedNumberId("");
+      setTypedNumber("");
       setShowAddForm(false);
       toast({ title: t("voice.numbers.created_toast_title"), description: t("voice.numbers.created_toast_desc") });
     } else {
       toast({ title: t("voice.numbers.create_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
+    }
+  };
+
+  const saveNumber = async (accountId: string) => {
+    setSavingId(accountId);
+    const res = await voiceApi.patch<VoiceAccount>(`/voice/accounts/${accountId}/`, { phone_number: editValue.trim() });
+    setSavingId(null);
+    if (res.success && res.data) {
+      setAccounts((prev) => prev.map((a) => (a.id === accountId ? res.data as VoiceAccount : a)));
+      setEditingId(null);
+      toast({ title: t("voice.numbers.number_updated") });
+    } else {
+      toast({ title: t("voice.numbers.update_failed"), description: res.error || t("common.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -206,11 +225,12 @@ export default function VoiceNumbers() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   <p className="text-xs text-muted-foreground">{t("voice.numbers.add_number_desc")}</p>
-                  {availableNumbers.length === 0 ? (
+                  {availableNumbers.length === 0 && (
                     <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
                       {t("voice.numbers.no_numbers_available")}
                     </p>
-                  ) : (
+                  )}
+                  {availableNumbers.length > 0 && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.phone_label")}</label>
@@ -239,6 +259,34 @@ export default function VoiceNumbers() {
                       </div>
                     </div>
                   )}
+                  {!selectedNumberId && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.type_number_label")}</label>
+                        <Input
+                          className="mt-1"
+                          inputMode="tel"
+                          placeholder="+255699920006"
+                          value={typedNumber}
+                          onChange={(e) => setTypedNumber(e.target.value)}
+                          disabled={isCreating}
+                        />
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("voice.numbers.type_number_hint")}</p>
+                      </div>
+                      {availableNumbers.length === 0 && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.display_name_label")}</label>
+                          <Input
+                            className="mt-1"
+                            placeholder={t("voice.numbers.display_name_placeholder")}
+                            value={newDisplayName}
+                            onChange={(e) => setNewDisplayName(e.target.value)}
+                            disabled={isCreating}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
@@ -247,13 +295,14 @@ export default function VoiceNumbers() {
                       onClick={() => {
                         setShowAddForm(false);
                         setNewDisplayName("");
+                        setTypedNumber("");
                         setSelectedNumberId("");
                       }}
                       disabled={isCreating}
                     >
                       {t("voice.numbers.cancel")}
                     </Button>
-                    <Button type="button" size="sm" onClick={createAccount} disabled={isCreating || !selectedNumberId}>
+                    <Button type="button" size="sm" onClick={createAccount} disabled={isCreating || (!selectedNumberId && !typedNumber.trim())}>
                       {isCreating ? t("voice.numbers.creating") : t("voice.numbers.save_number")}
                     </Button>
                   </div>
@@ -333,9 +382,30 @@ export default function VoiceNumbers() {
                     <CardContent className="space-y-3 pt-0">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">{t("voice.numbers.phone_label")}</label>
-                        <p className="mt-1 rounded-md border border-input bg-muted px-3 py-2 text-sm text-foreground">
-                          {account.phone_number}
-                        </p>
+                        {editingId === account.id ? (
+                          <div className="mt-1 flex gap-2">
+                            <Input value={editValue} inputMode="tel" onChange={(e) => setEditValue(e.target.value)} disabled={savingId === account.id} />
+                            <Button size="sm" onClick={() => saveNumber(account.id)} disabled={savingId === account.id || !editValue.trim()}>
+                              {t("voice.numbers.save_number")}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingId(null)} disabled={savingId === account.id}>
+                              {t("voice.numbers.cancel")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-input bg-muted px-3 py-2 text-sm text-foreground">
+                            <span>{account.phone_number || "—"}</span>
+                            <Button
+                              variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                              onClick={() => { setEditingId(account.id); setEditValue(account.phone_number); }}
+                            >
+                              {t("voice.numbers.edit_number")}
+                            </Button>
+                          </div>
+                        )}
+                        {account.connected === false && (
+                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{t("voice.numbers.not_connected")}</p>
+                        )}
                       </div>
 
                       <div>
