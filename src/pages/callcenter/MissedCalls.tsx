@@ -18,6 +18,7 @@ import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { PlayButton, RecordingPlayerBar, formatClock, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
 import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { voiceApi } from "@/services/voiceApi";
 import { callCenterApi, describeError, type AnalysisJobFull, type MissedCall, type MissedCallStatus, type Team, type Voicemail } from "@/services/callCenterApi";
 
 const STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "resolved", "unresolved"];
@@ -61,6 +62,12 @@ export default function MissedCalls() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Reload the list without the loading skeleton, so an open voicemail panel is not torn down.
+  const refresh = useCallback(async () => {
+    const res = await callCenterApi.missed.list({ team: team === "all" ? undefined : team });
+    if (res.success && res.data) setRows(res.data.results);
+  }, [team]);
 
   useEffect(() => {
     if (supervisor) callCenterApi.teams.list().then((r) => r.success && r.data && setTeams(r.data));
@@ -240,7 +247,7 @@ export default function MissedCalls() {
                     {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={7}>
-                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void load()} onSeek={(seconds) => seek(r, r.voicemail!, seconds)} />
+                          <VoicemailPanel row={r} vm={r.voicemail} playing={player.isPlaying(r.voicemail.id)} current={player.isCurrent(r.voicemail.id)} onListen={() => listen(r, r.voicemail!)} canReview={supervisor} onChanged={() => void refresh()} onSeek={(seconds) => seek(r, r.voicemail!, seconds)} />
                         </TableCell>
                       </TableRow>
                     )}
@@ -263,6 +270,26 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
   const [showTranscript, setShowTranscript] = useState(false);
   const ai = vm.analysis;
   const result = ai?.status === "completed" ? ai.result : null;
+  const [analysing, setAnalysing] = useState(false);
+  const [analysisMsg, setAnalysisMsg] = useState<string | null>(null);
+
+  // Queue an analysis of this message by hand (the automatic one only covers messages left after it was switched on).
+  const analyseNow = async () => {
+    setAnalysing(true);
+    setAnalysisMsg(null);
+    const res = await voiceApi.post<{ queued: number }>("/audio/analyze-calls/", { call_ids: [row.call] });
+    setAnalysing(false);
+    if (res.success) onChanged();
+    else setAnalysisMsg(res.status === 403 ? t("cc.history.analysis_unavailable") : res.error || t("cc.missed.ai_failed"));
+  };
+
+  // While it is queued or running, look again every few seconds so the result shows up by itself.
+  const working = ai?.status === "pending" || ai?.status === "processing";
+  useEffect(() => {
+    if (!working) return;
+    const id = setInterval(onChanged, 5000);
+    return () => clearInterval(id);
+  }, [working, onChanged]);
 
   return (
     <div className="space-y-3 py-1 text-sm">
@@ -295,13 +322,17 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
           </div>
         ) : ai && (ai.status === "pending" || ai.status === "processing") ? (
           <p className="text-muted-foreground">{t("cc.missed.ai_working")}</p>
-        ) : ai?.status === "failed" ? (
-          <p className="text-muted-foreground">{t("cc.missed.ai_failed")}</p>
         ) : (
-          <p className="text-muted-foreground">
-            {t("cc.missed.ai_off")}{" "}
-            <Link to="/voice/ai-settings" className="font-medium text-primary underline">{t("cc.missed.ai_settings")}</Link>
-          </p>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">{ai?.status === "failed" ? t("cc.missed.ai_failed") : t("cc.history.analysis_none")}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" onClick={analyseNow} disabled={analysing}>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("cc.history.analyze_now")}
+              </Button>
+              <Link to="/voice/ai-settings" className="text-xs font-medium text-primary underline">{t("cc.missed.ai_settings")}</Link>
+            </div>
+            {analysisMsg && <p className="text-xs text-destructive">{analysisMsg}</p>}
+          </div>
         )}
       </div>
 
