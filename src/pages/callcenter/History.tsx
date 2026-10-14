@@ -17,13 +17,19 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { formatDuration } from "@/components/callcenter/callUtils";
-import { callCenterApi, type CCAgent, type CallNote, type CallRow, type Team } from "@/services/callCenterApi";
+import { callCenterApi, type CCAgent, type CallNote, type CallRow, type CallTimeline, type Team } from "@/services/callCenterApi";
 
 type CallState = "answered" | "missed" | "failed" | "live";
+
+const OUTCOMES = ["answered", "missed", "voicemail", "abandoned", "rejected", "failed"] as const;
 
 /** One word for what happened, from the fields the server gives us. */
 function callState(c: CallRow): CallState {
   if (c.status === "ringing" || c.status === "in_progress") return "live";
+  // The server's own verdict wins; the guesses below only cover calls from before outcomes were recorded.
+  if (c.call_outcome === "answered") return "answered";
+  if (c.call_outcome === "failed") return "failed";
+  if (c.call_outcome) return "missed";
   if (c.answered_at) return "answered";
   if (c.direction === "outbound") return c.status === "completed" ? "answered" : "failed";
   return "missed";
@@ -46,6 +52,11 @@ export default function History() {
   const [team, setTeam] = useState("all");
   const [agent, setAgent] = useState("all");
   const [days, setDays] = useState("30");
+  const [outcome, setOutcome] = useState("all");
+  const [endpoint, setEndpoint] = useState("all");
+  const [detailFor, setDetailFor] = useState<CallRow | null>(null);
+  const [timeline, setTimeline] = useState<CallTimeline | null>(null);
+  const [timelineError, setTimelineError] = useState(false);
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
@@ -66,7 +77,7 @@ export default function History() {
     return () => clearTimeout(id);
   }, [q]);
 
-  useEffect(() => setPage(1), [direction, team, agent, days, query]);
+  useEffect(() => setPage(1), [direction, team, agent, days, query, outcome, endpoint]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +88,8 @@ export default function History() {
       agent: agent === "all" ? undefined : agent,
       days: days === "all" ? undefined : Number(days),
       q: query || undefined,
+      outcome: outcome === "all" ? undefined : outcome,
+      endpoint: endpoint === "all" ? undefined : endpoint,
       page,
     });
     if (res.success && res.data) {
@@ -86,7 +99,7 @@ export default function History() {
       setError(res.error || t("cc.history.load_failed"));
     }
     setLoading(false);
-  }, [direction, team, agent, days, query, page, t]);
+  }, [direction, team, agent, days, query, outcome, endpoint, page, t]);
 
   useEffect(() => {
     void load();
@@ -100,6 +113,15 @@ export default function History() {
     setNotes(null);
     const res = await callCenterApi.notes.list(row.id);
     setNotes(res.success && res.data ? res.data : []);
+  };
+
+  const openDetails = async (row: CallRow) => {
+    setDetailFor(row);
+    setTimeline(null);
+    setTimelineError(false);
+    const res = await callCenterApi.call.timeline(row.id);
+    if (res.success && res.data) setTimeline(res.data);
+    else setTimelineError(true);
   };
 
   const pageSize = 20;
@@ -136,6 +158,23 @@ export default function History() {
             <SelectContent>
               <SelectItem value="all">{t("cc.history.all_agents")}</SelectItem>
               {agents.map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={outcome} onValueChange={setOutcome}>
+          <SelectTrigger className="h-9 w-40" aria-label={t("cc.history.all_outcomes")}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("cc.history.all_outcomes")}</SelectItem>
+            {OUTCOMES.map((o) => <SelectItem key={o} value={o}>{t(`cc.history.outcome_${o}` as const)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {supervisor && (
+          <Select value={endpoint} onValueChange={setEndpoint}>
+            <SelectTrigger className="h-9 w-36" aria-label={t("cc.history.all_endpoints")}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("cc.history.all_endpoints")}</SelectItem>
+              <SelectItem value="browser">{t("cc.history.endpoint_browser")}</SelectItem>
+              <SelectItem value="phone">{t("cc.history.endpoint_phone")}</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -180,6 +219,7 @@ export default function History() {
                   <TableHead>{t("cc.agents.col_status")}</TableHead>
                   <TableHead>{t("cc.history.col_recording")}</TableHead>
                   <TableHead>{t("cc.history.col_notes")}</TableHead>
+                  <TableHead><span className="sr-only">{t("cc.history.details")}</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,7 +236,14 @@ export default function History() {
                         </span>
                       </TableCell>
                       <TableCell className="text-sm">{c.team?.name ?? "—"}</TableCell>
-                      <TableCell className="text-sm">{c.agent?.name ?? "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {c.answered_by?.name || c.agent_name || c.agent?.name || "—"}
+                        {c.answered_endpoint && (
+                          <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                            {t(`cc.history.endpoint_${c.answered_endpoint}` as const)}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(c.started_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm tabular-nums">{c.duration_seconds != null ? formatDuration(c.duration_seconds) : "—"}</TableCell>
                       <TableCell><Badge variant={STATE_TONE[state]}>{t(`cc.history.state_${state}` as const)}</Badge></TableCell>
@@ -210,6 +257,9 @@ export default function History() {
                         ) : (
                           "—"
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="h-8" onClick={() => openDetails(c)}>{t("cc.history.details")}</Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -227,6 +277,51 @@ export default function History() {
           </div>
         </Card>
       )}
+
+      <Dialog open={!!detailFor} onOpenChange={(v) => !v && setDetailFor(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("cc.history.timeline_title")}</DialogTitle>
+            <DialogDescription className="font-mono">
+              {detailFor ? (detailFor.direction === "inbound" ? detailFor.from_number : detailFor.to_number) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {timelineError ? (
+            <p className="text-sm text-destructive">{t("cc.history.timeline_failed")}</p>
+          ) : timeline === null ? (
+            <Skeleton className="h-32" />
+          ) : timeline.events.length === 0 && timeline.attempts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("cc.history.timeline_empty")}</p>
+          ) : (
+            <div className="max-h-96 space-y-4 overflow-y-auto text-sm">
+              {timeline.attempts.length > 0 && (
+                <section>
+                  <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.history.attempts")}</h4>
+                  <ul className="space-y-1">
+                    {timeline.attempts.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-border px-2.5 py-1.5">
+                        <span>{a.agent || "—"} <span className="text-xs text-muted-foreground">· {t(`cc.history.endpoint_${a.endpoint}` as const)}</span></span>
+                        <Badge variant={a.outcome === "answered" ? "default" : "outline"}>{a.outcome}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <section>
+                <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("cc.history.events")}</h4>
+                <ol className="space-y-1">
+                  {timeline.events.map((e) => (
+                    <li key={e.id} className="flex gap-3">
+                      <span className="w-20 shrink-0 tabular-nums text-xs text-muted-foreground">{new Date(e.at).toLocaleTimeString()}</span>
+                      <span>{e.label}{e.agent ? ` — ${e.agent}` : ""}{e.endpoint ? ` (${e.endpoint})` : ""}</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!notesFor} onOpenChange={(v) => !v && setNotesFor(null)}>
         <DialogContent className="sm:max-w-md">

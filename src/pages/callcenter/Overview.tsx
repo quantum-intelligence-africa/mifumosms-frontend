@@ -19,6 +19,7 @@ import { isCallCenterAdmin } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { ccKey } from "@/i18n/callCenter";
 import { SetupWizard } from "@/components/callcenter/SetupWizard";
+import { ResultsCard } from "@/components/callcenter/ResultsCard";
 import { StatusDot, StatusLabel } from "@/components/callcenter/StatusDot";
 import { formatDuration } from "@/components/callcenter/callUtils";
 import { AGENT_STATUSES, callCenterApi, type AgentStatus, type CallCenterSettings, type LiveSnapshot } from "@/services/callCenterApi";
@@ -215,6 +216,7 @@ export default function Overview() {
       }
     >
       {admin && <SetupCard />}
+      <ResultsCard />
 
       {error && !snap && (
         <Card>

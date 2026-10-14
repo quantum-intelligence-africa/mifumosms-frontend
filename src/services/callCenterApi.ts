@@ -11,7 +11,10 @@ import { voiceApi } from "@/services/voiceApi";
 
 export type AgentStatus = "available" | "busy" | "away" | "offline" | "dnd" | "acw";
 export type RoutingStrategy = "ring_one" | "round_robin" | "simultaneous";
-export type AudioMode = "browser" | "handset";
+export type AudioMode = "browser" | "handset" | "both";
+export type LiveState = AgentStatus | "ringing" | "on_call" | "disabled";
+export type CallEndpoint = "browser" | "phone";
+export type CallResult = "answered" | "missed" | "voicemail" | "abandoned" | "rejected" | "failed";
 export type AfterHoursAction = "voicemail" | "message";
 export type MissedCallStatus = "new" | "assigned" | "called_back" | "resolved" | "unresolved";
 export type CallOutcome =
@@ -104,6 +107,8 @@ export interface CCAgent {
   audio_mode: AudioMode;
   is_active: boolean;
   status: AgentStatus;
+  /** Status plus what the call layer knows: ringing, on a call, or switched off. */
+  live_state?: LiveState;
   status_changed_at: string | null;
   teams: Array<{ id: string; name: string }>;
 }
@@ -254,8 +259,40 @@ export interface CallRow {
   answered_at: string | null;
   duration_seconds: number | null;
   notes_count: number;
+  /** The agent's own note outcome (resolved, follow-up...). Not the call result. */
   outcome: string;
+  /** How the call ended: answered, missed, voicemail, abandoned, rejected, failed ("" while live). */
+  call_outcome?: CallResult | "";
+  agent_name?: string;
+  answered_by?: { id: string | null; name: string; endpoint: string } | null;
+  answered_endpoint?: CallEndpoint | "";
+  ring_seconds?: number | null;
+  connected_seconds?: number | null;
+  attempts_count?: number;
   recording: { id: string; storage_path: string; duration_seconds: number | null } | null;
+}
+
+export interface CallTimeline {
+  call: Record<string, unknown>;
+  events: Array<{ id: string; type: string; label: string; at: string; agent: string; endpoint: string; detail: Record<string, unknown> }>;
+  attempts: Array<{
+    id: string; agent: string; agent_id: string | null; endpoint: CallEndpoint; round: number; strategy: string;
+    outcome: string; offered_at: string; answered_at: string | null; ended_at: string | null; target?: string;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface ReportSummary {
+  period: { start: string; end: string | null };
+  totals: {
+    total_calls: number; inbound: number; outbound: number; answered: number; answered_by_agent: number;
+    missed: number; voicemail: number; rejected: number; failed: number; in_progress: number;
+  };
+  timings: Record<string, number | null>;
+  by_endpoint?: Record<string, number>;
+  by_team?: Array<{ team_id: string; team__name?: string; name?: string; calls: number; answered: number; missed: number }>;
+  definitions: Record<string, string>;
+  [key: string]: unknown;
 }
 
 export type TransferMode = "blind" | "warm" | "confirm";
@@ -539,6 +576,21 @@ export const callCenterApi = {
   },
   generateIvr: (body: { greeting?: string; company_name?: string; replace_active?: boolean; team_ids?: string[] }) =>
     voiceApi.post<GeneratedIvr & { code?: string }>(`${BASE}/setup/generate-ivr/`, body),
+  call: {
+    answer: (callId: string, endpoint: CallEndpoint = "browser") =>
+      voiceApi.post<{ call_id: string; endpoint: string }>(`${BASE}/calls/${callId}/answer/`, { endpoint }),
+    reject: (callId: string, endpoint: CallEndpoint = "browser", reason = "") =>
+      voiceApi.post(`${BASE}/calls/${callId}/reject/`, { endpoint, reason }),
+    action: (callId: string, action: "hold" | "resume" | "mute" | "unmute", endpoint: CallEndpoint = "browser") =>
+      voiceApi.post(`${BASE}/calls/${callId}/action/`, { action, endpoint }),
+    timeline: (callId: string) => voiceApi.get<CallTimeline>(`${BASE}/calls/${callId}/timeline/`),
+  },
+  reports: {
+    summary: (params: Record<string, string | number | undefined> = {}) =>
+      voiceApi.get<ReportSummary>(`${BASE}/reports/summary/${qs(params)}`),
+    agents: (params: Record<string, string | number | undefined> = {}) =>
+      voiceApi.get<{ agents: Array<Record<string, unknown>>; definitions: Record<string, string> }>(`${BASE}/reports/agents/${qs(params)}`),
+  },
   calls: (params: {
     direction?: string;
     team?: string;
@@ -547,6 +599,10 @@ export const callCenterApi = {
     days?: number;
     missed?: boolean;
     page?: number;
+    outcome?: string;
+    endpoint?: string;
+    date_from?: string;
+    date_to?: string;
   }) =>
     voiceApi.get<Paged<CallRow>>(
       `/voice/calls/${qs({ ...params, missed: params.missed ? "true" : undefined })}`,

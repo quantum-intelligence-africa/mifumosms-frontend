@@ -363,7 +363,7 @@ function AgentStep({ agents, teams, tenantId, onCreated }: { agents: CCAgent[]; 
 
   const create = async () => {
     if (!tenantId) return setError(t("cc.agents.no_organization"));
-    if (form.audio_mode === "handset" && !form.phone_number.trim()) return setError(t("cc.agents.handset_needs_phone"));
+    if (form.audio_mode !== "browser" && !form.phone_number.trim()) return setError(t("cc.agents.handset_needs_phone"));
     setSaving(true);
     setError(null);
     const result = await provisionAgent({
@@ -404,6 +404,7 @@ function AgentStep({ agents, teams, tenantId, onCreated }: { agents: CCAgent[]; 
           <SelectContent>
             <SelectItem value="browser">{t("cc.mode.browser")}</SelectItem>
             <SelectItem value="handset">{t("cc.mode.handset")}</SelectItem>
+            <SelectItem value="both">{t("cc.mode.both")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={form.team_id} onValueChange={(v) => setForm({ ...form, team_id: v })}>

@@ -51,6 +51,9 @@ interface Credentials {
   pending?: { userId: number; draft: Draft; error: string };
 }
 
+/** A phone number is needed whenever the agent answers on a handset, alone or together with the browser. */
+const needsPhone = (mode: AudioMode) => mode === "handset" || mode === "both";
+
 export default function CallCenterAgents() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -181,7 +184,7 @@ export default function CallCenterAgents() {
 
   const save = async () => {
     setFormError(null);
-    if (draft.audio_mode === "handset" && !draft.phone_number.trim()) {
+    if (needsPhone(draft.audio_mode) && !draft.phone_number.trim()) {
       setFormError(t("cc.agents.handset_needs_phone"));
       return;
     }
@@ -362,7 +365,15 @@ export default function CallCenterAgents() {
                     </TableCell>
                     <TableCell className="text-sm">{a.teams.map((x) => x.name).join(", ") || "—"}</TableCell>
                     <TableCell><Badge variant="outline">{a.role ? t(ccKey(`cc.role.${a.role}`)) : "—"}</Badge></TableCell>
-                    <TableCell>{a.is_active ? <StatusLabel status={a.status} /> : <Badge variant="outline">{t("cc.common.disabled")}</Badge>}</TableCell>
+                    <TableCell>{!a.is_active ? (
+                      <Badge variant="outline">{t("cc.common.disabled")}</Badge>
+                    ) : a.live_state === "ringing" || a.live_state === "on_call" ? (
+                      <Badge className={a.live_state === "ringing" ? "animate-pulse bg-amber-500 text-white" : "bg-red-600 text-white"}>
+                        {t(`cc.state.${a.live_state}` as const)}
+                      </Badge>
+                    ) : (
+                      <StatusLabel status={a.status} />
+                    )}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{t(`cc.mode.${a.audio_mode}` as const)}</TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">{a.extension || "—"}</TableCell>
                     <TableCell className="text-right">
@@ -474,11 +485,12 @@ export default function CallCenterAgents() {
                     <SelectContent>
                       <SelectItem value="browser">{t("cc.mode.browser")}</SelectItem>
                       <SelectItem value="handset">{t("cc.mode.handset")}</SelectItem>
+                      <SelectItem value="both">{t("cc.mode.both")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="mem-phone">{t("cc.agents.phone")}{memberDraft.audio_mode === "handset" ? " *" : ""}</Label>
+                  <Label htmlFor="mem-phone">{t("cc.agents.phone")}{needsPhone(memberDraft.audio_mode) ? " *" : ""}</Label>
                   <Input id="mem-phone" value={memberDraft.phone_number} onChange={(e) => setMemberDraft({ ...memberDraft, phone_number: e.target.value })} placeholder="+255712345678" inputMode="tel" className="font-mono" />
                 </div>
               </div>
@@ -512,7 +524,7 @@ export default function CallCenterAgents() {
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setMemberOpen(false)} disabled={dialogBusy}>{t("cc.common.cancel")}</Button>
-            <Button onClick={saveMember} disabled={dialogBusy || !memberDraft.user_id || (memberDraft.audio_mode === "handset" && !memberDraft.phone_number.trim())}>
+            <Button onClick={saveMember} disabled={dialogBusy || !memberDraft.user_id || (needsPhone(memberDraft.audio_mode) && !memberDraft.phone_number.trim())}>
               {dialogBusy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}{t("cc.agents.add_member_submit")}
             </Button>
           </DialogFooter>
@@ -571,11 +583,12 @@ export default function CallCenterAgents() {
                   <SelectContent>
                     <SelectItem value="browser">{t("cc.mode.browser")}</SelectItem>
                     <SelectItem value="handset">{t("cc.mode.handset")}</SelectItem>
+                      <SelectItem value="both">{t("cc.mode.both")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ag-phone">{t("cc.agents.phone")}{draft.audio_mode === "handset" ? " *" : ""}</Label>
+                <Label htmlFor="ag-phone">{t("cc.agents.phone")}{needsPhone(draft.audio_mode) ? " *" : ""}</Label>
                 <Input id="ag-phone" value={draft.phone_number} onChange={(e) => setDraft({ ...draft, phone_number: e.target.value })} placeholder="+255712345678" inputMode="tel" className="font-mono" />
               </div>
             </div>

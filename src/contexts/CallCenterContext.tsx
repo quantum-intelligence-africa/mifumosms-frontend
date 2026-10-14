@@ -38,7 +38,7 @@ export interface IncomingCall {
   caller: CallerContext | null;
   /** The browser audio is ringing (the agent can answer here). */
   ringing: boolean;
-  audioMode: "browser" | "handset";
+  audioMode: "browser" | "handset" | "both";
   /** Set when this call was handed over by another agent. */
   transferredFrom?: string;
   transferNote?: string;
@@ -97,7 +97,7 @@ interface CallCenterContextValue {
   transferComplete: () => void;
   /** Drop the target and go back to the caller. */
   transferCancel: () => void;
-  answer: () => void;
+  answer: () => void | Promise<void>;
   decline: () => void;
   hangup: () => void;
   toggleMute: () => void;
@@ -256,7 +256,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
           teamName: team?.name ?? "",
           caller: (d.caller as CallerContext) ?? null,
           ringing: prev?.ringing ?? false,
-          audioMode: (d.audio_mode as "browser" | "handset") ?? "handset",
+          audioMode: (d.audio_mode as "browser" | "handset" | "both") ?? "handset",
           transferredFrom: d.transferred_from ? String(d.transferred_from) : undefined,
           transferNote: d.transfer_note ? String(d.transfer_note) : undefined,
         }));
@@ -272,6 +272,20 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
         // The caller hung up, or somebody else took it, before we answered.
         if (incomingRef.current && incomingRef.current.callId === id && !activeRef.current) setIncoming(null);
         window.dispatchEvent(new CustomEvent(CALL_ENDED_EVENT));
+        break;
+      }
+      case "call_answered_elsewhere": {
+        // Somebody else (another agent, or this agent's phone) took the call: stop ringing here.
+        const id = String(d.call_id ?? "");
+        if (incomingRef.current && incomingRef.current.callId === id && !activeRef.current) {
+          try {
+            clientRef.current?.hangup();
+          } catch {
+            /* leg already gone */
+          }
+          setIncoming(null);
+          toast({ title: t("cc.incoming.answered_elsewhere", { name: String(d.agent_name || "") }) });
+        }
         break;
       }
       case "my_status": {
@@ -464,15 +478,34 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
   };
 
   // ── actions ─────────────────────────────────────────────────────────────
-  const answer = useCallback(() => {
+  // The server decides who wins a call (first claim). Tell it before picking up the audio; if it says
+  // the call is taken (409) we drop ours. Any other failure still lets the agent answer, so a hiccup
+  // in the bookkeeping never leaves a customer unanswered.
+  const answer = useCallback(async () => {
+    const callId = incomingRef.current?.callId;
+    if (callId) {
+      const res = await callCenterApi.call.answer(callId, "browser");
+      if (!res.success && res.status === 409) {
+        try {
+          clientRef.current?.hangup();
+        } catch {
+          /* leg already gone */
+        }
+        setIncoming(null);
+        toast({ title: t("cc.incoming.already_answered"), variant: "destructive" });
+        return;
+      }
+    }
     try {
       clientRef.current?.answer();
     } catch (e) {
       console.error("answer() failed", e);
     }
-  }, []);
+  }, [t]);
 
   const decline = useCallback(() => {
+    const callId = incomingRef.current?.callId;
+    if (callId) void callCenterApi.call.reject(callId, "browser").catch(() => undefined);
     try {
       clientRef.current?.hangup(); // on an unanswered incoming call this rejects it
     } catch {
@@ -480,6 +513,11 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
     }
     setIncoming(null);
   }, []);
+
+  const reportAction = (action: "hold" | "resume" | "mute" | "unmute") => {
+    const callId = activeRef.current?.callId;
+    if (callId) void callCenterApi.call.action(callId, action, "browser").catch(() => undefined);
+  };
 
   const hangup = useCallback(() => {
     try {
@@ -514,6 +552,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
     if (!client || !current) return;
     if (current.muted) client.unmuteAudio();
     else client.muteAudio();
+    reportAction(current.muted ? "unmute" : "mute");
     setActive({ ...current, muted: !current.muted });
   }, []);
 
@@ -523,6 +562,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
     if (!client || !current) return;
     if (current.held) client.unhold();
     else client.hold();
+    reportAction(current.held ? "resume" : "hold");
     setActive({ ...current, held: !current.held });
   }, []);
 
