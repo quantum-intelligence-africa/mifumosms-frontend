@@ -301,10 +301,16 @@ export const NODE_META: Record<IvrNodeType, NodeMeta> = {
         key: "voicemail_prompt",
         label: "Ujumbe kwa mteja asipopokea (si lazima)",
         type: "textarea",
-        placeholder:
-          "Samahani, mhudumu hakupokea simu. Baada ya mlio, tafadhali tueleze unachohitaji na namba yako ya simu.",
+        placeholder: "Samahani, mhudumu hakupokea simu.",
         helpText:
-          "Huu ndio ujumbe utakaosomwa kabla ya kurekodi sauti ya mteja. Usiache tupu kama unataka maelekezo maalum ya biashara yako.",
+          "Husomwa kabla ya mlio. Mfumo huongeza yenyewe \"Una sekunde 30 za kueleza shida yako baada ya mlio\" (usiombe namba ya simu — mfumo tayari unaiona). Acha tupu kutumia ujumbe wa kawaida.",
+      },
+      {
+        key: "voicemail_max_seconds",
+        label: "Sekunde za mteja kuacha ujumbe",
+        type: "number",
+        defaultValue: 30,
+        helpText: "Baada ya muda huu rekodi inakoma yenyewe na simu inafungwa. Kati ya sekunde 10 na 120.",
       },
       {
         key: "voicemail_silence_timeout_seconds",
