@@ -12606,7 +12606,7 @@ function OrganizationDetail({ orgId, onBack }) {
       {section === 'Plan & Subscription' && (
         <>
           <div style={card}>
-            <div style={lbl}>Current platform plan</div>
+            <div style={lbl}>Current SMS / platform plan</div>
             {sub ? (
               <div style={{fontSize:13,color:'#0f172a',lineHeight:1.8}}>
                 <b>{sub.plan.name}</b>{sub.plan.is_custom ? ' (custom)' : ''} · {sub.status}{sub.is_complimentary ? ' · complimentary' : ''}<br/>
@@ -12661,9 +12661,43 @@ function OrganizationDetail({ orgId, onBack }) {
           </div>
 
           <div style={card}>
-            <div style={lbl}>Call-center plan (managed in Call Center Plans)</div>
-            <div style={{fontSize:13,color:'#0f172a'}}>{cc.current ? `${cc.current.plan} · ${cc.current.is_trial ? 'trial · ' : ''}ends ${fmtDate(cc.current.period_end)}` : 'No active call-center plan.'}</div>
-            {cc.history.slice(0,5).map(h => <div key={h.id} style={{fontSize:12,color:'#64748b',marginTop:2}}>{h.plan} · {h.status} · {h.source}</div>)}
+            <div style={lbl}>Call Center / IVR plan</div>
+            <div style={{fontSize:13,color:'#0f172a',marginBottom:10}}>
+              {cc.current ? <><b>{cc.current.plan}</b>{cc.current.is_trial ? ' (trial)' : ''} · ends {fmtDate(cc.current.period_end)}{cc.current.days_left != null ? ` (${cc.current.days_left} days left)` : ''}</> : <span style={{color:'#94a3b8'}}>No active call-center plan (the entry plan's limits apply to new resources).</span>}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,fontSize:13}}>
+              <label>Plan<select className="senda-input" value={val('cc_plan','')} onChange={e=>f('cc_plan',e.target.value)} style={{width:'100%'}}>
+                <option value="">Choose…</option>
+                {cc.plans.map(p => <option key={p.key} value={p.key}>{p.name}{p.is_custom ? ' (custom)' : ''}{p.price ? ` — ${p.price} ${p.currency}/${p.billing_cycle}` : ''}{p.max_agents ? ` · ${p.max_agents} agents` : ''}</option>)}
+              </select></label>
+              <label>Type<select className="senda-input" value={val('cc_mode','assign')} onChange={e=>f('cc_mode',e.target.value)} style={{width:'100%'}}>
+                <option value="assign">Assign (paid / manual)</option><option value="trial">Free trial</option>
+              </select></label>
+              {val('cc_mode','assign') === 'trial'
+                ? <label>Trial days<input className="senda-input" type="number" min="1" value={val('cc_days',14)} onChange={e=>f('cc_days',e.target.value)} style={{width:'100%'}}/></label>
+                : <label>Months<input className="senda-input" type="number" min="1" max="36" value={val('cc_months',1)} onChange={e=>f('cc_months',e.target.value)} style={{width:'100%'}}/></label>}
+              <label>Payment ref / notes<input className="senda-input" value={val('cc_notes','')} onChange={e=>f('cc_notes',e.target.value)} style={{width:'100%'}}/></label>
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+              <button className="senda-btn senda-btn-sm" disabled={busy || !val('cc_plan','')} onClick={() => {
+                const trial = val('cc_mode','assign') === 'trial';
+                const body = { tenant_id: orgId, plan: val('cc_plan',''), notes: val('cc_notes','') };
+                if (trial) body.days = Number(val('cc_days',14)); else { body.months = Number(val('cc_months',1)); body.payment_reference = val('cc_notes',''); }
+                setBusy(true);
+                adminFetch(`/call-center/subscriptions/${trial ? 'trial' : 'assign'}`, { method: 'POST', body: JSON.stringify(body) }, onLogout)
+                  .then(res => { if (res.success) { showToast?.(trial ? 'Trial started.' : 'Call-center plan assigned.', 'success'); setForm(p => ({...p, cc_plan:'', cc_notes:''})); load(); } else showToast?.(res.error?.message || 'Could not assign the plan.', 'error'); })
+                  .catch(() => showToast?.('Could not assign the plan.', 'error')).finally(() => setBusy(false));
+              }}>{val('cc_mode','assign') === 'trial' ? 'Start trial' : 'Assign plan'}</button>
+              {cc.current && <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={busy} onClick={() => {
+                if (!window.confirm('Cancel the current call-center plan? History is kept.')) return;
+                setBusy(true);
+                adminFetch(`/call-center/subscriptions/${cc.current.id}/cancel`, { method: 'POST' }, onLogout)
+                  .then(res => { if (res.success) { showToast?.('Call-center plan cancelled.', 'success'); load(); } else showToast?.(res.error?.message || 'Could not cancel.', 'error'); })
+                  .finally(() => setBusy(false));
+              }}>Cancel current plan</button>}
+            </div>
+            {cc.history.slice(0,5).map(h => <div key={h.id} style={{fontSize:12,color:'#64748b',marginTop:4}}>{h.plan} · {h.status} · {h.source} · {fmtDate(h.period_start)} → {fmtDate(h.period_end)}</div>)}
+            <div style={{fontSize:12,color:'#94a3b8',marginTop:8}}>Plan prices, limits and custom call-center plans are edited in the Call Center Plans tab.</div>
           </div>
         </>
       )}
