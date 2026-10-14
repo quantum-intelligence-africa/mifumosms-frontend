@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -130,9 +130,9 @@ const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
 const [isSelectingAll, setIsSelectingAll] = useState(false);
 // True once the user picks "select all N matching filters" for an audience too
 // large to materialize as an explicit id list (see SELECT_ALL_EXPLICIT_MAX below).
-// selectedContacts stays empty in this mode — Send SMS/WhatsApp read the current
-// search/tag filters instead; actions that need real ids (Add Tag/Delete/Export)
-// are disabled while this is true.
+// selectedContacts stays empty in this mode — Send SMS/WhatsApp, Add Tag and Delete
+// send the current search/tag filters and the server resolves the audience; Export
+// and Bulk Edit still need real ids and are disabled while this is true.
 const [selectAllMatchingFilter, setSelectAllMatchingFilter] = useState(false);
 const [isBulkCampaignDialogOpen, setIsBulkCampaignDialogOpen] = useState(false);
 const [bulkCampaignChannel, setBulkCampaignChannel] = useState<'sms' | 'whatsapp'>('sms');
@@ -196,6 +196,14 @@ const openBulkCampaignDialog = (channel: 'sms' | 'whatsapp') => {
     toast({
       title: "No contacts selected",
       description: `Please select contacts to send a ${channel === 'sms' ? 'message' : 'WhatsApp message'} to`,
+      variant: "destructive"
+    });
+    return;
+  }
+  if (selectAllMatchingFilter && searchQuery.trim()) {
+    toast({
+      title: "Search can't be used for a campaign audience",
+      description: "Clear the search box (use the tag filter instead), or select fewer contacts by hand.",
       variant: "destructive"
     });
     return;
@@ -346,7 +354,26 @@ return () => clearTimeout(timeoutId);
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [searchQuery, isMobile]);
 
+// Set lookup keeps per-row checkbox state O(1) instead of scanning the id array.
+const selectedIdSet = useMemo(() => new Set(selectedContacts), [selectedContacts]);
+const isContactChecked = (id: string) => selectAllMatchingFilter || selectedIdSet.has(id);
+const selectedCount = selectAllMatchingFilter ? totalCount : selectedContacts.length;
+const currentFilter = {
+  search: searchQuery.trim() || undefined,
+  tags: filterTag !== "all" ? [filterTag] : undefined,
+};
+
 const handleSelectContact = (contactId: string, checked?: boolean) => {
+if (selectAllMatchingFilter) {
+  // Unchecking one row while "all matching" is on: drop to an explicit selection
+  // of the rows on this page minus the one unchecked, rather than silently
+  // keeping a filter-wide selection the user just partially undid.
+  if (checked === false) {
+    setSelectAllMatchingFilter(false);
+    setSelectedContacts(filteredContacts.map(c => c.id).filter(id => id !== contactId));
+  }
+  return;
+}
 setSelectedContacts(prev => {
   const isSelected = prev.includes(contactId);
   // If checked parameter is provided, use it; otherwise toggle
@@ -365,27 +392,27 @@ setSelectedContacts(prev => {
 };
 
 const handleSelectAll = () => {
+if (selectAllMatchingFilter) {
+  // Header checkbox while "all matching" is on clears the selection.
+  setSelectAllMatchingFilter(false);
+  setSelectedContacts([]);
+  return;
+}
 // Check if all contacts on current page are selected
 const allCurrentPageSelected = filteredContacts.every(contact =>
-  selectedContacts.includes(contact.id)
+  selectedIdSet.has(contact.id)
 );
 
 if (allCurrentPageSelected) {
   // If all current page contacts are selected, deselect them
-  setSelectedContacts(prev =>
-    prev.filter(id => !filteredContacts.some(contact => contact.id === id))
-  );
+  const pageIds = new Set(filteredContacts.map(c => c.id));
+  setSelectedContacts(prev => prev.filter(id => !pageIds.has(id)));
 } else {
   // Select all contacts on current page
   const currentPageContactIds = filteredContacts.map(c => c.id);
   setSelectedContacts(prev => {
-    const newSelection = [...prev];
-    currentPageContactIds.forEach(id => {
-      if (!newSelection.includes(id)) {
-        newSelection.push(id);
-      }
-    });
-    return newSelection;
+    const have = new Set(prev);
+    return [...prev, ...currentPageContactIds.filter(id => !have.has(id))];
   });
 }
 };
@@ -409,16 +436,16 @@ const handleSelectAllContacts = async () => {
     return;
   }
 
-  // A free-text search isn't representable as campaign target_criteria
-  // (server-side filtering only supports tags/opt-in status), so the instant
-  // filter-based path only applies when just the tag dropdown is in play.
-  if (!searchQuery.trim() && totalCount > SELECT_ALL_EXPLICIT_MAX) {
+  // Add Tag/Delete resolve search + tags server-side, so those work for any filter.
+  // Only campaigns can't express a free-text search as target_criteria (see
+  // handleBulkSendMessage), so they warn instead of using this mode.
+  if (totalCount > SELECT_ALL_EXPLICIT_MAX) {
     setSelectedContacts([]);
     setSelectAllMatchingFilter(true);
     toast({
       title: "Selected all matching contacts",
       description: `Selected all ${totalCount.toLocaleString()} contact(s) matching the current filter. `
-        + `Send SMS/WhatsApp can target all of them; Add Tag/Delete/Export need a smaller, explicit selection.`,
+        + `Send SMS/WhatsApp, Add Tag and Delete apply to all of them; Export needs a smaller selection.`,
     });
     return;
   }
@@ -1177,7 +1204,7 @@ setIsCreating(false);
 
 // Bulk action handlers
 const handleBulkAddTag = () => {
-if (selectedContacts.length === 0) {
+if (selectedCount === 0) {
 toast({
 title: "No contacts selected",
 description: "Please select contacts to add tags to",
@@ -1219,7 +1246,7 @@ const handleBulkEdit = () => {
 };
 
 const handleBulkDelete = () => {
-if (selectedContacts.length === 0) {
+if (selectedCount === 0) {
 toast({
 title: "No contacts selected",
 description: "Please select contacts to delete",
@@ -1243,12 +1270,26 @@ const confirmBulkAddTag = async () => {
   try {
     setIsBulkActionLoading(true);
 
-    const contactCount = selectedContacts.length;
+    const contactCount = selectedCount;
     const tagCount = selectedTags.length;
-    const success = await bulkAddTags(selectedContacts, selectedTags);
+    let success: boolean;
+    if (selectAllMatchingFilter) {
+      const res = await apiClient.bulkAddTagsByFilter(currentFilter, selectedTags);
+      success = res.success;
+      if (!success) {
+        toast({
+          title: "Failed to add tags",
+          description: res.error || "The server could not tag the matching contacts.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      success = await bulkAddTags(selectedContacts, selectedTags);
+    }
 
     if (success) {
       setSelectedContacts([]);
+      setSelectAllMatchingFilter(false);
       setSelectedTags([]);
       setIsAddTagDialogOpen(false);
 
@@ -1338,6 +1379,27 @@ const confirmBulkEdit = async () => {
 const confirmBulkDelete = async () => {
   try {
     setIsBulkActionLoading(true);
+
+    if (selectAllMatchingFilter) {
+      const res = await apiClient.bulkDeleteContactsByFilter(currentFilter);
+      if (!res.success) {
+        toast({
+          title: "Bulk delete failed",
+          description: res.error || "The server could not delete the matching contacts.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setSelectedContacts([]);
+      setSelectAllMatchingFilter(false);
+      setIsBulkDeleteDialogOpen(false);
+      await fetchContacts({ page: 1, ...currentFilter });
+      toast({
+        title: "Contacts deleted successfully",
+        description: `${(res.data?.deleted_count ?? selectedCount).toLocaleString()} contact(s) have been permanently deleted.`,
+      });
+      return;
+    }
 
     const deletedCount = selectedContacts.length;
     const batchSize = 50; // Delete in batches of 50 to avoid API limits
@@ -1764,7 +1826,7 @@ className="pl-10 glass-subtle border-0 text-sm"
         onClick={handleSelectAll}
         className="text-xs h-7"
       >
-        {filteredContacts.every(contact => selectedContacts.includes(contact.id))
+        {filteredContacts.every(contact => selectedIdSet.has(contact.id))
           ? "Deselect Page"
           : "Select Page"
         }
@@ -1802,11 +1864,10 @@ className="pl-10 glass-subtle border-0 text-sm"
 variant="outline"
 size="sm"
 onClick={handleBulkAddTag}
-disabled={isBulkActionLoading || selectAllMatchingFilter}
-title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
+disabled={isBulkActionLoading}
 className="text-xs sm:text-sm h-8 sm:h-9"
 >
-<Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+<TagclassName="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Add Tag
 </Button>
 <Button
@@ -1843,8 +1904,7 @@ variant="outline"
 size="sm"
 className="text-destructive hover:text-destructive text-xs sm:text-sm h-8 sm:h-9"
 onClick={handleBulkDelete}
-disabled={isBulkActionLoading || selectAllMatchingFilter}
-title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
+disabled={isBulkActionLoading}
 >
 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
 Delete
@@ -1896,7 +1956,7 @@ Delete
             const initials = contact.name
               ? contact.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
               : "—";
-            const isSelected = selectedContacts.includes(contact.id);
+            const isSelected = isContactChecked(contact.id);
             const isLast = idx === filteredContacts.length - 1;
             return (
               <div
@@ -2008,7 +2068,7 @@ Delete
 <TableRow className="border-b border-border hover:bg-transparent bg-muted/30 sticky top-0">
 <TableHead className="w-6 sm:w-8 lg:w-12 py-3 sm:py-4">
 <Checkbox
-checked={filteredContacts.length > 0 && filteredContacts.every(contact => selectedContacts.includes(contact.id))}
+checked={filteredContacts.length > 0 && (selectAllMatchingFilter || filteredContacts.every(contact => selectedIdSet.has(contact.id)))}
 onCheckedChange={handleSelectAll}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
@@ -2031,7 +2091,7 @@ onClick={() => setSelectedContact(contact)}
 >
 <TableCell onClick={(e) => e.stopPropagation()} className="py-3 sm:py-4">
 <Checkbox
-checked={selectedContacts.includes(contact.id)}
+checked={isContactChecked(contact.id)}
 onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
@@ -2748,7 +2808,7 @@ Import Multiple Contacts
 Add Tags to Selected Contacts
 </DialogTitle>
 <DialogDescription>
-Type tag names to add to {selectedContacts.length} selected contact{selectedContacts.length === 1 ? "" : "s"}. Press Enter or comma to add each tag.
+Type tag names to add to {selectedCount.toLocaleString()} selected contact{selectedCount === 1 ? "" : "s"}. Press Enter or comma to add each tag.
 </DialogDescription>
 </DialogHeader>
 
@@ -3006,7 +3066,7 @@ Update {selectedContacts.length} Contact(s)
 Delete Selected Contacts
 </AlertDialogTitle>
 <AlertDialogDescription>
-Are you sure you want to delete {selectedContacts.length} selected contact(s)?
+Are you sure you want to delete {selectedCount.toLocaleString()} selected contact(s)?
 This action cannot be undone and will permanently remove these contacts from your database.
 </AlertDialogDescription>
 </AlertDialogHeader>
@@ -3027,7 +3087,7 @@ Deleting...
 ) : (
 <>
 <Trash2 className="w-4 h-4 mr-2" />
-Delete {selectedContacts.length} Contact(s)
+Delete {selectedCount.toLocaleString()} Contact(s)
 </>
 )}
 </AlertDialogAction>

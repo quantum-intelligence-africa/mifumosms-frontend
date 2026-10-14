@@ -2571,6 +2571,39 @@ class ApiClient {
     });
   }
 
+  /** Delete every contact matching the list filters; the server resolves the audience. */
+  async bulkDeleteContactsByFilter(filter: { search?: string; tags?: string[] }): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    deleted_count: number;
+  }>> {
+    return this.request('/messaging/contacts/bulk-delete/', {
+      method: 'POST',
+      body: JSON.stringify({
+        select_all_matching: true,
+        search: filter.search ?? '',
+        filter_tags: filter.tags ?? [],
+      }),
+    });
+  }
+
+  /** Add tags to every contact matching the list filters; the server resolves the audience. */
+  async bulkAddTagsByFilter(filter: { search?: string; tags?: string[] }, tags: string[]): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    updated_count: number;
+  }>> {
+    return this.request('/messaging/contacts/bulk-add-tags/', {
+      method: 'POST',
+      body: JSON.stringify({
+        select_all_matching: true,
+        search: filter.search ?? '',
+        filter_tags: filter.tags ?? [],
+        tags,
+      }),
+    });
+  }
+
   async bulkUpdateContacts(updates: Array<{
     contact_id: string;
     data: Partial<CreateContactRequest>;
