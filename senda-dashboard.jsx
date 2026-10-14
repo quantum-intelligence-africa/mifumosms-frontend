@@ -446,7 +446,7 @@ async function adminFetch(path, options = {}, onLogout) {
 // `adminFetch` but sends the actual request to VOICE_BASE_URL while still
 // refreshing via BASE_URL/auth/admin/refresh.
 const VOICE_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_VOICE_API_URL)
-  || 'https://voice.mifumolabs.com/api';
+  || 'https://voice-app.duckdns.org/api';
 
 async function voiceAdminFetch(path, options = {}, onLogout) {
   const token = getToken();
