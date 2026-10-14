@@ -25,6 +25,8 @@ const PerformanceOverview = lazy(() =>
   import("@/components/dashboard/PerformanceOverview").then((m) => ({ default: m.PerformanceOverview })),
 );
 import { SenderIds } from "@/components/dashboard/SenderIds";
+// Loaded only for voice users: it pulls in the chart library, which SMS-only accounts never need.
+const CallAnalyticsPreview = lazy(() => import("@/components/dashboard/CallAnalyticsPreview"));
 import { useBranding } from "@/contexts/BrandingContext";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
 import { Suspense, lazy, useEffect, useState } from "react";
@@ -296,6 +298,14 @@ const Dashboard = () => {
                     <div className="md:hidden grid grid-cols-2 gap-2 overflow-x-hidden">
                       {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
+                    )}
+
+                    {/* Call analytics for voice customers, right after login. The component asks the server whether this
+                        person may see it and renders nothing otherwise; SMS-only users never mount it. */}
+                    {showIvr && widgetOn("call_analytics") && (
+                      <Suspense fallback={<Skeleton className="h-72 rounded-xl" />}>
+                        <CallAnalyticsPreview />
+                      </Suspense>
                     )}
 
                     {/* Middle Section: Quick Actions + Performance. Performance

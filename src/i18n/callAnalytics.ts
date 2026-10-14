@@ -4,6 +4,8 @@
 
 export const anEn = {
   "an.title": "Call analytics",
+  "an.home_title": "Call analytics",
+  "an.home_view_all": "View full analytics",
   "an.subtitle": "Times are shown in {{tz}}",
   "an.period": "Showing {{from}} to {{to}}",
   "an.no_access": "Call analytics are not available for your account.",

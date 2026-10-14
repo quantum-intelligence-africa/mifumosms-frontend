@@ -4,6 +4,8 @@ import type { anEn } from "@/i18n/callAnalytics";
 // To be reviewed by a native speaker.
 export const anSw: Record<keyof typeof anEn, string> = {
   "an.title": "Takwimu za simu",
+  "an.home_title": "Takwimu za simu",
+  "an.home_view_all": "Ona takwimu kamili",
   "an.subtitle": "Saa zinaonyeshwa kwa {{tz}}",
   "an.period": "Inaonyesha {{from}} hadi {{to}}",
   "an.no_access": "Takwimu za simu hazipatikani kwa akaunti yako.",
