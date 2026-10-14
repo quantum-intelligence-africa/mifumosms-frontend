@@ -13379,6 +13379,8 @@ function VoiceProvidersTab() {
         </button>
       </div>
 
+      <AnalysisModelsCard/>
+
       {error && (
         <div style={{fontSize:13,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
           {error}
@@ -13594,6 +13596,147 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
         </div>
       </div>
     </div>, document.body);
+}
+
+// ─── Analysis models: recommended list, a quick built-in check, and choosing one ─────────────────────────
+// The model used for call analysis and for "Create with AI" in the IVR builder. Each model can be run through the
+// real analysis step on a few built-in calls (Swahili, English, mixed, unclear) so the decision rests on what it
+// actually returns: usable JSON, nothing invented, claims tied to what was said, right resolution, key facts kept.
+function AnalysisModelsCard() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [data, setData]       = useState(null);
+  const [error, setError]     = useState(null);
+  const [testing, setTesting] = useState(null);     // key of the row being tested
+  const [results, setResults] = useState({});       // key -> check result
+  const [custom, setCustom]   = useState('');
+  const [choosing, setChoosing] = useState(false);
+
+  const load = useCallback(() => {
+    voiceAdminFetch('/audio/models/', {}, onLogout).then(res => {
+      if (res.success) setData(res.data); else setError(res.error || 'Could not load the model list.');
+    });
+  }, [onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const test = async (key, body) => {
+    setTesting(key);
+    const res = await voiceAdminFetch('/audio/models/test/', { method: 'POST', body: JSON.stringify(body) }, onLogout);
+    setTesting(null);
+    if (res.success) setResults(prev => ({ ...prev, [key]: res.data }));
+    else showToast?.(res.error || 'The check could not run.', 'error');
+  };
+
+  const use = async (model) => {
+    if (!window.confirm(`Use ${model} for call analysis and for building IVR flows?`)) return;
+    setChoosing(true);
+    const res = await voiceAdminFetch('/audio/models/select/', { method: 'POST', body: JSON.stringify({ model }) }, onLogout);
+    setChoosing(false);
+    if (res.success) { showToast?.('Analysis model updated.', 'success'); load(); }
+    else showToast?.(res.error || 'Could not change the model.', 'error');
+  };
+
+  const pct = (v) => v == null ? '—' : `${Math.round(v * 100)}%`;
+  const Result = ({ r }) => !r ? null : (
+    <div style={{margin:'8px 0 2px',padding:'10px 12px',borderRadius:10,fontSize:12,
+      background:r.passed ? '#ecfdf5' : '#fffbeb',border:`1px solid ${r.passed ? '#a7f3d0' : '#fde68a'}`,color:'#0f172a'}}>
+      <div style={{fontWeight:800,color:r.passed ? '#047857' : '#b45309'}}>
+        {r.passed ? 'Handled the built-in calls well' : 'Needs attention'}
+      </div>
+      {!r.passed && <ul style={{margin:'4px 0 0 16px',padding:0}}>{r.problems.map((x,i) => <li key={i}>{x}</li>)}</ul>}
+      <div style={{marginTop:6,color:'#475569'}}>
+        Usable replies {pct(r.summary.valid_rate)} · Claims tied to the call {pct(r.summary.grounded_ratio)} · Resolution right {pct(r.summary.resolution_agreement)} ·
+        Key facts kept {pct(r.summary.fact_recall)} · Invented {r.summary.invented_total} · {r.summary.latency_median_seconds ?? '—'}s per call · {r.summary.tokens_total} tokens
+      </div>
+      <div style={{marginTop:4,fontSize:11,color:'#94a3b8'}}>{r.note}</div>
+    </div>
+  );
+
+  const th = {padding:'8px 12px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
+  const td = {padding:'10px 12px',verticalAlign:'top',borderTop:'1px solid #f1f5f9'};
+  const btn = {height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'};
+
+  return (
+    <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'16px 18px',marginBottom:20}}>
+      <div style={{fontSize:15,fontWeight:800,color:'#0f172a'}}>Analysis model</div>
+      <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 10px'}}>
+        Used for call analysis and for "Create with AI" in the IVR builder. The OpenAI-compatible entry below (for example Groq) is only used by the live AI receptionist.
+      </p>
+      {error && <div style={{fontSize:13,color:'#b91c1c',marginBottom:8}}>{error}</div>}
+      {!data && !error && <div style={{color:'#94a3b8',fontSize:13}}>Loading…</div>}
+      {data && (
+        <>
+          <div style={{fontSize:13,marginBottom:10}}>
+            In use: {data.current ? <b style={{fontFamily:'monospace'}}>{data.current}</b> : <span style={{color:'#b45309'}}>none — add a Hugging Face token first</span>}
+          </div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead><tr><th style={th}>Model</th><th style={th}>Size</th><th style={th}>License</th><th style={th}>Hosted by</th><th style={th}></th></tr></thead>
+              <tbody>
+                {data.models.map(m => (
+                  <tr key={m.id}>
+                    <td style={td}>
+                      <div style={{fontWeight:700,color:'#0f172a'}}>{m.label}
+                        {m.current && <span style={{marginLeft:6,fontSize:10,fontWeight:800,color:'#fff',background:GREEN,borderRadius:99,padding:'2px 7px'}}>IN USE</span>}
+                        {m.default && !m.current && <span style={{marginLeft:6,fontSize:10,fontWeight:700,color:BRAND}}>default</span>}
+                      </div>
+                      <div style={{fontFamily:'monospace',fontSize:11,color:'#94a3b8'}}>{m.id}</div>
+                      <div style={{fontSize:12,color:'#64748b',marginTop:3}}>{m.notes}</div>
+                      {!m.usable && <div style={{fontSize:12,color:'#b91c1c',marginTop:3}}>Not allowed: {m.why}</div>}
+                      <Result r={results[m.id]}/>
+                    </td>
+                    <td style={{...td,whiteSpace:'nowrap'}}>{m.size}</td>
+                    <td style={{...td,fontSize:12}}>{m.license}{m.gated ? <div style={{color:'#b45309'}}>needs access approval</div> : null}</td>
+                    <td style={{...td,fontSize:12,color:'#64748b'}}>{m.providers.slice(0,4).join(', ')}{m.providers.length > 4 ? ` +${m.providers.length - 4}` : ''}</td>
+                    <td style={{...td,whiteSpace:'nowrap'}}>
+                      {m.usable && (
+                        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                          <button style={btn} disabled={!data.has_token || testing === m.id} onClick={() => test(m.id, { model: m.id })}>
+                            {testing === m.id ? 'Testing…' : 'Test'}
+                          </button>
+                          <button style={{...btn,background:BRAND,color:'#fff',border:'none',opacity:m.current ? .4 : 1}} disabled={m.current || choosing} onClick={() => use(m.id)}>Use</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#475569',marginBottom:6}}>Another model</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <input className="senda-input" value={custom} onChange={e=>setCustom(e.target.value)} placeholder="org/model-name"
+                style={{height:34,fontSize:13,fontFamily:'monospace',flex:1,minWidth:240}}/>
+              <button style={btn} disabled={!custom.trim() || !data.has_token || testing === 'custom'} onClick={() => test('custom', { model: custom.trim() })}>{testing === 'custom' ? 'Testing…' : 'Test'}</button>
+              <button style={{...btn,background:BRAND,color:'#fff',border:'none'}} disabled={!custom.trim() || choosing} onClick={() => use(custom.trim())}>Use</button>
+            </div>
+            <Result r={results.custom}/>
+          </div>
+
+          {data.credentials.length > 0 && (
+            <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#475569',marginBottom:6}}>Test an existing OpenAI-compatible entry</div>
+              {data.credentials.map(c => (
+                <div key={c.id} style={{marginBottom:6}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',fontSize:13}}>
+                    <b>{c.name}</b><span style={{fontFamily:'monospace',fontSize:12,color:'#64748b'}}>{c.model || 'no model set'}</span>
+                    <button style={btn} disabled={!c.model || testing === c.id} onClick={() => test(c.id, { credential_id: c.id })}>{testing === c.id ? 'Testing…' : 'Test this model'}</button>
+                  </div>
+                  <Result r={results[c.id]}/>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p style={{fontSize:11,color:'#94a3b8',margin:'12px 0 0'}}>
+            Licenses and hosting were read from the public Hugging Face pages on {data.verified_on}. A test runs 4 short built-in calls and uses a few thousand tokens.
+            Passing means it handled those calls well, not that it is perfect — confirm on your own reviewed calls.
+          </p>
+        </>
+      )}
+    </div>
+  );
 }
 
 function AIProvidersTab() {
