@@ -12277,6 +12277,11 @@ function VoiceNumbersTab() {
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
   const [msgEdit, setMsgEdit] = useState(null);           // { row, text } while editing one number's message
+  // Assign a number to an organization: search it, then pick a listed number or type one.
+  const [assign, setAssign]   = useState(null);           // null = closed
+  const [orgHits, setOrgHits] = useState([]);
+
+
   const [pool, setPool]       = useState([]);          // provider entries (to connect a typed number to)
 
   useEffect(() => {
@@ -12327,6 +12332,35 @@ function VoiceNumbersTab() {
     });
   }, [onLogout]);
   useEffect(() => { loadPool(); }, [loadPool]);
+
+  useEffect(() => {
+    if (!assign || assign.tenant || (assign.q || '').trim().length < 2) { setOrgHits([]); return undefined; }
+    const timer = setTimeout(() => {
+      voiceAdminFetch(`/voice/admin/tenants/?q=${encodeURIComponent(assign.q.trim())}`, {}, onLogout).then(res => {
+        if (res.success) setOrgHits(Array.isArray(res.data) ? res.data : (res.data?.results || []));
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [assign?.q, assign?.tenant, onLogout]);
+
+  // Numbers listed under any active provider that nobody is using.
+  const freeNumbers = pool.filter(c => c.is_active).flatMap(c => (c.numbers || []).filter(n => n.is_active && !n.used_by).map(n => ({ ...n, provider: c.name })));
+
+  const submitAssign = () => {
+    const a = assign;
+    const body = { tenant_id: a.tenant.id, display_name: a.name || '', ignore_plan_limit: !!a.override };
+    if (a.mode === 'list') body.provider_number = a.numberId; else { body.phone_number = a.typed; if (a.credentialId) body.credential_id = a.credentialId; }
+    setBusyId('assign');
+    voiceAdminFetch('/voice/accounts/admin/assign/', { method: 'POST', body: JSON.stringify(body) }, onLogout)
+      .then(res => {
+        if (!res.success) { setAssign(x => ({ ...x, error: res.error || 'Could not assign the number.' })); return; }
+        setRows(prev => [res.data, ...prev]);
+        loadPool();
+        setAssign(null);
+        showToast?.(`${res.data.phone_number} assigned to ${res.data.tenant_name}.`, 'success');
+      })
+      .finally(() => setBusyId(null));
+  };
 
   const connect = (row) => {
     const credentialId = pick[row.id];
@@ -12395,8 +12429,14 @@ function VoiceNumbersTab() {
             Every tenant's number assignment across the platform — release one to free it back into the unassigned pool.
           </p>
         </div>
-        <input className="senda-input" placeholder="Search by tenant, number, or label..." value={search}
-          onChange={e=>setSearch(e.target.value)} style={{width:260,height:36,fontSize:13}}/>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <button onClick={() => setAssign({ q: '', tenant: null, mode: 'list', numberId: '', typed: '', credentialId: '', name: '', override: false })}
+            style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>
+            + Assign number
+          </button>
+          <input className="senda-input" placeholder="Search by tenant, number, or label..." value={search}
+            onChange={e=>setSearch(e.target.value)} style={{width:260,height:36,fontSize:13}}/>
+        </div>
       </div>
 
       {error && (
@@ -12420,6 +12460,79 @@ function VoiceNumbersTab() {
           </button>
         </div>
       </div>
+
+      {assign && createPortal(
+        <div onClick={() => setAssign(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'min(520px,100%)',maxHeight:'90vh',overflowY:'auto',background:'#fff',borderRadius:14,padding:'18px 20px',display:'flex',flexDirection:'column',gap:12}}>
+            <h3 style={{fontSize:15,fontWeight:800,color:'#0f172a',margin:0}}>Assign a number to an organization</h3>
+
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Organization</label>
+              {assign.tenant ? (
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 12px',fontSize:13}}>
+                  <span><b>{assign.tenant.name}</b> <span style={{color:'#94a3b8'}}>· {assign.tenant.subdomain}</span></span>
+                  <button onClick={() => setAssign(a => ({ ...a, tenant: null, q: '' }))} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>Change</button>
+                </div>
+              ) : (
+                <>
+                  <input className="senda-input" autoFocus value={assign.q} placeholder="Type at least 2 letters of the organization's name…" style={{height:38,fontSize:13}}
+                    onChange={e => setAssign(a => ({ ...a, q: e.target.value }))}/>
+                  {orgHits.length > 0 && (
+                    <div style={{border:'1px solid #e2e8f0',borderRadius:10,maxHeight:180,overflowY:'auto'}}>
+                      {orgHits.map(o => (
+                        <button key={o.id} onClick={() => setAssign(a => ({ ...a, tenant: o }))}
+                          style={{display:'flex',justifyContent:'space-between',width:'100%',padding:'8px 12px',border:'none',borderBottom:'1px solid #f1f5f9',background:'#fff',fontSize:13,cursor:'pointer',textAlign:'left'}}>
+                          <span><b>{o.name}</b> <span style={{color:'#94a3b8'}}>· {o.subdomain}</span></span>
+                          <span style={{color:'#94a3b8',fontSize:11}}>{o.active_numbers} active number{o.active_numbers === 1 ? '' : 's'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {assign.q.trim().length >= 2 && orgHits.length === 0 && <span style={{fontSize:11,color:'#94a3b8'}}>No organization found.</span>}
+                </>
+              )}
+            </div>
+
+            <div style={{display:'flex',gap:6}}>
+              {[['list', 'Pick a listed number'], ['typed', 'Type a number']].map(([mode, text]) => (
+                <button key={mode} onClick={() => setAssign(a => ({ ...a, mode, error: null }))}
+                  style={{flex:1,height:34,borderRadius:8,border:'1.5px solid ' + (assign.mode === mode ? BRAND : '#e2e8f0'),background:assign.mode === mode ? '#eff6ff' : '#fff',color:assign.mode === mode ? BRAND : '#475569',fontWeight:700,fontSize:12,cursor:'pointer'}}>{text}</button>
+              ))}
+            </div>
+
+            {assign.mode === 'list' ? (
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                <select className="senda-input" style={{height:38,fontSize:13}} value={assign.numberId} onChange={e => setAssign(a => ({ ...a, numberId: e.target.value }))}>
+                  <option value="">{freeNumbers.length ? 'Choose a free number…' : 'No free numbers — add some under Voice Providers'}</option>
+                  {freeNumbers.map(n => <option key={n.id} value={n.id}>{n.phone_number} ({n.provider})</option>)}
+                </select>
+                <span style={{fontSize:11,color:'#94a3b8'}}>It is connected to its provider login automatically.</span>
+              </div>
+            ) : (
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <input className="senda-input" value={assign.typed} placeholder="+255699920006" style={{height:38,fontSize:13,fontFamily:'monospace'}} onChange={e => setAssign(a => ({ ...a, typed: e.target.value }))}/>
+                <select className="senda-input" style={{height:38,fontSize:13}} value={assign.credentialId} onChange={e => setAssign(a => ({ ...a, credentialId: e.target.value }))}>
+                  <option value="">Connect to a provider login later</option>
+                  {pool.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <input className="senda-input" value={assign.name} placeholder="Display name (optional)" style={{height:38,fontSize:13}} onChange={e => setAssign(a => ({ ...a, name: e.target.value }))}/>
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569',cursor:'pointer'}}>
+              <input type="checkbox" checked={assign.override} onChange={e => setAssign(a => ({ ...a, override: e.target.checked }))}/>
+              Ignore the organization's plan limit on numbers (recorded in the audit log)
+            </label>
+            {assign.error && <div style={{fontSize:12,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'8px 10px'}}>{assign.error}</div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={() => setAssign(null)} style={{height:36,padding:'0 16px',borderRadius:9,border:'1.5px solid #e2e8f0',background:'#fff',color:'#475569',fontWeight:600,fontSize:13,cursor:'pointer'}}>Cancel</button>
+              <button onClick={submitAssign} disabled={busyId === 'assign' || !assign.tenant || (assign.mode === 'list' ? !assign.numberId : !assign.typed.trim())}
+                style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',opacity:(busyId === 'assign' || !assign.tenant || (assign.mode === 'list' ? !assign.numberId : !assign.typed.trim())) ? .5 : 1}}>
+                {busyId === 'assign' ? 'Assigning…' : 'Assign'}
+              </button>
+            </div>
+          </div>
+        </div>, document.body)}
 
       {msgEdit && createPortal(
         <div onClick={() => setMsgEdit(null)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
