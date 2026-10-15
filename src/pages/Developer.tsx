@@ -45,7 +45,7 @@ const Developer = () => {
         <div className="absolute inset-0 overflow-hidden">
           <img
             src="/home background12.webp"
-            alt="Hero background"
+            alt={t("pg.Landing.0903")}
             className="w-full h-full object-cover scale-[3]"
           />
           {/* Dark overlay for better text readability */}
@@ -105,7 +105,7 @@ const Developer = () => {
                   {t("developer.features.high_availability.desc")}
                 </p>
                 <div className="mt-4 items-center text-blue-600 font-medium hidden">
-                  <span>Learn more</span>
+                  <span>{t("pg.Developer.1000")}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </CardContent>

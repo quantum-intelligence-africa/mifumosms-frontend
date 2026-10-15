@@ -281,7 +281,7 @@ export function CreateMetaTemplateDialog({
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
-                  placeholder="order_confirmation_en"
+                  placeholder={t("pg.CreateWhatsAppTemplate.0922")}
                   className="h-10 rounded-xl text-[13px] font-mono"
                 />
                 {name && !nameOk && (
@@ -333,7 +333,7 @@ export function CreateMetaTemplateDialog({
                   <Input
                     value={headerText}
                     onChange={(e) => setHeaderText(e.target.value.slice(0, 60))}
-                    placeholder="Order #{{1}}"
+                    placeholder={t("pg.CreateMetaTemplateDialog.0929")}
                     className="h-9 rounded-lg text-[13px]"
                   />
                   <p className="text-[10.5px] text-muted-foreground tabular-nums">{headerText.length}/60</p>
@@ -341,7 +341,7 @@ export function CreateMetaTemplateDialog({
                     <Input
                       value={headerTextExample}
                       onChange={(e) => setHeaderTextExample(e.target.value)}
-                      placeholder="Sample for {{1}}"
+                      placeholder={t("pg.CreateWhatsAppTemplate.0924")}
                       className="h-9 rounded-lg text-[13px]"
                     />
                   )}
@@ -412,7 +412,7 @@ export function CreateMetaTemplateDialog({
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value.slice(0, 1024))}
-                placeholder="Hi {{1}}, your order #{{2}} has been confirmed and will ship {{3}}."
+                placeholder={t("pg.CreateMetaTemplateDialog.0930")}
                 rows={4}
                 className="rounded-xl text-[13px] leading-relaxed"
               />
@@ -445,7 +445,7 @@ export function CreateMetaTemplateDialog({
               <Input
                 value={footer}
                 onChange={(e) => setFooter(e.target.value.slice(0, 60))}
-                placeholder="Reply STOP to unsubscribe"
+                placeholder={t("pg.CreateWhatsAppTemplate.0926")}
                 className="h-9 rounded-lg text-[13px]"
               />
             </div>
@@ -488,7 +488,7 @@ export function CreateMetaTemplateDialog({
                       type="button"
                       onClick={() => removeButton(idx)}
                       className="text-muted-foreground hover:text-destructive"
-                      aria-label="Remove button"
+                      aria-label={t("pg.CreateWhatsAppTemplate.0927")}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -505,7 +505,7 @@ export function CreateMetaTemplateDialog({
                         <Input
                           value={btn.example?.[0] ?? ""}
                           onChange={(e) => updateButton(idx, { example: [e.target.value] })}
-                          placeholder="Full sample URL (e.g. https://example.com/orders/A123)"
+                          placeholder={t("pg.CreateMetaTemplateDialog.0931")}
                           className="h-8 text-[12px]"
                         />
                       )}

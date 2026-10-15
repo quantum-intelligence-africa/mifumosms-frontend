@@ -121,7 +121,7 @@ export function ActivityFeed() {
               <Activity className="w-5 h-5 text-muted-foreground/50" />
             </div>
             <h4 className="text-xs font-medium text-foreground mb-0.5">{t("dashboard.activity.none")}</h4>
-            <p className="text-[11px] text-text-subtle">Start sending messages to see activity here</p>
+            <p className="text-[11px] text-text-subtle">{t("pg.ActivityFeed.1003")}</p>
           </div>
         )}
       </div>

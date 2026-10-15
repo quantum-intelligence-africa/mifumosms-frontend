@@ -147,9 +147,9 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
                             {getStatusIcon(senderId.status)}
                             <span className="capitalize font-medium">
                               {senderId.status.toLowerCase() === 'approved'
-                                ? 'Approved'
+                                ? t("pg.SenderNames.0546")
                                 : senderId.status.toLowerCase() === 'active'
-                                  ? 'Active'
+                                  ? t("pg.Contacts.0490")
                                   : senderId.status.toLowerCase() === 'pending'
                                     ? t("status.pending")
                                     : senderId.status}
@@ -183,7 +183,7 @@ export function SenderIds({ senderIds }: SenderIdsProps) {
             onClick={handleManageSenderIds}
             className="text-xs"
           >
-            Request Sender ID
+            {t("pg.SenderIds.1005")}
           </Button>
         </div>
       )}

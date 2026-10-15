@@ -166,7 +166,7 @@ export function ImportFlowDialog({ open, onOpenChange, onImport }: ImportFlowDia
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder='{"nodes": [...], "edges": [...]}'
+            placeholder={t("pg.ImportFlowDialog.1006")}
             className="h-72 font-mono text-xs"
           />
 

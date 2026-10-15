@@ -428,13 +428,14 @@ const Smsactivation = () => {
 
   // Mobile Background Component - Blue gradient with abstract shapes
   const MobileBackground = () => {
+  const { t } = useLanguage();
     return (
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/home background12.webp"
             className="w-full h-full object-cover"
-            alt="Mobile background"
+            alt={t("pg.Login.0883")}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
@@ -505,7 +506,7 @@ const Smsactivation = () => {
               <button
                 className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
                 onClick={() => setIsMobileMenuOpen(true)}
-                aria-label="Open menu"
+                aria-label={t("pg.Login.0888")}
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -591,7 +592,7 @@ const Smsactivation = () => {
                         disabled={isResending || isLoading}
                         variant="outline"
                         className="h-12 px-3"
-                        title="Resend verification code"
+                        title={t("pg.Smsactivation.0973")}
                       >
                         {isResending ? (
                           <RefreshCw className="w-4 h-4 animate-spin" />
@@ -682,7 +683,7 @@ const Smsactivation = () => {
             <img
               src="/sign in image.webp"
               className="w-full h-auto object-contain"
-              alt="SMS activation illustration"
+              alt={t("pg.Smsactivation.0974")}
             />
           </div>
 
@@ -690,7 +691,7 @@ const Smsactivation = () => {
           <div className="absolute inset-0">
             <img
               src="/home background12.webp"
-              alt="SMS activation background"
+              alt={t("pg.Smsactivation.0975")}
               className="w-full h-full object-cover"
             />
           </div>
@@ -792,7 +793,7 @@ const Smsactivation = () => {
                         disabled={isResending || isLoading}
                         variant="outline"
                         className="h-12 px-3 sm:px-4"
-                        title="Resend verification code"
+                        title={t("pg.Smsactivation.0973")}
                       >
                         {isResending ? (
                           <RefreshCw className="w-4 h-4 animate-spin" />

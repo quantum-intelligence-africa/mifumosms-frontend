@@ -343,7 +343,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
             <div className="space-y-2">
               <Label>{t('contacts.import_dialog.csv_data_label')}</Label>
               <Textarea
-                placeholder="name,phone,email,tags&#10;John Mkumbo,0712345678,john@example.com,vip&#10;Fatma Mbwana,+255771978307,,customer"
+                placeholder={t("pg.ContactImportDialog.0996")}
                 value={csvData}
                 onChange={(e) => setCsvData(e.target.value)}
                 rows={8}
@@ -450,7 +450,7 @@ export function ContactImportDialog({ children }: ContactImportDialogProps) {
                           id={`name-${index}`}
                           value={contact.full_name}
                           onChange={(e) => handlePhoneContactChange(index, 'full_name', e.target.value)}
-                          placeholder="John Mkumbo"
+                          placeholder={t("pg.ContactImportDialog.0997")}
                         />
                       </div>
                       <div>

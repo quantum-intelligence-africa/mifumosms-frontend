@@ -433,13 +433,14 @@ const ForgotPassword = () => {
 
   // Mobile Background Component - Same as Login (uses background image)
   const MobileBackground = () => {
+  const { t } = useLanguage();
     return (
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/home background12.webp"
             className="w-full h-full object-cover"
-            alt="Mobile background"
+            alt={t("pg.Login.0883")}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
@@ -468,7 +469,7 @@ const ForgotPassword = () => {
             <button
               className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
               onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("pg.Login.0888")}
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -618,14 +619,14 @@ const ForgotPassword = () => {
             <img
               src="/sign in image.webp"
               className="w-full h-auto object-contain"
-              alt="Password reset illustration"
+              alt={t("pg.ForgotPassword.0976")}
             />
           </div>
 
           <div className="absolute inset-0">
             <img
               src="/home background12.webp"
-              alt="Login background"
+              alt={t("pg.Login.0890")}
               className="w-full h-full object-cover"
             />
           </div>

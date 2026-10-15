@@ -352,7 +352,7 @@ export default function CreateWhatsAppTemplate() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Close"
+                  aria-label={t("pg.Contacts.0397")}
                   onClick={() => navigate("/whatsapp")}
                   className="absolute top-2 right-2 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
                 >
@@ -373,7 +373,7 @@ export default function CreateWhatsAppTemplate() {
                       <Input
                         value={manualAccountId}
                         onChange={(e) => setManualAccountId(e.target.value)}
-                        placeholder="cb_XXXXXXXXXXXX or phone number ID"
+                        placeholder={t("pg.CreateWhatsAppTemplate.0921")}
                         className="h-11 rounded-xl text-sm font-mono"
                         autoFocus
                       />
@@ -436,7 +436,7 @@ export default function CreateWhatsAppTemplate() {
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
-                    placeholder="order_confirmation_en"
+                    placeholder={t("pg.CreateWhatsAppTemplate.0922")}
                     className="h-11 rounded-xl text-sm font-mono"
                   />
                   <p className={`text-[11px] ${name && !nameOk ? "text-destructive" : "text-muted-foreground"}`}>
@@ -516,7 +516,7 @@ export default function CreateWhatsAppTemplate() {
                       <Input
                         value={headerText}
                         onChange={(e) => setHeaderText(e.target.value.slice(0, 60))}
-                        placeholder="Order Update"
+                        placeholder={t("pg.CreateWhatsAppTemplate.0923")}
                         className="h-11 rounded-xl text-sm"
                       />
                       <p className="text-[11px] text-muted-foreground tabular-nums">
@@ -526,7 +526,7 @@ export default function CreateWhatsAppTemplate() {
                         <Input
                           value={headerTextExample}
                           onChange={(e) => setHeaderTextExample(e.target.value)}
-                          placeholder="Sample for {{1}}"
+                          placeholder={t("pg.CreateWhatsAppTemplate.0924")}
                           className="h-10 rounded-xl text-sm"
                         />
                       )}
@@ -593,7 +593,7 @@ export default function CreateWhatsAppTemplate() {
                   <Textarea
                     value={body}
                     onChange={(e) => setBody(e.target.value.slice(0, 1024))}
-                    placeholder="Hi {{1}}, your order #{{2}} has been confirmed..."
+                    placeholder={t("pg.CreateWhatsAppTemplate.0925")}
                     rows={4}
                     className="rounded-xl text-sm leading-relaxed"
                   />
@@ -628,7 +628,7 @@ export default function CreateWhatsAppTemplate() {
                   <Input
                     value={footer}
                     onChange={(e) => setFooter(e.target.value.slice(0, 60))}
-                    placeholder="Reply STOP to unsubscribe"
+                    placeholder={t("pg.CreateWhatsAppTemplate.0926")}
                     className="h-11 rounded-xl text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground">
@@ -677,7 +677,7 @@ export default function CreateWhatsAppTemplate() {
                             <button
                               type="button"
                               onClick={() => removeButton(idx)}
-                              aria-label="Remove button"
+                              aria-label={t("pg.CreateWhatsAppTemplate.0927")}
                               className="text-muted-foreground hover:text-destructive"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -695,7 +695,7 @@ export default function CreateWhatsAppTemplate() {
                                 <Input
                                   value={btn.example?.[0] ?? ""}
                                   onChange={(e) => updateButton(idx, { example: [e.target.value] })}
-                                  placeholder="Full sample URL"
+                                  placeholder={t("pg.CreateWhatsAppTemplate.0928")}
                                   className="h-9 text-[13px]"
                                 />
                               )}

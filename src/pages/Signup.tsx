@@ -332,13 +332,14 @@ const Signup = () => {
 
   // Mobile Background Component
   const MobileBackground = () => {
+  const { t } = useLanguage();
     return (
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/home background12.webp"
             className="w-full h-full object-cover"
-            alt="Mobile background"
+            alt={t("pg.Login.0883")}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
@@ -405,7 +406,7 @@ const Signup = () => {
             <button
               className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
               onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("pg.Login.0888")}
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -444,7 +445,7 @@ const Signup = () => {
 
               <form onSubmit={handleSubmit} className="space-y-3">
                 <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
-                  Continue with Google
+                  {t("pg.InviteAccept.0945")}
                 </GoogleButton>
                 {/* Name Fields */}
               <div className="grid grid-cols-2 gap-2">
@@ -736,14 +737,14 @@ const Signup = () => {
             <img
               src="/sign in image.webp"
               className="w-full h-auto object-contain"
-              alt="Sign up illustration"
+              alt={t("pg.Signup.0971")}
             />
           </div>
 
           <div className="absolute inset-0">
             <img
               src="/home background12.webp"
-              alt="Signup background"
+              alt={t("pg.Signup.0972")}
               className="w-full h-full object-cover"
             />
           </div>
@@ -776,7 +777,7 @@ const Signup = () => {
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
                 <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
-                  Continue with Google
+                  {t("pg.InviteAccept.0945")}
                 </GoogleButton>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-0.5 sm:space-y-1">

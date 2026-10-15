@@ -648,12 +648,12 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">
                 {isQuickSendMode
-                  ? (formData.campaign_type === 'whatsapp' ? 'Send WhatsApp' : 'Send SMS')
+                  ? (formData.campaign_type === 'whatsapp' ? t("pg.Contacts.0343") : t("pg.Contacts.0342"))
                   : draftId ? t('campaigns.create_dialog.edit_draft_title') : t('campaigns.create_dialog.create_campaign_title')}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {isQuickSendMode
-                  ? `Sending to ${effectiveRecipientCount.toLocaleString(appLocale())} contact(s)`
+                  ? t("pg.CreateCampaignDialog.0951", { cipientCount: effectiveRecipientCount.toLocaleString(appLocale()) })
                   : t('campaigns.create_dialog.subtitle')}
               </DialogDescription>
             </div>
@@ -780,7 +780,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-foreground">When</Label>
+                <Label className="text-xs font-medium text-foreground">{t("pg.CreateCampaignDialog.0952")}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
@@ -792,7 +792,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       handleInputChange('scheduled_at', null);
                     }}
                   >
-                    Now
+                    {t("pg.SenderNames.0625")}
                   </Button>
                   <Button
                     type="button"
@@ -801,7 +801,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     className="h-9"
                     onClick={() => setQuickSendWhen('later')}
                   >
-                    Later
+                    {t("pg.CreateCampaignDialog.0953")}
                   </Button>
                 </div>
                 {quickSendWhen === 'later' && (
@@ -1119,7 +1119,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   className="h-8 flex-1"
                   onClick={() => setAudienceMode('individual')}
                 >
-                  Choose contacts individually
+                  {t("pg.CreateCampaignDialog.0954")}
                 </Button>
                 <Button
                   type="button"
@@ -1128,7 +1128,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   className="h-8 flex-1"
                   onClick={() => setAudienceMode('all_matching')}
                 >
-                  All contacts matching filters
+                  {t("pg.CreateCampaignDialog.0955")}
                 </Button>
               </div>
 
@@ -1136,13 +1136,13 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                 <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
                   <p className="text-xs font-semibold text-foreground">
                     {isLoadingMatchingCount
-                      ? 'Counting matching contacts…'
-                      : `${(matchingCount ?? 0).toLocaleString(appLocale())} contact(s) will be targeted`}
+                      ? t("pg.CreateCampaignDialog.0956")
+                      : t("pg.CreateCampaignDialog.0957", { tchingCount0: (matchingCount ?? 0).toLocaleString(appLocale()) })}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {formData.target_criteria.tags.length > 0
-                      ? 'Every active contact with the tag(s) below, no matter how many pages that spans.'
-                      : 'Every active contact in your account (no tag filter set below). Add a tag below to narrow this down.'}
+                      ? t("pg.CreateCampaignDialog.0958")
+                      : t("pg.CreateCampaignDialog.0959")}
                   </p>
                 </div>
               ) : contactsLoading ? (
@@ -1271,7 +1271,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         {isQuickSendMode ? (
           <div className="flex-shrink-0 flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/20">
             <Button variant="ghost" onClick={requestClose} className="h-9 px-3">
-              Cancel
+              {t("pg.Settings.0120")}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -1286,7 +1286,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  {quickSendWhen === 'later' ? 'Schedule' : 'Send'}
+                  {quickSendWhen === 'later' ? t("pg.CreateCampaignDialog.0960") : t("pg.CreateCampaignDialog.0961")}
                 </>
               )}
             </Button>

@@ -197,7 +197,7 @@ export function CreateTemplateDialog({
               ref={bodyRef}
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
-              placeholder="Habari {{name}}, miadi yako ipo tarehe {{date}} saa {{time}}."
+              placeholder={t("pg.TemplateDialogs.0998")}
               rows={4}
               className="rounded-xl text-[13px] leading-relaxed"
             />
@@ -228,7 +228,7 @@ export function CreateTemplateDialog({
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Reminder ya miadi"
+              placeholder={t("pg.TemplateDialogs.0999")}
               className="h-10 rounded-xl text-[13px]"
             />
           </div>

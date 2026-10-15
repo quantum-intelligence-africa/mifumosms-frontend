@@ -55,8 +55,8 @@ const Login = () => {
     const params = new URLSearchParams(location.search);
     if (params.get("error") === "not_member") {
       toast({
-        title: "Access denied",
-        description: "This Google account isn't a member of this organization. Ask your administrator to invite you, or sign in with the email you were invited with.",
+        title: t("pg.Login.0881"),
+        description: t("pg.Login.0882"),
         variant: "destructive",
         duration: 10000,
       });
@@ -165,7 +165,7 @@ const Login = () => {
         navigate(from, { replace: true });
       } else if (result.requires2FA && result.challengeId) {
         setOtpChallenge({ id: result.challengeId, channel: result.channel || "email" });
-        toast({ title: "Verification code sent", description: `Check your ${result.channel || "email"} for the one-time code.` });
+        toast({ title: t("pg.Settings.0063"), description: `Check your ${result.channel || "email"} for the one-time code.` });
       } else {
         const errorMessage = result.error || t("auth.login.toast_credentials_error");
 
@@ -235,7 +235,7 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(response.data.user));
       window.location.assign(nextPath || "/dashboard");
     } else {
-      toast({ title: "Verification failed", description: response.error || "Invalid or expired code.", variant: "destructive" });
+      toast({ title: t("pg.Settings.0068"), description: response.error || "Invalid or expired code.", variant: "destructive" });
     }
   };
 
@@ -245,13 +245,14 @@ const Login = () => {
 
   // Mobile Background Component - Blue gradient with abstract shapes
   const MobileBackground = () => {
+  const { t } = useLanguage();
     return (
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/home background12.webp"
             className="w-full h-full object-cover"
-            alt="Mobile background"
+            alt={t("pg.Login.0883")}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30"></div>
         </div>
@@ -263,18 +264,18 @@ const Login = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <form onSubmit={handleVerifyLoginOTP} className="w-full max-w-md space-y-5 rounded-xl bg-white p-8 shadow">
-          <h1 className="text-2xl font-bold text-gray-900">Verify your sign-in</h1>
-          <p className="text-sm text-gray-600">Enter the one-time code sent by {otpChallenge.channel}.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("pg.Login.0884")}</h1>
+          <p className="text-sm text-gray-600">{t("pg.Login.0885")} {otpChallenge.channel}.</p>
           <Input
             value={otpCode}
             onChange={(event) => setOtpCode(event.target.value)}
             inputMode="numeric"
             maxLength={6}
             pattern="[0-9]{6}"
-            placeholder="6-digit code"
+            placeholder={t("pg.Login.0886")}
             required
           />
-          <Button type="submit" className="w-full">Verify and continue</Button>
+          <Button type="submit" className="w-full">{t("pg.Login.0887")}</Button>
         </form>
       </div>
     );
@@ -340,7 +341,7 @@ const Login = () => {
               <button
                 className="p-2 text-white hover:text-gray-200 transition-colors touch-manipulation"
                 onClick={() => setIsMobileMenuOpen(true)}
-                aria-label="Open menu"
+                aria-label={t("pg.Login.0888")}
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -380,7 +381,7 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-full">
-              Continue with Google
+              {t("pg.InviteAccept.0945")}
             </GoogleButton>
             {/* Email Input */}
             <div className="relative">
@@ -549,14 +550,14 @@ const Login = () => {
               <img
                 src="/sign in image.webp"
                 className="w-full h-auto object-contain"
-                alt="Login illustration"
+                alt={t("pg.Login.0889")}
               />
             </div>
   
             <div className="absolute inset-0">
               <img
                 src="/home background12.webp"
-                alt="Login background"
+                alt={t("pg.Login.0890")}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -584,7 +585,7 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-lg">
-                Continue with Google
+                {t("pg.InviteAccept.0945")}
               </GoogleButton>
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>

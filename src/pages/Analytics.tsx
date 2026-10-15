@@ -668,16 +668,16 @@ const Analytics = () => {
                     <h4 className="font-medium text-sm mb-1">{t("pages.analytics.revenue.top_campaigns")}</h4>
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">Flash Sale</span>
+                        <span className="text-xs">{t("pg.Analytics.0912")}</span>
                         <span className="text-xs font-medium">Tsh 15,600</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">Product Launch</span>
-                        <span className="text-xs font-medium">Tsh 8,900</span>
+                        <span className="text-xs">{t("pg.Analytics.0913")}</span>
+                        <span className="text-xs font-medium">{t("pg.Analytics.0914")}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs">Welcome Series</span>
-                        <span className="text-xs font-medium">Tsh 4,200</span>
+                        <span className="text-xs">{t("pg.Analytics.0915")}</span>
+                        <span className="text-xs font-medium">{t("pg.Analytics.0916")}</span>
                       </div>
                     </div>
                   </div>
@@ -695,7 +695,7 @@ const Analytics = () => {
               <CardContent className="p-3 pt-0">
                 <div className="space-y-3">
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle text-center">
-                    <p className="text-xl font-bold text-success">4.2x</p>
+                    <p className="text-xl font-bold text-success">{t("pg.Analytics.0917")}</p>
                     <p className="text-xs text-text-subtle">{t("pages.analytics.revenue.roi")}</p>
                   </div>
                   <div className="p-2 rounded-lg bg-gradient-surface border border-border-subtle">
@@ -703,15 +703,15 @@ const Analytics = () => {
                     <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs">{t("pages.analytics.revenue.sms_costs")}</span>
-                        <span className="text-xs font-medium">Tsh 8,200</span>
+                        <span className="text-xs font-medium">{t("pg.Analytics.0918")}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs">{t("pages.analytics.revenue.whatsapp_costs")}</span>
-                        <span className="text-xs font-medium">Tsh 2,100</span>
+                        <span className="text-xs font-medium">{t("pg.Analytics.0919")}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs">{t("pages.analytics.revenue.platform_fees")}</span>
-                        <span className="text-xs font-medium">Tsh 1,500</span>
+                        <span className="text-xs font-medium">{t("pg.Analytics.0920")}</span>
                       </div>
                     </div>
                   </div>

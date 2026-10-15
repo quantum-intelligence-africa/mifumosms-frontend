@@ -435,7 +435,7 @@ function AudioPromptField({ fieldId, label, helpText, value, onChange }: {
       }} disabled={prompts === null || busy}>
         <SelectTrigger id={fieldId} className="h-8 text-xs"><SelectValue placeholder={t("voice.ivr_builder.inspector.enter_manually_below")} /></SelectTrigger>
         <SelectContent>
-          <SelectItem value={TYPE_MANUALLY} className="text-xs">Weka URL au tumia kurekodi hapa chini</SelectItem>
+          <SelectItem value={TYPE_MANUALLY} className="text-xs">{t("pg.NodeInspector.0989")}</SelectItem>
           {(prompts ?? []).filter((p) => p.kind === "audio").map((p) => (
             <SelectItem key={p.id} value={p.id} className="text-xs">🔊 {p.name}</SelectItem>
           ))}
@@ -449,7 +449,7 @@ function AudioPromptField({ fieldId, label, helpText, value, onChange }: {
       />
       {typeof fieldsValue(value) === "string" && fieldsValue(value) ? (
         <div className="space-y-1 rounded-md border bg-muted/30 p-2">
-          <p className="text-[10px] font-medium text-muted-foreground">Hakiki salamu kabla ya kuhifadhi</p>
+          <p className="text-[10px] font-medium text-muted-foreground">{t("pg.NodeInspector.0990")}</p>
           <audio controls preload="metadata" src={fieldsValue(value) as string} className="h-8 w-full" />
         </div>
       ) : null}
@@ -460,11 +460,11 @@ function AudioPromptField({ fieldId, label, helpText, value, onChange }: {
       }} />
       <div className="flex gap-2">
         <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={busy} onClick={() => fileRef.current?.click()}>
-          <Upload className="mr-1 h-3 w-3" /> Pakia
+          <Upload className="mr-1 h-3 w-3" /> {t("pg.NodeInspector.0991")}
         </Button>
         <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={busy} onClick={recording ? stopRecording : () => void startRecording()}>
           {recording ? <Square className="mr-1 h-3 w-3" /> : <Mic className="mr-1 h-3 w-3" />}
-          {recording ? "Maliza" : "Rekodi"}
+          {recording ? t("pg.NodeInspector.0992") : t("pg.NodeInspector.0993")}
         </Button>
       </div>
       {helpText && <p className="text-[10px] text-muted-foreground">{helpText}</p>}
@@ -676,8 +676,8 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
                       <SelectItem key={opt} value={opt} className="text-xs">
                         {field.key === "response_mode"
                           ? opt === "audio"
-                            ? "Sauti iliyorekodiwa / iliyopakiwa"
-                            : "Maandishi (sauti ya mfumo)"
+                            ? t("pg.NodeInspector.0994")
+                            : t("pg.NodeInspector.0995")
                           : opt}
                       </SelectItem>
                     ))}

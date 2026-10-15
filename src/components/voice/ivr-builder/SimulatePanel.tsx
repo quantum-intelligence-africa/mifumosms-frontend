@@ -137,9 +137,9 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
               }}
             >
               {audioEnabled ? <Volume2 className="mr-1.5 h-3.5 w-3.5" /> : <VolumeX className="mr-1.5 h-3.5 w-3.5" />}
-              {audioEnabled ? "Sikiliza sauti" : "Sauti imezimwa"}
+              {audioEnabled ? t("pg.SimulatePanel.1007") : t("pg.SimulatePanel.1008")}
             </Button>
-            {isSpeaking && <span className="text-xs text-muted-foreground">Inazungumza...</span>}
+            {isSpeaking && <span className="text-xs text-muted-foreground">{t("pg.SimulatePanel.1009")}</span>}
           </div>
         </SheetHeader>
 
@@ -225,7 +225,7 @@ export function SimulatePanel({ flowId, open, onOpenChange, onPathChange }: Simu
                 className="h-9 w-9 shrink-0"
                 disabled={disabled}
                 onClick={toggleListening}
-                title="Ongea badala ya kuandika"
+                title={t("pg.SimulatePanel.1010")}
               >
                 {isListening ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
               </Button>

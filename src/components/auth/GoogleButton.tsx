@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useLanguage } from "@/hooks/useLanguage";
 interface GoogleButtonProps {
   href: string;
   children: ReactNode;
@@ -37,10 +38,11 @@ export default function GoogleButton({
   children,
   roundedClassName,
 }: GoogleButtonProps) {
+  const { t } = useLanguage();
   return (
     <a
       href={href}
-      aria-label="Continue with Google"
+      aria-label={t("pg.InviteAccept.0945")}
       className={`flex w-full items-center justify-center gap-3 border border-[#dadce0] bg-white py-3 text-center text-sm font-medium text-[#3c4043] shadow-sm transition hover:bg-[#f8faff] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 ${roundedClassName}`}
     >
       <GoogleMark />

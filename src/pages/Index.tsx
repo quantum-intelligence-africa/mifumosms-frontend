@@ -15,7 +15,9 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentCampaigns } from "@/components/dashboard/RecentCampaigns";
 
+import { useLanguage } from "@/hooks/useLanguage";
 const Index = () => {
+  const { t } = useLanguage();
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -32,38 +34,38 @@ const Index = () => {
             {/* Welcome Section */}
             <div className="mb-4 sm:mb-5 lg:mb-6 xl:mb-8">
               <h1 className="font-heading text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground mb-1 sm:mb-2">
-                Welcome back, Mkuu! 👋
+                {t("pg.Index.0891")}
               </h1>
               <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                Here's what's happening with your communication platform today.
+                {t("pg.Index.0892")}
               </p>
             </div>
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 xl:gap-6">
               <MetricCard
-                title="Total Messages"
+                title={t("pg.Index.0893")}
                 value="12,450"
                 icon={MessageSquare}
-                description="Last 30 days"
+                description={t("pg.Index.0894")}
               />
               <MetricCard
-                title="Active Contacts"
+                title={t("pg.Index.0895")}
                 value="3,240"
                 icon={Users}
-                description="Engaged this month"
+                description={t("pg.Index.0896")}
               />
               <MetricCard
-                title="Campaign Success"
+                title={t("pg.Index.0897")}
                 value="94.2%"
                 icon={Target}
-                description="Delivery rate"
+                description={t("pg.Index.0898")}
               />
               <MetricCard
-                title="Revenue"
+                title={t("pg.Index.0899")}
                 value="Tsh 4,280"
                 icon={DollarSign}
-                description="This month"
+                description={t("pg.Index.0900")}
               />
             </div>
 
@@ -89,7 +91,7 @@ const Index = () => {
                 <div className="flex items-center gap-2 mb-6">
                   <TrendingUp className="w-5 h-5 text-primary" />
                   <h3 className="font-heading text-lg font-semibold text-foreground">
-                    Performance Overview
+                    {t("pg.Index.0901")}
                   </h3>
                 </div>
                 <div className="h-64 bg-gradient-surface rounded-lg flex items-center justify-center">
@@ -97,7 +99,7 @@ const Index = () => {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                       <TrendingUp className="w-8 h-8 text-primary" />
                     </div>
-                    <p className="text-text-subtle">Analytics charts coming soon</p>
+                    <p className="text-text-subtle">{t("pg.Index.0902")}</p>
                   </div>
                 </div>
               </div>

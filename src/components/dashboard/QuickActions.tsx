@@ -180,7 +180,7 @@ export function QuickActions() {
             >
               <source src="/tutorial/mfumosms video tutorial.mp4" type="video/mp4" />
               <p className="text-center text-text-subtle p-4">
-                Your browser does not support the video tag. Please download the video to watch it.
+                {t("pg.QuickActions.1004")}
               </p>
             </video>
           </div>

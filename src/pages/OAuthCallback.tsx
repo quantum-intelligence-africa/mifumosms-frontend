@@ -5,7 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BrandName } from "@/components/layout/BrandLogo";
 import { safeInviteNext } from "@/lib/googleLogin";
 
+import { useLanguage } from "@/hooks/useLanguage";
 export default function OAuthCallback() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { completeOAuthLogin } = useAuth();
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export default function OAuthCallback() {
       setDestination(next);
 
       if (!access || !refresh) {
-        setError("Google sign-in did not return valid credentials.");
+        setError(t("pg.OAuthCallback.0939"));
         return;
       }
 
@@ -35,7 +37,7 @@ export default function OAuthCallback() {
 
       const profile = await apiClient.getProfile();
       if (!profile.data) {
-        setError("Your Google account was authenticated, but your profile could not be loaded.");
+        setError(t("pg.OAuthCallback.0940"));
         return;
       }
 
@@ -50,7 +52,7 @@ export default function OAuthCallback() {
     };
 
     completeLogin().catch(() => {
-      setError("Unable to complete Google sign-in. Please try again.");
+      setError(t("pg.OAuthCallback.0941"));
     });
   }, [navigate]);
 
@@ -72,7 +74,7 @@ export default function OAuthCallback() {
       }
       navigate(destination, { replace: true });
     } catch {
-      setError("Unable to save your phone number. Please try again.");
+      setError(t("pg.OAuthCallback.0942"));
     } finally {
       setSavingPhone(false);
     }
@@ -83,13 +85,13 @@ export default function OAuthCallback() {
       <section className="text-center">
         {needsPhone ? (
           <>
-            <h1 className="text-xl font-semibold">Add your phone number</h1>
+            <h1 className="text-xl font-semibold">{t("pg.OAuthCallback.0943")}</h1>
             <p className="mt-2 text-muted-foreground">
-              One phone number is required to finish setting up your <BrandName /> account.
+              {t("pg.OAuthCallback.0944")} <BrandName /> {t("pg.OAuthCallback.0945")}
             </p>
             <form className="mt-6 space-y-4 text-left" onSubmit={submitPhone}>
               <label className="block text-sm font-medium" htmlFor="oauth-phone">
-                Phone number
+                {t("pg.OAuthCallback.0946")}
               </label>
               <input
                 id="oauth-phone"
@@ -102,25 +104,25 @@ export default function OAuthCallback() {
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <button className="w-full rounded-lg bg-primary px-5 py-3 text-primary-foreground" disabled={savingPhone}>
-                {savingPhone ? "Saving..." : "Continue"}
+                {savingPhone ? t("pg.Settings.0429") : t("pg.OAuthCallback.0947")}
               </button>
             </form>
           </>
         ) : error ? (
           <>
-            <h1 className="text-xl font-semibold">Google sign-in failed</h1>
+            <h1 className="text-xl font-semibold">{t("pg.OAuthCallback.0948")}</h1>
             <p className="mt-2 text-muted-foreground">{error}</p>
             <button
               className="mt-6 rounded-lg bg-primary px-5 py-3 text-primary-foreground"
               onClick={() => navigate("/login", { replace: true })}
             >
-              Return to sign in
+              {t("pg.OAuthCallback.0949")}
             </button>
           </>
         ) : (
           <>
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-            <p className="mt-4 text-muted-foreground">Signing you in securely...</p>
+            <p className="mt-4 text-muted-foreground">{t("pg.OAuthCallback.0950")}</p>
           </>
         )}
       </section>

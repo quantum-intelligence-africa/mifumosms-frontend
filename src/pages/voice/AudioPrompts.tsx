@@ -123,7 +123,7 @@ export default function AudioPrompts() {
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setFormError("Kivinjari hiki hakiwezi kurekodi sauti. Tumia faili la MP3 au WAV.");
+      setFormError(t("pg.AudioPrompts.0977"));
       return;
     }
     try {
@@ -145,7 +145,7 @@ export default function AudioPrompts() {
       setFormError(null);
       setRecording(true);
     } catch {
-      setFormError("Ruhusu matumizi ya kipaza sauti ili kurekodi ujumbe.");
+      setFormError(t("pg.AudioPrompts.0978"));
     }
   };
 
@@ -165,7 +165,7 @@ export default function AudioPrompts() {
       samples.reduce((sum, sample) => sum + sample * sample, 0) / samples.length,
     );
     if (peak < 0.003 || rms < 0.0005) {
-      setFormError("Rekodi iko kimya. Hakikisha kipaza sauti kimeruhusiwa na ongea karibu nacho, kisha rekodi tena.");
+      setFormError(t("pg.AudioPrompts.0979"));
       return;
     }
     const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -214,12 +214,12 @@ export default function AudioPrompts() {
         try {
           parsed = new URL(draft.url.trim());
         } catch {
-          setFormError("Weka kiungo halali cha sauti, kinachoanza na https://.");
+          setFormError(t("pg.AudioPrompts.0980"));
           setSaving(false);
           return;
         }
         if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-          setFormError("Kiungo lazima kiwe cha http:// au https://.");
+          setFormError(t("pg.AudioPrompts.0981"));
           setSaving(false);
           return;
         }
@@ -338,7 +338,7 @@ export default function AudioPrompts() {
                 </Button>
                 <Button variant="outline" onClick={() => startAdd("audio")}>
                   <Mic className="mr-1.5 h-4 w-4" />
-                  Rekodi sauti
+                  {t("pg.AudioPrompts.0982")}
                 </Button>
                 <Button onClick={() => startAdd("text")}>
                   <Plus className="mr-1.5 h-4 w-4" />
@@ -437,7 +437,7 @@ export default function AudioPrompts() {
                               {prompt.kind === "text" ? (
                                 <p className="line-clamp-2 text-sm text-foreground/80">{prompt.text}</p>
                               ) : (
-                                <p className="truncate font-mono text-xs text-muted-foreground">{prompt.mime_type || "audio"}</p>
+                                <p className="truncate font-mono text-xs text-muted-foreground">{prompt.mime_type || t("pg.AudioPrompts.0983")}</p>
                               )}
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
@@ -533,7 +533,7 @@ export default function AudioPrompts() {
               </div>
             ) : mode === "url" ? (
               <div className="space-y-1">
-                <Label htmlFor="prompt-url">Kiungo cha moja kwa moja cha sauti</Label>
+                <Label htmlFor="prompt-url">{t("pg.AudioPrompts.0984")}</Label>
                 <Input
                   id="prompt-url"
                   value={draft.url}
@@ -542,7 +542,7 @@ export default function AudioPrompts() {
                   className="text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Tumia kiungo cha faili la sauti linalopatikana moja kwa moja, si kiungo cha ukurasa wa YouTube, Dropbox au tovuti nyingine.
+                  {t("pg.AudioPrompts.0985")}
                 </p>
               </div>
             ) : (
@@ -562,9 +562,9 @@ export default function AudioPrompts() {
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={recording ? finishRecording : startRecording}>
                     {recording ? <Square className="mr-1.5 h-3.5 w-3.5" /> : <Mic className="mr-1.5 h-3.5 w-3.5" />}
-                    {recording ? "Maliza kurekodi" : "Rekodi kupitia kipaza sauti"}
+                    {recording ? t("pg.AudioPrompts.0986") : t("pg.AudioPrompts.0987")}
                   </Button>
-                  {recording && <span className="text-xs text-destructive">Inarekodi...</span>}
+                  {recording && <span className="text-xs text-destructive">{t("pg.AudioPrompts.0988")}</span>}
                 </div>
               </div>
             )}

@@ -2726,7 +2726,7 @@ export default function AIAgents() {
 
                                   <div className="mt-2 space-y-1">
                                     <label className="text-[8px] sm:text-[9px] font-medium text-foreground/60 dark:text-foreground/50">{t("pages.ai_agents.flow.api_endpoint" as any)}</label>
-                                    <Input value={selectedStep.apiEndpoint ?? ""} onChange={(e) => updateSelectedStep("apiEndpoint", e.target.value)} placeholder="/early-access/ai-copilots/{id}/webhooks/action/" className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
+                                    <Input value={selectedStep.apiEndpoint ?? ""} onChange={(e) => updateSelectedStep("apiEndpoint", e.target.value)} placeholder={t("pg.AIAgents.0932")} className="h-7 text-[10px] border-border dark:border-border/60 bg-card dark:bg-card/95 focus:bg-card dark:focus:bg-card" />
                                   </div>
                                 </div>
                               </>
@@ -2741,8 +2741,8 @@ export default function AIAgents() {
                                   <Code className="w-3.5 h-3.5 text-violet-700 dark:text-violet-400" strokeWidth={1.8} />
                                 </div>
                                 <div>
-                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">Flow Contract</p>
-                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">Final JSON sent to backend</p>
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pg.AIAgents.0933")}</p>
+                                  <p className="text-[8px] sm:text-[9px] text-foreground/60 dark:text-foreground/50">{t("pg.AIAgents.0934")}</p>
                                 </div>
                               </div>
                               <div className="bg-muted dark:bg-muted/70 rounded-xl p-2 border border-border dark:border-border/40">
@@ -2960,8 +2960,8 @@ export default function AIAgents() {
                           <div className="hidden rounded-xl bg-muted/30 dark:bg-muted/15 p-4 sm:p-5 md:p-6">
                             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
                               <div>
-                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">Deployment Payload</p>
-                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">Ready for backend</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pg.AIAgents.0935")}</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">{t("pg.AIAgents.0936")}</p>
                               </div>
                             </div>
                             <div className="bg-muted dark:bg-muted/70 rounded-2xl p-3 sm:p-4 border border-border dark:border-border/40">
@@ -3027,8 +3027,8 @@ export default function AIAgents() {
                                 <Code className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 dark:text-slate-400" strokeWidth={1.8} />
                               </div>
                               <div>
-                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">Backend Response</p>
-                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">Latest API result</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground dark:text-foreground uppercase tracking-widest">{t("pg.AIAgents.0937")}</p>
+                                <p className="mt-0.5 text-xs sm:text-[13px] text-foreground/60 dark:text-foreground/50">{t("pg.AIAgents.0938")}</p>
                               </div>
                             </div>
                             <div className="bg-muted dark:bg-muted/70 rounded-2xl p-3 sm:p-4 border border-border dark:border-border/40">

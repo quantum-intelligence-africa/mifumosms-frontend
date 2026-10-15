@@ -276,7 +276,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               className="w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold tracking-tight hover:opacity-90 active:scale-[0.98] transition-all duration-100"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              Buy SMS Credits
+              {t("pg.AppSidebar.0962")}
             </button>
           )}
           {/* The dialer lives at the app root (DialerProvider), so this opens
@@ -287,7 +287,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
               className="w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-primary/40 bg-primary/10 text-primary text-[13px] font-semibold tracking-tight hover:bg-primary/15 active:scale-[0.98] transition-all duration-100"
             >
               <PhoneOutgoing className="w-3.5 h-3.5" strokeWidth={2.2} />
-              Piga simu
+              {t("pg.AppSidebar.0963")}
             </button>
           )}
         </div>
@@ -330,7 +330,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                       <span className="flex-1 truncate">{item.name}</span>
                       {item.comingSoon && (
                         <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                          Soon
+                          {t("pg.AppSidebar.0964")}
                         </span>
                       )}
                       <ChevronDown
@@ -364,7 +364,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                             <span className="truncate">{child.name}</span>
                             {child.comingSoon && (
                               <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                                Soon
+                                {t("pg.AppSidebar.0964")}
                               </span>
                             )}
                             {typeof child.badge === "number" && child.badge > 0 && (
@@ -397,7 +397,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                 <span className="truncate">{item.name}</span>
                 {item.comingSoon && (
                   <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 leading-none flex-shrink-0">
-                    Soon
+                    {t("pg.AppSidebar.0964")}
                   </span>
                 )}
               </button>
@@ -437,7 +437,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs font-medium">
-                Sign out
+                {t("pg.AppSidebar.0965")}
               </TooltipContent>
             </Tooltip>
           </div>
