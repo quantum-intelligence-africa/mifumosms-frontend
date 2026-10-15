@@ -409,6 +409,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.history.state_failed": "Imeshindwa",
   "cc.history.state_live": "Inaendelea",
   "cc.analysis.rerun": "Chambua tena",
+  "cc.analysis.language": "Lugha ya uchambuzi",
   "cc.history.has_recording": "Imerekodiwa",
   "cc.history.listen": "Sikiliza simu",
   "cc.history.analysis": "Uchambuzi",

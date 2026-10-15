@@ -57,6 +57,8 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
   const { t } = useLanguage();
   const result = job.result;
   const [showOriginal, setShowOriginal] = useState(false);
+  // The analysis is written in Swahili; when an English copy exists the reader can switch to it.
+  const [lang, setLang] = useState<"sw" | "en">("sw");
   const [openTranscript, setOpenTranscript] = useState(true); // what was said is the thing people come here for: show it open
   const [highlight, setHighlight] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
@@ -78,7 +80,8 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
     () => (reviewed ? result?.effective?.segments : result?.segments) ?? [],
     [reviewed, result],
   );
-  const analysis: AnalysisBody | null = (reviewed ? result?.effective?.analysis : result?.analysis) ?? null;
+  const hasEnglish = !!result?.analysis_en;
+  const analysis: AnalysisBody | null = (lang === "en" && result?.analysis_en ? result.analysis_en : reviewed ? result?.effective?.analysis : result?.analysis) ?? null;
 
   if (job.status === "pending" || job.status === "processing") {
     return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{t("cc.analysis.working")}</p>;
@@ -158,6 +161,21 @@ export function CallAnalysisPanel({ job, canReview, onChanged, onSeek, onRerun }
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Sparkles className="h-3.5 w-3.5" />{t("cc.analysis.title")}</span>
         <Badge variant="outline" className="text-[10px]">{t("cc.analysis.ai_generated")}</Badge>
+        {hasEnglish && (
+          <div className="ml-auto inline-flex overflow-hidden rounded-md border border-border text-[11px] font-medium" role="group" aria-label={t("cc.analysis.language")}>
+            {(["sw", "en"] as const).map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setLang(code)}
+                aria-pressed={lang === code}
+                className={`px-2.5 py-1 ${lang === code ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+              >
+                {code === "sw" ? "Kiswahili" : "English"}
+              </button>
+            ))}
+          </div>
+        )}
         {result.effective?.reviewed && (
           <Badge variant="secondary" className="gap-1 text-[10px]"><CheckCircle2 className="h-3 w-3" />{t("cc.analysis.reviewed_by", { name: result.review?.reviewer_name || "—" })}</Badge>
         )}

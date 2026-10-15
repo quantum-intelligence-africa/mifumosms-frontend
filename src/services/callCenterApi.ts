@@ -256,6 +256,8 @@ export interface AnalysisResultFull {
   segments: AnalysisSegment[];
   transcription_quality: { status: "ok" | "review" | "failed"; reasons: Array<{ code: string; message: string; severity: string }> } | Record<string, never>;
   analysis: AnalysisBody | null;
+  /** The same analysis in English (the main one is Swahili). Null when it could not be made. */
+  analysis_en?: AnalysisBody | null;
   analysis_status: "legacy" | "ok" | "invalid" | "skipped_low_quality" | "unavailable" | "not_run";
   analysis_problems: string[];
   asr_model: string;
