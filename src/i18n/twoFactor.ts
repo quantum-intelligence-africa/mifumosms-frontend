@@ -32,6 +32,7 @@ export const tfEn = {
   "tf.set_wrong_password": "Your current password is not correct.",
   "tf.set_cant": "Verify your email address first (see Email verification above), then you can turn this on.",
   "tf.set_admin_only": "Ask an administrator to turn this off for your account.",
+  "tf.pw_first": "You signed up with Google, so you have no password yet. Choose one below to also sign in with your email and password.",
   "tf.ev_title": "Email verification",
   "tf.ev_verified": "Verified",
   "tf.ev_unverified": "Not verified",

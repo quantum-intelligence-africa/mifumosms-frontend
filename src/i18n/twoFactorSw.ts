@@ -33,6 +33,7 @@ export const tfSw: Record<keyof typeof tfEn, string> = {
   "tf.set_wrong_password": "Nenosiri lako la sasa si sahihi.",
   "tf.set_cant": "Thibitisha anwani yako ya barua pepe kwanza (tazama Uthibitisho wa barua pepe hapo juu), kisha utaweza kuwasha hii.",
   "tf.set_admin_only": "Mwombe msimamizi akuzimie hii kwenye akaunti yako.",
+  "tf.pw_first": "Ulijisajili kwa Google, kwa hiyo bado huna nenosiri. Chagua moja hapa chini ili uweze pia kuingia kwa barua pepe na nenosiri.",
   "tf.ev_title": "Uthibitisho wa barua pepe",
   "tf.ev_verified": "Imethibitishwa",
   "tf.ev_unverified": "Haijathibitishwa",

@@ -65,6 +65,8 @@ export interface User {
   date_joined?: string;
   last_login?: string;
   is_verified: boolean;
+  /** False for an account created with Google that has not set a password yet. */
+  has_password?: boolean;
   is_active?: boolean;
   user_type?: 'admin' | 'parent' | 'regular';
   profile_image?: string;
@@ -1857,7 +1859,7 @@ class ApiClient {
     });
   }
 
-  async changePassword(data: { old_password: string; new_password: string }): Promise<ApiResponse> {
+  async changePassword(data: { old_password?: string; new_password: string }): Promise<ApiResponse> {
     return this.request('/auth/password/change/', {
       method: 'POST',
       body: JSON.stringify(data),

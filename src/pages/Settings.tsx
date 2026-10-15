@@ -1067,7 +1067,7 @@ const Settings = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.changePassword({
-        old_password: passwordData.currentPassword,
+        ...(user?.has_password === false ? {} : { old_password: passwordData.currentPassword }),
         new_password: passwordData.newPassword
       });
 
@@ -1707,6 +1707,10 @@ const Settings = () => {
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
                 <div className="space-y-3">
+                  {user?.has_password === false && (
+                    <p className="rounded-md bg-blue-50 p-3 text-sm text-blue-900">{t("tf.pw_first")}</p>
+                  )}
+                  {user?.has_password !== false && (
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword" className="text-sm">{t("pg.Settings.0106")}</Label>
                     <div className="relative">
@@ -1727,6 +1731,7 @@ const Settings = () => {
                       </button>
                     </div>
                   </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="newPassword" className="text-sm">{t("pg.Settings.0108")}</Label>
                     <div className="relative">
