@@ -1473,6 +1473,20 @@ class ApiClient {
     });
   }
 
+  /** The signed-in person's own email-code sign-in setting. Raw status and body. */
+  async emailTwoFactor(body?: { enabled: boolean; password: string }): Promise<{ status: number; data: Record<string, any> }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/two-factor/`, {
+        method: body ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('access_token') || ''}` },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { status: res.status, data: await res.json().catch(() => ({})) };
+    } catch {
+      return { status: 0, data: {} };
+    }
+  }
+
   /** First-time account verification (phone number + code by SMS and email). Raw status and body, like the 2FA step. */
   async verificationRequest(path: 'start' | 'verify', body: Record<string, unknown>): Promise<{ status: number; data: Record<string, any> }> {
     try {
