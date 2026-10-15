@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,8 @@ interface AISettings {
   intent_detection: boolean;
   auto_categorization: boolean;
   transcription_language: "" | "sw" | "en" | "auto";
+  email_analysis: boolean;
+  email_recipients: string[];
   consent_acknowledged_at: string | null;
   updated_at: string;
 }
@@ -37,6 +40,7 @@ export default function AISettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recipientsDraft, setRecipientsDraft] = useState("");
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
@@ -44,6 +48,7 @@ export default function AISettings() {
     const res = await voiceApi.get<AISettings>("/audio/ai-settings/");
     if (res.success && res.data) {
       setSettings(res.data);
+      setRecipientsDraft((res.data.email_recipients || []).join(", "));
     } else {
       setError(res.error || t("voice.ai_settings.error_loading"));
     }
@@ -184,6 +189,37 @@ export default function AISettings() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2 border-t border-border pt-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <Label htmlFor="email_analysis" className="text-sm font-normal text-foreground">{t("voice.ai_settings.email_label")}</Label>
+                          <p className="text-xs text-muted-foreground">{t("voice.ai_settings.email_hint")}</p>
+                        </div>
+                        <Switch
+                          id="email_analysis"
+                          checked={Boolean(settings.email_analysis)}
+                          onCheckedChange={(checked) => patch({ email_analysis: checked })}
+                          disabled={isSaving || !settings.enabled}
+                        />
+                      </div>
+                      {settings.email_analysis && (
+                        <div className="space-y-1">
+                          <Label htmlFor="email_recipients" className="text-xs text-muted-foreground">{t("voice.ai_settings.email_extra_label")}</Label>
+                          <Input
+                            id="email_recipients"
+                            value={recipientsDraft}
+                            placeholder="manager@company.com, sales@company.com"
+                            disabled={isSaving || !settings.enabled}
+                            onChange={(e) => setRecipientsDraft(e.target.value)}
+                            onBlur={() => {
+                              const list = recipientsDraft.split(/[,;\s]+/).map((v) => v.trim()).filter(Boolean);
+                              if (list.join(",") !== (settings.email_recipients || []).join(",")) void patch({ email_recipients: list });
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3 opacity-60">

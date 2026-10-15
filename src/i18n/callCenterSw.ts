@@ -377,6 +377,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.missed.ai_summary": "Muhtasari wa AI",
   "cc.missed.ai_transcript": "Maandishi ya ujumbe",
   "cc.missed.ai_working": "Muhtasari wa AI unaandaliwa…",
+  "cc.missed.ai_slow": "Inachukua muda mrefu kuliko kawaida (dakika {{minutes}}). Unaweza kuianzisha tena.",
   "cc.missed.ai_failed": "Muhtasari wa AI haukuweza kutengenezwa kwa ujumbe huu.",
   "cc.missed.ai_off": "Hakuna muhtasari wa AI. Washa uchambuzi wa simu kwa AI ili upate maandishi na muhtasari wa kila ujumbe wa sauti.",
   "cc.missed.ai_settings": "Mipangilio ya AI",

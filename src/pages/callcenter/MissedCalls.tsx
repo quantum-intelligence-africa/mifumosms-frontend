@@ -272,6 +272,9 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
   const result = ai?.status === "completed" ? ai.result : null;
   const [analysing, setAnalysing] = useState(false);
   const [analysisMsg, setAnalysisMsg] = useState<string | null>(null);
+  // How long the AI has been "preparing": past ten minutes something is wrong, and the reader gets a way to start it again.
+  const queuedAt = (ai as { created_at?: string } | null)?.created_at;
+  const minutesWaiting = queuedAt ? Math.max(0, Math.floor((Date.now() - new Date(queuedAt).getTime()) / 60000)) : 0;
 
   // Queue an analysis of this message by hand (the automatic one only covers messages left after it was switched on).
   const analyseNow = async (force = false) => {
@@ -321,7 +324,17 @@ function VoicemailPanel({ row, vm, playing, current, onListen, canReview, onChan
             )}
           </div>
         ) : ai && (ai.status === "pending" || ai.status === "processing") ? (
-          <p className="text-muted-foreground">{t("cc.missed.ai_working")}</p>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">{t("cc.missed.ai_working")}</p>
+            {minutesWaiting >= 10 && (
+              <>
+                <p className="text-xs text-amber-700 dark:text-amber-300">{t("cc.missed.ai_slow", { minutes: minutesWaiting })}</p>
+                <Button size="sm" onClick={() => void analyseNow(true)} disabled={analysing}>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />{t("cc.analysis.rerun")}
+                </Button>
+              </>
+            )}
+          </div>
         ) : (
           <div className="space-y-2">
             <p className="text-muted-foreground">{ai?.status === "failed" ? t("cc.missed.ai_failed") : t("cc.history.analysis_none")}</p>

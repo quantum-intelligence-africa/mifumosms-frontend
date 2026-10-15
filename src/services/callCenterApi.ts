@@ -289,6 +289,8 @@ export interface AnalysisResultFull {
 }
 
 export interface AnalysisJobFull {
+  /** When the analysis was queued. */
+  created_at?: string;
   id: string;
   status: "pending" | "processing" | "completed" | "failed";
   error_message: string;

@@ -404,6 +404,7 @@ export const ccEn = {
   "cc.missed.ai_summary": "AI summary",
   "cc.missed.ai_transcript": "Transcript",
   "cc.missed.ai_working": "The AI summary is being prepared…",
+  "cc.missed.ai_slow": "This is taking longer than usual ({{minutes}} min). You can start it again.",
   "cc.missed.ai_failed": "The AI summary couldn't be created for this message.",
   "cc.missed.ai_off": "No AI summary. Turn on AI call analysis to get a transcript and summary of every voicemail.",
   "cc.missed.ai_settings": "AI settings",
