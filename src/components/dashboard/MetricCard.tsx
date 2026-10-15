@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -37,10 +38,10 @@ export function MetricCard({
       const timer = setInterval(() => {
         current += increment;
         if (current >= value) {
-          setDisplayValue(value.toLocaleString());
+          setDisplayValue(value.toLocaleString(appLocale()));
           clearInterval(timer);
         } else {
-          setDisplayValue(Math.floor(current).toLocaleString());
+          setDisplayValue(Math.floor(current).toLocaleString(appLocale()));
         }
       }, duration / steps);
       return () => clearInterval(timer);

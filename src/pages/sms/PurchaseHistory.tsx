@@ -56,6 +56,7 @@ import { useSMSBilling } from "@/hooks/useSMSBilling";
 import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 const PurchaseHistory = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -194,7 +195,7 @@ const PurchaseHistory = () => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
     }
-    return Math.floor(num).toLocaleString();
+    return Math.floor(num).toLocaleString(appLocale());
   };
 
   // Handle receipt download - generates secure PDF
@@ -291,8 +292,8 @@ const PurchaseHistory = () => {
       doc.setFontSize(9);
 
       const purchaseData = [
-        { label: 'SMS Credits:', value: (purchase.credits || 0).toLocaleString() + ' SMS' },
-        { label: 'Unit Price:', value: 'TZS ' + (purchase.unit_price || 0).toLocaleString() + '/SMS' },
+        { label: 'SMS Credits:', value: (purchase.credits || 0).toLocaleString(appLocale()) + ' SMS' },
+        { label: 'Unit Price:', value: 'TZS ' + (purchase.unit_price || 0).toLocaleString(appLocale()) + '/SMS' },
         { label: 'Payment Method:', value: purchase.payment_method || 'N/A' }
       ];
 
@@ -320,7 +321,7 @@ const PurchaseHistory = () => {
       doc.text('TOTAL AMOUNT', 20, yPosition + 2);
 
       doc.setFontSize(14);
-      doc.text('TZS ' + Number(purchase.amount || 0).toLocaleString(), 150, yPosition + 2, { align: 'right' });
+      doc.text('TZS ' + Number(purchase.amount || 0).toLocaleString(appLocale()), 150, yPosition + 2, { align: 'right' });
 
       // Footer
       yPosition = 250;
@@ -392,7 +393,7 @@ const PurchaseHistory = () => {
                   <p className="text-xs text-text-subtle font-medium">Total Credits</p>
                   <Package className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
-                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{Number(purchaseStats.total_credits).toLocaleString()}</p>
+                <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{Number(purchaseStats.total_credits).toLocaleString(appLocale())}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
                   credits bought
                 </p>
@@ -526,12 +527,12 @@ const PurchaseHistory = () => {
                         <TableCell>
                           {purchase.credits > 0 && (
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
-                              {String(purchase.credits).toLocaleString()} SMS
+                              {Number(purchase.credits).toLocaleString(appLocale())} SMS
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="font-semibold text-sm whitespace-nowrap">
-                          TZS {Number(purchase.amount).toLocaleString()}
+                          TZS {Number(purchase.amount).toLocaleString(appLocale())}
                         </TableCell>
                         <TableCell>{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
@@ -654,14 +655,14 @@ const PurchaseHistory = () => {
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-text-subtle">Credits</span>
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
-                              {String(purchase.credits).toLocaleString()} SMS
+                              {Number(purchase.credits).toLocaleString(appLocale())} SMS
                             </Badge>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-text-subtle font-medium">Total</span>
                           <div className="font-semibold text-sm sm:text-base text-right text-primary">
-                            TZS {Number(purchase.amount).toLocaleString()}
+                            TZS {Number(purchase.amount).toLocaleString(appLocale())}
                           </div>
                         </div>
                       </div>
@@ -824,11 +825,11 @@ const PurchaseHistory = () => {
                         <div className="space-y-2 text-xs sm:text-sm">
                           <div className="flex justify-between">
                             <span className="text-text-subtle">SMS Credits</span>
-                            <span className="font-medium">{selectedTransaction.credits.toLocaleString()}</span>
+                            <span className="font-medium">{selectedTransaction.credits.toLocaleString(appLocale())}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-text-subtle">Unit Price</span>
-                            <span>TZS {Number(selectedTransaction.unit_price || 0).toLocaleString()}/SMS</span>
+                            <span>TZS {Number(selectedTransaction.unit_price || 0).toLocaleString(appLocale())}/SMS</span>
                           </div>
                         </div>
                       </div>
@@ -845,7 +846,7 @@ const PurchaseHistory = () => {
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
                           <span className="font-semibold text-sm sm:text-base">Total Amount</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
-                            TZS {Number(selectedTransaction.amount).toLocaleString()}
+                            TZS {Number(selectedTransaction.amount).toLocaleString(appLocale())}
                           </span>
                         </div>
                       </div>

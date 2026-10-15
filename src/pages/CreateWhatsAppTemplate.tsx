@@ -41,6 +41,7 @@ import {
 import { buildApiUrl, API_CONFIG } from "@/config/api";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // Product spec: only English and Kiswahili are supported for WhatsApp templates.
 const META_LANGUAGES: Array<{ value: string; label: string }> = [
   { value: "en", label: "English (en)" },
@@ -821,7 +822,7 @@ export default function CreateWhatsAppTemplate() {
 // approval matches what the user sees while building.
 
 const formatNow = () =>
-  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  new Date().toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 
 // Splits text on `{{N}}` tokens into a stream of {text, placeholder?} pieces
 // so we can render placeholders as styled chips inline with the surrounding

@@ -21,6 +21,7 @@ import { LandingHeader } from "@/components/layout/LandingHeader";
 import { LandingFooter } from "@/components/layout/LandingFooter";
 import { LanguageContext } from "@/contexts/LanguageContext";
 
+import { appLocale } from "@/utils/appLocale";
 type Lang = "en" | "sw";
 
 // ─── Pricing data (language-aware label factory) ──────────────────────────────
@@ -125,7 +126,7 @@ function PricingCalc({ compact = false, lang }: { compact?: boolean; lang: Lang 
 
   const rate = getRate(volume);
   const tier = getTier(volume);
-  const total = (volume * rate).toLocaleString();
+  const total = (volume * rate).toLocaleString(appLocale());
 
   const tCostEstimator = lang === "sw" ? "Kikokotoo cha Gharama" : "Cost Estimator";
   const tMessages = lang === "sw" ? "Ujumbe" : "Messages";
@@ -146,7 +147,7 @@ function PricingCalc({ compact = false, lang }: { compact?: boolean; lang: Lang 
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[9px] text-gray-500">
             <span>{tMessages}</span>
-            <span className="font-semibold text-gray-900 tabular-nums">{volume.toLocaleString()}</span>
+            <span className="font-semibold text-gray-900 tabular-nums">{volume.toLocaleString(appLocale())}</span>
           </div>
           <input
             type="range"
@@ -189,7 +190,7 @@ function PricingCalc({ compact = false, lang }: { compact?: boolean; lang: Lang 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>{tMessages}</span>
-          <span className="font-semibold text-gray-900 tabular-nums">{volume.toLocaleString()}</span>
+          <span className="font-semibold text-gray-900 tabular-nums">{volume.toLocaleString(appLocale())}</span>
         </div>
         <input
           type="range"

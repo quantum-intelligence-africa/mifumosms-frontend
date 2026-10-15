@@ -84,6 +84,7 @@ import { handlePickFromPhone, isContactPickerSupported, getContactPickerSupportM
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 const Contacts = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -449,7 +450,7 @@ const handleSelectAllContacts = async () => {
     setSelectAllMatchingFilter(true);
     toast({
       title: "Selected all matching contacts",
-      description: `Selected all ${totalCount.toLocaleString()} contact(s) matching the current filter. `
+      description: `Selected all ${totalCount.toLocaleString(appLocale())} contact(s) matching the current filter. `
         + `Send SMS/WhatsApp, Add Tag and Delete apply to all of them; Export needs a smaller selection.`,
     });
     return;
@@ -779,7 +780,7 @@ const handleCSVImport = async (data: {
 };
 
 const formatDate = (dateString: string) => {
-return new Date(dateString).toLocaleDateString();
+return new Date(dateString).toLocaleDateString(appLocale());
 };
 
 const getStatusColor = (isActive: boolean, isOptedIn: boolean) => {
@@ -1401,7 +1402,7 @@ const confirmBulkDelete = async () => {
       await fetchContacts({ page: 1, ...currentFilter });
       toast({
         title: "Contacts deleted successfully",
-        description: `${(res.data?.deleted_count ?? selectedCount).toLocaleString()} contact(s) have been permanently deleted.`,
+        description: `${(res.data?.deleted_count ?? selectedCount).toLocaleString(appLocale())} contact(s) have been permanently deleted.`,
       });
       return;
     }
@@ -1820,7 +1821,7 @@ className="pl-10 glass-subtle border-0 text-sm"
 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
   <span className="text-sm text-foreground font-medium">
-    {selectAllMatchingFilter ? totalCount.toLocaleString() : selectedContacts.length} contact(s) selected
+    {selectAllMatchingFilter ? totalCount.toLocaleString(appLocale()) : selectedContacts.length} contact(s) selected
     {selectAllMatchingFilter && " (all matching current filters)"}
   </span>
   <div className="flex items-center gap-2">
@@ -2240,7 +2241,7 @@ Delete Contact
             </SelectTrigger>
             <SelectContent>
               {PAGE_SIZE_OPTIONS.map(n => (
-                <SelectItem key={n} value={String(n)}>{n.toLocaleString()}</SelectItem>
+                <SelectItem key={n} value={String(n)}>{n.toLocaleString(appLocale())}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -2832,7 +2833,7 @@ Import Multiple Contacts
 Add Tags to Selected Contacts
 </DialogTitle>
 <DialogDescription>
-Type tag names to add to {selectedCount.toLocaleString()} selected contact{selectedCount === 1 ? "" : "s"}. Press Enter or comma to add each tag.
+Type tag names to add to {selectedCount.toLocaleString(appLocale())} selected contact{selectedCount === 1 ? "" : "s"}. Press Enter or comma to add each tag.
 </DialogDescription>
 </DialogHeader>
 
@@ -3090,7 +3091,7 @@ Update {selectedContacts.length} Contact(s)
 Delete Selected Contacts
 </AlertDialogTitle>
 <AlertDialogDescription>
-Are you sure you want to delete {selectedCount.toLocaleString()} selected contact(s)?
+Are you sure you want to delete {selectedCount.toLocaleString(appLocale())} selected contact(s)?
 This action cannot be undone and will permanently remove these contacts from your database.
 </AlertDialogDescription>
 </AlertDialogHeader>
@@ -3111,7 +3112,7 @@ Deleting...
 ) : (
 <>
 <Trash2 className="w-4 h-4 mr-2" />
-Delete {selectedCount.toLocaleString()} Contact(s)
+Delete {selectedCount.toLocaleString(appLocale())} Contact(s)
 </>
 )}
 </AlertDialogAction>

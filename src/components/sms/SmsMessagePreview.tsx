@@ -1,5 +1,6 @@
 import { MessageSquare } from "lucide-react";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Reusable phone-style preview for an outgoing SMS ──────────────────────────
 // Renders the message the way it lands on a recipient's phone: the approved
 // Sender ID shows as the conversation name, and the body sits in a received
@@ -8,7 +9,7 @@ import { MessageSquare } from "lucide-react";
 // Mirrors the WhatsApp template preview so both channels feel consistent.
 
 const formatNow = () =>
-  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  new Date().toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 
 interface SmsMessagePreviewProps {
   /** Approved Sender ID (branding name) — appears as the conversation name. */
@@ -93,7 +94,7 @@ export function SmsMessagePreview({
           </span>
         ) : recipientCount > 0 ? (
           <span>
-            <span className="font-semibold text-foreground/70 tabular-nums">{recipientCount.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-foreground/70 tabular-nums">{recipientCount.toLocaleString(appLocale())}</span>{" "}
             {sw ? "wapokeaji" : recipientCount === 1 ? "recipient" : "recipients"}
           </span>
         ) : (
@@ -107,7 +108,7 @@ export function SmsMessagePreview({
               <>
                 {" · "}
                 <span className="font-semibold text-foreground/70 tabular-nums">
-                  {(recipientCount * segmentCount).toLocaleString()}
+                  {(recipientCount * segmentCount).toLocaleString(appLocale())}
                 </span>{" "}
                 SMS
               </>

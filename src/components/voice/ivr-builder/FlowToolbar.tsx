@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/hooks/useLanguage";
 import type { FlowLanguage, FlowStatus, ValidationError } from "./types";
 
+import { appLocale } from "@/utils/appLocale";
 type T = ReturnType<typeof useLanguage>["t"];
 
 // Raw flow status -> the label a non-technical user reads, rather than the
@@ -307,7 +308,7 @@ export function FlowToolbar({
               <Check className="h-3 w-3 shrink-0 text-green-600" />
               <span className="hidden sm:inline">
                 {t("voice.ivr_builder.toolbar.saved_at", {
-                  time: lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  time: lastSavedAt.toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit" }),
                 })}
               </span>
             </span>

@@ -35,6 +35,7 @@ import { API_CONFIG } from "@/config/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 const methodClass = (method: string) => {
   if (method === "GET") return "bg-emerald-200 text-emerald-900 dark:bg-emerald-300 dark:text-emerald-950";
   if (method === "POST") return "bg-blue-600 text-white dark:bg-blue-500";
@@ -161,7 +162,7 @@ export function ApiSandbox() {
   const handleGenerateKey = async () => {
     setGenerating(true);
     try {
-      const res = await apiClient.generateApiKey({ name: `Sandbox key ${new Date().toLocaleString()}` });
+      const res = await apiClient.generateApiKey({ name: `Sandbox key ${new Date().toLocaleString(appLocale())}` });
       if (res.success && res.data?.api_key) {
         setApiKey(res.data.api_key);
         setShowKey(true);

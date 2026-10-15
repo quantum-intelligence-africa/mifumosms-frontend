@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Template, TemplateFilterParams, CreateTemplateRequest } from "@/lib/api";
 
+import { appLocale } from "@/utils/appLocale";
 const Templates = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -919,7 +920,7 @@ const Templates = () => {
                   </div>
                   <div className="flex justify-between text-xs lg:text-sm">
                     <span className="text-text-subtle">{t("dashboard.sender_ids.table.created")}</span>
-                    <span className="text-foreground">{new Date(selectedTemplate.created_at).toLocaleDateString()}</span>
+                    <span className="text-foreground">{new Date(selectedTemplate.created_at).toLocaleDateString(appLocale())}</span>
                   </div>
                 </div>
               </div>

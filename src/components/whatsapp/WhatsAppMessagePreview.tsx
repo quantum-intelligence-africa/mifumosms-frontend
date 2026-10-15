@@ -7,6 +7,7 @@ import type {
 } from "@/hooks/useWhatsAppCloud";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Reusable WhatsApp chat-style preview for an approved Meta template ────────
 // Renders the selected template inside a faux WhatsApp chat bubble so the user
 // sees how the outgoing message will look before sending — in both Single and
@@ -55,7 +56,7 @@ const labelForToken = (token: string, t: Translate): string =>
   /^\d+$/.test(token) ? t("whatsapp.message_preview.value_n", { n: token }) : token;
 
 const formatNow = () =>
-  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  new Date().toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 
 const Chip = ({ value }: { value: string }) => (
   <span className="inline-flex items-center align-baseline px-1.5 py-[1px] mx-0.5 rounded-md bg-white/80 dark:bg-white/15 text-[#075e54] dark:text-[#a4f0e4] text-[11px] font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]">

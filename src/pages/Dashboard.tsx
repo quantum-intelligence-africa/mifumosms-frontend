@@ -37,6 +37,7 @@ import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Reusable card shell ──────────────────────────────────────────────────────
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -185,7 +186,7 @@ const Dashboard = () => {
     ? [
         {
           title: t("dashboard.metric.total_messages"),
-          value: metrics?.total_messages?.value?.toLocaleString() || "0",
+          value: metrics?.total_messages?.value?.toLocaleString(appLocale()) || "0",
           description: metrics?.total_messages?.description || t("dashboard.metric.last_30_days"),
           icon: MessageSquare,
           accentBg: "bg-blue-50",
@@ -193,7 +194,7 @@ const Dashboard = () => {
         },
         {
           title: t("dashboard.metric.active_contacts"),
-          value: metrics?.active_contacts?.value?.toLocaleString() || "0",
+          value: metrics?.active_contacts?.value?.toLocaleString(appLocale()) || "0",
           description: metrics?.active_contacts?.description || t("dashboard.metric.engaged_this_month"),
           icon: Users,
           accentBg: "bg-emerald-50",
@@ -206,7 +207,7 @@ const Dashboard = () => {
     ? [
         {
           title: t("dashboard.metric.total_calls"),
-          value: voiceStats.totalCalls.toLocaleString(),
+          value: voiceStats.totalCalls.toLocaleString(appLocale()),
           description: t("dashboard.metric.calls_last_30_days"),
           icon: PhoneCall,
           accentBg: "bg-sky-50",
@@ -214,7 +215,7 @@ const Dashboard = () => {
         },
         {
           title: t("dashboard.metric.missed_calls"),
-          value: voiceStats.missedCalls.toLocaleString(),
+          value: voiceStats.missedCalls.toLocaleString(appLocale()),
           description: t("dashboard.metric.missed_last_30_days"),
           icon: PhoneMissed,
           accentBg: "bg-rose-50",
@@ -225,7 +226,7 @@ const Dashboard = () => {
 
   const creditsCard: MetricProps = {
     title: t("dashboard.metric.current_credits"),
-    value: metrics?.current_credits?.value?.toLocaleString() || "0",
+    value: metrics?.current_credits?.value?.toLocaleString(appLocale()) || "0",
     description: metrics?.current_credits?.description || t("dashboard.metric.available_credits"),
     icon: DollarSign,
     accentBg: "bg-amber-50",
@@ -252,7 +253,7 @@ const Dashboard = () => {
       ? [
           {
             title: t("dashboard.metric.active_numbers"),
-            value: voiceStats.activeNumbers.toLocaleString(),
+            value: voiceStats.activeNumbers.toLocaleString(appLocale()),
             description: t("dashboard.metric.connected_phone_numbers"),
             icon: Phone,
             accentBg: "bg-indigo-50",

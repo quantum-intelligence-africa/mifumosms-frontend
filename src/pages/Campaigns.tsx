@@ -68,6 +68,7 @@ import {
   formatScheduleDescription
 } from "@/utils/campaignUtils";
 
+import { appLocale } from "@/utils/appLocale";
 // Type definitions
 interface Campaign {
   id: string;
@@ -794,7 +795,7 @@ const Campaigns = () => {
                   <p className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50 leading-none">
                     {language === "sw" ? "Wapokeaji" : "Recipients"}
                   </p>
-                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums leading-none">{summary.summary.total_recipients.toLocaleString()}</p>
+                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums leading-none">{summary.summary.total_recipients.toLocaleString(appLocale())}</p>
                 </div>
               </div>
             )}
@@ -1078,7 +1079,7 @@ const Campaigns = () => {
                                {campaign.actual_cost && (
                                  <div className="flex items-center gap-1">
                                    <DollarSign className="w-3 h-3" />
-                                   <span>{Math.round(campaign.actual_cost).toLocaleString()} TZS</span>
+                                   <span>{Math.round(campaign.actual_cost).toLocaleString(appLocale())} TZS</span>
                                  </div>
                                )}
                                {campaign.is_recurring && (
@@ -1177,7 +1178,7 @@ const Campaigns = () => {
                             {/* Recipients Column */}
                             <div className="col-span-2 hidden lg:block">
                               <div className="text-xs text-text-subtle">
-                                {campaign.total_recipients.toLocaleString()}
+                                {campaign.total_recipients.toLocaleString(appLocale())}
                               </div>
                             </div>
 

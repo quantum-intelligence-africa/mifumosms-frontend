@@ -61,6 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 
+import { appLocale } from "@/utils/appLocale";
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment" | "cancelled" | "inactive";
 
 interface PaymentData {
@@ -2956,7 +2957,7 @@ function StatCard({
         {loading ? (
           <span className="inline-block w-5 h-5 align-middle border-2 border-current border-t-transparent rounded-full animate-spin opacity-50" />
         ) : (
-          value.toLocaleString()
+          value.toLocaleString(appLocale())
         )}
       </p>
     </div>

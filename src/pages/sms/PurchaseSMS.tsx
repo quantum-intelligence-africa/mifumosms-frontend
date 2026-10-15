@@ -37,6 +37,7 @@ import { apiClient, SMSPackage, SMSBalance, WhatsAppCreditBalance, PaymentInitia
 import { useLanguage } from "@/hooks/useLanguage";
 import { detectMobileMoneyProvider, validatePhoneNumber } from "@/utils/phoneUtils";
 
+import { appLocale } from "@/utils/appLocale";
 const MOBILE_MONEY_PROVIDER_NAMES: Record<string, string> = {
   vodacom: "Vodacom M-Pesa",
   tigo: "Tigo Pesa",
@@ -765,7 +766,7 @@ const PurchaseSMS = () => {
                     </div>
                   ) : (
                   <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                    {balance?.credits?.toLocaleString() || 0}{" "}
+                    {balance?.credits?.toLocaleString(appLocale()) || 0}{" "}
                     <span className="text-base sm:text-lg font-normal text-text-subtle">
                       {serviceType === "whatsapp" ? "Messages" : "SMS"}
                     </span>
@@ -831,7 +832,7 @@ const PurchaseSMS = () => {
                         {t('calculating')}
                       </div>
                     ) : (
-                      `TZS ${customPrice.toLocaleString()}`
+                      `TZS ${customPrice.toLocaleString(appLocale())}`
                     )}
                   </div>
                 </div>
@@ -1146,7 +1147,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-subtle text-xs sm:text-sm">{t('sms_credits')}</span>
                       <span className="font-medium text-xs sm:text-sm">
-                        {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString()}
+                        {(selectedPkg?.credits || parseInt(customCredits || "0")).toLocaleString(appLocale())}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
@@ -1158,7 +1159,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
                       <span>{t('total_amount')}</span>
                       <span className="text-primary">
-                        TZS {(selectedPkg ? parseFloat(selectedPkg.price) : customPrice).toLocaleString()}
+                        TZS {(selectedPkg ? parseFloat(selectedPkg.price) : customPrice).toLocaleString(appLocale())}
                       </span>
                     </div>
                   </div>

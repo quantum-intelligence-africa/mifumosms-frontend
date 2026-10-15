@@ -72,6 +72,7 @@ import {
 import { useContacts } from "@/hooks/useContacts";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Phone number normalization ───────────────────────────────────────────────
 
 const normalizeToApi = (input: string): string | null => {
@@ -3623,11 +3624,11 @@ function PollResultsTab() {
                 <span>
                   {t("whatsapp.cloud.showing_first")}{" "}
                   <span className="font-semibold tabular-nums">
-                    {(responses?.max_items ?? responses?.items.length ?? 0).toLocaleString()}
+                    {(responses?.max_items ?? responses?.items.length ?? 0).toLocaleString(appLocale())}
                   </span>{" "}
                   {t("whatsapp.cloud.of")}{" "}
                   <span className="font-semibold tabular-nums">
-                    {responses?.total.toLocaleString()}
+                    {responses?.total.toLocaleString(appLocale())}
                   </span>{" "}
                   {t("whatsapp.cloud.responses_switch_to_paged")}
                 </span>
@@ -3689,7 +3690,7 @@ function PollResultsTab() {
                         </Td>
                         <Td><Badge variant="outline" className="text-[10px]">{r.option}</Badge></Td>
                         <Td className="hidden md:table-cell text-muted-foreground text-[11px]">
-                          {new Date(r.at).toLocaleString()}
+                          {new Date(r.at).toLocaleString(appLocale())}
                         </Td>
                       </tr>
                     ))
@@ -4254,7 +4255,7 @@ function BulkImageSendTab({
                     </p>
                   )}
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular-nums">
-                    <span>{new Date(j.created_at).toLocaleString()}</span>
+                    <span>{new Date(j.created_at).toLocaleString(appLocale())}</span>
                     {typeof j.image_count === "number" && (
                       <span>· {t("whatsapp.cloud.n_img", { count: j.image_count })}</span>
                     )}
@@ -4728,11 +4729,11 @@ function BulkImageSendTab({
                     </span>
                   )}
                   <span>
-                    {t("whatsapp.cloud.created_label")} <span className="text-foreground/70">{new Date(job.created_at).toLocaleString()}</span>
+                    {t("whatsapp.cloud.created_label")} <span className="text-foreground/70">{new Date(job.created_at).toLocaleString(appLocale())}</span>
                   </span>
                   {job.completed_at && (
                     <span>
-                      {t("whatsapp.cloud.finished_label")} <span className="text-foreground/70">{new Date(job.completed_at).toLocaleString()}</span>
+                      {t("whatsapp.cloud.finished_label")} <span className="text-foreground/70">{new Date(job.completed_at).toLocaleString(appLocale())}</span>
                     </span>
                   )}
                   {job.whatsapp_account_id && (
@@ -4983,7 +4984,7 @@ function TemplateRepliesTab({ waAccountId }: { waAccountId: string }) {
   const fmtTime = (iso: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(appLocale());
   };
 
   return (

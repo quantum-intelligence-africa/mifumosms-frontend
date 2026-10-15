@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
+import { appLocale } from "@/utils/appLocale";
 export const useCampaigns = () => {
   const [campaigns, setCampaigns] = useState<Array<{
     id: string;
@@ -153,7 +154,7 @@ export const useCampaigns = () => {
               sent: campaign.sent_count,
               delivered: campaign.delivered_count,
               created_at: campaign.created_at,
-              created_at_human: new Date(campaign.created_at).toLocaleDateString(),
+              created_at_human: new Date(campaign.created_at).toLocaleDateString(appLocale()),
             }))
         };
         setSummary(calculatedSummary);

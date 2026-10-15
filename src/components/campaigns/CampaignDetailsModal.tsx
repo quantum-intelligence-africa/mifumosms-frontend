@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 
+import { appLocale } from "@/utils/appLocale";
 interface Campaign {
   id: string;
   name: string;
@@ -135,7 +136,7 @@ const CampaignDetailsModal: React.FC<CampaignDetailsModalProps> = ({
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat().format(num);
+    return new Intl.NumberFormat(appLocale()).format(num);
   };
 
   const formatCurrency = (amount: number) => {

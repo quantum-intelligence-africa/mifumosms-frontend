@@ -7,6 +7,7 @@
 
 import { calculateSMSegments } from './smsUtils';
 
+import { appLocale } from "@/utils/appLocale";
 /**
  * Calculate number of SMS segments required for a message.
  * Delegates to smsUtils so campaign estimates always match the single-source
@@ -153,14 +154,14 @@ export function formatScheduleDescription(schedule: {
 		case 'single':
 			description = `One-time at ${schedule.time || '09:00'}`;
 			if (schedule.end_date) {
-				description += ` on ${new Date(schedule.end_date).toLocaleDateString()}`;
+				description += ` on ${new Date(schedule.end_date).toLocaleDateString(appLocale())}`;
 			}
 			break;
 
 		case 'daily':
 			description = `Daily at ${schedule.time || '09:00'}`;
 			if (schedule.end_date) {
-				description += ` until ${new Date(schedule.end_date).toLocaleDateString()}`;
+				description += ` until ${new Date(schedule.end_date).toLocaleDateString(appLocale())}`;
 			}
 			break;
 
@@ -170,7 +171,7 @@ export function formatScheduleDescription(schedule: {
 				.join(', ');
 			description = `Every ${days} at ${schedule.time || '09:00'}`;
 			if (schedule.end_date) {
-				description += ` until ${new Date(schedule.end_date).toLocaleDateString()}`;
+				description += ` until ${new Date(schedule.end_date).toLocaleDateString(appLocale())}`;
 			}
 			break;
 		}
@@ -182,7 +183,7 @@ export function formatScheduleDescription(schedule: {
 					dayOfMonth % 10 === 3 && dayOfMonth !== 13 ? 'rd' : 'th';
 			description = `On the ${dayOfMonth}${suffix} of every month at ${schedule.time || '09:00'}`;
 			if (schedule.end_date) {
-				description += ` until ${new Date(schedule.end_date).toLocaleDateString()}`;
+				description += ` until ${new Date(schedule.end_date).toLocaleDateString(appLocale())}`;
 			}
 			break;
 		}
@@ -215,7 +216,7 @@ export function getStatusColorClass(status: string): string {
  * @returns Formatted cost string
  */
 export function formatCampaignCost(cost: number): string {
-	return `TZS ${Math.round(cost).toLocaleString()}`;
+	return `TZS ${Math.round(cost).toLocaleString(appLocale())}`;
 }
 
 /**

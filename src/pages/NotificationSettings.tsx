@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/useLanguage';
 
+import { appLocale } from "@/utils/appLocale";
 const NotificationSettingsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -312,7 +313,7 @@ const NotificationSettingsPage = () => {
                     <div>
                       <p className="font-medium">{t("notification_settings.summary.last_updated_label")}</p>
                       <p className="text-sm text-text-subtle">
-                        {new Date(settings.updated_at).toLocaleString()}
+                        {new Date(settings.updated_at).toLocaleString(appLocale())}
                       </p>
                     </div>
                   </div>

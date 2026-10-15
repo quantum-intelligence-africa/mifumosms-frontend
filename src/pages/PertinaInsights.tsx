@@ -25,6 +25,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoles } from "@/hooks/useRoles";
 
+import { appLocale } from "@/utils/appLocale";
 const PertinaInsights = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { tenants, currentTenant, isLoading: tenantsLoading } = useTenants();
@@ -97,7 +98,7 @@ const PertinaInsights = () => {
 
   const formatTime = (value?: string) =>
     value
-      ? new Date(value).toLocaleString(undefined, {
+      ? new Date(value).toLocaleString(appLocale(), {
           month: "short",
           day: "numeric",
           hour: "numeric",
@@ -301,21 +302,21 @@ const PertinaInsights = () => {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Current balance</p>
-                      <p className="text-3xl font-bold text-foreground">{tenantBalance.current_balance.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-foreground">{tenantBalance.current_balance.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Unused credits</p>
-                      <p className="text-3xl font-bold text-foreground">{tenantBalance.unused_credits.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-foreground">{tenantBalance.unused_credits.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl bg-gradient-to-br from-muted/10 to-muted/5 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70">Total purchased</p>
-                      <p className="text-2xl font-bold text-foreground">{tenantBalance.total_purchased.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-foreground">{tenantBalance.total_purchased.toLocaleString(appLocale())}</p>
                     </div>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
                       <p className="text-xs text-muted-foreground">Credits used</p>
-                      <p className="text-xl font-semibold text-foreground">{tenantBalance.total_used.toLocaleString()}</p>
+                      <p className="text-xl font-semibold text-foreground">{tenantBalance.total_used.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
                       <p className="text-xs text-muted-foreground">Last updated</p>
@@ -365,13 +366,13 @@ const PertinaInsights = () => {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         {language === "sw" ? "Jumla ya salio" : "Total credits"}
                       </p>
-                      <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_credits.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_credits.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl bg-background/80 p-4 text-center">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         {language === "sw" ? "Salio lisilotumika" : "Total unused"}
                       </p>
-                      <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_unused.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-foreground">{allBalance.summary.total_unused.toLocaleString(appLocale())}</p>
                     </div>
                   </div>
 
@@ -387,15 +388,15 @@ const PertinaInsights = () => {
                         <p className="text-xs text-muted-foreground mt-1">
                           {language === "sw" ? "Salio la sasa" : "Current balance"}
                         </p>
-                        <p className="text-2xl font-bold text-foreground">{tenant.current_balance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-foreground">{tenant.current_balance.toLocaleString(appLocale())}</p>
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{language === "sw" ? "Imetumika" : "Used"}</span>
-                            <span>{tenant.total_used.toLocaleString()}</span>
+                            <span>{tenant.total_used.toLocaleString(appLocale())}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{language === "sw" ? "Haijatumiwa" : "Unused"}</span>
-                            <span>{tenant.unused_credits.toLocaleString()}</span>
+                            <span>{tenant.unused_credits.toLocaleString(appLocale())}</span>
                           </div>
                         </div>
                       </div>
@@ -459,15 +460,15 @@ const PertinaInsights = () => {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-background/80 p-4">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Total credits</p>
-                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.total_credits.toLocaleString()}</p>
+                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.total_credits.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl bg-background/80 p-4">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Used</p>
-                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.used_credits.toLocaleString()}</p>
+                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.used_credits.toLocaleString(appLocale())}</p>
                     </div>
                     <div className="rounded-2xl bg-background/80 p-4">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Unused</p>
-                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.unused_credits.toLocaleString()}</p>
+                      <p className="text-2xl font-semibold text-foreground">{tenantUsage.unused_credits.toLocaleString(appLocale())}</p>
                     </div>
                   </div>
 
@@ -489,7 +490,7 @@ const PertinaInsights = () => {
                             <tr key={user.user_id} className="border-t border-border/70">
                               <td className="px-4 py-3 font-semibold text-sm">{user.user_name}</td>
                               <td className="px-4 py-3 text-xs text-muted-foreground">{user.user_email}</td>
-                              <td className="px-4 py-3 text-right">{user.credits_used.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-right">{user.credits_used.toLocaleString(appLocale())}</td>
                               <td className="px-4 py-3 text-right">{user.usage_count}</td>
                               <td className="px-4 py-3 text-xs text-muted-foreground">{formatTime(user.first_used)}</td>
                               <td className="px-4 py-3 text-xs text-muted-foreground">{formatTime(user.last_used)}</td>
@@ -581,7 +582,7 @@ const PertinaInsights = () => {
                             {language === "sw" ? "Rekodi za matumizi" : "Usage records"}
                           </p>
                           <p className="text-2xl font-bold text-foreground">
-                            {aggregatedUsageSummary.totalUsageRecords.toLocaleString()}
+                            {aggregatedUsageSummary.totalUsageRecords.toLocaleString(appLocale())}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-background/80 p-4 text-center">
@@ -590,7 +591,7 @@ const PertinaInsights = () => {
                           </p>
                           <p className="text-2xl font-bold text-foreground">
                             {aggregatedUsageSummary.avgCreditsPerUser
-                              ? aggregatedUsageSummary.avgCreditsPerUser.toLocaleString()
+                              ? aggregatedUsageSummary.avgCreditsPerUser.toLocaleString(appLocale())
                               : "—"}
                           </p>
                         </div>
@@ -599,7 +600,7 @@ const PertinaInsights = () => {
                             {language === "sw" ? "Watumiaji waliorekodiwa" : "Users tracked"}
                           </p>
                           <p className="text-2xl font-bold text-foreground">
-                            {aggregatedUsageSummary.totalUsers.toLocaleString()}
+                            {aggregatedUsageSummary.totalUsers.toLocaleString(appLocale())}
                           </p>
                         </div>
                       </>
@@ -616,9 +617,9 @@ const PertinaInsights = () => {
                           </Badge>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>{language === "sw" ? "Salio" : "Credits"}: {tenant.total_credits.toLocaleString()}</span>
-                          <span>{language === "sw" ? "Imetumika" : "Used"}: {tenant.used_credits.toLocaleString()}</span>
-                          <span>{language === "sw" ? "Haijatumiwa" : "Unused"}: {tenant.unused_credits.toLocaleString()}</span>
+                          <span>{language === "sw" ? "Salio" : "Credits"}: {tenant.total_credits.toLocaleString(appLocale())}</span>
+                          <span>{language === "sw" ? "Imetumika" : "Used"}: {tenant.used_credits.toLocaleString(appLocale())}</span>
+                          <span>{language === "sw" ? "Haijatumiwa" : "Unused"}: {tenant.unused_credits.toLocaleString(appLocale())}</span>
                         </div>
                         <p className="mt-3 text-xs text-muted-foreground">
                           {tenant.summary?.total_users

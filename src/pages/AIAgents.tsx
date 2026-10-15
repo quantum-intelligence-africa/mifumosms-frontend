@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { API_CONFIG, buildApiUrl } from "@/config/api";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 type AgentSetup = {
   name: string;
   business: string;
@@ -1334,7 +1335,7 @@ export default function AIAgents() {
     );
   };
 
-  const nowTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const nowTime = () => new Date().toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit" });
 
   const resetPreview = () => {
     const startStep = flowSteps.find((step) => toStateKey(step.name) === "START") ?? flowSteps[0];

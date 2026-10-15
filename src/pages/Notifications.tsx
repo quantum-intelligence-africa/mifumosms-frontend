@@ -19,6 +19,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { PushSettingsCard } from "@/components/pwa/PushSettingsCard";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 type ActivityItem = {
   id: string;
   type: string;
@@ -329,7 +330,7 @@ function NotificationRow({ item, isLast, onOpen }: RowProps) {
   const date = new Date(item.timestamp);
   const timeLabel =
     item.time_ago ||
-    date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    date.toLocaleTimeString(appLocale(), { hour: "numeric", minute: "2-digit" });
   return (
     <tr
       onClick={onOpen}
@@ -481,7 +482,7 @@ function DetailSheet({ item, onClose }: DetailSheetProps) {
             <Field label={t("notifications.page.col_type")} value={item.type.replace(/_/g, " ").toUpperCase()} />
             <Field
               label={t("notifications.page.col_time")}
-              value={new Date(item.timestamp).toLocaleString(undefined, {
+              value={new Date(item.timestamp).toLocaleString(appLocale(), {
                 year: "numeric",
                 month: "short",
                 day: "numeric",

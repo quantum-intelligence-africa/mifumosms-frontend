@@ -39,6 +39,7 @@ import {
 import { apiClient, SenderNameRequest, UnifiedSenderName } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
 
+import { appLocale } from "@/utils/appLocale";
 interface CreateCampaignDialogProps {
   children?: React.ReactNode;
   onSuccess?: () => void;
@@ -291,7 +292,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
           // Quick send skips the name/description step entirely, but the
           // backend still requires a name — auto-fill one so the user is
           // never asked for it.
-          name: `${channelLabel} quick send – ${new Date().toLocaleString()}`,
+          name: `${channelLabel} quick send – ${new Date().toLocaleString(appLocale())}`,
           campaign_type: initialTargeting.campaign_type ?? base.campaign_type,
           target_contact_ids: initialTargeting.target_contact_ids ?? [],
           target_criteria: { ...base.target_criteria, tags: seededTags },
@@ -619,7 +620,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
     if (autosaveError) return null; // shown separately, as a dismissible inline alert
     if (isAutosaving) return t('campaigns.create_dialog.saving');
     if (hasUnsavedChanges) return t('campaigns.create_dialog.unsaved_changes');
-    if (lastSavedAt) return t('campaigns.create_dialog.saved_at', { time: lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+    if (lastSavedAt) return t('campaigns.create_dialog.saved_at', { time: lastSavedAt.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' }) });
     return null;
   })();
 
@@ -652,7 +653,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {isQuickSendMode
-                  ? `Sending to ${effectiveRecipientCount.toLocaleString()} contact(s)`
+                  ? `Sending to ${effectiveRecipientCount.toLocaleString(appLocale())} contact(s)`
                   : t('campaigns.create_dialog.subtitle')}
               </DialogDescription>
             </div>
@@ -721,7 +722,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </Label>
                   {!loadingBalance && smsBalance !== null && (
                     <span className={`text-[11px] font-medium ${smsBalance < 100 ? 'text-warning' : 'text-muted-foreground'}`}>
-                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString() })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
+                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString(appLocale()) })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
                     </span>
                   )}
                 </div>
@@ -848,7 +849,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   </Label>
                   {!loadingBalance && smsBalance !== null && (
                     <span className={`text-[11px] font-medium ${smsBalance < 100 ? 'text-warning' : 'text-muted-foreground'}`}>
-                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString() })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
+                      {t('campaigns.create_dialog.balance_label', { amount: smsBalance.toLocaleString(appLocale()) })}{smsBalance < 100 ? t('campaigns.create_dialog.low_suffix') : ''}
                     </span>
                   )}
                 </div>
@@ -1071,19 +1072,19 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     </div>
                     <div className="flex items-center justify-between bg-success/10 rounded-md px-2.5 py-1.5 border border-success/30">
                       <span className="font-semibold text-foreground">{t('total_cost')}</span>
-                      <span className="text-sm font-bold text-success">{t('campaigns.create_dialog.tzs_amount', { amount: estimatedCost.toLocaleString() })}</span>
+                      <span className="text-sm font-bold text-success">{t('campaigns.create_dialog.tzs_amount', { amount: estimatedCost.toLocaleString(appLocale()) })}</span>
                     </div>
                     {formData.is_recurring && (
                       <div className="flex items-center justify-between bg-primary/5 rounded-md px-2.5 py-1.5 border border-primary/25">
                         <span className="font-semibold text-foreground">{t('campaigns.create_dialog.weekly_cost_label')}</span>
-                        <span className="text-sm font-bold text-primary">{t('campaigns.create_dialog.tzs_amount', { amount: weeklyCost.toLocaleString() })}</span>
+                        <span className="text-sm font-bold text-primary">{t('campaigns.create_dialog.tzs_amount', { amount: weeklyCost.toLocaleString(appLocale()) })}</span>
                       </div>
                     )}
                     {smsBalance !== null && estimatedCost > smsBalance && (
                       <div className="rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 flex items-start gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
                         <p className="text-[11px] text-destructive font-medium">
-                          {t('campaigns.create_dialog.insufficient_credits', { amount: (estimatedCost - smsBalance).toLocaleString() })}
+                          {t('campaigns.create_dialog.insufficient_credits', { amount: (estimatedCost - smsBalance).toLocaleString(appLocale()) })}
                         </p>
                       </div>
                     )}
@@ -1136,7 +1137,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   <p className="text-xs font-semibold text-foreground">
                     {isLoadingMatchingCount
                       ? 'Counting matching contacts…'
-                      : `${(matchingCount ?? 0).toLocaleString()} contact(s) will be targeted`}
+                      : `${(matchingCount ?? 0).toLocaleString(appLocale())} contact(s) will be targeted`}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {formData.target_criteria.tags.length > 0

@@ -87,6 +87,7 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { useTheme } from "next-themes";
 import { buildApiUrl, API_CONFIG } from "@/config/api";
 
+import { appLocale } from "@/utils/appLocale";
 interface SettingsCategory {
   id: string;
   title: string;
@@ -2430,11 +2431,11 @@ const Settings = () => {
                           </Badge>
                         </div>
                         <p className="text-2xl font-bold text-foreground mb-1">
-                          {billingData.balance?.credits?.toLocaleString() || '0'}
+                          {billingData.balance?.credits?.toLocaleString(appLocale()) || '0'}
                         </p>
                         <p className="text-xs text-text-subtle mb-3">
-                          Total Purchased: {billingData.balance?.total_purchased?.toLocaleString() || '0'} •
-                          Total Used: {billingData.balance?.total_used?.toLocaleString() || '0'}
+                          Total Purchased: {billingData.balance?.total_purchased?.toLocaleString(appLocale()) || '0'} •
+                          Total Used: {billingData.balance?.total_used?.toLocaleString(appLocale()) || '0'}
                         </p>
                         <Button
                           variant="outline"
@@ -2466,10 +2467,10 @@ const Settings = () => {
                                 )}
                               </div>
                               <p className="text-lg font-bold text-foreground mb-1">
-                                {pkg.credits.toLocaleString()} Credits
+                                {pkg.credits.toLocaleString(appLocale())} Credits
                               </p>
                               <p className="text-xs text-text-subtle mb-2">
-                                {pkg.currency} {pkg.price.toLocaleString()}
+                                {pkg.currency} {pkg.price.toLocaleString(appLocale())}
                               </p>
                             </div>
                           ))}
@@ -2485,7 +2486,7 @@ const Settings = () => {
                           <div className="flex justify-between text-sm">
                             <span className="text-text-subtle">Credits Used</span>
                             <span className="font-medium">
-                              {billingData.balance.total_used?.toLocaleString() || '0'} / {billingData.balance.total_purchased?.toLocaleString() || '0'}
+                              {billingData.balance.total_used?.toLocaleString(appLocale()) || '0'} / {billingData.balance.total_purchased?.toLocaleString(appLocale()) || '0'}
                             </span>
                           </div>
                           {billingData.balance.total_purchased > 0 && (
@@ -2501,7 +2502,7 @@ const Settings = () => {
                               <div className="flex justify-between text-xs">
                                 <span className="text-text-subtle">
                                   {billingData.balance.last_purchase
-                                    ? `Last purchase: ${new Date(billingData.balance.last_purchase).toLocaleDateString()}`
+                                    ? `Last purchase: ${new Date(billingData.balance.last_purchase).toLocaleDateString(appLocale())}`
                                     : 'No purchases yet'}
                                 </span>
                                 <span className="text-success">

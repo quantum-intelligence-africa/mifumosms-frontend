@@ -43,6 +43,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { appLocale } from "@/utils/appLocale";
 // jspdf + html2canvas together are ~540 kB (158 kB gzip). They are imported lazily
 // inside handleExportToPDF so they only download when the user clicks "Export PDF".
 
@@ -344,7 +345,7 @@ const Analytics = () => {
       pdf.setFontSize(20);
       pdf.text(t("pages.analytics.pdf.title"), 20, 20);
       pdf.setFontSize(12);
-      pdf.text(t("pages.analytics.pdf.generated_on", { date: new Date().toLocaleDateString() }), 20, 30);
+      pdf.text(t("pages.analytics.pdf.generated_on", { date: new Date().toLocaleDateString(appLocale()) }), 20, 30);
       pdf.text(t("pages.analytics.pdf.date_range", { range: dateRange }), 20, 35);
       pdf.text(t("pages.analytics.pdf.channel", { channel: selectedChannel }), 20, 40);
 
@@ -485,7 +486,7 @@ const Analytics = () => {
                                   <div>
                             <p className="font-medium text-foreground text-sm">{country.country}</p>
                             <p className="text-xs text-text-subtle">
-                                      {t("pages.analytics.chart.messages_count", { count: country.messages.toLocaleString() })}
+                                      {t("pages.analytics.chart.messages_count", { count: country.messages.toLocaleString(appLocale()) })}
                                     </p>
                                   </div>
                                 </div>
@@ -541,25 +542,25 @@ const Analytics = () => {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
                           <p className="text-text-subtle">{t("dashboard.recent_campaigns.sent")}</p>
-                          <p className="font-medium">{campaign.sent.toLocaleString()}</p>
+                          <p className="font-medium">{campaign.sent.toLocaleString(appLocale())}</p>
                                       </div>
                         <div>
                           <p className="text-text-subtle">{t("dashboard.recent_campaigns.delivered")}</p>
-                          <p className="font-medium">{campaign.delivered.toLocaleString()}</p>
+                          <p className="font-medium">{campaign.delivered.toLocaleString(appLocale())}</p>
                           <p className="text-success">
                                         {Math.round((campaign.delivered / campaign.sent) * 100)}%
                           </p>
                                       </div>
                         <div>
                           <p className="text-text-subtle">{t("dashboard.recent_campaigns.opened")}</p>
-                          <p className="font-medium">{campaign.opened.toLocaleString()}</p>
+                          <p className="font-medium">{campaign.opened.toLocaleString(appLocale())}</p>
                           <p className="text-primary">
                             {Math.round((campaign.opened / campaign.delivered) * 100)}%
                           </p>
                                       </div>
                         <div>
                           <p className="text-text-subtle">{t("pages.analytics.chart.clicked")}</p>
-                          <p className="font-medium">{campaign.clicked.toLocaleString()}</p>
+                          <p className="font-medium">{campaign.clicked.toLocaleString(appLocale())}</p>
                           <p className="text-amber-600">
                             {Math.round((campaign.clicked / campaign.opened) * 100)}%
                           </p>
@@ -620,7 +621,7 @@ const Analytics = () => {
                         <div>
                           <p className="font-medium text-foreground text-sm">{country.country}</p>
                           <p className="text-xs text-text-subtle">
-                            {t("pages.analytics.chart.contacts_count", { count: country.messages.toLocaleString() })}
+                            {t("pages.analytics.chart.contacts_count", { count: country.messages.toLocaleString(appLocale()) })}
                           </p>
                         </div>
                       </div>

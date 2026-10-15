@@ -38,20 +38,20 @@ interface ImportedFlow {
 
 // Accepts a file exported from SENDA ({ name, language, definition }) or a bare
 // { nodes, edges } definition. The server re-checks the shape on create.
-function parseImportedFlow(text: string, fallbackName: string): ImportedFlow {
+function parseImportedFlow(text: string, fallbackName: string, t: (key: any) => string): ImportedFlow {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    throw new Error("Faili hii si JSON halali.");
+    throw new Error(t("cc.flows.err_not_json"));
   }
   const obj = (raw ?? {}) as Record<string, unknown>;
   const def = (obj.definition ?? obj.current_definition ?? obj) as Record<string, unknown>;
   if (!def || !Array.isArray(def.nodes) || !Array.isArray(def.edges)) {
-    throw new Error("Faili haina mtiririko halali (inahitaji 'nodes' na 'edges').");
+    throw new Error(t("cc.flows.err_no_flow"));
   }
   const bad = (def.nodes as Array<Record<string, unknown>>).some((n) => !n || !n.id || !n.type);
-  if (bad) throw new Error("Kila kisanduku kinahitaji 'id' na 'type'.");
+  if (bad) throw new Error(t("cc.flows.err_bad_node"));
   const name = typeof obj.name === "string" && obj.name.trim() ? obj.name.trim().slice(0, 100) : fallbackName;
   const language = typeof obj.language === "string" ? obj.language : undefined;
   return { name, language, definition: def as unknown as FlowDefinition };
@@ -106,8 +106,8 @@ export default function IvrFlowList() {
 
   const handleDisconnect = async (e: React.MouseEvent, account: VoiceAccountLite) => {
     e.stopPropagation();
-    const label = account.phone_number || account.display_name || "this number";
-    if (!window.confirm(`Disconnect this flow from ${label}? Calls to it will not be answered until you connect another flow.`)) {
+    const label = account.phone_number || account.display_name || t("cc.flows.a_number");
+    if (!window.confirm(t("cc.flows.disconnect_confirm", { label }))) {
       return;
     }
     setDisconnectingId(account.id);
@@ -115,9 +115,9 @@ export default function IvrFlowList() {
     setDisconnectingId(null);
     if (res.success) {
       setAccounts((prev) => prev.map((a) => (a.id === account.id ? { ...a, active_flow: null } : a)));
-      toast({ title: "Disconnected", description: `This flow no longer runs on ${label}.` });
+      toast({ title: t("cc.flows.disconnected_title"), description: t("cc.flows.disconnected_desc", { label }) });
     } else {
-      toast({ title: "Failed to disconnect", description: res.error || "Please try again.", variant: "destructive" });
+      toast({ title: t("cc.flows.disconnect_failed"), description: res.error || t("cc.flows.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -128,17 +128,13 @@ export default function IvrFlowList() {
     const inUse = accounts.filter((a) => a.active_flow === flow.id);
     const numbers = inUse.map((a) => a.phone_number || a.display_name).filter(Boolean).join(", ");
     const warning = inUse.length
-      ? `
-
-It is answering ${numbers || "a phone number"}. Calls to ${inUse.length > 1 ? "those numbers" : "that number"} will not be answered until you connect another flow.`
+      ? `\n\n${t(inUse.length > 1 ? "cc.flows.delete_in_use_many" : "cc.flows.delete_in_use_one", { numbers: numbers || t("cc.flows.a_number") })}`
       : "";
-    if (!window.confirm(`Delete "${flow.name}"?${warning}
-
-Past calls and reports are kept.`)) return;
+    if (!window.confirm(`${t("cc.flows.delete_confirm_head", { name: flow.name })}${warning}\n\n${t("cc.flows.delete_keeps")}`)) return;
     for (const account of inUse) {
       const detached = await voiceApi.patch<VoiceAccountLite>(`/voice/accounts/${account.id}/`, { active_flow: null });
       if (!detached.success) {
-        toast({ title: "Could not delete the flow", description: detached.error || "It could not be disconnected from its number.", variant: "destructive" });
+        toast({ title: t("cc.flows.delete_failed"), description: detached.error || t("cc.flows.delete_detach_failed"), variant: "destructive" });
         return;
       }
     }
@@ -146,9 +142,9 @@ Past calls and reports are kept.`)) return;
     if (res.success) {
       setFlows((prev) => prev.filter((f) => f.id !== flow.id));
       setAccounts((prev) => prev.map((a) => (a.active_flow === flow.id ? { ...a, active_flow: null } : a)));
-      toast({ title: "Flow deleted", description: `"${flow.name}" was removed.` });
+      toast({ title: t("cc.flows.deleted_title"), description: t("cc.flows.deleted_desc", { name: flow.name }) });
     } else {
-      toast({ title: "Could not delete the flow", description: res.error || "Please try again.", variant: "destructive" });
+      toast({ title: t("cc.flows.delete_failed"), description: res.error || t("cc.flows.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -157,17 +153,17 @@ Past calls and reports are kept.`)) return;
     setImportError(null);
     setImported(null);
     if (file.size > MAX_IMPORT_BYTES) {
-      setImportError("Faili ni kubwa mno (kiwango cha juu ni 1 MB).");
+      setImportError(t("cc.flows.err_too_big"));
       return;
     }
     try {
-      const fallback = file.name.replace(/\.json$/i, "").slice(0, 100) || "Mtiririko Ulioingizwa";
-      const parsed = parseImportedFlow(await file.text(), fallback);
+      const fallback = file.name.replace(/\.json$/i, "").slice(0, 100) || t("cc.flows.imported_name");
+      const parsed = parseImportedFlow(await file.text(), fallback, t as (key: any) => string);
       setImported(parsed);
       setImportName(parsed.name);
       setSelectedTemplateId(IMPORT_ID);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Imeshindwa kusoma faili.");
+      setImportError(err instanceof Error ? err.message : t("cc.flows.err_read"));
     }
   };
 
@@ -175,7 +171,7 @@ Past calls and reports are kept.`)) return;
     e.stopPropagation();
     const res = await voiceApi.get<IvrFlowDetail>(`/voice/ivr/${flow.id}/`);
     if (!(res.success && res.data)) {
-      toast({ title: "Failed to export", description: res.error || "Please try again.", variant: "destructive" });
+      toast({ title: t("cc.flows.export_failed"), description: res.error || t("cc.flows.try_again_desc"), variant: "destructive" });
       return;
     }
     const payload = {
@@ -200,7 +196,7 @@ Past calls and reports are kept.`)) return;
     if (res.success && res.data) {
       navigate(`/voice/ivr/${res.data.id}`);
     } else {
-      toast({ title: "Could not create the flow", description: res.error || "Please try again.", variant: "destructive" });
+      toast({ title: t("cc.flows.create_failed"), description: res.error || t("cc.flows.try_again_desc"), variant: "destructive" });
     }
   };
 
@@ -217,7 +213,7 @@ Past calls and reports are kept.`)) return;
             ...(useImport.language && useImport.language in LANGUAGE_LABELS ? { language: useImport.language } : {}),
           }
         : {
-            name: template.id === "blank" ? "Mtiririko Mpya" : template.name,
+            name: template.id === "blank" ? t("cc.flows.blank_name") : template.name,
             current_definition: template.definition,
           },
     );
@@ -226,9 +222,9 @@ Past calls and reports are kept.`)) return;
       setTemplateDialogOpen(false);
       navigate(`/voice/ivr/${res.data.id}`);
     } else if (useImport) {
-      setImportError(res.error || "Seva imekataa mtiririko huu.");
+      setImportError(res.error || t("cc.flows.err_rejected"));
     } else {
-      setError(res.error || "Failed to create flow");
+      setError(res.error || t("cc.flows.create_failed_generic"));
     }
   };
 
@@ -242,8 +238,8 @@ Past calls and reports are kept.`)) return;
           <div className="mx-auto max-w-5xl space-y-3.5">
             <header className="flex items-center justify-between gap-3">
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">IVR Flows</h1>
-                <p className="mt-0.5 text-sm text-foreground/60">Build and test call flows without a phone line</p>
+                <h1 className="text-xl font-bold tracking-tight text-foreground">{t("cc.flows.title")}</h1>
+                <p className="mt-0.5 text-sm text-foreground/60">{t("cc.flows.subtitle")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => setAiOpen(true)} disabled={isCreating}>
@@ -252,7 +248,7 @@ Past calls and reports are kept.`)) return;
                 </Button>
                 <Button onClick={() => setTemplateDialogOpen(true)} disabled={isCreating}>
                   <Plus className="mr-1.5 h-4 w-4" />
-                  New Flow
+                  {t("cc.flows.new")}
                 </Button>
               </div>
             </header>
@@ -264,7 +260,7 @@ Past calls and reports are kept.`)) return;
                   <p className="text-sm text-muted-foreground">{error}</p>
                   <Button variant="outline" size="sm" onClick={fetchFlows}>
                     <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try again
+                    {t("cc.flows.try_again")}
                   </Button>
                 </CardContent>
               </Card>
@@ -282,8 +278,8 @@ Past calls and reports are kept.`)) return;
               <Card>
                 <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
                   <Workflow className="h-10 w-10 text-muted-foreground" />
-                  <h3 className="text-base font-semibold text-foreground">No flows yet</h3>
-                  <p className="text-sm text-muted-foreground">Create your first IVR flow to get started.</p>
+                  <h3 className="text-base font-semibold text-foreground">{t("cc.flows.empty_title")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("cc.flows.empty_desc")}</p>
                   <div className="mt-1 flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setAiOpen(true)}>
                       <Sparkles className="mr-1.5 h-4 w-4" />
@@ -291,7 +287,7 @@ Past calls and reports are kept.`)) return;
                     </Button>
                     <Button size="sm" onClick={() => setTemplateDialogOpen(true)}>
                       <Plus className="mr-1.5 h-4 w-4" />
-                      New Flow
+                      {t("cc.flows.new")}
                     </Button>
                   </div>
                 </CardContent>
@@ -314,8 +310,8 @@ Past calls and reports are kept.`)) return;
                           <span className="flex shrink-0 items-center gap-1.5">
                             <button
                               type="button"
-                              title="Export flow (JSON)"
-                              aria-label="Export flow"
+                              title={t("cc.flows.export_title")}
+                              aria-label={t("cc.flows.export_aria")}
                               onClick={(e) => handleExport(e, flow)}
                               className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                             >
@@ -323,15 +319,15 @@ Past calls and reports are kept.`)) return;
                             </button>
                             <button
                               type="button"
-                              title="Delete this flow"
-                              aria-label="Delete flow"
+                              title={t("cc.flows.delete_title")}
+                              aria-label={t("cc.flows.delete_aria")}
                               onClick={(e) => handleDelete(e, flow)}
                               className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                             <Badge variant={statusVariant(flow.status)} className="capitalize">
-                              {flow.status}
+                              {t(`cc.flows.status_${flow.status}` as never) || flow.status}
                             </Badge>
                           </span>
                         </CardTitle>
@@ -340,7 +336,7 @@ Past calls and reports are kept.`)) return;
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1.5">
                             <Clock className="h-3 w-3" />
-                            Updated {new Date(flow.updated_at).toLocaleDateString(appLocale())}
+                            {t("cc.flows.updated", { date: new Date(flow.updated_at).toLocaleDateString(appLocale()) })}
                           </span>
                           <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
                             {LANGUAGE_LABELS[flow.language]}
@@ -355,10 +351,10 @@ Past calls and reports are kept.`)) return;
                                 className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 py-0.5 pl-2 pr-1 text-[11px] text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
                               >
                                 <Link2 className="h-3 w-3 shrink-0" />
-                                {account.phone_number || account.display_name || "Connected"}
+                                {account.phone_number || account.display_name || t("cc.flows.connected")}
                                 <button
                                   type="button"
-                                  title="Disconnect this flow"
+                                  title={t("cc.flows.disconnect_title")}
                                   onClick={(e) => handleDisconnect(e, account)}
                                   disabled={disconnectingId === account.id}
                                   className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-200 hover:text-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900"
@@ -382,11 +378,8 @@ Past calls and reports are kept.`)) return;
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-4 sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Anza mtiririko mpya</DialogTitle>
-            <DialogDescription>
-              Chagua pa kuanzia, au ingiza mtiririko kutoka faili. Unaweza kubadilisha kila kitu baadaye —
-              kuongeza, kuondoa au kupanga upya visanduku vyote. Salamu zote hutaja jina la biashara yako lenyewe.
-            </DialogDescription>
+            <DialogTitle>{t("cc.flows.dialog_title")}</DialogTitle>
+            <DialogDescription>{t("cc.flows.dialog_desc")}</DialogDescription>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -423,12 +416,9 @@ Past calls and reports are kept.`)) return;
                     className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-foreground"
                   >
                     <Upload className="h-3.5 w-3.5" />
-                    Ingiza kutoka faili (Import)
+                    {t("cc.flows.import_label")}
                   </Label>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Pakia faili ya mtiririko (.json) iliyosafirishwa kutoka SENDA — mtiririko wote unakuja kama rasimu
-                    unayoweza kuhariri.
-                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("cc.flows.import_desc")}</p>
                   <input
                     ref={fileRef}
                     type="file"
@@ -442,18 +432,18 @@ Past calls and reports are kept.`)) return;
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
                       <FileJson className="mr-1.5 h-3.5 w-3.5" />
-                      {imported ? "Chagua faili nyingine" : "Chagua faili"}
+                      {imported ? t("cc.flows.choose_another") : t("cc.flows.choose_file")}
                     </Button>
                     {imported && (
                       <span className="text-xs text-muted-foreground">
-                        {imported.definition.nodes.length} visanduku · {imported.definition.edges.length} viunganisho
+                        {t("cc.flows.import_counts", { nodes: imported.definition.nodes.length, edges: imported.definition.edges.length })}
                       </span>
                     )}
                   </div>
                   {imported && (
                     <div className="mt-2">
                       <Label htmlFor="import-name" className="text-xs">
-                        Jina la mtiririko
+                        {t("cc.flows.import_name")}
                       </Label>
                       <Input
                         id="import-name"
@@ -472,10 +462,10 @@ Past calls and reports are kept.`)) return;
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={isCreating}>
-              Ghairi
+              {t("cc.flows.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={isCreating || (selectedTemplateId === IMPORT_ID && !imported)}>
-              {isCreating ? "Tunaanzisha…" : selectedTemplateId === IMPORT_ID ? "Ingiza" : "Anza"}
+              {isCreating ? t("cc.flows.starting") : selectedTemplateId === IMPORT_ID ? t("cc.flows.import_btn") : t("cc.flows.start")}
             </Button>
           </DialogFooter>
         </DialogContent>

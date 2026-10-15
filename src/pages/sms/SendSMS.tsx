@@ -57,6 +57,7 @@ import { parseExcelFile } from "@/utils/excelParser";
 import { SmsMessagePreview } from "@/components/sms/SmsMessagePreview";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
 
+import { appLocale } from "@/utils/appLocale";
 // Note: We no longer hardcode sender IDs. We fetch the current user's
 // sender name requests via useSenderNames() and use only approved ones.
 
@@ -875,7 +876,7 @@ const SendSMS = () => {
 
         // Extract provider message from nested response, prefer it over generic API message
         let successMessage = isScheduled
-          ? `Scheduled for ${apiRecipients.length} recipient(s) at ${new Date(scheduledDate).toLocaleString()}`
+          ? `Scheduled for ${apiRecipients.length} recipient(s) at ${new Date(scheduledDate).toLocaleString(appLocale())}`
           : `Sent to ${apiRecipients.length} recipient(s)`;
 
         // Try to get the provider's actual success message (Beem Africa format)
@@ -1617,7 +1618,7 @@ const SendSMS = () => {
                       {language === "sw" ? "Jumla ya SMS" : "Total SMS"}
                     </p>
                     <p className="text-[18px] font-bold text-foreground leading-tight tabular-nums mt-0.5">
-                      {(recipientCount * segmentCount).toLocaleString()} <span className="text-[12px] font-semibold text-foreground/60">{language === "sw" ? "SMS" : (recipientCount * segmentCount === 1 ? "SMS" : "SMS")}</span>
+                      {(recipientCount * segmentCount).toLocaleString(appLocale())} <span className="text-[12px] font-semibold text-foreground/60">{language === "sw" ? "SMS" : (recipientCount * segmentCount === 1 ? "SMS" : "SMS")}</span>
                     </p>
                     <p className="text-[11px] text-foreground/55 leading-tight mt-0.5">
                       {recipientCount} {language === "sw"
@@ -1629,7 +1630,7 @@ const SendSMS = () => {
                         : (segmentCount === 1 ? "segment" : "segments")}
                       {" = "}
                       <span className="font-semibold text-foreground/75 tabular-nums">
-                        {(recipientCount * segmentCount).toLocaleString()} SMS
+                        {(recipientCount * segmentCount).toLocaleString(appLocale())} SMS
                       </span>
                     </p>
                   </>
@@ -1685,8 +1686,8 @@ const SendSMS = () => {
                 return (
                   <span className="block font-semibold text-foreground">
                     {language === "sw"
-                      ? `Wapokeaji ${recipients} × ${segmentAlertCount} SMS = ${totalSms.toLocaleString()} SMS jumla`
-                      : `${recipients} recipient${recipients === 1 ? "" : "s"} × ${segmentAlertCount} SMS = ${totalSms.toLocaleString()} SMS total`}
+                      ? `Wapokeaji ${recipients} × ${segmentAlertCount} SMS = ${totalSms.toLocaleString(appLocale())} SMS jumla`
+                      : `${recipients} recipient${recipients === 1 ? "" : "s"} × ${segmentAlertCount} SMS = ${totalSms.toLocaleString(appLocale())} SMS total`}
                   </span>
                 );
               })()}

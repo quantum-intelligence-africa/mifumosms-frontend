@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
+import { appLocale } from "@/utils/appLocale";
 // Fallbacks used only if the admin-configured settings can't be fetched —
 // the real values (and message text) are controlled from Senda Admin
 // (Messaging → Pending Payment Reminder), stored in PendingPaymentReminderSettings.
@@ -71,8 +72,8 @@ function writeThrottle(userId: string, state: ThrottleState) {
 function renderMessage(template: string, name: string, credits: number, amount: number) {
   return template
     .replace("{name}", name || "Mteja")
-    .replace("{credits}", credits.toLocaleString())
-    .replace("{amount}", amount.toLocaleString());
+    .replace("{credits}", credits.toLocaleString(appLocale()))
+    .replace("{amount}", amount.toLocaleString(appLocale()));
 }
 
 // Mounted once at the app root. Checks for a stuck pending SMS/WhatsApp
@@ -269,7 +270,7 @@ export function PendingPaymentReminder() {
           </div>
           <div className="flex justify-between text-sm py-1 border-b border-border-subtle">
             <span className="text-text-subtle">{t("amount")}</span>
-            <span className="font-medium text-primary">TZS {amount.toLocaleString()}</span>
+            <span className="font-medium text-primary">TZS {amount.toLocaleString(appLocale())}</span>
           </div>
 
           {attemptStatus === "completed" ? (

@@ -22,6 +22,7 @@ import {
 } from "@/hooks/useWhatsAppCloud";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Status presentation ──────────────────────────────────────────────────────
 // Meta returns PENDING / APPROVED / REJECTED / DISABLED (older wrappers used
 // PENDING_REVIEW). We normalise PENDING_REVIEW → PENDING for display.
@@ -128,7 +129,7 @@ export function MetaTemplateStatus({ waAccountId }: MetaTemplateStatusProps) {
         (a, b) => order[normalizeStatus(a.status)] - order[normalizeStatus(b.status)],
       );
       setTemplates(sorted);
-      setSyncedAt(new Date().toLocaleTimeString());
+      setSyncedAt(new Date().toLocaleTimeString(appLocale()));
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : t("whatsapp.template_status.load_failed"));
     } finally {

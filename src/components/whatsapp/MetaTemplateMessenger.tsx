@@ -40,6 +40,7 @@ import { apiClient, type Contact } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 
+import { appLocale } from "@/utils/appLocale";
 // ─── Meta template helpers ───────────────────────────────────────────────────
 
 // Meta templates use either positional placeholders ({{1}}, {{2}}) or named
@@ -196,7 +197,7 @@ export function MetaTemplateMessenger({ waAccountId }: MetaTemplateMessengerProp
       // templates may ever be selectable or sent.
       const approved = all.filter((t) => t.status === "APPROVED");
       setTemplates(approved);
-      setSyncedAt(new Date().toLocaleTimeString());
+      setSyncedAt(new Date().toLocaleTimeString(appLocale()));
       // Drop the selection if the synced set no longer contains it (e.g. the
       // template was paused/disabled on Meta's side since last sync).
       setSelectedId((prev) =>
