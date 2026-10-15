@@ -231,7 +231,7 @@ export function CreatePollDialog({ open, onOpenChange, onCreated }: CreatePollDi
                         variant="ghost"
                         size="icon"
                         onClick={() => removeOption(idx)}
-                        aria-label={`Remove option ${idx + 1}`}
+                        aria-label={t("pg.CreatePollDialog.1007", { value: idx + 1 })}
                         className="h-10 w-10 flex-shrink-0 text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />

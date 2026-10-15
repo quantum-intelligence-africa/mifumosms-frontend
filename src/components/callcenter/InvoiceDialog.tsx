@@ -118,7 +118,7 @@ export function InvoiceDialog({ subscriptionId, onClose }: { subscriptionId: str
               </tbody>
             </table>
             <p className="text-xs text-muted-foreground">
-              {t("cc.invoice.payment")}: {invoice.payment_method}{invoice.payment_reference ? ` · ref ${invoice.payment_reference}` : ""}
+              {t("cc.invoice.payment")}: {invoice.payment_method}{invoice.payment_reference ? t("pg.InvoiceDialog.1006", { payment_reference: invoice.payment_reference }) : ""}
             </p>
           </div>
         )}

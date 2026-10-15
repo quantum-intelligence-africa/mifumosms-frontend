@@ -285,7 +285,7 @@ const Dashboard = () => {
                 {(
                   <>
                     {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
-                    <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">Welcome back, {user?.first_name || user?.full_name || 'User'}! 👋</h1>
+                    <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">{t("pg.Dashboard.0998")} {user?.first_name || user?.full_name || t("pg.Dashboard.0999")}! 👋</h1>
 
                     {/* Desktop: full metrics grid (4 cards). */}
                     {widgetOn("metrics") && (
@@ -366,10 +366,10 @@ const Dashboard = () => {
                   <div className="p-2.5 rounded-lg bg-primary/10 dark:bg-primary/20">
                     <Play className="w-5 h-5 text-primary" strokeWidth={2.5} />
                   </div>
-                  {t("tutorial.title") || "Welcome to SENDA"}
+                  {t("tutorial.title") || t("pg.Dashboard.1000")}
                 </DialogTitle>
                 <DialogDescription className="mt-1.5 text-sm text-text-subtle dark:text-foreground/60">
-                  {t("tutorial.description") || "Watch this short video to learn how to get started."}
+                  {t("tutorial.description") || t("pg.Dashboard.1001")}
                 </DialogDescription>
               </div>
             </div>

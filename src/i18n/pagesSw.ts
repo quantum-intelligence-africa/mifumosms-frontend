@@ -999,4 +999,10 @@ export const pgSw: Record<keyof typeof pgEn, string> = {
   "pg.SimulatePanel.1009": "Inazungumza...",
   "pg.SimulatePanel.1010": "Ongea badala ya kuandika",
   "pg.Landing.0903": "Mandharinyuma ya juu",
+  "pg.Dashboard.0998": "Karibu tena,",
+  "pg.Dashboard.0999": "Mtumiaji",
+  "pg.Dashboard.1000": "Karibu kwenye SENDA",
+  "pg.Dashboard.1001": "Tazama video hii fupi ujifunze jinsi ya kuanza.",
+  "pg.InvoiceDialog.1006": " · kumbukumbu {{payment_reference}}",
+  "pg.CreatePollDialog.1007": "Ondoa chaguo {{value}}",
 };

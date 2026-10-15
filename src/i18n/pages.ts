@@ -999,4 +999,10 @@ export const pgEn = {
   "pg.SimulatePanel.1009": "Speaking...",
   "pg.SimulatePanel.1010": "Speak instead of typing",
   "pg.Landing.0903": "Hero background",
+  "pg.Dashboard.0998": "Welcome back,",
+  "pg.Dashboard.0999": "User",
+  "pg.Dashboard.1000": "Welcome to SENDA",
+  "pg.Dashboard.1001": "Watch this short video to learn how to get started.",
+  "pg.InvoiceDialog.1006": " · ref {{payment_reference}}",
+  "pg.CreatePollDialog.1007": "Remove option {{value}}",
 };
