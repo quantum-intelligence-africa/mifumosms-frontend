@@ -70,6 +70,10 @@ interface CallSummary {
   agent: AgentSummary | null;
   status: string;
   provider_status: string;
+  /** The server's one verdict (same on every screen). Older responses may not have it. */
+  is_missed?: boolean;
+  call_outcome?: string;
+  agent_name?: string;
   is_simulated: boolean;
   started_at: string;
   ended_at: string | null;
@@ -99,8 +103,8 @@ type Range = "7" | "30" | "90" | "all";
 type T = ReturnType<typeof useLanguage>["t"];
 
 const MISSED = new Set(["noanswer", "no_answer", "notanswered", "busy", "aborted", "failed", "rejected", "cancelled", "canceled"]);
-const isMissed = (call: Pick<CallSummary, "status" | "provider_status" | "duration_seconds">) =>
-  call.status === "failed" || MISSED.has((call.provider_status || "").toLowerCase()) || (call.status === "completed" && !call.duration_seconds);
+const isMissed = (call: Pick<CallSummary, "status" | "provider_status" | "duration_seconds" | "is_missed">) =>
+  call.is_missed ?? (call.status === "failed" || MISSED.has((call.provider_status || "").toLowerCase()) || (call.status === "completed" && !call.duration_seconds));
 
 /** The person on the other end: the caller for a call that came in, the customer for one that went out. */
 const otherParty = (call: Pick<CallSummary, "direction" | "from_number" | "to_number">) =>
@@ -148,7 +152,11 @@ const outcomeLabelKey = (raw: string): Parameters<T>[0] | null => {
   }
 };
 
+const OUTCOME_LABELS = ["answered", "missed", "voicemail", "abandoned", "rejected", "failed"];
+
 const outcomeLabel = (call: CallSummary, t: T) => {
+  // The server's verdict first, so this page can never say something different from Call history.
+  if (call.call_outcome && OUTCOME_LABELS.includes(call.call_outcome)) return t(`cc.history.outcome_${call.call_outcome}` as never);
   const raw = (call.provider_status || call.status || "").trim().toLowerCase();
   const key = outcomeLabelKey(raw);
   if (key) return t(key);
