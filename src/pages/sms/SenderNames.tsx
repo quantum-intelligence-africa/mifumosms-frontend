@@ -460,8 +460,8 @@ const SenderNames = () => {
 
             // Show success notification
             toast({
-              title: "Payment Successful",
-              description: "Your sender ID request is being processed",
+              title: t("pg.SenderNames.0508"),
+              description: t("pg.SenderNames.0509"),
             });
 
             // Hide the payment status dialog immediately
@@ -487,8 +487,8 @@ const SenderNames = () => {
 
             // Show error notification
             toast({
-              title: "Payment Failed",
-              description: "Your payment was not completed. Please try again.",
+              title: t("pg.SenderNames.0510"),
+              description: t("pg.SenderNames.0511"),
               variant: "destructive"
             });
           }
@@ -503,8 +503,8 @@ const SenderNames = () => {
 
           // Show notification
           toast({
-            title: "Payment Processing",
-            description: "Your payment is being processed. Your request will be reviewed shortly.",
+            title: t("pg.SenderNames.0512"),
+            description: t("pg.SenderNames.0513"),
           });
         }
       }, 5000); // Poll every 5 seconds
@@ -668,13 +668,13 @@ const SenderNames = () => {
         setEditSampleContent("");
         setEditSelectedFiles([]);
         toast({
-          title: "Updated successfully",
-          description: "Sender name request has been updated",
+          title: t("pg.SenderNames.0514"),
+          description: t("pg.SenderNames.0515"),
         });
       } else {
         logger.warn('Failed to update sender name');
         toast({
-          title: "Update failed",
+          title: t("pg.Settings.0044"),
           description: result.error || "Failed to update sender name request",
           variant: "destructive"
         });
@@ -682,7 +682,7 @@ const SenderNames = () => {
     } catch (error) {
       logger.warn('Error updating sender name');
       toast({
-        title: "Error",
+        title: t("pg.Settings.0001"),
         description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive"
       });
@@ -700,8 +700,8 @@ const SenderNames = () => {
 
       if (invalidFiles.length > 0) {
         toast({
-          title: "Invalid file type",
-          description: "Please upload only PDF files",
+          title: t("pg.SenderNames.0516"),
+          description: t("pg.SenderNames.0517"),
           variant: "destructive"
         });
         return;
@@ -713,8 +713,8 @@ const SenderNames = () => {
 
       if (oversizedFiles.length > 0) {
         toast({
-          title: "File too large",
-          description: "Please upload files smaller than 8MB each",
+          title: t("pg.SenderNames.0518"),
+          description: t("pg.SenderNames.0519"),
           variant: "destructive"
         });
         return;
@@ -722,8 +722,8 @@ const SenderNames = () => {
 
       setKycDocuments(files);
       toast({
-        title: "Files selected",
-        description: `${files.length} file(s) selected for upload`,
+        title: t("pg.SenderNames.0520"),
+        description: t("pg.SenderNames.0521", { length: files.length }),
       });
     }
   };
@@ -742,8 +742,8 @@ const SenderNames = () => {
   const handleRequestSenderName = async () => {
     if (!requestedSenderId.trim()) {
       toast({
-        title: "Sender ID required",
-        description: "Please enter a sender ID",
+        title: t("pg.SenderNames.0522"),
+        description: t("pg.SenderNames.0523"),
         variant: "destructive"
       });
       return;
@@ -751,8 +751,8 @@ const SenderNames = () => {
 
     if (!phoneNumber.trim()) {
       toast({
-        title: "Phone number required",
-        description: "Please enter your phone number",
+        title: t("pg.Settings.0061"),
+        description: t("pg.SenderNames.0524"),
         variant: "destructive"
       });
       return;
@@ -762,8 +762,8 @@ const SenderNames = () => {
     const phoneRegex = /^\+?[0-9]{10,15}$/;
     if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
       toast({
-        title: "Invalid phone number",
-        description: "Please enter a valid phone number (10-15 digits)",
+        title: t("pg.Contacts.0265"),
+        description: t("pg.SenderNames.0525"),
         variant: "destructive"
       });
       return;
@@ -771,8 +771,8 @@ const SenderNames = () => {
 
     if (!sampleContent.trim() && !existingAwaitingPayment) {
       toast({
-        title: "Sample content required",
-        description: "Please provide an example SMS message",
+        title: t("pg.SenderNames.0526"),
+        description: t("pg.SenderNames.0527"),
         variant: "destructive"
       });
       return;
@@ -782,8 +782,8 @@ const SenderNames = () => {
 
     if (senderNamePurpose.trim() && senderNamePurpose.length < 10) {
       toast({
-        title: "Purpose too short",
-        description: "Please provide at least 10 characters describing the purpose",
+        title: t("pg.SenderNames.0528"),
+        description: t("pg.SenderNames.0529"),
         variant: "destructive"
       });
       return;
@@ -817,7 +817,7 @@ const SenderNames = () => {
 
       if (!createResponse.success || !createResponse.data) {
         toast({
-          title: "Failed to create request",
+          title: t("pg.SenderNames.0530"),
           description: createResponse.error || "Failed to create sender name request",
           variant: "destructive"
         });
@@ -830,8 +830,8 @@ const SenderNames = () => {
 
       if (!senderRequestId) {
         toast({
-          title: "Cannot extract request ID",
-          description: "Server response missing required ID field. Check console for details.",
+          title: t("pg.SenderNames.0531"),
+          description: t("pg.SenderNames.0532"),
           variant: "destructive"
         });
         setPaymentProcessing(false);
@@ -850,7 +850,7 @@ const SenderNames = () => {
 
         if (!uploadResponse.success) {
           toast({
-            title: "Document upload failed",
+            title: t("pg.SenderNames.0533"),
             description: uploadResponse.error || "Failed to upload KYC documents",
             variant: "destructive"
           });
@@ -882,7 +882,7 @@ const SenderNames = () => {
           if (paymentResponseData.payment?.payment_url) {
             // Redirect to payment page
             toast({
-              title: "Redirecting to payment",
+              title: t("pg.SenderNames.0534"),
               description: "You will be redirected to complete the payment of TSH " + amount,
             });
 
@@ -903,7 +903,7 @@ const SenderNames = () => {
         }
       } else {
         toast({
-          title: "Payment initiation failed",
+          title: t("pg.SenderNames.0535"),
           description: paymentResponse.error || "Failed to initiate payment",
           variant: "destructive"
         });
@@ -913,7 +913,7 @@ const SenderNames = () => {
       if (isMountedRef.current) {
         setPaymentProcessing(false);
         toast({
-          title: "Error",
+          title: t("pg.Settings.0001"),
           description: error instanceof Error ? error.message : "An error occurred",
           variant: "destructive"
         });
@@ -925,8 +925,8 @@ const SenderNames = () => {
   const handleRepay = async () => {
     if (!repayRequestId || !repayPhoneNumber.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please provide a phone number",
+        title: t("pg.SenderNames.0536"),
+        description: t("pg.SenderNames.0537"),
         variant: "destructive"
       });
       return;
@@ -957,7 +957,7 @@ const SenderNames = () => {
           if (repayResponseData.payment?.payment_url) {
             // Redirect to payment page
             toast({
-              title: "Redirecting to payment",
+              title: t("pg.SenderNames.0534"),
               description: "You will be redirected to complete the payment of TSH " + amount,
             });
 
@@ -978,7 +978,7 @@ const SenderNames = () => {
         }
       } else {
         toast({
-          title: "Repayment initiation failed",
+          title: t("pg.SenderNames.0538"),
           description: repayResponse.error || "Failed to initiate repayment",
           variant: "destructive"
         });
@@ -988,7 +988,7 @@ const SenderNames = () => {
       if (isMountedRef.current) {
         setRepayProcessing(false);
         toast({
-          title: "Error",
+          title: t("pg.Settings.0001"),
           description: error instanceof Error ? error.message : "An error occurred",
           variant: "destructive"
         });
@@ -1012,14 +1012,14 @@ const SenderNames = () => {
       if (isMountedRef.current) {
         if (result.success) {
           toast({
-            title: "Request deleted",
-            description: "Sender name request has been deleted",
+            title: t("pg.SenderNames.0539"),
+            description: t("pg.SenderNames.0540"),
           });
           // Refresh the page data to show updated list
           await refreshData();
         } else {
           toast({
-            title: "Delete failed",
+            title: t("pg.SenderNames.0541"),
             description: result.error || "Failed to delete sender name request",
             variant: "destructive"
           });
@@ -1028,8 +1028,8 @@ const SenderNames = () => {
     } catch (error) {
       if (isMountedRef.current) {
         toast({
-          title: "Delete failed",
-          description: "An unexpected error occurred",
+          title: t("pg.SenderNames.0541"),
+          description: t("pg.SenderNames.0542"),
           variant: "destructive"
         });
       }
@@ -1145,7 +1145,7 @@ const SenderNames = () => {
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
                     <Plus className="w-4 h-4 mr-2" />
-                    Request Sender Name
+                    {t("pg.SenderNames.0543")}
                   </Button>
                   <Button
                     onClick={async () => {
@@ -1156,7 +1156,7 @@ const SenderNames = () => {
                     disabled={loading || isLoadingDefault}
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
-                    Refresh
+                    {t("pg.Settings.0134")}
                   </Button>
                 </div>
               </div>
@@ -1215,7 +1215,7 @@ const SenderNames = () => {
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button onClick={() => setShowRequestDialog(true)} className="w-full sm:w-auto">
                     <Plus className="w-4 h-4 mr-2" />
-                    Request Sender Name
+                    {t("pg.SenderNames.0543")}
                   </Button>
                   <Button
                     onClick={async () => {
@@ -1226,7 +1226,7 @@ const SenderNames = () => {
                     disabled={loading || isLoadingDefault}
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} />
-                    Refresh
+                    {t("pg.Settings.0134")}
                   </Button>
                 </div>
               </div>
@@ -1239,7 +1239,7 @@ const SenderNames = () => {
                       <Hash className="w-3 h-3 sm:w-5 sm:h-5 text-primary" />
                     </div>
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-text-subtle">Total</p>
+                      <p className="text-xs text-text-subtle">{t("pg.SenderNames.0544")}</p>
                       <p className="text-sm sm:text-xl font-bold text-foreground">
                         {loading ? (
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -1259,7 +1259,7 @@ const SenderNames = () => {
                       <Clock className="w-3 h-3 sm:w-5 sm:h-5 text-warning" />
                     </div>
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-text-subtle">Pending</p>
+                      <p className="text-xs text-text-subtle">{t("pg.SenderNames.0545")}</p>
                       <p className="text-sm sm:text-xl font-bold text-foreground">
                         {loading ? (
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-warning border-t-transparent rounded-full animate-spin" />
@@ -1279,7 +1279,7 @@ const SenderNames = () => {
                       <Check className="w-3 h-3 sm:w-5 sm:h-5 text-success" />
                     </div>
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-text-subtle">Approved</p>
+                      <p className="text-xs text-text-subtle">{t("pg.SenderNames.0546")}</p>
                       <p className="text-sm sm:text-xl font-bold text-foreground">
                         {loading ? (
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-success border-t-transparent rounded-full animate-spin" />
@@ -1299,7 +1299,7 @@ const SenderNames = () => {
                       <X className="w-3 h-3 sm:w-5 sm:h-5 text-destructive" />
                     </div>
                     <div className="text-center sm:text-left">
-                      <p className="text-xs text-text-subtle">Rejected</p>
+                      <p className="text-xs text-text-subtle">{t("pg.SenderNames.0547")}</p>
                       <p className="text-sm sm:text-xl font-bold text-foreground">
                         {loading ? (
                           <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
@@ -1323,16 +1323,16 @@ const SenderNames = () => {
                      <p className="text-sm text-text-subtle mb-4">{error}</p>
                      {error?.includes('permission') && (
                        <p className="text-xs text-text-subtle mb-4">
-                         This feature may require specific user roles or account permissions.
+                         {t("pg.SenderNames.0548")}
                        </p>
                      )}
                      <div className="flex gap-2">
                        <Button onClick={() => window.location.reload()} variant="outline">
-                         Try Again
+                         {t("pg.Contacts.0317")}
                        </Button>
                        {error?.includes('permission') && (
                          <Button onClick={() => window.location.href = '/settings'} variant="outline">
-                           Check Settings
+                           {t("pg.SenderNames.0549")}
                          </Button>
                        )}
                      </div>
@@ -1391,7 +1391,7 @@ const SenderNames = () => {
                 type="button"
                 onClick={async () => { await Promise.all([refreshData(), refreshDefaultSender()]); }}
                 disabled={loading || isLoadingDefault}
-                aria-label="Refresh"
+                aria-label={t("pg.Settings.0134")}
                 className="flex-shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-full text-foreground/65 active:bg-foreground/[0.06] disabled:opacity-50 transition-colors mr-11 md:mr-0"
               >
                 <RefreshCw className={`w-[18px] h-[18px] ${(loading || isLoadingDefault) ? 'animate-spin' : ''}`} strokeWidth={2.2} />
@@ -1404,34 +1404,34 @@ const SenderNames = () => {
               className="w-full h-11 rounded-2xl text-[14px] font-semibold shadow-md"
             >
               <Plus className="w-4 h-4 mr-2" strokeWidth={2.4} />
-              Request new sender ID
+              {t("pg.SenderNames.0550")}
             </Button>
 
             {/* Stats — 2x2 mini grid with brand colors */}
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               <StatCard
-                label="Total"
+                label={t("pg.SenderNames.0544")}
                 value={statsTotal}
                 icon={Hash}
                 tone="primary"
                 loading={loading}
               />
               <StatCard
-                label="Pending"
+                label={t("pg.SenderNames.0545")}
                 value={statsPending}
                 icon={Clock}
                 tone="amber"
                 loading={loading}
               />
               <StatCard
-                label="Approved"
+                label={t("pg.SenderNames.0546")}
                 value={statsApproved}
                 icon={Check}
                 tone="emerald"
                 loading={loading}
               />
               <StatCard
-                label="Rejected"
+                label={t("pg.SenderNames.0547")}
                 value={statsRejected}
                 icon={X}
                 tone="destructive"
@@ -1466,26 +1466,26 @@ const SenderNames = () => {
                         "text-[10.5px] font-bold tracking-wider uppercase leading-none",
                         canRequestDefaultSender?.() ? "text-primary" : "text-emerald-600 dark:text-emerald-400",
                       ].join(" ")}>
-                        Default Sender ID
+                        {t("pg.SenderNames.0551")}
                       </p>
                       <h3 className="text-[15px] font-bold text-foreground leading-tight mt-1.5 truncate">
-                        {getDefaultSenderName?.() || 'Taarifa-SMS'}
+                        {getDefaultSenderName?.() || t("pg.SenderNames.0552")}
                       </h3>
                       <p className="text-[12px] text-foreground/60 leading-snug mt-1">
-                        Use this for instant SMS sending without waiting for approval.
+                        {t("pg.SenderNames.0553")}
                       </p>
 
                       {/* Credits + purchase hint */}
                       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
                         <div className="inline-flex items-center gap-1.5 text-foreground/65">
                           <CreditCard className="w-3.5 h-3.5" strokeWidth={2.2} />
-                          <span>Credits:</span>
+                          <span>{t("pg.SenderNames.0554")}</span>
                           <span className="font-semibold text-foreground">{getCurrentCredits?.() || 0}</span>
                         </div>
                         {needsPurchaseCredits?.() && (
                           <div className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
                             <ShoppingCart className="w-3.5 h-3.5" strokeWidth={2.2} />
-                            Top up to send SMS
+                            {t("pg.SenderNames.0555")}
                           </div>
                         )}
                       </div>
@@ -1503,12 +1503,12 @@ const SenderNames = () => {
                         {isRequesting ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Requesting…
+                            {t("pg.SenderNames.0556")}
                           </>
                         ) : (
                           <>
                             <Zap className="w-4 h-4 mr-2" strokeWidth={2.4} />
-                            Request default sender
+                            {t("pg.SenderNames.0557")}
                           </>
                         )}
                       </Button>
@@ -1517,7 +1517,7 @@ const SenderNames = () => {
                         <div className="min-w-0">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
                             <Check className="w-3 h-3" strokeWidth={3} />
-                            {overview.active_request?.status || 'Available'}
+                            {overview.active_request?.status || t("pg.SenderNames.0558")}
                           </span>
                           {getCannotRequestReason?.() && (
                             <p className="text-[11px] text-foreground/55 mt-1.5 leading-snug">
@@ -1533,7 +1533,7 @@ const SenderNames = () => {
                             disabled={isRequesting}
                             className="h-9 px-3 rounded-lg text-[12px] font-semibold flex-shrink-0"
                           >
-                            Cancel
+                            {t("pg.Settings.0120")}
                           </Button>
                         )}
                       </div>
@@ -1552,13 +1552,13 @@ const SenderNames = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[14px] font-bold text-foreground leading-tight">
-                      Sender Name Requirements
+                      {t("pg.SenderNames.0559")}
                     </h3>
                     <ul className="text-[12.5px] text-foreground/65 dark:text-foreground/60 mt-2 space-y-1 leading-relaxed">
-                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Maximum 11 characters (letters, numbers, spaces, _, -)</li>
-                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Must be relevant to your business or brand</li>
-                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Approval typically takes 1-3 business days</li>
-                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> Provide valid use case and sample messages</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> {t("pg.SenderNames.0560")}</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> {t("pg.SenderNames.0561")}</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> {t("pg.SenderNames.0562")}</li>
+                      <li className="flex gap-2"><span className="text-primary mt-0.5">•</span> {t("pg.SenderNames.0563")}</li>
                     </ul>
                   </div>
                 </div>
@@ -1570,11 +1570,11 @@ const SenderNames = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border-subtle">
-                    <TableHead className="min-w-[120px]">Sender Name</TableHead>
-                    <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[150px]">Tenant</TableHead>
-                    <TableHead className="min-w-[120px]">Created</TableHead>
-                    <TableHead className="text-right min-w-[80px]">Actions</TableHead>
+                    <TableHead className="min-w-[120px]">{t("pg.SenderNames.0564")}</TableHead>
+                    <TableHead className="min-w-[100px]">{t("pg.Contacts.0352")}</TableHead>
+                    <TableHead className="min-w-[150px]">{t("pg.SenderNames.0565")}</TableHead>
+                    <TableHead className="min-w-[120px]">{t("pg.Contacts.0353")}</TableHead>
+                    <TableHead className="text-right min-w-[80px]">{t("pg.SenderNames.0566")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1595,7 +1595,7 @@ const SenderNames = () => {
                             <span className="font-mono font-semibold text-sm">{isUnified ? unifiedSender.sender_id : sender.sender_name}</span>
                             {isUnified && unifiedSender.source === "SMSSenderID" && (
                               <Badge variant="outline" className="text-xs">
-                                Active ID
+                                {t("pg.SenderNames.0567")}
                               </Badge>
                             )}
                           </div>
@@ -1619,21 +1619,21 @@ const SenderNames = () => {
                             <DropdownMenuContent align="end" className="glass">
                               <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
                                 <Eye className="w-4 h-4 mr-2" />
-                                View Details
+                                {t("pg.SenderNames.0568")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleOpenRepayDialog(sender)}
                                 disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
                               >
                                 <CreditCard className="w-4 h-4 mr-2" />
-                                {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
+                                {sender.status === "awaiting_payment" ? t("pg.SenderNames.0569") : sender.status === "pending" ? t("pg.SenderNames.0570") : t("pg.SenderNames.0571")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleEditRequest(sender)}
                                 disabled={sender.status !== "pending" && sender.status !== "requires_changes"}
                               >
                                 <Edit className="w-4 h-4 mr-2" />
-                                {sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)"}
+                                {sender.status === "pending" || sender.status === "requires_changes" ? t("pg.Contacts.0367") : t("pg.SenderNames.0572")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -1645,8 +1645,8 @@ const SenderNames = () => {
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 {
                                   ["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status)
-                                    ? "Delete Request"
-                                    : "Delete (Not Available)"
+                                    ? t("pg.SenderNames.0573")
+                                    : t("pg.SenderNames.0574")
                                 }
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1664,10 +1664,10 @@ const SenderNames = () => {
                     <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                   </div>
                   <h3 className="font-heading text-base sm:text-lg font-semibold mb-2 animate-in fade-in-50 delay-200">
-                    No sender names yet
+                    {t("pg.SenderNames.0575")}
                   </h3>
                   <p className="text-sm sm:text-base text-text-subtle animate-in fade-in-50 delay-300">
-                    Request your first sender name to start sending SMS
+                    {t("pg.SenderNames.0576")}
                   </p>
                 </div>
               )}
@@ -1695,16 +1695,16 @@ const SenderNames = () => {
                     <Hash className="w-7 h-7 text-primary" strokeWidth={1.8} />
                   </div>
                   <h3 className="text-[15px] font-semibold text-foreground">
-                    No sender names yet
+                    {t("pg.SenderNames.0575")}
                   </h3>
                   <p className="text-[12.5px] text-foreground/60 leading-snug mt-1 max-w-xs mx-auto">
-                    Request your first sender ID to start sending branded SMS.
+                    {t("pg.SenderNames.0577")}
                   </p>
                 </div>
               ) : (
                 <>
                   <p className="px-2.5 mb-2 text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-                    Your sender IDs · {paginatedSenderNames.length}
+                    {t("pg.SenderNames.0578")} {paginatedSenderNames.length}
                   </p>
                   <div className="space-y-3">
                     {paginatedSenderNames.map((sender, index) => {
@@ -1745,11 +1745,11 @@ const SenderNames = () => {
                                   {isActive ? (
                                     <span className="inline-flex items-center gap-1 text-[9.5px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">
                                       <Check className="w-2.5 h-2.5" strokeWidth={3.2} />
-                                      ACTIVE
+                                      {t("pg.SenderNames.0579")}
                                     </span>
                                   ) : (
                                     <span className={`text-[10px] font-bold tracking-wider uppercase ${tone.eyebrow}`}>
-                                      Sender ID
+                                      {t("pg.SenderNames.0580")}
                                     </span>
                                   )}
                                 </div>
@@ -1771,14 +1771,14 @@ const SenderNames = () => {
                                 <DropdownMenuContent align="end" className="glass">
                                   <DropdownMenuItem onClick={() => handleViewDetails(sender)}>
                                     <Eye className="w-4 h-4 mr-2" />
-                                    View Details
+                                    {t("pg.SenderNames.0568")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleOpenRepayDialog(sender)}
                                     disabled={sender.status !== "pending" && sender.status !== "awaiting_payment"}
                                   >
                                     <CreditCard className="w-4 h-4 mr-2" />
-                                    {sender.status === "awaiting_payment" ? "Complete Payment" : sender.status === "pending" ? "Repay" : "Pay (Not Available)"}
+                                    {sender.status === "awaiting_payment" ? t("pg.SenderNames.0569") : sender.status === "pending" ? t("pg.SenderNames.0570") : t("pg.SenderNames.0571")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleEditRequest(sender)}
@@ -1786,8 +1786,8 @@ const SenderNames = () => {
                                   >
                                     <Edit className="w-4 h-4 mr-2" />
                                     {isUnified ?
-                                      (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? "Edit" : "Edit (Not Available)") :
-                                      (sender.status === "pending" || sender.status === "requires_changes" ? "Edit" : "Edit (Not Available)")
+                                      (unifiedSender.source === "SenderIDRequest" && (sender.status === "pending" || sender.status === "requires_changes") ? t("pg.Contacts.0367") : t("pg.SenderNames.0572")) :
+                                      (sender.status === "pending" || sender.status === "requires_changes" ? t("pg.Contacts.0367") : t("pg.SenderNames.0572"))
                                     }
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
@@ -1798,7 +1798,7 @@ const SenderNames = () => {
                                     }
                                   >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    {["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status) ? "Delete Request" : "Delete (Not Available)"}
+                                    {["pending", "requires_changes", "awaiting_payment", "cancelled"].includes(sender.status) ? t("pg.SenderNames.0573") : t("pg.SenderNames.0574")}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1806,10 +1806,10 @@ const SenderNames = () => {
 
                             {/* Detail rows inside a subtle inner card */}
                             <div className="mx-3 mb-3 rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/40 dark:border-border/25 divide-y divide-border/40 dark:divide-border/25">
-                              <DetailRow label={isUnified ? "Tenant" : "Use case"} value={tenantOrUseCase} />
-                              <DetailRow label="Created" value={safeFormatDate(sender.created_at)} />
+                              <DetailRow label={isUnified ? t("pg.SenderNames.0565") : t("pg.SenderNames.0581")} value={tenantOrUseCase} />
+                              <DetailRow label={t("pg.Contacts.0353")} value={safeFormatDate(sender.created_at)} />
                               {sampleContent && (
-                                <DetailRow label="Sample" value={sampleContent} clamp />
+                                <DetailRow label={t("pg.SenderNames.0582")} value={sampleContent} clamp />
                               )}
                             </div>
 
@@ -1824,7 +1824,7 @@ const SenderNames = () => {
                                 tone.cta,
                               ].join(" ")}
                             >
-                              View details
+                              {t("pg.SenderNames.0583")}
                               <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.6} />
                             </button>
                           </div>
@@ -1878,10 +1878,10 @@ const SenderNames = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <DialogTitle className="text-[14px] font-bold text-foreground leading-tight">
-                          Request a Sender ID
+                          {t("pg.SenderNames.0584")}
                         </DialogTitle>
                         <DialogDescription className="text-[11px] text-foreground/65 leading-snug mt-0.5">
-                          A branded sender ID lets you send SMS as your business name.
+                          {t("pg.SenderNames.0585")}
                         </DialogDescription>
                       </div>
                     </div>
@@ -1891,7 +1891,7 @@ const SenderNames = () => {
                       <CreditCard className="w-3 h-3 text-primary" strokeWidth={2.4} />
                       <span className="text-[10.5px] font-semibold text-primary">
                         {senderFeeLoading && senderFeeAmount == null
-                          ? "Loading fee…"
+                          ? t("pg.SenderNames.0586")
                           : `${formatSenderFee() ?? "Fee"} · includes 300 SMS credits`}
                       </span>
                     </div>
@@ -1904,23 +1904,23 @@ const SenderNames = () => {
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>
                       <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
-                        Sender ID
+                        {t("pg.SenderNames.0580")}
                       </Label>
                       <Input
-                        placeholder="e.g. YourBrand"
+                        placeholder={t("pg.SenderNames.0587")}
                         value={requestedSenderId}
                         onChange={(e) => setRequestedSenderId(e.target.value)}
                         maxLength={11}
                         className="mt-1 h-9 rounded-lg font-mono border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12.5px]"
                       />
                       <p className={`text-[10px] mt-0.5 leading-tight tabular-nums ${requestedSenderId.length >= 11 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-foreground/55"}`}>
-                        {requestedSenderId.length}/11 characters
+                        {requestedSenderId.length}{t("pg.SenderNames.0588")}
                       </p>
                     </div>
 
                     <div>
                       <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
-                        Phone Number
+                        {t("pg.Settings.0077")}
                       </Label>
                       <Input
                         placeholder="+255 762 781 427"
@@ -1931,7 +1931,7 @@ const SenderNames = () => {
                         className="mt-1 h-9 rounded-lg border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12.5px]"
                       />
                       <p className="text-[10px] mt-0.5 leading-tight text-foreground/55">
-                        Used for payment
+                        {t("pg.SenderNames.0589")}
                       </p>
                     </div>
                   </div>
@@ -1940,7 +1940,7 @@ const SenderNames = () => {
                     <div className="rounded-lg bg-primary/[0.06] dark:bg-primary/10 border border-primary/20 dark:border-primary/30 px-2.5 py-2 flex items-start gap-1.5">
                       <CreditCard className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" strokeWidth={2.2} />
                       <p className="text-[11px] text-foreground/80 leading-snug">
-                        You already have a request for <span className="font-semibold">{existingAwaitingPayment.sender_name}</span> awaiting payment — confirm your phone number and continue, no need to fill in the rest.
+                        {t("pg.SenderNames.0590")} <span className="font-semibold">{existingAwaitingPayment.sender_name}</span> {t("pg.SenderNames.0591")}
                       </p>
                     </div>
                   )}
@@ -1951,8 +1951,8 @@ const SenderNames = () => {
                       value={requestType}
                       onChange={(e) => setRequestType(e.target.value)}
                     >
-                      <option value="custom">Custom</option>
-                      <option value="default">Default</option>
+                      <option value="custom">{t("pg.SenderNames.0592")}</option>
+                      <option value="default">{t("pg.SenderNames.0593")}</option>
                     </select>
                   </div>
 
@@ -1960,14 +1960,14 @@ const SenderNames = () => {
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
-                        Sample Message
+                        {t("pg.SenderNames.0594")}
                       </Label>
                       <span className={`text-[10px] tabular-nums leading-tight ${sampleContent.length >= 160 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-foreground/55"}`}>
                         {sampleContent.length}/160
                       </span>
                     </div>
                     <Textarea
-                      placeholder="e.g. Ndugu Florence, Hongera. Offer yako ipo tayari. Wasiliana 255808080808"
+                      placeholder={t("pg.SenderNames.0595")}
                       value={sampleContent}
                       onChange={(e) => setSampleContent(e.target.value)}
                       className="mt-1 min-h-[64px] rounded-lg border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 text-[12px] leading-relaxed"
@@ -1975,7 +1975,7 @@ const SenderNames = () => {
                       maxLength={160}
                     />
                     <p className="text-[10px] mt-0.5 leading-tight text-foreground/55">
-                      An example of the SMS you'll send with this sender ID.
+                      {t("pg.SenderNames.0596")}
                     </p>
                   </div>
 
@@ -1990,19 +1990,19 @@ const SenderNames = () => {
                   {/* KYC Documents */}
                   <div>
                     <Label className="text-[10px] font-bold tracking-wider uppercase text-foreground/55 dark:text-foreground/50">
-                      KYC Documents <span className="text-foreground/40 font-medium normal-case ml-1">(Optional)</span>
+                      {t("pg.SenderNames.0597")} <span className="text-foreground/40 font-medium normal-case ml-1">{t("pg.SenderNames.0598")}</span>
                     </Label>
 
                     {/* Required docs hint */}
                     <div className="mt-1 rounded-lg bg-primary/[0.04] dark:bg-primary/10 border border-primary/15 dark:border-primary/25 px-2.5 py-1.5">
                       <p className="text-[9.5px] font-bold tracking-wider uppercase text-primary mb-0.5">
-                        Accepted documents
+                        {t("pg.SenderNames.0599")}
                       </p>
                       <ul className="text-[10.5px] text-foreground/70 dark:text-foreground/65 leading-snug space-y-0">
-                        <li className="flex gap-1"><span className="text-primary">•</span> Business License or BRELA Registration</li>
-                        <li className="flex gap-1"><span className="text-primary">•</span> TIN Certificate or Company Registration</li>
+                        <li className="flex gap-1"><span className="text-primary">•</span> {t("pg.SenderNames.0600")}</li>
+                        <li className="flex gap-1"><span className="text-primary">•</span> {t("pg.SenderNames.0601")}</li>
                       </ul>
-                      <p className="text-[9.5px] text-foreground/50 mt-1">PDF · Max 8MB per file</p>
+                      <p className="text-[9.5px] text-foreground/50 mt-1">{t("pg.SenderNames.0602")}</p>
                     </div>
 
                     {/* Upload zone */}
@@ -2015,7 +2015,7 @@ const SenderNames = () => {
                                 <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
                               </div>
                               <p className="text-[11.5px] font-semibold text-foreground">
-                                {kycDocuments.length} file{kycDocuments.length === 1 ? "" : "s"} attached
+                                {kycDocuments.length} {t("pg.SenderNames.0603")}{kycDocuments.length === 1 ? "" : t("pg.common.plural_s")} {t("pg.SenderNames.0604")}
                               </p>
                             </div>
                             <button
@@ -2023,7 +2023,7 @@ const SenderNames = () => {
                               onClick={handleRemoveAllFiles}
                               className="text-[10.5px] font-semibold text-destructive active:opacity-60 transition-opacity"
                             >
-                              Clear all
+                              {t("pg.SenderNames.0605")}
                             </button>
                           </div>
                           <div className="space-y-0.5 max-h-20 overflow-y-auto">
@@ -2036,7 +2036,7 @@ const SenderNames = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveFile(fIdx)}
-                                  aria-label={`Remove ${file.name}`}
+                                  aria-label={t("pg.SenderNames.0606", { name: file.name })}
                                   className="w-5 h-5 inline-flex items-center justify-center rounded-full text-foreground/50 active:bg-destructive/15 active:text-destructive transition-colors flex-shrink-0"
                                 >
                                   <X className="w-2.5 h-2.5" strokeWidth={2.5} />
@@ -2051,7 +2051,7 @@ const SenderNames = () => {
                             <Upload className="w-4 h-4 text-primary" strokeWidth={2.2} />
                           </div>
                           <p className="text-[11.5px] font-semibold text-foreground mb-1">
-                            Upload documents
+                            {t("pg.SenderNames.0607")}
                           </p>
                           <input
                             ref={fileInputRef}
@@ -2064,7 +2064,7 @@ const SenderNames = () => {
                           />
                           <label htmlFor="kyc-upload">
                             <Button variant="outline" size="sm" asChild className="h-7 px-3 text-[11px] font-semibold rounded-md">
-                              <span>Choose PDF files</span>
+                              <span>{t("pg.SenderNames.0608")}</span>
                             </Button>
                           </label>
                         </div>
@@ -2081,7 +2081,7 @@ const SenderNames = () => {
                     disabled={submitting}
                     className="flex-1 h-10 rounded-lg text-[12.5px] font-semibold"
                   >
-                    Cancel
+                    {t("pg.Settings.0120")}
                   </Button>
                   <Button
                     onClick={handleRequestSenderName}
@@ -2091,12 +2091,12 @@ const SenderNames = () => {
                     {submitting ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        Submitting…
+                        {t("pg.SenderNames.0609")}
                       </>
                     ) : (
                       <>
                         <CreditCard className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.4} />
-                        Pay & Submit
+                        {t("pg.SenderNames.0610")}
                       </>
                     )}
                   </Button>
@@ -2114,9 +2114,9 @@ const SenderNames = () => {
             }}>
               <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
                 <DialogHeader className="pb-2 sm:pb-2.5">
-                  <DialogTitle className="text-sm sm:text-base md:text-lg">Payment Required</DialogTitle>
+                  <DialogTitle className="text-sm sm:text-base md:text-lg">{t("pg.SenderNames.0611")}</DialogTitle>
                   <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    Complete the 3-step process to submit your sender ID request
+                    {t("pg.SenderNames.0612")}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -2124,27 +2124,27 @@ const SenderNames = () => {
                   {/* Payment Details Card */}
                   <Card className="p-3 sm:p-4 bg-primary/5 border-primary/20">
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm sm:text-base text-foreground">Request Summary</h4>
+                      <h4 className="font-semibold text-sm sm:text-base text-foreground">{t("pg.SenderNames.0613")}</h4>
                       <div className="space-y-1.5 text-xs sm:text-sm">
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Sender ID:</span>
+                          <span className="text-text-subtle">{t("pg.SenderNames.0614")}</span>
                           <span className="font-mono font-semibold">{paymentData?.requested_sender_id}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Phone Number:</span>
+                          <span className="text-text-subtle">{t("pg.SenderNames.0615")}</span>
                           <span className="font-mono">{paymentData?.phone_number}</span>
                         </div>
                         {paymentData?.kyc_documents && paymentData.kyc_documents.length > 0 && (
                           <div className="flex justify-between">
-                            <span className="text-text-subtle">KYC Documents:</span>
-                            <span className="font-semibold text-green-600">{paymentData.kyc_documents.length} file(s)</span>
+                            <span className="text-text-subtle">{t("pg.SenderNames.0616")}</span>
+                            <span className="font-semibold text-green-600">{paymentData.kyc_documents.length} {t("pg.SenderNames.0617")}</span>
                           </div>
                         )}
                         <div className="pt-2 border-t border-primary/10">
                           <div className="flex justify-between items-center">
-                            <span className="text-text-subtle font-medium">Total Amount:</span>
+                            <span className="text-text-subtle font-medium">{t("pg.SenderNames.0618")}</span>
                             <span className="text-lg sm:text-xl font-bold text-primary">
-                              {senderFeeLoading && senderFeeAmount == null ? "Loading..." : (formatSenderFee() ?? "—")}
+                              {senderFeeLoading && senderFeeAmount == null ? t("pg.Contacts.0340") : (formatSenderFee() ?? "—")}
                             </span>
                           </div>
                         </div>
@@ -2154,13 +2154,13 @@ const SenderNames = () => {
 
                   {/* Payment Methods */}
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Payment Methods</h4>
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">{t("pg.SenderNames.0619")}</h4>
                     <div className="bg-green-50 border border-green-200 rounded-md p-2 sm:p-3">
                       <p className="text-[10px] sm:text-xs text-green-700 font-medium">
-                        ✓ Mobile Money (M-Pesa, Tigo Pesa, Airtel Money)
+                        {t("pg.SenderNames.0620")}
                       </p>
                       <p className="text-[10px] sm:text-xs text-green-600 mt-1">
-                        You will be redirected to a secure payment gateway to complete the transaction.
+                        {t("pg.SenderNames.0621")}
                       </p>
                     </div>
                   </div>
@@ -2168,7 +2168,7 @@ const SenderNames = () => {
                   {/* Important Notice */}
                   <div className="bg-amber-50 border border-amber-200 rounded-md p-2 sm:p-3">
                     <p className="text-[10px] sm:text-xs text-amber-700">
-                      <span className="font-medium">Note:</span> After payment, your request will be reviewed by our admin team within 2-3 business days.
+                      <span className="font-medium">{t("pg.Settings.0198")}</span> {t("pg.SenderNames.0622")}
                     </p>
                   </div>
                 </div>
@@ -2180,7 +2180,7 @@ const SenderNames = () => {
                     disabled={paymentProcessing}
                     className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
                   >
-                    Cancel
+                    {t("pg.Settings.0120")}
                   </Button>
                   <Button
                     onClick={confirmSenderPayment}
@@ -2190,12 +2190,12 @@ const SenderNames = () => {
                     {paymentProcessing ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Processing Steps...
+                        {t("pg.SenderNames.0623")}
                       </>
                     ) : (
                       <>
                         <CreditCard className="w-3 h-3 mr-1" />
-                        Pay {formatSenderFee() ?? "Now"}
+                        {t("pg.SenderNames.0624")} {formatSenderFee() ?? t("pg.SenderNames.0625")}
                       </>
                     )}
                   </Button>
@@ -2215,9 +2215,9 @@ const SenderNames = () => {
               <DialogContent className="glass max-w-md max-h-[95vh] overflow-y-auto p-4 sm:p-6 rounded-lg">
                 <DialogHeader className="pb-4">
                   <DialogTitle className="text-lg sm:text-xl">
-                    {paymentStatus === 'checking' && 'Processing Payment'}
-                    {paymentStatus === 'success' && 'Payment Successful'}
-                    {paymentStatus === 'failed' && 'Payment Failed'}
+                    {paymentStatus === 'checking' && t("pg.SenderNames.0626")}
+                    {paymentStatus === 'success' && t("pg.SenderNames.0508")}
+                    {paymentStatus === 'failed' && t("pg.SenderNames.0510")}
                   </DialogTitle>
                 </DialogHeader>
 
@@ -2227,7 +2227,7 @@ const SenderNames = () => {
                     {paymentStatus === 'checking' && (
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-sm text-text-subtle">Please wait...</p>
+                        <p className="text-sm text-text-subtle">{t("pg.SenderNames.0627")}</p>
                       </div>
                     )}
                     {paymentStatus === 'success' && (
@@ -2265,7 +2265,7 @@ const SenderNames = () => {
                   {paymentStatus === 'checking' && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs text-text-subtle">
-                        <span>Checking payment...</span>
+                        <span>{t("pg.SenderNames.0628")}</span>
                         <span>{pollAttempts}/{maxPollAttempts}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-1">
@@ -2281,7 +2281,7 @@ const SenderNames = () => {
                   {paymentStatus === 'success' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                       <p className="text-xs sm:text-sm text-blue-700">
-                        <span className="font-medium">Next Steps:</span> Your request is now pending admin review. You'll receive a notification when it's approved or if we need more information.
+                        <span className="font-medium">{t("pg.SenderNames.0629")}</span> {t("pg.SenderNames.0630")}
                       </p>
                     </div>
                   )}
@@ -2289,7 +2289,7 @@ const SenderNames = () => {
                   {paymentStatus === 'failed' && (
                     <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
                       <p className="text-xs sm:text-sm text-amber-700">
-                        Your payment was not completed. You can submit the request again.
+                        {t("pg.SenderNames.0631")}
                       </p>
                     </div>
                   )}
@@ -2306,7 +2306,7 @@ const SenderNames = () => {
                       }}
                       className="w-full"
                     >
-                      {paymentStatus === 'success' ? 'Close' : 'Try Again'}
+                      {paymentStatus === 'success' ? t("pg.Contacts.0397") : t("pg.Contacts.0317")}
                     </Button>
                   </DialogFooter>
                 )}
@@ -2382,8 +2382,8 @@ const SenderNames = () => {
                       onClick={() => {
                         // Show success message
                         toast({
-                          title: "We are confirming your payment.",
-                          description: "If the transaction was successful, your request will be updated automatically.",
+                          title: t("pg.SenderNames.0632"),
+                          description: t("pg.SenderNames.0633"),
                         });
 
                         // Hard refresh the entire system after a brief delay
@@ -2406,17 +2406,17 @@ const SenderNames = () => {
                 <DialogHeader className="pb-3 sm:pb-4 space-y-1">
                   <DialogTitle className="text-base sm:text-lg flex items-center gap-2">
                     <RefreshCw className="w-5 h-5 text-primary" />
-                    Retry Payment
+                    {t("pg.SenderNames.0634")}
                   </DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm">
-                    Complete the payment for your sender request
+                    {t("pg.SenderNames.0635")}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-3 sm:space-y-4">
                   {/* Phone Number Input */}
                   <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm">Phone Number</Label>
+                    <Label className="text-xs sm:text-sm">{t("pg.Settings.0077")}</Label>
                     <Input
                       type="tel"
                       placeholder="+255 712 345 678"
@@ -2426,18 +2426,18 @@ const SenderNames = () => {
                       className="glass-subtle border-0 text-xs sm:text-sm h-9"
                     />
                     <p className="text-xs text-text-subtle">
-                      The phone number associated with your account
+                      {t("pg.SenderNames.0636")}
                     </p>
                   </div>
 
                   {/* Info Card */}
                   <Card className="p-3 sm:p-4 bg-blue-50 border-blue-200">
                     <div className="space-y-2 text-xs sm:text-sm text-blue-900">
-                      <p className="font-semibold">⚠️ Important:</p>
+                      <p className="font-semibold">{t("pg.SenderNames.0637")}</p>
                       <ul className="space-y-1 ml-2 list-disc">
-                        <li>Complete the payment to activate your sender request</li>
-                        <li>You'll receive payment confirmation via SMS</li>
-                        <li>Payment status updates automatically</li>
+                        <li>{t("pg.SenderNames.0638")}</li>
+                        <li>{t("pg.SenderNames.0639")}</li>
+                        <li>{t("pg.SenderNames.0640")}</li>
                       </ul>
                     </div>
                   </Card>
@@ -2450,7 +2450,7 @@ const SenderNames = () => {
                     disabled={repayProcessing}
                     className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
                   >
-                    Cancel
+                    {t("pg.Settings.0120")}
                   </Button>
                   <Button
                     onClick={handleRepay}
@@ -2460,12 +2460,12 @@ const SenderNames = () => {
                     {repayProcessing ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Processing Payment...
+                        {t("pg.SenderNames.0641")}
                       </>
                     ) : (
                       <>
                         <CreditCard className="w-3 h-3 mr-1" />
-                        Proceed to Payment
+                        {t("pg.SenderNames.0642")}
                       </>
                     )}
                   </Button>
@@ -2490,31 +2490,31 @@ const SenderNames = () => {
             >
               <DialogContent className="glass max-w-[90vw] md:max-w-md lg:max-w-lg max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-5 rounded-lg">
                 <DialogHeader className="pb-2 sm:pb-2.5">
-                  <DialogTitle className="text-sm sm:text-base md:text-lg">Edit Sender Name Request</DialogTitle>
+                  <DialogTitle className="text-sm sm:text-base md:text-lg">{t("pg.SenderNames.0643")}</DialogTitle>
                   <DialogDescription className="text-xs sm:text-xs md:text-sm">
-                    Update your sender name request details
+                    {t("pg.SenderNames.0644")}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-2 sm:space-y-2.5">
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm font-medium">Sender Name *</Label>
+                    <Label className="text-xs sm:text-sm font-medium">{t("pg.SenderNames.0645")}</Label>
                     <Input
-                      placeholder="e.g., YourBrand"
+                      placeholder={t("pg.SenderNames.0646")}
                       value={editSenderName}
                       onChange={(e) => setEditSenderName(e.target.value)}
                       maxLength={11}
                       className="glass-subtle border-0 font-mono text-xs sm:text-sm h-9 sm:h-8"
                     />
                     <p className="text-xs text-text-subtle">
-                      {editSenderName.length}/11 characters
+                      {editSenderName.length}{t("pg.SenderNames.0588")}
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs sm:text-sm font-medium">Sample Content *</Label>
+                    <Label className="text-xs sm:text-sm font-medium">{t("pg.SenderNames.0647")}</Label>
                     <Textarea
-                      placeholder="e.g., Ndugu Florence,Hongera. Offer yako ya huduma zetu kwasasa ipo tayari.Tafadhari tembelea ofisi zetu uweze au wasiliana na mtoa huduma namba 255808080808"
+                      placeholder={t("pg.SenderNames.0648")}
                       value={editSampleContent}
                       onChange={(e) => setEditSampleContent(e.target.value)}
                       className="glass-subtle border-0 text-[10px] min-h-20 sm:min-h-16"
@@ -2522,26 +2522,26 @@ const SenderNames = () => {
                       maxLength={160}
                     />
                     <p className="text-[10px] text-text-subtle">
-                      {editSampleContent.length}/160 characters
+                      {editSampleContent.length}{t("pg.SenderNames.0649")}
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">KYC Documents (Optional)</Label>
+                    <Label className="text-xs font-medium">{t("pg.SenderNames.0650")}</Label>
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-1.5 sm:p-2 mb-2">
-                      <p className="text-[10px] text-blue-700 font-medium mb-0.5">Required:</p>
+                      <p className="text-[10px] text-blue-700 font-medium mb-0.5">{t("pg.SenderNames.0651")}</p>
                       <ul className="text-[10px] text-blue-600 space-y-0 ml-3">
-                        <li>• Business License • BRELA Registration</li>
-                        <li>• TIN Certificate • Company Registration</li>
+                        <li>{t("pg.SenderNames.0652")}</li>
+                        <li>{t("pg.SenderNames.0653")}</li>
                       </ul>
                     </div>
-                    <p className="text-[10px] text-text-subtle mb-2">PDF - Max 8MB</p>
+                    <p className="text-[10px] text-text-subtle mb-2">{t("pg.SenderNames.0654")}</p>
                     <div className="border border-dashed border-border rounded-lg p-2 sm:p-2 text-center">
                       {editSelectedFiles.length > 0 ? (
                         <div className="space-y-1.5">
                           <Check className="w-4 h-4 mx-auto text-green-500" />
                           <p className="text-[10px] font-medium text-green-600">
-                            {editSelectedFiles.length} file(s) uploaded
+                            {editSelectedFiles.length} {t("pg.SenderNames.0655")}
                           </p>
                           <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto text-left">
                             {editSelectedFiles.map((file, index) => (
@@ -2563,13 +2563,13 @@ const SenderNames = () => {
                             className="text-red-600 hover:text-red-700 text-[10px] w-full h-8 sm:h-7"
                           >
                             <X className="w-3 h-3 mr-1" />
-                            Clear Files
+                            {t("pg.SenderNames.0656")}
                           </Button>
                         </div>
                       ) : (
                         <div className="space-y-1 py-2 sm:py-1.5">
                           <Upload className="w-4 h-4 mx-auto text-text-subtle" />
-                          <p className="text-[10px] font-medium text-text-subtle">Upload KYC Documents</p>
+                          <p className="text-[10px] font-medium text-text-subtle">{t("pg.SenderNames.0657")}</p>
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -2584,7 +2584,7 @@ const SenderNames = () => {
                           />
                           <label htmlFor="edit-kyc-upload">
                             <Button variant="outline" size="sm" asChild className="text-[10px] h-8 sm:h-7">
-                              <span>Choose Files</span>
+                              <span>{t("pg.SenderNames.0658")}</span>
                             </Button>
                           </label>
                         </div>
@@ -2600,7 +2600,7 @@ const SenderNames = () => {
                     disabled={submitting}
                     className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm order-2 sm:order-1"
                   >
-                    Cancel
+                    {t("pg.Settings.0120")}
                   </Button>
                   <Button
                     onClick={handleEditSubmit}
@@ -2610,10 +2610,10 @@ const SenderNames = () => {
                     {submitting ? (
                       <>
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Updating...
+                        {t("pg.Contacts.0414")}
                       </>
                     ) : (
-                      "Update Request"
+                      t("pg.SenderNames.0659")
                     )}
                   </Button>
                 </DialogFooter>
@@ -2624,9 +2624,9 @@ const SenderNames = () => {
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
               <DialogContent className="glass max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader className="pb-2">
-                  <DialogTitle className="text-base sm:text-lg">Sender Name Request Details</DialogTitle>
+                  <DialogTitle className="text-base sm:text-lg">{t("pg.SenderNames.0660")}</DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm">
-                    View detailed information about this sender name request
+                    {t("pg.SenderNames.0661")}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -2655,16 +2655,16 @@ const SenderNames = () => {
                             <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-orange-900 text-sm sm:text-base mb-1">
-                                Payment Required
+                                {t("pg.SenderNames.0611")}
                               </h4>
                               <p className="text-xs sm:text-sm text-orange-800 leading-relaxed">
-                                This sender request is awaiting payment. Complete payment within <span className="font-bold">3 days</span> from creation date, otherwise it will be automatically cancelled.
+                                {t("pg.SenderNames.0662")} <span className="font-bold">{t("pg.SenderNames.0663")}</span> {t("pg.SenderNames.0664")}
                               </p>
                               <p className="text-xs sm:text-sm text-orange-700 mt-2">
-                                <span className="font-semibold">Created:</span> {safeFormatDate(selectedSender.created_at)}
+                                <span className="font-semibold">{t("pg.SenderNames.0665")}</span> {safeFormatDate(selectedSender.created_at)}
                               </p>
                               <p className="text-xs sm:text-sm text-orange-700">
-                                <span className="font-semibold">Auto-cancel after:</span> {safeFormatDate(new Date(new Date(selectedSender.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toString())}
+                                <span className="font-semibold">{t("pg.SenderNames.0666")}</span> {safeFormatDate(new Date(new Date(selectedSender.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toString())}
                               </p>
                             </div>
                           </div>
@@ -2676,7 +2676,7 @@ const SenderNames = () => {
                             className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-orange-600 hover:bg-orange-700 text-white"
                           >
                             <CreditCard className="w-3 h-3 mr-2" />
-                            Complete Payment Now
+                            {t("pg.SenderNames.0667")}
                           </Button>
                         </div>
                       </Card>
@@ -2690,18 +2690,18 @@ const SenderNames = () => {
                             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-amber-900 text-sm sm:text-base mb-2">
-                                Changes Required
+                                {t("pg.SenderNames.0668")}
                               </h4>
                               <div className="space-y-2">
                                 <div>
-                                  <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1">Reason for Changes:</p>
+                                  <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1">{t("pg.SenderNames.0669")}</p>
                                   <p className="text-xs sm:text-sm text-amber-700 leading-relaxed">
-                                    {selectedSender.change_details.reason || selectedSender.rejection_reason || "Your request needs improvements"}
+                                    {selectedSender.change_details.reason || selectedSender.rejection_reason || t("pg.SenderNames.0670")}
                                   </p>
                                 </div>
                                 {selectedSender.change_details.fields_to_update && selectedSender.change_details.fields_to_update.length > 0 && (
                                   <div>
-                                    <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1.5">Fields to Update:</p>
+                                    <p className="text-xs sm:text-sm font-medium text-amber-800 mb-1.5">{t("pg.SenderNames.0671")}</p>
                                     <div className="flex flex-wrap gap-1.5">
                                       {selectedSender.change_details.fields_to_update.map((field) => (
                                         <Badge key={field} variant="outline" className="bg-amber-100 border-amber-300 text-amber-800 text-xs font-medium">
@@ -2728,7 +2728,7 @@ const SenderNames = () => {
                             className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-amber-600 hover:bg-amber-700 text-white"
                           >
                             <Edit className="w-3 h-3 mr-2" />
-                            Update Request
+                            {t("pg.SenderNames.0659")}
                           </Button>
                         </div>
                       </Card>
@@ -2736,22 +2736,22 @@ const SenderNames = () => {
 
                     {/* Basic Information */}
                     <div className="space-y-3 sm:space-y-4">
-                      <h4 className="font-medium text-sm sm:text-base text-foreground">Basic Information</h4>
+                      <h4 className="font-medium text-sm sm:text-base text-foreground">{t("pg.SenderNames.0672")}</h4>
                       {loadingSenderIdDetails ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                          <p className="text-xs sm:text-sm text-muted-foreground ml-2">Loading details...</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground ml-2">{t("pg.SenderNames.0673")}</p>
                         </div>
                       ) : senderIdDetails ? (
                         <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sender ID</Label>
+                          <Label className="text-xs sm:text-sm font-medium text-text-subtle">{t("pg.SenderNames.0580")}</Label>
                           <div className="p-2 sm:p-3 bg-muted/30 rounded-lg font-mono text-xs sm:text-sm break-all">
                             {senderIdDetails.sender_id}
                           </div>
                         </div>
                       ) : (
                         <div className="p-3 sm:p-4 bg-muted/20 rounded-lg text-xs sm:text-sm text-muted-foreground">
-                          Unable to load sender ID details
+                          {t("pg.SenderNames.0674")}
                         </div>
                       )}
                     </div>
@@ -2759,7 +2759,7 @@ const SenderNames = () => {
                     {/* Sample Content */}
                     {senderIdDetails?.sample_content && (
                       <div className="space-y-1">
-                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">Sample Content</Label>
+                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">{t("pg.SenderNames.0675")}</Label>
                         <div className="p-2 sm:p-3 bg-muted/30 rounded-lg text-xs sm:text-sm whitespace-pre-wrap break-words">
                           {senderIdDetails.sample_content}
                         </div>
@@ -2769,11 +2769,11 @@ const SenderNames = () => {
                     {/* Supporting Documents */}
                     {selectedSender && 'supporting_documents_count' in selectedSender && selectedSender.supporting_documents_count > 0 && (
                       <div className="space-y-1">
-                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">Supporting Documents</Label>
+                        <Label className="text-xs sm:text-sm font-medium text-text-subtle">{t("pg.SenderNames.0676")}</Label>
                         <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
                           <div className="space-y-2">
                             <p className="text-xs sm:text-sm text-text-subtle">
-                              {selectedSender.supporting_documents_count} file(s) uploaded
+                              {selectedSender.supporting_documents_count} {t("pg.SenderNames.0655")}
                             </p>
                             <div className="space-y-1">
                               {selectedSender.supporting_documents && selectedSender.supporting_documents.map((doc, index) => (
@@ -2791,22 +2791,22 @@ const SenderNames = () => {
                     {/* Admin Information */}
                     {selectedSender && 'reviewed_by' in selectedSender && (selectedSender.reviewed_by || selectedSender.admin_notes) && (
                       <div className="space-y-3 p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/20">
-                        <h4 className="font-medium text-primary text-sm sm:text-base">Review Information</h4>
+                        <h4 className="font-medium text-primary text-sm sm:text-base">{t("pg.SenderNames.0677")}</h4>
                         {selectedSender.reviewed_by && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-1">
-                              <Label className="text-xs text-text-subtle">Reviewed By</Label>
+                              <Label className="text-xs text-text-subtle">{t("pg.SenderNames.0678")}</Label>
                               <p className="text-xs sm:text-sm">{selectedSender.reviewed_by_name}</p>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs text-text-subtle">Reviewed At</Label>
+                              <Label className="text-xs text-text-subtle">{t("pg.SenderNames.0679")}</Label>
                               <p className="text-xs sm:text-sm">{safeFormatDate(selectedSender.reviewed_at!)}</p>
                             </div>
                           </div>
                         )}
                         {selectedSender.admin_notes && (
                           <div className="space-y-1">
-                            <Label className="text-xs text-text-subtle">Admin Notes</Label>
+                            <Label className="text-xs text-text-subtle">{t("pg.SenderNames.0680")}</Label>
                             <p className="text-xs sm:text-sm">{selectedSender.admin_notes}</p>
                           </div>
                         )}
@@ -2815,14 +2815,14 @@ const SenderNames = () => {
 
                     {/* Timestamps */}
                     <div className="space-y-1">
-                      <h4 className="font-medium text-sm sm:text-base text-foreground">Timestamps</h4>
+                      <h4 className="font-medium text-sm sm:text-base text-foreground">{t("pg.SenderNames.0681")}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-text-subtle">
                       <div>
-                        <Label className="text-[9px]">Created</Label>
+                        <Label className="text-[9px]">{t("pg.Contacts.0353")}</Label>
                           <p className="text-[9px] sm:text-xs">{senderIdDetails ? safeFormatDate(senderIdDetails.created_at) : safeFormatDate(selectedSender?.created_at || '')}</p>
                       </div>
                       <div>
-                        <Label className="text-[9px]">Last Updated</Label>
+                        <Label className="text-[9px]">{t("pg.SenderNames.0682")}</Label>
                           <p className="text-[9px] sm:text-xs">{senderIdDetails ? safeFormatDate(senderIdDetails.updated_at) : safeFormatDate(selectedSender?.updated_at || '')}</p>
                         </div>
                       </div>
@@ -2836,7 +2836,7 @@ const SenderNames = () => {
                     onClick={() => setShowDetailsDialog(false)}
                     className="w-full sm:w-auto text-xs sm:text-sm"
                   >
-                    Close
+                    {t("pg.Contacts.0397")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
