@@ -203,8 +203,8 @@ const PurchaseHistory = () => {
     try {
       if (!purchase || !purchase.invoice_number) {
         toast({
-          title: 'Error',
-          description: 'Invoice number not found',
+          title: t("pg.Settings.0001"),
+          description: t("pg.PurchaseHistory.0812"),
           variant: 'destructive'
         });
         return;
@@ -343,14 +343,14 @@ const PurchaseHistory = () => {
       doc.save(fileName);
 
       toast({
-        title: 'Success',
-        description: 'Receipt downloaded successfully'
+        title: t("pg.PurchaseHistory.0813"),
+        description: t("pg.PurchaseHistory.0814")
       });
     } catch (error) {
       console.error('Download error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to download receipt',
+        title: t("pg.Settings.0001"),
+        description: t("pg.PurchaseHistory.0815"),
         variant: 'destructive'
       });
     }
@@ -379,58 +379,58 @@ const PurchaseHistory = () => {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2">
               <Card className="p-2 sm:p-2.5 lg:p-3 glass">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-xs text-text-subtle font-medium">Total Spent</p>
+                  <p className="text-xs text-text-subtle font-medium">{t("pg.PurchaseHistory.0816")}</p>
                   <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-primary flex-shrink-0" />
                 </div>
                 <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">TZS {formatAmount(Number(purchaseStats.total_spent))}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
-                  all purchases
+                  {t("pg.PurchaseHistory.0817")}
                 </p>
               </Card>
 
               <Card className="p-2 sm:p-2.5 lg:p-3 glass">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-xs text-text-subtle font-medium">Total Credits</p>
+                  <p className="text-xs text-text-subtle font-medium">{t("pg.PurchaseHistory.0818")}</p>
                   <Package className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
                 <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{Number(purchaseStats.total_credits).toLocaleString(appLocale())}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
-                  credits bought
+                  {t("pg.PurchaseHistory.0819")}
                 </p>
               </Card>
 
               <Card className="p-2 sm:p-2.5 lg:p-3 glass">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-xs text-text-subtle font-medium">Total Purchases</p>
+                  <p className="text-xs text-text-subtle font-medium">{t("pg.PurchaseHistory.0820")}</p>
                   <TrendingUp className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-warning flex-shrink-0" />
                 </div>
                 <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.total_purchases))}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
-                  purchases
+                  {t("pg.PurchaseHistory.0821")}
                 </p>
               </Card>
 
               <Card className="p-2 sm:p-2.5 lg:p-3 glass">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-xs text-text-subtle font-medium">Completed</p>
+                  <p className="text-xs text-text-subtle font-medium">{t("pg.Campaigns.0717")}</p>
                   <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-600 flex-shrink-0" />
                 </div>
                 <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">{formatCompactNumber(Number(purchaseStats.completed_purchases))}</p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
-                  completed
+                  {t("pg.PurchaseHistory.0822")}
                 </p>
               </Card>
 
               <Card className="p-2 sm:p-2.5 lg:p-3 glass hidden md:block">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-xs text-text-subtle font-medium">Success Rate</p>
+                  <p className="text-xs text-text-subtle font-medium">{t("pg.PurchaseHistory.0823")}</p>
                   <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-success flex-shrink-0" />
                 </div>
                 <p className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate">
                   {Number(purchaseStats.success_rate).toFixed(1)}%
                 </p>
                 <p className="text-xs text-text-subtle mt-0.5 line-clamp-1">
-                  success
+                  {t("pg.PurchaseHistory.0824")}
                 </p>
               </Card>
             </div>
@@ -439,11 +439,11 @@ const PurchaseHistory = () => {
             <Card className="p-2.5 sm:p-3 glass">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
                 <div className="space-y-2">
-                  <Label className="text-sm">Search</Label>
+                  <Label className="text-sm">{t("pg.PurchaseHistory.0825")}</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
                     <Input
-                      placeholder="Invoice or package..."
+                      placeholder={t("pg.PurchaseHistory.0826")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 glass-subtle border-0 text-sm"
@@ -452,17 +452,17 @@ const PurchaseHistory = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Status</Label>
+                  <Label className="text-sm">{t("pg.Contacts.0352")}</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="glass-subtle border-0 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="all">{t("pg.PurchaseHistory.0827")}</SelectItem>
+                      <SelectItem value="completed">{t("pg.Campaigns.0717")}</SelectItem>
+                      <SelectItem value="pending">{t("pg.SenderNames.0545")}</SelectItem>
+                      <SelectItem value="failed">{t("pg.Campaigns.0800")}</SelectItem>
+                      <SelectItem value="cancelled">{t("pg.Campaigns.0719")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -484,11 +484,11 @@ const PurchaseHistory = () => {
                     ) : (
                       <RefreshCw className="w-4 h-4 mr-1" />
                     )}
-                    <span className="hidden sm:inline">Refresh</span>
+                    <span className="hidden sm:inline">{t("pg.Settings.0134")}</span>
                   </Button>
                   <Button variant="outline" className="flex-1 text-sm" size="sm">
                     <Download className="w-4 h-4 mr-1" />
-                    <span className="hidden sm:inline">Export</span>
+                    <span className="hidden sm:inline">{t("pg.Contacts.0321")}</span>
                   </Button>
                 </div>
               </div>
@@ -501,13 +501,13 @@ const PurchaseHistory = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border-subtle bg-muted/50">
-                      <TableHead className="min-w-[140px] font-semibold">Invoice No.</TableHead>
-                      <TableHead className="min-w-[130px] font-semibold">Date</TableHead>
-                      <TableHead className="min-w-[160px] font-semibold">Payment Method</TableHead>
-                      <TableHead className="min-w-[100px] font-semibold">Credits</TableHead>
-                      <TableHead className="min-w-[120px] font-semibold">Amount</TableHead>
-                      <TableHead className="min-w-[100px] font-semibold">Status</TableHead>
-                      <TableHead className="text-right min-w-[80px] font-semibold">Actions</TableHead>
+                      <TableHead className="min-w-[140px] font-semibold">{t("pg.PurchaseHistory.0828")}</TableHead>
+                      <TableHead className="min-w-[130px] font-semibold">{t("pg.PurchaseHistory.0829")}</TableHead>
+                      <TableHead className="min-w-[160px] font-semibold">{t("pg.PurchaseHistory.0830")}</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold">{t("pg.Settings.0137")}</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold">{t("pg.PurchaseHistory.0831")}</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold">{t("pg.Contacts.0352")}</TableHead>
+                      <TableHead className="text-right min-w-[80px] font-semibold">{t("pg.SenderNames.0566")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -549,7 +549,7 @@ const PurchaseHistory = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                title="Download Receipt"
+                                title={t("pg.PurchaseHistory.0832")}
                                 className="h-8 w-8"
                                 onClick={() => downloadReceipt(purchase)}
                               >
@@ -569,12 +569,12 @@ const PurchaseHistory = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border-subtle bg-muted/50">
-                      <TableHead className="min-w-[120px] font-semibold text-xs">Invoice</TableHead>
-                      <TableHead className="min-w-[100px] font-semibold text-xs">Date</TableHead>
-                      <TableHead className="min-w-[110px] font-semibold text-xs">Payment</TableHead>
-                      <TableHead className="min-w-[80px] font-semibold text-xs">Amount</TableHead>
-                      <TableHead className="min-w-[80px] font-semibold text-xs">Status</TableHead>
-                      <TableHead className="text-right min-w-[70px] font-semibold text-xs">Action</TableHead>
+                      <TableHead className="min-w-[120px] font-semibold text-xs">{t("pg.PurchaseHistory.0833")}</TableHead>
+                      <TableHead className="min-w-[100px] font-semibold text-xs">{t("pg.PurchaseHistory.0829")}</TableHead>
+                      <TableHead className="min-w-[110px] font-semibold text-xs">{t("pg.PurchaseHistory.0834")}</TableHead>
+                      <TableHead className="min-w-[80px] font-semibold text-xs">{t("pg.PurchaseHistory.0831")}</TableHead>
+                      <TableHead className="min-w-[80px] font-semibold text-xs">{t("pg.Contacts.0352")}</TableHead>
+                      <TableHead className="text-right min-w-[70px] font-semibold text-xs">{t("pg.PurchaseHistory.0835")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -643,7 +643,7 @@ const PurchaseHistory = () => {
 
                       {/* Payment Method */}
                       <div className="space-y-1">
-                        <div className="text-xs text-text-subtle font-medium">Payment</div>
+                        <div className="text-xs text-text-subtle font-medium">{t("pg.PurchaseHistory.0834")}</div>
                         <div className="text-xs sm:text-sm text-foreground line-clamp-2">
                           {purchase.payment_method}
                         </div>
@@ -653,14 +653,14 @@ const PurchaseHistory = () => {
                       <div className="space-y-2 pt-2 border-t border-border-subtle">
                         {purchase.credits > 0 && (
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-text-subtle">Credits</span>
+                            <span className="text-xs text-text-subtle">{t("pg.Settings.0137")}</span>
                             <Badge variant="outline" className="text-xs whitespace-nowrap">
                               {Number(purchase.credits).toLocaleString(appLocale())} SMS
                             </Badge>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-text-subtle font-medium">Total</span>
+                          <span className="text-xs text-text-subtle font-medium">{t("pg.SenderNames.0544")}</span>
                           <div className="font-semibold text-sm sm:text-base text-right text-primary">
                             TZS {Number(purchase.amount).toLocaleString(appLocale())}
                           </div>
@@ -676,8 +676,8 @@ const PurchaseHistory = () => {
                           onClick={() => downloadReceipt(purchase)}
                         >
                           <Download className="w-3 h-3 mr-1" />
-                          <span className="hidden xs:inline">Download Receipt</span>
-                          <span className="inline xs:hidden">Receipt</span>
+                          <span className="hidden xs:inline">{t("pg.PurchaseHistory.0832")}</span>
+                          <span className="inline xs:hidden">{t("pg.PurchaseHistory.0836")}</span>
                         </Button>
                       )}
                     </div>
@@ -694,7 +694,7 @@ const PurchaseHistory = () => {
                     {t('no_transactions')}
                   </h3>
                   <p className="text-text-subtle text-sm">
-                    No purchases found. Start by purchasing SMS credits.
+                    {t("pg.PurchaseHistory.0837")}
                   </p>
                 </div>
               )}
@@ -702,7 +702,7 @@ const PurchaseHistory = () => {
               {isLoading && (
                 <div className="p-8 md:p-12 text-center">
                   <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
-                  <p className="text-text-subtle text-sm">Loading purchases...</p>
+                  <p className="text-text-subtle text-sm">{t("pg.PurchaseHistory.0838")}</p>
                 </div>
               )}
 
@@ -710,7 +710,7 @@ const PurchaseHistory = () => {
               {pagination && filteredPurchases.length > 0 && (
                 <div className="p-3 border-t border-border-subtle flex items-center justify-between flex-wrap gap-3">
                   <div className="text-xs sm:text-sm text-text-subtle">
-                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, pagination.total_count)} of {pagination.total_count} purchases
+                    {t("pg.Contacts.0354")} {((currentPage - 1) * pageSize) + 1} {t("pg.Contacts.0355")} {Math.min(currentPage * pageSize, pagination.total_count)} {t("pg.Contacts.0356")} {pagination.total_count} {t("pg.PurchaseHistory.0821")}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ const PurchaseHistory = () => {
                     </Button>
 
                     <div className="flex items-center gap-1">
-                      <span className="text-xs sm:text-sm text-text-subtle">Page</span>
+                      <span className="text-xs sm:text-sm text-text-subtle">{t("pg.Contacts.0359")}</span>
                       <Input
                         type="number"
                         value={currentPage}
@@ -742,7 +742,7 @@ const PurchaseHistory = () => {
                         min="1"
                         max={pagination.total_pages}
                       />
-                      <span className="text-xs sm:text-sm text-text-subtle">of {pagination.total_pages}</span>
+                      <span className="text-xs sm:text-sm text-text-subtle">{t("pg.Contacts.0356")} {pagination.total_pages}</span>
                     </div>
 
                     <Button
@@ -767,10 +767,10 @@ const PurchaseHistory = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="glass">
-                      <SelectItem value="10" className="text-xs">10/page</SelectItem>
-                      <SelectItem value="20" className="text-xs">20/page</SelectItem>
-                      <SelectItem value="50" className="text-xs">50/page</SelectItem>
-                      <SelectItem value="100" className="text-xs">100/page</SelectItem>
+                      <SelectItem value="10" className="text-xs">{t("pg.PurchaseHistory.0839")}</SelectItem>
+                      <SelectItem value="20" className="text-xs">{t("pg.PurchaseHistory.0840")}</SelectItem>
+                      <SelectItem value="50" className="text-xs">{t("pg.PurchaseHistory.0841")}</SelectItem>
+                      <SelectItem value="100" className="text-xs">{t("pg.PurchaseHistory.0842")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -781,9 +781,9 @@ const PurchaseHistory = () => {
             <Sheet open={showDetails} onOpenChange={setShowDetails}>
               <SheetContent className="glass w-full sm:max-w-lg">
                 <SheetHeader>
-                  <SheetTitle className="text-sm sm:text-base">Purchase Details</SheetTitle>
+                  <SheetTitle className="text-sm sm:text-base">{t("pg.PurchaseHistory.0843")}</SheetTitle>
                   <SheetDescription className="text-xs sm:text-sm">
-                    Complete purchase information
+                    {t("pg.PurchaseHistory.0844")}
                   </SheetDescription>
                 </SheetHeader>
 
@@ -791,27 +791,27 @@ const PurchaseHistory = () => {
                   <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
                     {/* Invoice Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base">Invoice Information</h3>
+                      <h3 className="font-semibold text-sm sm:text-base">{t("pg.PurchaseHistory.0845")}</h3>
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Invoice No.</span>
+                          <span className="text-text-subtle">{t("pg.PurchaseHistory.0828")}</span>
                           <span className="font-mono font-medium">{selectedTransaction.invoice_number}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Package</span>
+                          <span className="text-text-subtle">{t("pg.PurchaseHistory.0846")}</span>
                           <span className="font-medium">{selectedTransaction.package_name}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Date</span>
+                          <span className="text-text-subtle">{t("pg.PurchaseHistory.0829")}</span>
                           <span>{formatDate(selectedTransaction.created_at)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Status</span>
+                          <span className="text-text-subtle">{t("pg.Contacts.0352")}</span>
                           {getStatusBadge(selectedTransaction.status)}
                         </div>
                         {selectedTransaction.completed_at && (
                           <div className="flex justify-between">
-                            <span className="text-text-subtle">Completed</span>
+                            <span className="text-text-subtle">{t("pg.Campaigns.0717")}</span>
                             <span>{formatDate(selectedTransaction.completed_at)}</span>
                           </div>
                         )}
@@ -821,14 +821,14 @@ const PurchaseHistory = () => {
                     {/* Credits Info */}
                     {selectedTransaction.credits > 0 && (
                       <div className="space-y-3">
-                        <h3 className="font-semibold text-sm sm:text-base">Credits Information</h3>
+                        <h3 className="font-semibold text-sm sm:text-base">{t("pg.PurchaseHistory.0847")}</h3>
                         <div className="space-y-2 text-xs sm:text-sm">
                           <div className="flex justify-between">
-                            <span className="text-text-subtle">SMS Credits</span>
+                            <span className="text-text-subtle">{t("pg.Settings.0135")}</span>
                             <span className="font-medium">{selectedTransaction.credits.toLocaleString(appLocale())}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-text-subtle">Unit Price</span>
+                            <span className="text-text-subtle">{t("pg.PurchaseHistory.0848")}</span>
                             <span>TZS {Number(selectedTransaction.unit_price || 0).toLocaleString(appLocale())}/SMS</span>
                           </div>
                         </div>
@@ -837,14 +837,14 @@ const PurchaseHistory = () => {
 
                     {/* Payment Info */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-sm sm:text-base">Payment Information</h3>
+                      <h3 className="font-semibold text-sm sm:text-base">{t("pg.PurchaseHistory.0849")}</h3>
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
-                          <span className="text-text-subtle">Method</span>
+                          <span className="text-text-subtle">{t("pg.PurchaseHistory.0850")}</span>
                           <span className="font-medium">{selectedTransaction.payment_method_display || selectedTransaction.payment_method}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-border-subtle">
-                          <span className="font-semibold text-sm sm:text-base">Total Amount</span>
+                          <span className="font-semibold text-sm sm:text-base">{t("pg.PurchaseHistory.0851")}</span>
                           <span className="text-base sm:text-lg font-bold text-primary">
                             TZS {Number(selectedTransaction.amount).toLocaleString(appLocale())}
                           </span>
@@ -861,12 +861,12 @@ const PurchaseHistory = () => {
                           onClick={() => downloadReceipt(selectedTransaction)}
                         >
                           <Download className="w-4 h-4 mr-2" />
-                          Download Receipt
+                          {t("pg.PurchaseHistory.0832")}
                         </Button>
                       )}
                       {selectedTransaction.status === "pending" && (
                         <Button variant="outline" className="w-full text-sm">
-                          Check Payment Status
+                          {t("pg.PurchaseHistory.0852")}
                         </Button>
                       )}
                     </div>

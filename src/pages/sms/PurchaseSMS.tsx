@@ -482,7 +482,7 @@ const PurchaseSMS = () => {
           await fetchBalance(serviceType);
 
           toast({
-            title: "Payment successful!",
+            title: t("pg.PurchaseSMS.0853"),
             description: `${serviceType === "whatsapp" ? "WhatsApp" : "SMS"} credits have been added to your account`,
           });
 
@@ -504,8 +504,8 @@ const PurchaseSMS = () => {
           setProcessing(false);
 
           toast({
-            title: "Payment failed",
-            description: "Your payment could not be processed. Please try again.",
+            title: t("pg.PurchaseSMS.0854"),
+            description: t("pg.PurchaseSMS.0855"),
             variant: "destructive"
           });
         }
@@ -518,8 +518,8 @@ const PurchaseSMS = () => {
   const handlePurchase = async () => {
     if (!selectedPackage && !customCredits) {
       toast({
-        title: "Select package",
-        description: "Please select a package or enter custom credits",
+        title: t("pg.PurchaseSMS.0856"),
+        description: t("pg.PurchaseSMS.0857"),
         variant: "destructive"
       });
       return;
@@ -528,7 +528,7 @@ const PurchaseSMS = () => {
     // Validate custom credits if custom amount is selected
     if (customCredits && customCreditsError) {
       toast({
-        title: "Invalid amount",
+        title: t("pg.PurchaseSMS.0858"),
         description: customCreditsError,
         variant: "destructive"
       });
@@ -537,8 +537,8 @@ const PurchaseSMS = () => {
 
     if (!userPaymentNumber.trim() || !validatePhoneNumber(userPaymentNumber)) {
       toast({
-        title: "Mobile number required",
-        description: "Please enter a valid mobile money number",
+        title: t("pg.PurchaseSMS.0859"),
+        description: t("pg.PurchaseSMS.0860"),
         variant: "destructive"
       });
       return;
@@ -546,8 +546,8 @@ const PurchaseSMS = () => {
 
     if (!userEmail.trim()) {
       toast({
-        title: "Email required",
-        description: "Please enter your email address",
+        title: t("pg.PurchaseSMS.0861"),
+        description: t("pg.PurchaseSMS.0862"),
         variant: "destructive"
       });
       return;
@@ -555,8 +555,8 @@ const PurchaseSMS = () => {
 
     if (!userName.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter your full name",
+        title: t("pg.PurchaseSMS.0863"),
+        description: t("pg.PurchaseSMS.0864"),
         variant: "destructive"
       });
       return;
@@ -623,8 +623,8 @@ const PurchaseSMS = () => {
         });
       } else {
         toast({
-          title: "No selection",
-          description: "Please select a package or enter custom credits",
+          title: t("pg.PurchaseSMS.0865"),
+          description: t("pg.PurchaseSMS.0857"),
           variant: "destructive"
         });
         setProcessing(false);
@@ -652,14 +652,14 @@ const PurchaseSMS = () => {
         } else {
           // If no transaction_id, just mark as processing without polling
           toast({
-            title: "Payment processing",
-            description: "Please check your phone for mobile money prompt",
+            title: t("pg.PurchaseSMS.0866"),
+            description: t("pg.PurchaseSMS.0867"),
           });
         }
 
         toast({
-          title: "Payment initiated",
-          description: "Please check your phone for mobile money prompt",
+          title: t("pg.PurchaseSMS.0868"),
+          description: t("pg.PurchaseSMS.0867"),
         });
 
         // Auto-timeout after 30 minutes
@@ -673,8 +673,8 @@ const PurchaseSMS = () => {
             setProcessing(false);
             setShowInvoice(false);
             toast({
-              title: "Payment timeout",
-              description: "Payment session expired. Please try again.",
+              title: t("pg.PurchaseSMS.0869"),
+              description: t("pg.PurchaseSMS.0870"),
               variant: "destructive"
             });
           }
@@ -687,13 +687,13 @@ const PurchaseSMS = () => {
         // Check for specific package ID format error
         if (response.error && response.error.includes('Invalid package ID format')) {
           toast({
-            title: "Invalid Package Selection",
-            description: "The selected package is not valid. Please refresh the page and try again.",
+            title: t("pg.PurchaseSMS.0871"),
+            description: t("pg.PurchaseSMS.0872"),
             variant: "destructive"
           });
         } else {
         toast({
-          title: "Payment failed",
+          title: t("pg.PurchaseSMS.0854"),
           description: response.error || "Failed to initiate payment",
           variant: "destructive"
         });
@@ -703,7 +703,7 @@ const PurchaseSMS = () => {
       setProcessing(false);
       logger.error('Payment error occurred');
       toast({
-        title: "Payment error",
+        title: t("pg.PurchaseSMS.0873"),
         description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
@@ -722,7 +722,7 @@ const PurchaseSMS = () => {
             {/* Header — iOS large title */}
             <header>
               <h1 className="font-heading text-[20px] sm:text-2xl font-bold text-foreground leading-tight tracking-tight">
-                {serviceType === "whatsapp" ? "Purchase WhatsApp Credits" : t('purchase_sms_credits')}
+                {serviceType === "whatsapp" ? t("pg.PurchaseSMS.0874") : t('purchase_sms_credits')}
               </h1>
               <p className="text-[12.5px] sm:text-sm text-foreground/60 mt-0.5">
                 {t('top_up_account')}
@@ -768,7 +768,7 @@ const PurchaseSMS = () => {
                   <p className="text-2xl sm:text-3xl font-bold text-foreground">
                     {balance?.credits?.toLocaleString(appLocale()) || 0}{" "}
                     <span className="text-base sm:text-lg font-normal text-text-subtle">
-                      {serviceType === "whatsapp" ? "Messages" : "SMS"}
+                      {serviceType === "whatsapp" ? t("pg.PurchaseSMS.0875") : "SMS"}
                     </span>
                   </p>
                   )}
@@ -788,7 +788,7 @@ const PurchaseSMS = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">
-                    {serviceType === "whatsapp" ? "Number of Messages" : "Number of SMS Credits"}
+                    {serviceType === "whatsapp" ? t("pg.PurchaseSMS.0876") : t("pg.PurchaseSMS.0877")}
                   </Label>
                   <Input
                     type="number"
@@ -843,7 +843,7 @@ const PurchaseSMS = () => {
                 <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Active Tier:</span>
+                      <span className="text-sm font-medium">{t("pg.PurchaseSMS.0878")}</span>
                       <Badge variant="secondary">
                         {serviceType === "whatsapp"
                           ? activeTier?.name
@@ -851,19 +851,19 @@ const PurchaseSMS = () => {
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-text-subtle">Unit Price:</span>
+                      <span className="text-sm text-text-subtle">{t("pg.PurchaseSMS.0879")}</span>
                       <span className="text-sm font-medium">
                         TZS {serviceType === "whatsapp"
                           ? activeTier?.rate
                           : (customSMSState?.unitPrice || activeTier?.rate)
-                        }/{serviceType === "whatsapp" ? "msg" : "SMS"}
+                        }/{serviceType === "whatsapp" ? t("pg.PurchaseSMS.0880") : "SMS"}
                       </span>
                     </div>
                     {serviceType === "sms" && customSMSState?.savingsPercentage > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-text-subtle">Savings:</span>
+                        <span className="text-sm text-text-subtle">{t("pg.PurchaseSMS.0881")}</span>
                         <span className="text-sm font-medium text-success">
-                          {customSMSState.savingsPercentage}% off
+                          {customSMSState.savingsPercentage}{t("pg.PurchaseSMS.0882")}
                         </span>
                       </div>
                     )}
@@ -875,10 +875,10 @@ const PurchaseSMS = () => {
                 <div className="mt-2 text-xs text-text-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span>
                     {customSMSState ? (
-                      <>Dynamic pricing based on volume</>
+                      <>{t("pg.PurchaseSMS.0883")}</>
                     ) : (
-                      <>Active tier: {activeTier ? (
-                        <><b>{activeTier.name}</b> — {activeTier.rangeLabel} — TZS {activeTier.rate}/SMS</>
+                      <>{t("pg.PurchaseSMS.0884")} {activeTier ? (
+                        <><b>{activeTier.name}</b> — {activeTier.rangeLabel} {t("pg.PurchaseSMS.0885")} {activeTier.rate}/SMS</>
                       ) : "—"}</>
                     )}
                   </span>
@@ -887,7 +887,7 @@ const PurchaseSMS = () => {
               )}
               {serviceType === "whatsapp" && (
                 <p className="mt-2 text-xs text-text-subtle text-right">
-                  Minimum 10,000 messages required
+                  {t("pg.PurchaseSMS.0886")}
                 </p>
               )}
             </Card>
@@ -901,7 +901,7 @@ const PurchaseSMS = () => {
                   detected automatically from the number, so there's nothing to pick. */}
               <div className="space-y-1">
                 <Label htmlFor="paymentNumber" className="text-sm">
-                  Mobile Money Number
+                  {t("pg.PurchaseSMS.0887")}
                 </Label>
                 <div className="relative">
                   <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-subtle" />
@@ -932,7 +932,7 @@ const PurchaseSMS = () => {
                 <Input
                   id="userEmail"
                   type="email"
-                  placeholder="e.g., sway@example.com"
+                  placeholder={t("pg.PurchaseSMS.0888")}
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
                   className="glass-subtle border-0 h-9 text-sm"
@@ -950,7 +950,7 @@ const PurchaseSMS = () => {
                 <Input
                   id="userName"
                   type="text"
-                  placeholder="Enter Full Name"
+                  placeholder={t("pg.PurchaseSMS.0889")}
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   className="glass-subtle border-0 h-9 text-sm"
@@ -1023,7 +1023,7 @@ const PurchaseSMS = () => {
                       {pkg.is_popular && (
                         <div className="absolute -top-3 left-0 right-0 flex justify-center z-10">
                           <Badge className={`${isWhatsApp ? "bg-emerald-500 text-white" : "bg-primary text-primary-foreground"} text-xs px-3 py-1 font-semibold whitespace-nowrap`}>
-                            Most Popular
+                            {t("pg.PurchaseSMS.0890")}
                           </Badge>
                         </div>
                       )}
@@ -1040,13 +1040,13 @@ const PurchaseSMS = () => {
                       <h3 className="font-heading text-base sm:text-lg font-bold mb-2 text-foreground">{pkg.name}</h3>
                       <div className="mb-3">
                         <p className={`text-xl sm:text-2xl font-bold mb-1 ${isWhatsApp ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"}`}>
-                          TZS {pkg.unit_price}/{isWhatsApp ? "msg" : "SMS"}
+                          TZS {pkg.unit_price}/{isWhatsApp ? t("pg.PurchaseSMS.0880") : "SMS"}
                         </p>
                         <p className="text-xs text-text-subtle">
-                          {pkg.subtitle || (pkg.id === 'lite' ? '1 to 49,999 SMS' :
-                           pkg.id === 'standard' ? '50,000 to 149,999 SMS' :
-                           pkg.id === 'pro' ? '250,000 SMS and above' :
-                           'Custom')}
+                          {pkg.subtitle || (pkg.id === 'lite' ? t("pg.PurchaseSMS.0891") :
+                           pkg.id === 'standard' ? t("pg.PurchaseSMS.0892") :
+                           pkg.id === 'pro' ? t("pg.PurchaseSMS.0893") :
+                           t("pg.SenderNames.0592"))}
                         </p>
                       </div>
                       <div className="space-y-2 mb-3 flex-1">
@@ -1059,7 +1059,7 @@ const PurchaseSMS = () => {
                       </div>
                       {selectedPackage === pkg.id && (
                         <Badge variant="secondary" className={`w-full justify-center text-[10px] mt-auto ${isWhatsApp ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : ""}`}>
-                          Selected
+                          {t("pg.PurchaseSMS.0894")}
                         </Badge>
                       )}
                     </Card>
@@ -1115,7 +1115,7 @@ const PurchaseSMS = () => {
                             {paymentState.progress.current_step}
                           </p>
                           <p className="text-xs text-text-subtle">
-                            Step {paymentState.progress.step} of {paymentState.progress.total_steps}
+                            {t("pg.PurchaseSMS.0895")} {paymentState.progress.step} {t("pg.Contacts.0356")} {paymentState.progress.total_steps}
                           </p>
                         </div>
                       </div>
@@ -1126,10 +1126,10 @@ const PurchaseSMS = () => {
                       />
 
                       <div className="space-y-1">
-                        <p className="text-xs text-text-subtle">Next: {paymentState.progress.next_step}</p>
+                        <p className="text-xs text-text-subtle">{t("pg.PurchaseSMS.0896")} {paymentState.progress.next_step}</p>
                         {paymentState.orderId && (
                           <p className="text-xs text-text-subtle font-mono">
-                            Order ID: {paymentState.orderId}
+                            {t("pg.PurchaseSMS.0897")} {paymentState.orderId}
                           </p>
                         )}
                       </div>
@@ -1141,7 +1141,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-subtle text-xs sm:text-sm">{t('package')}</span>
                       <span className="font-medium text-xs sm:text-sm">
-                        {selectedPkg?.name || "Custom"}
+                        {selectedPkg?.name || t("pg.SenderNames.0592")}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
@@ -1153,7 +1153,7 @@ const PurchaseSMS = () => {
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-subtle text-xs sm:text-sm">{t('payment_method')}</span>
                       <span className="font-medium text-xs sm:text-sm">
-                        {MOBILE_MONEY_PROVIDER_NAMES[detectedProvider] || 'Mobile Money'}
+                        {MOBILE_MONEY_PROVIDER_NAMES[detectedProvider] || t("pg.PurchaseSMS.0898")}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 text-sm sm:text-base font-semibold">
