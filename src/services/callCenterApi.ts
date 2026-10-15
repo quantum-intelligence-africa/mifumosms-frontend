@@ -141,8 +141,29 @@ export interface Workspace {
     status_changed_at: string | null;
   };
   stats_today: { total: number; answered: number; missed: number };
+  /** Null means "no data yet", never zero. */
+  performance: { avg_talk_seconds: number | null; answer_rate: number | null; outbound: number; follow_ups_open: number };
+  trend: AgentTrendDay[];
+  recent_calls: AgentRecentCall[];
   teams: Array<TeamCounts & { name: string }>;
   current_call: { id: string; from_number: string; direction: string; started_at: string } | null;
+}
+
+export interface AgentTrendDay {
+  date: string;
+  total: number;
+  answered: number;
+}
+
+export interface AgentRecentCall {
+  id: string;
+  direction: "inbound" | "outbound";
+  number: string;
+  started_at: string;
+  duration_seconds: number | null;
+  outcome: string;
+  recording: { id: string; storage_path: string; duration_seconds: number | null } | null;
+  analysis: { status: string; summary: string; sentiment: string } | null;
 }
 
 export interface CallerContext {

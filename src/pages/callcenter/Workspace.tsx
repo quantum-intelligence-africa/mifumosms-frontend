@@ -1,9 +1,8 @@
-// The agent's home: availability, today's numbers, and nothing else.
-// Deliberately sparse — the screen is for taking calls quickly, not for
-// browsing SENDA's other products (see the call-center spec, section 9).
+// The agent's home: availability, how today is going (numbers, last week, latest calls with their AI summary), and the
+// phone. Nothing from SENDA's other products (see the call-center spec, section 9).
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Headphones, Loader2, Phone, PhoneCall, PhoneMissed, Users, Wifi, WifiOff } from "lucide-react";
+import { AlertCircle, Headphones, Loader2, Phone, Users, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,28 +14,13 @@ import { PageFrame } from "@/components/callcenter/PageFrame";
 import { StatusPicker } from "@/components/callcenter/StatusPicker";
 import { StatusLabel } from "@/components/callcenter/StatusDot";
 import { formatDuration, useElapsed } from "@/components/callcenter/callUtils";
+import { AgentHome } from "@/components/callcenter/AgentHome";
 
 function greetingKey(): "cc.workspace.good_morning" | "cc.workspace.good_afternoon" | "cc.workspace.good_evening" {
   const h = new Date().getHours();
   if (h < 12) return "cc.workspace.good_morning";
   if (h < 17) return "cc.workspace.good_afternoon";
   return "cc.workspace.good_evening";
-}
-
-function Stat({ icon: Icon, label, value, tone }: { icon: typeof Phone; label: string; value: number | string; tone: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold leading-none text-foreground">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default function Workspace() {
@@ -109,7 +93,7 @@ export default function Workspace() {
           <StatusPicker />
         </>
       }
-      width="max-w-4xl"
+      width="max-w-5xl"
     >
       {cc.socketState === "revoked" && (
         <Card className="border-destructive/40">
@@ -139,11 +123,7 @@ export default function Workspace() {
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{t("cc.workspace.go_available_hint")}</p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat icon={Phone} label={t("cc.workspace.calls_today")} value={w.stats_today.total} tone="bg-blue-50 text-blue-600 dark:bg-blue-950" />
-        <Stat icon={PhoneCall} label={t("cc.workspace.answered")} value={w.stats_today.answered} tone="bg-green-50 text-green-600 dark:bg-green-950" />
-        <Stat icon={PhoneMissed} label={t("cc.workspace.missed")} value={w.stats_today.missed} tone="bg-red-50 text-red-600 dark:bg-red-950" />
-      </div>
+      <AgentHome workspace={w} />
 
       <div className="grid gap-3 md:grid-cols-2">
         <Card>
