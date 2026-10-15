@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { TwoFactorChallenge, type TwoFactorChallengeState } from "@/components/auth/TwoFactorChallenge";
+import { AccountVerification, type AccountVerificationState } from "@/components/auth/AccountVerification";
 import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
@@ -35,6 +36,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [otpChallenge, setOtpChallenge] = useState<TwoFactorChallengeState | null>(null);
+  const [verification, setVerification] = useState<AccountVerificationState | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -163,6 +165,13 @@ const Login = () => {
 
         const from = nextPath || location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
+      } else if (result.requiresVerification && result.pendingToken) {
+        setVerification({
+          pendingToken: result.pendingToken,
+          phoneOnFile: !!result.phoneOnFile,
+          maskedPhone: result.maskedPhone || "",
+          maskedEmail: result.maskedEmail || "",
+        });
       } else if (result.requires2FA && result.challengeId) {
         setOtpChallenge({
           challengeId: result.challengeId,
@@ -258,6 +267,10 @@ const Login = () => {
       </div>
     );
   };
+
+  if (verification) {
+    return <AccountVerification state={verification} onVerified={handleTwoFactorVerified} onBack={() => setVerification(null)} />;
+  }
 
   if (otpChallenge) {
     return (

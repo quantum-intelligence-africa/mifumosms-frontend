@@ -29,7 +29,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number; requiresVerification?: boolean; pendingToken?: string; phoneOnFile?: boolean; maskedPhone?: string }>;
   register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean; message?: string; smsFailed?: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -274,9 +274,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [isAuthenticated]);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number }> => {
+  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number; requiresVerification?: boolean; pendingToken?: string; phoneOnFile?: boolean; maskedPhone?: string }> => {
     try {
       const response = await apiClient.login(credentials);
+      if (response.status === 202 && response.data?.requires_verification) {
+        return {
+          success: false,
+          requiresVerification: true,
+          pendingToken: response.data.pending_token,
+          phoneOnFile: !!response.data.phone_on_file,
+          maskedPhone: response.data.masked_phone,
+          maskedEmail: response.data.masked_email,
+          email: credentials.email,
+        };
+      }
       if (response.status === 202 && response.data?.requires_2fa) {
         return {
           success: false,

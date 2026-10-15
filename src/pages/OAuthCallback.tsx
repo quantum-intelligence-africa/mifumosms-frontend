@@ -7,6 +7,7 @@ import { safeInviteNext } from "@/lib/googleLogin";
 
 import { useLanguage } from "@/hooks/useLanguage";
 import { TwoFactorChallenge, type TwoFactorChallengeState } from "@/components/auth/TwoFactorChallenge";
+import { AccountVerification, type AccountVerificationState } from "@/components/auth/AccountVerification";
 export default function OAuthCallback() {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -19,6 +20,8 @@ export default function OAuthCallback() {
   const [destination, setDestination] = useState("/dashboard");
   // Set when this account also requires the emailed code: no tokens exist until it is verified.
   const [challenge, setChallenge] = useState<TwoFactorChallengeState | null>(null);
+  // Set for a brand-new Google account: phone number + code (SMS and email) first, then on to the destination.
+  const [verification, setVerification] = useState<AccountVerificationState | null>(null);
 
   useEffect(() => {
     const completeLogin = async () => {
@@ -28,6 +31,17 @@ export default function OAuthCallback() {
       // Only an invitation path is honoured (exact shape); anything else falls back to the dashboard.
       const next = safeInviteNext(params.get("next")) || "/dashboard";
       setDestination(next);
+
+      if (params.get("requires_verification") === "1" && params.get("pending_token")) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setVerification({
+          pendingToken: params.get("pending_token") || "",
+          phoneOnFile: params.get("phone_on_file") === "1",
+          maskedPhone: params.get("masked_phone") || "",
+          maskedEmail: params.get("masked_email") || "",
+        });
+        return;
+      }
 
       if (params.get("requires_2fa") === "1" && params.get("challenge_id")) {
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -94,6 +108,21 @@ export default function OAuthCallback() {
       setSavingPhone(false);
     }
   };
+
+  if (verification) {
+    return (
+      <AccountVerification
+        state={verification}
+        onVerified={(tokens, user) => {
+          localStorage.setItem("access_token", tokens.access);
+          localStorage.setItem("refresh_token", tokens.refresh);
+          localStorage.setItem("user", JSON.stringify(user));
+          window.location.assign(destination);
+        }}
+        onBack={() => navigate("/login", { replace: true })}
+      />
+    );
+  }
 
   if (challenge) {
     return (

@@ -139,6 +139,10 @@ export interface LoginResponse {
   requires_2fa?: boolean;
   challenge_id?: string;
   channel?: 'sms' | 'email';
+  requires_verification?: boolean;
+  pending_token?: string;
+  phone_on_file?: boolean;
+  masked_phone?: string;
   masked_email?: string;
   delivery?: 'sent' | 'failed' | 'pending';
   expires_in?: number;
@@ -1467,6 +1471,20 @@ class ApiClient {
         ...(invitationToken ? { invitation_token: invitationToken } : {}),
       }),
     });
+  }
+
+  /** First-time account verification (phone number + code by SMS and email). Raw status and body, like the 2FA step. */
+  async verificationRequest(path: 'start' | 'verify', body: Record<string, unknown>): Promise<{ status: number; data: Record<string, any> }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/verification/${path}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { status: res.status, data: await res.json().catch(() => ({})) };
+    } catch {
+      return { status: 0, data: {} };
+    }
   }
 
   /** Second sign-in step, returning the raw status and body (the code screen needs `reason` and `retry_after`). */
