@@ -1,5 +1,6 @@
 // Missed calls never just disappear: each one is a task with an owner and a
 // status (new -> assigned -> called back -> resolved/unresolved).
+import { appLocale } from "@/utils/appLocale";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, CheckCircle2, ChevronDown, Mic, PhoneCall, PhoneMissed, RefreshCw, Sparkles, UserCheck } from "lucide-react";
@@ -86,7 +87,7 @@ export default function MissedCalls() {
       id: vm.id,
       url: vm.storage_path,
       title: row.caller_number,
-      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`,
+      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })}`,
       direction: "inbound",
       durationSeconds: vm.duration_seconds,
     });
@@ -96,7 +97,7 @@ export default function MissedCalls() {
       id: vm.id,
       url: vm.storage_path,
       title: row.caller_number,
-      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`,
+      subtitle: `${t("cc.missed.voicemail")} · ${new Date(vm.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })}`,
       direction: "inbound",
       durationSeconds: vm.duration_seconds,
     }, seconds);
@@ -220,7 +221,7 @@ export default function MissedCalls() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(r.call_started_at).toLocaleString()}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(r.call_started_at).toLocaleString(appLocale())}</TableCell>
                       <TableCell className="text-sm">{r.team_name || "—"}</TableCell>
                       <TableCell className="text-sm tabular-nums">{r.callback_attempts}</TableCell>
                       <TableCell className="text-sm">{r.assigned_to_name || "—"}</TableCell>

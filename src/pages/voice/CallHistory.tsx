@@ -2,6 +2,7 @@
 // call-centre console: who called, which agent took it, when, how long, and
 // what the AI made of it. One play button per row; playback lives in the
 // bar at the bottom of the page.
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState, Fragment } from "react";
 import { ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -286,7 +287,7 @@ export default function CallHistory() {
   };
 
   const seekCall = (call: CallSummary, rec: { id: string; storage_path: string; duration_seconds: number | null }, seconds: number) => {
-    const when = new Date(call.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    const when = new Date(call.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.seek({
       id: rec.id, url: rec.storage_path, title: otherParty(call), subtitle: [call.agent?.name, when].filter(Boolean).join(" · "),
       direction: call.direction, durationSeconds: rec.duration_seconds,
@@ -299,7 +300,7 @@ export default function CallHistory() {
   };
 
   const playCall = (call: CallSummary, rec: { id: string; storage_path: string; duration_seconds: number | null }) => {
-    const when = new Date(call.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    const when = new Date(call.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.toggle({
       id: rec.id,
       url: rec.storage_path,
@@ -530,8 +531,8 @@ export default function CallHistory() {
                                 <AgentChip name={call.agent?.name} department={call.agent?.department} />
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
-                                <p className="font-mono text-sm text-foreground">{started.toLocaleDateString([], { month: "short", day: "2-digit" })}</p>
-                                <p className="font-mono text-xs text-muted-foreground">{started.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                                <p className="font-mono text-sm text-foreground">{started.toLocaleDateString(appLocale(), { month: "short", day: "2-digit" })}</p>
+                                <p className="font-mono text-xs text-muted-foreground">{started.toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit" })}</p>
                               </TableCell>
                               <TableCell className="whitespace-nowrap font-mono text-sm tabular-nums text-foreground">{formatLength(call.duration_seconds)}</TableCell>
                               <TableCell>
@@ -607,7 +608,7 @@ export default function CallHistory() {
                                               <dt className="text-muted-foreground">{t("voice.calls.recording")}</dt>
                                               <dd className="text-foreground">
                                                 {formatSize(detail.recordings[0].size_bytes)} · {t("voice.calls.stored")}{" "}
-                                                {new Date(detail.recordings[0].created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                                                {new Date(detail.recordings[0].created_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" })}
                                               </dd>
                                             </>
                                           )}
@@ -643,7 +644,7 @@ export default function CallHistory() {
                                                   {" · "}
                                                   {formatSize(r.size_bytes)}
                                                   {" · "}
-                                                  {new Date(r.created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                                                  {new Date(r.created_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" })}
                                                 </div>
                                                 {r.analysis?.result?.sentiment && (
                                                   <Badge variant={sentimentVariant(r.analysis.result.sentiment)} className="capitalize">

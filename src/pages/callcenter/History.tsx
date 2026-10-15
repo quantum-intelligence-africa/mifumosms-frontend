@@ -1,6 +1,7 @@
 // Call history for the call center. An agent sees only the calls they handled;
 // a supervisor or admin sees the whole organization's — enforced by the
 // backend, so the filters below only narrow what the server already allows.
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, NotebookPen, PhoneIncoming, PhoneOutgoing, RefreshCw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -83,7 +84,7 @@ export default function History() {
     id: rec.id,
     url: rec.storage_path,
     title: c.direction === "inbound" ? c.from_number : c.to_number,
-    subtitle: [c.agent_name || c.agent?.name, new Date(c.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · "),
+    subtitle: [c.agent_name || c.agent?.name, new Date(c.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · "),
     direction: c.direction,
     durationSeconds: rec.duration_seconds,
   });
@@ -297,7 +298,7 @@ export default function History() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(c.started_at).toLocaleString()}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(c.started_at).toLocaleString(appLocale())}</TableCell>
                       <TableCell className="text-sm tabular-nums">{c.duration_seconds != null ? formatDuration(c.duration_seconds) : "—"}</TableCell>
                       <TableCell><Badge variant={STATE_TONE[state]}>{t(`cc.history.state_${state}` as const)}</Badge></TableCell>
                       <TableCell>
@@ -379,7 +380,7 @@ export default function History() {
                 <ol className="space-y-1">
                   {timeline.events.map((e) => (
                     <li key={e.id} className="flex gap-3">
-                      <span className="w-20 shrink-0 tabular-nums text-xs text-muted-foreground">{new Date(e.at).toLocaleTimeString()}</span>
+                      <span className="w-20 shrink-0 tabular-nums text-xs text-muted-foreground">{new Date(e.at).toLocaleTimeString(appLocale())}</span>
                       <span>{e.label}{e.agent ? ` — ${e.agent}` : ""}{e.endpoint ? ` (${e.endpoint})` : ""}</span>
                     </li>
                   ))}
@@ -461,7 +462,7 @@ export default function History() {
             <div className="max-h-80 space-y-3 overflow-y-auto">
               {notes.map((n) => (
                 <div key={n.id} className="space-y-1 rounded-md border border-border p-3 text-sm">
-                  <p className="text-xs text-muted-foreground">{n.agent_name} · {new Date(n.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{n.agent_name} · {new Date(n.created_at).toLocaleString(appLocale())}</p>
                   <p className="flex flex-wrap gap-1.5">
                     {n.category && <Badge variant="outline">{n.category}</Badge>}
                     {n.outcome && <Badge variant="secondary">{t(`cc.outcome.${n.outcome}` as const)}</Badge>}

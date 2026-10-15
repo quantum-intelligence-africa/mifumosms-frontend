@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { appLocale } from "@/utils/appLocale";
 
 /** One colour per outcome, used by every chart, badge and legend so "missed" is always the same red. */
 export const OUTCOME_COLORS: Record<string, string> = {
@@ -37,10 +38,10 @@ export function fmtSeconds(value: number | null | undefined): string {
 export const fmtPct = (value: number | null | undefined, digits = 0) =>
   value === null || value === undefined ? "—" : `${(value * 100).toFixed(digits)}%`;
 
-export const fmtNum = (value: number | null | undefined) => (value === null || value === undefined ? "—" : value.toLocaleString());
+export const fmtNum = (value: number | null | undefined) => (value === null || value === undefined ? "—" : value.toLocaleString(appLocale()));
 
 export function fmtDateTime(iso: string | null | undefined): string {
-  return iso ? new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—";
+  return iso ? new Date(iso).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" }) : "—";
 }
 
 /** "+12%" / "-3.5 pts" with an arrow. ``goodWhenUp`` flips the colour for metrics where lower is better (missed calls). */

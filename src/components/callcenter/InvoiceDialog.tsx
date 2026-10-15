@@ -1,4 +1,5 @@
 // A paid plan's invoice: read it, print / save it as PDF, or have it emailed again.
+import { appLocale } from "@/utils/appLocale";
 import { useEffect, useState } from "react";
 import { Loader2, Mail, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,7 @@ function printableHtml(inv: InvoiceDetail): string {
     .total td{font-weight:bold;border-bottom:0}
   </style></head><body>
     <h2>${esc(inv.brand)} — Invoice ${esc(inv.number)}</h2>
-    <p>Issued ${esc(new Date(inv.issued_at).toLocaleDateString())} · <strong>PAID</strong></p>
+    <p>Issued ${esc(new Date(inv.issued_at).toLocaleDateString(appLocale()))} · <strong>PAID</strong></p>
     <p>Billed to <strong>${esc(inv.bill_to.name)}</strong> (${esc(inv.organization)})<br>${esc(inv.bill_to.email)}</p>
     <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Amount</th></tr>${rows}
     <tr class="total"><td colspan="2" class="r">Total paid</td><td class="r">${esc(money(inv.total, inv.currency))}</td></tr></table>
@@ -82,7 +83,7 @@ export function InvoiceDialog({ subscriptionId, onClose }: { subscriptionId: str
             {invoice ? t("cc.invoice.title", { number: invoice.number }) : t("cc.invoices.title")}
             {invoice && <Badge className="bg-green-600">{t("cc.invoice.paid")}</Badge>}
           </DialogTitle>
-          <DialogDescription>{invoice ? `${invoice.brand} · ${new Date(invoice.issued_at).toLocaleDateString()}` : ""}</DialogDescription>
+          <DialogDescription>{invoice ? `${invoice.brand} · ${new Date(invoice.issued_at).toLocaleDateString(appLocale())}` : ""}</DialogDescription>
         </DialogHeader>
 
         {!invoice && !error && <Skeleton className="h-40" />}

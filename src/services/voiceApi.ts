@@ -2,6 +2,7 @@
 // Deliberately separate from `src/lib/api.ts`'s ApiClient: that class's request
 // internals are private and hardwired to one base URL, so a second backend gets
 // its own small client instead of being bolted onto it.
+import { appLanguage } from '@/utils/appLocale';
 import { apiClient, type ApiResponse } from '@/lib/api';
 
 // DRF serializer errors come back as {"field_name": ["message"], ...} with
@@ -29,7 +30,7 @@ class VoiceApiClient {
 
   private getHeaders(includeContentType = true): Record<string, string> {
     const token = localStorage.getItem('access_token');
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { 'Accept-Language': appLanguage() };
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;

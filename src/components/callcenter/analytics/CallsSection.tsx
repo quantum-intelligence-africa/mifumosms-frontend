@@ -1,5 +1,6 @@
 // The action center: recent calls with quick filters, a call drawer (timeline, AI analysis, recording) and follow-up tasks.
 // The existing call-history and call-detail workflows are untouched; this adds a place to act on what the numbers show.
+import { appLocale } from "@/utils/appLocale";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -223,7 +224,7 @@ function CallDrawer({ id, onClose, aiEnabled }: { id: string | null; onClose: ()
             {!timeline ? <Skeleton className="h-24" /> : timeline.events.length === 0 ? <p className="text-xs text-muted-foreground">{t("cc.history.timeline_empty")}</p> : (
               <ol className="space-y-1">
                 {timeline.events.map((e) => (
-                  <li key={e.id} className="flex gap-3 text-xs"><span className="w-16 shrink-0 tabular-nums text-muted-foreground">{new Date(e.at).toLocaleTimeString()}</span><span>{e.label}{e.agent ? ` — ${e.agent}` : ""}{e.endpoint ? ` (${e.endpoint})` : ""}</span></li>
+                  <li key={e.id} className="flex gap-3 text-xs"><span className="w-16 shrink-0 tabular-nums text-muted-foreground">{new Date(e.at).toLocaleTimeString(appLocale())}</span><span>{e.label}{e.agent ? ` — ${e.agent}` : ""}{e.endpoint ? ` (${e.endpoint})` : ""}</span></li>
                 ))}
               </ol>
             )}

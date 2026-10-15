@@ -1,5 +1,6 @@
 // Filters, KPI cards and the overview charts. Every figure comes from the analytics API; clicking a chart point opens the
 // matching calls (via ``drillDown``), never a separate, possibly different, query.
+import { appLocale } from "@/utils/appLocale";
 import { useState } from "react";
 import { Cell, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Info, X } from "lucide-react";
@@ -139,8 +140,8 @@ const SERIES = ["incoming", "outgoing", "answered", "missed", "failed"] as const
 
 function bucketLabel(iso: string, granularity: "hour" | "day" | "week") {
   const d = new Date(iso);
-  if (granularity === "hour") return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  if (granularity === "hour") return d.toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString(appLocale(), { month: "short", day: "numeric" });
 }
 
 export function ActivityChart({ filters, drillDown }: { filters: AnalyticsFilters; drillDown: (c: Record<string, string | null>) => void }) {

@@ -1,6 +1,7 @@
 // The numbers an agent cares about, laid out so they can be read at a glance: today's results, the last week, and the latest
 // calls with what the AI made of each. Everything shown is this agent's own work; a figure with no data behind it says so
 // instead of showing a zero.
+import { appLocale } from "@/utils/appLocale";
 import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { Clock, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOutgoing, Phone, Sparkles } from "lucide-react";
@@ -58,7 +59,7 @@ export function AgentHome({ workspace }: { workspace: Workspace }) {
       id: c.recording.id,
       url: c.recording.storage_path,
       title: c.number,
-      subtitle: new Date(c.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+      subtitle: new Date(c.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" }),
       direction: c.direction,
       durationSeconds: c.recording.duration_seconds,
     });
@@ -124,7 +125,7 @@ export function AgentHome({ workspace }: { workspace: Workspace }) {
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${SENTIMENT_TONE[ai.sentiment]}`}>{t(`cc.workspace.sentiment_${ai.sentiment}` as never)}</span>
                     )}
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {new Date(c.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                      {new Date(c.started_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" })}
                       {c.duration_seconds ? ` · ${formatDuration(c.duration_seconds)}` : ""}
                     </span>
                   </div>

@@ -1,3 +1,4 @@
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson, Sparkles, Trash2 } from "lucide-react";
@@ -339,7 +340,7 @@ Past calls and reports are kept.`)) return;
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1.5">
                             <Clock className="h-3 w-3" />
-                            Updated {new Date(flow.updated_at).toLocaleDateString()}
+                            Updated {new Date(flow.updated_at).toLocaleDateString(appLocale())}
                           </span>
                           <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
                             {LANGUAGE_LABELS[flow.language]}

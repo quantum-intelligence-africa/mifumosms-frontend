@@ -1,6 +1,7 @@
 // Call-center packages: what each includes, which one the organization is on,
 // how much of it is used, and a request button. There is no online payment — a
 // request is activated by SENDA once the payment is confirmed.
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, Clock, FileText, Gift, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +83,7 @@ export default function CallCenterPlans() {
       const price = Number(plan.price ?? 0);
       if (plan.key === paidLive.plan.key) return { label: t("cc.plans.renew"), disabled: false };
       if (price < livePrice) {
-        return { label: t("cc.plans.locked_downgrade", { date: paidLive.period_end ? new Date(paidLive.period_end).toLocaleDateString() : "" }), disabled: true };
+        return { label: t("cc.plans.locked_downgrade", { date: paidLive.period_end ? new Date(paidLive.period_end).toLocaleDateString(appLocale()) : "" }), disabled: true };
       }
       return { label: t("cc.plans.upgrade"), disabled: false };
     }
@@ -139,7 +140,7 @@ export default function CallCenterPlans() {
                     </p>
                     {isCurrent && status.subscription?.period_end && (
                       <p className="text-xs text-muted-foreground">
-                        {t("cc.plans.active_until", { date: new Date(status.subscription.period_end).toLocaleDateString() })}
+                        {t("cc.plans.active_until", { date: new Date(status.subscription.period_end).toLocaleDateString(appLocale()) })}
                       </p>
                     )}
                   </CardHeader>
@@ -179,7 +180,7 @@ export default function CallCenterPlans() {
                     <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                       <div>
                         <p className="font-medium">{inv.number}</p>
-                        <p className="text-xs text-muted-foreground">{inv.plan} · {new Date(inv.issued_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">{inv.plan} · {new Date(inv.issued_at).toLocaleDateString(appLocale())}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-medium">{formatPrice({ price: inv.total, currency: inv.currency })}</span>

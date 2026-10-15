@@ -4,6 +4,7 @@
 // Real-time: socket events patch the board immediately; a full snapshot is
 // re-fetched every 30 s and after status changes, so a missed event can never
 // leave the board wrong for long.
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, Loader2, Mic, PhoneCall, PhoneIncoming, PhoneOutgoing, RefreshCw, Rocket, Users } from "lucide-react";
@@ -274,7 +275,7 @@ export default function Overview() {
                   </span>
                   <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                     <span className="hidden sm:inline">{[c.team, c.agent].filter(Boolean).join(" · ")}</span>
-                    <span>{new Date(c.started_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    <span>{new Date(c.started_at).toLocaleString(appLocale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                     {c.duration_seconds > 0 && <span className="tabular-nums">{formatDuration(c.duration_seconds)}</span>}
                     <Badge variant={c.outcome === "missed" ? "destructive" : c.outcome === "live" ? "secondary" : "default"}>
                       {t(`cc.board.out_${c.outcome}` as const)}

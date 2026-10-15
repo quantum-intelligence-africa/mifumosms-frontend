@@ -4,6 +4,7 @@
 // we send the prompt -> this dialog polls until the payment is confirmed. The plan is
 // switched on by the server the moment the payment is confirmed (webhook, sync or this
 // poll — whichever sees it first), so closing the dialog never loses a payment.
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Smartphone, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ const GIVE_UP_AFTER_POLLS = 45; // ~3 minutes; the server keeps trying after we 
 type Stage = "form" | "sending" | "waiting" | "paid" | "failed" | "timeout";
 
 const money = (amount: string | number, currency: string) => `${currency} ${Number(amount).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-const dateOnly = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString() : "");
+const dateOnly = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(appLocale()) : "");
 
 interface Props {
   plan: PlanInfo | null;

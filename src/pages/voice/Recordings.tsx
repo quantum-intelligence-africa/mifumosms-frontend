@@ -1,3 +1,4 @@
+import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState } from "react";
 import { Voicemail, AlertCircle, RefreshCw, PhoneIncoming, PhoneOutgoing, Search } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -123,7 +124,7 @@ export default function Recordings() {
   }, [fetchRecordings]);
 
   const play = (rec: Recording) => {
-    const when = new Date(rec.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    const when = new Date(rec.created_at).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" });
     player.toggle({
       id: rec.id,
       url: rec.storage_path,
@@ -249,7 +250,7 @@ export default function Recordings() {
                             <TableCell className="whitespace-nowrap font-mono text-sm tabular-nums text-foreground">{formatLength(rec.duration_seconds)}</TableCell>
                             <TableCell className="whitespace-nowrap font-mono text-sm tabular-nums text-muted-foreground">{formatSize(rec.size_bytes)}</TableCell>
                             <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                              {new Date(rec.created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                              {new Date(rec.created_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" })}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end">
