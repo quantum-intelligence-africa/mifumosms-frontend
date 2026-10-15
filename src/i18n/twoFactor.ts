@@ -1,0 +1,21 @@
+// Strings for the one-time-code step of sign-in (English). Kiswahili is in twoFactorSw.ts, typed against these keys.
+export const tfEn = {
+  "tf.title": "Verify it's you",
+  "tf.sent": "We sent a 6-digit code to {email}. Enter it below to finish signing in.",
+  "tf.sent_failed": "We couldn't send the code. Press \"Resend code\" to try again.",
+  "tf.code_label": "Verification code",
+  "tf.verify": "Verify",
+  "tf.verifying": "Verifying…",
+  "tf.resend": "Resend code",
+  "tf.resend_in": "Resend in {seconds}s",
+  "tf.resending": "Sending…",
+  "tf.resent": "A new code was sent.",
+  "tf.expires_in": "The code expires in {time}",
+  "tf.expired": "This code has expired. Request a new one.",
+  "tf.invalid": "That code is not correct. Check it and try again.",
+  "tf.locked": "Too many wrong codes. Request a new one.",
+  "tf.too_many": "Too many attempts. Please wait a while and try again.",
+  "tf.success": "Verified. Signing you in…",
+  "tf.back": "Back to sign in",
+  "tf.generic_error": "Something went wrong. Please try again.",
+} as const;

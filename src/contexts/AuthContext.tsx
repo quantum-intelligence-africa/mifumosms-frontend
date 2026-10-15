@@ -29,7 +29,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number }>;
   register: (userData: RegisterRequest) => Promise<{ success: boolean; error?: string; errors?: Record<string, string[]>; requiresActivation?: boolean; email?: string; phoneNumber?: string; verificationMethod?: 'sms' | 'email'; stayOnPage?: boolean; message?: string; smsFailed?: boolean }>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -274,7 +274,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [isAuthenticated]);
 
-  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string }> => {
+  const login = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string; user?: User; requiresActivation?: boolean; requires2FA?: boolean; challengeId?: string; channel?: 'sms' | 'email'; email?: string; phoneNumber?: string; maskedEmail?: string; delivery?: string; expiresIn?: number; resendAfter?: number }> => {
     try {
       const response = await apiClient.login(credentials);
       if (response.status === 202 && response.data?.requires_2fa) {
@@ -284,6 +284,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           challengeId: response.data.challenge_id,
           channel: response.data.channel,
           email: credentials.email,
+          maskedEmail: response.data.masked_email,
+          delivery: response.data.delivery,
+          expiresIn: response.data.expires_in,
+          resendAfter: response.data.resend_after,
         };
       }
 

@@ -139,6 +139,10 @@ export interface LoginResponse {
   requires_2fa?: boolean;
   challenge_id?: string;
   channel?: 'sms' | 'email';
+  masked_email?: string;
+  delivery?: 'sent' | 'failed' | 'pending';
+  expires_in?: number;
+  resend_after?: number;
 }
 
 export interface RegisterResponse {
@@ -1463,6 +1467,21 @@ class ApiClient {
         ...(invitationToken ? { invitation_token: invitationToken } : {}),
       }),
     });
+  }
+
+  /** Second sign-in step, returning the raw status and body (the code screen needs `reason` and `retry_after`). */
+  async twoFactorRequest(path: 'verify-otp' | 'resend-otp', body: Record<string, unknown>): Promise<{ status: number; data: Record<string, any> }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login/${path}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { status: res.status, data };
+    } catch {
+      return { status: 0, data: {} };
+    }
   }
 
   /** Public: what the invitation page may show before sign-in (organization, role, portal). */

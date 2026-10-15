@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { TwoFactorChallenge, type TwoFactorChallengeState } from "@/components/auth/TwoFactorChallenge";
 import { useLanguage } from "@/hooks/useLanguage";
 import { motion } from "framer-motion";
 import MobileMenu from "@/components/layout/MobileMenu";
@@ -33,8 +34,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [otpChallenge, setOtpChallenge] = useState<{ id: string; channel: string } | null>(null);
-  const [otpCode, setOtpCode] = useState("");
+  const [otpChallenge, setOtpChallenge] = useState<TwoFactorChallengeState | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -164,8 +164,13 @@ const Login = () => {
         const from = nextPath || location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
       } else if (result.requires2FA && result.challengeId) {
-        setOtpChallenge({ id: result.challengeId, channel: result.channel || "email" });
-        toast({ title: t("pg.Settings.0063"), description: `Check your ${result.channel || "email"} for the one-time code.` });
+        setOtpChallenge({
+          challengeId: result.challengeId,
+          maskedEmail: result.maskedEmail || "",
+          delivery: result.delivery || "sent",
+          expiresIn: result.expiresIn ?? 300,
+          resendAfter: result.resendAfter ?? 60,
+        });
       } else {
         const errorMessage = result.error || t("auth.login.toast_credentials_error");
 
@@ -226,17 +231,11 @@ const Login = () => {
     }
   };
 
-  const handleVerifyLoginOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const response = await apiClient.verifyLoginOTP(otpChallenge!.id, otpCode, invitationToken || undefined);
-    if (response.data?.tokens) {
-      localStorage.setItem("access_token", response.data.tokens.access);
-      localStorage.setItem("refresh_token", response.data.tokens.refresh);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      window.location.assign(nextPath || "/dashboard");
-    } else {
-      toast({ title: t("pg.Settings.0068"), description: response.error || "Invalid or expired code.", variant: "destructive" });
-    }
+  const handleTwoFactorVerified = (tokens: { access: string; refresh: string }, user: unknown) => {
+    localStorage.setItem("access_token", tokens.access);
+    localStorage.setItem("refresh_token", tokens.refresh);
+    localStorage.setItem("user", JSON.stringify(user));
+    window.location.assign(nextPath || "/dashboard");
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -262,22 +261,12 @@ const Login = () => {
 
   if (otpChallenge) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <form onSubmit={handleVerifyLoginOTP} className="w-full max-w-md space-y-5 rounded-xl bg-white p-8 shadow">
-          <h1 className="text-2xl font-bold text-gray-900">{t("pg.Login.0884")}</h1>
-          <p className="text-sm text-gray-600">{t("pg.Login.0885")} {otpChallenge.channel}.</p>
-          <Input
-            value={otpCode}
-            onChange={(event) => setOtpCode(event.target.value)}
-            inputMode="numeric"
-            maxLength={6}
-            pattern="[0-9]{6}"
-            placeholder={t("pg.Login.0886")}
-            required
-          />
-          <Button type="submit" className="w-full">{t("pg.Login.0887")}</Button>
-        </form>
-      </div>
+      <TwoFactorChallenge
+        challenge={otpChallenge}
+        invitationToken={invitationToken || undefined}
+        onVerified={handleTwoFactorVerified}
+        onBack={() => setOtpChallenge(null)}
+      />
     );
   }
 

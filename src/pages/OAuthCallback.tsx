@@ -6,6 +6,7 @@ import { BrandName } from "@/components/layout/BrandLogo";
 import { safeInviteNext } from "@/lib/googleLogin";
 
 import { useLanguage } from "@/hooks/useLanguage";
+import { TwoFactorChallenge, type TwoFactorChallengeState } from "@/components/auth/TwoFactorChallenge";
 export default function OAuthCallback() {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ export default function OAuthCallback() {
   const [savingPhone, setSavingPhone] = useState(false);
   // Where to go after sign-in: back to the invitation being accepted, otherwise the dashboard.
   const [destination, setDestination] = useState("/dashboard");
+  // Set when this account also requires the emailed code: no tokens exist until it is verified.
+  const [challenge, setChallenge] = useState<TwoFactorChallengeState | null>(null);
 
   useEffect(() => {
     const completeLogin = async () => {
@@ -25,6 +28,18 @@ export default function OAuthCallback() {
       // Only an invitation path is honoured (exact shape); anything else falls back to the dashboard.
       const next = safeInviteNext(params.get("next")) || "/dashboard";
       setDestination(next);
+
+      if (params.get("requires_2fa") === "1" && params.get("challenge_id")) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setChallenge({
+          challengeId: params.get("challenge_id") || "",
+          maskedEmail: params.get("masked_email") || "",
+          delivery: params.get("delivery") || "sent",
+          expiresIn: 300,
+          resendAfter: 60,
+        });
+        return;
+      }
 
       if (!access || !refresh) {
         setError(t("pg.OAuthCallback.0939"));
@@ -79,6 +94,21 @@ export default function OAuthCallback() {
       setSavingPhone(false);
     }
   };
+
+  if (challenge) {
+    return (
+      <TwoFactorChallenge
+        challenge={challenge}
+        onVerified={(tokens, user) => {
+          localStorage.setItem("access_token", tokens.access);
+          localStorage.setItem("refresh_token", tokens.refresh);
+          localStorage.setItem("user", JSON.stringify(user));
+          window.location.assign(destination);
+        }}
+        onBack={() => navigate("/login", { replace: true })}
+      />
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6">
