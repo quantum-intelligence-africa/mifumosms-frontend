@@ -31,6 +31,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 // Same window event the dialer fires, so call lists refresh on either.
 import { CALL_ENDED_EVENT } from "@/contexts/DialerContext";
 
+import type { AiHandoffPacket } from "@/services/aiAgentApi";
+
 export interface IncomingCall {
   callId: string | null;
   fromNumber: string;
@@ -42,6 +44,8 @@ export interface IncomingCall {
   /** Set when this call was handed over by another agent. */
   transferredFrom?: string;
   transferNote?: string;
+  /** Set when the AI assistant spoke with the caller first: why, a summary and the last exchanges. */
+  aiHandoff?: AiHandoffPacket;
 }
 
 export interface ActiveCall {
@@ -262,6 +266,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
           audioMode: (d.audio_mode as "browser" | "handset" | "both") ?? "handset",
           transferredFrom: d.transferred_from ? String(d.transferred_from) : undefined,
           transferNote: d.transfer_note ? String(d.transfer_note) : undefined,
+          aiHandoff: d.ai_handoff ? (d.ai_handoff as AiHandoffPacket) : undefined,
         }));
         lastCallRef.current = {
           callId: String(d.call_id ?? ""),

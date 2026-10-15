@@ -19,6 +19,7 @@ import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { PlayButton, RecordingPlayerBar, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
 import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { AiSessionPanel } from "@/components/callcenter/AiSessionPanel";
 import { voiceApi } from "@/services/voiceApi";
 import { formatDuration } from "@/components/callcenter/callUtils";
 import { callCenterApi, type AnalysisJobFull, type CCAgent, type CallNote, type CallRow, type CallTimeline, type Team } from "@/services/callCenterApi";
@@ -399,6 +400,7 @@ export default function History() {
               {analysisFor ? (analysisFor.direction === "inbound" ? analysisFor.from_number : analysisFor.to_number) : ""}
             </DialogDescription>
           </DialogHeader>
+          {analysisFor && <AiSessionPanel callId={analysisFor.id} />}
           {analysisData === null ? (
             <Skeleton className="h-32" />
           ) : analysisData.recordings.length === 0 ? (

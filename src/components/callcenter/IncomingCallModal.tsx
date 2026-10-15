@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCallCenter } from "@/contexts/CallCenterContext";
 import { softphoneProblem } from "@/components/callcenter/softphoneProblem";
+import { AiHandoffCard } from "@/components/callcenter/AiHandoffCard";
 
 function ago(iso: string | null, t: ReturnType<typeof useLanguage>["t"]): string {
   if (!iso) return "";
@@ -56,6 +57,8 @@ export function IncomingCallModal() {
             {incoming.transferNote && <p className="mt-0.5 text-violet-800/90 dark:text-violet-200/90">“{incoming.transferNote}”</p>}
           </div>
         )}
+
+        {incoming.aiHandoff && <AiHandoffCard packet={incoming.aiHandoff} />}
 
         {caller && (
           <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 text-sm">

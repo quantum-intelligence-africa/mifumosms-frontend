@@ -37,6 +37,7 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
         // Analytics: supervisors and above who already have call-center access (the server checks again).
         ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.analytics", href: "/call-center/analytics" }] : []),
         ...(cc ? [{ labelKey: "cc.nav.history", href: "/call-center/history" }] : []),
+        ...(cc ? [{ labelKey: "ai.nav.tickets", href: "/call-center/tickets" }] : []),
         ...(ivr ? [{ labelKey: "cc.nav.call_log", href: "/voice/calls" }] : []),
         ...(ivr ? [{ labelKey: "nav.recordings", href: "/voice/recordings" }] : []),
       ],
@@ -48,6 +49,7 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
       tabs: [
         ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.teams", href: "/call-center/teams" }] : []),
         ...(cc && isCallCenterAdmin(user) ? [{ labelKey: "cc.nav.agents", href: "/call-center/agents" }] : []),
+        ...(cc && isCallCenterAdmin(user) ? [{ labelKey: "ai.nav.assistant", href: "/call-center/ai-assistant" }] : []),
         ...(cc && isCallCenterAdmin(user) ? [{ labelKey: "cc.nav.plans", href: "/call-center/plans" }] : []),
       ],
     },

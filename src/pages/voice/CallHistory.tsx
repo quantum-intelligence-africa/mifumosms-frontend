@@ -27,6 +27,7 @@ import {
 } from "@/components/voice/RecordingPlayerBar";
 import { cn } from "@/lib/utils";
 import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
+import { AiSessionPanel } from "@/components/callcenter/AiSessionPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { isCallCenterSupervisor } from "@/utils/roleUtils";
 import type { AnalysisJobFull } from "@/services/callCenterApi";
@@ -613,6 +614,8 @@ export default function CallHistory() {
                                             </>
                                           )}
                                         </dl>
+
+                                        <AiSessionPanel callId={call.id} />
 
                                         {detail.recordings.length === 0 && (
                                           <p className="pt-2 text-xs text-muted-foreground">{t("voice.calls.no_recording_for_call")}</p>

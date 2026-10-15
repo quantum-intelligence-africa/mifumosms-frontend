@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ccEn } from "@/i18n/callCenter";
 import { anEn } from "@/i18n/callAnalytics";
 import { pgEn } from "@/i18n/pages";
+import { aiEn } from "@/i18n/aiAgent";
 import { useBranding } from "@/contexts/BrandingContext";
 
 const translations = {
@@ -9,6 +10,7 @@ const translations = {
     ...ccEn,
     ...anEn,
     ...pgEn,
+    ...aiEn,
     "app.name": "SENDA",
     "app.tagline": "Communication Hub",
     "tutorial.title": "Welcome to SENDA",

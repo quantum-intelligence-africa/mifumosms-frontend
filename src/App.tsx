@@ -85,6 +85,8 @@ const CallCenterTeams = lazy(() => import("./pages/callcenter/Teams"));
 const CallCenterAgents = lazy(() => import("./pages/callcenter/CallCenterAgents"));
 const CallCenterMissed = lazy(() => import("./pages/callcenter/MissedCalls"));
 const CallCenterHistory = lazy(() => import("./pages/callcenter/History"));
+const CallCenterAIAssistant = lazy(() => import("./pages/callcenter/AIAssistant"));
+const CallCenterTickets = lazy(() => import("./pages/callcenter/Tickets"));
 const CallCenterPlans = lazy(() => import("./pages/callcenter/Plans"));
 const WhatsAppCloud = lazy(() => import("./pages/WhatsAppCloud"));
 const CreateWhatsAppTemplate = lazy(() => import("./pages/CreateWhatsAppTemplate"));
@@ -314,6 +316,16 @@ const AppContent = () => {
               <Route path="/call-center/history" element={
                 <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
                   <CallCenterHistory />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/ai-assistant" element={
+                <ProtectedRoute requireCallCenter="admin" comingSoonKey="voice_ivr">
+                  <CallCenterAIAssistant />
+                </ProtectedRoute>
+              } />
+              <Route path="/call-center/tickets" element={
+                <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
+                  <CallCenterTickets />
                 </ProtectedRoute>
               } />
               <Route path="/conversations" element={
