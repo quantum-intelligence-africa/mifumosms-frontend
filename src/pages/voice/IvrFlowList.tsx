@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson, Sparkles } from "lucide-react";
+import { Plus, Workflow, AlertCircle, RefreshCw, Clock, Link2, Unlink, Upload, Download, FileJson, Sparkles, Trash2 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -117,6 +117,37 @@ export default function IvrFlowList() {
       toast({ title: "Disconnected", description: `This flow no longer runs on ${label}.` });
     } else {
       toast({ title: "Failed to disconnect", description: res.error || "Please try again.", variant: "destructive" });
+    }
+  };
+
+  // Delete = archive on the server: the flow disappears from this list, and the calls it already handled stay in history.
+  // A number still pointing at it is disconnected first, so no number is left running a deleted flow.
+  const handleDelete = async (e: React.MouseEvent, flow: IvrFlowSummary) => {
+    e.stopPropagation();
+    const inUse = accounts.filter((a) => a.active_flow === flow.id);
+    const numbers = inUse.map((a) => a.phone_number || a.display_name).filter(Boolean).join(", ");
+    const warning = inUse.length
+      ? `
+
+It is answering ${numbers || "a phone number"}. Calls to ${inUse.length > 1 ? "those numbers" : "that number"} will not be answered until you connect another flow.`
+      : "";
+    if (!window.confirm(`Delete "${flow.name}"?${warning}
+
+Past calls and reports are kept.`)) return;
+    for (const account of inUse) {
+      const detached = await voiceApi.patch<VoiceAccountLite>(`/voice/accounts/${account.id}/`, { active_flow: null });
+      if (!detached.success) {
+        toast({ title: "Could not delete the flow", description: detached.error || "It could not be disconnected from its number.", variant: "destructive" });
+        return;
+      }
+    }
+    const res = await voiceApi.delete(`/voice/ivr/${flow.id}/`);
+    if (res.success) {
+      setFlows((prev) => prev.filter((f) => f.id !== flow.id));
+      setAccounts((prev) => prev.map((a) => (a.active_flow === flow.id ? { ...a, active_flow: null } : a)));
+      toast({ title: "Flow deleted", description: `"${flow.name}" was removed.` });
+    } else {
+      toast({ title: "Could not delete the flow", description: res.error || "Please try again.", variant: "destructive" });
     }
   };
 
@@ -288,6 +319,15 @@ export default function IvrFlowList() {
                               className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                             >
                               <Download className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete this flow"
+                              aria-label="Delete flow"
+                              onClick={(e) => handleDelete(e, flow)}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                             <Badge variant={statusVariant(flow.status)} className="capitalize">
                               {flow.status}
