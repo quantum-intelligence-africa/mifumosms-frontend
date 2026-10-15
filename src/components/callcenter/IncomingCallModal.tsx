@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCallCenter } from "@/contexts/CallCenterContext";
+import { softphoneProblem } from "@/components/callcenter/softphoneProblem";
 
 function ago(iso: string | null, t: ReturnType<typeof useLanguage>["t"]): string {
   if (!iso) return "";
@@ -19,7 +20,7 @@ function ago(iso: string | null, t: ReturnType<typeof useLanguage>["t"]): string
  * contacts and call history (the backend only ever looks those up per tenant).
  */
 export function IncomingCallModal() {
-  const { incoming, answer, decline, softphone } = useCallCenter();
+  const { incoming, answer, decline, softphone, softphoneNote, reconnectSoftphone } = useCallCenter();
   const { t } = useLanguage();
   if (!incoming) return null;
 
@@ -95,11 +96,20 @@ export function IncomingCallModal() {
           {!incoming.ringing && (
             <p className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
-              {softphone === "error" || softphone === "off"
-                ? t("cc.incoming.audio_error")
-                : softphone === "connecting"
-                  ? t("cc.incoming.audio_connecting")
-                  : t("cc.incoming.audio_waiting")}
+              <span className="space-y-2">
+                <span className="block">
+                  {softphone === "error" || softphone === "off"
+                    ? softphoneProblem(softphoneNote, softphone, t)
+                    : softphone === "connecting"
+                      ? t("cc.incoming.audio_connecting")
+                      : t("cc.incoming.audio_waiting")}
+                </span>
+                {(softphone === "error" || softphone === "off") && softphone !== "off" && (
+                  <Button type="button" size="sm" variant="outline" className="h-7 border-amber-300 bg-white text-xs text-amber-900 hover:bg-amber-100" onClick={reconnectSoftphone}>
+                    {t("cc.softphone.reconnect")}
+                  </Button>
+                )}
+              </span>
             </p>
           )}
           <div className="grid grid-cols-2 gap-3 pt-1">

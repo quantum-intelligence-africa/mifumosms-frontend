@@ -87,6 +87,8 @@ interface CallCenterContextValue {
   socketState: SocketState;
   softphone: SoftphoneState;
   softphoneNote: string;
+  /** Start the browser phone again (new token, new connection): the fix for most "not connected" states. */
+  reconnectSoftphone: () => void;
   status: AgentStatus;
   setStatus: (status: AgentStatus) => Promise<string | null>;
   incoming: IncomingCall | null;
@@ -173,6 +175,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
   const [socketState, setSocketState] = useState<SocketState>("idle");
   const [softphone, setSoftphone] = useState<SoftphoneState>("off");
   const [softphoneNote, setSoftphoneNote] = useState("");
+  const [softphoneEpoch, setSoftphoneEpoch] = useState(0);
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [active, setActive] = useState<ActiveCall | null>(null);
   const [transfer, setTransfer] = useState<ActiveTransfer | null>(null);
@@ -474,7 +477,9 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       clientRef.current = null;
       setSoftphone("off");
     };
-  }, [enabled, browserMode, refreshWorkspace]);
+  }, [enabled, browserMode, refreshWorkspace, softphoneEpoch]);
+
+  const reconnectSoftphone = useCallback(() => setSoftphoneEpoch((n) => n + 1), []);
 
   const sendDtmfKey = (digit: string) => {
     try {
@@ -620,6 +625,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       socketState,
       softphone,
       softphoneNote,
+      reconnectSoftphone,
       status: workspace?.agent.status ?? "offline",
       setStatus,
       incoming,
@@ -639,7 +645,7 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       subscribe,
     }),
     [
-      enabled, isAgent, workspaceReady, workspace, refreshWorkspace, socketState, softphone, softphoneNote, setStatus,
+      enabled, isAgent, workspaceReady, workspace, refreshWorkspace, socketState, softphone, softphoneNote, reconnectSoftphone, setStatus,
       incoming, active, transfer, transferComplete, transferCancel, wrapUp, answer, decline, hangup, toggleMute, toggleHold,
       sendDtmf, placeCall,
       dismissWrapUp, subscribe,

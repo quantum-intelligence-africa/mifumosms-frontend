@@ -15,6 +15,7 @@ import { StatusPicker } from "@/components/callcenter/StatusPicker";
 import { StatusLabel } from "@/components/callcenter/StatusDot";
 import { formatDuration, useElapsed } from "@/components/callcenter/callUtils";
 import { AgentHome } from "@/components/callcenter/AgentHome";
+import { softphoneProblem } from "@/components/callcenter/softphoneProblem";
 
 function greetingKey(): "cc.workspace.good_morning" | "cc.workspace.good_afternoon" | "cc.workspace.good_evening" {
   const h = new Date().getHours();
@@ -58,6 +59,8 @@ export default function Workspace() {
 
   const w = cc.workspace;
   const browser = w.agent.audio_mode === "browser";
+  // "Browser and phone" mode also rings (and needs) the browser phone, so it gets the same health messages.
+  const usesBrowser = w.agent.audio_mode === "browser" || w.agent.audio_mode === "both";
   const connected = cc.socketState === "ready";
 
   const startCall = () => {
@@ -103,18 +106,23 @@ export default function Workspace() {
         </Card>
       )}
 
-      {browser && cc.softphone === "error" && (
+      {usesBrowser && cc.softphone === "error" && (
         <Card className="border-amber-300">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-amber-800 dark:text-amber-200">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            {cc.softphoneNote === "no_number" ? t("cc.workspace.softphone_no_number") : t("cc.workspace.softphone_error")}
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-amber-800 dark:text-amber-200">
+            <span className="flex min-w-0 flex-1 items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {softphoneProblem(cc.softphoneNote, cc.softphone, t)}
+            </span>
+            {cc.softphoneNote !== "no_number" && (
+              <Button size="sm" variant="outline" className="shrink-0" onClick={cc.reconnectSoftphone}>{t("cc.softphone.reconnect")}</Button>
+            )}
           </CardContent>
         </Card>
       )}
-      {browser && cc.softphone === "ready" && (
+      {usesBrowser && cc.softphone === "ready" && (
         <p className="text-xs text-green-700 dark:text-green-400">{t("cc.workspace.softphone_ready")}</p>
       )}
-      {browser && cc.softphone === "connecting" && (
+      {usesBrowser && cc.softphone === "connecting" && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("cc.workspace.softphone_connecting")}
         </p>
