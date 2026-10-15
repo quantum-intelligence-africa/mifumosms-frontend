@@ -25,6 +25,7 @@ const REDIRECT_DELAY_MS = 3000;
 
 /** "No access" screen that sends the user back to the dashboard after a short delay. */
 const SmsAccessDenied: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,16 +41,15 @@ const SmsAccessDenied: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
           </svg>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">SMS Access Required</h2>
+        <h2 className="text-2xl font-bold text-foreground mb-2">{t("pg.ProtectedRoute.0773")}</h2>
         <p className="text-text-subtle mb-4">
-          You don't have access to SMS/messaging. Ask a workspace admin
-          or SENDA support to enable it for your account.
+          {t("pg.ProtectedRoute.0774")}
         </p>
         <p className="text-sm text-text-subtle mb-6">
-          Returning to the dashboard in a few seconds…
+          {t("pg.ProtectedRoute.0775")}
         </p>
         <Link to="/dashboard" replace className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-          Back to Dashboard
+          {t("pg.ProtectedRoute.0776")}
         </Link>
       </div>
     </div>
@@ -69,7 +69,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-subtle">Initializing...</p>
+          <p className="text-text-subtle">{t("pg.ProtectedRoute.0777")}</p>
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-subtle">Loading...</p>
+          <p className="text-text-subtle">{t("pg.Contacts.0340")}</p>
         </div>
       </div>
     );
@@ -116,20 +116,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Partner Access Required</h2>
-          <p className="text-text-subtle mb-6">This feature is exclusively for Mifumo Connect Partners (Partina).</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{t("pg.ProtectedRoute.0778")}</h2>
+          <p className="text-text-subtle mb-6">{t("pg.ProtectedRoute.0779")}</p>
           <div className="bg-surface rounded-lg p-4 text-left mb-6">
-            <p className="text-sm text-text-subtle font-medium mb-2">How to Get Partina Access:</p>
+            <p className="text-sm text-text-subtle font-medium mb-2">{t("pg.ProtectedRoute.0780")}</p>
             <ol className="text-sm text-text-subtle space-y-2 list-decimal list-inside">
-              <li>Go to <strong>Settings</strong></li>
-              <li>Find the <strong>Partina/Partner</strong> section</li>
-              <li>Submit your Partina request</li>
-              <li>Wait for admin approval</li>
-              <li>Once approved, you'll see Partina features</li>
+              <li>{t("pg.ProtectedRoute.0781")} <strong>{t("pg.Settings.0200")}</strong></li>
+              <li>{t("pg.ProtectedRoute.0782")} <strong>{t("pg.ProtectedRoute.0783")}</strong> {t("pg.ProtectedRoute.0784")}</li>
+              <li>{t("pg.ProtectedRoute.0785")}</li>
+              <li>{t("pg.ProtectedRoute.0786")}</li>
+              <li>{t("pg.ProtectedRoute.0787")}</li>
             </ol>
           </div>
           <a href="/settings" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-            Request Partina Status
+            {t("pg.ProtectedRoute.0788")}
           </a>
         </div>
       </div>
@@ -148,12 +148,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Coming Soon</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{t("pg.ProtectedRoute.0789")}</h2>
           <p className="text-text-subtle mb-6">
-            This feature isn't available yet — we're still working on it. Check back soon.
+            {t("pg.ProtectedRoute.0790")}
           </p>
           <Link to="/dashboard" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-            Back to Dashboard
+            {t("pg.ProtectedRoute.0776")}
           </Link>
         </div>
       </div>
@@ -193,13 +193,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
             <h2 className="text-2xl font-bold text-foreground mb-2">{t("voice.access.title")}</h2>
             <p className="text-text-subtle mb-6">
               {requireCallCenter === 'admin'
-                ? 'Only an organization owner or admin can manage this.'
+                ? t("pg.ProtectedRoute.0791")
                 : requireCallCenter === 'supervisor'
-                  ? 'This is for supervisors and administrators.'
+                  ? t("pg.ProtectedRoute.0792")
                   : t("voice.access.desc")}
             </p>
             <Link to="/call-center" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-              Back to Call Center
+              {t("pg.ProtectedRoute.0793")}
             </Link>
           </div>
         </div>
@@ -218,7 +218,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       <div className="min-h-screen bg-gradient-surface flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-subtle">Loading...</p>
+          <p className="text-text-subtle">{t("pg.Contacts.0340")}</p>
         </div>
       </div>
     );
@@ -233,19 +233,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2M7.08 6.47A9.959 9.959 0 0112 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.333-5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Upgrade Required</h2>
-          <p className="text-text-subtle mb-6">This feature isn't included in your current plan.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{t("pg.ProtectedRoute.0794")}</h2>
+          <p className="text-text-subtle mb-6">{t("pg.ProtectedRoute.0795")}</p>
           <div className="bg-surface rounded-lg p-4 text-left mb-6">
-            <p className="text-sm text-text-subtle font-medium mb-2">How to Get Access:</p>
+            <p className="text-sm text-text-subtle font-medium mb-2">{t("pg.ProtectedRoute.0796")}</p>
             <ol className="text-sm text-text-subtle space-y-2 list-decimal list-inside">
-              <li>Go to <strong>Settings</strong></li>
-              <li>Find the <strong>Billing/Plan</strong> section</li>
-              <li>Upgrade to a plan that includes this feature</li>
-              <li>Once upgraded, you'll see it unlocked here</li>
+              <li>{t("pg.ProtectedRoute.0781")} <strong>{t("pg.Settings.0200")}</strong></li>
+              <li>{t("pg.ProtectedRoute.0782")} <strong>{t("pg.ProtectedRoute.0797")}</strong> {t("pg.ProtectedRoute.0784")}</li>
+              <li>{t("pg.ProtectedRoute.0798")}</li>
+              <li>{t("pg.ProtectedRoute.0799")}</li>
             </ol>
           </div>
           <a href="/settings" className="inline-flex items-center justify-center px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-            Go to Settings
+            {t("pg.ProtectedRoute.0800")}
           </a>
         </div>
       </div>

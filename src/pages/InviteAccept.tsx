@@ -10,6 +10,7 @@ import { googleLoginUrl } from "@/lib/googleLogin";
 import { BrandLogo, BrandName } from "@/components/layout/BrandLogo";
 import GoogleButton from "@/components/auth/GoogleButton";
 
+import { useLanguage } from "@/hooks/useLanguage";
 type Problem = { title: string; message: string } | null;
 
 /**
@@ -20,6 +21,7 @@ type Problem = { title: string; message: string } | null;
  * straight back here; the backend only accepts the invitation for the account it was issued to.
  */
 export default function InviteAccept() {
+  const { t } = useLanguage();
   const { token = "" } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -56,7 +58,7 @@ export default function InviteAccept() {
     const res = await apiClient.acceptInvitation(token);
     setAccepting(false);
     if (res.success) {
-      toast({ title: `Welcome to ${res.data?.tenant.name ?? info?.organization ?? "the team"}`, description: "Your invitation was accepted." });
+      toast({ title: `Welcome to ${res.data?.tenant.name ?? info?.organization ?? "the team"}`, description: t("pg.InviteAccept.0937") });
       // A full load so the app picks up the new membership everywhere.
       window.location.assign("/dashboard");
       return;
@@ -102,14 +104,14 @@ export default function InviteAccept() {
     const expired = info.reason === "expired";
     return shell(
       <>
-        <h1 className="text-xl font-semibold">{expired ? "This invitation has expired" : "This invitation isn't valid"}</h1>
+        <h1 className="text-xl font-semibold">{expired ? t("pg.InviteAccept.0938") : t("pg.InviteAccept.0939")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {expired
             ? `Ask ${info.organization ?? "the organization"}'s administrator to send you a new invitation.`
-            : "It may have already been used or withdrawn. Ask the organization's administrator for a new invitation."}
+            : t("pg.InviteAccept.0940")}
         </p>
         <Button asChild className="mt-6 w-full">
-          <Link to="/login">Go to sign in</Link>
+          <Link to="/login">{t("pg.InviteAccept.0941")}</Link>
         </Button>
       </>,
     );
@@ -117,10 +119,10 @@ export default function InviteAccept() {
 
   const summary = (
     <>
-      <h1 className="text-xl font-semibold">You're invited to join {info.organization}</h1>
+      <h1 className="text-xl font-semibold">{t("pg.InviteAccept.0942")} {info.organization}</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Role: <span className="font-medium text-foreground">{info.role_display || info.role}</span>
-        {info.email_hint ? <> · sent to {info.email_hint}</> : null}
+        {t("pg.InviteAccept.0943")} <span className="font-medium text-foreground">{info.role_display || info.role}</span>
+        {info.email_hint ? <> {t("pg.InviteAccept.0944")} {info.email_hint}</> : null}
       </p>
     </>
   );
@@ -131,13 +133,13 @@ export default function InviteAccept() {
         {summary}
         <div className="mt-6 space-y-3">
           <GoogleButton href={googleLoginUrl(whiteLabelHost, invitePath)} roundedClassName="rounded-lg">
-            Continue with Google
+            {t("pg.InviteAccept.0945")}
           </GoogleButton>
           <Button asChild className="w-full">
-            <Link to={`/login?next=${encodeURIComponent(invitePath)}`}>Sign in with email</Link>
+            <Link to={`/login?next=${encodeURIComponent(invitePath)}`}>{t("pg.InviteAccept.0946")}</Link>
           </Button>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">Use the email address this invitation was sent to.</p>
+        <p className="mt-4 text-xs text-muted-foreground">{t("pg.InviteAccept.0947")}</p>
       </>,
     );
   }
@@ -145,12 +147,12 @@ export default function InviteAccept() {
   if (wrongAccount) {
     return shell(
       <>
-        <h1 className="text-xl font-semibold">This invitation is for a different account</h1>
+        <h1 className="text-xl font-semibold">{t("pg.InviteAccept.0948")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          It was sent to {wrongAccount}, but you're signed in as {user?.email}. Sign in with the invited account to accept it.
+          {t("pg.InviteAccept.0949")} {wrongAccount}{t("pg.InviteAccept.0950")} {user?.email}{t("pg.InviteAccept.0951")}
         </p>
         <Button className="mt-6 w-full" onClick={switchAccount}>
-          Sign out and switch account
+          {t("pg.InviteAccept.0952")}
         </Button>
       </>,
     );
@@ -165,13 +167,13 @@ export default function InviteAccept() {
           <p className="mt-1 text-muted-foreground">{problem.message}</p>
         </div>
       )}
-      <p className="mt-4 text-xs text-muted-foreground">Signed in as {user?.email}</p>
+      <p className="mt-4 text-xs text-muted-foreground">{t("pg.InviteAccept.0953")} {user?.email}</p>
       <Button className="mt-4 w-full" onClick={accept} disabled={accepting}>
         {accepting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Accept invitation
+        {t("pg.InviteAccept.0954")}
       </Button>
       <button type="button" className="mt-3 text-xs text-muted-foreground underline" onClick={switchAccount}>
-        Not you? Switch account
+        {t("pg.InviteAccept.0955")}
       </button>
     </>,
   );

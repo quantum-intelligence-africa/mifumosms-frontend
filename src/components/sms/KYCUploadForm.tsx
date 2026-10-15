@@ -92,11 +92,11 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
         {/* Sender ID */}
         <div className="space-y-2">
           <Label htmlFor="sender-id" className="text-sm font-semibold">
-            {t('sender_name') || 'Requested Sender ID'}
+            {t('sender_name') || t("pg.KYCUploadForm.0923")}
           </Label>
           <Input
             id="sender-id"
-            placeholder="e.g., MyBrand"
+            placeholder={t("pg.KYCUploadForm.0924")}
             value={requestedSenderId}
             onChange={(e) => setRequestedSenderId(e.target.value)}
             maxLength={11}
@@ -104,18 +104,18 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             disabled={isLoading || isSubmitting}
           />
           <p className="text-xs text-text-subtle">
-            {requestedSenderId.length}/11 characters (alphanumeric + spaces)
+            {requestedSenderId.length}{t("pg.KYCUploadForm.0925")}
           </p>
         </div>
 
         {/* Sample Content */}
         <div className="space-y-2">
           <Label htmlFor="sample-content" className="text-sm font-semibold">
-            {t('sample_message') || 'Sample Message Content'}
+            {t('sample_message') || t("pg.KYCUploadForm.0926")}
           </Label>
           <textarea
             id="sample-content"
-            placeholder="Example: 'Hello! This is a test message from MyBrand.'"
+            placeholder={t("pg.KYCUploadForm.0927")}
             value={sampleContent}
             onChange={(e) => setSampleContent(e.target.value)}
             maxLength={160}
@@ -124,14 +124,14 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             disabled={isLoading || isSubmitting}
           />
           <p className="text-xs text-text-subtle">
-            {sampleContent.length}/160 characters
+            {sampleContent.length}{t("pg.SenderNames.0649")}
           </p>
         </div>
 
         {/* Phone Number (Optional) */}
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-semibold">
-            Phone Number <span className="text-text-subtle text-xs font-normal">(Optional)</span>
+            {t("pg.Settings.0077")} <span className="text-text-subtle text-xs font-normal">{t("pg.SenderNames.0598")}</span>
           </Label>
           <Input
             id="phone"
@@ -142,14 +142,14 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             disabled={isLoading || isSubmitting}
           />
           <p className="text-xs text-text-subtle">
-            Required for payment initiation if sender ID is approved
+            {t("pg.KYCUploadForm.0928")}
           </p>
         </div>
 
         {/* File Upload */}
         <div className="space-y-2">
           <Label className="text-sm font-semibold">
-            KYC Documents <span className="text-red-500">*</span>
+            {t("pg.SenderNames.0597")} <span className="text-red-500">*</span>
           </Label>
 
           <div className="relative border-2 border-dashed border-border rounded-lg p-4 sm:p-6 text-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
@@ -163,10 +163,10 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
             />
             <Upload className="w-8 h-8 mx-auto mb-2 text-primary" />
             <p className="text-sm font-medium text-foreground">
-              Drag & drop PDF files here or click to select
+              {t("pg.KYCUploadForm.0929")}
             </p>
             <p className="text-xs text-text-subtle mt-1">
-              PDF files up to 5MB each
+              {t("pg.KYCUploadForm.0930")}
             </p>
           </div>
 
@@ -174,7 +174,7 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
           {selectedFiles.length > 0 && (
             <div className="space-y-2 mt-3">
               <p className="text-xs font-semibold text-foreground">
-                Selected Files ({selectedFiles.length})
+                {t("pg.KYCUploadForm.0931")}{selectedFiles.length})
               </p>
               <div className="space-y-2">
                 {selectedFiles.map((file, index) => (
@@ -189,7 +189,7 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
                           {file.name}
                         </p>
                         <p className="text-xs text-text-subtle">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                          {(file.size / 1024 / 1024).toFixed(2)} {t("pg.WhatsAppCloud.0836")}
                         </p>
                       </div>
                     </div>
@@ -210,7 +210,7 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
           )}
 
           <p className="text-xs text-text-subtle">
-            Upload government-issued ID, business registration, or supporting documents
+            {t("pg.KYCUploadForm.0932")}
           </p>
         </div>
 
@@ -225,7 +225,7 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
         {response && (
           <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/20 flex items-center gap-2">
             <Check className="w-5 h-5 text-green-600" />
-            <p className="text-sm text-green-600">KYC submitted successfully!</p>
+            <p className="text-sm text-green-600">{t("pg.KYCUploadForm.0933")}</p>
           </div>
         )}
 
@@ -239,18 +239,18 @@ export const KYCUploadForm = ({ onSuccess, onError, defaultSenderId }: KYCUpload
           {isLoading || isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Uploading...
+              {t("pg.KYCUploadForm.0934")}
             </>
           ) : (
             <>
               <Upload className="w-4 h-4 mr-2" />
-              Submit KYC Documents
+              {t("pg.KYCUploadForm.0935")}
             </>
           )}
         </Button>
 
         <p className="text-xs text-text-subtle text-center">
-          Your documents are encrypted and securely stored. We process requests within 24 hours.
+          {t("pg.KYCUploadForm.0936")}
         </p>
       </form>
     </Card>

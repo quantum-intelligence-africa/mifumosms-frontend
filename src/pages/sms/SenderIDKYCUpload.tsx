@@ -46,7 +46,7 @@ const SenderIDKYCUpload = () => {
               className="text-xs sm:text-sm mb-2"
             >
               <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-              Back
+              {t("pg.Settings.0203")}
             </Button>
 
             {!uploadSuccess ? (
@@ -54,10 +54,10 @@ const SenderIDKYCUpload = () => {
                 {/* Header */}
                 <div>
                   <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground mb-1 sm:mb-1.5">
-                    {t('sender_id_request') || 'Sender ID KYC Upload'}
+                    {t('sender_id_request') || t("pg.SenderIDKYCUpload.0801")}
                   </h1>
                   <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                    {t('upload_kyc_documents') || 'Upload your KYC documents to request a custom sender ID'}
+                    {t('upload_kyc_documents') || t("pg.SenderIDKYCUpload.0802")}
                   </p>
                 </div>
 
@@ -67,8 +67,8 @@ const SenderIDKYCUpload = () => {
                     <div className="flex items-start gap-2">
                       <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
-                        <p className="text-xs text-text-subtle mt-0.5">Upload PDF files of government ID or business registration</p>
+                        <p className="text-xs sm:text-sm font-semibold text-foreground">{t("pg.SenderIDKYCUpload.0803")}</p>
+                        <p className="text-xs text-text-subtle mt-0.5">{t("pg.SenderIDKYCUpload.0804")}</p>
                       </div>
                     </div>
                   </Card>
@@ -77,8 +77,8 @@ const SenderIDKYCUpload = () => {
                     <div className="flex items-start gap-2">
                       <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-foreground">Processing</p>
-                        <p className="text-xs text-text-subtle mt-0.5">We verify your documents within 24 hours</p>
+                        <p className="text-xs sm:text-sm font-semibold text-foreground">{t("pg.SenderIDKYCUpload.0805")}</p>
+                        <p className="text-xs text-text-subtle mt-0.5">{t("pg.SenderIDKYCUpload.0806")}</p>
                       </div>
                     </div>
                   </Card>
@@ -87,8 +87,8 @@ const SenderIDKYCUpload = () => {
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-foreground">Approval</p>
-                        <p className="text-xs text-text-subtle mt-0.5">Payment may be required after approval</p>
+                        <p className="text-xs sm:text-sm font-semibold text-foreground">{t("pg.SenderIDKYCUpload.0807")}</p>
+                        <p className="text-xs text-text-subtle mt-0.5">{t("pg.SenderIDKYCUpload.0808")}</p>
                       </div>
                     </div>
                   </Card>
@@ -96,27 +96,27 @@ const SenderIDKYCUpload = () => {
 
                 {/* Requirements */}
                 <Card className="p-3 sm:p-4 glass">
-                  <h2 className="font-semibold text-sm sm:text-base mb-3">Required Information</h2>
+                  <h2 className="font-semibold text-sm sm:text-base mb-3">{t("pg.SenderIDKYCUpload.0809")}</h2>
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <div className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">1</div>
                       <div>
-                        <p className="text-xs sm:text-sm font-medium text-foreground">Sender ID</p>
-                        <p className="text-xs text-text-subtle">Max 11 characters (alphanumeric + space)</p>
+                        <p className="text-xs sm:text-sm font-medium text-foreground">{t("pg.SenderNames.0580")}</p>
+                        <p className="text-xs text-text-subtle">{t("pg.SenderIDKYCUpload.0810")}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <div className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">2</div>
                       <div>
-                        <p className="text-xs sm:text-sm font-medium text-foreground">Sample Message</p>
-                        <p className="text-xs text-text-subtle">Example of messages you'll send (max 300 chars)</p>
+                        <p className="text-xs sm:text-sm font-medium text-foreground">{t("pg.SenderNames.0594")}</p>
+                        <p className="text-xs text-text-subtle">{t("pg.SenderIDKYCUpload.0811")}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <div className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">3</div>
                       <div>
-                        <p className="text-xs sm:text-sm font-medium text-foreground">KYC Documents</p>
-                        <p className="text-xs text-text-subtle">PDF files (government ID, business registration, etc.)</p>
+                        <p className="text-xs sm:text-sm font-medium text-foreground">{t("pg.SenderNames.0597")}</p>
+                        <p className="text-xs text-text-subtle">{t("pg.SenderIDKYCUpload.0812")}</p>
                       </div>
                     </div>
                   </div>
@@ -133,33 +133,33 @@ const SenderIDKYCUpload = () => {
                     <CheckCircle2 className="w-8 h-8 text-success" />
                   </div>
                   <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
-                    {t('submission_successful') || 'Submission Successful!'}
+                    {t('submission_successful') || t("pg.SenderIDKYCUpload.0813")}
                   </h2>
                   <p className="text-xs sm:text-sm text-text-subtle text-center max-w-md mb-6">
-                    Your KYC documents have been submitted and will be reviewed within 24 hours.
+                    {t("pg.SenderIDKYCUpload.0814")}
                   </p>
 
                   {successData && (
                     <Card className="w-full max-w-md p-3 sm:p-4 glass mb-6">
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
-                          <span className="text-xs sm:text-sm text-text-subtle">Request ID</span>
+                          <span className="text-xs sm:text-sm text-text-subtle">{t("pg.SenderIDKYCUpload.0815")}</span>
                           <span className="text-xs sm:text-sm font-mono font-semibold text-foreground text-right flex-shrink-0 ml-2">{successData.id}</span>
                         </div>
                         <div className="flex justify-between items-start">
-                          <span className="text-xs sm:text-sm text-text-subtle">Sender ID</span>
+                          <span className="text-xs sm:text-sm text-text-subtle">{t("pg.SenderNames.0580")}</span>
                           <span className="text-xs sm:text-sm font-semibold text-foreground text-right flex-shrink-0 ml-2">{successData.requested_sender_id}</span>
                         </div>
                         <div className="flex justify-between items-start">
-                          <span className="text-xs sm:text-sm text-text-subtle">Status</span>
+                          <span className="text-xs sm:text-sm text-text-subtle">{t("pg.Contacts.0352")}</span>
                           <Badge className="text-xs">
-                            {successData.status === 'awaiting_payment' ? 'Awaiting Payment' : successData.status}
+                            {successData.status === 'awaiting_payment' ? t("pg.SenderIDKYCUpload.0816") : successData.status}
                           </Badge>
                         </div>
                         {successData.kyc_documents && successData.kyc_documents.length > 0 && (
                           <div className="flex justify-between items-start">
-                            <span className="text-xs sm:text-sm text-text-subtle">Documents</span>
-                            <span className="text-xs sm:text-sm font-semibold text-success">{successData.kyc_documents.length} uploaded</span>
+                            <span className="text-xs sm:text-sm text-text-subtle">{t("pg.SenderIDKYCUpload.0803")}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-success">{successData.kyc_documents.length} {t("pg.SenderIDKYCUpload.0817")}</span>
                           </div>
                         )}
                       </div>
@@ -172,7 +172,7 @@ const SenderIDKYCUpload = () => {
                       onClick={() => navigate('/dashboard')}
                       className="text-xs sm:text-sm flex-1"
                     >
-                      Go to Dashboard
+                      {t("pg.SenderIDKYCUpload.0818")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -181,7 +181,7 @@ const SenderIDKYCUpload = () => {
                       }}
                       className="text-xs sm:text-sm flex-1"
                     >
-                      Submit Another
+                      {t("pg.SenderIDKYCUpload.0819")}
                     </Button>
                   </div>
                 </div>

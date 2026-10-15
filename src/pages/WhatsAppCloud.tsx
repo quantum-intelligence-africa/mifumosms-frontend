@@ -415,7 +415,7 @@ function MediaPollFields({
                 ) : (
                   state.mediaFile && (
                     <p className="text-[10px] text-muted-foreground">
-                      {state.mediaFile.name} · {(state.mediaFile.size / 1024).toFixed(0)} KB
+                      {state.mediaFile.name} · {(state.mediaFile.size / 1024).toFixed(0)} {t("pg.WhatsAppCloud.0820")}
                     </p>
                   )
                 )}
@@ -429,7 +429,7 @@ function MediaPollFields({
                   {t("whatsapp.cloud.media.filename_label")}
                 </Label>
                 <Input
-                  placeholder="e.g. Invitation.pdf"
+                  placeholder={t("pg.WhatsAppCloud.0821")}
                   value={state.filename}
                   onChange={e => update("filename", e.target.value)}
                   className="h-8 text-xs border-border"
@@ -452,7 +452,7 @@ function MediaPollFields({
                   type="button"
                   onClick={refreshPolls}
                   disabled={pollsLoading}
-                  aria-label="Refresh polls"
+                  aria-label={t("pg.WhatsAppCloud.0822")}
                   className="text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
                   {pollsLoading ? (
@@ -1210,7 +1210,7 @@ function SingleSendTab({
           {audienceSearch && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label={t("pg.WhatsAppCloud.0823")}
               onClick={() => setAudienceSearch("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted text-muted-foreground"
             >
@@ -1236,7 +1236,7 @@ function SingleSendTab({
                 {showSelectBoxes ? (
                   <input
                     type="checkbox"
-                    aria-label="Select all on page"
+                    aria-label={t("pg.WhatsAppCloud.0824")}
                     checked={audience.length > 0 && audience.every((u) => selected.has(u.phone_number))}
                     onChange={(e) =>
                       setSelected((prev) => {
@@ -1274,7 +1274,7 @@ function SingleSendTab({
                         {matchImages.length > 0 && (
                           <ImageIcon
                             className={`w-3 h-3 flex-shrink-0 ${imgMatch ? "text-[#25D366]" : "text-muted-foreground/40"}`}
-                            aria-label={imgMatch ? "Has matching image" : "No matching image"}
+                            aria-label={imgMatch ? t("pg.WhatsAppCloud.0825") : t("pg.WhatsAppCloud.0826")}
                           />
                         )}
                       </span>
@@ -1285,7 +1285,7 @@ function SingleSendTab({
                       {showSelectBoxes ? (
                         <input
                           type="checkbox"
-                          aria-label={`Select ${user.phone_number}`}
+                          aria-label={t("pg.WhatsAppCloud.0827", { phone_number: user.phone_number })}
                           checked={selected.has(user.phone_number)}
                           onChange={() => toggleSelect(user.phone_number)}
                           className="h-4 w-4 accent-primary"
@@ -2208,7 +2208,7 @@ function BulkSendTab({
           {audienceSearch && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label={t("pg.WhatsAppCloud.0823")}
               onClick={() => setAudienceSearch("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted text-muted-foreground"
             >
@@ -2235,7 +2235,7 @@ function BulkSendTab({
                     onChange={togglePage}
                     disabled={audienceLoading || audience.length === 0}
                     className="w-3.5 h-3.5 rounded accent-[#25D366] cursor-pointer"
-                    title="Select all on this page"
+                    title={t("pg.WhatsAppCloud.0828")}
                   />
                 </th>
                 <Th>{t("whatsapp.cloud.table.name")}</Th>
@@ -2518,7 +2518,7 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
           )}
         </div>
         <Textarea
-          placeholder={mode === "phone_numbers" ? "+255712345678\n+255799000111" : "uuid-1\nuuid-2"}
+          placeholder={mode === "phone_numbers" ? "+255712345678\n+255799000111" : t("pg.WhatsAppCloud.0829")}
           value={ids} onChange={(e) => setIds(e.target.value)} rows={4}
           className="font-mono text-xs resize-none border-border bg-gray-50 dark:bg-gray-900"
         />
@@ -2735,7 +2735,7 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
                       ref={el => { if (el) el.indeterminate = somePageChecked && !allPageChecked; }}
                       onChange={togglePage}
                       className="w-3.5 h-3.5 rounded accent-[#25D366] cursor-pointer"
-                      title="Select all on this page"
+                      title={t("pg.WhatsAppCloud.0828")}
                     />
                   </th>
                   <Th>{t("whatsapp.cloud.table.name")}</Th>
@@ -2941,7 +2941,7 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
       {queryType === "by_user_ids" && (
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.contact_uuids")}</Label>
-          <Input placeholder="uuid-1, uuid-2, uuid-3" value={userIds} onChange={(e) => setUserIds(e.target.value)} className="h-9 text-sm border-border" />
+          <Input placeholder={t("pg.WhatsAppCloud.0830")} value={userIds} onChange={(e) => setUserIds(e.target.value)} className="h-9 text-sm border-border" />
           <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.comma_separated")}</p>
         </div>
       )}
@@ -3038,7 +3038,7 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
         <Button
           onClick={() => navigate("/whatsapp/templates/new")}
           className="h-9 gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white shadow-sm"
-          title="Build a template and submit it to Meta for approval"
+          title={t("pg.WhatsAppCloud.0831")}
         >
           <Plus className="w-4 h-4" strokeWidth={2.4} />
           {t("whatsapp.cloud.create_template")}
@@ -3048,7 +3048,7 @@ function TemplatesTab({ waAccountId }: { waAccountId: string }) {
       {/* Sub-mode toggle: Meta-approved sender vs local template manager */}
       <div
         role="tablist"
-        aria-label="Template mode"
+        aria-label={t("pg.WhatsAppCloud.0832")}
         className="grid grid-cols-2 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-xl"
       >
         {[
@@ -3481,7 +3481,7 @@ function PollResultsTab() {
                       {loadingHere && (
                         <Loader2
                           className="w-3 h-3 animate-spin text-primary flex-shrink-0 ml-auto"
-                          aria-label="Loading results"
+                          aria-label={t("pg.WhatsAppCloud.0833")}
                         />
                       )}
                     </div>
@@ -3515,7 +3515,7 @@ function PollResultsTab() {
                         // toast handled in hook
                       }
                     }}
-                    aria-label={`Archive ${p.title}`}
+                    aria-label={t("pg.WhatsAppCloud.0834", { title: p.title })}
                     className="text-muted-foreground hover:text-destructive flex-shrink-0 p-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -4155,7 +4155,7 @@ function BulkImageSendTab({
         </p>
         <p className="text-[11px] text-foreground/65 leading-snug mt-0.5">
           {t("whatsapp.cloud.personalized_image_send_hint")}{" "}
-          <span className="font-mono">{"{name}"}</span>.
+          <span className="font-mono">{t("pg.WhatsAppCloud.0835")}</span>.
         </p>
       </div>
 
@@ -4310,12 +4310,12 @@ function BulkImageSendTab({
                 <ImageIcon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 <span className="flex-1 truncate font-mono">{f.name}</span>
                 <span className="text-muted-foreground tabular-nums flex-shrink-0">
-                  {(f.size / 1024).toFixed(0)} KB
+                  {(f.size / 1024).toFixed(0)} {t("pg.WhatsAppCloud.0820")}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
-                  aria-label={`Remove ${f.name}`}
+                  aria-label={t("pg.SenderNames.0606", { name: f.name })}
                   className="text-muted-foreground hover:text-destructive flex-shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -4342,7 +4342,7 @@ function BulkImageSendTab({
               <AlertDescription className="text-xs leading-snug">
                 {t("whatsapp.cloud.large_upload_warning_pre")}{" "}
                 <span className="font-semibold tabular-nums">
-                  {(files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)).toFixed(0)} MB
+                  {(files.reduce((s, f) => s + f.size, 0) / (1024 * 1024)).toFixed(0)} {t("pg.WhatsAppCloud.0836")}
                 </span>
                 . {t("whatsapp.cloud.large_upload_warning_post")}
               </AlertDescription>
@@ -4419,7 +4419,7 @@ function BulkImageSendTab({
                         <button
                           type="button"
                           onClick={() => toggleSuppressContact(id)}
-                          aria-label={`Remove ${c.name} from recipients`}
+                          aria-label={t("pg.WhatsAppCloud.0837", { name: c.name })}
                           className="text-muted-foreground hover:text-destructive flex-shrink-0 p-1"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -4506,7 +4506,7 @@ function BulkImageSendTab({
               <button
                 type="button"
                 onClick={() => removeRow(r.id)}
-                aria-label="Remove row"
+                aria-label={t("pg.WhatsAppCloud.0838")}
                 disabled={rows.length <= 1}
                 className="text-muted-foreground hover:text-destructive disabled:opacity-30 flex-shrink-0"
               >
@@ -4521,14 +4521,14 @@ function BulkImageSendTab({
             {t("whatsapp.cloud.paste_many_at_once")}
           </summary>
           <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">
-            {t("whatsapp.cloud.one_per_line_example")} <span className="font-mono">+255712345678, John Magesa</span>
+            {t("whatsapp.cloud.one_per_line_example")} <span className="font-mono">{t("pg.WhatsAppCloud.0839")}</span>
           </p>
           <Textarea
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             rows={3}
             className="mt-2 text-xs font-mono resize-none border-border"
-            placeholder={"+255712345678, John Magesa\n+255754111222, Mary Joseph"}
+            placeholder={t("pg.WhatsAppCloud.0840")}
           />
         </details>
       </div>
@@ -4560,7 +4560,7 @@ function BulkImageSendTab({
             rows={2}
             maxLength={1024}
             className="text-xs resize-none border-border"
-            placeholder="Karibu {name}!"
+            placeholder={t("pg.WhatsAppCloud.0841")}
           />
           <p className="text-[10.5px] text-muted-foreground">
             {t("whatsapp.cloud.supports_name_token", { count: caption.length })}
@@ -4595,7 +4595,7 @@ function BulkImageSendTab({
                 <option value="">{t("whatsapp.cloud.select_a_template")}</option>
                 {tplList.map((tpl) => (
                   <option key={tpl.id} value={tpl.name}>
-                    {tpl.name} ({(tpl.language as string) || "en"})
+                    {tpl.name} ({(tpl.language as string) || t("pg.WhatsAppCloud.0842")})
                   </option>
                 ))}
               </select>
@@ -4604,8 +4604,8 @@ function BulkImageSendTab({
               {selectedTpl && bodyTokens.length > 0 && (
                 <div className="space-y-1.5 pt-1">
                   <p className="text-[10.5px] text-muted-foreground">
-                    {t("whatsapp.cloud.body_variables_hint_pre")} <span className="font-mono">{"{name}"}</span> {t("whatsapp.cloud.or")}{" "}
-                    <span className="font-mono">{"{phone}"}</span> {t("whatsapp.cloud.body_variables_hint_post")}
+                    {t("whatsapp.cloud.body_variables_hint_pre")} <span className="font-mono">{t("pg.WhatsAppCloud.0835")}</span> {t("whatsapp.cloud.or")}{" "}
+                    <span className="font-mono">{t("pg.WhatsAppCloud.0843")}</span> {t("whatsapp.cloud.body_variables_hint_post")}
                   </p>
                   {bodyTokens.map((tok, i) => (
                     <div key={tok} className="flex items-center gap-2">
@@ -4617,7 +4617,7 @@ function BulkImageSendTab({
                         onChange={(e) =>
                           setTplVars((prev) => ({ ...prev, [tok]: e.target.value }))
                         }
-                        placeholder={i === 0 ? "{name}" : t("whatsapp.cloud.value_or_name_phone")}
+                        placeholder={i === 0 ? t("pg.WhatsAppCloud.0835") : t("whatsapp.cloud.value_or_name_phone")}
                         className="h-8 text-xs border-border"
                       />
                     </div>
@@ -4642,7 +4642,7 @@ function BulkImageSendTab({
           <Input
             value={idempotencyKey}
             onChange={(e) => setIdempotencyKey(e.target.value)}
-            placeholder="e.g. wedding-rsvp-2026-05-14"
+            placeholder={t("pg.WhatsAppCloud.0844")}
             className="h-8 text-xs font-mono border-border"
             maxLength={120}
           />
@@ -5325,7 +5325,7 @@ export default function WhatsAppCloud() {
                   <button
                     type="button"
                     className="text-emerald-600 dark:text-emerald-400 hover:opacity-70 transition-opacity flex-shrink-0"
-                    title="Re-check"
+                    title={t("pg.WhatsAppCloud.0845")}
                     onClick={() => void loadAccount()}
                   >
                     <RefreshCw className="w-3 h-3" />
@@ -5353,7 +5353,7 @@ export default function WhatsAppCloud() {
                   <Label className="text-xs font-semibold text-foreground uppercase tracking-wide">{t("whatsapp.cloud.account_id_label")}</Label>
                   <p className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.account_id_hint")}</p>
                   <Input
-                    placeholder="cb_XXXXXXXXXXXX"
+                    placeholder={t("pg.WhatsAppCloud.0846")}
                     value={waAccountId}
                     onChange={(e) => setWaAccountId(e.target.value)}
                     className="font-mono text-sm h-9 border-border"
@@ -5365,7 +5365,7 @@ export default function WhatsAppCloud() {
             {/* Segmented control — filled colored pill for active */}
             <div
               role="tablist"
-              aria-label="WhatsApp send mode"
+              aria-label={t("pg.WhatsAppCloud.0847")}
               className="grid grid-cols-5 gap-1 p-1 bg-foreground/[0.06] dark:bg-foreground/[0.08] rounded-2xl"
             >
               {[
