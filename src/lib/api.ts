@@ -2115,6 +2115,11 @@ class ApiClient {
     });
   }
 
+  /** Remove an agent's login from this organization (the account is deleted when it belongs only here). */
+  async removeAgentAccount(tenantId: string, userId: number): Promise<ApiResponse<{ user_id: number; status: string; account_deleted: boolean }>> {
+    return this.request(`/tenants/${tenantId}/call-center/agents/${userId}/remove/`, { method: 'POST' });
+  }
+
   async changeAgentAccountRole(tenantId: string, userId: number, role: 'agent' | 'supervisor'): Promise<ApiResponse<{
     user_id: number;
     role: string;

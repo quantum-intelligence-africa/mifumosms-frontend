@@ -97,6 +97,8 @@ export interface TeamInput {
 
 export interface CCAgent {
   id: string;
+  /** Set when an administrator removed this agent (kept for history). */
+  removed_at?: string | null;
   name: string;
   user: number | null;
   email: string;
@@ -615,8 +617,9 @@ export const callCenterApi = {
     remove: (id: string) => voiceApi.delete(`${BASE}/teams/${id}/`),
   },
   agents: {
-    list: (params: { team?: string; active?: boolean } = {}) =>
-      voiceApi.get<CCAgent[]>(`${BASE}/agents/${qs({ team: params.team, active: params.active ? "true" : undefined })}`),
+    list: (params: { team?: string; active?: boolean; removed?: boolean } = {}) =>
+      voiceApi.get<CCAgent[]>(`${BASE}/agents/${qs({ team: params.team, active: params.active ? "true" : undefined, removed: params.removed ? "true" : undefined })}`),
+    remove: (id: string) => voiceApi.post<CCAgent>(`${BASE}/agents/${id}/remove/`),
     createProfile: (body: AgentProfileInput) => voiceApi.post<CCAgent>(`${BASE}/agents/`, body),
     update: (id: string, body: AgentProfileInput) => voiceApi.patch<CCAgent>(`${BASE}/agents/${id}/`, body),
     disableProfile: (id: string) => voiceApi.delete(`${BASE}/agents/${id}/`),

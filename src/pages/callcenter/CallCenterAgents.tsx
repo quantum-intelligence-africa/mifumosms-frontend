@@ -3,7 +3,7 @@
 // password that is shown exactly once and must be replaced at first sign-in.
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Copy, KeyRound, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldAlert, UserCheck, UserPlus, UserX } from "lucide-react";
+import { AlertCircle, Copy, KeyRound, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldAlert, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { useAdminTenantId } from "@/hooks/useAdminTenantId";
 import { useLanguage } from "@/hooks/useLanguage";
 import { apiClient } from "@/lib/api";
 import { ccKey } from "@/i18n/callCenter";
+import { appLocale } from "@/utils/appLocale";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { StatusLabel } from "@/components/callcenter/StatusDot";
 import {
@@ -63,6 +64,7 @@ export default function CallCenterAgents() {
   const tenantId = useAdminTenantId();
 
   const [agents, setAgents] = useState<CCAgent[]>([]);
+  const [removedAgents, setRemovedAgents] = useState<CCAgent[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +93,10 @@ export default function CallCenterAgents() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [ar, tr, pr, mr] = await Promise.all([
-      callCenterApi.agents.list(), callCenterApi.teams.list(), callCenterApi.plan(), callCenterApi.members(),
+    const [ar, tr, pr, mr, rr] = await Promise.all([
+      callCenterApi.agents.list(), callCenterApi.teams.list(), callCenterApi.plan(), callCenterApi.members(), callCenterApi.agents.list({ removed: true }),
     ]);
+    if (rr.success && rr.data) setRemovedAgents(rr.data);
     if (ar.success && ar.data) setAgents(ar.data);
     else setError(ar.error || t("cc.agents.load_failed"));
     if (tr.success && tr.data) setTeams(tr.data);
@@ -290,6 +293,26 @@ export default function CallCenterAgents() {
     void load();
   };
 
+  const removeAgent = async (agent: CCAgent) => {
+    if (!tenantId) return;
+    if (!window.confirm(t("cc.agents.remove_confirm", { name: agent.name }))) return;
+    setBusyId(agent.id);
+    // Call-center profile first (out of teams, no more calls), then the login account.
+    const profile = await callCenterApi.agents.remove(agent.id);
+    if (!profile.success) {
+      setBusyId(null);
+      return toast({ title: t("cc.agents.remove_failed"), description: describeError(profile), variant: "destructive" });
+    }
+    const account = agent.user ? await apiClient.removeAgentAccount(tenantId, agent.user) : null;
+    setBusyId(null);
+    if (account && !account.success) {
+      toast({ title: t("cc.agents.remove_partial"), description: describeError(account), variant: "destructive" });
+    } else {
+      toast({ title: t("cc.agents.removed"), description: agent.name });
+    }
+    void load();
+  };
+
   const toggleTeam = (id: string, on: boolean) =>
     setDraft((d) => ({ ...d, team_ids: on ? [...new Set([...d.team_ids, id])] : d.team_ids.filter((x) => x !== id) }));
 
@@ -399,6 +422,9 @@ export default function CallCenterAgents() {
                                 {busyId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
                               </Button>
                             )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" disabled={busyId === a.id} onClick={() => removeAgent(a)} aria-label={t("cc.agents.remove")} title={t("cc.agents.remove")}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -408,6 +434,28 @@ export default function CallCenterAgents() {
               </TableBody>
             </Table>
           </div>
+        </Card>
+      )}
+
+      {!error && !loading && removedAgents.length > 0 && (
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <div>
+              <h3 className="text-sm font-semibold">{t("cc.agents.removed_title")}</h3>
+              <p className="text-xs text-muted-foreground">{t("cc.agents.removed_desc")}</p>
+            </div>
+            {removedAgents.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm opacity-80">
+                <span>
+                  <span className="font-medium">{r.name}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{r.email || r.phone_number}</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {r.removed_at ? t("cc.agents.removed_on", { date: new Date(r.removed_at).toLocaleDateString(appLocale()) }) : ""}
+                </span>
+              </div>
+            ))}
+          </CardContent>
         </Card>
       )}
 
