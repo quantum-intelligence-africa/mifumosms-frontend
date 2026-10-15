@@ -14060,6 +14060,20 @@ function AIProvidersTab() {
   const th = {padding:'10px 16px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em'};
   const td = {padding:'12px 16px',verticalAlign:'middle'};
 
+  const makeDefault = async (row) => {
+    const res = await voiceAdminFetch(`/audio/provider-credentials/${row.id}/`, { method: 'PATCH', body: JSON.stringify({ is_default: true }) }, onLogout);
+    if (res.success) { showToast?.(`${row.name} is now the default provider.`, 'success'); fetchAll(); }
+    else showToast?.(res.error || 'Could not change the default.', 'error');
+  };
+
+  // Live test: one tiny real request per model, so a wrong key or model name shows up here and not on a customer's call.
+  const [tests, setTests] = useState({});   // id -> { running } | result
+  const runTest = async (row) => {
+    setTests(t => ({ ...t, [row.id]: { running: true } }));
+    const res = await voiceAdminFetch(`/audio/provider-credentials/${row.id}/test/`, { method: 'POST' }, onLogout);
+    setTests(t => ({ ...t, [row.id]: res.success ? res.data : { ok: false, checks: [{ name: 'Test', ok: false, detail: res.error || 'The test could not run.' }] } }));
+  };
+
   const remove = async (row) => {
     if (!window.confirm(`Delete AI provider "${row.name}"? Any tenant relying on it for analysis will fall back to another active credential, or stop analyzing calls if none remain.`)) return;
     const res = await voiceAdminFetch(`/audio/provider-credentials/${row.id}/`, { method: 'DELETE' }, onLogout);
@@ -14109,7 +14123,8 @@ function AIProvidersTab() {
                 No AI provider configured yet — post-call analysis will do nothing until one is added.
               </td></tr>
             ) : rows.map(row => (
-              <tr key={row.id} style={{borderTop:'1px solid #f1f5f9'}}>
+              <React.Fragment key={row.id}>
+              <tr style={{borderTop:'1px solid #f1f5f9'}}>
                 <td style={{...td,fontWeight:600,color:'#0f172a'}}>{row.name}</td>
                 <td style={td}>{AI_PROVIDER_TYPES.find(p=>p.value===row.provider_type)?.label || row.provider_type}</td>
                 <td style={td}>
@@ -14122,9 +14137,20 @@ function AIProvidersTab() {
                       ))}
                 </td>
                 <td style={td}>{row.is_active ? <CheckCircle2 size={15} color={GREEN}/> : <XCircle size={15} color={'#cbd5e1'}/>}</td>
-                <td style={td}>{row.is_default ? <span style={{fontSize:11,fontWeight:700,color:BRAND}}>Default</span> : '—'}</td>
+                <td style={td}>
+                  {row.is_default
+                    ? <span style={{fontSize:11,fontWeight:800,color:'#047857',background:'#d1fae5',borderRadius:999,padding:'3px 10px'}}>Default</span>
+                    : <button onClick={()=>makeDefault(row)} disabled={!row.is_active}
+                        style={{height:28,padding:'0 10px',borderRadius:7,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:11.5,fontWeight:600,cursor:row.is_active?'pointer':'default',opacity:row.is_active?1:.5}}>
+                        Make default
+                      </button>}
+                </td>
                 <td style={td}>
                   <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>runTest(row)} disabled={tests[row.id]?.running}
+                      style={{height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #bfdbfe',background:'#eff6ff',color:BRAND,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                      {tests[row.id]?.running ? 'Testing…' : 'Test'}
+                    </button>
                     <button onClick={()=>setEditing(row)}
                       style={{height:30,padding:'0 12px',borderRadius:7,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>
                       Edit
@@ -14136,6 +14162,22 @@ function AIProvidersTab() {
                   </div>
                 </td>
               </tr>
+              {tests[row.id] && !tests[row.id].running && (
+                <tr>
+                  <td colSpan={6} style={{padding:'0 16px 12px'}}>
+                    <div style={{border:'1px solid ' + (tests[row.id].ok ? '#a7f3d0' : '#fecaca'), background: tests[row.id].ok ? '#ecfdf5' : '#fef2f2', borderRadius:10, padding:'10px 14px', fontSize:12.5}}>
+                      <b style={{color: tests[row.id].ok ? '#047857' : '#b91c1c'}}>{tests[row.id].ok ? 'Working' : 'Not working'}</b>
+                      {(tests[row.id].checks || []).map((c, i) => (
+                        <div key={i} style={{marginTop:4,color:'#334155'}}>
+                          {c.ok ? '✓' : '✗'} <b>{c.name}</b>: {c.detail}{c.ms ? <span style={{color:'#94a3b8'}}> · {c.ms} ms</span> : null}
+                        </div>
+                      ))}
+                      <div style={{marginTop:6,fontSize:11,color:'#94a3b8'}}>This sends a second of silence and a one-word question. It proves the key and model respond; it does not measure accuracy on real calls.</div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
