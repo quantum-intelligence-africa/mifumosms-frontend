@@ -6049,6 +6049,7 @@ function UsersTab() {
   const [search, setSearch]       = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filter2fa, setFilter2fa] = useState('all');
   const [items, setItems]         = useState([]);
   const [meta, setMeta]           = useState({});
   const [page, setPage]           = useState(1);
@@ -6064,6 +6065,7 @@ function UsersTab() {
     const qs = new URLSearchParams({ page, limit: PER });
     if (filterRole !== 'all')   qs.set('role', filterRole);
     if (filterStatus !== 'all') qs.set('status', filterStatus);
+    if (filter2fa !== 'all')    qs.set('two_factor', filter2fa);
     if (search.trim())          qs.set('search', search.trim());
     adminFetch(`/users?${qs}`, {}, onLogout)
       .then(res => {
@@ -6072,7 +6074,7 @@ function UsersTab() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [page, filterRole, filterStatus, search, onLogout]);
+  }, [page, filterRole, filterStatus, filter2fa, search, onLogout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -6190,6 +6192,25 @@ function UsersTab() {
       .finally(() => setBusyId(null));
   };
 
+  // Two-factor sign-in (email code) for one user. The server refuses to enable it when the user's email is not verified.
+  const toggleTwoFactor = (u) => {
+    const next = !u.two_factor_enabled;
+    if (!next && !window.confirm(`Turn off two-factor sign-in for ${u.name}? They will log in with their password only.`)) return;
+    if (next && !window.confirm(`Turn on two-factor sign-in for ${u.name}? A code will be emailed to ${u.email} every time they log in.`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/two-factor`, { method: 'PATCH', body: JSON.stringify({ enabled: next }) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, two_factor_enabled: next } : x));
+          showToast?.(next ? `Two-factor turned on for ${u.name}.` : `Two-factor turned off for ${u.name}.`, 'success');
+        } else {
+          showToast?.(res.error?.message || 'Could not change two-factor.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Could not change two-factor.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
   const iconBtn = { border:'none', background:'#f1f5f9', borderRadius:8, width:28, height:28, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#64748b' };
 
   return (
@@ -6213,6 +6234,15 @@ function UsersTab() {
             </button>
           ))}
         </div>
+        <div style={{display:'flex',gap:4,alignItems:'center'}} title="Two-factor sign-in">
+          <span style={{fontSize:11,fontWeight:700,color:'#94a3b8'}}>2FA</span>
+          {['all','enabled','disabled'].map(f=>(
+            <button key={f} className="senda-btn senda-btn-sm" onClick={()=>{setFilter2fa(f);setPage(1);}}
+              style={{background:filter2fa===f?(f==='enabled'?GREEN:BRAND):'#f1f5f9',color:filter2fa===f?'#fff':'#64748b',border:'none'}}>
+              {f.charAt(0).toUpperCase()+f.slice(1)}
+            </button>
+          ))}
+        </div>
         <span style={{fontSize:12,color:'#94a3b8',marginLeft: isSuperAdmin ? 0 : 'auto'}}>{total} users</span>
         {isSuperAdmin && (
           <button className="senda-btn senda-btn-primary senda-btn-sm" style={{marginLeft:'auto'}} onClick={()=>setFormModal('create')}>
@@ -6224,9 +6254,9 @@ function UsersTab() {
       {loading ? <LoadingState/> : error ? <ErrorState message={error} onRetry={fetchData}/> : (
         <div className="senda-card senda-table-wrap" style={{overflow:'hidden'}}>
           <div style={{overflowX:'auto'}}>
-            <table className="senda-table" style={{minWidth:1080}}>
+            <table className="senda-table" style={{minWidth:1180}}>
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>Joined</th><th>Actions</th></tr>
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>SMS Sent</th><th>Balance (TZS)</th><th>Status</th><th>SMS Access</th><th>IVR Access</th><th>2FA</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {items.map(u=>{
@@ -6296,6 +6326,19 @@ function UsersTab() {
                           color:u.ivr_access_enabled?'#065f46':'#64748b'}}>
                         <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
                         {u.ivr_access_enabled ? 'Granted' : 'Off'}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        onClick={()=>toggleTwoFactor(u)}
+                        disabled={trashed || busy}
+                        title={u.two_factor_enabled ? 'Email code required at login. Click to turn off' : (u.is_verified ? 'Click to require an email code at login' : 'Email not verified: cannot turn on')}
+                        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:99,
+                          border:'none',cursor:trashed||busy?'default':'pointer',fontSize:11,fontWeight:700,opacity:trashed?.5:1,
+                          background:u.two_factor_enabled?'#d1fae5':'#f1f5f9',
+                          color:u.two_factor_enabled?'#065f46':'#64748b'}}>
+                        <span style={{width:5,height:5,borderRadius:'50%',background:'currentColor'}}/>
+                        {u.two_factor_enabled ? 'On' : 'Off'}
                       </button>
                     </td>
                     <td style={{fontSize:12,color:'#64748b'}}>{u.joined_at ? new Date(u.joined_at).toLocaleDateString() : '—'}</td>
@@ -6383,6 +6426,9 @@ function UserFormModal({ user, onClose, onSaved }) {
   const [role, setRole]         = useState('user');
   const [password, setPassword] = useState('');
   const [saving, setSaving]     = useState(false);
+  const [emailVerified, setEmailVerified] = useState(!!user?.is_verified);
+  const [timezone, setTimezone] = useState(user?.timezone || 'UTC');
+  const [mustChange, setMustChange] = useState(!!user?.must_change_password);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -6408,7 +6454,7 @@ function UserFormModal({ user, onClose, onSaved }) {
       if (editing) {
         const res = await adminFetch(`/users/${user.id}/profile`, {
           method: 'PATCH',
-          body: JSON.stringify({ first_name, last_name, email: email.trim(), phone_number: phone.trim() }),
+          body: JSON.stringify({ first_name, last_name, email: email.trim(), phone_number: phone.trim(), is_verified: emailVerified, timezone: timezone.trim() || 'UTC', must_change_password: mustChange }),
         }, onLogout);
         if (res.success) {
           showToast(`${fullName.trim()} updated.`, 'success');
@@ -6478,6 +6524,24 @@ function UserFormModal({ user, onClose, onSaved }) {
           <label style={FIELD_LABEL}>Phone <span style={{color:'#cbd5e1',fontWeight:500}}>· optional</span></label>
           <input className="senda-input" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+255700000000" style={{...inputSm,marginBottom:14}}/>
 
+          {editing && (
+            <>
+              <label style={FIELD_LABEL}>Time zone</label>
+              <input className="senda-input" value={timezone} onChange={e=>setTimezone(e.target.value)} placeholder="Africa/Dar_es_Salaam" style={{...inputSm,marginBottom:14}}/>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#0f172a',marginBottom:10,cursor:'pointer'}}>
+                <input type="checkbox" checked={emailVerified} onChange={e=>setEmailVerified(e.target.checked)}/> Email address is verified
+              </label>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#0f172a',marginBottom:6,cursor:'pointer'}}>
+                <input type="checkbox" checked={mustChange} onChange={e=>setMustChange(e.target.checked)}/> Must choose a new password at next login
+              </label>
+              {user?.two_factor_enabled && email.trim().toLowerCase() !== (user.email || '').toLowerCase() && (
+                <p style={{fontSize:12,color:'#b45309',background:'#fffbeb',borderRadius:8,padding:'8px 10px',marginTop:10}}>
+                  Two-factor is on for this user. Login codes will go to the new email address, and the change is recorded.
+                </p>
+              )}
+            </>
+          )}
+
           {!editing && (
             <>
               <label style={FIELD_LABEL}>Role</label>
@@ -6510,6 +6574,79 @@ function Field({ label, value }) {
     <div>
       <p style={{fontSize:10.5,color:'#94a3b8',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:3}}>{label}</p>
       <p style={{fontSize:13,color:'#0f172a',fontWeight:600}}>{value}</p>
+    </div>
+  );
+}
+
+// Two-factor sign-in for one user: status, where codes go, who changed it, recent code activity, and an on/off switch.
+function TwoFactorCard({ userId, onChanged }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [info, setInfo] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState(null);
+
+  const load = useCallback(() => {
+    adminFetch(`/users/${userId}/two-factor`, {}, onLogout)
+      .then(res => { if (res.success) { setInfo(res.data); setErr(null); } else setErr(res.error?.message || 'Could not load two-factor.'); })
+      .catch(() => setErr('Could not load two-factor.'));
+  }, [userId, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const change = (enabled) => {
+    if (!window.confirm(enabled ? `Require an email code at login for ${info.name}?` : `Turn off two-factor for ${info.name}?`)) return;
+    setBusy(true);
+    adminFetch(`/users/${userId}/two-factor`, { method: 'PATCH', body: JSON.stringify({ enabled }) }, onLogout)
+      .then(res => {
+        if (res.success) { setInfo(res.data); showToast?.(enabled ? 'Two-factor turned on.' : 'Two-factor turned off.', 'success'); onChanged && onChanged(); }
+        else showToast?.(res.error?.message || 'Could not change two-factor.', 'error');
+      })
+      .catch(() => showToast?.('Could not change two-factor.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  const outcomeColor = { success: '#065f46', failure: '#dc2626', info: '#64748b' };
+  return (
+    <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:12,flexWrap:'wrap'}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:'#0f172a'}}>Two-factor sign-in</h3>
+        {info && (
+          <button className={`senda-btn senda-btn-sm ${info.two_factor_enabled ? '' : 'senda-btn-primary'}`} disabled={busy || (!info.two_factor_enabled && !info.can_enable)}
+            onClick={()=>change(!info.two_factor_enabled)}
+            style={info.two_factor_enabled ? {background:'#fee2e2',color:'#dc2626',border:'none'} : undefined}>
+            {busy ? 'Saving…' : info.two_factor_enabled ? 'Turn off' : 'Turn on'}
+          </button>
+        )}
+      </div>
+      {err && <p style={{fontSize:13,color:'#dc2626'}}>{err}</p>}
+      {!info && !err && <p style={{fontSize:13,color:'#94a3b8'}}>Loading…</p>}
+      {info && (
+        <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14}}>
+            <Field label="Status" value={info.two_factor_enabled ? 'On' : 'Off'}/>
+            <Field label="Method" value={info.method ? 'Email code' : '—'}/>
+            <Field label="Code sent to" value={info.destination || '—'}/>
+            <Field label="Email verified" value={info.email_verified ? 'Yes' : 'No'}/>
+            <Field label="Turned on" value={info.enabled_at ? new Date(info.enabled_at).toLocaleString() : '—'}/>
+            <Field label="Last changed" value={info.updated_at ? `${new Date(info.updated_at).toLocaleString()}${info.updated_by ? ' by ' + info.updated_by : ''}` : '—'}/>
+          </div>
+          {!info.two_factor_enabled && !info.can_enable && (
+            <p style={{fontSize:12,color:'#b45309',background:'#fffbeb',borderRadius:8,padding:'8px 10px',marginTop:12}}>{info.cannot_enable_reason} Mark the email as verified in Edit user, then turn this on.</p>
+          )}
+          <p style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',margin:'16px 0 6px'}}>Recent activity</p>
+          {(info.recent_events || []).length === 0 ? <p style={{fontSize:13,color:'#94a3b8'}}>No activity yet.</p> : (
+            <ul style={{listStyle:'none',margin:0,padding:0,display:'grid',gap:6}}>
+              {info.recent_events.slice(0, 10).map(ev => (
+                <li key={ev.id} style={{display:'flex',justifyContent:'space-between',gap:10,fontSize:12.5}}>
+                  <span style={{color:outcomeColor[ev.outcome] || '#64748b',fontWeight:600}}>
+                    {ev.label}{ev.actor ? ` · ${ev.actor}` : ''}{ev.detail ? ` · ${ev.detail}` : ''}
+                  </span>
+                  <span style={{color:'#94a3b8',whiteSpace:'nowrap'}}>{new Date(ev.at).toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -6786,6 +6923,8 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
                     <Field label="Last seen" value={d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}/>
                   </div>
                 </div>
+
+                {!d.is_deleted && <TwoFactorCard userId={user.id} onChanged={refreshAll}/>}
 
                 {isSuperAdmin && !d.is_deleted && (
                   <div className="senda-card" style={{padding:20}}>
@@ -20807,6 +20946,92 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
   );
 }
 
+// ─── Login: emailed code step (accounts with two-factor on) ──────────────────
+function AdminOtpStep({ challenge, onBack, onLogin, isMobile }) {
+  const [id, setId]           = useState(challenge.challenge_id);
+  const [code, setCode]       = useState('');
+  const [busy, setBusy]       = useState('');
+  const [error, setError]     = useState(challenge.delivery === 'failed' ? 'We could not send the code. Press "Resend code" to try again.' : '');
+  const [notice, setNotice]   = useState('');
+  const [cooldown, setCooldown] = useState(challenge.delivery === 'failed' ? 0 : (challenge.resend_after || 60));
+  const [expires, setExpires]   = useState(challenge.delivery === 'failed' ? 0 : (challenge.expires_in || 300));
+
+  useEffect(() => {
+    const t = setInterval(() => { setCooldown(v => Math.max(v - 1, 0)); setExpires(v => Math.max(v - 1, 0)); }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const post = async (path, body) => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/admin/${path}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body),
+      });
+      return { status: res.status, data: await res.json().catch(() => ({})) };
+    } catch { return { status: 0, data: {} }; }
+  };
+
+  const verify = async (e) => {
+    e.preventDefault();
+    if (code.length !== 6 || busy) return;
+    setBusy('verify'); setError(''); setNotice('');
+    const { status, data } = await post('verify-otp', { challenge_id: id, code });
+    setBusy('');
+    if (data.success && data.data?.access_token) {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        token: data.data.access_token, expires_at: Date.now() + data.data.expires_in * 1000, admin: data.data.admin, loginAt: Date.now(),
+      }));
+      onLogin(data.data.admin);
+      return;
+    }
+    setCode('');
+    setError(status === 429 ? 'Too many attempts. Please wait a while and try again.' : (data.error?.message || 'That code is not correct.'));
+  };
+
+  const resend = async () => {
+    if (cooldown > 0 || busy) return;
+    setBusy('resend'); setError(''); setNotice('');
+    const { status, data } = await post('resend-otp', { challenge_id: id });
+    setBusy('');
+    if (data.success && data.data?.challenge_id) {
+      setId(data.data.challenge_id); setCode('');
+      setCooldown(data.data.delivery === 'failed' ? 0 : (data.data.resend_after || 60)); setExpires(data.data.expires_in || 300);
+      if (data.data.delivery === 'failed') setError('We could not send the code. Press "Resend code" to try again.'); else setNotice('A new code was sent.');
+    } else {
+      if (status === 429) setCooldown(60);
+      setError(data.error?.message || 'Could not send a new code.');
+    }
+  };
+
+  return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',
+      background:`linear-gradient(135deg, #3b82f6 0%, ${BRAND} 55%, ${BRAND2} 100%)`,padding:'24px 16px',fontFamily:'inherit'}}>
+      <form onSubmit={verify} className="senda-fade-up"
+        style={{width:'100%',maxWidth:420,background:'#fff',borderRadius:8,padding:isMobile?'32px 24px':'40px 38px',boxShadow:'0 20px 50px rgba(0,0,0,.18)'}}>
+        <h2 style={{fontSize:22,fontWeight:800,color:BRAND,letterSpacing:'.04em',margin:0,marginBottom:10,textTransform:'uppercase'}}>Verify it's you</h2>
+        <p style={{fontSize:13.5,color:'#475569',marginBottom:20}}>We sent a 6-digit code to <b>{challenge.masked_email}</b>. Enter it to finish signing in.</p>
+        {error && <div role="alert" style={{background:'#fee2e2',border:'1px solid #fecaca',borderRadius:6,padding:'10px 13px',marginBottom:14,fontSize:13,color:'#b91c1c'}}>{error}</div>}
+        {notice && <div role="status" style={{background:'#d1fae5',borderRadius:6,padding:'10px 13px',marginBottom:14,fontSize:13,color:'#065f46'}}>{notice}</div>}
+        <input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,6))} inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6}
+          placeholder="••••••" aria-label="Verification code"
+          style={{width:'100%',height:52,borderRadius:6,border:'1px solid #e2e8f0',background:'#e9ebee',textAlign:'center',fontSize:24,letterSpacing:'.5em',outline:'none',marginBottom:8}}/>
+        <p style={{fontSize:12,color:expires>0?'#94a3b8':'#dc2626',marginBottom:16}}>
+          {expires > 0 ? `The code expires in ${Math.floor(expires/60)}:${String(expires%60).padStart(2,'0')}` : 'This code has expired. Request a new one.'}
+        </p>
+        <button type="submit" className="senda-btn senda-btn-primary" disabled={code.length !== 6 || !!busy || expires === 0} style={{width:'100%',height:46,justifyContent:'center'}}>
+          {busy === 'verify' ? 'Verifying…' : 'Verify'}
+        </button>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:16,fontSize:13}}>
+          <button type="button" onClick={onBack} style={{border:'none',background:'none',color:'#64748b',cursor:'pointer',padding:0}}>Back to login</button>
+          <button type="button" onClick={resend} disabled={cooldown > 0 || !!busy}
+            style={{border:'none',background:'none',color:cooldown>0?'#94a3b8':BRAND,fontWeight:600,cursor:cooldown>0?'default':'pointer',padding:0}}>
+            {busy === 'resend' ? 'Sending…' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── Login Page ───────────────────────────────────────────────────────────────
 function LoginPage({ onLogin }) {
   const [email, setEmail]       = useState('');
@@ -20814,6 +21039,7 @@ function LoginPage({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
+  const [challenge, setChallenge] = useState(null); // set when this account also needs an emailed code
   const bp = useBreakpoint();
 
   useEffect(() => { document.title = 'SENDA Admin | Login'; }, []);
@@ -20830,7 +21056,9 @@ function LoginPage({ onLogin }) {
         body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.data?.requires_2fa) {
+        setChallenge(data.data);
+      } else if (data.success) {
         localStorage.setItem(LS_KEY, JSON.stringify({
           token: data.data.access_token,
           expires_at: Date.now() + data.data.expires_in * 1000,
@@ -20849,6 +21077,10 @@ function LoginPage({ onLogin }) {
   };
 
   const isMobile = bp === 'mobile';
+
+  if (challenge) {
+    return <AdminOtpStep challenge={challenge} onBack={()=>setChallenge(null)} onLogin={onLogin} isMobile={isMobile}/>;
+  }
 
   // Plain gray field styling, focus lifts to white + blue ring
   const fieldStyle = {
