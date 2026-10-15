@@ -223,6 +223,8 @@ export const ccEn = {
   "cc.softphone.reason_closed": "The connection to the phone provider was closed (for example, you opened SENDA in another tab or on another device). Press Reconnect here to use this tab.",
   "cc.softphone.reason_token": "The phone provider did not give this browser a calling pass. {{detail}} Press Reconnect; if it keeps failing, tell your administrator.",
   "cc.softphone.reconnect": "Reconnect",
+  "cc.softphone.reason_mic": "This browser is not allowing SENDA to use the microphone, so calls can't be answered here. Click the lock icon in the address bar, set Microphone to Allow, then press Reconnect. Also keep SENDA open in only one tab.",
+  "cc.softphone.answer_failed": "Couldn't answer in the browser",
   "cc.workspace.softphone_no_number": "Your organization has no connected phone number yet, so the browser phone can't start.",
   "cc.workspace.softphone_unavailable": "Your browser phone isn't ready yet.",
   "cc.workspace.go_available_hint": "You're offline. Choose Available (top right) to start receiving calls.",

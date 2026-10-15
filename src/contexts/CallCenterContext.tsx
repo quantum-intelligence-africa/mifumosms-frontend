@@ -414,7 +414,21 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       clientRef.current = client;
       client.on("ready", () => {
         console.info("[softphone] ready — incoming calls can ring in this tab");
-        if (!cancelled) setSoftphone("ready");
+        if (cancelled) return;
+        setSoftphone("ready");
+        // Ask for the microphone now, not in the middle of a ringing call: a blocked or never-asked microphone is the commonest
+        // reason Answer does nothing. The permission is remembered by the browser; the test stream is closed straight away.
+        if (navigator.mediaDevices?.getUserMedia) {
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then((stream) => stream.getTracks().forEach((track) => track.stop()))
+            .catch((e) => {
+              console.warn("[softphone] microphone not available", e);
+              if (cancelled) return;
+              setSoftphone("error");
+              setSoftphoneNote("mic_denied");
+            });
+        }
       });
       client.on("notready", () => {
         console.warn("[softphone] notready");
@@ -514,9 +528,11 @@ export function CallCenterProvider({ children }: { children: ReactNode }) {
       }
     }
     try {
-      clientRef.current?.answer();
+      if (!clientRef.current) throw new Error("the browser phone is not connected");
+      clientRef.current.answer();
     } catch (e) {
       console.error("answer() failed", e);
+      toast({ title: t("cc.softphone.answer_failed"), description: t("cc.softphone.reason_mic"), variant: "destructive" });
     }
   }, [t]);
 

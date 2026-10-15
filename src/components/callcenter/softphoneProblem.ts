@@ -11,6 +11,7 @@ export function softphoneProblem(note: string, state: string, t: T): string {
     case "not_ready": return t("cc.softphone.reason_not_ready");
     case "offline": return t("cc.softphone.reason_offline");
     case "closed": return t("cc.softphone.reason_closed");
+    case "mic_denied": return t("cc.softphone.reason_mic");
     case "token_failed": return t("cc.softphone.reason_token", { detail: "" });
     default: return note ? t("cc.softphone.reason_token", { detail: note }) : t("cc.workspace.softphone_error");
   }

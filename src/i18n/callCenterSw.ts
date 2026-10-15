@@ -212,6 +212,8 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.softphone.reason_closed": "Muunganisho na mtoa huduma wa simu umefungwa (kwa mfano, ulifungua SENDA kwenye kichupo kingine au kifaa kingine). Bonyeza Unganisha tena hapa ili kutumia kichupo hiki.",
   "cc.softphone.reason_token": "Mtoa huduma wa simu hakukipa kivinjari hiki ruhusa ya kupiga simu. {{detail}} Bonyeza Unganisha tena; ikiendelea kushindwa, mjulishe msimamizi wako.",
   "cc.softphone.reconnect": "Unganisha tena",
+  "cc.softphone.reason_mic": "Kivinjari hiki hakiruhusu SENDA kutumia maikrofoni, kwa hiyo simu haziwezi kupokelewa hapa. Bonyeza ikoni ya kufuli kwenye upau wa anwani, weka Maikrofoni iwe Ruhusu, kisha bonyeza Unganisha tena. Pia weka SENDA wazi kwenye kichupo kimoja tu.",
+  "cc.softphone.answer_failed": "Imeshindwa kupokea kwenye kivinjari",
   "cc.workspace.softphone_no_number": "Shirika lako halina namba ya simu iliyounganishwa bado, kwa hiyo simu ya kivinjari haiwezi kuanza.",
   "cc.workspace.softphone_unavailable": "Simu ya kivinjari chako haiko tayari bado.",
   "cc.workspace.go_available_hint": "Hupo mtandaoni. Chagua 'Yupo tayari' (juu kulia) ili uanze kupokea simu.",
