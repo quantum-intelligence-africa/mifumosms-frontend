@@ -6211,6 +6211,23 @@ function UsersTab() {
       .finally(() => setBusyId(null));
   };
 
+  // An administrator can vouch for a user's email address (for example after confirming it by phone).
+  const verifyEmail = (u) => {
+    if (!window.confirm(`Mark ${u.email} as verified for ${u.name}?`)) return;
+    setBusyId(u.id);
+    adminFetch(`/users/${u.id}/profile`, { method: 'PATCH', body: JSON.stringify({ is_verified: true }) }, onLogout)
+      .then(res => {
+        if (res.success) {
+          setItems(prev => prev.map(x => x.id === u.id ? { ...x, is_verified: true } : x));
+          showToast?.(`${u.email} marked as verified.`, 'success');
+        } else {
+          showToast?.(res.error?.message || 'Could not verify the email.', 'error');
+        }
+      })
+      .catch(() => showToast?.('Could not verify the email.', 'error'))
+      .finally(() => setBusyId(null));
+  };
+
   const iconBtn = { border:'none', background:'#f1f5f9', borderRadius:8, width:28, height:28, display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#64748b' };
 
   return (
@@ -6274,7 +6291,13 @@ function UsersTab() {
                       title="Click to view full details"
                       onClick={()=>setSelectedUser(u)}
                     >{u.name}</td>
-                    <td style={{fontSize:12,color:'#64748b'}}>{u.email}</td>
+                    <td style={{fontSize:12,color:'#64748b'}}>
+                      {u.email}
+                      {!trashed && (u.is_verified
+                        ? <span title="Email verified" style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#065f46',background:'#d1fae5',borderRadius:99,padding:'1px 7px'}}>Verified</span>
+                        : <button onClick={()=>verifyEmail(u)} disabled={busy} title="Click to mark this email as verified"
+                            style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#b45309',background:'#fef3c7',border:'none',borderRadius:99,padding:'1px 7px',cursor:'pointer'}}>Unverified · Verify</button>)}
+                    </td>
                     <td style={{fontFamily:'monospace',fontSize:12}}>{u.phone}</td>
                     <td>
                       {isSuperAdmin && !trashed ? (
@@ -6915,7 +6938,20 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
                     <Field label="Role" value={(d.role||'').replace('_',' ')}/>
                     <Field label="Status" value={d.is_deleted ? 'Deleted' : d.status}/>
                     <Field label="Tenant" value={d.tenant_name || '—'}/>
-                    <Field label="Email verified" value={d.is_verified ? 'Yes' : 'No'}/>
+                    <div>
+                      <Field label="Email verified" value={d.is_verified ? 'Yes' : 'No'}/>
+                      {!d.is_verified && (
+                        <button className="senda-btn senda-btn-sm senda-btn-primary" style={{marginTop:6}} disabled={busy}
+                          onClick={()=>{
+                            if (!window.confirm(`Mark ${d.email} as verified for ${d.name}?`)) return;
+                            setBusy(true);
+                            adminFetch(`/users/${user.id}/profile`, { method: 'PATCH', body: JSON.stringify({ is_verified: true }) }, onLogout)
+                              .then(res => { if (res.success) { showToast?.('Email marked as verified.', 'success'); refreshAll(); } else showToast?.(res.error?.message || 'Could not verify the email.', 'error'); })
+                              .catch(() => showToast?.('Could not verify the email.', 'error'))
+                              .finally(() => setBusy(false));
+                          }}>Verify email</button>
+                      )}
+                    </div>
                     <Field label="Phone verified" value={d.phone_verified ? 'Yes' : 'No'}/>
                     <Field label="SMS access" value={d.sms_access_enabled !== false ? 'Granted' : 'Off'}/>
                     <Field label="IVR access" value={d.ivr_access_enabled ? 'Granted' : 'Off'}/>

@@ -23,12 +23,12 @@ export function EmailTwoFactorCard() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  // Email verification from here, so the switch is never a dead end.
-  const [verifyId, setVerifyId] = useState("");
-  const [verifyCode, setVerifyCode] = useState("");
 
   useEffect(() => {
-    void apiClient.emailTwoFactor().then(({ status, data }) => status === 200 && setState(data as State));
+    const load = () => void apiClient.emailTwoFactor().then(({ status, data }) => status === 200 && setState(data as State));
+    load();
+    window.addEventListener("senda:email-verified", load);
+    return () => window.removeEventListener("senda:email-verified", load);
   }, []);
 
   if (!state) return null;
@@ -52,31 +52,6 @@ export function EmailTwoFactorCard() {
     }
   };
 
-  const sendVerifyCode = async () => {
-    setBusy(true);
-    setError("");
-    const { status, data } = await apiClient.emailTwoFactor({ action: "send_code" });
-    setBusy(false);
-    if (status === 200 && data.challenge_id) setVerifyId(data.challenge_id);
-    else setError(data.error || t("tf.generic_error"));
-  };
-
-  const confirmVerifyCode = async () => {
-    setBusy(true);
-    setError("");
-    const { status, data } = await apiClient.emailTwoFactor({ action: "confirm_code", challenge_id: verifyId, code: verifyCode });
-    setBusy(false);
-    if (status === 200) {
-      setState(data as State);
-      setVerifyId("");
-      setVerifyCode("");
-      toast({ title: t("tf.set_verify_ok") });
-    } else {
-      setVerifyCode("");
-      setError(t("tf.invalid"));
-    }
-  };
-
   const blocked = !state.enabled && !state.can_enable;
   return (
     <Card className="glass border-0">
@@ -97,27 +72,7 @@ export function EmailTwoFactorCard() {
             )}
           </div>
         </div>
-        {blocked && (
-          <div className="space-y-2">
-            <p className="text-xs text-amber-700">{t("tf.set_cant")}</p>
-            {!verifyId ? (
-              <Button size="sm" onClick={() => void sendVerifyCode()} disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("tf.set_verify")}
-              </Button>
-            ) : (
-              <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void confirmVerifyCode(); }}>
-                <p className="text-sm">{t("tf.set_verify_sent", { email: state.destination })}</p>
-                <Input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" className="max-w-48 text-center tracking-[0.4em]" />
-                {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={busy || verifyCode.length !== 6}>{t("tf.verify")}</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => void sendVerifyCode()} disabled={busy}>{t("tf.resend")}</Button>
-                </div>
-              </form>
-            )}
-            {!verifyId && error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          </div>
-        )}
+        {blocked && <p className="text-xs text-amber-700">{t("tf.set_cant")}</p>}
         {asking && (
           <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void change(); }}>
             {state.has_password && (
