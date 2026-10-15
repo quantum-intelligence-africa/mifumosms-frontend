@@ -1474,7 +1474,7 @@ class ApiClient {
   }
 
   /** The signed-in person's own email-code sign-in setting. Raw status and body. */
-  async emailTwoFactor(body?: { enabled: boolean; password: string }): Promise<{ status: number; data: Record<string, any> }> {
+  async emailTwoFactor(body?: { enabled: boolean; password: string } | { action: 'send_code' } | { action: 'confirm_code'; challenge_id: string; code: string }): Promise<{ status: number; data: Record<string, any> }> {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/two-factor/`, {
         method: body ? 'POST' : 'GET',
