@@ -13429,7 +13429,7 @@ function VoiceProviderEditDrawer({ row, onClose, onSaved }) {
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Provider type</label>
             <select value={providerType} disabled={!isNew}
-              onChange={e=>{ setProviderType(e.target.value); setCreds({}); }}
+              onChange={e=>{ setProviderType(e.target.value); setCreds({}); if (isNew && ['Hugging Face', 'ElevenLabs', 'OpenAI'].includes(name)) setName(defaultNameFor(e.target.value)); }}
               className="senda-input" style={{height:38,fontSize:13,cursor:isNew?'pointer':'not-allowed'}}>
               {PROVIDER_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
@@ -13636,6 +13636,7 @@ function VoiceProvidersTab() {
 // Configuring one here is what makes AI analysis actually work platform-wide.
 const AI_PROVIDER_TYPES = [
   { value: 'huggingface', label: 'Hugging Face (call transcription & analysis)' },
+  { value: 'elevenlabs', label: 'ElevenLabs (call transcription — Scribe)' },
   { value: 'openai', label: 'OpenAI-compatible (earlier method)' },
 ];
 
@@ -13652,6 +13653,13 @@ const AI_CREDENTIAL_FIELDS = {
     { key: 'llm_cost_per_1k_prompt_tokens',      label: 'Analysis cost per 1,000 input tokens (optional)', type: 'number' },
     { key: 'llm_cost_per_1k_completion_tokens',  label: 'Analysis cost per 1,000 output tokens (optional)', type: 'number' },
     { key: 'cost_currency',      label: 'Cost currency (optional)', placeholder: 'USD' },
+  ],
+  elevenlabs: [
+    { key: 'api_key',    label: 'ElevenLabs API key', required: true, secret: true, placeholder: 'sk_…' },
+    { key: 'asr_model',  label: 'Speech model (leave empty for Scribe v2)', placeholder: 'scribe_v2' },
+    { key: 'asr_cost_per_audio_minute', label: 'Speech cost per audio minute (optional)', type: 'number' },
+    { key: 'cost_currency',             label: 'Cost currency (optional)', placeholder: 'USD' },
+    { key: 'asr_inactive', label: 'Do not use it by default (keep it only as a "re-run with another model" choice)', type: 'checkbox' },
   ],
   openai: [
     { key: 'api_key', label: 'API Key',                required: true, secret: true },
@@ -13758,6 +13766,8 @@ function AIProviderEditDrawer({ row, onClose, onSaved }) {
   const { onLogout, showToast } = React.useContext(AppContext);
   const isNew = !row;
   const [name, setName]                 = useState(row?.name || 'Hugging Face');
+  // The name follows the provider type until the admin types their own.
+  const defaultNameFor = (type) => ({ huggingface: 'Hugging Face', elevenlabs: 'ElevenLabs', openai: 'OpenAI' }[type] || type);
   const [providerType, setProviderType] = useState(row?.provider_type || 'huggingface');
   const [isActive, setIsActive]         = useState(row ? row.is_active : true);
   const [isDefault, setIsDefault]       = useState(row?.is_default || false);
