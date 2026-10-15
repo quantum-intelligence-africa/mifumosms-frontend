@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ccEn } from "@/i18n/callCenter";
 import { anEn } from "@/i18n/callAnalytics";
+import { pgEn } from "@/i18n/pages";
 import { useBranding } from "@/contexts/BrandingContext";
 
 const translations = {
   en: {
     ...ccEn,
     ...anEn,
+    ...pgEn,
     "app.name": "SENDA",
     "app.tagline": "Communication Hub",
     "tutorial.title": "Welcome to SENDA",

@@ -10,7 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 
+import { useLanguage } from "@/hooks/useLanguage";
 export function OrganizationNameCard() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -44,7 +46,7 @@ export function OrganizationNameCard() {
       const next = (res.data as { name: string }).name;
       setSavedName(next);
       setName(next);
-      toast({ title: "Organization name updated", description: next });
+      toast({ title: t("pg.OrganizationNameCard.0250"), description: next });
       return;
     }
     const fieldErrors = res.errors as Record<string, string[]> | undefined;
@@ -56,11 +58,11 @@ export function OrganizationNameCard() {
       <CardHeader className="p-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Building2 className="w-4 h-4" />
-          Organization
+          {t("pg.OrganizationNameCard.0251")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 p-3 pt-0">
-        <Label htmlFor="org-name">Organization name</Label>
+        <Label htmlFor="org-name">{t("pg.OrganizationNameCard.0252")}</Label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id="org-name"
@@ -71,11 +73,11 @@ export function OrganizationNameCard() {
           />
           <Button onClick={save} disabled={!dirty || saving} className="sm:w-auto">
             {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
-            Save
+            {t("pg.Settings.0142")}
           </Button>
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">Shown to your team and on your invoices.</p>
+        <p className="text-xs text-muted-foreground">{t("pg.OrganizationNameCard.0253")}</p>
       </CardContent>
     </Card>
   );

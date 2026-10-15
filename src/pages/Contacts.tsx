@@ -195,7 +195,7 @@ setIsCreateDialogOpen(true);
 const openBulkCampaignDialog = (channel: 'sms' | 'whatsapp') => {
   if (selectedContacts.length === 0 && !selectAllMatchingFilter) {
     toast({
-      title: "No contacts selected",
+      title: t("pg.Contacts.0257"),
       description: `Please select contacts to send a ${channel === 'sms' ? 'message' : 'WhatsApp message'} to`,
       variant: "destructive"
     });
@@ -203,8 +203,8 @@ const openBulkCampaignDialog = (channel: 'sms' | 'whatsapp') => {
   }
   if (selectAllMatchingFilter && searchQuery.trim()) {
     toast({
-      title: "Search can't be used for a campaign audience",
-      description: "Clear the search box (use the tag filter instead), or select fewer contacts by hand.",
+      title: t("pg.Contacts.0258"),
+      description: t("pg.Contacts.0259"),
       variant: "destructive"
     });
     return;
@@ -225,8 +225,8 @@ await deleteContact(contactToDelete.id);
 setContactToDelete(null);
 setIsDeleteDialogOpen(false);
 toast({
-title: "Contact deleted successfully",
-description: `${contactToDelete.name} has been removed from your contacts.`,
+title: t("pg.Contacts.0260"),
+description: t("pg.Contacts.0460", { name: contactToDelete.name }),
 });
 } catch (error) {
 console.error('Failed to delete contact:', error);
@@ -436,8 +436,8 @@ const handleSelectAllContacts = async () => {
     setSelectedContacts([]);
     setSelectAllMatchingFilter(false);
     toast({
-      title: "Deselected all contacts",
-      description: `Deselected ${totalCount} contact(s)`,
+      title: t("pg.Contacts.0261"),
+      description: t("pg.Contacts.0461", { totalCount }),
     });
     return;
   }
@@ -449,7 +449,7 @@ const handleSelectAllContacts = async () => {
     setSelectedContacts([]);
     setSelectAllMatchingFilter(true);
     toast({
-      title: "Selected all matching contacts",
+      title: t("pg.Contacts.0262"),
       description: `Selected all ${totalCount.toLocaleString(appLocale())} contact(s) matching the current filter. `
         + `Send SMS/WhatsApp, Add Tag and Delete apply to all of them; Export needs a smaller selection.`,
     });
@@ -496,13 +496,13 @@ const handleSelectAllContacts = async () => {
     setSelectedContacts(allContactIds);
 
     toast({
-      title: "Selected all contacts",
-      description: `Selected ${allContactIds.length} contact(s) from the list`,
+      title: t("pg.Contacts.0263"),
+      description: t("pg.Contacts.0462", { length: allContactIds.length }),
     });
   } catch (error) {
     console.error('Error selecting all contacts:', error);
     toast({
-      title: "Failed to select all contacts",
+      title: t("pg.Contacts.0264"),
       description: error instanceof Error ? error.message : "An error occurred while selecting contacts",
       variant: "destructive"
     });
@@ -565,8 +565,8 @@ const phoneInfo = normalizePhoneNumber(createFormData.phone_e164.trim());
 
 if (!phoneInfo.isValid) {
 toast({
-title: "Invalid phone number",
-description: "Please enter a valid phone number (e.g., 0689726060 or +255689726060)",
+title: t("pg.Contacts.0265"),
+description: t("pg.Contacts.0266"),
 variant: "destructive"
 });
 return;
@@ -609,8 +609,8 @@ setSelectedContact(null);
 }
     } catch (error) {
 toast({
-title: "Failed to create contact",
-description: "Please try again",
+title: t("pg.Contacts.0267"),
+description: t("pg.Contacts.0268"),
 variant: "destructive"
 });
 } finally {
@@ -737,8 +737,8 @@ const handleCSVImport = async (data: {
     } catch (refreshError) {
       console.error('Error refreshing contacts:', refreshError);
       toast({
-        title: "Import completed",
-        description: "Contacts have been imported successfully",
+        title: t("pg.Contacts.0269"),
+        description: t("pg.Contacts.0270"),
       });
     }
 
@@ -837,8 +837,8 @@ document.body.removeChild(link);
 const handleExportSelected = async () => {
 if (selectedContacts.length === 0) {
 toast({
-title: "No contacts selected",
-description: "Please select contacts to export",
+title: t("pg.Contacts.0257"),
+description: t("pg.Contacts.0271"),
 variant: "destructive"
 });
 return;
@@ -879,8 +879,8 @@ while (hasMore && contactsToExport.length < selectedContacts.length) {
 
 if (contactsToExport.length === 0) {
   toast({
-    title: "No contacts to export",
-    description: "Selected contacts could not be found",
+    title: t("pg.Contacts.0272"),
+    description: t("pg.Contacts.0273"),
     variant: "destructive"
   });
   return;
@@ -890,14 +890,14 @@ const timestamp = new Date().toISOString().split('T')[0];
 exportToCSV(contactsToExport, `selected-contacts-${timestamp}.csv`);
 
 toast({
-title: "Export successful",
-description: `Exported ${contactsToExport.length} selected contacts to CSV`,
+title: t("pg.Contacts.0274"),
+description: t("pg.Contacts.0463", { length: contactsToExport.length }),
 });
 } catch (error) {
   console.error('Error exporting contacts:', error);
   toast({
-    title: "Export failed",
-    description: "An error occurred while exporting contacts. Please try again.",
+    title: t("pg.Contacts.0275"),
+    description: t("pg.Contacts.0276"),
     variant: "destructive"
   });
 } finally {
@@ -908,8 +908,8 @@ description: `Exported ${contactsToExport.length} selected contacts to CSV`,
 const handleExportAll = () => {
 if (filteredContacts.length === 0) {
 toast({
-title: "No contacts to export",
-description: "No contacts match the current filters",
+title: t("pg.Contacts.0272"),
+description: t("pg.Contacts.0277"),
 variant: "destructive"
 });
 return;
@@ -919,8 +919,8 @@ const timestamp = new Date().toISOString().split('T')[0];
 exportToCSV(filteredContacts, `all-contacts-${timestamp}.csv`);
 
 toast({
-title: "Export successful",
-description: `Exported ${filteredContacts.length} contacts to CSV`,
+title: t("pg.Contacts.0274"),
+description: t("pg.Contacts.0464", { length: filteredContacts.length }),
 });
 };
 
@@ -929,8 +929,8 @@ const handleMobileContactImport = async () => {
 // Check if we're on a mobile device
 if (!isMobile) {
 toast({
-title: "Mobile Only Feature",
-description: "Contact import from device is only available on mobile devices. Please use CSV upload or manual entry on desktop.",
+title: t("pg.Contacts.0278"),
+description: t("pg.Contacts.0279"),
 variant: "destructive"
 });
 return;
@@ -939,7 +939,7 @@ return;
 // Check if Contact Picker API is supported
 if (!isContactPickerSupported()) {
 toast({
-title: "Not Supported",
+title: t("pg.Contacts.0280"),
 description: getContactPickerSupportMessage(),
 variant: "destructive"
 });
@@ -959,8 +959,8 @@ return;
 
 if (result.imported === 0) {
 toast({
-title: "No contacts selected",
-description: "No contacts were selected for import. Please try again and select contacts to import.",
+title: t("pg.Contacts.0257"),
+description: t("pg.Contacts.0281"),
 variant: "destructive"
 });
 return;
@@ -981,8 +981,8 @@ attributes: contact.attributes
 
 if (contactsToImport.length === 0) {
 toast({
-title: "No contacts found",
-description: "The selected contacts have no name or phone number. Please try again.",
+title: t("pg.Contacts.0282"),
+description: t("pg.Contacts.0283"),
 variant: "destructive"
 });
 return;
@@ -990,8 +990,8 @@ return;
 
 if (contactsToImport.length < result.contacts.length) {
 toast({
-title: "Some contacts skipped",
-description: `${result.contacts.length - contactsToImport.length} contacts were skipped because they're missing required information.`,
+title: t("pg.Contacts.0284"),
+description: t("pg.Contacts.0465", { value: result.contacts.length - contactsToImport.length }),
 variant: "destructive"
 });
 }
@@ -1040,7 +1040,7 @@ errorMessage = error.message;
 }
 
 toast({
-title: "Import failed",
+title: t("pg.Contacts.0285"),
 description: errorMessage,
 variant: "destructive"
 });
@@ -1052,8 +1052,8 @@ setIsImporting(false);
 const handleWebShareImport = async () => {
 if (!navigator.share) {
 toast({
-title: "Not supported",
-description: "Web Share API is not supported on this device. Please use CSV upload or manual entry instead.",
+title: t("pg.Contacts.0286"),
+description: t("pg.Contacts.0287"),
 variant: "destructive"
 });
 return;
@@ -1068,8 +1068,8 @@ url: window.location.href
 } catch (error) {
 if (error.name !== 'AbortError') {
 toast({
-title: "Share failed",
-description: "Failed to share contacts. Please try again or use CSV upload instead.",
+title: t("pg.Contacts.0288"),
+description: t("pg.Contacts.0289"),
 variant: "destructive"
 });
 }
@@ -1079,8 +1079,8 @@ variant: "destructive"
 const handleAlternativeImport = () => {
 // Show options for alternative import methods
 toast({
-title: "Alternative Import Methods",
-description: "Choose CSV upload or manual entry to add your contacts.",
+title: t("pg.Contacts.0290"),
+description: t("pg.Contacts.0291"),
 });
 setTimeout(() => {
 setIsCSVImportDialogOpen(true);
@@ -1089,8 +1089,8 @@ setIsCSVImportDialogOpen(true);
 
 const handleQRCodeImport = () => {
 toast({
-title: "QR Code Import",
-description: "QR code import feature will be available soon. Please use manual entry or CSV upload for now.",
+title: t("pg.Contacts.0292"),
+description: t("pg.Contacts.0293"),
 });
 };
 
@@ -1101,8 +1101,8 @@ if (importedContacts.length === 0) return;
 const selectedContacts = importedContacts.filter((_, i) => importSelectedIndices.has(i));
 if (selectedContacts.length === 0) {
 toast({
-  title: "No contacts selected",
-  description: "Please select at least one contact to import.",
+  title: t("pg.Contacts.0257"),
+  description: t("pg.Contacts.0294"),
   variant: "destructive"
 });
 return;
@@ -1116,8 +1116,8 @@ contact.phone_e164 && contact.phone_e164.trim()
 
 if (validContacts.length === 0) {
 toast({
-title: "No valid contacts",
-description: "All contacts must have both name and phone number to be imported.",
+title: t("pg.Contacts.0295"),
+description: t("pg.Contacts.0296"),
 variant: "destructive"
 });
 return;
@@ -1125,8 +1125,8 @@ return;
 
 if (validContacts.length < selectedContacts.length) {
 toast({
-title: "Some contacts skipped",
-description: `${selectedContacts.length - validContacts.length} contacts were skipped because they're missing required information.`,
+title: t("pg.Contacts.0284"),
+description: t("pg.Contacts.0465", { value: selectedContacts.length - validContacts.length }),
 variant: "destructive"
 });
 }
@@ -1165,16 +1165,16 @@ try {
 
   // Show success message after refresh is complete
   toast({
-    title: "Import successful",
-    description: "Contacts have been imported successfully",
+    title: t("pg.Contacts.0297"),
+    description: t("pg.Contacts.0270"),
   });
 } catch (refreshError) {
   console.error('Error refreshing contacts:', refreshError);
   setImportedContacts([]);
   setIsImportDialogOpen(false);
   toast({
-    title: "Import successful",
-    description: "Contacts have been imported successfully",
+    title: t("pg.Contacts.0297"),
+    description: t("pg.Contacts.0270"),
   });
 }
 } catch (error) {
@@ -1191,16 +1191,16 @@ try {
   setIsImportDialogOpen(false);
 
   toast({
-    title: "Import successful",
-    description: "Contacts have been imported successfully",
+    title: t("pg.Contacts.0297"),
+    description: t("pg.Contacts.0270"),
   });
 } catch (refreshError) {
   console.error('Error refreshing contacts:', refreshError);
   setImportedContacts([]);
   setIsImportDialogOpen(false);
   toast({
-    title: "Import successful",
-    description: "Contacts have been imported successfully",
+    title: t("pg.Contacts.0297"),
+    description: t("pg.Contacts.0270"),
   });
 }
 } finally {
@@ -1212,8 +1212,8 @@ setIsCreating(false);
 const handleBulkAddTag = () => {
 if (selectedCount === 0) {
 toast({
-title: "No contacts selected",
-description: "Please select contacts to add tags to",
+title: t("pg.Contacts.0257"),
+description: t("pg.Contacts.0298"),
 variant: "destructive"
 });
 return;
@@ -1233,8 +1233,8 @@ prev.includes(tag)
 const handleBulkEdit = () => {
   if (selectedContacts.length === 0) {
     toast({
-      title: "No contacts selected",
-      description: "Please select contacts to edit",
+      title: t("pg.Contacts.0257"),
+      description: t("pg.Contacts.0299"),
       variant: "destructive"
     });
     return;
@@ -1254,8 +1254,8 @@ const handleBulkEdit = () => {
 const handleBulkDelete = () => {
 if (selectedCount === 0) {
 toast({
-title: "No contacts selected",
-description: "Please select contacts to delete",
+title: t("pg.Contacts.0257"),
+description: t("pg.Contacts.0300"),
 variant: "destructive"
 });
 return;
@@ -1266,8 +1266,8 @@ setIsBulkDeleteDialogOpen(true);
 const confirmBulkAddTag = async () => {
   if (selectedTags.length === 0) {
     toast({
-      title: "No tags selected",
-      description: "Please select at least one tag to add",
+      title: t("pg.Contacts.0301"),
+      description: t("pg.Contacts.0302"),
       variant: "destructive"
     });
     return;
@@ -1284,7 +1284,7 @@ const confirmBulkAddTag = async () => {
       success = res.success;
       if (!success) {
         toast({
-          title: "Failed to add tags",
+          title: t("pg.Contacts.0303"),
           description: res.error || "The server could not tag the matching contacts.",
           variant: "destructive"
         });
@@ -1307,15 +1307,15 @@ const confirmBulkAddTag = async () => {
       });
 
       toast({
-        title: "Tags added successfully",
-        description: `Added ${tagCount} tag(s) to ${contactCount} contact(s).`,
+        title: t("pg.Contacts.0304"),
+        description: t("pg.Contacts.0466", { tagCount, contactCount }),
       });
     }
   } catch (error) {
     console.error('Bulk add tag error:', error);
     toast({
-      title: "Failed to add tags",
-      description: "An error occurred while adding tags. Please try again.",
+      title: t("pg.Contacts.0303"),
+      description: t("pg.Contacts.0305"),
       variant: "destructive"
     });
   } finally {
@@ -1344,8 +1344,8 @@ const confirmBulkEdit = async () => {
 
     if (Object.keys(updates).length === 0) {
       toast({
-        title: "No changes specified",
-        description: "Please provide at least one field to update",
+        title: t("pg.Contacts.0306"),
+        description: t("pg.Contacts.0307"),
         variant: "destructive"
       });
       return;
@@ -1366,15 +1366,15 @@ const confirmBulkEdit = async () => {
       });
 
       toast({
-        title: "Contacts updated successfully",
-        description: `Updated ${editedCount} contact(s).`,
+        title: t("pg.Contacts.0308"),
+        description: t("pg.Contacts.0467", { editedCount }),
       });
     }
   } catch (error) {
     console.error('Bulk edit error:', error);
     toast({
-      title: "Bulk edit failed",
-      description: "An error occurred while editing contacts. Please try again.",
+      title: t("pg.Contacts.0309"),
+      description: t("pg.Contacts.0310"),
       variant: "destructive"
     });
   } finally {
@@ -1390,7 +1390,7 @@ const confirmBulkDelete = async () => {
       const res = await apiClient.bulkDeleteContactsByFilter(currentFilter);
       if (!res.success) {
         toast({
-          title: "Bulk delete failed",
+          title: t("pg.Contacts.0311"),
           description: res.error || "The server could not delete the matching contacts.",
           variant: "destructive"
         });
@@ -1401,8 +1401,8 @@ const confirmBulkDelete = async () => {
       setIsBulkDeleteDialogOpen(false);
       await fetchContacts({ page: 1, ...currentFilter });
       toast({
-        title: "Contacts deleted successfully",
-        description: `${(res.data?.deleted_count ?? selectedCount).toLocaleString(appLocale())} contact(s) have been permanently deleted.`,
+        title: t("pg.Contacts.0312"),
+        description: t("pg.Contacts.0468", { electedCount: (res.data?.deleted_count ?? selectedCount).toLocaleString(appLocale()) }),
       });
       return;
     }
@@ -1448,21 +1448,21 @@ const confirmBulkDelete = async () => {
 
     if (failedBatches === 0) {
       toast({
-        title: "Contacts deleted successfully",
-        description: `${totalDeleted} contact(s) have been permanently deleted.`,
+        title: t("pg.Contacts.0312"),
+        description: t("pg.Contacts.0469", { totalDeleted }),
       });
     } else {
       toast({
-        title: "Partial deletion completed",
-        description: `${totalDeleted} out of ${deletedCount} contact(s) were deleted. Some batches may have failed.`,
+        title: t("pg.Contacts.0313"),
+        description: t("pg.Contacts.0470", { totalDeleted, deletedCount }),
         variant: failedBatches === batches.length ? "destructive" : "default"
       });
     }
   } catch (error) {
     console.error('Bulk delete error:', error);
     toast({
-      title: "Bulk delete failed",
-      description: "An error occurred while deleting contacts. Please try again.",
+      title: t("pg.Contacts.0311"),
+      description: t("pg.Contacts.0314"),
       variant: "destructive"
     });
   } finally {
@@ -1483,7 +1483,7 @@ if (isLoading) {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                  <p className="text-text-subtle">Loading contacts...</p>
+                  <p className="text-text-subtle">{t("pg.Contacts.0315")}</p>
                 </div>
               </div>
             </div>
@@ -1507,11 +1507,11 @@ if (error) {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
-                  <p className="text-destructive mb-4">Failed to load contacts</p>
+                  <p className="text-destructive mb-4">{t("pg.Contacts.0316")}</p>
                   <p className="text-text-subtle mb-4">{error}</p>
                   <Button onClick={() => (isMobile ? fetchAllContactsForMobile() : fetchContacts())} variant="outline">
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Try Again
+                    {t("pg.Contacts.0317")}
                   </Button>
                 </div>
               </div>
@@ -1565,12 +1565,12 @@ return (
     ) : (
       <Smartphone className="w-3.5 h-3.5 mr-1.5" />
     )}
-    <span>Import Contacts from Phone </span>
+    <span>{t("pg.Contacts.0318")} </span>
   </Button>
   <p className="text-[10px] text-text-subtle px-1">
     {isContactPickerSupported()
-      ? "Pick contacts directly from your phone."
-      : "If phone import is not supported, use CSV Import."}
+      ? t("pg.Contacts.0471")
+      : t("pg.Contacts.0472")}
   </p>
 </div>
 )}
@@ -1587,7 +1587,7 @@ size="sm"
 ) : (
 <RefreshCw className="w-3 h-3 mr-1" />
 )}
-<span className="hidden sm:inline">Refresh</span>
+<span className="hidden sm:inline">{t("pg.Settings.0134")}</span>
 <span className="sm:hidden">↻</span>
 </Button>
 <Button
@@ -1598,7 +1598,7 @@ disabled={isCreating}
 size="sm"
 >
 <FileText className="w-3 h-3 mr-1" />
-<span className="hidden sm:inline">CSV Import</span>
+<span className="hidden sm:inline">{t("pg.Contacts.0319")}</span>
 <span className="sm:hidden">CSV</span>
 </Button>
 <Button
@@ -1608,8 +1608,8 @@ onClick={handleExportAll}
 size="sm"
 >
 <Download className="w-3 h-3 mr-1" />
-<span className="hidden sm:inline">Export All</span>
-<span className="sm:hidden">Export</span>
+<span className="hidden sm:inline">{t("pg.Contacts.0320")}</span>
+<span className="sm:hidden">{t("pg.Contacts.0321")}</span>
 </Button>
 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 <DialogTrigger asChild>
@@ -1619,30 +1619,30 @@ size="sm"
 ) : (
 <Plus className="w-3 h-3 mr-1" />
 )}
-<span className="hidden sm:inline">Add Contact</span>
-<span className="sm:hidden">Add</span>
+<span className="hidden sm:inline">{t("pg.Contacts.0322")}</span>
+<span className="sm:hidden">{t("pg.BrandingDomainsCard.0238")}</span>
 </Button>
 </DialogTrigger>
 <DialogContent className="glass max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
 <DialogHeader className="pb-2">
-<DialogTitle className="text-base sm:text-lg">{selectedContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+<DialogTitle className="text-base sm:text-lg">{selectedContact ? t("pg.Contacts.0348") : t("pg.Contacts.0473")}</DialogTitle>
 <DialogDescription className="text-xs sm:text-sm">
-{selectedContact ? 'Update contact information' : 'Create a new contact in your database'}
+{selectedContact ? t("pg.Contacts.0474") : t("pg.Contacts.0475")}
 </DialogDescription>
 </DialogHeader>
 <div className="space-y-2">
 <div className="space-y-1">
-<Label htmlFor="name" className="text-xs sm:text-sm">Full Name *</Label>
+<Label htmlFor="name" className="text-xs sm:text-sm">{t("pg.Contacts.0323")}</Label>
 <Input
 id="name"
-placeholder="Enter Name"
+placeholder={t("pg.Contacts.0324")}
 value={createFormData.name}
 onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
 className="glass-subtle border-0 text-xs sm:text-sm h-8"
 />
 </div>
 <div className="space-y-1">
-<Label htmlFor="phone" className="text-xs sm:text-sm">Phone Number *</Label>
+<Label htmlFor="phone" className="text-xs sm:text-sm">{t("pg.Contacts.0325")}</Label>
 <Input
 id="phone"
 type="tel"
@@ -1657,12 +1657,12 @@ className="glass-subtle border-0 text-xs sm:text-sm h-8"
 
 {createFormData.phone_e164 && createFormData.phone_e164.startsWith('+255') && (
 <p className="text-xs text-green-600">
-✓ Will be saved as: {createFormData.phone_e164}
+{t("pg.Contacts.0326")} {createFormData.phone_e164}
 </p>
 )}
 </div>
 <div className="space-y-1">
-<Label htmlFor="email" className="text-xs sm:text-sm">Email Address</Label>
+<Label htmlFor="email" className="text-xs sm:text-sm">{t("pg.Settings.0075")}</Label>
 <Input
 id="email"
 type="email"
@@ -1676,23 +1676,23 @@ className="glass-subtle border-0 text-xs sm:text-sm h-8"
 
 {/* Attributes Section - Hidden */}
 <div className="space-y-1 hidden">
-<h4 className="text-xs sm:text-sm font-medium text-foreground">Additional Info</h4>
+<h4 className="text-xs sm:text-sm font-medium text-foreground">{t("pg.Contacts.0327")}</h4>
 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
 <div className="space-y-1">
-<Label htmlFor="company" className="text-xs">Company</Label>
+<Label htmlFor="company" className="text-xs">{t("pg.Contacts.0328")}</Label>
 <Input
 id="company"
-placeholder="Acme Corp"
+placeholder={t("pg.Contacts.0329")}
 value={(createFormData.attributes.company as string) || ""}
 onChange={(e) => handleAttributeChange("company", e.target.value)}
 className="glass-subtle border-0 text-xs sm:text-sm h-7"
 />
 </div>
 <div className="space-y-1">
-<Label htmlFor="department" className="text-xs">Department</Label>
+<Label htmlFor="department" className="text-xs">{t("pg.Contacts.0330")}</Label>
 <Input
 id="department"
-placeholder="Marketing"
+placeholder={t("pg.Contacts.0331")}
 value={(createFormData.attributes.department as string) || ""}
 onChange={(e) => handleAttributeChange("department", e.target.value)}
 className="glass-subtle border-0 text-xs sm:text-sm h-7"
@@ -1705,12 +1705,12 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
 
 <div className="space-y-2">
   <Label className="text-xs font-medium">
-    Enter Tags Names: <span className="text-red-600">*</span>
+    {t("pg.Contacts.0332")} <span className="text-red-600">*</span>
   </Label>
   <div className="flex gap-1 mt-1">
     <Input
       type="text"
-      placeholder="Type tag name and press Enter or Add"
+      placeholder={t("pg.Contacts.0333")}
       value={newTag}
       onChange={(e) => setNewTag(e.target.value)}
       onKeyDown={handleKeyPressForCustomTag}
@@ -1733,13 +1733,13 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
       disabled={!newTag.trim()}
       className="h-7 px-4 text-xs font-semibold"
       tabIndex={0}
-      aria-label="Add tag"
+      aria-label={t("pg.Contacts.0334")}
     >
-      Add
+      {t("pg.BrandingDomainsCard.0238")}
     </Button>
   </div>
   {createFormData.tags.length === 0 && (
-    <p className="text-xs text-red-600 mt-1">At least one tag is required.</p>
+    <p className="text-xs text-red-600 mt-1">{t("pg.Contacts.0335")}</p>
   )}
   {createFormData.tags.length > 0 && (
     <div className="flex flex-wrap gap-1 mt-2">
@@ -1768,10 +1768,10 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
     {isCreating ? (
       <>
         <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-        {selectedContact ? 'Updating...' : 'Creating...'}
+        {selectedContact ? t("pg.Contacts.0414") : t("pg.Contacts.0476")}
       </>
     ) : (
-      selectedContact ? "Update Contact" : "Add Contact"
+      selectedContact ? t("pg.Contacts.0477") : t("pg.Contacts.0322")
     )}
   </Button>
   <Button
@@ -1782,7 +1782,7 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
     }}
     className="flex-1 h-8 text-xs sm:text-sm"
   >
-    Cancel
+    {t("pg.Settings.0120")}
   </Button>
 </div>
 </div>
@@ -1796,7 +1796,7 @@ className="glass-subtle border-0 text-xs sm:text-sm h-7"
 <div className="relative flex-1">
 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-subtle" />
 <Input
-placeholder="Search contacts..."
+placeholder={t("pg.Contacts.0336")}
 value={searchQuery}
 onChange={(e) => setSearchQuery(e.target.value)}
 className="pl-10 glass-subtle border-0 text-sm"
@@ -1804,10 +1804,10 @@ className="pl-10 glass-subtle border-0 text-sm"
 </div>
 <Select value={filterTag} onValueChange={setFilterTag}>
 <SelectTrigger className="w-full sm:w-48 glass-subtle border-0 text-sm">
-<SelectValue placeholder="Filter by tag" />
+<SelectValue placeholder={t("pg.Contacts.0337")} />
 </SelectTrigger>
 <SelectContent className="glass">
-<SelectItem value="all">All tags</SelectItem>
+<SelectItem value="all">{t("pg.Contacts.0338")}</SelectItem>
 {allTags.map((tag) => (
 <SelectItem key={tag} value={tag}>{tag}</SelectItem>
 ))}
@@ -1821,8 +1821,8 @@ className="pl-10 glass-subtle border-0 text-sm"
 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
   <span className="text-sm text-foreground font-medium">
-    {selectAllMatchingFilter ? totalCount.toLocaleString(appLocale()) : selectedContacts.length} contact(s) selected
-    {selectAllMatchingFilter && " (all matching current filters)"}
+    {selectAllMatchingFilter ? totalCount.toLocaleString(appLocale()) : selectedContacts.length} {t("pg.Contacts.0339")}
+    {selectAllMatchingFilter && t("pg.Contacts.0478")}
   </span>
   <div className="flex items-center gap-2">
     {!selectAllMatchingFilter && (
@@ -1833,8 +1833,8 @@ className="pl-10 glass-subtle border-0 text-sm"
         className="text-xs h-7"
       >
         {filteredContacts.every(contact => selectedIdSet.has(contact.id))
-          ? "Deselect Page"
-          : "Select Page"
+          ? t("pg.Contacts.0479")
+          : t("pg.Contacts.0480")
         }
       </Button>
     )}
@@ -1849,12 +1849,12 @@ className="pl-10 glass-subtle border-0 text-sm"
         {isSelectingAll ? (
           <>
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            Loading...
+            {t("pg.Contacts.0340")}
           </>
         ) : selectAllMatchingFilter || (selectedContacts.length === totalCount && totalCount > 0) ? (
-          `Deselect All (${totalCount})`
+          t("pg.Contacts.0481", { totalCount })
         ) : (
-          `Select All (${totalCount})`
+          t("pg.Contacts.0482", { totalCount })
         )}
       </Button>
     )}
@@ -1874,7 +1874,7 @@ disabled={isBulkActionLoading}
 className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Add Tag
+{t("pg.Contacts.0341")}
 </Button>
 <Button
 variant="outline"
@@ -1883,7 +1883,7 @@ onClick={handleBulkSendMessage}
 className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Send SMS
+{t("pg.Contacts.0342")}
 </Button>
 <Button
 variant="outline"
@@ -1892,18 +1892,18 @@ onClick={handleBulkSendWhatsApp}
 className="text-xs sm:text-sm h-8 sm:h-9 border-[#25D366]/40 text-[#1ebe5d] hover:bg-[#25D366]/10 hover:text-[#1ebe5d]"
 >
 <WhatsAppIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Send WhatsApp
+{t("pg.Contacts.0343")}
 </Button>
 <Button
 variant="outline"
 size="sm"
 onClick={handleExportSelected}
 disabled={selectAllMatchingFilter}
-title={selectAllMatchingFilter ? "Not available for a filter-based selection this large — narrow your selection to use this" : undefined}
+title={selectAllMatchingFilter ? t("pg.Contacts.0483") : undefined}
 className="text-xs sm:text-sm h-8 sm:h-9"
 >
 <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Export Selected
+{t("pg.Contacts.0344")}
 </Button>
 <Button
 variant="outline"
@@ -1913,7 +1913,7 @@ onClick={handleBulkDelete}
 disabled={isBulkActionLoading}
 >
 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Delete
+{t("pg.Contacts.0345")}
 </Button>
 </div>
 </div>
@@ -1945,17 +1945,17 @@ Delete
         <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-primary/10 dark:bg-primary/15 flex items-center justify-center">
           <Phone className="w-7 h-7 text-primary" strokeWidth={1.8} />
         </div>
-        <h3 className="text-[15px] font-semibold text-foreground">No contacts</h3>
+        <h3 className="text-[15px] font-semibold text-foreground">{t("pg.Contacts.0346")}</h3>
         <p className="text-[12.5px] text-foreground/60 leading-snug mt-1 max-w-xs mx-auto">
           {searchQuery || filterTag !== "all"
-            ? "No contacts match your current search or filter."
-            : "Add or import your first contact to start sending messages."}
+            ? t("pg.Contacts.0484")
+            : t("pg.Contacts.0485")}
         </p>
       </div>
     ) : (
       <>
         <p className="px-2.5 mb-2 text-[11px] font-bold tracking-wider uppercase text-foreground/55">
-          Contacts · {filteredContacts.length}
+          {t("pg.Contacts.0347")} {filteredContacts.length}
         </p>
         <div className="rounded-2xl border border-border dark:border-border/60 bg-card dark:bg-card overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           {filteredContacts.map((contact, idx) => {
@@ -1977,7 +1977,7 @@ Delete
                   checked={isSelected}
                   onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
                   className="h-4 w-4 flex-shrink-0"
-                  aria-label={`Select ${contact.name}`}
+                  aria-label={t("pg.Contacts.0486", { name: contact.name })}
                 />
                 <button
                   type="button"
@@ -1992,7 +1992,7 @@ Delete
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-[13px] font-semibold text-foreground leading-tight truncate">
-                        {contact.name || "(no name)"}
+                        {contact.name || t("pg.Contacts.0487")}
                       </span>
                       <span
                         className={[
@@ -2026,15 +2026,15 @@ Delete
                   <DropdownMenuContent align="end" className="glass">
                     <DropdownMenuItem onClick={() => handleSendMessage(contact)}>
                       <MessageSquare className="w-4 h-4 mr-2" />
-                      Send SMS
+                      {t("pg.Contacts.0342")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleSendWhatsApp(contact)}>
                       <WhatsAppIcon className="w-4 h-4 mr-2 text-[#25D366]" />
-                      Send WhatsApp
+                      {t("pg.Contacts.0343")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleEditContact(contact)}>
                       <Edit className="w-4 h-4 mr-2" />
-                      Edit Contact
+                      {t("pg.Contacts.0348")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -2045,7 +2045,7 @@ Delete
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Contact
+                      {t("pg.Contacts.0349")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -2079,10 +2079,10 @@ onCheckedChange={handleSelectAll}
 className="h-3 w-3 sm:h-4 sm:w-4"
 />
 </TableHead>
-<TableHead className="text-xs sm:text-sm font-semibold text-foreground py-3 sm:py-4">Contact</TableHead>
-<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden sm:table-cell py-3 sm:py-4">Tags & Groups</TableHead>
-<TableHead className="text-xs sm:text-sm hidden">Status</TableHead>
-<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden lg:table-cell py-3 sm:py-4">Created</TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground py-3 sm:py-4">{t("pg.Contacts.0350")}</TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden sm:table-cell py-3 sm:py-4">{t("pg.Contacts.0351")}</TableHead>
+<TableHead className="text-xs sm:text-sm hidden">{t("pg.Contacts.0352")}</TableHead>
+<TableHead className="text-xs sm:text-sm font-semibold text-foreground hidden lg:table-cell py-3 sm:py-4">{t("pg.Contacts.0353")}</TableHead>
 <TableHead className="w-6 sm:w-8 lg:w-12 py-3 sm:py-4"></TableHead>
 </TableRow>
 </TableHeader>
@@ -2174,15 +2174,15 @@ className="h-3 w-3 sm:h-4 sm:w-4"
 <DropdownMenuContent align="end" className="glass">
 <DropdownMenuItem onClick={() => handleSendMessage(contact)}>
 <MessageSquare className="w-4 h-4 mr-2" />
-Send SMS
+{t("pg.Contacts.0342")}
 </DropdownMenuItem>
 <DropdownMenuItem onClick={() => handleSendWhatsApp(contact)}>
 <WhatsAppIcon className="w-4 h-4 mr-2 text-[#25D366]" />
-Send WhatsApp
+{t("pg.Contacts.0343")}
 </DropdownMenuItem>
 <DropdownMenuItem onClick={() => handleEditContact(contact)}>
 <Edit className="w-4 h-4 mr-2" />
-Edit Contact
+{t("pg.Contacts.0348")}
 </DropdownMenuItem>
 <DropdownMenuSeparator />
 <DropdownMenuItem
@@ -2193,7 +2193,7 @@ setIsDeleteDialogOpen(true);
 }}
 >
 <Trash2 className="w-4 h-4 mr-2" />
-Delete Contact
+{t("pg.Contacts.0349")}
 </DropdownMenuItem>
 </DropdownMenuContent>
 </DropdownMenu>
@@ -2208,8 +2208,8 @@ Delete Contact
 <TableCell colSpan={6} className="text-center py-8 text-sm">
 <div className="text-text-subtle">
 {searchQuery || filterTag !== "all"
-? "No contacts match your current search or filter criteria."
-: "No contacts available. Click 'Add Contact' to get started."}
+? t("pg.Contacts.0488")
+: t("pg.Contacts.0489")}
 </div>
 </TableCell>
 </TableRow>
@@ -2227,10 +2227,10 @@ Delete Contact
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
       <div className="flex items-center gap-3 text-xs sm:text-sm text-text-subtle text-center sm:text-left">
         <span>
-          Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} contacts
+          {t("pg.Contacts.0354")} {((currentPage - 1) * pageSize) + 1} {t("pg.Contacts.0355")} {Math.min(currentPage * pageSize, totalCount)} {t("pg.Contacts.0356")} {totalCount} {t("pg.Contacts.0357")}
         </span>
         <div className="flex items-center gap-1.5">
-          <span>Per page</span>
+          <span>{t("pg.Contacts.0358")}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => changePageSize(Number(v), currentFilter)}
@@ -2250,7 +2250,7 @@ Delete Contact
 
       {/* Mobile page indicator */}
       <div className="sm:hidden text-[11px] text-center text-text-subtle">
-        Page {currentPage} of {Math.ceil(totalCount / pageSize)}
+        {t("pg.Contacts.0359")} {currentPage} {t("pg.Contacts.0356")} {Math.ceil(totalCount / pageSize)}
       </div>
 
       <div className="flex items-center justify-center gap-1 sm:gap-2">
@@ -2262,8 +2262,8 @@ Delete Contact
         className="text-xs h-8 px-3 sm:px-3 min-w-[82px]"
       >
         {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-        <span className="hidden sm:inline">Previous</span>
-        <span className="sm:hidden">Prev</span>
+        <span className="hidden sm:inline">{t("pg.Contacts.0360")}</span>
+        <span className="sm:hidden">{t("pg.Contacts.0361")}</span>
       </Button>
 
       {/* Page numbers */}
@@ -2364,8 +2364,8 @@ Delete Contact
         disabled={!hasNextPage || isLoading}
         className="text-xs h-8 px-3 sm:px-3 min-w-[82px]"
       >
-        <span className="hidden sm:inline">Next</span>
-        <span className="sm:hidden">Next</span>
+        <span className="hidden sm:inline">{t("pg.Contacts.0362")}</span>
+        <span className="sm:hidden">{t("pg.Contacts.0362")}</span>
         {isLoading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : null}
       </Button>
       </div>
@@ -2397,7 +2397,7 @@ Delete Contact
 <div className="p-4 sm:p-6 border-b border-border-subtle">
 
 <div className="flex items-center justify-between mb-3 sm:mb-4">
-  <h3 className="font-heading text-base sm:text-lg font-semibold">Contact Details</h3>
+  <h3 className="font-heading text-base sm:text-lg font-semibold">{t("pg.Contacts.0363")}</h3>
   <Button variant="ghost" size="icon" onClick={() => setSelectedContact(null)}>
     <X className="w-4 h-4" />
   </Button>
@@ -2412,7 +2412,7 @@ Delete Contact
   <h4 className="font-semibold text-foreground mb-1">{selectedContact.name}</h4>
   <div className="flex items-center justify-center gap-2 mb-2">
     <Badge variant={selectedContact.is_active ? "default" : "secondary"}>
-      {selectedContact.is_active ? "Active" : "Inactive"}
+      {selectedContact.is_active ? t("pg.Contacts.0490") : t("pg.Contacts.0491")}
     </Badge>
     {/* Removed Opted In/Not Opted In badge */}
   </div>
@@ -2420,7 +2420,7 @@ Delete Contact
 
 <div className="space-y-3 sm:space-y-4">
 <div>
-<p className="text-xs sm:text-sm text-text-subtle mb-1">Phone Number</p>
+<p className="text-xs sm:text-sm text-text-subtle mb-1">{t("pg.Settings.0077")}</p>
 <p className="text-sm sm:text-base text-foreground">{selectedContact.phone_e164}</p>
 </div>
 
@@ -2434,7 +2434,7 @@ Delete Contact
 {/* Display attributes if they exist */}
 {selectedContact.attributes && Object.keys(selectedContact.attributes).filter(key => !['company', 'department'].includes(key.toLowerCase())).length > 0 && (
   <div>
-    <p className="text-sm text-text-subtle mb-1">Additional Information</p>
+    <p className="text-sm text-text-subtle mb-1">{t("pg.Contacts.0364")}</p>
     <div className="space-y-1">
       {Object.entries(selectedContact.attributes)
         .filter(([key]) => !['company', 'department'].includes(key.toLowerCase()))
@@ -2449,7 +2449,7 @@ Delete Contact
 )}
 
 <div>
-<p className="text-sm text-text-subtle mb-1">Tags</p>
+<p className="text-sm text-text-subtle mb-1">{t("pg.Contacts.0365")}</p>
 <div className="flex flex-wrap gap-1">
 {selectedContact.tags.length > 0 ? (
 selectedContact.tags.map((tag) => (
@@ -2458,13 +2458,13 @@ selectedContact.tags.map((tag) => (
 </Badge>
 ))
 ) : (
-<p className="text-text-subtle text-sm">No tags</p>
+<p className="text-text-subtle text-sm">{t("pg.Contacts.0366")}</p>
 )}
 </div>
 </div>
 
 <div>
-<p className="text-sm text-text-subtle mb-1">Created</p>
+<p className="text-sm text-text-subtle mb-1">{t("pg.Contacts.0353")}</p>
 <p className="text-foreground">{formatDate(selectedContact.created_at)}</p>
 </div>
 
@@ -2495,7 +2495,7 @@ className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
 onClick={() => handleEditContact(selectedContact)}
 >
 <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-Edit
+{t("pg.Contacts.0367")}
 </Button>
 </div>
 </div>
@@ -2507,18 +2507,18 @@ Edit
 <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 <AlertDialogContent className="glass">
 <AlertDialogHeader>
-<AlertDialogTitle>Delete Contact</AlertDialogTitle>
+<AlertDialogTitle>{t("pg.Contacts.0349")}</AlertDialogTitle>
 <AlertDialogDescription>
-Are you sure you want to delete {contactToDelete?.name}? This action cannot be undone.
+{t("pg.Contacts.0368")} {contactToDelete?.name}{t("pg.Contacts.0369")}
 </AlertDialogDescription>
 </AlertDialogHeader>
 <AlertDialogFooter>
-<AlertDialogCancel>Cancel</AlertDialogCancel>
+<AlertDialogCancel>{t("pg.Settings.0120")}</AlertDialogCancel>
 <AlertDialogAction
 onClick={handleDeleteContact}
 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 >
-Delete
+{t("pg.Contacts.0345")}
 </AlertDialogAction>
 </AlertDialogFooter>
 </AlertDialogContent>
@@ -2536,9 +2536,9 @@ Delete
 }}>
 <DialogContent className="glass w-full max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
 <DialogHeader>
-<DialogTitle>Import Contacts from Phone</DialogTitle>
+<DialogTitle>{t("pg.Contacts.0318")}</DialogTitle>
 <DialogDescription>
-{importedContacts.length} contact{importedContacts.length !== 1 ? 's' : ''} loaded &mdash; {importSelectedIndices.size} selected for import.
+{importedContacts.length} {t("pg.Contacts.0370")}{importedContacts.length !== 1 ? t("pg.common.plural_s") : ''} {t("pg.Contacts.0371")} {importSelectedIndices.size} {t("pg.Contacts.0372")}
 </DialogDescription>
 </DialogHeader>
 
@@ -2550,7 +2550,7 @@ Delete
 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-subtle pointer-events-none" />
 <input
   type="text"
-  placeholder="Search by name or number…"
+  placeholder={t("pg.Contacts.0373")}
   value={importSearchQuery}
   onChange={e => { setImportSearchQuery(e.target.value); setImportCurrentPage(0); }}
   className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -2587,7 +2587,7 @@ Delete
   disabled={isImporting}
 >
 <Smartphone className="w-3 h-3 mr-1" />
-Add More
+{t("pg.Contacts.0374")}
 </Button>
 </div>
 
@@ -2603,7 +2603,7 @@ Add More
   </span>
   {importSelectedIndices.size > 0 && (
     <button className="text-destructive underline text-xs" onClick={() => setImportSelectedIndices(new Set())}>
-      Clear selection
+      {t("pg.Contacts.0375")}
     </button>
   )}
 </div>
@@ -2614,8 +2614,8 @@ Add More
 {importedContacts.length === 0 ? (
 <div className="text-center py-10 text-text-subtle">
 <Smartphone className="w-8 h-8 mx-auto mb-2 opacity-40" />
-<p className="text-sm">No contacts loaded yet</p>
-<p className="text-xs mt-1">Tap "Add More" to pick contacts from your phone</p>
+<p className="text-sm">{t("pg.Contacts.0376")}</p>
+<p className="text-xs mt-1">{t("pg.Contacts.0377")}</p>
 </div>
 ) : (() => {
   const q = importSearchQuery.toLowerCase();
@@ -2626,7 +2626,7 @@ Add More
   const pageItems = filtered.slice(pageStart, pageStart + IMPORT_PAGE_SIZE);
   const totalPages = Math.ceil(filtered.length / IMPORT_PAGE_SIZE);
   if (pageItems.length === 0) {
-    return <div className="text-center py-10 text-text-subtle"><p className="text-sm">No contacts match your search</p></div>;
+    return <div className="text-center py-10 text-text-subtle"><p className="text-sm">{t("pg.Contacts.0378")}</p></div>;
   }
   return (
     <>
@@ -2647,14 +2647,14 @@ Add More
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-sm truncate">{contact.name || <span className="text-destructive text-xs italic">No name</span>}</span>
-                {!contact.name && <Badge variant="outline" className="text-[10px] text-destructive shrink-0">Missing name</Badge>}
+                <span className="font-medium text-sm truncate">{contact.name || <span className="text-destructive text-xs italic">{t("pg.Contacts.0379")}</span>}</span>
+                {!contact.name && <Badge variant="outline" className="text-[10px] text-destructive shrink-0">{t("pg.Contacts.0380")}</Badge>}
               </div>
               <div className="flex items-center gap-3 text-xs text-text-subtle mt-0.5">
                 {contact.phone_e164 ? (
                   <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{contact.phone_e164}</span>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] text-destructive">Missing phone</Badge>
+                  <Badge variant="outline" className="text-[10px] text-destructive">{t("pg.Contacts.0381")}</Badge>
                 )}
                 {contact.email && <span className="truncate flex items-center gap-1"><Mail className="w-3 h-3" />{contact.email}</span>}
               </div>
@@ -2663,7 +2663,7 @@ Add More
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 hover:bg-destructive/10 shrink-0"
-              title="Remove contact"
+              title={t("pg.Contacts.0382")}
               onClick={e => {
                 e.stopPropagation();
                 setImportedContacts(prev => prev.filter((_, i) => i !== originalIdx));
@@ -2684,9 +2684,9 @@ Add More
       })}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-3 py-2 bg-muted/20 text-xs text-text-subtle sticky bottom-0">
-          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage === 0} onClick={() => setImportCurrentPage(p => p - 1)}>← Prev</Button>
-          <span>Page {importCurrentPage + 1} / {totalPages} &nbsp;({filtered.length} contacts)</span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage >= totalPages - 1} onClick={() => setImportCurrentPage(p => p + 1)}>Next →</Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage === 0} onClick={() => setImportCurrentPage(p => p - 1)}>{t("pg.Contacts.0383")}</Button>
+          <span>{t("pg.Contacts.0359")} {importCurrentPage + 1} / {totalPages} &nbsp;({filtered.length} {t("pg.Contacts.0384")}</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={importCurrentPage >= totalPages - 1} onClick={() => setImportCurrentPage(p => p + 1)}>{t("pg.Contacts.0385")}</Button>
         </div>
       )}
     </>
@@ -2697,7 +2697,7 @@ Add More
 {/* Action Buttons */}
 <div className="flex items-center justify-between pt-2 border-t shrink-0">
 <div className="text-xs text-text-subtle">
-{importSelectedIndices.size === 0 ? "No contacts selected" : `${importSelectedIndices.size} contact${importSelectedIndices.size !== 1 ? 's' : ''} will be imported`}
+{importSelectedIndices.size === 0 ? t("pg.Contacts.noneToImport") : t("pg.Contacts.willImport", { count: importSelectedIndices.size })}
 </div>
 <div className="flex gap-2">
 <Button
@@ -2712,7 +2712,7 @@ Add More
   }}
   disabled={isCreating}
 >
-Cancel
+{t("pg.Settings.0120")}
 </Button>
 <Button
   size="sm"
@@ -2721,7 +2721,7 @@ Cancel
   className="gap-2"
 >
 {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-Import {importSelectedIndices.size} Contact{importSelectedIndices.size !== 1 ? 's' : ''}
+{t("pg.Contacts.0386")} {importSelectedIndices.size} {t("pg.Contacts.0350")}{importSelectedIndices.size !== 1 ? t("pg.common.plural_s") : ''}
 </Button>
 </div>
 </div>
@@ -2748,50 +2748,46 @@ Import {importSelectedIndices.size} Contact{importSelectedIndices.size !== 1 ? '
 <DialogHeader>
 <DialogTitle className="flex items-center gap-2">
 <Smartphone className="w-5 h-5 text-primary" />
-Import Multiple Contacts from Phone
+{t("pg.Contacts.0387")}
 </DialogTitle>
 <DialogDescription>
-Access your phone's contact list to quickly import multiple contacts at once
+{t("pg.Contacts.0388")}
 </DialogDescription>
 </DialogHeader>
 
 <div className="space-y-4">
 <div className="space-y-3">
-<h4 className="font-medium text-sm">Import Multiple Contacts from Phone</h4>
+<h4 className="font-medium text-sm">{t("pg.Contacts.0387")}</h4>
 <div className="space-y-2 text-sm text-text-subtle">
-<p>This will open your phone's contact picker where you can select multiple contacts to import.</p>
+<p>{t("pg.Contacts.0389")}</p>
 <div className="flex items-start gap-2">
 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">1</div>
-<p>Tap "Import Multiple Contacts" to open the contact picker</p>
+<p>{t("pg.Contacts.0390")}</p>
 </div>
 <div className="flex items-start gap-2">
 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">2</div>
-<p>Select multiple contacts you want to import (name and phone required)</p>
+<p>{t("pg.Contacts.0391")}</p>
 </div>
 <div className="flex items-start gap-2">
 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">3</div>
-<p>Review, add more, or remove contacts before importing</p>
+<p>{t("pg.Contacts.0392")}</p>
 </div>
 <div className="flex items-start gap-2">
 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary mt-0.5">4</div>
-<p>Confirm to add all selected contacts to your contact list</p>
+<p>{t("pg.Contacts.0393")}</p>
 </div>
 </div>
 </div>
 
 <div className="p-3 bg-muted/30 rounded-lg">
 <p className="text-xs text-text-subtle">
-<strong>Note:</strong> You can select multiple contacts at once. Only contacts with both name and phone number will be imported.
-Your contacts remain private and are only stored in your SENDA account.
+<strong>{t("pg.Settings.0198")}</strong> {t("pg.Contacts.0394")}
 </p>
 </div>
 
 <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
 <p className="text-xs text-blue-700 dark:text-blue-300">
-<strong>Tip:</strong> You can add more contacts after the initial selection by tapping "Add More Contacts" in the review dialog.
-If direct access doesn't work (Samsung Internet, Safari, Firefox and most non-Chrome browsers don't support it), open your
-phone's Contacts app, select contacts, choose Share → vCard / .vcf file, then use the "From Phone" option in the Import
-dialog to upload it — that works on any browser.
+<strong>{t("pg.Contacts.0395")}</strong> {t("pg.Contacts.0396")}
 </p>
 </div>
 </div>
@@ -2802,7 +2798,7 @@ variant="outline"
 onClick={() => setIsMobileImportHelpOpen(false)}
 className="flex-1"
 >
-Close
+{t("pg.Contacts.0397")}
 </Button>
 <Button
 onClick={() => {
@@ -2812,7 +2808,7 @@ handleMobileContactImport();
 className="flex-1"
 >
 <Smartphone className="w-4 h-4 mr-2" />
-Import Multiple Contacts
+{t("pg.Contacts.0398")}
 </Button>
 </div>
 </DialogContent>
@@ -2830,16 +2826,16 @@ Import Multiple Contacts
 <DialogHeader>
 <DialogTitle className="flex items-center gap-2">
 <Tag className="w-5 h-5" />
-Add Tags to Selected Contacts
+{t("pg.Contacts.0399")}
 </DialogTitle>
 <DialogDescription>
-Type tag names to add to {selectedCount.toLocaleString(appLocale())} selected contact{selectedCount === 1 ? "" : "s"}. Press Enter or comma to add each tag.
+{t("pg.Contacts.0400")} {selectedCount.toLocaleString(appLocale())} {t("pg.Contacts.0401")}{selectedCount === 1 ? "" : t("pg.common.plural_s")}{t("pg.Contacts.0402")}
 </DialogDescription>
 </DialogHeader>
 
 <div className="space-y-4">
 <div className="space-y-2">
-<Label htmlFor="bulk-tag-input" className="text-sm font-medium">Tag names</Label>
+<Label htmlFor="bulk-tag-input" className="text-sm font-medium">{t("pg.Contacts.0403")}</Label>
 <div className="flex flex-wrap items-center gap-1.5 min-h-[44px] rounded-xl border border-border/60 dark:border-border/40 bg-background/60 dark:bg-background/40 px-2.5 py-2 focus-within:border-primary/50">
   {selectedTags.map((tag) => (
     <span
@@ -2850,7 +2846,7 @@ Type tag names to add to {selectedCount.toLocaleString(appLocale())} selected co
       <button
         type="button"
         onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
-        aria-label={`Remove ${tag}`}
+        aria-label={t("pg.Contacts.0492", { tag })}
         className="w-4 h-4 inline-flex items-center justify-center rounded-full hover:bg-destructive/15 hover:text-destructive transition-colors"
       >
         <X className="w-2.5 h-2.5" strokeWidth={2.6} />
@@ -2881,12 +2877,12 @@ Type tag names to add to {selectedCount.toLocaleString(appLocale())} selected co
       }
       setTagInput("");
     }}
-    placeholder={selectedTags.length === 0 ? "e.g. vip, marketing, lead…" : ""}
+    placeholder={selectedTags.length === 0 ? t("pg.Contacts.0493") : ""}
     className="flex-1 min-w-[120px] bg-transparent border-0 outline-none text-[13px] py-0.5"
   />
 </div>
 <p className="text-xs text-text-subtle">
-  Type a tag and press <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">Enter</kbd> or <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">,</kbd> to add. These tags will be added to every selected contact.
+  {t("pg.Contacts.0404")} <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">Enter</kbd> {t("pg.Contacts.0405")} <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">,</kbd> {t("pg.Contacts.0406")}
 </p>
 </div>
 </div>
@@ -2900,7 +2896,7 @@ setSelectedTags([]);
 }}
 disabled={isBulkActionLoading}
 >
-Cancel
+{t("pg.Settings.0120")}
 </Button>
 <Button
 onClick={confirmBulkAddTag}
@@ -2909,12 +2905,12 @@ disabled={isBulkActionLoading || selectedTags.length === 0}
 {isBulkActionLoading ? (
 <>
 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-Adding...
+{t("pg.Contacts.0407")}
 </>
 ) : (
 <>
 <Tag className="w-4 h-4 mr-2" />
-Add {selectedTags.length} Tag(s)
+{t("pg.BrandingDomainsCard.0238")} {selectedTags.length} {t("pg.Contacts.0408")}
 </>
 )}
 </Button>
@@ -2928,19 +2924,19 @@ Add {selectedTags.length} Tag(s)
 <DialogHeader>
 <DialogTitle className="flex items-center gap-2">
 <Edit className="w-5 h-5" />
-Edit Selected Contacts
+{t("pg.Contacts.0409")}
 </DialogTitle>
 <DialogDescription>
-Update {selectedContacts.length} selected contact(s). Leave fields empty to keep existing values.
+{t("pg.Contacts.0410")} {selectedContacts.length} {t("pg.Contacts.0411")}
 </DialogDescription>
 </DialogHeader>
 
 <div className="space-y-4">
 <div className="space-y-2">
-<Label htmlFor="bulk-name" className="text-sm font-medium">Name</Label>
+<Label htmlFor="bulk-name" className="text-sm font-medium">{t("pg.Contacts.0412")}</Label>
 <Input
 id="bulk-name"
-placeholder="Leave empty to keep existing"
+placeholder={t("pg.Contacts.0413")}
 value={bulkEditData.name || ""}
 onChange={(e) => setBulkEditData(prev => ({ ...prev, name: e.target.value }))}
 className="glass-subtle border-0 text-sm"
@@ -2952,7 +2948,7 @@ className="glass-subtle border-0 text-sm"
 <Input
 id="bulk-email"
 type="email"
-placeholder="Leave empty to keep existing"
+placeholder={t("pg.Contacts.0413")}
 value={bulkEditData.email || ""}
 onChange={(e) => setBulkEditData(prev => ({ ...prev, email: e.target.value }))}
 className="glass-subtle border-0 text-sm"
@@ -2961,7 +2957,7 @@ className="glass-subtle border-0 text-sm"
 
 {/* Tags Section */}
 <div className="space-y-2">
-<Label className="text-sm font-medium">Tags</Label>
+<Label className="text-sm font-medium">{t("pg.Contacts.0365")}</Label>
 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
 {predefinedTags.map((tag) => (
 <div key={tag} className="flex items-center space-x-2">
@@ -3005,13 +3001,13 @@ className="text-sm font-normal cursor-pointer"
 
 {/* Attributes Section - Hidden */}
 <div className="space-y-2 hidden">
-<h4 className="text-sm font-medium text-foreground">Additional Info</h4>
+<h4 className="text-sm font-medium text-foreground">{t("pg.Contacts.0327")}</h4>
 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 <div className="space-y-1">
-<Label htmlFor="bulk-company" className="text-xs">Company</Label>
+<Label htmlFor="bulk-company" className="text-xs">{t("pg.Contacts.0328")}</Label>
 <Input
 id="bulk-company"
-placeholder="Leave empty to keep existing"
+placeholder={t("pg.Contacts.0413")}
 value={(bulkEditData.attributes?.company as string) || ""}
 onChange={(e) => setBulkEditData(prev => ({
 ...prev,
@@ -3024,10 +3020,10 @@ className="glass-subtle border-0 text-xs"
 />
 </div>
 <div className="space-y-1">
-<Label htmlFor="bulk-department" className="text-xs">Department</Label>
+<Label htmlFor="bulk-department" className="text-xs">{t("pg.Contacts.0330")}</Label>
 <Input
 id="bulk-department"
-placeholder="Leave empty to keep existing"
+placeholder={t("pg.Contacts.0413")}
 value={(bulkEditData.attributes?.department as string) || ""}
 onChange={(e) => setBulkEditData(prev => ({
 ...prev,
@@ -3060,7 +3056,7 @@ department: ""
 }}
 disabled={isBulkActionLoading}
 >
-Cancel
+{t("pg.Settings.0120")}
 </Button>
 <Button
 onClick={confirmBulkEdit}
@@ -3069,12 +3065,12 @@ disabled={isBulkActionLoading}
 {isBulkActionLoading ? (
 <>
 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-Updating...
+{t("pg.Contacts.0414")}
 </>
 ) : (
 <>
 <Edit className="w-4 h-4 mr-2" />
-Update {selectedContacts.length} Contact(s)
+{t("pg.Contacts.0410")} {selectedContacts.length} {t("pg.Contacts.0415")}
 </>
 )}
 </Button>
@@ -3088,16 +3084,15 @@ Update {selectedContacts.length} Contact(s)
 <AlertDialogHeader>
 <AlertDialogTitle className="flex items-center gap-2">
 <Trash2 className="w-5 h-5 text-destructive" />
-Delete Selected Contacts
+{t("pg.Contacts.0416")}
 </AlertDialogTitle>
 <AlertDialogDescription>
-Are you sure you want to delete {selectedCount.toLocaleString(appLocale())} selected contact(s)?
-This action cannot be undone and will permanently remove these contacts from your database.
+{t("pg.Contacts.0368")} {selectedCount.toLocaleString(appLocale())} {t("pg.Contacts.0417")}
 </AlertDialogDescription>
 </AlertDialogHeader>
 <AlertDialogFooter>
 <AlertDialogCancel disabled={isBulkActionLoading}>
-Cancel
+{t("pg.Settings.0120")}
 </AlertDialogCancel>
 <AlertDialogAction
 onClick={confirmBulkDelete}
@@ -3107,12 +3102,12 @@ className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 {isBulkActionLoading ? (
 <>
 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-Deleting...
+{t("pg.Contacts.0418")}
 </>
 ) : (
 <>
 <Trash2 className="w-4 h-4 mr-2" />
-Delete {selectedCount.toLocaleString(appLocale())} Contact(s)
+{t("pg.Contacts.0345")} {selectedCount.toLocaleString(appLocale())} {t("pg.Contacts.0415")}
 </>
 )}
 </AlertDialogAction>

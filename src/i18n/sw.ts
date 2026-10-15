@@ -1,11 +1,13 @@
 import { ccSw } from "@/i18n/callCenterSw";
 import { anSw } from "@/i18n/callAnalyticsSw";
+import { pgSw } from "@/i18n/pagesSw";
 
 // Swahili dictionary. Loaded on demand (see LanguageContext): English is the default, so most
 // visitors never download this ~230 kB of text.
 const sw: Record<string, string> = {
   ...ccSw,
   ...anSw,
+  ...pgSw,
   "app.name": "SENDA",
   "app.tagline": "Kituo cha Mawasiliano",
   "tutorial.title": "Karibu SENDA",

@@ -408,8 +408,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to fetch billing data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load billing information",
+        title: t("pg.Settings.0001"),
+        description: t("pg.Settings.0002"),
         variant: "destructive",
       });
     } finally {
@@ -429,8 +429,8 @@ const Settings = () => {
     const res = await team.inviteMember(inviteEmail, inviteRole);
     if (res.success) {
       toast({
-        title: "Invitation sent",
-        description: `Invitation sent to ${inviteEmail} as ${inviteRole}. They will receive an email with a link to join.`,
+        title: t("pg.Settings.0003"),
+        description: t("pg.Settings.0422", { inviteEmail, inviteRole }),
         duration: 5000
       });
       setInviteOpen(false);
@@ -462,7 +462,7 @@ const Settings = () => {
       } else if (errorMessage.toLowerCase().includes("already an active member")) {
         // Just show info, they're already added
         toast({
-          title: "Member already active",
+          title: t("pg.Settings.0004"),
           description: errorMessage,
           duration: 7000
         });
@@ -493,35 +493,35 @@ const Settings = () => {
     // Don't allow changing role for pending members
     if (member.status === 'pending') {
       toast({
-        title: "Cannot change role",
-        description: "Pending members must accept their invitation first.",
+        title: t("pg.Settings.0005"),
+        description: t("pg.Settings.0006"),
         variant: "destructive"
       });
       return;
     }
     const res = await team.updateMember(member.id, { role });
     if (res.success) {
-      toast({ title: "Role updated", description: `Role changed to ${role}` });
+      toast({ title: t("pg.Settings.0007"), description: t("pg.Settings.0423", { role }) });
     } else {
-      toast({ title: "Failed to change role", description: res.error || "", variant: "destructive" });
+      toast({ title: t("pg.Settings.0008"), description: res.error || "", variant: "destructive" });
     }
   };
 
   const handleToggleMemberStatus = async (member: TeamMember) => {
     const action = member.status === 'active' ? team.suspendMember : team.activateMember;
     const res = await action(member.id);
-    if (!res.success) toast({ title: "Action failed", description: res.error || "", variant: "destructive" });
+    if (!res.success) toast({ title: t("pg.Settings.0009"), description: res.error || "", variant: "destructive" });
   };
 
   const handleRemoveMember = async (member: TeamMember) => {
     const res = await team.removeMember(member.id);
-    if (!res.success) toast({ title: "Failed to remove", description: res.error || "", variant: "destructive" });
+    if (!res.success) toast({ title: t("pg.Settings.0010"), description: res.error || "", variant: "destructive" });
   };
 
   const handleResendInvitation = async (member: TeamMember) => {
     const res = await team.resendInvitation(member.id);
-    if (res.success) toast({ title: "Invitation resent", description: member.user_email });
-    else toast({ title: "Failed to resend", description: res.error || "", variant: "destructive" });
+    if (res.success) toast({ title: t("pg.Settings.0011"), description: member.user_email });
+    else toast({ title: t("pg.Settings.0012"), description: res.error || "", variant: "destructive" });
   };
 
   const settingsCategories: SettingsCategory[] = [
@@ -669,7 +669,7 @@ const Settings = () => {
         setApiSettings(response.data as typeof apiSettings);
       } else {
         toast({
-          title: "Failed to load API settings",
+          title: t("pg.Settings.0013"),
           description: response.error || "Could not fetch API keys.",
           variant: "destructive"
         });
@@ -677,7 +677,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to load API settings:', error);
       toast({
-        title: "Failed to load API settings",
+        title: t("pg.Settings.0013"),
         description: error instanceof Error ? error.message : "Could not fetch API keys.",
         variant: "destructive"
       });
@@ -735,8 +735,8 @@ const Settings = () => {
   const handleCreateAPIKey = async () => {
     if (!newApiKeyForm.key_name) {
       toast({
-        title: "Key name required",
-        description: "Please enter a name for your API key.",
+        title: t("pg.Settings.0014"),
+        description: t("pg.Settings.0015"),
         variant: "destructive"
       });
       return;
@@ -762,8 +762,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to create API key:', error);
       toast({
-        title: "Failed to create API key",
-        description: "An error occurred while creating the API key.",
+        title: t("pg.Settings.0016"),
+        description: t("pg.Settings.0017"),
         variant: "destructive"
       });
     } finally {
@@ -777,8 +777,8 @@ const Settings = () => {
       const response = await apiClient.revokeApiKey(keyId);
       if (response.success) {
         toast({
-          title: "API key revoked",
-          description: "The API key has been revoked successfully.",
+          title: t("pg.Settings.0018"),
+          description: t("pg.Settings.0019"),
         variant: "default"
         });
         await loadAPISettings();
@@ -786,8 +786,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to revoke API key:', error);
       toast({
-        title: "Failed to revoke API key",
-        description: "An error occurred while revoking the API key.",
+        title: t("pg.Settings.0020"),
+        description: t("pg.Settings.0021"),
         variant: "destructive"
       });
     } finally {
@@ -811,8 +811,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to regenerate API key:', error);
       toast({
-        title: "Failed to regenerate API key",
-        description: "An error occurred while regenerating the API key.",
+        title: t("pg.Settings.0022"),
+        description: t("pg.Settings.0023"),
         variant: "destructive"
       });
     } finally {
@@ -835,8 +835,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to reveal API key:', error);
       toast({
-        title: "Failed to view API key",
-        description: "An error occurred while retrieving the API key.",
+        title: t("pg.Settings.0024"),
+        description: t("pg.Settings.0025"),
         variant: "destructive"
       });
     } finally {
@@ -848,8 +848,8 @@ const Settings = () => {
   const handleCreateWebhook = async () => {
     if (!newWebhookForm.url || newWebhookForm.events.length === 0) {
       toast({
-        title: "Webhook details required",
-        description: "Please provide a URL and at least one event.",
+        title: t("pg.Settings.0026"),
+        description: t("pg.Settings.0027"),
         variant: "destructive"
       });
       return;
@@ -864,8 +864,8 @@ const Settings = () => {
       });
       if (response.success) {
         toast({
-          title: "Webhook created",
-          description: "The webhook has been created successfully.",
+          title: t("pg.Settings.0028"),
+          description: t("pg.Settings.0029"),
         });
         setShowWebhookDialog(false);
         setNewWebhookForm({ url: "", events: [] });
@@ -874,8 +874,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Failed to create webhook:', error);
       toast({
-        title: "Failed to create webhook",
-        description: "An error occurred while creating the webhook.",
+        title: t("pg.Settings.0030"),
+        description: t("pg.Settings.0031"),
         variant: "destructive"
       });
     } finally {
@@ -889,16 +889,16 @@ const Settings = () => {
       const response = await apiClient.toggleWebhook(webhookId);
       if (response.success) {
         toast({
-          title: "Webhook status updated",
-          description: "The webhook status has been toggled successfully.",
+          title: t("pg.Settings.0032"),
+          description: t("pg.Settings.0033"),
         });
         await loadAPISettings();
       }
     } catch (error) {
       console.error('Failed to toggle webhook:', error);
       toast({
-        title: "Failed to toggle webhook",
-        description: "An error occurred while toggling the webhook.",
+        title: t("pg.Settings.0034"),
+        description: t("pg.Settings.0035"),
         variant: "destructive"
       });
     } finally {
@@ -912,16 +912,16 @@ const Settings = () => {
       const response = await apiClient.deleteWebhook(webhookId);
       if (response.success) {
         toast({
-          title: "Webhook deleted",
-          description: "The webhook has been deleted successfully.",
+          title: t("pg.Settings.0036"),
+          description: t("pg.Settings.0037"),
         });
         await loadAPISettings();
       }
     } catch (error) {
       console.error('Failed to delete webhook:', error);
       toast({
-        title: "Failed to delete webhook",
-        description: "An error occurred while deleting the webhook.",
+        title: t("pg.Settings.0038"),
+        description: t("pg.Settings.0039"),
         variant: "destructive"
       });
     } finally {
@@ -971,8 +971,8 @@ const Settings = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copied to clipboard",
-      description: "The API key has been copied to your clipboard."
+      title: t("pg.Settings.0040"),
+      description: t("pg.Settings.0041")
     });
   };
 
@@ -1008,8 +1008,8 @@ const Settings = () => {
 
       if (result.success) {
         toast({
-          title: "Profile updated successfully",
-          description: "Your profile information has been saved.",
+          title: t("pg.Settings.0042"),
+          description: t("pg.Settings.0043"),
         });
 
         // Clear any form state if needed
@@ -1025,7 +1025,7 @@ const Settings = () => {
       } else {
         console.error('Profile update failed:', result.error);
         toast({
-          title: "Update failed",
+          title: t("pg.Settings.0044"),
           description: result.error || "Failed to update profile. Please try again.",
           variant: "destructive"
         });
@@ -1033,8 +1033,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Profile update error:', error);
       toast({
-        title: "Update failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("pg.Settings.0044"),
+        description: t("pg.Settings.0045"),
         variant: "destructive"
       });
     } finally {
@@ -1046,8 +1046,8 @@ const Settings = () => {
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please ensure both passwords are identical.",
+        title: t("pg.Settings.0046"),
+        description: t("pg.Settings.0047"),
         variant: "destructive"
       });
       return;
@@ -1055,8 +1055,8 @@ const Settings = () => {
 
     if (passwordData.newPassword.length < 8) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: t("pg.Settings.0048"),
+        description: t("pg.Settings.0049"),
         variant: "destructive"
       });
       return;
@@ -1071,8 +1071,8 @@ const Settings = () => {
 
       if (response.success) {
         toast({
-          title: "Password updated successfully",
-          description: "Your password has been changed successfully.",
+          title: t("pg.Settings.0050"),
+          description: t("pg.Settings.0051"),
         });
         setPasswordData({
           currentPassword: "",
@@ -1081,15 +1081,15 @@ const Settings = () => {
         });
       } else {
         toast({
-          title: "Password change failed",
+          title: t("pg.Settings.0052"),
           description: response.error || "Failed to change password. Please try again.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Password change failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("pg.Settings.0052"),
+        description: t("pg.Settings.0045"),
         variant: "destructive"
       });
     } finally {
@@ -1121,20 +1121,20 @@ const Settings = () => {
       const response = await apiClient.updateNotificationSettings(notificationSettings);
       if (response.success) {
         toast({
-          title: "Notification settings updated successfully",
-          description: "Your notification preferences have been saved.",
+          title: t("pg.Settings.0053"),
+          description: t("pg.Settings.0054"),
         });
       } else {
         toast({
-          title: "Update failed",
+          title: t("pg.Settings.0044"),
           description: response.error || "Failed to update notification settings. Please try again.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Update failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: t("pg.Settings.0044"),
+        description: t("pg.Settings.0045"),
         variant: "destructive"
       });
     } finally {
@@ -1146,8 +1146,8 @@ const Settings = () => {
   const handleEnable2FA = async () => {
     if (!twoFactorData.totpCode) {
       toast({
-        title: "TOTP Code Required",
-        description: "Please enter the 6-digit code from your authenticator app.",
+        title: t("pg.Settings.0055"),
+        description: t("pg.Settings.0056"),
         variant: "destructive",
       });
       return;
@@ -1171,8 +1171,8 @@ const Settings = () => {
   const handleDisable2FA = async () => {
     if (!twoFactorData.password || !twoFactorData.totpCode) {
       toast({
-        title: "Credentials Required",
-        description: "Please enter your password and TOTP code.",
+        title: t("pg.Settings.0057"),
+        description: t("pg.Settings.0058"),
         variant: "destructive",
       });
       return;
@@ -1206,8 +1206,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Error generating fallback QR code:', error);
       toast({
-        title: "QR Code Error",
-        description: "Failed to generate QR code. Please try again.",
+        title: t("pg.Settings.0059"),
+        description: t("pg.Settings.0060"),
         variant: "destructive",
       });
       return null;
@@ -1253,8 +1253,8 @@ const Settings = () => {
     const targetPhone = (profileData.phone || user?.phone_number || "").trim();
     if (!targetPhone) {
       toast({
-        title: "Phone number required",
-        description: "Please add a phone number to your profile first.",
+        title: t("pg.Settings.0061"),
+        description: t("pg.Settings.0062"),
         variant: "destructive"
       });
       return;
@@ -1265,8 +1265,8 @@ const Settings = () => {
       const result = await sendAccountVerification({ phone_number: targetPhone });
       if (result.success) {
         toast({
-          title: "Verification code sent",
-          description: `Code sent to ${targetPhone} and your email. Use whichever arrives first.`
+          title: t("pg.Settings.0063"),
+          description: t("pg.Settings.0424", { targetPhone })
         });
         setCodeSent(true);
       } else {
@@ -1296,8 +1296,8 @@ const Settings = () => {
   const handleVerifyAccount = async () => {
     if (!smsVerificationCode || smsVerificationCode.length !== 6) {
       toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit verification code.",
+        title: t("pg.Settings.0064"),
+        description: t("pg.Settings.0065"),
         variant: "destructive"
       });
       return;
@@ -1308,8 +1308,8 @@ const Settings = () => {
       const result = await verifyAccount({ code: smsVerificationCode });
       if (result.success) {
         toast({
-          title: "Account verified",
-          description: "Your account has been successfully verified via SMS."
+          title: t("pg.Settings.0066"),
+          description: t("pg.Settings.0067")
         });
         setSmsVerificationCode("");
         setCodeSent(false);
@@ -1319,15 +1319,15 @@ const Settings = () => {
         }
       } else {
         toast({
-          title: "Verification failed",
+          title: t("pg.Settings.0068"),
           description: result.error || "Invalid verification code. Please try again.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "Verification failed",
-        description: "An error occurred. Please try again.",
+        title: t("pg.Settings.0068"),
+        description: t("pg.Settings.0069"),
         variant: "destructive"
       });
     } finally {
@@ -1349,7 +1349,7 @@ const Settings = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4" />
-                  Profile Information
+                  {t("pg.Settings.0070")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
@@ -1376,16 +1376,16 @@ const Settings = () => {
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <h4 className="text-[13px] font-semibold text-foreground dark:text-foreground truncate">
-                          Choose your avatar
+                          {t("pg.Settings.0071")}
                         </h4>
                         {!avatarPickerOpen && (
                           <span className="text-[10.5px] font-medium text-foreground/55 dark:text-foreground/50">
-                            (hidden)
+                            {t("pg.Settings.0072")}
                           </span>
                         )}
                       </div>
                       <span className="flex-shrink-0 text-[11px] font-semibold text-primary group-active:opacity-60 transition-opacity inline-flex items-center gap-1">
-                        {avatarPickerOpen ? "Hide" : "Show"}
+                        {avatarPickerOpen ? t("pg.Settings.0425") : t("pg.Settings.0426")}
                         <ChevronDown
                           className={`w-3.5 h-3.5 transition-transform duration-200 ${avatarPickerOpen ? "rotate-180" : ""}`}
                           strokeWidth={2.4}
@@ -1401,7 +1401,7 @@ const Settings = () => {
 
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm">First Name</Label>
+                      <Label htmlFor="firstName" className="text-sm">{t("pg.Settings.0073")}</Label>
                       <Input
                         id="firstName"
                         value={profileData.firstName}
@@ -1410,7 +1410,7 @@ const Settings = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm">Last Name</Label>
+                      <Label htmlFor="lastName" className="text-sm">{t("pg.Settings.0074")}</Label>
                       <Input
                         id="lastName"
                         value={profileData.lastName}
@@ -1419,7 +1419,7 @@ const Settings = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm">Email Address</Label>
+                      <Label htmlFor="email" className="text-sm">{t("pg.Settings.0075")}</Label>
                       <Input
                         id="email"
                         type="email"
@@ -1428,32 +1428,32 @@ const Settings = () => {
                         className="glass-subtle border-0 text-sm"
                       />
                       <p className="text-xs text-text-subtle">
-                        Keep your email up to date. Changes may require verification.
+                        {t("pg.Settings.0076")}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm">Phone Number</Label>
+                      <Label htmlFor="phone" className="text-sm">{t("pg.Settings.0077")}</Label>
                       <Input
                         id="phone"
                         type="tel"
                         value={profileData.phone}
                         onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
                         className="glass-subtle border-0 text-sm"
-                        placeholder="06..., 07..., 255..., or +255..."
+                        placeholder={t("pg.Settings.0078")}
                         disabled={!canEditPhone}
                         readOnly={!canEditPhone}
                       />
                       <p className="text-xs text-text-subtle">
                         {canEditPhone
-                          ? "Accepted formats: 06..., 07..., 255..., or +255...."
-                          : "Sign in to update your phone number."}
+                          ? t("pg.Settings.0427")
+                          : t("pg.Settings.0428")}
                       </p>
                     </div>
                   </div>
 
                   <Button type="submit" disabled={isLoading || isUpdatingProfile} className="w-full text-sm">
                     <Save className="w-4 h-4 mr-2" />
-                    {isLoading || isUpdatingProfile ? "Saving..." : "Save Changes"}
+                    {isLoading || isUpdatingProfile ? t("pg.Settings.0429") : t("pg.Settings.0430")}
                   </Button>
                 </form>
               </CardContent>
@@ -1468,19 +1468,19 @@ const Settings = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4" />
-                  Preferences
+                  {t("pg.Settings.0079")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
                 {preferencesLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <p className="text-sm text-text-subtle">Loading preferences...</p>
+                    <p className="text-sm text-text-subtle">{t("pg.Settings.0080")}</p>
                   </div>
                 ) : preferences ? (
                   <div className="space-y-4">
                     {/* Theme Selection */}
                     <div className="space-y-2">
-                      <Label className="text-sm">Theme</Label>
+                      <Label className="text-sm">{t("pg.Settings.0081")}</Label>
                       <Select
                         value={currentTheme || 'light'}
                         onValueChange={(value) => updateTheme(value as 'light' | 'dark' | 'system')}
@@ -1490,9 +1490,9 @@ const Settings = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="light">☀️ Light</SelectItem>
-                          <SelectItem value="dark">🌙 Dark</SelectItem>
-                          <SelectItem value="system">💻 System</SelectItem>
+                          <SelectItem value="light">{t("pg.Settings.0082")}</SelectItem>
+                          <SelectItem value="dark">{t("pg.Settings.0083")}</SelectItem>
+                          <SelectItem value="system">{t("pg.Settings.0084")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1509,15 +1509,15 @@ const Settings = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="en">🇺🇸 English</SelectItem>
-                          <SelectItem value="sw">🇰🇪 Kiswahili</SelectItem>
+                          <SelectItem value="en">{t("pg.Settings.0085")}</SelectItem>
+                          <SelectItem value="sw">{t("pg.Settings.0086")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {/* Timezone Selection */}
                     <div className="space-y-2">
-                      <Label className="text-sm">Timezone</Label>
+                      <Label className="text-sm">{t("pg.Settings.0087")}</Label>
                       <Select
                         value={preferences.timezone}
                         onValueChange={(value) => updateTimezone(value)}
@@ -1527,22 +1527,22 @@ const Settings = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="glass">
-                          <SelectItem value="Africa/Dar_es_Salaam">Africa/Dar es Salaam</SelectItem>
-                          <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
-                          <SelectItem value="Africa/Kampala">Africa/Kampala</SelectItem>
-                          <SelectItem value="UTC">UTC</SelectItem>
+                          <SelectItem value="Africa/Dar_es_Salaam">{t("pg.Settings.0088")}</SelectItem>
+                          <SelectItem value="Africa/Nairobi">{t("pg.Settings.0089")}</SelectItem>
+                          <SelectItem value="Africa/Kampala">{t("pg.Settings.0090")}</SelectItem>
+                          <SelectItem value="UTC">{t("pg.Settings.0091")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {/* Notification Preferences */}
                     <div className="space-y-3">
-                      <Label className="text-sm">Notification Preferences</Label>
+                      <Label className="text-sm">{t("pg.Settings.0092")}</Label>
 
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label className="text-sm">Email Notifications</Label>
-                          <p className="text-xs text-text-subtle">Receive notifications via email</p>
+                          <Label className="text-sm">{t("pg.Settings.0093")}</Label>
+                          <p className="text-xs text-text-subtle">{t("pg.Settings.0094")}</p>
                         </div>
                         <Switch
                           checked={preferences.email_notifications}
@@ -1553,8 +1553,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label className="text-sm">SMS Notifications</Label>
-                          <p className="text-xs text-text-subtle">Receive notifications via SMS</p>
+                          <Label className="text-sm">{t("pg.Settings.0095")}</Label>
+                          <p className="text-xs text-text-subtle">{t("pg.Settings.0096")}</p>
                         </div>
                         <Switch
                           checked={preferences.sms_notifications}
@@ -1565,8 +1565,8 @@ const Settings = () => {
 
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label className="text-sm">Marketing Emails</Label>
-                          <p className="text-xs text-text-subtle">Receive marketing and promotional emails</p>
+                          <Label className="text-sm">{t("pg.Settings.0097")}</Label>
+                          <p className="text-xs text-text-subtle">{t("pg.Settings.0098")}</p>
                         </div>
                         <Switch
                           checked={preferences.marketing_emails}
@@ -1578,7 +1578,7 @@ const Settings = () => {
                   </div>
                 ) : (
                   <div className="text-sm text-text-subtle">
-                    Failed to load preferences. Please try refreshing the page.
+                    {t("pg.Settings.0099")}
                   </div>
                 )}
               </CardContent>
@@ -1593,15 +1593,15 @@ const Settings = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Bell className="w-4 h-4" />
-                  Notification Preferences
+                  {t("pg.Settings.0092")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Email Notifications</h4>
-                      <p className="text-xs text-text-subtle">Receive email updates about your account</p>
+                      <h4 className="font-medium text-foreground text-sm">{t("pg.Settings.0093")}</h4>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0100")}</p>
                     </div>
                     <Switch
                       checked={notificationSettings.email_notifications}
@@ -1611,8 +1611,8 @@ const Settings = () => {
                   <Separator />
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">SMS Notifications</h4>
-                      <p className="text-xs text-text-subtle">Receive SMS alerts for important updates</p>
+                      <h4 className="font-medium text-foreground text-sm">{t("pg.Settings.0095")}</h4>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0101")}</p>
                     </div>
                     <Switch
                       checked={notificationSettings.sms_notifications}
@@ -1621,8 +1621,8 @@ const Settings = () => {
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Push Notifications</h4>
-                      <p className="text-xs text-text-subtle">Get browser push notifications</p>
+                      <h4 className="font-medium text-foreground text-sm">{t("pg.Settings.0102")}</h4>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0103")}</p>
                     </div>
                     <Switch
                       checked={notificationSettings.push_notifications}
@@ -1631,8 +1631,8 @@ const Settings = () => {
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Marketing Emails</h4>
-                      <p className="text-xs text-text-subtle">Receive promotional and marketing content</p>
+                      <h4 className="font-medium text-foreground text-sm">{t("pg.Settings.0097")}</h4>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0104")}</p>
                     </div>
                     <Switch
                       checked={notificationSettings.marketing_emails}
@@ -1646,7 +1646,7 @@ const Settings = () => {
                   className="w-full text-sm"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  {isLoading ? "Saving..." : "Save Notification Settings"}
+                  {isLoading ? t("pg.Settings.0429") : t("pg.Settings.0431")}
                 </Button>
               </CardContent>
             </Card>
@@ -1697,18 +1697,18 @@ const Settings = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Key className="w-4 h-4" />
-                  Change Password
+                  {t("pg.Settings.0105")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
+                    <Label htmlFor="currentPassword" className="text-sm">{t("pg.Settings.0106")}</Label>
                     <div className="relative">
                       <Input
                         id="currentPassword"
                         type={showPasswords.current ? "text" : "password"}
-                        placeholder="Enter current password"
+                        placeholder={t("pg.Settings.0107")}
                         value={passwordData.currentPassword}
                         onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                         className="glass-subtle border-0 text-sm pr-10"
@@ -1723,12 +1723,12 @@ const Settings = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="text-sm">New Password</Label>
+                    <Label htmlFor="newPassword" className="text-sm">{t("pg.Settings.0108")}</Label>
                     <div className="relative">
                       <Input
                         id="newPassword"
                         type={showPasswords.new ? "text" : "password"}
-                        placeholder="Enter new password"
+                        placeholder={t("pg.Settings.0109")}
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                         className="glass-subtle border-0 text-sm pr-10"
@@ -1743,12 +1743,12 @@ const Settings = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm">{t("pg.Settings.0110")}</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
                         type={showPasswords.confirm ? "text" : "password"}
-                        placeholder="Confirm new password"
+                        placeholder={t("pg.Settings.0111")}
                         value={passwordData.confirmPassword}
                         onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                         className="glass-subtle border-0 text-sm pr-10"
@@ -1768,7 +1768,7 @@ const Settings = () => {
                     className="w-full text-sm"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    {isLoading ? "Updating..." : "Update Password"}
+                    {isLoading ? t("pg.Contacts.0414") : t("pg.Settings.0432")}
                   </Button>
                 </div>
               </CardContent>
@@ -1935,40 +1935,40 @@ const Settings = () => {
                 <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Phone className="w-4 h-4" />
-                    SMS Account Verification
+                    {t("pg.Settings.0112")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 p-3 pt-0">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-foreground text-sm">Verification Status</h4>
+                      <h4 className="font-medium text-foreground text-sm">{t("pg.Settings.0113")}</h4>
                       <p className="text-xs text-text-subtle">
-                        {user?.phone_verified ? "Verified" : "Not verified"}
+                        {user?.phone_verified ? t("pg.Settings.0433") : t("pg.Settings.0434")}
                       </p>
                     </div>
                     <Badge variant={user?.phone_verified ? "default" : "secondary"} className="text-xs">
-                      {user?.phone_verified ? "Verified" : "Unverified"}
+                      {user?.phone_verified ? t("pg.Settings.0433") : t("pg.Settings.0435")}
                     </Badge>
                   </div>
 
                   <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                    <h5 className="font-medium text-blue-900 text-sm mb-1">Verify Your Phone Number</h5>
+                    <h5 className="font-medium text-blue-900 text-sm mb-1">{t("pg.Settings.0114")}</h5>
                     <p className="text-xs text-blue-800">
-                      Add an extra layer of security by verifying your phone number with SMS.
+                      {t("pg.Settings.0115")}
                     </p>
                   </div>
 
                   {!codeSent ? (
                     <div className="space-y-3">
                       <div className="space-y-2">
-                        <Label className="text-sm">Phone Number</Label>
+                        <Label className="text-sm">{t("pg.Settings.0077")}</Label>
                         <Input
                           value={profileData.phone || user?.phone_number || ""}
                           disabled
                           className="glass-subtle border-0 text-sm bg-muted/50"
                         />
                         <p className="text-xs text-text-subtle">
-                          We'll send a verification code to this number
+                          {t("pg.Settings.0116")}
                         </p>
                       </div>
                       <Button
@@ -1977,16 +1977,16 @@ const Settings = () => {
                         className="w-full text-sm"
                       >
                         <Phone className="w-4 h-4 mr-2" />
-                        {isSendingCode ? "Sending..." : "Send Verification Code"}
+                        {isSendingCode ? t("pg.Settings.0436") : t("pg.Settings.0437")}
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       <div className="space-y-2">
-                        <Label htmlFor="verificationCode" className="text-sm">Verification Code</Label>
+                        <Label htmlFor="verificationCode" className="text-sm">{t("pg.Settings.0117")}</Label>
                         <Input
                           id="verificationCode"
-                          placeholder="Enter 6-digit code"
+                          placeholder={t("pg.Settings.0118")}
                           value={smsVerificationCode}
                           onChange={(e) => setSmsVerificationCode(e.target.value)}
                           className="glass-subtle border-0 text-center text-lg tracking-widest"
@@ -1995,7 +1995,7 @@ const Settings = () => {
                           pattern="[0-9]*"
                         />
                         <p className="text-xs text-text-subtle">
-                          Check your phone for the verification code sent via SMS
+                          {t("pg.Settings.0119")}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -2005,7 +2005,7 @@ const Settings = () => {
                           className="flex-1 text-sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
-                          {isVerifying ? "Verifying..." : "Verify Account"}
+                          {isVerifying ? t("pg.Settings.0438") : t("pg.Settings.0439")}
                         </Button>
                         <Button
                           variant="outline"
@@ -2016,7 +2016,7 @@ const Settings = () => {
                           disabled={isLoading}
                           className="text-sm"
                         >
-                          Cancel
+                          {t("pg.Settings.0120")}
                         </Button>
                       </div>
                       <Button
@@ -2026,7 +2026,7 @@ const Settings = () => {
                         disabled={isLoading || isSendingCode}
                         className="w-full text-xs"
                       >
-                        Didn't receive code? Resend
+                        {t("pg.Settings.0121")}
                       </Button>
                     </div>
                   )}
@@ -2270,11 +2270,11 @@ const Settings = () => {
                 <CardTitle className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    Team Members
+                    {t("pg.Settings.0122")}
                   </div>
                   <Button size="sm" className="text-xs" onClick={() => setInviteOpen(true)}>
                     <Plus className="w-3 h-3 mr-1" />
-                    Invite
+                    {t("pg.Settings.0123")}
                   </Button>
                 </CardTitle>
               </CardHeader>
@@ -2288,15 +2288,15 @@ const Settings = () => {
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
                             {member.user_name ? member.user_name.split(" ").map(n => n[0]).join("") :
                              member.user_email ? member.user_email.substring(0, 2).toUpperCase() :
-                             "AU"}
+                             t("pg.Settings.0440")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium text-foreground text-sm">
-                            {member.user_name || member.user_email || "Unknown User"}
+                            {member.user_name || member.user_email || t("pg.Settings.0441")}
                           </p>
                           <p className="text-xs text-text-subtle">
-                            {member.user_email || "No email"}
+                            {member.user_email || t("pg.Settings.0442")}
                           </p>
                         </div>
                       </div>
@@ -2326,23 +2326,23 @@ const Settings = () => {
                           <DropdownMenuContent align="end" className="glass">
                             <DropdownMenuItem className="text-xs" onClick={() => handleChangeMemberRole(member, member.role === 'agent' ? 'admin' : 'agent')}>
                               <Edit className="w-3 h-3 mr-2" />
-                              {member.role === 'agent' ? 'Promote to Admin' : 'Demote to Agent'}
+                              {member.role === 'agent' ? t("pg.Settings.0443") : t("pg.Settings.0444")}
                             </DropdownMenuItem>
                             {member.status !== 'pending' && (
                               <DropdownMenuItem className="text-xs" onClick={() => handleToggleMemberStatus(member)}>
                                 <RefreshCw className="w-3 h-3 mr-2" />
-                                {member.status === 'active' ? 'Suspend' : 'Activate'}
+                                {member.status === 'active' ? t("pg.Settings.0445") : t("pg.Settings.0446")}
                               </DropdownMenuItem>
                             )}
                             {member.status === 'pending' && (
                               <DropdownMenuItem className="text-xs" onClick={() => handleResendInvitation(member)}>
                                 <Mail className="w-3 h-3 mr-2" />
-                                Resend Invitation
+                                {t("pg.Settings.0124")}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem className="text-destructive text-xs">
                               <Trash2 className="w-3 h-3 mr-2" />
-                              <span onClick={() => handleRemoveMember(member)}>Remove</span>
+                              <span onClick={() => handleRemoveMember(member)}>{t("pg.Settings.0125")}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -2351,7 +2351,7 @@ const Settings = () => {
                   ))}
                   {(!Array.isArray(team.members) || team.members.length === 0) && (
                     <div className="p-4 rounded-lg bg-muted/30 text-xs text-text-subtle">
-                      {team.isLoading ? 'Loading...' : 'No members yet.'}
+                      {team.isLoading ? t("pg.Contacts.0340") : t("pg.Settings.0447")}
                     </div>
                   )}
                 </div>
@@ -2361,8 +2361,8 @@ const Settings = () => {
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogContent className="glass">
                 <DialogHeader>
-                  <DialogTitle>Invite Team Member</DialogTitle>
-                  <DialogDescription>Send an invitation email to join your team.</DialogDescription>
+                  <DialogTitle>{t("pg.Settings.0126")}</DialogTitle>
+                  <DialogDescription>{t("pg.Settings.0127")}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
@@ -2370,21 +2370,21 @@ const Settings = () => {
                     <Input id="inviteEmail" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="inviteRole">Role</Label>
+                    <Label htmlFor="inviteRole">{t("pg.Settings.0128")}</Label>
                     <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as TeamRole)}>
                       <SelectTrigger id="inviteRole" className="glass-subtle border-0">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder={t("pg.Settings.0129")} />
                       </SelectTrigger>
                       <SelectContent className="glass">
-                        <SelectItem value="agent">Agent</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="agent">{t("pg.Settings.0130")}</SelectItem>
+                        <SelectItem value="admin">{t("pg.Settings.0131")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setInviteOpen(false)} className="text-xs">Cancel</Button>
-                  <Button onClick={handleInviteMember} className="text-xs">Send Invite</Button>
+                  <Button variant="outline" onClick={() => setInviteOpen(false)} className="text-xs">{t("pg.Settings.0120")}</Button>
+                  <Button onClick={handleInviteMember} className="text-xs">{t("pg.Settings.0132")}</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -2399,7 +2399,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <CreditCard className="w-4 h-4" />
-                    Billing Information
+                    {t("pg.Settings.0133")}
                   </CardTitle>
                   <Button
                     variant="ghost"
@@ -2409,7 +2409,7 @@ const Settings = () => {
                     className="text-xs"
                   >
                     <RefreshCw className={`w-3 h-3 mr-1 ${billingData.isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
+                    {t("pg.Settings.0134")}
                   </Button>
                 </div>
               </CardHeader>
@@ -2422,20 +2422,19 @@ const Settings = () => {
                   <div className="space-y-4">
                     {/* SMS Credits Balance */}
                     <div>
-                      <h4 className="font-medium text-foreground mb-3 text-sm">SMS Credits</h4>
+                      <h4 className="font-medium text-foreground mb-3 text-sm">{t("pg.Settings.0135")}</h4>
                       <div className="p-4 rounded-lg bg-gradient-surface border border-border-subtle">
                         <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-semibold text-foreground text-sm">Current Balance</h5>
+                          <h5 className="font-semibold text-foreground text-sm">{t("pg.Settings.0136")}</h5>
                           <Badge variant="default" className="text-xs">
-                            {billingData.balance?.credits || 0} Credits
+                            {billingData.balance?.credits || 0} {t("pg.Settings.0137")}
                           </Badge>
                         </div>
                         <p className="text-2xl font-bold text-foreground mb-1">
                           {billingData.balance?.credits?.toLocaleString(appLocale()) || '0'}
                         </p>
                         <p className="text-xs text-text-subtle mb-3">
-                          Total Purchased: {billingData.balance?.total_purchased?.toLocaleString(appLocale()) || '0'} •
-                          Total Used: {billingData.balance?.total_used?.toLocaleString(appLocale()) || '0'}
+                          {t("pg.Settings.0138")} {billingData.balance?.total_purchased?.toLocaleString(appLocale()) || '0'} {t("pg.Settings.0139")} {billingData.balance?.total_used?.toLocaleString(appLocale()) || '0'}
                         </p>
                         <Button
                           variant="outline"
@@ -2443,7 +2442,7 @@ const Settings = () => {
                           className="text-xs"
                           onClick={() => window.location.href = '/sms/purchase'}
                         >
-                          Purchase Credits
+                          {t("pg.Settings.0140")}
                         </Button>
                       </div>
                     </div>
@@ -2451,7 +2450,7 @@ const Settings = () => {
                     {/* Available Packages */}
                     {billingData.packages.length > 0 && (
                       <div>
-                        <h4 className="font-medium text-foreground mb-3 text-sm">Available Packages</h4>
+                        <h4 className="font-medium text-foreground mb-3 text-sm">{t("pg.Settings.0141")}</h4>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           {billingData.packages.slice(0, 3).map((pkg) => (
                             <div
@@ -2462,12 +2461,12 @@ const Settings = () => {
                                 <h5 className="font-semibold text-foreground text-sm">{pkg.name}</h5>
                                 {pkg.savings_percentage > 0 && (
                                   <Badge variant="secondary" className="text-[10px]">
-                                    Save {pkg.savings_percentage}%
+                                    {t("pg.Settings.0142")} {pkg.savings_percentage}%
                                   </Badge>
                                 )}
                               </div>
                               <p className="text-lg font-bold text-foreground mb-1">
-                                {pkg.credits.toLocaleString(appLocale())} Credits
+                                {pkg.credits.toLocaleString(appLocale())} {t("pg.Settings.0137")}
                               </p>
                               <p className="text-xs text-text-subtle mb-2">
                                 {pkg.currency} {pkg.price.toLocaleString(appLocale())}
@@ -2481,10 +2480,10 @@ const Settings = () => {
                     {/* Usage Statistics */}
                     {billingData.balance && (
                       <div>
-                        <h4 className="font-medium text-foreground mb-3 text-sm">Usage Statistics</h4>
+                        <h4 className="font-medium text-foreground mb-3 text-sm">{t("pg.Settings.0143")}</h4>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-text-subtle">Credits Used</span>
+                            <span className="text-text-subtle">{t("pg.Settings.0144")}</span>
                             <span className="font-medium">
                               {billingData.balance.total_used?.toLocaleString(appLocale()) || '0'} / {billingData.balance.total_purchased?.toLocaleString(appLocale()) || '0'}
                             </span>
@@ -2502,11 +2501,11 @@ const Settings = () => {
                               <div className="flex justify-between text-xs">
                                 <span className="text-text-subtle">
                                   {billingData.balance.last_purchase
-                                    ? `Last purchase: ${new Date(billingData.balance.last_purchase).toLocaleDateString(appLocale())}`
-                                    : 'No purchases yet'}
+                                    ? t("pg.Settings.0448", { ast_purchase: new Date(billingData.balance.last_purchase).toLocaleDateString(appLocale()) })
+                                    : t("pg.Settings.0449")}
                                 </span>
                                 <span className="text-success">
-                                  {billingData.balance.credits} Remaining
+                                  {billingData.balance.credits} {t("pg.Settings.0145")}
                                 </span>
                               </div>
                             </>
@@ -2519,7 +2518,7 @@ const Settings = () => {
 
                     {/* Quick Actions */}
                     <div>
-                      <h4 className="font-medium text-foreground mb-3 text-sm">Quick Actions</h4>
+                      <h4 className="font-medium text-foreground mb-3 text-sm">{t("pg.Settings.0146")}</h4>
                       <div className="grid gap-2 sm:grid-cols-2">
                         <Button
                           variant="outline"
@@ -2528,7 +2527,7 @@ const Settings = () => {
                           onClick={() => window.location.href = '/sms/purchase'}
                         >
                           <CreditCard className="w-3 h-3 mr-2" />
-                          Purchase Credits
+                          {t("pg.Settings.0140")}
                         </Button>
                         <Button
                           variant="outline"
@@ -2537,7 +2536,7 @@ const Settings = () => {
                           onClick={() => window.location.href = '/sms/purchase-history'}
                         >
                           <Calendar className="w-3 h-3 mr-2" />
-                          Purchase History
+                          {t("pg.Settings.0147")}
                         </Button>
                       </div>
                     </div>
@@ -2647,37 +2646,36 @@ const Settings = () => {
               <CardHeader className="p-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <MessageCircle className="w-4 h-4 text-emerald-600" />
-                  WhatsApp Cloud API Credentials
+                  {t("pg.Settings.0148")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-3 pt-0">
                 <p className="text-xs text-text-subtle">
-                  Store Meta WhatsApp Cloud API credentials for your AI Copilot. The backend
-                  automatically selects your latest active copilot.
+                  {t("pg.Settings.0149")}
                 </p>
 
                 {/* Existing channel status */}
                 {waStatusLoading ? (
                   <div className="flex items-center gap-2 text-xs text-text-subtle">
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted border-t-foreground/40" />
-                    Loading existing credentials…
+                    {t("pg.Settings.0150")}
                   </div>
                 ) : waChannelStatus ? (
                   <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5 space-y-1.5">
                     <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5" /> WhatsApp channel linked
+                      <CheckCircle className="w-3.5 h-3.5" /> {t("pg.Settings.0151")}
                     </p>
                     {waLinkedCopilotId ? (
                       <p className="text-xs text-text-subtle">Copilot: <code className="font-mono">{waLinkedCopilotId}</code></p>
                     ) : null}
                     {waChannelStatus.phoneNumberId ? (
-                      <p className="text-xs text-text-subtle">Phone Number ID: <code className="font-mono">{waChannelStatus.phoneNumberId}</code></p>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0152")} <code className="font-mono">{waChannelStatus.phoneNumberId}</code></p>
                     ) : null}
                     {waChannelStatus.wabaId ? (
-                      <p className="text-xs text-text-subtle">WABA ID: <code className="font-mono">{waChannelStatus.wabaId}</code></p>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0153")} <code className="font-mono">{waChannelStatus.wabaId}</code></p>
                     ) : null}
                     {waChannelStatus.tokenHint ? (
-                      <p className="text-xs text-text-subtle">Token: configured <span className="font-mono">({waChannelStatus.tokenHint})</span></p>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0154")} <span className="font-mono">({waChannelStatus.tokenHint})</span></p>
                     ) : null}
                     {waChannelStatus.callbackUrl ? (
                       <div className="flex items-center gap-1.5">
@@ -2686,7 +2684,7 @@ const Settings = () => {
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(waChannelStatus.callbackUrl)}
                           className="text-muted-foreground hover:text-foreground flex-shrink-0"
-                          title="Copy webhook URL"
+                          title={t("pg.Settings.0155")}
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
@@ -2697,7 +2695,7 @@ const Settings = () => {
 
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="wa-phone-id" className="text-xs">Phone Number ID *</Label>
+                    <Label htmlFor="wa-phone-id" className="text-xs">{t("pg.Settings.0156")}</Label>
                     <Input
                       id="wa-phone-id"
                       placeholder="759679347239794"
@@ -2708,7 +2706,7 @@ const Settings = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="wa-waba-id" className="text-xs">WABA ID (WhatsApp Business Account) - Recommended</Label>
+                    <Label htmlFor="wa-waba-id" className="text-xs">{t("pg.Settings.0157")}</Label>
                     <Input
                       id="wa-waba-id"
                       placeholder="1648312066173681"
@@ -2716,16 +2714,16 @@ const Settings = () => {
                       onChange={(e) => setWaWabaId(e.target.value)}
                       className="glass-subtle border-0 text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">Your Meta WhatsApp Business Account ID. Required for browsing templates. Found in Meta Business Manager.</p>
+                    <p className="text-xs text-muted-foreground">{t("pg.Settings.0158")}</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="wa-token" className="text-xs">Access Token *</Label>
+                    <Label htmlFor="wa-token" className="text-xs">{t("pg.Settings.0159")}</Label>
                     <div className="relative">
                       <Input
                         id="wa-token"
                         type={showWaToken ? "text" : "password"}
-                        placeholder="EAAxxxxxxxx..."
+                        placeholder={t("pg.Settings.0160")}
                         value={waAccessToken}
                         onChange={(e) => setWaAccessToken(e.target.value)}
                         className="glass-subtle border-0 text-sm pr-9"
@@ -2738,11 +2736,11 @@ const Settings = () => {
                         {showWaToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Your Meta app access token for WhatsApp Cloud API</p>
+                    <p className="text-xs text-muted-foreground">{t("pg.Settings.0161")}</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="wa-verify" className="text-xs">Verify Token *</Label>
+                    <Label htmlFor="wa-verify" className="text-xs">{t("pg.Settings.0162")}</Label>
                     <Input
                       id="wa-verify"
                       placeholder="your-random-verify-string"
@@ -2750,19 +2748,19 @@ const Settings = () => {
                       onChange={(e) => setWaVerifyToken(e.target.value)}
                       className="glass-subtle border-0 text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">Webhook verification token for Meta webhook signature validation</p>
+                    <p className="text-xs text-muted-foreground">{t("pg.Settings.0163")}</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="wa-graph" className="text-xs">Graph API Base (optional)</Label>
+                    <Label htmlFor="wa-graph" className="text-xs">{t("pg.Settings.0164")}</Label>
                     <Input
                       id="wa-graph"
-                      placeholder="Leave blank for default"
+                      placeholder={t("pg.Settings.0165")}
                       value={waGraphApiBase}
                       onChange={(e) => setWaGraphApiBase(e.target.value)}
                       className="glass-subtle border-0 text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">Advanced: Override Graph API endpoint if using a custom or legacy base URL</p>
+                    <p className="text-xs text-muted-foreground">{t("pg.Settings.0166")}</p>
                   </div>
                 </div>
 
@@ -2775,19 +2773,19 @@ const Settings = () => {
                 {waCredsResult ? (
                   <div className="rounded-lg border border-emerald-300 dark:border-emerald-400/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5 space-y-1">
                     <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5" /> Credentials saved
+                      <CheckCircle className="w-3.5 h-3.5" /> {t("pg.Settings.0167")}
                     </p>
                     {waCredsResult.hint ? (
-                      <p className="text-xs text-text-subtle">Token hint: <code className="font-mono">{waCredsResult.hint}</code></p>
+                      <p className="text-xs text-text-subtle">{t("pg.Settings.0168")} <code className="font-mono">{waCredsResult.hint}</code></p>
                     ) : null}
                     {waCredsResult.callbackUrl ? (
                       <div className="flex items-center gap-1.5">
-                        <p className="text-xs text-text-subtle break-all flex-1">Webhook callback URL: {waCredsResult.callbackUrl}</p>
+                        <p className="text-xs text-text-subtle break-all flex-1">{t("pg.Settings.0169")} {waCredsResult.callbackUrl}</p>
                         <button
                           type="button"
                           onClick={() => void navigator.clipboard.writeText(waCredsResult.callbackUrl)}
                           className="text-muted-foreground hover:text-foreground flex-shrink-0"
-                          title="Copy"
+                          title={t("pg.Settings.0170")}
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
@@ -2802,27 +2800,27 @@ const Settings = () => {
                     disabled={waCredsBusy}
                     className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-700"
                   >
-                    {waCredsBusy ? "Saving…" : "Save Credentials (PUT)"}
+                    {waCredsBusy ? t("pg.Settings.0450") : t("pg.Settings.0451")}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => void handleWaCredentials("PATCH")}
                     disabled={waCredsBusy}
                     className="text-xs px-3"
-                    title="Partial update — omit fields to leave them unchanged"
+                    title={t("pg.Settings.0171")}
                   >
-                    Patch
+                    {t("pg.Settings.0172")}
                   </Button>
                 </div>
 
                 <Card className="glass border-0 bg-blue-50/50 dark:bg-blue-950/20 border-l-4 border-blue-500">
                   <CardContent className="p-3">
                     <div className="space-y-2 text-xs text-text-subtle">
-                      <p><strong>Save Credentials (PUT):</strong> Replaces ALL credentials. All three required fields (Phone ID, Access Token, Verify Token) must be present.</p>
-                      <p><strong>Patch:</strong> Updates only the fields you enter. Omit fields to leave them unchanged. Useful for updating WABA ID or Graph API base without re-entering tokens.</p>
-                      <p><strong>WABA ID:</strong> Your WhatsApp Business Account ID from Meta Business Manager. Required for template browsing (Meta's Graph API lists templates at <code className="font-mono">{'/{waba-id}/message_templates'}</code>).</p>
-                      <p><strong>Webhook URL:</strong> Use this as your <em>Callback URL</em> when configuring your Meta app webhook in Business Manager settings.</p>
-                      <p><strong>Field names:</strong> API accepts both camelCase (phone_number_id) and UPPERCASE (WHATSAPP_PHONE_NUMBER_ID) variants for compatibility.</p>
+                      <p><strong>{t("pg.Settings.0173")}</strong> {t("pg.Settings.0174")}</p>
+                      <p><strong>{t("pg.Settings.0175")}</strong> {t("pg.Settings.0176")}</p>
+                      <p><strong>{t("pg.Settings.0153")}</strong> {t("pg.Settings.0177")} <code className="font-mono">{'/{waba-id}/message_templates'}</code>).</p>
+                      <p><strong>Webhook URL:</strong> {t("pg.Settings.0178")} <em>{t("pg.Settings.0179")}</em> {t("pg.Settings.0180")}</p>
+                      <p><strong>{t("pg.Settings.0181")}</strong> {t("pg.Settings.0182")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -2839,6 +2837,7 @@ const Settings = () => {
 
   // Partina Request Section Component
   const PartinaRequestSection = () => {
+  const { t } = useLanguage();
     const { submitPartinaRequest, isLoading } = usePartinaRequest();
     const [reason, setReason] = useState('');
     const [submitted, setSubmitted] = useState(false);
@@ -2852,9 +2851,9 @@ const Settings = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-green-900 text-sm">Partner Status Active</h4>
+                  <h4 className="font-semibold text-green-900 text-sm">{t("pg.Settings.0183")}</h4>
                   <p className="text-sm text-green-800 mt-1">
-                    You are already approved as a Mifumo Partner! You can now access all Partner features and integrations.
+                    {t("pg.Settings.0184")}
                   </p>
                 </div>
               </div>
@@ -2879,7 +2878,7 @@ const Settings = () => {
           <CardHeader className="p-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="w-4 h-4" />
-              Become a Partner
+              {t("pg.Settings.0185")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-3 pt-0">
@@ -2888,9 +2887,9 @@ const Settings = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-green-900 text-sm">Request Submitted</h4>
+                    <h4 className="font-semibold text-green-900 text-sm">{t("pg.Settings.0186")}</h4>
                     <p className="text-sm text-green-800 mt-1">
-                      Your request to become a Partner has been submitted! Our admin team will review it and notify you once approved.
+                      {t("pg.Settings.0187")}
                     </p>
                   </div>
                 </div>
@@ -2899,31 +2898,31 @@ const Settings = () => {
               <>
                 <div className="space-y-3">
                   <div>
-                    <h4 className="font-semibold text-foreground mb-2 text-sm">Why Become a Partner?</h4>
+                    <h4 className="font-semibold text-foreground mb-2 text-sm">{t("pg.Settings.0188")}</h4>
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Access to exclusive Partner Insights analytics</span>
+                        <span>{t("pg.Settings.0189")}</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Partner Reference resources and guides</span>
+                        <span>{t("pg.Settings.0190")}</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Priority support and onboarding</span>
+                        <span>{t("pg.Settings.0191")}</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Ability to earn commissions and rewards</span>
+                        <span>{t("pg.Settings.0192")}</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Early access to new features</span>
+                        <span>{t("pg.Settings.0193")}</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm text-text-subtle">
                         <span className="text-blue-500 mt-1">✓</span>
-                        <span>Enhanced dashboard and reporting tools</span>
+                        <span>{t("pg.Settings.0194")}</span>
                       </li>
                     </ul>
                   </div>
@@ -2933,17 +2932,17 @@ const Settings = () => {
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="partina-reason" className="text-sm font-medium">
-                        Tell us why you want to become a Partner
+                        {t("pg.Settings.0195")}
                       </Label>
                       <p className="text-xs text-text-subtle mt-1 mb-3">
-                        Please provide details about your business, goals, and how you plan to use the Partner features.
+                        {t("pg.Settings.0196")}
                       </p>
                       <textarea
                         id="partina-reason"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         disabled={isLoading}
-                        placeholder="I want to become a Partner to access partner features..."
+                        placeholder={t("pg.Settings.0197")}
                         className="w-full min-h-[150px] p-3 rounded-lg border border-border-subtle bg-background text-foreground placeholder-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       />
                     </div>
@@ -2953,7 +2952,7 @@ const Settings = () => {
                       disabled={isLoading || !reason.trim()}
                       className="w-full"
                     >
-                      {isLoading ? 'Submitting...' : 'Submit Request'}
+                      {isLoading ? t("pg.Settings.0452") : t("pg.Settings.0453")}
                     </Button>
                   </div>
                 </div>
@@ -2965,7 +2964,7 @@ const Settings = () => {
         <Card className="glass border-0 bg-blue-50/50">
           <CardContent className="p-3">
             <p className="text-xs text-text-subtle">
-              <strong>Note:</strong> After submitting your request, our admin team will review your application and contact you within 2-3 business days with a decision.
+              <strong>{t("pg.Settings.0198")}</strong> {t("pg.Settings.0199")}
             </p>
           </CardContent>
         </Card>
@@ -2986,10 +2985,10 @@ const Settings = () => {
               {/* Header — desktop only; mobile uses the per-page context */}
               <div className="hidden md:block mb-2.5 sm:mb-3 lg:mb-4 xl:mb-5">
                 <h1 className="font-heading text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-foreground">
-                  Settings
+                  {t("pg.Settings.0200")}
                 </h1>
                 <p className="text-xs sm:text-sm lg:text-base text-text-subtle">
-                  Manage your account, team, and application preferences
+                  {t("pg.Settings.0201")}
                 </p>
               </div>
 
@@ -3012,7 +3011,7 @@ const Settings = () => {
                         </Avatar>
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-[15px] font-semibold text-foreground dark:text-foreground leading-tight truncate">
-                            {user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Your account"}
+                            {user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || t("pg.Settings.0454")}
                           </p>
                           {user?.email && (
                             <p className="text-[12px] text-foreground/60 dark:text-foreground/55 truncate mt-0.5">
@@ -3020,7 +3019,7 @@ const Settings = () => {
                             </p>
                           )}
                           <p className="text-[11px] text-primary font-semibold mt-1.5 tracking-tight">
-                            Profile · Avatar · Account
+                            {t("pg.Settings.0202")}
                           </p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-foreground/35 flex-shrink-0" />
@@ -3028,7 +3027,7 @@ const Settings = () => {
 
                       {/* iOS-style grouped category list (excluding profile — handled above) */}
                       <p className="px-3 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-foreground/45 dark:text-foreground/40">
-                        Settings
+                        {t("pg.Settings.0200")}
                       </p>
                       <div className="rounded-2xl bg-card dark:bg-card/95 border border-border/70 dark:border-border/40 overflow-hidden">
                         {settingsCategories
@@ -3065,7 +3064,7 @@ const Settings = () => {
                         <button
                           type="button"
                           onClick={() => setCurrentCategory(null)}
-                          aria-label="Back"
+                          aria-label={t("pg.Settings.0203")}
                           className="w-9 h-9 inline-flex items-center justify-center rounded-full text-foreground/80 active:bg-accent/60 transition-colors"
                         >
                           <ArrowLeft className="w-[20px] h-[20px]" strokeWidth={2.2} />
@@ -3139,14 +3138,14 @@ const Settings = () => {
         <DialogContent className="glass">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {createdKeyDialogMode === 'created' && "API Key Created Successfully!"}
-              {createdKeyDialogMode === 'regenerated' && "API Key Regenerated"}
-              {createdKeyDialogMode === 'revealed' && "Your API Key"}
+              {createdKeyDialogMode === 'created' && t("pg.Settings.0455")}
+              {createdKeyDialogMode === 'regenerated' && t("pg.Settings.0456")}
+              {createdKeyDialogMode === 'revealed' && t("pg.Settings.0457")}
             </DialogTitle>
             <DialogDescription className="text-xs">
               {createdKeyDialogMode === 'revealed'
-                ? "This is the key already in use. Copy it now if you need it elsewhere."
-                : "Copy these credentials now. You won't be able to see them again unless you view or regenerate this key."}
+                ? t("pg.Settings.0458")
+                : t("pg.Settings.0459")}
             </DialogDescription>
           </DialogHeader>
           {newlyCreatedKey && (
@@ -3154,19 +3153,19 @@ const Settings = () => {
               {createdKeyDialogMode === 'regenerated' && (
                 <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
                   <p className="text-xs text-yellow-800 font-medium">
-                    ⚠️ Important: This replaces the old key. Update any integration using the previous value.
+                    {t("pg.Settings.0204")}
                   </p>
                 </div>
               )}
               {createdKeyDialogMode === 'created' && (
                 <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
                   <p className="text-xs text-yellow-800 font-medium">
-                    ⚠️ Important: Save these credentials securely!
+                    {t("pg.Settings.0205")}
                   </p>
                 </div>
               )}
               <div className="space-y-2">
-                <Label className="text-xs">API Key</Label>
+                <Label className="text-xs">{t("pg.Settings.0206")}</Label>
                 <div className="flex items-center gap-2">
                   <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono flex-1 break-all">
                     {newlyCreatedKey.api_key}
@@ -3182,7 +3181,7 @@ const Settings = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">Secret Key</Label>
+                <Label className="text-xs">{t("pg.Settings.0207")}</Label>
                 <div className="flex items-center gap-2">
                   <code className="text-xs bg-gray-100 px-3 py-2 rounded font-mono flex-1 break-all">
                     {newlyCreatedKey.secret_key}
@@ -3201,7 +3200,7 @@ const Settings = () => {
                 onClick={() => setShowCreatedKeyDialog(false)}
                 className="w-full text-sm"
               >
-                I've Saved These Credentials
+                {t("pg.Settings.0208")}
               </Button>
             </div>
           )}

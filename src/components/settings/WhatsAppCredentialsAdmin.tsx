@@ -326,7 +326,7 @@ export default function WhatsAppCredentialsAdmin() {
               <Label htmlFor="wa-label">{t("settings.whatsapp_admin.label_field")}</Label>
               <Input
                 id="wa-label"
-                placeholder="Business / WABA name"
+                placeholder={t("pg.WhatsAppCredentialsAdmin.0254")}
                 value={form.label}
                 onChange={(e) => setField("label", e.target.value)}
               />
@@ -350,8 +350,8 @@ export default function WhatsAppCredentialsAdmin() {
                 autoComplete="new-password"
                 placeholder={
                   selectedExisting?.access_token_configured
-                    ? `Stored ${selectedExisting.masked_token} — type to replace`
-                    : "Meta long-lived / system-user token"
+                    ? t("pg.WhatsAppCredentialsAdmin.0506", { masked_token: selectedExisting.masked_token })
+                    : t("pg.WhatsAppCredentialsAdmin.0507")
                 }
                 value={form.access_token}
                 onChange={(e) => setField("access_token", e.target.value)}
@@ -361,7 +361,7 @@ export default function WhatsAppCredentialsAdmin() {
               <Label htmlFor="wa-waba">{t("settings.whatsapp_admin.waba_field")}</Label>
               <Input
                 id="wa-waba"
-                placeholder="Optional"
+                placeholder={t("pg.WhatsAppCredentialsAdmin.0255")}
                 value={form.waba_id}
                 onChange={(e) => setField("waba_id", e.target.value)}
               />
@@ -370,7 +370,7 @@ export default function WhatsAppCredentialsAdmin() {
               <Label htmlFor="wa-verify">{t("settings.whatsapp_admin.verify_token_field")}</Label>
               <Input
                 id="wa-verify"
-                placeholder="Webhook verify token"
+                placeholder={t("pg.WhatsAppCredentialsAdmin.0256")}
                 value={form.verify_token}
                 onChange={(e) => setField("verify_token", e.target.value)}
               />
