@@ -272,7 +272,7 @@ export default function AIAssistant() {
             </TabsList>
 
             <TabsContent value="teach" className="mt-3">
-              <AITeachPanel config={current} settings={settings} meta={meta} onChanged={() => void pick(current.id)} />
+              <AITeachPanel config={current} settings={settings} meta={meta} providers={providers} onChanged={() => void pick(current.id)} />
             </TabsContent>
 
             <TabsContent value="general" className="mt-3">

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { aiKey } from "@/i18n/aiAgent";
-import { aiAgentApi, type AgentConfig, type AgentSettings, type LearnResult, type TeachJob, type TeachProposal } from "@/services/aiAgentApi";
+import { aiAgentApi, type AgentConfig, type AgentSettings, type LearnResult, type ProviderInfo, type TeachJob, type TeachProposal } from "@/services/aiAgentApi";
 import { describeError } from "@/services/callCenterApi";
 
 interface Props {
@@ -20,7 +20,18 @@ interface Props {
   meta: { name: string; purpose: string; personality: string };
   /** Called after the draft changed on the server, so the page reloads it. */
   onChanged: () => void;
+  /** The AI providers that can write text; the owner may pick a different one for teaching than the assistant answers calls with. */
+  providers: ProviderInfo[];
 }
+
+const SAME = "__same__";
+const savedChoice = (id: string): { provider: string; model: string } => {
+  try {
+    return { provider: SAME, model: "", ...JSON.parse(localStorage.getItem(`senda_teach_ai:${id}`) || "{}") };
+  } catch {
+    return { provider: SAME, model: "" };
+  }
+};
 
 const MAX_KNOWLEDGE = 12000;
 
@@ -35,10 +46,25 @@ async function waitFor<T>(jobId: string, onProgress?: (p: { done: number; total:
   return { id: jobId, kind: "teach", status: "failed", error: "It is taking too long. Try again in a moment.", result: null };
 }
 
-export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
+export function AITeachPanel({ config, settings, meta, onChanged, providers }: Props) {
   const { t } = useLanguage();
   const { toast } = useToast();
   const archived = config.status === "archived";
+
+  // which AI does the reading (remembered on this computer)
+  const reasoningProviders = providers.filter((p) => p.roles.includes("reasoning"));
+  const [aiProvider, setAiProvider] = useState(() => savedChoice(config.id).provider);
+  const [aiModel, setAiModel] = useState(() => savedChoice(config.id).model);
+  const choice = () => ({ provider_id: aiProvider === SAME ? undefined : aiProvider, model: aiModel.trim() || undefined });
+  const remember = (provider: string, model: string) => {
+    setAiProvider(provider);
+    setAiModel(model);
+    try {
+      localStorage.setItem(`senda_teach_ai:${config.id}`, JSON.stringify({ provider, model }));
+    } catch {
+      /* storage can be blocked: the choice is simply not remembered */
+    }
+  };
 
   // teach
   const [text, setText] = useState("");
@@ -62,7 +88,7 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
     setProgress(null);
     setError("");
     setDraft(null);
-    const start = await aiAgentApi.teach.start(config.id, { text, url: url.trim() || undefined, mode });
+    const start = await aiAgentApi.teach.start(config.id, { text, url: url.trim() || undefined, mode, ...choice() });
     if (!start.success || !start.data) {
       setWorking(false);
       setError(describeError(start) || t(aiKey("ai.teach.failed")));
@@ -107,7 +133,7 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
     setLearnError("");
     setLearned(null);
     setAnswers({});
-    const start = await aiAgentApi.teach.learn(config.id, days);
+    const start = await aiAgentApi.teach.learn(config.id, days, choice());
     if (!start.success || !start.data) {
       setLooking(false);
       setLearnError(describeError(start) || t(aiKey("ai.learn.failed")));
@@ -152,6 +178,22 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
           <div className="space-y-1.5">
             <Label htmlFor="teach-url">{t(aiKey("ai.teach.url"))}</Label>
             <Input id="teach-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t(aiKey("ai.teach.url_ph"))} disabled={archived || working} />
+          </div>
+          <div className="space-y-1.5 rounded-md border border-border p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="teach-ai">{t(aiKey("ai.teach.ai"))}</Label>
+                <select id="teach-ai" value={aiProvider} onChange={(e) => remember(e.target.value, e.target.value === aiProvider ? aiModel : "")} disabled={working} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
+                  <option value={SAME}>{t(aiKey("ai.teach.ai_same"))}</option>
+                  {reasoningProviders.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div className="min-w-[220px] flex-1 space-y-1.5">
+                <Label htmlFor="teach-model">{t(aiKey("ai.teach.model"))}</Label>
+                <Input id="teach-model" value={aiModel} onChange={(e) => remember(aiProvider, e.target.value)} placeholder={t(aiKey("ai.teach.model_ph"))} disabled={working} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.ai_help"))}</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
             {(["replace", "merge"] as const).map((m) => (

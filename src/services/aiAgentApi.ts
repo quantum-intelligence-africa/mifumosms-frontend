@@ -227,8 +227,8 @@ export interface TeachJob<T = TeachProposal | LearnResult> {
 
 export const aiAgentApi = {
   teach: {
-    start: (id: string, body: { text?: string; url?: string; mode: "replace" | "merge" }) => voiceApi.post<TeachJob<TeachProposal>>(`${BASE}/agents/${id}/teach/`, body),
-    learn: (id: string, days: number) => voiceApi.post<TeachJob<LearnResult>>(`${BASE}/agents/${id}/learn/`, { days }),
+    start: (id: string, body: { text?: string; url?: string; mode: "replace" | "merge"; provider_id?: string; model?: string }) => voiceApi.post<TeachJob<TeachProposal>>(`${BASE}/agents/${id}/teach/`, body),
+    learn: (id: string, days: number, ai: { provider_id?: string; model?: string } = {}) => voiceApi.post<TeachJob<LearnResult>>(`${BASE}/agents/${id}/learn/`, { days, ...ai }),
     job: <T,>(jobId: string) => voiceApi.get<TeachJob<T>>(`${BASE}/teach-jobs/${jobId}/`),
     apply: (id: string, body: { items: Array<{ question: string; answer: string }>; dismiss: string[] }) =>
       voiceApi.post<{ added: number }>(`${BASE}/agents/${id}/learn/apply/`, body),
