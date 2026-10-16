@@ -101,7 +101,7 @@ interface CallDetail extends CallSummary {
   recordings: CallRecordingItem[];
 }
 
-type Tab = "all" | "inbound" | "outbound" | "missed";
+type Tab = "all" | "inbound" | "outbound" | "answered" | "missed";
 type Range = "7" | "30" | "90" | "all";
 type T = ReturnType<typeof useLanguage>["t"];
 
@@ -218,6 +218,7 @@ export default function CallHistory() {
     ["all", t("voice.calls.tab_all")],
     ["inbound", t("voice.calls.tab_inbound")],
     ["outbound", t("voice.calls.tab_outbound")],
+    ["answered", t("voice.calls.tab_answered")],
     ["missed", t("voice.calls.tab_missed")],
   ];
   const RANGES: Array<[Range, string]> = [
@@ -234,6 +235,7 @@ export default function CallHistory() {
       setError(null);
       const params = new URLSearchParams({ page: String(pageNum) });
       if (tab === "inbound" || tab === "outbound") params.set("direction", tab);
+      if (tab === "answered") params.set("outcome", "answered");
       if (tab === "missed") params.set("missed", "true");
       if (range !== "all") params.set("days", range);
       if (search) params.set("q", search);
@@ -288,7 +290,7 @@ export default function CallHistory() {
       : {
           all_matching: true,
           filters: {
-            direction: tab === "inbound" || tab === "outbound" ? tab : undefined, missed: tab === "missed" ? "true" : undefined,
+            direction: tab === "inbound" || tab === "outbound" ? tab : undefined, missed: tab === "missed" ? "true" : undefined, outcome: tab === "answered" ? "answered" : undefined,
             days: range !== "all" ? range : undefined, q: search || undefined, agent: agentId !== "all" ? agentId : undefined,
             sentiment: sentiment !== "any" ? sentiment : undefined,
           },
@@ -539,6 +541,7 @@ export default function CallHistory() {
                             className="h-4 w-4 rounded border-border accent-primary"
                           />
                         </TableHead>
+                        <TableHead className="w-10 pr-0" aria-label={t("voice.calls.col_play")} />
                         <TableHead>{t("voice.calls.col_caller")}</TableHead>
                         <TableHead>{t("voice.calls.col_agent")}</TableHead>
                         <TableHead>{t("voice.calls.col_time")}</TableHead>

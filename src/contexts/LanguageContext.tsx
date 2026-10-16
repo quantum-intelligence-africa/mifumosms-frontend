@@ -53,6 +53,8 @@ const translations = {
     "voice.calls.tab_inbound": "Inbound",
     "voice.calls.tab_outbound": "Outbound",
     "voice.calls.tab_missed": "Missed",
+    "voice.calls.tab_answered": "Answered",
+    "voice.calls.col_play": "Play",
     "voice.calls.range_7": "7d",
     "voice.calls.range_30": "30d",
     "voice.calls.range_90": "90d",

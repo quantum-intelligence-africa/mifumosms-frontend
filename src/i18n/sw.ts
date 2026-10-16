@@ -52,6 +52,8 @@ const sw: Record<string, string> = {
   "voice.calls.tab_inbound": "Zilizoingia",
   "voice.calls.tab_outbound": "Zilizotoka",
   "voice.calls.tab_missed": "Zilizokosa",
+  "voice.calls.tab_answered": "Zilizopokelewa",
+  "voice.calls.col_play": "Cheza",
   "voice.calls.range_7": "Siku 7",
   "voice.calls.range_30": "Siku 30",
   "voice.calls.range_90": "Siku 90",
