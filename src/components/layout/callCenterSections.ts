@@ -37,6 +37,8 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
         // Analytics: supervisors and above who already have call-center access (the server checks again).
         ...(cc && isCallCenterSupervisor(user) ? [{ labelKey: "cc.nav.analytics", href: "/call-center/analytics" }] : []),
         ...(cc ? [{ labelKey: "cc.nav.history", href: "/call-center/history" }] : []),
+        // Reached from its own sidebar entry too (with the number still waiting); here so the tabs stay in view on that page.
+        ...(cc ? [{ labelKey: "cc.nav.missed", href: "/call-center/missed" }] : []),
         ...(cc ? [{ labelKey: "ai.nav.tickets", href: "/call-center/tickets" }] : []),
         ...(ivr ? [{ labelKey: "cc.nav.call_log", href: "/voice/calls" }] : []),
         ...(ivr ? [{ labelKey: "nav.recordings", href: "/voice/recordings" }] : []),

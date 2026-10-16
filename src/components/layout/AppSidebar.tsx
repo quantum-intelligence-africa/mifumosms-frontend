@@ -45,6 +45,8 @@ import { apiClient } from "@/lib/api";
 import { ccKey } from "@/i18n/callCenter";
 import { getCallCenterSections, pathMatches } from "@/components/layout/callCenterSections";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { callCenterApi } from "@/services/callCenterApi";
 import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -99,6 +101,16 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
+  const { data: missedSummary } = useQuery({
+    queryKey: ["cc", "missed-summary"],
+    queryFn: async () => {
+      const res = await callCenterApi.missed.summary();
+      return res.success && res.data ? res.data : null;
+    },
+    enabled: canUseCallCenter(user),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
   const brand = useBranding();
   const { openDialer } = useDialer();
 
@@ -146,7 +158,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const callCenterItems: NavItem[] = canUseCallCenter(user)
     ? [
         { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
-        { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed },
+        { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed, badge: missedSummary?.needs_attention ?? 0 },
       ]
     : [];
   const ivrItems: NavItem[] = [];

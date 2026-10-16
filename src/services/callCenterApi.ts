@@ -16,7 +16,10 @@ export type LiveState = AgentStatus | "ringing" | "on_call" | "disabled";
 export type CallEndpoint = "browser" | "phone";
 export type CallResult = "answered" | "missed" | "voicemail" | "abandoned" | "rejected" | "failed";
 export type AfterHoursAction = "voicemail" | "message";
-export type MissedCallStatus = "new" | "assigned" | "called_back" | "resolved" | "unresolved";
+export type MissedCallStatus = "new" | "assigned" | "called_back" | "scheduled" | "contacted" | "unreachable" | "resolved" | "unresolved";
+
+/** The counts behind the "needs attention" badge, from the same records the list shows. */
+export interface MissedSummary { needs_attention: number; new: number; overdue: number; scheduled: number; today: number }
 export type CallOutcome =
   | "resolved"
   | "follow_up_required"
@@ -243,6 +246,14 @@ export interface MissedCall {
   created_at: string;
   /** The message the caller left, with its AI analysis once it exists. Null when they left none. */
   voicemail: Voicemail | null;
+  /** When a scheduled callback is due. */
+  callback_at: string | null;
+  /** Untouched for too long, or a scheduled callback whose time has passed (decided by the server). */
+  is_overdue: boolean;
+  /** How many missed calls this number has in total, this one included. */
+  repeat_count: number;
+  waited_seconds: number;
+  last_followup_at: string | null;
 }
 
 /** One piece of the machine transcript. Never edited in place: corrections are separate reviews. */
@@ -643,9 +654,10 @@ export const callCenterApi = {
     ) => voiceApi.post<CallNote>(`${BASE}/calls/${callId}/notes/`, body),
   },
   missed: {
-    list: (params: { status?: string; team?: string } = {}) =>
+    list: (params: Record<string, string | number | undefined> = {}) =>
       voiceApi.get<Paged<MissedCall>>(`${BASE}/missed-calls/${qs(params)}`),
-    update: (id: string, body: { status?: MissedCallStatus; assigned_to?: string | null; notes?: string }) =>
+    summary: () => voiceApi.get<MissedSummary>(`${BASE}/missed-calls/summary/`),
+    update: (id: string, body: { status?: MissedCallStatus; assigned_to?: string | null; notes?: string; callback_at?: string | null }) =>
       voiceApi.patch<MissedCall>(`${BASE}/missed-calls/${id}/`, body),
   },
   audit: (action?: string) => voiceApi.get<AuditEntry[]>(`${BASE}/audit-log/${qs({ action })}`),
