@@ -12586,7 +12586,7 @@ function AnalysisEmailsTab() {
     return () => clearTimeout(id);
   }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
 
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the report exactly as it would be sent, without sending anything.
   const preview = async (output, days = 1) => {
     const token = getToken();
@@ -12631,9 +12631,15 @@ function AnalysisEmailsTab() {
                   <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}{o.daily_report_enabled ? ' · daily report on' : ''}{o.weekly_report_enabled ? ' · weekly report on' : ''}</div></td>
                   <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
                   <td style={td}>
-                    {o.recipient_mode === 'assigned_only'
-                      ? <><div style={{fontSize:11,fontWeight:800,color:'#15803d'}}>ONLY THESE</div>{o.assigned_recipients.map(a => <div key={a}>{a}</div>)}</>
-                      : <><div style={{fontSize:11,fontWeight:800,color:'#64748b'}}>OWNERS, ADMINS, THE AGENT + EXTRAS</div>{o.default_recipients.map(a => <div key={a} style={{color:'#475569'}}>{a}</div>)}{o.tenant_extra_addresses.map(a => <div key={a} style={{color:'#475569'}}>{a} <span style={{color:'#94a3b8'}}>(extra)</span></div>)}</>}
+                    {o.effective_recipients.length === 0
+                      ? <div style={{fontSize:11,fontWeight:800,color:'#b91c1c'}}>NOBODY: no address is assigned, so no analysis email is sent</div>
+                      : <>
+                          <div style={{fontSize:11,fontWeight:800,color:'#15803d'}}>{o.recipient_mode === 'everyone' ? 'OWNERS, ADMINS, THE AGENT + ASSIGNED' : 'ONLY THESE RECEIVE IT'}</div>
+                          {o.effective_recipients.map(a => <div key={a}>{a}{o.assigned_recipients.includes(a) ? <span style={{color:'#94a3b8'}}> (assigned by you)</span> : (o.tenant_extra_addresses.includes(a) ? <span style={{color:'#94a3b8'}}> (organization's list)</span> : null)}</div>)}
+                        </>}
+                    {o.recipient_mode !== 'everyone' && o.owners_and_admins.filter(a => !o.effective_recipients.includes(a)).length > 0 && (
+                      <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>Not included (not assigned): {o.owners_and_admins.filter(a => !o.effective_recipients.includes(a)).join(', ')}</div>
+                    )}
                   </td>
                   <td style={td}>{o.sent_30d} sent{o.failed_30d ? <b style={{color:'#b91c1c'}}> · {o.failed_30d} failed</b> : null}<div style={{fontSize:11,color:'#94a3b8'}}>last: {fmt(o.last_sent_at)}</div></td>
                   <td style={td}>
@@ -12658,13 +12664,14 @@ function AnalysisEmailsTab() {
             </label>
             <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Who receives it
               <select className="senda-input" style={{...sel,height:34,minWidth:280}} value={edit.recipient_mode} onChange={e => setEdit({ ...edit, recipient_mode: e.target.value })}>
-                <option value="default">Owners, admins, the agent and the organization's extra addresses</option>
-                <option value="assigned_only">Only the addresses I assign below</option>
+                <option value="default">Only assigned addresses: the organization's own list + the ones I add below</option>
+                <option value="assigned_only">Only the addresses I add below (ignore the organization's own list)</option>
+                <option value="everyone">Owners, admins, the agent and extra addresses (older rule)</option>
               </select>
             </label>
           </div>
-          {edit.recipient_mode === 'assigned_only' && (
-            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,marginBottom:10}}>Assigned addresses (one per line or separated by commas)
+          {edit.recipient_mode !== 'everyone' && (
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,marginBottom:10}}>Addresses I assign (one per line or separated by commas)
               <textarea className="senda-input" style={{height:90,padding:8,fontSize:13}} value={edit.text} onChange={e => setEdit({ ...edit, text: e.target.value })} placeholder="manager@company.com"/>
             </label>
           )}
@@ -12690,7 +12697,7 @@ function AnalysisEmailsTab() {
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7)}>Preview weekly PDF</button>
             </div>
           </div>
-          <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>Nobody receives the analysis just for being an owner or an admin: an address gets it only when it is assigned (here, or by the organization in its AI settings under "Send the analysis to"). The same addresses receive the daily and weekly reports. English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>
           <div style={{display:'flex',gap:8}}>
             <button className="senda-btn senda-btn-sm" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
             <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setEdit(null)}>Cancel</button>

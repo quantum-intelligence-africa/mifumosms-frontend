@@ -148,7 +148,7 @@ const sw: Record<string, string> = {
   "voice.ai_settings.language_sw": "Kiswahili",
   "voice.ai_settings.language_en": "Kiingereza",
   "voice.ai_settings.email_label": "Nitumie barua pepe kila uchambuzi unapokamilika",
-  "voice.ai_settings.email_hint": "Wamiliki, wasimamizi na wakala aliyeshughulikia simu hupokea kila mara, pamoja na muhtasari, tatizo, hatua na mazungumzo yote.",
+  "voice.ai_settings.email_hint": "Ni anwani ulizoorodhesha hapa chini tu (na anwani yoyote ambayo Msaada wa SENDA umekupangia) zinazopokea, pamoja na muhtasari, tatizo na hatua. Kuwa mmiliki au msimamizi hakuongezi anwani: orodhesha zile zinazopaswa kupokea.",
   "voice.ai_settings.email_extra_label": "Tuma pia kwa (tenganisha anwani kwa koma)",
   "voice.ai_settings.toggle_summary": "Muhtasari wa simu",
   "voice.ai_settings.toggle_sentiment": "Hisia za mteja",
