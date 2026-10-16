@@ -12809,9 +12809,9 @@ function VoiceNumbersTab() {
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call log deletion</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
-          An organization can delete its own call logs (for example test calls) only while you allow it here, and only its owners and admins can. Deleting is permanent for
-          the organization: the calls, recordings, transcripts and notes are removed and nobody in it will see them again. SENDA keeps a small record of what was deleted
-          and when, and the deleted minutes still count towards the plan.
+          An organization can delete its own call logs (for example test calls) only while you allow it here, and only its owners and admins can. Deleting hides the calls
+          from the organization for good: nobody in it will see them or bring them back. You still see them here in full (recording, transcript, summary, who deleted
+          and when), and the deleted minutes still count towards the plan.
         </p>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-start'}}>
           <div style={{position:'relative',minWidth:240}}>
@@ -12863,16 +12863,23 @@ function VoiceNumbersTab() {
         )}
         <div style={{marginTop:10}}>
           <button onClick={() => (delLog ? setDelLog(null) : showDeletedLog())} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer',padding:0}}>
-            {delLog ? 'Hide the deleted-calls record' : 'Show the deleted-calls record'}
+            {delLog ? 'Hide the deleted calls' : 'Show the deleted calls'}
           </button>
           {delLog && (
             <div style={{marginTop:8,maxHeight:220,overflowY:'auto',fontSize:12,border:'1px solid #eef2f7',borderRadius:8}}>
-              {delLog.length === 0 && <div style={{padding:'8px 10px',color:'#94a3b8'}}>Nothing has been deleted yet.</div>}
+              {delLog.length === 0 && <div style={{padding:'8px 10px',color:'#94a3b8'}}>No organization has deleted a call yet.</div>}
               {delLog.map(r => (
                 <div key={r.id} style={{display:'flex',gap:10,flexWrap:'wrap',padding:'5px 10px',borderBottom:'1px solid #f1f5f9'}}>
                   <b>{r.tenant}</b><span>{r.direction}</span><span>{r.from_number} → {r.to_number}</span>
                   <span style={{color:'#64748b'}}>{new Date(r.started_at).toLocaleString()} · {r.duration_seconds}s</span>
-                  <span style={{color:'#94a3b8'}}>deleted by {r.deleted_by}</span>
+                  <span style={{color:'#94a3b8'}}>deleted by {r.deleted_by} · {new Date(r.deleted_at).toLocaleString()}</span>
+                  {(r.summary || r.transcript || r.recordings > 0) && (
+                    <details style={{flexBasis:'100%'}}>
+                      <summary style={{cursor:'pointer',color:BRAND,fontWeight:700}}>Details{r.recordings > 0 ? ` · ${r.recordings} recording${r.recordings > 1 ? 's' : ''}` : ''}</summary>
+                      {r.summary && <p style={{margin:'4px 0',whiteSpace:'pre-wrap'}}>{r.summary}</p>}
+                      {r.transcript && <p style={{margin:'4px 0',whiteSpace:'pre-wrap',color:'#64748b'}}>{r.transcript}</p>}
+                    </details>
+                  )}
                 </div>
               ))}
             </div>
