@@ -71,6 +71,10 @@ export interface Team {
   waiting_message: string;
   callback_offer: boolean;
   queue_operator_option?: boolean;
+  queue_ai_option?: boolean;
+  queue_language?: "sw" | "en";
+  callback_max_attempts?: number;
+  callback_retry_minutes?: number;
   waiting_now: number;
   is_active: boolean;
   members: TeamMemberSummary[];
@@ -96,6 +100,10 @@ export interface TeamInput {
   waiting_message?: string;
   callback_offer?: boolean;
   queue_operator_option?: boolean;
+  queue_ai_option?: boolean;
+  queue_language?: "sw" | "en";
+  callback_max_attempts?: number;
+  callback_retry_minutes?: number;
   is_active?: boolean;
   agent_ids?: string[];
 }
@@ -207,6 +215,9 @@ export interface LiveSnapshot {
   open_missed: number;
   /** The longest any caller has been waiting right now, over all queues. */
   longest_wait_seconds?: number;
+  avg_wait_seconds?: number | null;
+  ai_calls?: number;
+  outgoing_active?: number;
   overdue_callbacks?: number;
   new_voicemails?: number;
   recent_calls: RecentCall[];

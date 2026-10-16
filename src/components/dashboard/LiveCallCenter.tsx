@@ -69,6 +69,9 @@ export default function LiveCallCenter() {
             <Stat label={t("cc.status.busy")} value={snap.by_status.busy} tone="text-red-600" />
             <Stat label={t("cc.status.away")} value={snap.by_status.away} tone="text-amber-600" />
             <Stat label={t("cc.board.calls_waiting")} value={snap.calls_waiting} tone={snap.calls_waiting > 0 ? "text-red-600" : undefined} />
+            <Stat label={t("cc.board.avg_wait")} value={snap.avg_wait_seconds ?? 0} unit="s" />
+            <Stat label={t("cc.board.ai_calls")} value={snap.ai_calls ?? 0} />
+            <Stat label={t("cc.board.outgoing_active")} value={snap.outgoing_active ?? 0} />
             <Stat label={t("cc.board.longest_wait")} value={snap.longest_wait_seconds ?? 0} unit="s" tone={(snap.longest_wait_seconds ?? 0) >= 60 ? "text-red-600" : undefined} />
             <Link to="/call-center/missed" className="min-w-[88px] flex-1 rounded-md hover:bg-accent/40" title={t("cc.board.follow_up", { n: snap.open_missed })}>
               <Stat label={t("cc.board.callbacks_waiting")} value={snap.open_missed} tone={snap.open_missed > 0 ? "text-red-600" : undefined} />

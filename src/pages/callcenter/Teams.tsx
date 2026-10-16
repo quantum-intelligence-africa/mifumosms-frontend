@@ -48,6 +48,10 @@ interface Draft {
   waiting_message: string;
   callback_offer: boolean;
   queue_operator_option: boolean;
+  queue_ai_option: boolean;
+  queue_language: "sw" | "en";
+  callback_max_attempts: number;
+  callback_retry_minutes: number;
   is_active: boolean;
   agent_ids: string[];
 }
@@ -57,6 +61,7 @@ const EMPTY: Draft = {
   alwaysOpen: true, days: [0, 1, 2, 3, 4], start: "08:00", end: "17:00", timezone: "Africa/Dar_es_Salaam",
   after_hours_action: "voicemail", after_hours_message: "", overflow_team: "",
   queue_enabled: false, queue_max_callers: 10, queue_max_wait_seconds: 180, hold_music_url: "", waiting_message: "", callback_offer: true, queue_operator_option: false,
+  queue_ai_option: false, queue_language: "sw", callback_max_attempts: 3, callback_retry_minutes: 60,
   is_active: true, agent_ids: [],
 };
 
@@ -70,6 +75,8 @@ function toDraft(team: Team): Draft {
     overflow_team: team.overflow_team ?? "", is_active: team.is_active, agent_ids: team.members.map((m) => m.id),
     queue_enabled: team.queue_enabled, queue_max_callers: team.queue_max_callers, queue_max_wait_seconds: team.queue_max_wait_seconds,
     hold_music_url: team.hold_music_url, waiting_message: team.waiting_message, callback_offer: team.callback_offer, queue_operator_option: !!team.queue_operator_option,
+    queue_ai_option: !!team.queue_ai_option, queue_language: team.queue_language ?? "sw",
+    callback_max_attempts: team.callback_max_attempts ?? 3, callback_retry_minutes: team.callback_retry_minutes ?? 60,
   };
 }
 
@@ -82,6 +89,8 @@ function toInput(d: Draft): TeamInput {
     overflow_team: d.overflow_team || null, is_active: d.is_active, agent_ids: d.agent_ids,
     queue_enabled: d.queue_enabled, queue_max_callers: d.queue_max_callers, queue_max_wait_seconds: d.queue_max_wait_seconds,
     hold_music_url: d.hold_music_url.trim(), waiting_message: d.waiting_message.trim(), callback_offer: d.callback_offer, queue_operator_option: d.queue_operator_option,
+    queue_ai_option: d.queue_ai_option, queue_language: d.queue_language,
+    callback_max_attempts: d.callback_max_attempts, callback_retry_minutes: d.callback_retry_minutes,
   };
 }
 
@@ -400,6 +409,32 @@ export default function Teams() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="q-op">{t("cc.queue.operator")}</Label>
                     <Switch id="q-op" checked={draft.queue_operator_option} disabled={!draft.overflow_team} onCheckedChange={(v) => setDraft({ ...draft, queue_operator_option: v })} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="q-ai">{t("cc.queue.ai_option")}</Label>
+                    <Switch id="q-ai" checked={draft.queue_ai_option} onCheckedChange={(v) => setDraft({ ...draft, queue_ai_option: v })} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>{t("cc.queue.language")}</Label>
+                    <Select value={draft.queue_language} onValueChange={(v) => setDraft({ ...draft, queue_language: v as "sw" | "en" })}>
+                      <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sw">{t("cc.queue.lang_sw")}</SelectItem>
+                        <SelectItem value="en">{t("cc.queue.lang_en")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="q-att">{t("cc.queue.cb_attempts")}</Label>
+                      <Input id="q-att" type="number" min={1} max={10} value={draft.callback_max_attempts}
+                        onChange={(e) => setDraft({ ...draft, callback_max_attempts: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="q-ret">{t("cc.queue.cb_retry")}</Label>
+                      <Input id="q-ret" type="number" min={5} max={1440} step={5} value={draft.callback_retry_minutes}
+                        onChange={(e) => setDraft({ ...draft, callback_retry_minutes: Number(e.target.value) })} />
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">{t("cc.queue.after_wait_hint")}</p>
                 </>
