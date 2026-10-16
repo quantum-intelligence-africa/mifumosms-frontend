@@ -498,7 +498,12 @@ const AppContent = () => {
               } />
               <Route path="/voice/calls" element={
                 <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
-                  <CallHistory />
+                  <CallHistory key="all" />
+                </ProtectedRoute>
+              } />
+              <Route path="/voice/calls/answered" element={
+                <ProtectedRoute requireIvrAccess comingSoonKey="voice_ivr">
+                  <CallHistory key="answered" initialTab="answered" />
                 </ProtectedRoute>
               } />
               <Route path="/voice/agents" element={

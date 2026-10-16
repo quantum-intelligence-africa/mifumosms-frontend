@@ -610,6 +610,7 @@ export const ccEn = {
   "cc.nav.h_setup": "Set up",
   "cc.nav.h_review": "Review",
   "cc.nav.call_log": "All calls",
+  "cc.nav.answered": "Answered calls",
   "cc.board.today": "Today",
   "cc.board.inbound_today": "Calls today",
   "cc.board.answered_today": "Answered",

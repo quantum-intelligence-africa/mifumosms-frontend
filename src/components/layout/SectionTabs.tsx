@@ -15,12 +15,14 @@ export function SectionTabs() {
 
   const section = sectionForPath(getCallCenterSections(user), pathname);
   if (!section || section.tabs.length < 2) return null; // a single page needs no tabs
+  // Exactly one tab is current: the most specific match (so /voice/calls/answered lights "Answered calls", not also "All calls").
+  const currentHref = section.tabs.filter((tab) => pathMatches(pathname, tab.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <nav aria-label={t(ccKey(section.labelKey))} className="shrink-0 border-b border-border-subtle bg-background px-2 sm:px-3 lg:px-6">
       <div className="flex gap-1 overflow-x-auto py-1.5 [scrollbar-width:none]">
         {section.tabs.map((tab) => {
-          const active = pathMatches(pathname, tab.href);
+          const active = tab.href === currentHref;
           return (
             <Link
               key={tab.href}

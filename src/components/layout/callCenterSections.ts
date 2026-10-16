@@ -39,6 +39,8 @@ export function getCallCenterSections(user: User | null | undefined): CallCenter
         // One list of every call. People with voice-setup access get the fuller page (AI summaries, bulk analysis); agents get
         // their own view. Same data, same outcome wording, same filters on the server.
         ...(ivr ? [{ labelKey: "cc.nav.call_log", href: "/voice/calls" }] : cc ? [{ labelKey: "cc.nav.history", href: "/call-center/history" }] : []),
+        // The calls that were answered (the successful ones), right next to All calls and Missed calls.
+        ...(ivr ? [{ labelKey: "cc.nav.answered", href: "/voice/calls/answered" }] : []),
         // Missed calls live inside Calls; the number still waiting for a callback shows on this tab and on the Calls entry.
         ...(cc ? [{ labelKey: "cc.nav.missed", href: "/call-center/missed", badge: "missed" as const }] : []),
         // Analytics: supervisors and above who already have call-center access (the server checks again).

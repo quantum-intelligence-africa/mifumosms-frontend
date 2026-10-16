@@ -591,6 +591,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.nav.h_setup": "Mipangilio",
   "cc.nav.h_review": "Mapitio",
   "cc.nav.call_log": "Simu zote",
+  "cc.nav.answered": "Simu zilizopokelewa",
   "cc.board.today": "Leo",
   "cc.board.inbound_today": "Simu za leo",
   "cc.board.answered_today": "Zilizojibiwa",

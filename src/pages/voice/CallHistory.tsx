@@ -167,7 +167,7 @@ const outcomeLabel = (call: CallSummary, t: T) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-export default function CallHistory() {
+export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab } = {}) {
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
@@ -181,7 +181,7 @@ export default function CallHistory() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, CallDetail>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("all");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [range, setRange] = useState<Range>("all");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
