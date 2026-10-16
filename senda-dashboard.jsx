@@ -12453,6 +12453,334 @@ function IvrFlowsTab() {
   );
 }
 
+// Voice Usage & Billing Analytics (SENDA staff). Every number comes from the usage ledger and the provider's own end-of-call reports;
+// where something is unknown (the provider's billing step, a plan with no allowance) the page says so instead of guessing.
+function VoiceUsageTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [range, setRange]     = useState('last_7');
+  const [from, setFrom]       = useState('');
+  const [to, setTo]           = useState('');
+  const [filter, setFilter]   = useState({});            // drill-down: { metric?, recon?, direction?, tenant? }
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [calls, setCalls]     = useState({ count: 0, results: [] });
+  const [page, setPage]       = useState(1);
+  const [orgId, setOrgId]     = useState(null);
+  const [org, setOrg]         = useState(null);
+  const [adj, setAdj]         = useState({ meter: 'outbound', minutes: '', reason: '' });
+  const [policies, setPolicies] = useState([]);
+  const [pol, setPol]         = useState(null);          // policy being edited
+  const [cfg, setCfg]         = useState(null);
+  const [busy, setBusy]       = useState(false);
+  const PAGE = 50;
+
+  const q = (extra = {}) => {
+    const params = new URLSearchParams({ range, ...extra });
+    if (range === 'custom') { params.set('date_from', from); params.set('date_to', to); }
+    Object.entries(filter).forEach(([k, v]) => { if (v) params.set(k, v); });
+    return params;
+  };
+  const errText = (res, fallback) => typeof res.error === 'string' ? res.error : (res.error?.message || res.error?.detail || fallback);
+
+  const load = () => {
+    if (range === 'custom' && (!from || !to)) return;
+    setLoading(true);
+    voiceAdminFetch(`/voice/admin/voice-usage/?${q()}`, {}, onLogout).then(res => {
+      setLoading(false);
+      if (!res.success) { setError(errText(res, 'Could not load voice usage.')); return; }
+      setError(null); setData(res.data);
+    });
+  };
+  useEffect(load, [range, from, to, filter]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [range, from, to, filter]);
+  useEffect(() => {
+    if (range === 'custom' && (!from || !to)) return;
+    voiceAdminFetch(`/voice/admin/voice-usage/calls/?${q({ page: String(page), page_size: String(PAGE) })}`, {}, onLogout).then(res => { if (res.success) setCalls(res.data); });
+  }, [range, from, to, filter, page]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    voiceAdminFetch('/voice/admin/voice-usage/policies/', {}, onLogout).then(res => { if (res.success) setPolicies(res.data || []); });
+    voiceAdminFetch('/voice/admin/voice-usage/settings/', {}, onLogout).then(res => { if (res.success) setCfg(res.data); });
+  }, [onLogout]);
+  useEffect(() => {
+    if (!orgId) { setOrg(null); return; }
+    voiceAdminFetch(`/voice/admin/voice-usage/organization/${orgId}/`, {}, onLogout).then(res => { if (res.success) setOrg(res.data); });
+  }, [orgId, onLogout]);
+
+  const exportCsv = async () => {
+    const token = getToken();
+    const res = await fetch(`${VOICE_BASE_URL}/voice/admin/voice-usage/calls/?${q({ export: 'csv' })}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) { showToast?.('Could not export.', 'error'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(await res.blob()); a.download = 'voice-usage.csv'; a.click();
+  };
+  const reconcileNow = () => {
+    setBusy(true);
+    voiceAdminFetch('/voice/admin/voice-usage/reconcile/', { method: 'POST', body: JSON.stringify({ range, date_from: from, date_to: to }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Reconciliation failed.'), 'error'); return; }
+      showToast?.(`Checked ${res.data.checked} calls, ${res.data.mismatches} need attention.`, res.data.ok ? 'success' : 'error');
+      load();
+    });
+  };
+  const saveAdjust = () => {
+    voiceAdminFetch(`/voice/admin/voice-usage/organization/${orgId}/adjust/`, { method: 'POST', body: JSON.stringify({ ...adj, minutes: Number(adj.minutes) }) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(errText(res, 'Could not save the adjustment.'), 'error'); return; }
+      showToast?.('Adjustment saved and recorded.', 'success');
+      setAdj({ meter: adj.meter, minutes: '', reason: '' });
+      voiceAdminFetch(`/voice/admin/voice-usage/organization/${orgId}/`, {}, onLogout).then(r => { if (r.success) setOrg(r.data); });
+    });
+  };
+  const savePolicy = () => {
+    voiceAdminFetch('/voice/admin/voice-usage/policies/', { method: 'PUT', body: JSON.stringify(pol) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(errText(res, 'Could not save the policy (check the values).'), 'error'); return; }
+      setPolicies(res.data || []); setPol(null); showToast?.('Billing policy saved. New calls use it; past calls keep the version they were billed under.', 'success');
+    });
+  };
+  const saveCfg = () => {
+    voiceAdminFetch('/voice/admin/voice-usage/settings/', { method: 'PUT', body: JSON.stringify(cfg) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
+      setCfg(res.data); showToast?.('Saved.', 'success'); load();
+    });
+  };
+
+  const fmtN = (n, d = 0) => (n === null || n === undefined) ? '—' : Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
+  const fmtT = (t) => t ? new Date(t).toLocaleString() : '—';
+  const cost = (obj) => { const e = Object.entries(obj || {}); return e.length ? e.map(([c, v]) => `${c} ${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`).join(' · ') : '—'; };
+  const RECON = { matched:['Matched','#15803d'], duration_mismatch:['Duration mismatch','#b91c1c'], pending_provider_data:['Pending provider data','#b45309'], missing_provider_record:['Missing provider record','#b91c1c'], needs_review:['Needs review','#b91c1c'] };
+  const card = (label, value, onClick, tone = '#0f172a', sub) => (
+    <button key={label} onClick={onClick} disabled={!onClick}
+      style={{textAlign:'left',background:'#fff',border:'1px solid #eef2f7',borderRadius:10,padding:'10px 14px',minWidth:150,cursor:onClick ? 'pointer' : 'default'}}>
+      <div style={{fontSize:20,fontWeight:800,color:tone}}>{value}</div>
+      <div style={{fontSize:11,color:'#94a3b8',fontWeight:600}}>{label}</div>
+      {sub && <div style={{fontSize:10.5,color:'#94a3b8'}}>{sub}</div>}
+    </button>
+  );
+  const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
+  const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
+  const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
+  const T = data?.totals;
+  const filterLabel = Object.entries(filter).map(([k, v]) => `${k}: ${v}`).join(', ');
+  const numInput = (obj, setObj, key, label, ph = '') => (
+    <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>{label}
+      <input className="senda-input" style={{height:32,fontSize:13,width:130}} value={obj[key] ?? ''} placeholder={ph} onChange={e => setObj({ ...obj, [key]: e.target.value })}/>
+    </label>
+  );
+  const flag = (obj, setObj, key, label) => (
+    <label style={{fontSize:12,color:'#334155',display:'flex',alignItems:'center',gap:6}}><input type="checkbox" checked={!!obj[key]} onChange={e => setObj({ ...obj, [key]: e.target.checked })}/>{label}</label>
+  );
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Voice Usage &amp; Billing</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Real call usage per plan, compared with what the provider reported. Reporting time zone: <b>{data?.timezone || '…'}</b>
+            {data ? ` · ${data.period.from} to ${data.period.to}` : ''}. Click any number to see the calls behind it.
+          </p>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <select className="senda-input" value={range} onChange={e => setRange(e.target.value)} style={sel} aria-label="Period">
+            <option value="today">Today</option><option value="last_7">Last 7 days</option><option value="this_month">This month</option><option value="last_month">Last month</option><option value="custom">Custom range</option>
+          </select>
+          {range === 'custom' && <><input type="date" className="senda-input" style={{...sel,minWidth:140}} value={from} onChange={e => setFrom(e.target.value)}/><input type="date" className="senda-input" style={{...sel,minWidth:140}} value={to} onChange={e => setTo(e.target.value)}/></>}
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={exportCsv}>Export CSV</button>
+          <button className="senda-btn senda-btn-sm" disabled={busy} onClick={reconcileNow}>{busy ? 'Checking…' : 'Reconcile now'}</button>
+        </div>
+      </div>
+
+      {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
+      {loading && !data && <div style={{color:'#94a3b8'}}>Loading…</div>}
+
+      {T && (
+        <>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+            {card('Organizations using voice', fmtN(T.organizations), () => setFilter({}))}
+            {card('Unique callers', fmtN(T.unique_callers))}
+            {card('Incoming calls', fmtN(T.inbound_calls), () => setFilter({ direction: 'inbound' }))}
+            {card('Outgoing calls', fmtN(T.outbound_calls), () => setFilter({ direction: 'outbound' }))}
+            {card('Answered', fmtN(T.answered), () => setFilter({ metric: 'answered' }), '#15803d')}
+            {card('Missed (all kinds)', fmtN(T.missed), () => setFilter({ metric: 'missed' }), '#b91c1c')}
+            {card('Failed', fmtN(T.failed), () => setFilter({ metric: 'failed' }), '#b91c1c')}
+            {card('AI / person / transferred', `${fmtN(T.ai_handled)} / ${fmtN(T.human_handled)} / ${fmtN(T.transferred)}`)}
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+            {card('Connected minutes', fmtN(T.connected_minutes, 1), null, '#0f172a', 'time an agent or the AI was connected')}
+            {card('Customer-billable minutes', fmtN(T.customer_billable_minutes, 1), null, '#0f172a', "by each plan's billing policy")}
+            {card('Provider-billable minutes', T.provider_billable_minutes === null ? 'not set' : fmtN(T.provider_billable_minutes, 1), null, T.provider_billable_minutes === null ? '#b45309' : '#0f172a', data.provider_billing_step_known ? `${T.calls_with_provider_report} calls with a provider report` : "set the provider's billing step below")}
+            {card('Provider-reported cost', cost(T.provider_cost), null, '#0f172a', `${T.calls_with_provider_cost} of ${T.calls_total} calls report an amount`)}
+            {card('Duration variance', T.duration_variance_minutes === null ? '—' : `${T.duration_variance_minutes > 0 ? '+' : ''}${fmtN(T.duration_variance_minutes, 2)} min`, () => setFilter({ recon: 'issues' }), Math.abs(T.duration_variance_minutes || 0) > 0 ? '#b45309' : '#0f172a', 'customer-billable minus provider-billable')}
+            {card('Near their limit', fmtN(T.orgs_approaching_limit), null, '#b45309', '80% or more used')}
+            {card('Allowance used up', fmtN(T.orgs_exhausted), null, '#b91c1c')}
+          </div>
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 12px'}}>{data.variance_note} Customer revenue is not shown: plans are subscriptions, so there is no per-minute customer charge to total.</p>
+
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
+            <span style={{fontSize:12,fontWeight:700,color:'#64748b'}}>Reconciliation:</span>
+            {Object.entries(RECON).map(([k, [label, color]]) => (
+              <button key={k} onClick={() => setFilter({ recon: k })} style={{border:`1px solid ${color}33`,background:'#fff',color,borderRadius:8,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}}>{label} · {fmtN(data.recon[k])}</button>
+            ))}
+            <span style={{fontSize:11.5,color:'#94a3b8'}}>
+              Last successful sync: {fmtT(data.sync.last_successful_run)} · latest provider report: {fmtT(data.sync.latest_provider_report_at)}
+              {data.sync.failed_runs_recent ? <b style={{color:'#b91c1c'}}> · {data.sync.failed_runs_recent} failed run(s) in 2 days</b> : null}
+            </span>
+          </div>
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'-6px 0 12px'}}>{data.sync.note}</p>
+
+          {(data.exhausted.length > 0 || data.approaching.length > 0) && (
+            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'8px 12px',marginBottom:12,fontSize:12.5}}>
+              {data.exhausted.map((e, i) => <div key={'x' + i}><b style={{color:'#b91c1c'}}>Used up</b> · <a href="#!" onClick={ev => { ev.preventDefault(); setOrgId(e.tenant_id); }}>{e.tenant}</a> · {e.meter} {fmtN(e.used)} / {fmtN(e.limit)} min</div>)}
+              {data.approaching.map((e, i) => <div key={'a' + i}><b style={{color:'#b45309'}}>{fmtN(e.percent)}%</b> · <a href="#!" onClick={ev => { ev.preventDefault(); setOrgId(e.tenant_id); }}>{e.tenant}</a> · {e.meter} {fmtN(e.used)} / {fmtN(e.limit)} min</div>)}
+            </div>
+          )}
+
+          <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',marginBottom:14}}>
+            <div style={{padding:'10px 14px',fontSize:13,fontWeight:800,color:'#0f172a'}}>By organization</div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{background:'#f8fafc'}}><th style={th}>Organization</th><th style={th}>In / out</th><th style={th}>Connected min</th><th style={th}>Customer-billable</th><th style={th}>Provider-billable</th><th style={th}>Variance</th><th style={th}>Provider cost</th><th style={th}>Issues</th></tr></thead>
+                <tbody>
+                  {data.by_organization.length === 0 && <tr><td colSpan={8} style={{...td,color:'#94a3b8'}}>No calls in this period.</td></tr>}
+                  {data.by_organization.map(r => (
+                    <tr key={r.tenant_id} style={{borderTop:'1px solid #f1f5f9',cursor:'pointer'}} onClick={() => setOrgId(r.tenant_id)}>
+                      <td style={td}><b>{r.tenant}</b></td><td style={td}>{r.inbound} / {r.outbound}</td><td style={td}>{fmtN(r.connected_minutes, 1)}</td>
+                      <td style={td}>{fmtN(r.customer_billable_minutes, 1)}</td><td style={td}>{r.provider_billable_minutes === null ? '—' : fmtN(r.provider_billable_minutes, 1)}</td>
+                      <td style={td}>{r.variance_minutes === null ? '—' : fmtN(r.variance_minutes, 2)}</td><td style={td}>{cost(r.provider_cost)}</td>
+                      <td style={{...td,color:r.recon_issues ? '#b91c1c' : '#94a3b8',fontWeight:700}}>{r.recon_issues || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {data.by_day.length > 0 && (
+            <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'10px 14px',marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:6}}>By day</div>
+              <div style={{display:'flex',gap:4,alignItems:'flex-end',height:70,overflowX:'auto'}}>
+                {data.by_day.map(d => { const max = Math.max(...data.by_day.map(x => x.inbound + x.outbound), 1); const h = Math.max(3, Math.round(((d.inbound + d.outbound) / max) * 60)); return (
+                  <div key={d.day} title={`${d.day}: ${d.inbound} in, ${d.outbound} out, ${d.connected_minutes} min`} style={{textAlign:'center',fontSize:9,color:'#94a3b8'}}>
+                    <div style={{width:18,height:h,background:BRAND,borderRadius:3}}/>{d.day.slice(5)}
+                  </div>); })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',marginBottom:14}}>
+        <div style={{padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+          <span style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Calls{filterLabel ? ` · ${filterLabel}` : ''}</span>
+          {filterLabel && <button onClick={() => setFilter({})} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>Clear filter</button>}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Time</th><th style={th}>Organization</th><th style={th}>Dir</th><th style={th}>Handled</th><th style={th}>Call s</th><th style={th}>Connected s</th><th style={th}>Customer min</th><th style={th}>Provider s</th><th style={th}>Provider min</th><th style={th}>Cost</th><th style={th}>Reconciliation</th></tr></thead>
+            <tbody>
+              {calls.results.length === 0 && <tr><td colSpan={11} style={{...td,color:'#94a3b8'}}>No calls match.</td></tr>}
+              {calls.results.map(r => { const [label, color] = RECON[r.recon_status] || [r.recon_status, '#64748b']; return (
+                <tr key={r.call_id} style={{borderTop:'1px solid #f1f5f9'}} title={r.provider_session_id}>
+                  <td style={td}>{fmtT(r.started_at)}</td><td style={td}>{r.tenant}</td><td style={td}>{r.direction === 'inbound' ? 'In' : 'Out'}</td><td style={td}>{r.handled_by}</td>
+                  <td style={td}>{r.call_seconds}</td><td style={td}>{r.connected_seconds}</td><td style={td}>{r.customer_billable_minutes}</td>
+                  <td style={td}>{r.provider_duration_seconds ?? '—'}</td><td style={td}>{r.provider_billable_minutes ?? '—'}</td>
+                  <td style={td}>{r.provider_amount ? `${r.provider_currency} ${r.provider_amount}` : '—'}</td>
+                  <td style={{...td,color,fontWeight:700}}>{label}{r.recon_note ? <div style={{fontWeight:500,fontSize:11,color:'#94a3b8'}}>{r.recon_note}</div> : null}</td>
+                </tr>); })}
+            </tbody>
+          </table>
+        </div>
+        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < calls.count} count={calls.count} label="calls" />
+      </div>
+
+      {org && (
+        <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>{org.tenant} <span style={{fontWeight:500,color:'#64748b'}}>· {org.plan?.name || 'no plan'} ({org.plan_source}) · cycle {fmtT(org.period.start)} → {fmtT(org.period.end)}</span></div>
+            <button onClick={() => setOrgId(null)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Close</button>
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+            {org.meters.map(m => card(`${m.meter} minutes`, m.configured ? `${fmtN(m.used, 1)} / ${fmtN(m.limit)}` : 'no allowance set', null, m.exhausted ? '#b91c1c' : (m.percent >= 80 ? '#b45309' : '#0f172a'), m.configured ? `${fmtN(m.remaining, 1)} left · ${m.reserved} held for calls in progress` : 'not configured on the plan'))}
+            {card('Calls in progress', org.active_calls, null, '#0f172a', org.concurrent_limit ? `limit ${org.concurrent_limit}` : 'no concurrency limit')}
+            {card('Provider cost', cost(org.provider.cost), null)}
+            {card('Reconciliation issues', org.recon_issues, () => setFilter({ tenant: org.tenant_id, recon: 'issues' }), org.recon_issues ? '#b91c1c' : '#0f172a')}
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end',marginBottom:8}}>
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Adjust allowance
+              <select className="senda-input" style={{...sel,height:32}} value={adj.meter} onChange={e => setAdj({ ...adj, meter: e.target.value })}>{org.meters.map(m => <option key={m.meter} value={m.meter}>{m.meter}</option>)}</select>
+            </label>
+            {numInput(adj, setAdj, 'minutes', 'Minutes (+/−)', '50')}
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,flex:1,minWidth:200}}>Reason (required)
+              <input className="senda-input" style={{height:32,fontSize:13}} value={adj.reason} maxLength={300} onChange={e => setAdj({ ...adj, reason: e.target.value })}/>
+            </label>
+            <button className="senda-btn senda-btn-sm" disabled={!adj.minutes || !adj.reason.trim()} onClick={saveAdjust}>Save adjustment</button>
+          </div>
+          {org.adjustments.length > 0 && <div style={{fontSize:12,color:'#64748b'}}>{org.adjustments.map((a, i) => <div key={i}>{fmtT(a.at)} · {a.meter} {a.minutes > 0 ? '+' : ''}{a.minutes} min · {a.reason} · {a.by}</div>)}</div>}
+          {org.notices.length > 0 && <div style={{fontSize:12,color:'#64748b',marginTop:6}}><b>Notices sent:</b>{org.notices.map((n, i) => <div key={i}>{fmtT(n.at)} · {n.meter} {n.threshold}% · {n.emailed ? 'emailed' : 'dashboard only'}</div>)}</div>}
+        </div>
+      )}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Provider reconciliation settings</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>The provider's billing step comes from its price list and is not guessed: until you set it, provider-billable minutes show as "not set".</p>
+        {cfg && (
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+            {numInput(cfg, setCfg, 'provider_increment_seconds', "Provider billing step (s)", 'e.g. 60')}
+            {numInput(cfg, setCfg, 'recon_tolerance_seconds', 'Match tolerance (s)')}
+            {numInput(cfg, setCfg, 'recon_window_minutes', 'Wait for provider report (min)')}
+            <button className="senda-btn senda-btn-sm" onClick={saveCfg}>Save</button>
+          </div>
+        )}
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Billing policies</div>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setPol({ plan_key: '', increment_seconds: 60, minimum_seconds: 0, rounding_basis: 'aggregate', seconds_basis: 'call_duration', thresholds: [80, 90, 100] })}>New policy</button>
+        </div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>One per plan (blank plan key = default). Out of the box minutes are measured, not cut off; turn enforcement on per plan. Every change raises the version, and each call keeps the version it was billed under.</p>
+        {policies.length === 0 && <div style={{fontSize:12.5,color:'#94a3b8'}}>No policy saved: every plan uses the built-in default (whole minutes, period total rounded up, nothing enforced).</div>}
+        {policies.map(p => (
+          <div key={p.id} style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap',border:'1px solid #eef2f7',borderRadius:8,padding:'6px 10px',marginBottom:4,fontSize:12.5}}>
+            <span><b>{p.plan_key || 'default'}</b> v{p.version} · step {p.increment_seconds}s · min {p.minimum_seconds}s · {p.rounding_basis === 'per_call' ? 'each call rounded' : 'period total rounded'} · {p.seconds_basis === 'connected' ? 'talk time' : 'whole call'}{p.shared_allowance ? ' · shared pool' : ''}{p.enforce_outbound ? ' · blocks outbound' : ''}{p.enforce_inbound ? ` · inbound: ${p.inbound_exhausted}` : ''}{p.overage_enabled ? ' · overage allowed' : ''}</span>
+            <button onClick={() => setPol({ ...p })} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Edit</button>
+          </div>
+        ))}
+        {pol && (
+          <div style={{marginTop:10,border:'1px solid #dbeafe',borderRadius:10,padding:10}}>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end',marginBottom:8}}>
+              {numInput(pol, setPol, 'plan_key', 'Plan key (blank = default)', 'business')}
+              {numInput(pol, setPol, 'increment_seconds', 'Billing step (s)')}
+              {numInput(pol, setPol, 'minimum_seconds', 'Minimum (s)')}
+              {numInput(pol, setPol, 'grace_minutes', 'Grace (min)')}
+              {numInput(pol, setPol, 'max_concurrent_calls', 'Max calls at once')}
+              {numInput(pol, setPol, 'spending_limit_minutes', 'Overage cap (min)')}
+              {numInput(pol, setPol, 'overage_rate', 'Overage rate (leave empty)')}
+              {numInput(pol, setPol, 'overage_currency', 'Currency')}
+              <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Rounding
+                <select className="senda-input" style={{...sel,height:32}} value={pol.rounding_basis} onChange={e => setPol({ ...pol, rounding_basis: e.target.value })}><option value="aggregate">Period total</option><option value="per_call">Each call</option></select></label>
+              <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Seconds counted
+                <select className="senda-input" style={{...sel,height:32}} value={pol.seconds_basis} onChange={e => setPol({ ...pol, seconds_basis: e.target.value })}><option value="call_duration">Whole call</option><option value="connected">Talk time only</option></select></label>
+              <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>When inbound is used up
+                <select className="senda-input" style={{...sel,height:32}} value={pol.inbound_exhausted || 'allow'} onChange={e => setPol({ ...pol, inbound_exhausted: e.target.value })}><option value="allow">Keep taking calls</option><option value="voicemail">Take a message</option></select></label>
+            </div>
+            <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:8}}>
+              {flag(pol, setPol, 'shared_allowance', 'One shared pool for incoming + outgoing')}
+              {flag(pol, setPol, 'enforce_outbound', 'Block new outgoing calls when used up')}
+              {flag(pol, setPol, 'enforce_inbound', 'Apply the incoming fallback when used up')}
+              {flag(pol, setPol, 'overage_enabled', 'Allow extra minutes (overage)')}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button className="senda-btn senda-btn-sm" onClick={savePolicy}>Save policy</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setPol(null)}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // SENDA staff's read-only view of every organization's call logs: IVR path, queue and routing events, who was rung, recordings,
 // AI summary. Calls an organization deleted stay here, marked deleted (the organization no longer sees them).
 function VoiceCallLogsTab() {
@@ -17108,6 +17436,7 @@ const NAV_GROUPS = [
     { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
     { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
     { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
+    { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
     { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
@@ -21310,6 +21639,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     ivrflows:       <IvrFlowsTab/>,
     voicenumbers:   <VoiceNumbersTab/>,
     calllogs:       <VoiceCallLogsTab/>,
+    voiceusage:     <VoiceUsageTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,

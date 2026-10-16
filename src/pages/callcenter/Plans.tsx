@@ -16,6 +16,7 @@ import { ccKey } from "@/i18n/callCenter";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { PlanCheckoutDialog } from "@/components/callcenter/PlanCheckoutDialog";
 import { InvoiceDialog } from "@/components/callcenter/InvoiceDialog";
+import { VoiceUsageCard } from "@/components/callcenter/VoiceUsageCard";
 import {
   callCenterApi, describeError,
   type InvoiceRow, type Meter, type PlanInfo, type PlanRequest, type PlanStatus, type SubscriptionState,
@@ -115,6 +116,7 @@ export default function CallCenterPlans() {
           <TrialOrExpiryBanner live={live} t={t} />
 
           <UsageCard status={status} />
+          <VoiceUsageCard />
 
           {!onSubscription && status.plan && (
             <p className="text-sm text-muted-foreground">{t("cc.plans.default_note", { plan: status.plan.name })}</p>
