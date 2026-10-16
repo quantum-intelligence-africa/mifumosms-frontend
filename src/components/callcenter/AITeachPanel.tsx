@@ -217,6 +217,7 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
             )}
             {modelsError && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.models_failed"), { reason: modelsError })}</p>}
             <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.ai_help"))}</p>
+            {reasoningProviders.length < 2 && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.ai_missing"))}</p>}
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
             {(["replace", "merge"] as const).map((m) => (
