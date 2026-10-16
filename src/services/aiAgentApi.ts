@@ -188,7 +188,49 @@ export interface AuditRow {
   metadata: Record<string, unknown>;
 }
 
+export interface TeachProposal {
+  language: "sw" | "en";
+  purpose: string;
+  personality: string;
+  greeting: string;
+  closing: string;
+  knowledge: string;
+  gaps: string[];
+  warnings: string[];
+  current: { purpose: string; personality: string; greeting: string; closing: string; knowledge: string };
+}
+
+export interface LearnQuestion {
+  question: string;
+  count: number;
+  why: "not_sure" | "handed_over";
+  examples: Array<{ text: string; at: string; call_id: string }>;
+}
+
+export interface LearnResult {
+  analyzed_calls: number;
+  days: number;
+  mode: "ai" | "plain";
+  note: string;
+  questions: LearnQuestion[];
+}
+
+export interface TeachJob<T = TeachProposal | LearnResult> {
+  id: string;
+  kind: "teach" | "learn";
+  status: "pending" | "running" | "done" | "failed";
+  error: string;
+  result: T | null;
+}
+
 export const aiAgentApi = {
+  teach: {
+    start: (id: string, body: { text?: string; url?: string; mode: "replace" | "merge" }) => voiceApi.post<TeachJob<TeachProposal>>(`${BASE}/agents/${id}/teach/`, body),
+    learn: (id: string, days: number) => voiceApi.post<TeachJob<LearnResult>>(`${BASE}/agents/${id}/learn/`, { days }),
+    job: <T,>(jobId: string) => voiceApi.get<TeachJob<T>>(`${BASE}/teach-jobs/${jobId}/`),
+    apply: (id: string, body: { items: Array<{ question: string; answer: string }>; dismiss: string[] }) =>
+      voiceApi.post<{ added: number }>(`${BASE}/agents/${id}/learn/apply/`, body),
+  },
   providers: () => voiceApi.get<{ providers: ProviderInfo[] }>(`${BASE}/providers/`),
   testProvider: (id: string) => voiceApi.post<ProviderCheck>(`${BASE}/providers/${id}/test/`),
   agents: {

@@ -16,6 +16,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { appLocale } from "@/utils/appLocale";
 import { aiEn, aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
+import { AITeachPanel } from "@/components/callcenter/AITeachPanel";
 import { VoicePicker } from "@/components/voice/VoicePicker";
 import {
   aiAgentApi, DEPARTMENTS, type AgentConfig, type AgentConfigSummary, type AgentSettings, type AgentStatus, type AuditRow, type Department,
@@ -263,12 +264,16 @@ export default function AIAssistant() {
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="general">
+          <Tabs defaultValue={settings.knowledge.trim() ? "general" : "teach"}>
             <TabsList className="flex h-auto flex-wrap justify-start gap-1">
-              {(["general", "providers", "handoff", "email", "limits", "privacy", "test", "activity"] as const).map((tab) => (
+              {(["teach", "general", "providers", "handoff", "email", "limits", "privacy", "test", "activity"] as const).map((tab) => (
                 <TabsTrigger key={tab} value={tab}>{t(aiKey(`ai.tab.${tab}`))}</TabsTrigger>
               ))}
             </TabsList>
+
+            <TabsContent value="teach" className="mt-3">
+              <AITeachPanel config={current} settings={settings} meta={meta} onChanged={() => void pick(current.id)} />
+            </TabsContent>
 
             <TabsContent value="general" className="mt-3">
               <Card><CardContent className="space-y-4 p-4">
