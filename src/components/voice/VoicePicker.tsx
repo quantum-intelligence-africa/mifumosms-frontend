@@ -11,6 +11,8 @@ export interface TtsVoice {
   id: string;
   label: string;
   gender: "female" | "male";
+  /** "sw" or "en"; older servers send none (all Swahili). */
+  language?: "sw" | "en";
 }
 
 let cachedVoices: TtsVoice[] | null = null;
@@ -79,9 +81,15 @@ export function VoicePicker({ value, onChange, sampleText, allowDefault = true }
     audio.play().catch(done);
   };
 
-  const female = voices.filter((v) => v.gender === "female");
-  const male = voices.filter((v) => v.gender === "male");
+  const groups = (["sw", "en"] as const).flatMap((lang) =>
+    (["female", "male"] as const).map((gender) => ({
+      key: `${lang}-${gender}`,
+      heading: `${lang === "sw" ? "Kiswahili" : "English"} · ${gender === "female" ? t("voice.picker.female") : t("voice.picker.male")}`,
+      list: voices.filter((v) => (v.language ?? "sw") === lang && v.gender === gender),
+    })),
+  ).filter((g) => g.list.length > 0);
   const name = (v: TtsVoice) => v.label.split(" — ")[0];
+  const englishChosen = voices.some((v) => v.id === value && v.language === "en");
 
   return (
     <div className="space-y-1">
@@ -98,10 +106,10 @@ export function VoicePicker({ value, onChange, sampleText, allowDefault = true }
           </SelectTrigger>
           <SelectContent>
             {allowDefault && <SelectItem value={DEFAULT_VALUE}>{t("voice.picker.default")}</SelectItem>}
-            {[[t("voice.picker.female"), female], [t("voice.picker.male"), male]].map(([heading, list]) => (
-              <div key={heading as string}>
-                <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{heading as string}</div>
-                {(list as TtsVoice[]).map((v) => (
+            {groups.map(({ key, heading, list }) => (
+              <div key={key}>
+                <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{heading}</div>
+                {list.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {name(v)}
                   </SelectItem>
@@ -123,6 +131,7 @@ export function VoicePicker({ value, onChange, sampleText, allowDefault = true }
           {state === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : state === "playing" ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
         </Button>
       </div>
+      {englishChosen && <p className="text-[10px] text-muted-foreground">{t("voice.picker.english_note")}</p>}
       {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
   );

@@ -2320,6 +2320,7 @@ const translations = {
     "voice.picker.play": "Play",
     "voice.picker.stop": "Stop",
     "voice.picker.female": "Female",
+    "voice.picker.english_note": "English voices: test one with a real call before using it on a live number.",
     "voice.picker.male": "Male",
     "voice.picker.sample": "Karibu. Asante kwa kupiga simu.",
     "voice.picker.listen": "Hear this voice",

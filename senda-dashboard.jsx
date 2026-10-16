@@ -12586,18 +12586,18 @@ function AnalysisEmailsTab() {
     return () => clearTimeout(id);
   }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
 
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled });
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the report exactly as it would be sent, without sending anything.
-  const preview = async (output) => {
+  const preview = async (output, days = 1) => {
     const token = getToken();
-    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${edit.tenant_id}/?output=${output}&lang=${edit.language}&date=${new Date().toISOString().slice(0, 10)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${edit.tenant_id}/?output=${output}&days=${days}&lang=${edit.language}&date=${new Date().toISOString().slice(0, 10)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) { showToast?.(res.status === 501 ? 'The PDF library is not installed on the server yet.' : 'Could not build the preview.', 'error'); return; }
     const blob = await res.blob();
     window.open(URL.createObjectURL(blob), '_blank');
   };
   const save = () => {
     setBusy(true);
-    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily }) }, onLogout).then(res => {
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily, weekly_report_enabled: edit.weekly }) }, onLogout).then(res => {
       setBusy(false);
       if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
       showToast?.(`Saved for ${edit.tenant}.`, 'success');
@@ -12608,7 +12608,7 @@ function AnalysisEmailsTab() {
   const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
   const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
   const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
-  const KIND = { instant:'After the call', digest:'Digest', daily:'Daily report', test:'Test' };
+  const KIND = { instant:'After the call', digest:'Digest', daily:'Daily report', weekly:'Weekly report', voicemail:'Voicemail alert', test:'Test' };
 
   return (
     <div style={{padding:24}}>
@@ -12628,7 +12628,7 @@ function AnalysisEmailsTab() {
               {orgs.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No organizations yet.</td></tr>}
               {orgs.map(o => (
                 <tr key={o.tenant_id} style={{borderTop:'1px solid #f1f5f9'}}>
-                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}{o.daily_report_enabled ? ' · daily report on' : ''}</div></td>
+                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}{o.daily_report_enabled ? ' · daily report on' : ''}{o.weekly_report_enabled ? ' · weekly report on' : ''}</div></td>
                   <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
                   <td style={td}>
                     {o.recipient_mode === 'assigned_only'
@@ -12680,6 +12680,14 @@ function AnalysisEmailsTab() {
             <div style={{display:'flex',gap:8}}>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html')}>Preview email</button>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf')}>Preview PDF</button>
+            </div>
+            <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8,marginTop:10}}>
+              <input type="checkbox" checked={edit.weekly} onChange={e => setEdit({ ...edit, weekly: e.target.checked })}/>
+              Also send the Weekly report (the week just ended) every Monday morning
+            </label>
+            <div style={{display:'flex',gap:8,marginTop:6}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html', 7)}>Preview weekly email</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7)}>Preview weekly PDF</button>
             </div>
           </div>
           <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>

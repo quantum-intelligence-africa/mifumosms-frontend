@@ -2319,6 +2319,7 @@ const sw: Record<string, string> = {
   "voice.picker.play": "Cheza",
   "voice.picker.stop": "Simamisha",
   "voice.picker.female": "Mwanamke",
+  "voice.picker.english_note": "Sauti za Kiingereza: zijaribu kwa simu halisi kabla ya kuzitumia kwenye namba inayofanya kazi.",
   "voice.picker.male": "Mwanaume",
   "voice.picker.sample": "Karibu. Asante kwa kupiga simu.",
   "voice.picker.listen": "Sikiliza sauti hii",
