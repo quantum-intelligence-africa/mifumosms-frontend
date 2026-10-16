@@ -3,7 +3,7 @@
 import { appLocale } from "@/utils/appLocale";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, CheckCircle2, ChevronDown, Mic, PhoneCall, PhoneMissed, RefreshCw, Sparkles, UserCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, Copy, Download, Mic, PhoneCall, PhoneMissed, RefreshCw, Sparkles, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -102,6 +102,33 @@ export default function MissedCalls() {
       durationSeconds: vm.duration_seconds,
     }, seconds);
 
+  // Every different caller in the list as it is filtered now (missed, abandoned in the queue, voicemail...), newest first, once each.
+  const uniqueNumbers = () => Array.from(new Set(visible.map((r) => (r.caller_number || "").trim()).filter(Boolean)));
+
+  const copyNumbers = async () => {
+    const numbers = uniqueNumbers();
+    try {
+      await navigator.clipboard.writeText(numbers.join("\n"));
+      toast({ title: t("cc.missed.copied", { count: numbers.length }) });
+    } catch {
+      toast({ title: t("cc.missed.copy_failed"), variant: "destructive" });
+    }
+  };
+
+  const downloadCsv = () => {
+    const quote = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Number", "When", "Team", "Status", "Attempts", "Assigned to"].map(quote).join(",")];
+    for (const r of visible) {
+      lines.push([r.caller_number, new Date(r.call_started_at).toLocaleString(appLocale()), r.team_name || "", r.status, r.callback_attempts, r.assigned_to_name || ""].map(quote).join(","));
+    }
+    const url = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `missed-calls-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const update = async (row: MissedCall, next: MissedCallStatus) => {
     setBusyId(row.id);
     const res = await callCenterApi.missed.update(row.id, { status: next });
@@ -149,6 +176,8 @@ export default function MissedCalls() {
               </SelectContent>
             </Select>
           )}
+          <Button variant="outline" size="sm" onClick={copyNumbers} disabled={visible.length === 0}><Copy className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.copy_numbers")}</Button>
+          <Button variant="outline" size="sm" onClick={downloadCsv} disabled={visible.length === 0}><Download className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.download")}</Button>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("common.refresh")}</Button>
         </>
       }

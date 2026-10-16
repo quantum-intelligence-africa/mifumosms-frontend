@@ -452,6 +452,10 @@ export const ccEn = {
 
   // ── missed calls ─────────────────────────────────────────────────────────
   "cc.missed.title": "Missed calls",
+  "cc.missed.copy_numbers": "Copy numbers",
+  "cc.missed.download": "Download CSV",
+  "cc.missed.copied": "Copied {{count}} numbers",
+  "cc.missed.copy_failed": "Couldn't copy. Use Download CSV instead.",
   "cc.missed.subtitle": "Every call nobody answered, until somebody has dealt with it.",
   "cc.missed.load_failed": "Couldn't load missed calls.",
   "cc.missed.filter_open": "Needs attention",

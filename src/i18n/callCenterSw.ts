@@ -435,6 +435,10 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.agents.retry_profile": "Jaribu tena kuunda wasifu",
   "cc.agents.done": "Imekamilika",
 
+  "cc.missed.copy_numbers": "Nakili namba",
+  "cc.missed.download": "Pakua CSV",
+  "cc.missed.copied": "Namba {{count}} zimenakiliwa",
+  "cc.missed.copy_failed": "Imeshindwa kunakili. Tumia Pakua CSV.",
   "cc.missed.title": "Simu zilizokosekana",
   "cc.missed.filter_voicemail": "Zenye ujumbe wa sauti",
   "cc.missed.voicemail": "Ujumbe wa sauti",
