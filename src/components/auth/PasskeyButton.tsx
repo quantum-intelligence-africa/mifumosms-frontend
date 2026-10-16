@@ -34,7 +34,7 @@ export function PasskeyButton({ onSignedIn, onNeedsVerification, onError, rounde
 
   const wording = (f?: PasskeyFailure, server?: string) => {
     switch (f) {
-      case "cancelled": return t("pk.cancelled");
+      case "cancelled": return t("pk.cancelled_login");
       case "network": return t("pk.network");
       case "rate_limited": return t("pk.rate_limited");
       case "disabled": return t("pk.disabled");
@@ -81,7 +81,7 @@ export function PasskeyButton({ onSignedIn, onNeedsVerification, onError, rounde
         variant="outline"
         disabled={busy}
         onClick={() => void start()}
-        className={`h-10 w-full gap-2 border-gray-300 text-sm font-semibold text-gray-800 sm:h-11 ${roundedClassName}`}
+        className={`h-11 w-full gap-2 border-blue-200 bg-white text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-800 ${roundedClassName}`}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-5 w-5 text-blue-600" />}
         {busy ? t("pk.signing_in") : t("pk.signin")}

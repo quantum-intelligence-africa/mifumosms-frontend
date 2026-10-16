@@ -9,6 +9,8 @@ import { apiClient } from "@/lib/api";
 import {
   isPasskeySupported,
   listPasskeys,
+  platformAuthenticatorAvailable,
+  type PasskeyAttachment,
   passkeyEvents,
   registerPasskey,
   removePasskey,
@@ -34,6 +36,8 @@ export function PasskeysCard() {
   const [events, setEvents] = useState<PasskeyEvent[]>([]);
   const [hasPassword, setHasPassword] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [platformOk, setPlatformOk] = useState(false);
+  const [mode, setMode] = useState<PasskeyAttachment | "any">("any");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
@@ -69,6 +73,13 @@ export function PasskeysCard() {
   }, []);
 
   useEffect(() => {
+    void platformAuthenticatorAvailable().then((ok) => {
+      setPlatformOk(ok);
+      if (ok) setMode("platform");
+    });
+  }, []);
+
+  useEffect(() => {
     void load();
     void apiClient.emailTwoFactor().then(({ status, data }) => status === 200 && setHasPassword(data.has_password !== false));
   }, [load]);
@@ -76,7 +87,7 @@ export function PasskeysCard() {
   const add = async () => {
     setBusy(true);
     setError("");
-    const res = await registerPasskey(name.trim() || t("pk.default_name"));
+    const res = await registerPasskey(name.trim() || t("pk.default_name"), mode === "any" ? undefined : mode);
     setBusy(false);
     if (res.ok) {
       setAdding(false);
@@ -139,6 +150,11 @@ export function PasskeysCard() {
           <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void add(); }}>
             <label className="text-xs font-medium" htmlFor="pk-name">{t("pk.name_label")}</label>
             <Input id="pk-name" autoFocus maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("pk.name_placeholder")} />
+            <label className="text-xs font-medium" htmlFor="pk-mode">{t("pk.mode_label")}</label>
+            <select id="pk-mode" value={mode} onChange={(e) => setMode(e.target.value as PasskeyAttachment | "any")} className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm">
+              {platformOk && <option value="platform">{t("pk.mode_platform")}</option>}
+              <option value="cross-platform">{t("pk.mode_other")}</option>
+            </select>
             <div className="flex gap-2">
               <Button type="submit" size="sm" disabled={busy}>
                 {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("pk.adding")}</> : t("pk.add")}
@@ -152,7 +168,14 @@ export function PasskeysCard() {
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
 
         {items.length === 0 ? (
-          <p className="text-sm text-text-subtle">{t("pk.empty")}</p>
+          <div className="space-y-2">
+            <p className="text-sm text-text-subtle">{supported && enabled ? t("pk.empty_help") : t("pk.empty")}</p>
+            {supported && enabled && !adding && (
+              <Button onClick={() => { setAdding(true); setError(""); }}>
+                <Fingerprint className="mr-2 h-4 w-4" />{platformOk ? t("pk.setup_here") : t("pk.add")}
+              </Button>
+            )}
+          </div>
         ) : (
           <ul className="divide-y rounded-lg border">
             {items.map((p) => (

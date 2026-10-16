@@ -1,3 +1,4 @@
+import { PasskeyPrompt } from "@/components/auth/PasskeyPrompt";
 import React, { useContext, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
@@ -252,5 +253,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <PasskeyPrompt />
+      {children}
+    </>
+  );
 };

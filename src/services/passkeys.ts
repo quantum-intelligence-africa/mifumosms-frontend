@@ -88,9 +88,23 @@ function fail<T>(status: number, data: Json, fallback: PasskeyFailure = "failed"
   return { ok: false, status, failure, message: typeof data.error === "string" ? data.error : undefined };
 }
 
-function creationOptions(o: Json): PublicKeyCredentialCreationOptions {
+export type PasskeyAttachment = "platform" | "cross-platform";
+
+/** True when this device has its own fingerprint, face, Windows Hello or screen-lock unlock that a passkey can use. */
+export async function platformAuthenticatorAvailable(): Promise<boolean> {
+  if (!isPasskeySupported()) return false;
+  try {
+    return !!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.());
+  } catch {
+    return false;
+  }
+}
+
+function creationOptions(o: Json, attachment?: PasskeyAttachment): PublicKeyCredentialCreationOptions {
   return {
     ...o,
+    // The server asks for a verified (fingerprint/face/PIN) discoverable credential; the person can steer WHERE it lives.
+    authenticatorSelection: { ...(o.authenticatorSelection || {}), ...(attachment ? { authenticatorAttachment: attachment } : {}) },
     challenge: toBuffer(o.challenge),
     user: { ...o.user, id: toBuffer(o.user.id) },
     excludeCredentials: (o.excludeCredentials || []).map((c: Json) => ({ ...c, id: toBuffer(c.id) })),
@@ -132,13 +146,13 @@ export async function passkeysAvailable(): Promise<boolean> {
 }
 
 /** Add a passkey to the signed-in account. */
-export async function registerPasskey(name: string): Promise<PasskeyResult<PasskeyInfo>> {
+export async function registerPasskey(name: string, attachment?: PasskeyAttachment): Promise<PasskeyResult<PasskeyInfo>> {
   if (!isPasskeySupported()) return { ok: false, status: 0, failure: "unsupported" };
   const opts = await call("register/options/", "POST", {}, true);
   if (opts.status !== 200) return fail(opts.status, opts.data);
   let credential: PublicKeyCredential | null;
   try {
-    credential = (await navigator.credentials.create({ publicKey: creationOptions(opts.data.options) })) as PublicKeyCredential | null;
+    credential = (await navigator.credentials.create({ publicKey: creationOptions(opts.data.options, attachment) })) as PublicKeyCredential | null;
   } catch (err) {
     return { ok: false, status: 0, failure: ceremonyFailure(err) };
   }
