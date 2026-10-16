@@ -12587,6 +12587,13 @@ function AnalysisEmailsTab() {
   }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
 
   const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
+  // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
+  const previewAnalysisEmail = async (kind) => {
+    const token = getToken();
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/email-preview/${edit.tenant_id}/?kind=${kind}&lang=${edit.language}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) { showToast?.('Could not build the preview.', 'error'); return; }
+    window.open(URL.createObjectURL(await res.blob()), '_blank');
+  };
   // Opens the report exactly as it would be sent, without sending anything.
   const preview = async (output, days = 1) => {
     const token = getToken();
@@ -12675,6 +12682,14 @@ function AnalysisEmailsTab() {
               <textarea className="senda-input" style={{height:90,padding:8,fontSize:13}} value={edit.text} onChange={e => setEdit({ ...edit, text: e.target.value })} placeholder="manager@company.com"/>
             </label>
           )}
+          <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>The analysis email</div>
+            <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 6px'}}>See exactly what the organization receives, in the language chosen above. Nothing is sent. It uses this organization's latest finished analysis, or a marked sample when it has none.</p>
+            <div style={{display:'flex',gap:8,marginBottom:12}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => previewAnalysisEmail('instant')}>Preview the email after each call</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => previewAnalysisEmail('digest')}>Preview the digest email</button>
+            </div>
+          </div>
           <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
             <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>
               <input type="checkbox" checked={edit.daily} onChange={e => setEdit({ ...edit, daily: e.target.checked })}/>
