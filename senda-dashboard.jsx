@@ -486,7 +486,18 @@ async function voiceAdminFetch(path, options = {}, onLogout) {
   // plain JSON (a list, an object, or a DRF error shape) rather than an
   // already-wrapped {success, data} envelope — normalize it here so callers
   // can use res.success/res.data/res.error like every other adminFetch call.
-  const body = await res.json();
+  // A server that has not been updated yet (or a proxy error page) answers with HTML, not JSON: say so instead of crashing the screen.
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    return {
+      success: false, status: res.status,
+      error: res.status === 404
+        ? 'The voice server does not have this feature yet. Update the voice server (pull, migrate, restart) and try again.'
+        : `The voice server sent an unexpected reply (${res.status}).`,
+    };
+  }
   if (res.ok) return { success: true, data: body, status: res.status };
   const error = typeof body?.detail === 'string' ? body.detail
     : Object.values(body || {}).flat().join(' ') || 'Request failed.';
