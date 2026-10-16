@@ -4,12 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ccKey } from "@/i18n/callCenter";
 import { cn } from "@/lib/utils";
+import { useMissedSummary } from "@/hooks/useMissedSummary";
 import { getCallCenterSections, pathMatches, sectionForPath } from "@/components/layout/callCenterSections";
 
 export function SectionTabs() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { pathname } = useLocation();
+  const missed = useMissedSummary();
 
   const section = sectionForPath(getCallCenterSections(user), pathname);
   if (!section || section.tabs.length < 2) return null; // a single page needs no tabs
@@ -32,6 +34,11 @@ export function SectionTabs() {
               )}
             >
               {t(ccKey(tab.labelKey))}
+              {tab.badge === "missed" && !!missed?.needs_attention && (
+                <span className="ml-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-950 dark:text-red-300">
+                  {missed.needs_attention > 99 ? "99+" : missed.needs_attention}
+                </span>
+              )}
             </Link>
           );
         })}

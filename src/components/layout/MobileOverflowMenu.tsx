@@ -146,8 +146,8 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
       ...(cc.isAgent || !isCallCenterSupervisor(user)
         ? [{ key: "cc-workspace", label: t("cc.nav.workspace"), icon: Phone, onClick: () => go("/call-center") }]
         : []),
-      { key: "cc-missed", label: t("cc.nav.missed"), icon: PhoneMissed, onClick: () => go("/call-center/missed") },
-      { key: "cc-history", label: t("cc.nav.history"), icon: History, onClick: () => go(hasIvrAccess(user) ? "/voice/calls" : "/call-center/history") },
+      // One Calls entry; Missed calls, analytics and the rest are tabs inside it.
+      { key: "cc-history", label: t("nav.calls"), icon: History, onClick: () => go(hasIvrAccess(user) ? "/voice/calls" : "/call-center/history") },
       ...(isCallCenterSupervisor(user)
         ? [{ key: "cc-teams", label: t("cc.nav.teams"), icon: Users, onClick: () => go("/call-center/teams") }]
         : []),
