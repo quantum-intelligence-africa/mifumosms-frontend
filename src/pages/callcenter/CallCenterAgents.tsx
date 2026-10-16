@@ -21,6 +21,7 @@ import { apiClient } from "@/lib/api";
 import { ccKey } from "@/i18n/callCenter";
 import { appLocale } from "@/utils/appLocale";
 import { PageFrame } from "@/components/callcenter/PageFrame";
+import { CallHandlingSettingsCard } from "@/components/callcenter/CallHandlingSettingsCard";
 import { StatusLabel } from "@/components/callcenter/StatusDot";
 import {
   attachAgentProfile, callCenterApi, describeError, provisionAgent,
@@ -343,6 +344,7 @@ export default function CallCenterAgents() {
         </div>
       }
     >
+      <CallHandlingSettingsCard />
       {plan?.plan && agentMeter && (
         <div className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm ${atLimit ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100" : "text-muted-foreground"}`}>
           <span>

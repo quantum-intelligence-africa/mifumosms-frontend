@@ -463,6 +463,10 @@ export interface Readiness {
 export interface CallCenterSettings {
   is_live: boolean;
   wizard_step: number;
+  /** After-call wrap-up time in seconds (0 = none). */
+  acw_seconds?: number;
+  voicemail_alert_enabled?: boolean;
+  voicemail_alert_emails?: string[];
   went_live_at: string | null;
   readiness: Readiness;
 }
@@ -687,7 +691,8 @@ export const callCenterApi = {
   ) => voiceApi.post<CallTransferRow>(`${BASE}/calls/${callId}/transfer/`, body),
   settings: {
     get: () => voiceApi.get<CallCenterSettings>(`${BASE}/settings/`),
-    patch: (body: { is_live?: boolean; wizard_step?: number }) => voiceApi.patch<CallCenterSettings>(`${BASE}/settings/`, body),
+    patch: (body: { is_live?: boolean; wizard_step?: number; acw_seconds?: number; voicemail_alert_enabled?: boolean; voicemail_alert_emails?: string[] | string }) =>
+      voiceApi.patch<CallCenterSettings>(`${BASE}/settings/`, body),
   },
   generateIvr: (body: { greeting?: string; company_name?: string; replace_active?: boolean; team_ids?: string[] }) =>
     voiceApi.post<GeneratedIvr & { code?: string }>(`${BASE}/setup/generate-ivr/`, body),

@@ -13157,7 +13157,7 @@ function VoiceCallLogsTab() {
         <div style={box}>
           <p style={h}>Notes ({d.notes.length}) · Recordings ({d.recordings.length})</p>
           {d.notes.map((n, i) => <div key={i} style={{fontSize:12,whiteSpace:'pre-wrap'}}>{n.category ? <b>{n.category}: </b> : null}{n.text}{n.follow_up ? ` — follow-up: ${n.follow_up}` : ''}</div>)}
-          {d.recordings.map(r => <div key={r.id} style={{fontSize:12,color:'#64748b'}}>Recording · {dur(r.duration_seconds)} · {fmt(r.created_at)}</div>)}
+          {d.recordings.map(r => <div key={r.id} style={{fontSize:12,color:'#64748b',margin:'4px 0'}}>Recording · {dur(r.duration_seconds)} · {fmt(r.created_at)}{r.audio_url ? <audio controls preload="none" src={r.audio_url} style={{display:'block',width:'100%',maxWidth:360,marginTop:2}}/> : null}</div>)}
         </div>
         {(d.summary || d.transcript) && (
           <div style={{...box,gridColumn:'1 / -1'}}>
