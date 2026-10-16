@@ -198,6 +198,10 @@ export const anSw: Record<keyof typeof anEn, string> = {
   "an.insight_open": "Fungua simu",
 
   "an.calls_title": "Simu za hivi karibuni",
+  "an.copy_numbers": "Nakili namba",
+  "an.download_csv": "Pakua CSV",
+  "an.copied": "Namba {{count}} zimenakiliwa",
+  "an.copy_failed": "Imeshindwa kunakili namba. Jaribu tena.",
   "an.calls_count": "simu {{count}} zinalingana",
   "an.calls_empty": "Hakuna simu zinazolingana na vichujio hivi.",
   "an.qf.all": "Simu zote",

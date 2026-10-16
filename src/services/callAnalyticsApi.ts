@@ -28,6 +28,8 @@ export interface CallListFilters {
   resolution?: string;
   problem?: string;
   page?: number;
+  /** Default 25; the server allows up to 100. */
+  page_size?: number;
 }
 
 export interface Access {
@@ -308,7 +310,7 @@ export const callAnalyticsApi = {
   intelligence: (f: AnalyticsFilters) => unwrap(voiceApi.get<Intelligence>(`${BASE}/intelligence/${qs(base(f))}`)),
   insights: (f: AnalyticsFilters) => unwrap(voiceApi.get<Insights>(`${BASE}/insights/${qs(base(f))}`)),
   calls: (f: AnalyticsFilters, c: CallListFilters) =>
-    unwrap(voiceApi.get<CallsPage>(`${BASE}/calls/${qs({ ...base(f), ...c, page_size: 25 })}`)),
+    unwrap(voiceApi.get<CallsPage>(`${BASE}/calls/${qs({ ...base(f), ...c, page_size: c.page_size ?? 25 })}`)),
   followups: (page = 1) => unwrap(voiceApi.get<FollowUps>(`${BASE}/followups/${qs({ page })}`)),
   createFollowUp: (callId: string, body: { title: string; assigned_to?: string; due_date?: string }) =>
     voiceApi.post(`${BASE}/calls/${callId}/followups/`, body),

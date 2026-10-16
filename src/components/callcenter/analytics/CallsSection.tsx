@@ -4,7 +4,7 @@ import { appLocale } from "@/utils/appLocale";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileAudio, Mic, PhoneIncoming, PhoneOutgoing, X } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, FileAudio, Mic, PhoneIncoming, PhoneOutgoing, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,51 @@ export function CallsSection({ filters, callFilters, update, aiEnabled }: Props)
   const page = callFilters.page ?? 1;
   const pages = q.data ? Math.max(1, Math.ceil(q.data.count / q.data.page_size)) : 1;
   const extra = (["topic", "intent", "sentiment", "resolution", "problem"] as const).filter((k) => callFilters[k]);
+  const [exporting, setExporting] = useState(false);
+
+  // Every call that matches the current filters (not just the page on screen), 100 at a time.
+  const fetchAllMatching = async (): Promise<CallRow[]> => {
+    const all: CallRow[] = [];
+    for (let p = 1; p <= 50; p++) {
+      const res = await callAnalyticsApi.calls(filters, { ...callFilters, page: p, page_size: 100 });
+      all.push(...res.results);
+      if (all.length >= res.count || res.results.length === 0) break;
+    }
+    return all;
+  };
+  const numberOf = (c: CallRow) => ((c.direction === "inbound" ? c.caller : c.destination) || "").trim();
+
+  const copyNumbers = async () => {
+    setExporting(true);
+    try {
+      const numbers = Array.from(new Set((await fetchAllMatching()).map(numberOf).filter(Boolean)));
+      await navigator.clipboard.writeText(numbers.join("\n"));
+      toast({ title: t("an.copied", { count: numbers.length }) });
+    } catch {
+      toast({ title: t("an.copy_failed"), variant: "destructive" });
+    }
+    setExporting(false);
+  };
+
+  const downloadCsv = async () => {
+    setExporting(true);
+    try {
+      const quote = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const lines = [["Number", "Direction", "When", "Outcome", "Agent", "Talk seconds", "IVR flow"].map(quote).join(",")];
+      for (const c of await fetchAllMatching()) {
+        lines.push([numberOf(c), c.direction, fmtDateTime(c.started_at), c.outcome, c.answered_by || "", c.connected_seconds ?? "", c.ivr_flow?.name ?? ""].map(quote).join(","));
+      }
+      const url = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `calls-${callFilters.filter || "all"}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: t("an.copy_failed"), variant: "destructive" });
+    }
+    setExporting(false);
+  };
 
   return (
     <div className="space-y-3">
@@ -52,6 +97,10 @@ export function CallsSection({ filters, callFilters, update, aiEnabled }: Props)
           <Badge key={k} variant="secondary" className="gap-1 text-[11px]">{t(`an.cf.${k}` as "an.cf.topic")}: {String(callFilters[k])}
             <button type="button" aria-label={t("an.clear_filters")} onClick={() => update({ [k]: null })}><X className="h-3 w-3" /></button></Badge>
         ))}
+        <span className="ml-auto flex gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" disabled={exporting || !q.data?.count} onClick={() => void copyNumbers()}><Copy className="h-3 w-3" />{t("an.copy_numbers")}</Button>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" disabled={exporting || !q.data?.count} onClick={() => void downloadCsv()}><Download className="h-3 w-3" />{t("an.download_csv")}</Button>
+        </span>
       </div>
 
       <Panel title={t("an.calls_title")} hint={q.data ? t("an.calls_count", { count: q.data.count }) : undefined} loading={q.isLoading && !q.data} error={q.error as Error} onRetry={() => q.refetch()}

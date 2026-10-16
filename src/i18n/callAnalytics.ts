@@ -198,6 +198,10 @@ export const anEn = {
   "an.insight_open": "Open calls",
 
   "an.calls_title": "Recent calls",
+  "an.copy_numbers": "Copy numbers",
+  "an.download_csv": "Download CSV",
+  "an.copied": "Copied {{count}} numbers",
+  "an.copy_failed": "Couldn't copy the numbers. Try again.",
   "an.calls_count": "{{count}} calls match",
   "an.calls_empty": "No calls match these filters.",
   "an.qf.all": "All calls",
