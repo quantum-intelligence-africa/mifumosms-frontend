@@ -4,13 +4,14 @@
 // bar at the bottom of the page.
 import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState, Fragment } from "react";
-import { ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search, Sparkles } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -190,7 +191,19 @@ export default function CallHistory() {
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState<string | null>(null);
+  // Deleting call logs is allowed only while SENDA support has switched it on for this organization (owners/admins only).
+  const [deleteUntil, setDeleteUntil] = useState<string | null>(null);
+  const [deleteMode, setDeleteMode] = useState<null | "selected" | "matching">(null);
+  const [deleteText, setDeleteText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const player = useRecordingPlayer();
+
+  useEffect(() => {
+    voiceApi.get<{ allowed: boolean; expires_at: string | null }>("/voice/calls/deletion/").then((res) => {
+      if (res.success && res.data?.allowed) setDeleteUntil(res.data.expires_at);
+    });
+  }, []);
+  const deletionAllowed = !!deleteUntil && new Date(deleteUntil).getTime() > Date.now();
 
   useEffect(() => {
     voiceApi.get<AgentSummary[]>("/voice/agents/").then((res) => res.success && res.data && setAgents(res.data));
@@ -267,6 +280,36 @@ export default function CallHistory() {
     });
   };
 
+  const runDelete = async () => {
+    if (!deleteMode || deleting) return;
+    setDeleting(true);
+    const body = deleteMode === "selected"
+      ? { ids: [...selectedCallIds] }
+      : {
+          all_matching: true,
+          filters: {
+            direction: tab === "inbound" || tab === "outbound" ? tab : undefined, missed: tab === "missed" ? "true" : undefined,
+            days: range !== "all" ? range : undefined, q: search || undefined, agent: agentId !== "all" ? agentId : undefined,
+            sentiment: sentiment !== "any" ? sentiment : undefined,
+          },
+        };
+    const res = await voiceApi.post<{ deleted: number; skipped_live: number }>("/voice/calls/delete/", body);
+    setDeleting(false);
+    if (!res.success || !res.data) {
+      setError(res.error || t("voice.calls.delete_failed"));
+      setDeleteMode(null);
+      return;
+    }
+    setDeleteMode(null);
+    setDeleteText("");
+    setSelectedCallIds(new Set());
+    setAnalysisMessage(
+      t("voice.calls.delete_done", { count: res.data.deleted }) + (res.data.skipped_live ? ` · ${t("voice.calls.delete_skipped_live", { count: res.data.skipped_live })}` : ""),
+    );
+    setDetails({});
+    await fetchCalls(1, false);
+  };
+
   const analyzeSelected = async (callIds: string[]) => {
     if (!callIds.length || analyzing) return;
     setAnalyzing(true);
@@ -323,7 +366,7 @@ export default function CallHistory() {
   };
 
   const filtered = search || tab !== "all" || range !== "all" || agentId !== "all" || sentiment !== "any";
-  const selectableCalls = calls.filter((call) => Boolean(call.recording));
+  const selectableCalls = calls.filter((call) => Boolean(call.recording) || deletionAllowed);
   const allSelectableSelected = selectableCalls.length > 0 && selectableCalls.every((call) => selectedCallIds.has(call.id));
 
   return (
@@ -392,12 +435,27 @@ export default function CallHistory() {
                   <p className="text-sm text-foreground/80">
                     {analysisMessage || t("voice.calls.selected_count", { count: selectedCallIds.size })}
                   </p>
-                  {selectedCallIds.size > 0 && (
-                    <Button size="sm" onClick={() => analyzeSelected([...selectedCallIds])} disabled={analyzing}>
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                      {analyzing ? t("voice.calls.analysis_running") : t("voice.calls.analyze_selected")}
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCallIds.size > 0 && calls.some((c) => selectedCallIds.has(c.id) && c.recording) && (
+                      <Button size="sm" onClick={() => analyzeSelected(calls.filter((c) => selectedCallIds.has(c.id) && c.recording).map((c) => c.id))} disabled={analyzing}>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        {analyzing ? t("voice.calls.analysis_running") : t("voice.calls.analyze_selected")}
+                      </Button>
+                    )}
+                    {deletionAllowed && selectedCallIds.size > 0 && (
+                      <Button size="sm" variant="destructive" onClick={() => { setDeleteText(""); setDeleteMode("selected"); }}>
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />{t("voice.calls.delete_selected")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {deletionAllowed && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                  <p className="text-xs text-foreground/80">{t("voice.calls.delete_allowed_until", { time: new Date(deleteUntil as string).toLocaleString(appLocale(), { dateStyle: "medium", timeStyle: "short" }) })}</p>
+                  <Button size="sm" variant="outline" disabled={!count} onClick={() => { setDeleteText(""); setDeleteMode("matching"); }}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />{t("voice.calls.delete_matching", { count })}
+                  </Button>
                 </div>
               )}
               <Select value={agentId} onValueChange={setAgentId}>
@@ -511,7 +569,7 @@ export default function CallHistory() {
                                   aria-label={t("voice.calls.select_call")}
                                   checked={selectedCallIds.has(call.id)}
                                   onChange={() => toggleSelected(call.id)}
-                                  disabled={!rec}
+                                  disabled={!rec && !deletionAllowed}
                                   className="h-4 w-4 rounded border-border accent-primary"
                                 />
                               </TableCell>
@@ -712,6 +770,23 @@ export default function CallHistory() {
         </main>
       </div>
       <RecordingPlayerBar track={player.track} playing={player.playing} onPlayingChange={player.setPlaying} onClose={player.close} />
+      <Dialog open={!!deleteMode} onOpenChange={(o) => { if (!o && !deleting) { setDeleteMode(null); setDeleteText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("voice.calls.delete_title")}</DialogTitle>
+            <DialogDescription>
+              {deleteMode === "selected"
+                ? t("voice.calls.delete_body_selected", { count: selectedCallIds.size })
+                : t("voice.calls.delete_body_matching", { count })}
+            </DialogDescription>
+          </DialogHeader>
+          <Input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder={t("voice.calls.delete_type")} aria-label={t("voice.calls.delete_type")} autoComplete="off" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeleteMode(null); setDeleteText(""); }} disabled={deleting}>{t("voice.calls.delete_cancel")}</Button>
+            <Button variant="destructive" onClick={runDelete} disabled={deleteText.trim() !== "DELETE" || deleting}>{t("voice.calls.delete_confirm")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

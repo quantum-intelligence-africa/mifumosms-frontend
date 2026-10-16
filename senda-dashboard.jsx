@@ -12461,6 +12461,15 @@ function VoiceNumbersTab() {
   const [sumTzList, setSumTzList] = useState(['Africa/Dar_es_Salaam']);
   const [sumSaved, setSumSaved] = useState('');
   const [sumBusy, setSumBusy]   = useState(false);
+  // Letting an organization delete its call logs (for a limited time). Staff decide; the organization cannot allow itself.
+  const [grants, setGrants]     = useState([]);
+  const [delQ, setDelQ]         = useState('');
+  const [delHits, setDelHits]   = useState([]);
+  const [delOrg, setDelOrg]     = useState(null);
+  const [delHours, setDelHours] = useState(24);
+  const [delReason, setDelReason] = useState('');
+  const [delBusy, setDelBusy]   = useState(false);
+  const [delLog, setDelLog]     = useState(null);   // null = hidden, array = the ledger of deleted calls
   const [hearing, setHearing] = useState('');            // voice id being fetched/played ('' = none)
   const audioRef = useRef(null);
   // Speak the text in a voice so the admin hears it before saving. The server makes the audio; no key is in the browser.
@@ -12522,6 +12531,32 @@ function VoiceNumbersTab() {
     });
   };
 
+  const loadGrants = () => voiceAdminFetch('/voice/admin/call-deletion/', {}, onLogout).then(res => { if (res.success) setGrants(res.data || []); });
+  useEffect(() => { loadGrants(); }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (delOrg || delQ.trim().length < 2) { setDelHits([]); return; }
+    const id = setTimeout(() => {
+      voiceAdminFetch(`/voice/admin/tenants/?q=${encodeURIComponent(delQ.trim())}`, {}, onLogout).then(res => { if (res.success) setDelHits(res.data || []); });
+    }, 300);
+    return () => clearTimeout(id);
+  }, [delQ, delOrg, onLogout]);
+  const allowDeletion = () => {
+    if (!delOrg) return;
+    setDelBusy(true);
+    voiceAdminFetch('/voice/admin/call-deletion/', { method: 'POST', body: JSON.stringify({ tenant_id: delOrg.id, hours: Number(delHours), reason: delReason.trim() }) }, onLogout).then(res => {
+      setDelBusy(false);
+      if (!res.success) { showToast?.(res.error || 'Could not allow deletion.', 'error'); return; }
+      setGrants(res.data || []); setDelOrg(null); setDelQ(''); setDelReason('');
+      showToast?.('Deleting call logs is allowed for that organization until the time shown.', 'success');
+    });
+  };
+  const revokeDeletion = (g) => {
+    voiceAdminFetch(`/voice/admin/call-deletion/${g.id}/revoke/`, { method: 'POST' }, onLogout).then(res => {
+      if (!res.success) { showToast?.(res.error || 'Could not switch it off.', 'error'); return; }
+      loadGrants(); showToast?.('Deleting call logs is switched off for that organization.', 'success');
+    });
+  };
+  const showDeletedLog = () => voiceAdminFetch('/voice/admin/call-deletion/log/', {}, onLogout).then(res => { if (res.success) setDelLog(res.data || []); });
   const sumNow = JSON.stringify([sumMode, [...sumTimes].sort(), sumTz]);
   const sumValid = sumMode === 'instant' || (sumTimes.length > 0 && sumTimes.every(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)));
   const saveSummary = () => {
@@ -12757,6 +12792,80 @@ function VoiceNumbersTab() {
               {sumBusy ? 'Saving…' : 'Save'}
             </button>
           </div>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call log deletion</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
+          An organization can delete its own call logs (for example test calls) only while you allow it here, and only its owners and admins can. Deleting is permanent for
+          the organization: the calls, recordings, transcripts and notes are removed and nobody in it will see them again. SENDA keeps a small record of what was deleted
+          and when, and the deleted minutes still count towards the plan.
+        </p>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-start'}}>
+          <div style={{position:'relative',minWidth:240}}>
+            {delOrg ? (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,border:'1px solid #e2e8f0',borderRadius:10,padding:'7px 12px',fontSize:13,height:36,boxSizing:'border-box'}}>
+                <span><b>{delOrg.name}</b></span>
+                <button onClick={() => { setDelOrg(null); setDelQ(''); }} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>Change</button>
+              </div>
+            ) : (
+              <>
+                <input className="senda-input" value={delQ} onChange={e => setDelQ(e.target.value)} placeholder="Find an organization…" style={{height:36,fontSize:13,width:'100%'}}/>
+                {delHits.length > 0 && (
+                  <div style={{position:'absolute',top:40,left:0,right:0,background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,zIndex:20,maxHeight:220,overflowY:'auto',boxShadow:'0 6px 20px rgba(15,23,42,.12)'}}>
+                    {delHits.map(h => (
+                      <button key={h.id} onClick={() => { setDelOrg(h); setDelHits([]); }}
+                        style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',border:'none',background:'none',fontSize:13,cursor:'pointer'}}>
+                        <b>{h.name}</b> <span style={{color:'#94a3b8'}}>· {h.subdomain}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <select className="senda-input" value={delHours} onChange={e => setDelHours(e.target.value)} aria-label="Allow for" style={{height:36,fontSize:13,minWidth:130}}>
+            {[1, 6, 24, 72].map(h => <option key={h} value={h}>{h === 1 ? 'for 1 hour' : `for ${h} hours`}</option>)}
+          </select>
+          <input className="senda-input" value={delReason} onChange={e => setDelReason(e.target.value)} placeholder="Reason (e.g. test calls)" maxLength={300} style={{height:36,fontSize:13,flex:1,minWidth:180}}/>
+          <button disabled={!delOrg || delBusy} onClick={allowDeletion}
+            style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,cursor:(!delOrg || delBusy) ? 'default' : 'pointer',opacity:(!delOrg || delBusy) ? .5 : 1}}>
+            {delBusy ? 'Saving…' : 'Allow'}
+          </button>
+        </div>
+        {grants.length > 0 && (
+          <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:6}}>
+            {grants.slice(0, 8).map(g => (
+              <div key={g.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap',fontSize:12,border:'1px solid #eef2f7',borderRadius:8,padding:'6px 10px'}}>
+                <span>
+                  <b>{g.tenant}</b>
+                  <span style={{color:g.active ? '#15803d' : '#94a3b8',marginLeft:8,fontWeight:700}}>{g.active ? 'Allowed' : (g.revoked_at ? 'Switched off' : 'Expired')}</span>
+                  <span style={{color:'#64748b',marginLeft:8}}>until {new Date(g.expires_at).toLocaleString()}</span>
+                  {g.reason ? <span style={{color:'#94a3b8',marginLeft:8}}>· {g.reason}</span> : null}
+                  <span style={{color:'#64748b',marginLeft:8}}>· {g.deleted_count} calls deleted</span>
+                </span>
+                {g.active && <button onClick={() => revokeDeletion(g)} style={{border:'none',background:'none',color:'#b91c1c',fontWeight:700,fontSize:12,cursor:'pointer'}}>Switch off</button>}
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{marginTop:10}}>
+          <button onClick={() => (delLog ? setDelLog(null) : showDeletedLog())} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer',padding:0}}>
+            {delLog ? 'Hide the deleted-calls record' : 'Show the deleted-calls record'}
+          </button>
+          {delLog && (
+            <div style={{marginTop:8,maxHeight:220,overflowY:'auto',fontSize:12,border:'1px solid #eef2f7',borderRadius:8}}>
+              {delLog.length === 0 && <div style={{padding:'8px 10px',color:'#94a3b8'}}>Nothing has been deleted yet.</div>}
+              {delLog.map(r => (
+                <div key={r.id} style={{display:'flex',gap:10,flexWrap:'wrap',padding:'5px 10px',borderBottom:'1px solid #f1f5f9'}}>
+                  <b>{r.tenant}</b><span>{r.direction}</span><span>{r.from_number} → {r.to_number}</span>
+                  <span style={{color:'#64748b'}}>{new Date(r.started_at).toLocaleString()} · {r.duration_seconds}s</span>
+                  <span style={{color:'#94a3b8'}}>deleted by {r.deleted_by}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
