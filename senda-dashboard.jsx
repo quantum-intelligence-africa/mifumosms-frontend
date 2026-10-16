@@ -13023,6 +13023,27 @@ function VoiceUsageTab() {
       )}
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Usage notice emails</div>
+            <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 0',maxWidth:640}}>
+              When an organization reaches 80%, 90% and 100% of its minutes, the notice always shows in its app. When this is <b>Allowed</b>, the notice is also emailed to its owners and admins.
+              While <b>Paused</b> no usage email is sent (use this while testing). A notice created while paused stays in the app only; it is not emailed later.
+            </p>
+          </div>
+          {cfg && (
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <b style={{color:cfg.usage_emails_enabled ? '#15803d' : '#b45309'}}>{cfg.usage_emails_enabled ? 'Allowed' : 'Paused'}</b>
+              <button className="senda-btn senda-btn-sm" onClick={() => voiceAdminFetch('/voice/admin/voice-usage/settings/', { method: 'PUT', body: JSON.stringify({ usage_emails_enabled: !cfg.usage_emails_enabled }) }, onLogout).then(res => {
+                if (!res.success) { showToast?.(errText(res, 'Could not change it.'), 'error'); return; }
+                setCfg(res.data); showToast?.(res.data.usage_emails_enabled ? 'Usage emails are allowed.' : 'Usage emails are paused.', 'success');
+              })}>{cfg.usage_emails_enabled ? 'Pause emails' : 'Allow emails'}</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Provider reconciliation settings</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>The provider's billing step comes from its price list and is not guessed: until you set it, provider-billable minutes show as "not set".</p>
         {cfg && (
