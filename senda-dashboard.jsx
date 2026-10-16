@@ -12454,6 +12454,13 @@ function VoiceNumbersTab() {
   const [voices, setVoices] = useState([]);               // the voices that can read the message
   const [defaultVoice, setDefaultVoice] = useState('');
   const [voiceDraft, setVoiceDraft] = useState('');
+  // When call summaries are emailed to organizations: after each call, or one digest at chosen times of the day.
+  const [sumMode, setSumMode]   = useState('instant');
+  const [sumTimes, setSumTimes] = useState([]);
+  const [sumTz, setSumTz]       = useState('Africa/Dar_es_Salaam');
+  const [sumTzList, setSumTzList] = useState(['Africa/Dar_es_Salaam']);
+  const [sumSaved, setSumSaved] = useState('');
+  const [sumBusy, setSumBusy]   = useState(false);
   const [hearing, setHearing] = useState('');            // voice id being fetched/played ('' = none)
   const audioRef = useRef(null);
   // Speak the text in a voice so the admin hears it before saving. The server makes the audio; no key is in the browser.
@@ -12500,6 +12507,9 @@ function VoiceNumbersTab() {
       if (res.success) {
         setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
         setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
+        const mode = res.data?.summary_mode || 'instant', times = res.data?.summary_digest_times || [], tz = res.data?.summary_timezone || 'Africa/Dar_es_Salaam';
+        setSumMode(mode); setSumTimes(times); setSumTz(tz); setSumTzList(res.data?.summary_timezones || [tz]);
+        setSumSaved(JSON.stringify([mode, times, tz]));
       }
     });
   }, [onLogout]);
@@ -12509,6 +12519,20 @@ function VoiceNumbersTab() {
       if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
       setDefaultMsg(res.data.inactive_message); setDefaultVoice(res.data.inactive_voice);
       showToast?.('Default message and voice saved.', 'success');
+    });
+  };
+
+  const sumNow = JSON.stringify([sumMode, [...sumTimes].sort(), sumTz]);
+  const sumValid = sumMode === 'instant' || (sumTimes.length > 0 && sumTimes.every(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)));
+  const saveSummary = () => {
+    setSumBusy(true);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ summary_mode: sumMode, summary_digest_times: sumTimes, summary_timezone: sumTz }) }, onLogout).then(res => {
+      setSumBusy(false);
+      if (!res.success) { showToast?.(res.error || 'Could not save the summary schedule.', 'error'); return; }
+      const times = res.data?.summary_digest_times || [];
+      setSumMode(res.data.summary_mode); setSumTimes(times); setSumTz(res.data.summary_timezone);
+      setSumSaved(JSON.stringify([res.data.summary_mode, times, res.data.summary_timezone]));
+      showToast?.(res.data.summary_mode === 'digest' ? 'Summaries will be sent at the times you chose.' : 'Summaries will be sent right after each call.', 'success');
     });
   };
 
@@ -12680,6 +12704,59 @@ function VoiceNumbersTab() {
               cursor:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? 'default' : 'pointer',opacity:(!defaultDraft.trim() || (defaultDraft === defaultMsg && voiceDraft === defaultVoice)) ? .5 : 1}}>
             Save
           </button>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call summary emails</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
+          Every finished call gets a short Swahili summary: who called, what it was about and what happens next. Choose whether each organization's
+          owners, admins and agents get one email per call, or one email with all their calls at the times you set. This applies to all organizations.
+        </p>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,cursor:'pointer'}}>
+            <input type="radio" name="sum-mode" checked={sumMode === 'instant'} onChange={() => setSumMode('instant')} style={{marginTop:3}}/>
+            <span><b>Right after each call</b><br/><span style={{fontSize:12,color:'#64748b'}}>One email per finished call.</span></span>
+          </label>
+          <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,cursor:'pointer'}}>
+            <input type="radio" name="sum-mode" checked={sumMode === 'digest'} onChange={() => { setSumMode('digest'); if (sumTimes.length === 0) setSumTimes(['18:00']); }} style={{marginTop:3}}/>
+            <span><b>One summary at set times</b><br/><span style={{fontSize:12,color:'#64748b'}}>All calls since the last summary arrive together in one email per person.</span></span>
+          </label>
+          {sumMode === 'digest' && (
+            <div style={{marginLeft:24,display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                {sumTimes.map((t, i) => (
+                  <span key={i} style={{display:'inline-flex',alignItems:'center',gap:4}}>
+                    <input type="time" className="senda-input" value={t} aria-label={'Summary time ' + (i + 1)}
+                      onChange={e => setSumTimes(list => list.map((x, j) => j === i ? e.target.value : x))} style={{height:34,fontSize:13,width:120}}/>
+                    {sumTimes.length > 1 && (
+                      <button onClick={() => setSumTimes(list => list.filter((_, j) => j !== i))} title="Remove this time" aria-label="Remove this time"
+                        style={{border:'none',background:'none',color:'#94a3b8',cursor:'pointer',fontSize:16,lineHeight:1}}>×</button>
+                    )}
+                  </span>
+                ))}
+                {sumTimes.length < 6 && (
+                  <button onClick={() => setSumTimes(list => [...list, '12:00'])}
+                    style={{height:34,padding:'0 12px',borderRadius:9,border:'1.5px dashed #cbd5e1',background:'#fff',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>
+                    + Add a time
+                  </button>
+                )}
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center',fontSize:12,color:'#64748b'}}>
+                Time zone
+                <select className="senda-input" value={sumTz} onChange={e => setSumTz(e.target.value)} aria-label="Time zone" style={{height:34,fontSize:13,minWidth:200}}>
+                  {sumTzList.map(z => <option key={z} value={z}>{z.replace('_', ' ')}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+          <div>
+            <button disabled={sumBusy || !sumValid || sumNow === sumSaved} onClick={saveSummary}
+              style={{height:36,padding:'0 16px',borderRadius:9,border:'none',background:BRAND,color:'#fff',fontWeight:700,fontSize:13,
+                cursor:(sumBusy || !sumValid || sumNow === sumSaved) ? 'default' : 'pointer',opacity:(sumBusy || !sumValid || sumNow === sumSaved) ? .5 : 1}}>
+              {sumBusy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
 
