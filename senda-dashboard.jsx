@@ -12586,10 +12586,18 @@ function AnalysisEmailsTab() {
     return () => clearTimeout(id);
   }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
 
-  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses });
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled });
+  // Opens the report exactly as it would be sent, without sending anything.
+  const preview = async (output) => {
+    const token = getToken();
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${edit.tenant_id}/?output=${output}&lang=${edit.language}&date=${new Date().toISOString().slice(0, 10)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) { showToast?.(res.status === 501 ? 'The PDF library is not installed on the server yet.' : 'Could not build the preview.', 'error'); return; }
+    const blob = await res.blob();
+    window.open(URL.createObjectURL(blob), '_blank');
+  };
   const save = () => {
     setBusy(true);
-    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text }) }, onLogout).then(res => {
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text, daily_report_enabled: edit.daily }) }, onLogout).then(res => {
       setBusy(false);
       if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
       showToast?.(`Saved for ${edit.tenant}.`, 'success');
@@ -12600,7 +12608,7 @@ function AnalysisEmailsTab() {
   const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
   const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
   const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
-  const KIND = { instant:'After the call', digest:'Digest', test:'Test' };
+  const KIND = { instant:'After the call', digest:'Digest', daily:'Daily report', test:'Test' };
 
   return (
     <div style={{padding:24}}>
@@ -12620,7 +12628,7 @@ function AnalysisEmailsTab() {
               {orgs.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No organizations yet.</td></tr>}
               {orgs.map(o => (
                 <tr key={o.tenant_id} style={{borderTop:'1px solid #f1f5f9'}}>
-                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}</div></td>
+                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}{o.daily_report_enabled ? ' · daily report on' : ''}</div></td>
                   <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
                   <td style={td}>
                     {o.recipient_mode === 'assigned_only'
@@ -12660,6 +12668,20 @@ function AnalysisEmailsTab() {
               <textarea className="senda-input" style={{height:90,padding:8,fontSize:13}} value={edit.text} onChange={e => setEdit({ ...edit, text: e.target.value })} placeholder="manager@company.com"/>
             </label>
           )}
+          <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
+            <label style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>
+              <input type="checkbox" checked={edit.daily} onChange={e => setEdit({ ...edit, daily: e.target.checked })}/>
+              Send the Daily Call Intelligence Report (one-page PDF + email) every evening
+            </label>
+            <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 6px'}}>
+              Goes to the same addresses and in the same language as chosen above, once a day after 20:00 in the organization's time zone. It is built from that day's real call records.
+              Preview shows today's report so far; nothing is sent.
+            </p>
+            <div style={{display:'flex',gap:8}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html')}>Preview email</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf')}>Preview PDF</button>
+            </div>
+          </div>
           <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>
           <div style={{display:'flex',gap:8}}>
             <button className="senda-btn senda-btn-sm" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
