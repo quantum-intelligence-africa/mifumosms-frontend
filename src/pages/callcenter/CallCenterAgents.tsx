@@ -35,13 +35,14 @@ interface Draft {
   role: "agent" | "supervisor";
   audio_mode: AudioMode;
   extension: string;
+  always_available: boolean;
   team_ids: string[];
   temporary_password: string;
 }
 
 const EMPTY: Draft = {
   first_name: "", last_name: "", email: "", phone_number: "", role: "agent", audio_mode: "browser",
-  extension: "", team_ids: [], temporary_password: "",
+  extension: "", always_available: false, team_ids: [], temporary_password: "",
 };
 
 interface Credentials {
@@ -128,7 +129,7 @@ export default function CallCenterAgents() {
     setDraft({
       first_name: first, last_name: rest.join(" "), email: agent.email, phone_number: agent.phone_number,
       role: agent.role === "supervisor" ? "supervisor" : "agent", audio_mode: agent.audio_mode, extension: agent.extension,
-      team_ids: agent.teams.map((x) => x.id), temporary_password: "",
+      always_available: !!agent.always_available, team_ids: agent.teams.map((x) => x.id), temporary_password: "",
     });
     setFormError(null);
     setOpen(true);
@@ -191,12 +192,17 @@ export default function CallCenterAgents() {
       setFormError(t("cc.agents.handset_needs_phone"));
       return;
     }
+    if (draft.always_available && !draft.phone_number.trim()) {
+      setFormError(t("cc.agents.always_needs_phone"));
+      return;
+    }
     setSaving(true);
 
     if (editing) {
       const res = await callCenterApi.agents.update(editing.id, {
         name: `${draft.first_name} ${draft.last_name}`.trim() || editing.name,
         phone_number: draft.phone_number, extension: draft.extension, audio_mode: draft.audio_mode, team_ids: draft.team_ids,
+        always_available: draft.always_available,
       });
       let roleError: string | null = null;
       if (res.success && editing.user && tenantId && draft.role !== editing.role) {
@@ -646,6 +652,16 @@ export default function CallCenterAgents() {
                 <Input id="ag-phone" value={draft.phone_number} onChange={(e) => setDraft({ ...draft, phone_number: e.target.value })} placeholder="+255712345678" inputMode="tel" className="font-mono" />
               </div>
             </div>
+
+            {editing && (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-2.5 text-sm">
+                <Checkbox checked={draft.always_available} onCheckedChange={(v) => setDraft({ ...draft, always_available: !!v })} className="mt-0.5" />
+                <span>
+                  <span className="font-medium">{t("cc.agents.always_online")}</span>
+                  <span className="block text-xs text-muted-foreground">{t("cc.agents.always_online_hint")}</span>
+                </span>
+              </label>
+            )}
 
             <div className="space-y-1.5">
               <Label>{t("cc.agents.teams")}</Label>

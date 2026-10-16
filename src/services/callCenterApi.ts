@@ -107,6 +107,8 @@ export interface CCAgent {
   extension: string;
   department: string;
   audio_mode: AudioMode;
+  /** An administrator keeps this agent Available even with no tab open (needs a phone number). */
+  always_available?: boolean;
   is_active: boolean;
   status: AgentStatus;
   /** Status plus what the call layer knows: ringing, on a call, or switched off. */
@@ -122,6 +124,7 @@ export interface AgentProfileInput {
   extension?: string;
   department?: string;
   audio_mode?: AudioMode;
+  always_available?: boolean;
   is_active?: boolean;
   team_ids?: string[];
 }
