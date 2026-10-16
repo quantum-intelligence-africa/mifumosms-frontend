@@ -20,6 +20,7 @@ import { API_CONFIG } from "@/config/api";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import GoogleButton from "@/components/auth/GoogleButton";
 import { PasskeyButton } from "@/components/auth/PasskeyButton";
+import { isPasskeySupported } from "@/services/passkeys";
 
 // Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
 // routes the login attempt to the admin endpoint and drops the user on /admin
@@ -248,8 +249,10 @@ const Login = () => {
     window.location.assign(nextPath || "/dashboard");
   };
 
-  const passkeyError = (description: string) =>
-    toast({ title: t("auth.login.toast_login_failed_title"), description, variant: "destructive" });
+  const passkeyError = (description: string, kind: "error" | "info" = "error") =>
+    kind === "info"
+      ? toast({ title: t("pk.none_title"), description })
+      : toast({ title: t("auth.login.toast_login_failed_title"), description, variant: "destructive" });
 
   // Two separate ways, shown right under "Continue with Google": this device's fingerprint/face, and a passkey of any kind.
   const passkeyButtons = (rounded: string) => (
@@ -264,6 +267,7 @@ const Login = () => {
           onError={passkeyError}
         />
       ))}
+      {isPasskeySupported() && <p className="text-center text-[11px] leading-snug text-gray-500">{t("pk.first_time")}</p>}
     </>
   );
 

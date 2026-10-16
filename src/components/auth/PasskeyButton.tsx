@@ -11,7 +11,8 @@ interface Props {
   onSignedIn: (tokens: { access: string; refresh: string }, user: unknown) => void;
   /** The account still has to finish first-time verification; no tokens exist yet. */
   onNeedsVerification: (state: AccountVerificationState) => void;
-  onError: (message: string) => void;
+  /** ``info`` = not an error (the person simply has no passkey here yet): show it as guidance. */
+  onError: (message: string, kind?: "error" | "info") => void;
   roundedClassName?: string;
   invitationToken?: string;
 }
@@ -57,7 +58,7 @@ export function PasskeyButton({ mode, onSignedIn, onNeedsVerification, onError, 
     setBusy(false);
     if (!res.ok || !res.data) {
       // A 403 carries the organization's own wording (e.g. "only for members of …"); other failures use ours.
-      onError(res.status === 403 ? res.message || t("pk.failed") : wording(res.failure, undefined));
+      onError(res.status === 403 ? res.message || t("pk.failed") : wording(res.failure, undefined), res.failure === "cancelled" ? "info" : "error");
       return;
     }
     const data = res.data;
