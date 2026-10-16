@@ -1,7 +1,7 @@
 // "Teach it": paste text (or give a web address) and SENDA drafts the assistant's purpose, tone, greeting, goodbye and facts, for review.
 // Below it, "Learn from your calls": questions callers asked that the assistant could not answer; the owner writes the true answer.
 // Nothing here changes what callers hear: it all goes to the DRAFT, which is published separately.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,6 +65,23 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
       /* storage can be blocked: the choice is simply not remembered */
     }
   };
+
+  // the models the chosen provider really offers (so nobody has to guess a model name)
+  const [models, setModels] = useState<{ provider: string; list: string[] } | null>(null);
+  const [modelsError, setModelsError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    setModels(null);
+    setModelsError("");
+    void aiAgentApi.teach.models(config.id, aiProvider === SAME ? undefined : aiProvider).then((res) => {
+      if (!alive) return;
+      if (res.success && res.data) setModels({ provider: res.data.provider, list: res.data.models });
+      else setModelsError(describeError(res));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [config.id, aiProvider]);
 
   // teach
   const [text, setText] = useState("");
@@ -190,9 +207,15 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
               </div>
               <div className="min-w-[220px] flex-1 space-y-1.5">
                 <Label htmlFor="teach-model">{t(aiKey("ai.teach.model"))}</Label>
-                <Input id="teach-model" value={aiModel} onChange={(e) => remember(aiProvider, e.target.value)} placeholder={t(aiKey("ai.teach.model_ph"))} disabled={working} />
+                <Input id="teach-model" list="teach-models" value={aiModel} onChange={(e) => remember(aiProvider, e.target.value)} placeholder={t(aiKey("ai.teach.model_ph"))} disabled={working} />
+                <datalist id="teach-models">{models?.list.map((m) => <option key={m} value={m} />)}</datalist>
               </div>
             </div>
+            {models && models.list.length > 0 && <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.models_loaded"), { n: models.list.length, provider: models.provider })}</p>}
+            {models && aiModel.trim() && models.list.length > 0 && !models.list.includes(aiModel.trim()) && (
+              <p className="text-xs text-amber-700">{t(aiKey("ai.teach.model_unknown"), { provider: models.provider })}</p>
+            )}
+            {modelsError && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.models_failed"), { reason: modelsError })}</p>}
             <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.ai_help"))}</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
