@@ -4,6 +4,7 @@ import { anEn } from "@/i18n/callAnalytics";
 import { pgEn } from "@/i18n/pages";
 import { aiEn } from "@/i18n/aiAgent";
 import { tfEn } from "@/i18n/twoFactor";
+import { pkEn } from "@/i18n/passkeys";
 import { useBranding } from "@/contexts/BrandingContext";
 
 const translations = {
@@ -13,6 +14,7 @@ const translations = {
     ...pgEn,
     ...aiEn,
     ...tfEn,
+    ...pkEn,
     "app.name": "SENDA",
     "app.tagline": "Communication Hub",
     "tutorial.title": "Welcome to SENDA",

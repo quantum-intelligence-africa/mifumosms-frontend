@@ -19,6 +19,7 @@ import { googleLoginUrl, inviteTokenFromNext, safeInviteNext } from "@/lib/googl
 import { API_CONFIG } from "@/config/api";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import GoogleButton from "@/components/auth/GoogleButton";
+import { PasskeyButton } from "@/components/auth/PasskeyButton";
 
 // Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
 // routes the login attempt to the admin endpoint and drops the user on /admin
@@ -247,6 +248,18 @@ const Login = () => {
     window.location.assign(nextPath || "/dashboard");
   };
 
+  const passkeyError = (description: string) =>
+    toast({ title: t("auth.login.toast_login_failed_title"), description, variant: "destructive" });
+
+  const passkeyButton = (rounded: string) => (
+    <PasskeyButton
+      roundedClassName={rounded}
+      onSignedIn={handleTwoFactorVerified}
+      onNeedsVerification={setVerification}
+      onError={passkeyError}
+    />
+  );
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -459,6 +472,8 @@ const Login = () => {
             </motion.div>
           </form>
 
+          <div className="mt-5">{passkeyButton("rounded-full")}</div>
+
           {/* Links (hidden on a white-label host) */}
           {!whiteLabelHost && (
           <div className="mt-8 text-center space-y-4">
@@ -658,6 +673,8 @@ const Login = () => {
                 {isLoading ? t("auth.common.signing_in") : t("auth.common.sign_in")}
               </Button>
             </form>
+
+            {passkeyButton("rounded-lg")}
 
             {!whiteLabelHost && (
             <div className="text-center space-y-2 sm:space-y-1">

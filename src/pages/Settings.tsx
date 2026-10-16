@@ -37,6 +37,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { EmailTwoFactorCard } from "@/components/settings/EmailTwoFactorCard";
+import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { EmailVerificationCard } from "@/components/settings/EmailVerificationCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1696,6 +1697,7 @@ const Settings = () => {
 
             <EmailVerificationCard />
             <EmailTwoFactorCard />
+            <PasskeysCard />
 
             {/* Change Password */}
             <Card className="glass border-0">

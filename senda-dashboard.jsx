@@ -6685,6 +6685,97 @@ function TwoFactorCard({ userId, onChanged }) {
   );
 }
 
+// Passkeys for one user: credentials (metadata only), revoke, "require passkey" policy, and the global switch for super admins.
+function PasskeysCard({ userId, isSuperAdmin }) {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [info, setInfo]     = useState(null);
+  const [global, setGlobal] = useState(null);
+  const [busy, setBusy]     = useState(false);
+  const [err, setErr]       = useState(null);
+
+  const load = useCallback(() => {
+    adminFetch(`/users/${userId}/passkeys`, {}, onLogout)
+      .then(res => { if (res.success) { setInfo(res.data); setErr(null); } else setErr(res.error?.message || 'Could not load passkeys.'); })
+      .catch(() => setErr('Could not load passkeys.'));
+    adminFetch('/passkey-settings', {}, onLogout).then(res => { if (res.success) setGlobal(res.data); }).catch(() => {});
+  }, [userId, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const revoke = (pk) => {
+    if (!window.confirm(`Revoke the passkey "${pk.name}"? It stops working immediately and ${info.name} is notified by email.`)) return;
+    setBusy(true);
+    adminFetch(`/users/${userId}/passkeys/${pk.id}/revoke`, { method: 'POST' }, onLogout)
+      .then(res => { if (res.success) { setInfo(res.data); showToast?.('Passkey revoked.', 'success'); } else showToast?.(res.error?.message || 'Could not revoke.', 'error'); })
+      .catch(() => showToast?.('Could not revoke.', 'error'))
+      .finally(() => setBusy(false));
+  };
+  const setRequired = (required) => {
+    if (!window.confirm(required ? `Require ${info.name} to sign in with a passkey? Password sign-in will be refused while they have a passkey registered.` : `Allow ${info.name} to sign in with a password again?`)) return;
+    setBusy(true);
+    adminFetch(`/users/${userId}/passkey-policy`, { method: 'PATCH', body: JSON.stringify({ required }) }, onLogout)
+      .then(res => { if (res.success) { setInfo(i => ({ ...i, passkey_required: res.data.passkey_required })); showToast?.('Policy saved.', 'success'); } else showToast?.(res.error?.message || 'Could not save.', 'error'); })
+      .catch(() => showToast?.('Could not save.', 'error'))
+      .finally(() => setBusy(false));
+  };
+  const toggleGlobal = () => {
+    const next = !global.passkeys_enabled;
+    if (!window.confirm(next ? 'Turn passkey sign-in on for everyone?' : 'Turn passkey sign-in off platform-wide? Existing passkeys are kept; people sign in with their password.')) return;
+    setBusy(true);
+    adminFetch('/passkey-settings', { method: 'PATCH', body: JSON.stringify({ passkeys_enabled: next }) }, onLogout)
+      .then(res => { if (res.success) { setGlobal(res.data); showToast?.('Setting saved.', 'success'); } else showToast?.(res.error?.message || 'Could not save.', 'error'); })
+      .catch(() => showToast?.('Could not save.', 'error'))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="senda-card" style={{padding:20}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:12,flexWrap:'wrap'}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:'#0f172a'}}>Passkeys</h3>
+        {info && (
+          <button className={`senda-btn senda-btn-sm ${info.passkey_required ? '' : 'senda-btn-primary'}`} disabled={busy}
+            onClick={()=>setRequired(!info.passkey_required)}
+            style={info.passkey_required ? {background:'#fee2e2',color:'#dc2626',border:'none'} : undefined}>
+            {info.passkey_required ? 'Stop requiring passkey' : 'Require passkey'}
+          </button>
+        )}
+      </div>
+      {err && <p style={{fontSize:13,color:'#dc2626'}}>{err}</p>}
+      {!info && !err && <p style={{fontSize:13,color:'#94a3b8'}}>Loading…</p>}
+      {info && (
+        <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginBottom:12}}>
+            <Field label="Registered passkeys" value={(info.passkeys || []).filter(p => !p.revoked_at).length}/>
+            <Field label="Passkey required" value={info.passkey_required ? 'Yes (password sign-in refused once they have one)' : 'No'}/>
+          </div>
+          {(info.passkeys || []).length === 0 ? <p style={{fontSize:13,color:'#94a3b8'}}>No passkeys registered.</p> : (
+            <ul style={{listStyle:'none',margin:0,padding:0,display:'grid',gap:8}}>
+              {info.passkeys.map(pk => (
+                <li key={pk.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,fontSize:12.5,flexWrap:'wrap'}}>
+                  <span style={{color:pk.revoked_at ? '#94a3b8' : '#0f172a',fontWeight:600}}>
+                    {pk.name} · {pk.rp_id}{pk.revoked_at ? ' · revoked' : ''}
+                    <span style={{display:'block',fontWeight:400,color:'#94a3b8'}}>
+                      Added {new Date(pk.created_at).toLocaleDateString()} · {pk.last_used_at ? `last used ${new Date(pk.last_used_at).toLocaleString()}` : 'never used'}
+                    </span>
+                  </span>
+                  {!pk.revoked_at && <button className="senda-btn senda-btn-sm" disabled={busy} onClick={()=>revoke(pk)} style={{background:'#fee2e2',color:'#dc2626',border:'none'}}>Revoke</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {global && (
+        <div style={{marginTop:16,paddingTop:12,borderTop:'1px solid #e2e8f0',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <p style={{fontSize:12.5,color:'#475569'}}>
+            Platform passkey sign-in: <strong>{global.passkeys_enabled ? 'On' : 'Off'}</strong> · {global.users_with_passkeys} user(s), {global.total_credentials} credential(s)
+          </p>
+          {isSuperAdmin && <button className="senda-btn senda-btn-sm" disabled={busy} onClick={toggleGlobal}>{global.passkeys_enabled ? 'Turn off' : 'Turn on'}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── User Detail Drawer ─────────────────────────────────────────────────────────
 // Opened by clicking a user's name/ID in UsersTab. One full-page view for
 // "everything concerning that user" — profile, balance, sender IDs,
@@ -6972,6 +7063,8 @@ function UserDetailView({ user, onClose, onChanged, isSuperAdmin }) {
                 </div>
 
                 {!d.is_deleted && <TwoFactorCard userId={user.id} onChanged={refreshAll}/>}
+
+                {!d.is_deleted && <PasskeysCard userId={user.id} isSuperAdmin={isSuperAdmin}/>}
 
                 {isSuperAdmin && !d.is_deleted && (
                   <div className="senda-card" style={{padding:20}}>
@@ -12453,6 +12546,159 @@ function IvrFlowsTab() {
   );
 }
 
+// Analysis Emails (SENDA staff): per organization, the language of its call-analysis emails and exactly who receives them,
+// and the log of every email sent (who, when, which organization). The organization cannot change or see any of this.
+function AnalysisEmailsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [orgs, setOrgs]       = useState([]);
+  const [error, setError]     = useState(null);
+  const [edit, setEdit]       = useState(null);           // { tenant_id, tenant, language, recipient_mode, text }
+  const [busy, setBusy]       = useState(false);
+  const [fOrg, setFOrg]       = useState('');
+  const [fRecipient, setFRecipient] = useState('');
+  const [fStatus, setFStatus] = useState('');
+  const [fDays, setFDays]     = useState('30');
+  const [page, setPage]       = useState(1);
+  const [log, setLog]         = useState({ count: 0, results: [] });
+  const PAGE = 50;
+  const errText = (res, fallback) => {
+    if (typeof res.error === 'string') return res.error;
+    const e = res.error || res.data;
+    if (e && typeof e === 'object') return Object.values(e).flat().join(' ') || fallback;
+    return fallback;
+  };
+
+  const loadOrgs = () => voiceAdminFetch('/audio/admin/delivery/', {}, onLogout).then(res => {
+    if (!res.success) { setError(errText(res, 'Could not load the organizations.')); return; }
+    setError(null); setOrgs(res.data || []);
+  });
+  useEffect(() => { loadOrgs(); }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [fOrg, fRecipient, fStatus, fDays]);
+  useEffect(() => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE) });
+    if (fOrg) params.set('tenant', fOrg);
+    if (fRecipient.trim()) params.set('recipient', fRecipient.trim());
+    if (fStatus) params.set('status', fStatus);
+    if (fDays) params.set('days', fDays);
+    const id = setTimeout(() => {
+      voiceAdminFetch(`/audio/admin/deliveries/?${params}`, {}, onLogout).then(res => { if (res.success) setLog(res.data); });
+    }, fRecipient ? 300 : 0);
+    return () => clearTimeout(id);
+  }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
+
+  const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.default_recipients, extras: o.tenant_extra_addresses });
+  const save = () => {
+    setBusy(true);
+    voiceAdminFetch(`/audio/admin/delivery/${edit.tenant_id}/`, { method: 'PUT', body: JSON.stringify({ language: edit.language, recipient_mode: edit.recipient_mode, assigned_recipients: edit.text }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not save.'), 'error'); return; }
+      showToast?.(`Saved for ${edit.tenant}.`, 'success');
+      setEdit(null); loadOrgs();
+    });
+  };
+  const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
+  const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
+  const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
+  const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
+  const KIND = { instant:'After the call', digest:'Digest', test:'Test' };
+
+  return (
+    <div style={{padding:24}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Analysis Emails</h2>
+      <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 14px'}}>
+        For each organization, choose the language of its call-analysis emails and exactly who receives them. Below is a log of every email sent: who, when and for which organization.
+        When you choose "Only the assigned addresses", nobody else gets the analysis, not even the organization's owner.
+        When it is sent (after each call or as a digest) is set under Voice Numbers → Call summary emails.
+      </p>
+      {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',marginBottom:16}}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Organization</th><th style={th}>Language</th><th style={th}>Who receives it</th><th style={th}>Last 30 days</th><th style={th}></th></tr></thead>
+            <tbody>
+              {orgs.length === 0 && <tr><td colSpan={5} style={{...td,color:'#94a3b8'}}>No organizations yet.</td></tr>}
+              {orgs.map(o => (
+                <tr key={o.tenant_id} style={{borderTop:'1px solid #f1f5f9'}}>
+                  <td style={td}><b>{o.tenant}</b><div style={{fontSize:11,color:'#94a3b8'}}>{o.ai_enabled ? 'AI analysis on' : 'AI analysis off'}{o.email_on ? '' : ' · email switched off by the organization'}</div></td>
+                  <td style={td}>{o.language === 'en' ? 'English' : 'Swahili'}</td>
+                  <td style={td}>
+                    {o.recipient_mode === 'assigned_only'
+                      ? <><div style={{fontSize:11,fontWeight:800,color:'#15803d'}}>ONLY THESE</div>{o.assigned_recipients.map(a => <div key={a}>{a}</div>)}</>
+                      : <><div style={{fontSize:11,fontWeight:800,color:'#64748b'}}>OWNERS, ADMINS, THE AGENT + EXTRAS</div>{o.default_recipients.map(a => <div key={a} style={{color:'#475569'}}>{a}</div>)}{o.tenant_extra_addresses.map(a => <div key={a} style={{color:'#475569'}}>{a} <span style={{color:'#94a3b8'}}>(extra)</span></div>)}</>}
+                  </td>
+                  <td style={td}>{o.sent_30d} sent{o.failed_30d ? <b style={{color:'#b91c1c'}}> · {o.failed_30d} failed</b> : null}<div style={{fontSize:11,color:'#94a3b8'}}>last: {fmt(o.last_sent_at)}</div></td>
+                  <td style={td}>
+                    <button onClick={() => startEdit(o)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Edit</button>
+                    <button onClick={() => setFOrg(o.tenant_id)} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer'}}>Log</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {edit && (
+        <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'12px 16px',marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>{edit.tenant}</div>
+          <div style={{display:'flex',gap:14,flexWrap:'wrap',marginBottom:10}}>
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Language of the analysis email
+              <select className="senda-input" style={{...sel,height:34}} value={edit.language} onChange={e => setEdit({ ...edit, language: e.target.value })}>
+                <option value="sw">Swahili</option><option value="en">English</option>
+              </select>
+            </label>
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Who receives it
+              <select className="senda-input" style={{...sel,height:34,minWidth:280}} value={edit.recipient_mode} onChange={e => setEdit({ ...edit, recipient_mode: e.target.value })}>
+                <option value="default">Owners, admins, the agent and the organization's extra addresses</option>
+                <option value="assigned_only">Only the addresses I assign below</option>
+              </select>
+            </label>
+          </div>
+          {edit.recipient_mode === 'assigned_only' && (
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,marginBottom:10}}>Assigned addresses (one per line or separated by commas)
+              <textarea className="senda-input" style={{height:90,padding:8,fontSize:13}} value={edit.text} onChange={e => setEdit({ ...edit, text: e.target.value })} placeholder="manager@company.com"/>
+            </label>
+          )}
+          <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>
+          <div style={{display:'flex',gap:8}}>
+            <button className="senda-btn senda-btn-sm" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+            <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => setEdit(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:8}}>
+        <span style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Emails sent</span>
+        <select className="senda-input" value={fOrg} onChange={e => setFOrg(e.target.value)} style={{...sel,minWidth:200}} aria-label="Organization">
+          <option value="">All organizations</option>{orgs.map(o => <option key={o.tenant_id} value={o.tenant_id}>{o.tenant}</option>)}
+        </select>
+        <input className="senda-input" value={fRecipient} onChange={e => setFRecipient(e.target.value)} placeholder="Search an email address" style={{height:36,fontSize:13,width:220}}/>
+        <select className="senda-input" value={fStatus} onChange={e => setFStatus(e.target.value)} style={sel} aria-label="Result"><option value="">Sent and failed</option><option value="sent">Sent</option><option value="failed">Failed</option></select>
+        <select className="senda-input" value={fDays} onChange={e => setFDays(e.target.value)} style={sel} aria-label="Period"><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="">All time</option></select>
+      </div>
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Time</th><th style={th}>Organization</th><th style={th}>Sent to</th><th style={th}>Type</th><th style={th}>Language</th><th style={th}>Calls</th><th style={th}>Result</th></tr></thead>
+            <tbody>
+              {log.results.length === 0 && <tr><td colSpan={7} style={{...td,color:'#94a3b8'}}>No emails match.</td></tr>}
+              {log.results.map(r => (
+                <tr key={r.id} style={{borderTop:'1px solid #f1f5f9'}} title={r.subject}>
+                  <td style={td}>{fmt(r.sent_at)}</td><td style={td}><b>{r.tenant}</b></td><td style={td}>{r.recipient}</td>
+                  <td style={td}>{KIND[r.kind] || r.kind}</td><td style={td}>{r.language === 'en' ? 'English' : 'Swahili'}</td><td style={td}>{r.calls_included}</td>
+                  <td style={{...td,fontWeight:700,color:r.status === 'sent' ? '#15803d' : '#b91c1c'}}>{r.status === 'sent' ? 'Sent' : 'Failed'}{r.error ? <div style={{fontWeight:500,fontSize:11,color:'#94a3b8'}}>{r.error}</div> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < log.count} count={log.count} label="emails" />
+      </div>
+    </div>
+  );
+}
+
 // Voice Usage & Billing Analytics (SENDA staff). Every number comes from the usage ledger and the provider's own end-of-call reports;
 // where something is unknown (the provider's billing step, a plan with no allowance) the page says so instead of guessing.
 function VoiceUsageTab() {
@@ -17437,6 +17683,7 @@ const NAV_GROUPS = [
     { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
     { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
     { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
+    { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
     { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
@@ -21640,6 +21887,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     voicenumbers:   <VoiceNumbersTab/>,
     calllogs:       <VoiceCallLogsTab/>,
     voiceusage:     <VoiceUsageTab/>,
+    analysisemails: <AnalysisEmailsTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,

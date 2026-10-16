@@ -3,6 +3,7 @@ import { anSw } from "@/i18n/callAnalyticsSw";
 import { pgSw } from "@/i18n/pagesSw";
 import { aiSw } from "@/i18n/aiAgentSw";
 import { tfSw } from "@/i18n/twoFactorSw";
+import { pkSw } from "@/i18n/passkeysSw";
 
 // Swahili dictionary. Loaded on demand (see LanguageContext): English is the default, so most
 // visitors never download this ~230 kB of text.
@@ -12,6 +13,7 @@ const sw: Record<string, string> = {
   ...pgSw,
   ...aiSw,
   ...tfSw,
+  ...pkSw,
   "app.name": "SENDA",
   "app.tagline": "Kituo cha Mawasiliano",
   "tutorial.title": "Karibu SENDA",
