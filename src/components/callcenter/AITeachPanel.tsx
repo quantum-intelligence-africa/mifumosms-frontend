@@ -24,11 +24,12 @@ interface Props {
 
 const MAX_KNOWLEDGE = 12000;
 
-/** Wait for a background job: asks every 2 seconds, up to about three minutes. */
-async function waitFor<T>(jobId: string): Promise<TeachJob<T>> {
-  for (let i = 0; i < 90; i++) {
+/** Wait for a background job: asks every 2 seconds, up to about ten minutes (a long text on a slow AI provider takes a while). */
+async function waitFor<T>(jobId: string, onProgress?: (p: { done: number; total: number }) => void): Promise<TeachJob<T>> {
+  for (let i = 0; i < 300; i++) {
     const res = await aiAgentApi.teach.job<T>(jobId);
     if (res.success && res.data && (res.data.status === "done" || res.data.status === "failed")) return res.data;
+    if (res.success && res.data?.progress) onProgress?.(res.data.progress);
     await new Promise((r) => setTimeout(r, 2000));
   }
   return { id: jobId, kind: "teach", status: "failed", error: "It is taking too long. Try again in a moment.", result: null };
@@ -44,6 +45,7 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
   const [url, setUrl] = useState("");
   const [mode, setMode] = useState<"replace" | "merge">(settings.knowledge.trim() ? "merge" : "replace");
   const [working, setWorking] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<TeachProposal | null>(null);
   const [saving, setSaving] = useState(false);
@@ -57,6 +59,7 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
 
   const teach = async () => {
     setWorking(true);
+    setProgress(null);
     setError("");
     setDraft(null);
     const start = await aiAgentApi.teach.start(config.id, { text, url: url.trim() || undefined, mode });
@@ -65,8 +68,9 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
       setError(describeError(start) || t(aiKey("ai.teach.failed")));
       return;
     }
-    const job = await waitFor<TeachProposal>(start.data.id);
+    const job = await waitFor<TeachProposal>(start.data.id, setProgress);
     setWorking(false);
+    setProgress(null);
     if (job.status === "done" && job.result) setDraft(job.result);
     else setError(job.error || t(aiKey("ai.teach.failed")));
   };
@@ -159,7 +163,9 @@ export function AITeachPanel({ config, settings, meta, onChanged }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => void teach()} disabled={archived || working || (text.trim().length < 40 && !url.trim())}>
-              {working ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t(aiKey("ai.teach.working"))}</> : t(aiKey("ai.teach.start"))}
+              {working
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{progress && progress.total > 1 ? t(aiKey("ai.teach.progress"), { done: Math.min(progress.done + 1, progress.total), total: progress.total }) : t(aiKey("ai.teach.working"))}</>
+                : t(aiKey("ai.teach.start"))}
             </Button>
           </div>
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}

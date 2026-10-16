@@ -13,6 +13,7 @@ export const aiSw: Record<keyof typeof aiEn, string> = {
   "ai.teach.start": "Fundisha",
   "ai.teach.working": "Inasoma na kuandaa… inaweza kuchukua hadi dakika moja.",
   "ai.teach.failed": "Imeshindikana kumfundisha msaidizi.",
+  "ai.teach.progress": "Inasoma sehemu ya {{done}} kati ya {{total}}… maandishi marefu yanaweza kuchukua dakika chache.",
   "ai.teach.review": "Kagua rasimu",
   "ai.teach.review_help": "Badilisha chochote unachotaka. Hakuna kinachohifadhiwa hadi ubonyeze kitufe, na wapigaji wanaendelea kusikia toleo lililochapishwa hadi utakapochapisha.",
   "ai.teach.use": "Tumia rasimu hii",

@@ -221,6 +221,8 @@ export interface TeachJob<T = TeachProposal | LearnResult> {
   status: "pending" | "running" | "done" | "failed";
   error: string;
   result: T | null;
+  /** While it reads a long text: how many pieces are done of how many. */
+  progress?: { done: number; total: number } | null;
 }
 
 export const aiAgentApi = {

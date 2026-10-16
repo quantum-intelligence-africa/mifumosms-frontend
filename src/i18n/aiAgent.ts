@@ -14,6 +14,7 @@ export const aiEn = {
   "ai.teach.start": "Teach",
   "ai.teach.working": "Reading and drafting… this can take up to a minute.",
   "ai.teach.failed": "Could not teach the assistant.",
+  "ai.teach.progress": "Reading part {{done}} of {{total}}… a long text can take a few minutes.",
   "ai.teach.review": "Review the draft",
   "ai.teach.review_help": "Change anything you like. Nothing is saved until you press the button, and callers keep hearing the published version until you publish.",
   "ai.teach.use": "Use this draft",
