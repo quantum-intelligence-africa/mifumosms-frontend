@@ -380,7 +380,7 @@ export default function MissedCalls() {
                   <TableHead>{t("cc.history.col_team")}</TableHead>
                   <TableHead>{t("cc.missed.col_assigned")}</TableHead>
                   <TableHead>{t("cc.missed.col_followup")}</TableHead>
-                  <TableHead>{t("cc.agents.col_status")}</TableHead>
+                  <TableHead>{t("cc.missed.col_status")}</TableHead>
                   <TableHead className="text-right">{t("cc.common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>

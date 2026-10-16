@@ -72,6 +72,8 @@ interface CallSummary {
   provider_status: string;
   /** The server's one verdict (same on every screen). Older responses may not have it. */
   is_missed?: boolean;
+  /** Follow-up status of this missed call (same as the Missed calls page); null when it was not missed. */
+  followup_status?: string | null;
   call_outcome?: string;
   agent_name?: string;
   is_simulated: boolean;
@@ -530,7 +532,7 @@ export default function CallHistory() {
                                 <p className="mt-0.5 pl-5 text-xs text-muted-foreground">
                                   {call.analysis?.intent ||
                                     (missed
-                                      ? outcomeLabel(call, t)
+                                      ? `${outcomeLabel(call, t)}${call.followup_status ? ` · ${t("cc.calls.followup", { status: t(`cc.missed.status_${call.followup_status}` as never) })}` : ""}`
                                       : call.direction === "outbound"
                                         ? t("voice.calls.outbound_call")
                                         : t("voice.calls.inbound_call"))}

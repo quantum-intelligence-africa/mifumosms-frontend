@@ -9,7 +9,7 @@ import { DialerProvider } from "@/contexts/DialerContext";
 import { CallCenterProvider } from "@/contexts/CallCenterContext";
 import { CallCenterOverlay } from "@/components/callcenter/CallCenterOverlay";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCallCenterRole, hasSmsAccess } from "@/utils/roleUtils";
+import { getCallCenterRole, hasIvrAccess, hasSmsAccess } from "@/utils/roleUtils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { BrandingProvider, useHostBranding } from "@/contexts/BrandingContext";
 import { ThemeProvider } from "next-themes";
@@ -181,6 +181,12 @@ const RouteAnimator = ({ children }: { children: React.ReactNode }) => {
 // Main app content component that initializes global auth error handling
 /** Agents are provisioned for calls only (no SMS access), so their home is the call
  *  center — not an SMS dashboard full of things they can't use. */
+/** One list of every call: people with voice access use the fuller page (AI summaries, bulk analysis); agents use their own view. */
+const HistoryEntry = () => {
+  const { user } = useAuth();
+  return hasIvrAccess(user) ? <Navigate to="/voice/calls" replace /> : <CallCenterHistory />;
+};
+
 const DashboardGate = () => {
   const { user } = useAuth();
   if (getCallCenterRole(user) === "agent" && !hasSmsAccess(user)) {
@@ -314,7 +320,8 @@ const AppContent = () => {
               } />
               <Route path="/call-center/history" element={
                 <ProtectedRoute requireCallCenter="member" comingSoonKey="voice_ivr">
-                  <CallCenterHistory />
+                  {/* Same list as Calls > All calls: people with voice access use the fuller page. */}
+                  <HistoryEntry />
                 </ProtectedRoute>
               } />
               <Route path="/call-center/ai-assistant" element={
