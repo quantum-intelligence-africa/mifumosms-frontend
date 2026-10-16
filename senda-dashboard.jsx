@@ -12457,9 +12457,9 @@ function IvrFlowsTab() {
 // AI summary. Calls an organization deleted stay here, marked deleted (the organization no longer sees them).
 function VoiceCallLogsTab() {
   const { onLogout } = React.useContext(AppContext);
-  const [org, setOrg]         = useState(null);        // null = every organization
-  const [orgQ, setOrgQ]       = useState('');
-  const [orgHits, setOrgHits] = useState([]);
+  const [orgId, setOrgId]     = useState('');          // '' = every organization
+  const [orgs, setOrgs]       = useState([]);
+  const [summary, setSummary] = useState(null);
   const [q, setQ]             = useState('');
   const [direction, setDirection] = useState('');
   const [outcome, setOutcome] = useState('');
@@ -12474,20 +12474,16 @@ function VoiceCallLogsTab() {
   const PAGE = 50;
 
   useEffect(() => {
-    if (org || orgQ.trim().length < 2) { setOrgHits([]); return; }
-    const id = setTimeout(() => {
-      voiceAdminFetch(`/voice/admin/tenants/?q=${encodeURIComponent(orgQ.trim())}`, {}, onLogout).then(res => { if (res.success) setOrgHits(res.data || []); });
-    }, 300);
-    return () => clearTimeout(id);
-  }, [orgQ, org, onLogout]);
+    voiceAdminFetch('/voice/admin/call-logs/organizations/', {}, onLogout).then(res => { if (res.success) setOrgs(res.data || []); });
+  }, [onLogout]);
 
-  useEffect(() => { setPage(1); }, [org, q, direction, outcome, deleted, days]);
+  useEffect(() => { setPage(1); setOpenId(null); }, [orgId, q, direction, outcome, deleted, days]);
 
   useEffect(() => {
     let live = true;
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), page_size: String(PAGE), deleted });
-    if (org) params.set('tenant', org.id);
+    if (orgId) params.set('tenant', orgId);
     if (q.trim()) params.set('q', q.trim());
     if (direction) params.set('direction', direction);
     if (outcome) params.set('outcome', outcome);
@@ -12497,11 +12493,11 @@ function VoiceCallLogsTab() {
         if (!live) return;
         setLoading(false);
         if (!res.success) { setError(typeof res.error === 'string' ? res.error : (res.error?.message || 'Could not load the call logs.')); return; }
-        setError(null); setData(res.data || { count: 0, results: [] });
+        setError(null); setData(res.data || { count: 0, results: [] }); setSummary(res.data?.summary || null);
       });
     }, q ? 300 : 0);
     return () => { live = false; clearTimeout(id); };
-  }, [org, q, direction, outcome, deleted, days, page, onLogout]);
+  }, [orgId, q, direction, outcome, deleted, days, page, onLogout]);
 
   const toggle = (row) => {
     if (openId === row.id) { setOpenId(null); return; }
@@ -12515,13 +12511,17 @@ function VoiceCallLogsTab() {
 
   const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
   const dur = (sec) => { sec = sec || 0; return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`; };
+  const OUTCOME_TEXT = { answered:'Answered', missed:'Missed', voicemail:'Voicemail', abandoned:'Abandoned in queue', rejected:'Rejected', failed:'Failed' };
+  const FOLLOWUP_TEXT = { new:'New request', assigned:'Assigned', called_back:'Callback attempted', scheduled:'Callback scheduled', contacted:'Customer reached', unreachable:'Retry limit reached', resolved:'Resolved', unresolved:'Cancelled' };
+  const STATUS_TEXT = { ringing:'Ringing', in_progress:'In progress', completed:'Completed', failed:'Failed', simulated:'Test' };
+  const outcomeText = (r) => OUTCOME_TEXT[r.outcome] || STATUS_TEXT[r.status] || r.status;
   const OUTCOME = { answered:'#15803d', missed:'#b91c1c', voicemail:'#b45309', abandoned:'#b91c1c', rejected:'#64748b', failed:'#b91c1c' };
   const th = {padding:'10px 12px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
   const td = {padding:'10px 12px',verticalAlign:'top',fontSize:13};
   const sel = {height:36,fontSize:13,minWidth:120,width:'auto'};
   const csv = () => {
     const head = ['organization','direction','from','to','status','outcome','agent','team','started','seconds','deleted','deleted_by'];
-    const lines = [head.join(',')].concat(data.results.map(r => [r.tenant, r.direction, r.from_number, r.to_number, r.status, r.outcome, r.agent_name, r.team, r.started_at, r.duration_seconds, r.deleted ? 'yes' : '', r.deleted_by]
+    const lines = [head.join(',')].concat(data.results.map(r => [r.tenant, r.direction, r.from_number, r.to_number, r.status, outcomeText(r), r.agent_name, r.team, r.started_at, r.duration_seconds, r.deleted ? 'yes' : '', r.deleted_by]
       .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
@@ -12587,42 +12587,40 @@ function VoiceCallLogsTab() {
       </div>
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-start',marginBottom:12}}>
-        <div style={{position:'relative',minWidth:230}}>
-          {org ? (
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,border:'1px solid #e2e8f0',borderRadius:10,padding:'7px 12px',fontSize:13,height:36,boxSizing:'border-box',background:'#fff'}}>
-              <b>{org.name}</b>
-              <button onClick={() => { setOrg(null); setOrgQ(''); }} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>All</button>
-            </div>
-          ) : (
-            <>
-              <input className="senda-input" value={orgQ} onChange={e => setOrgQ(e.target.value)} placeholder="All organizations — type to pick one…" style={{height:36,fontSize:13}}/>
-              {orgHits.length > 0 && (
-                <div style={{position:'absolute',top:40,left:0,right:0,background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,zIndex:20,maxHeight:220,overflowY:'auto',boxShadow:'0 6px 20px rgba(15,23,42,.12)'}}>
-                  {orgHits.map(h => (
-                    <button key={h.id} onClick={() => { setOrg(h); setOrgHits([]); }} style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',border:'none',background:'none',fontSize:13,cursor:'pointer'}}>
-                      <b>{h.name}</b> <span style={{color:'#94a3b8'}}>· {h.subdomain}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <select className="senda-input" value={orgId} onChange={e => setOrgId(e.target.value)} style={{...sel,minWidth:230,fontWeight:orgId ? 700 : 400}} aria-label="Organization">
+          <option value="">All organizations</option>
+          {orgs.map(o => <option key={o.id} value={o.id}>{o.name} ({o.calls})</option>)}
+        </select>
         <input className="senda-input" value={q} onChange={e => setQ(e.target.value)} placeholder="Number, organization or agent" style={{height:36,fontSize:13,flex:1,minWidth:200}}/>
         <select className="senda-input" value={direction} onChange={e => setDirection(e.target.value)} style={sel} aria-label="Direction">
           <option value="">Incoming + outgoing</option><option value="inbound">Incoming</option><option value="outbound">Outgoing</option>
         </select>
         <select className="senda-input" value={outcome} onChange={e => setOutcome(e.target.value)} style={sel} aria-label="Outcome">
-          <option value="">Any outcome</option><option value="answered">Answered</option><option value="missed">Missed</option>
-          <option value="abandoned">Abandoned in queue</option><option value="voicemail">Voicemail</option><option value="rejected">Rejected</option><option value="failed">Failed</option>
+          <option value="">Any outcome</option><option value="answered">Answered</option><option value="missed_all">Missed (all kinds)</option>
+          <option value="missed">Missed: nobody answered</option><option value="abandoned">Abandoned in queue</option><option value="voicemail">Voicemail</option>
+          <option value="rejected">Rejected</option><option value="failed">Failed</option>
         </select>
         <select className="senda-input" value={deleted} onChange={e => setDeleted(e.target.value)} style={sel} aria-label="Deleted calls">
           <option value="any">Deleted calls: shown</option><option value="only">Only deleted</option><option value="no">Hide deleted</option>
         </select>
         <select className="senda-input" value={days} onChange={e => setDays(e.target.value)} style={sel} aria-label="Period">
-          <option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="">All time</option>
+          <option value="1">Today</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="">All time</option>
         </select>
       </div>
+
+      {summary && (
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
+          {[['Calls', summary.total, '#0f172a'], ['Answered', summary.answered, '#15803d'], ['Missed (all kinds)', summary.missed, '#b91c1c'], ['Abandoned in queue', summary.abandoned, '#b91c1c'], ['Voicemail', summary.voicemail, '#b45309'], ['Deleted by the organization', summary.deleted, '#64748b']].map(([label, n, color]) => (
+            <div key={label} style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:10,padding:'8px 14px',minWidth:110}}>
+              <div style={{fontSize:20,fontWeight:800,color}}>{Number(n).toLocaleString()}</div>
+              <div style={{fontSize:11,color:'#94a3b8',fontWeight:600}}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>
+        These numbers use the same rules as the organization's own Call history (same days in its time zone, same definition of missed). Counts above include deleted calls unless you hide them below; the organization itself no longer sees the deleted ones.
+      </p>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
         {error && <div style={{padding:16,color:'#b91c1c',fontSize:13}}>{error}</div>}
@@ -12641,7 +12639,7 @@ function VoiceCallLogsTab() {
                     <td style={td}><b>{r.tenant}</b>{r.deleted && <span style={{marginLeft:6,fontSize:11,fontWeight:800,color:'#b91c1c',border:'1px solid #fecaca',borderRadius:6,padding:'1px 6px'}}>Deleted</span>}</td>
                     <td style={td}>{r.direction === 'inbound' ? 'Incoming' : 'Outgoing'}</td>
                     <td style={td}>{r.from_number || '—'} → {r.to_number || '—'}</td>
-                    <td style={{...td,fontWeight:700,color:OUTCOME[r.outcome] || '#64748b'}}>{r.outcome || r.status}</td>
+                    <td style={{...td,fontWeight:700,color:OUTCOME[r.outcome] || '#64748b'}}>{outcomeText(r)}{r.followup_status ? <div style={{fontWeight:500,fontSize:11.5,color:'#94a3b8'}}>Follow-up: {FOLLOWUP_TEXT[r.followup_status] || r.followup_status}</div> : null}</td>
                     <td style={td}>{r.agent_name || '—'}{r.team ? <span style={{color:'#94a3b8'}}> · {r.team}</span> : null}</td>
                     <td style={td}>{dur(r.duration_seconds)}</td>
                   </tr>
