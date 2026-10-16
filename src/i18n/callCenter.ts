@@ -467,6 +467,7 @@ export const ccEn = {
   "cc.missed.range_today": "Today",
   "cc.missed.range_yesterday": "Yesterday",
   "cc.missed.range_7d": "Last 7 days",
+  "cc.missed.range_30d": "Last 30 days",
   "cc.missed.range_custom": "Custom dates",
   "cc.missed.from": "From",
   "cc.missed.to": "To",

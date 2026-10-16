@@ -454,6 +454,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.missed.range_today": "Leo",
   "cc.missed.range_yesterday": "Jana",
   "cc.missed.range_7d": "Siku 7 zilizopita",
+  "cc.missed.range_30d": "Siku 30 zilizopita",
   "cc.missed.range_custom": "Chagua tarehe",
   "cc.missed.from": "Kuanzia",
   "cc.missed.to": "Hadi",

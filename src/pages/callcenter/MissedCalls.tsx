@@ -41,16 +41,16 @@ const STATUS_TONE: Record<MissedCallStatus, "default" | "secondary" | "outline" 
   unresolved: "outline",
 };
 
-type Range = "all" | "today" | "yesterday" | "7d" | "custom";
+type Range = "all" | "today" | "yesterday" | "7d" | "30d" | "custom";
 
 const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-function rangeDates(range: Range, from: string, to: string): { date_from?: string; date_to?: string } {
-  const now = new Date();
-  const day = (offset: number) => isoDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
-  if (range === "today") return { date_from: day(0), date_to: day(0) };
-  if (range === "yesterday") return { date_from: day(-1), date_to: day(-1) };
-  if (range === "7d") return { date_from: day(-6), date_to: day(0) };
+/** The period as the server understands it: the same named periods as Call analytics and Call log, cut by the organization's own days. */
+function rangeParams(range: Range, from: string, to: string): { range?: string; date_from?: string; date_to?: string } {
+  if (range === "today") return { range: "today" };
+  if (range === "yesterday") return { range: "yesterday" };
+  if (range === "7d") return { range: "last_7" };
+  if (range === "30d") return { range: "last_30" };
   if (range === "custom") return { date_from: from || undefined, date_to: to || undefined };
   return {};
 }
@@ -104,7 +104,7 @@ export default function MissedCalls() {
     if (query) p.q = query;
     if (onlyOverdue) p.overdue = "true";
     if (onlyRepeated) p.repeated = "true";
-    return { ...p, ...rangeDates(range, from, to) };
+    return { ...p, ...rangeParams(range, from, to) };
   }, [status, team, result, query, onlyOverdue, onlyRepeated, range, from, to]);
 
   // Typing in the search box waits a moment before asking the server.
@@ -334,6 +334,7 @@ export default function MissedCalls() {
             <SelectItem value="today">{t("cc.missed.range_today")}</SelectItem>
             <SelectItem value="yesterday">{t("cc.missed.range_yesterday")}</SelectItem>
             <SelectItem value="7d">{t("cc.missed.range_7d")}</SelectItem>
+            <SelectItem value="30d">{t("cc.missed.range_30d")}</SelectItem>
             <SelectItem value="custom">{t("cc.missed.range_custom")}</SelectItem>
           </SelectContent>
         </Select>
