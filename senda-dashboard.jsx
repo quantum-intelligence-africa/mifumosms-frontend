@@ -12749,6 +12749,10 @@ function VoiceUsageTab() {
   const [pol, setPol]         = useState(null);          // policy being edited
   const [cfg, setCfg]         = useState(null);
   const [busy, setBusy]       = useState(false);
+  const [rates, setRates]     = useState([]);
+  const [rate, setRate]       = useState({ direction: 'inbound', currency: '', rate_per_minute: '', effective_from: '', note: '' });
+  const [requests, setRequests] = useState([]);
+  const [grant, setGrant]     = useState({});           // request id -> minutes to approve
   const PAGE = 50;
 
   const q = (extra = {}) => {
@@ -12777,7 +12781,25 @@ function VoiceUsageTab() {
   useEffect(() => {
     voiceAdminFetch('/voice/admin/voice-usage/policies/', {}, onLogout).then(res => { if (res.success) setPolicies(res.data || []); });
     voiceAdminFetch('/voice/admin/voice-usage/settings/', {}, onLogout).then(res => { if (res.success) setCfg(res.data); });
-  }, [onLogout]);
+    loadRatesAndRequests();
+  }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const loadRatesAndRequests = () => {
+    voiceAdminFetch('/voice/admin/voice-usage/rates/', {}, onLogout).then(res => { if (res.success) setRates(res.data || []); });
+    voiceAdminFetch('/voice/admin/voice-usage/requests/', {}, onLogout).then(res => { if (res.success) setRequests(res.data || []); });
+  };
+  const addRate = () => {
+    voiceAdminFetch('/voice/admin/voice-usage/rates/', { method: 'POST', body: JSON.stringify(rate) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(errText(res, 'Could not save the rate.'), 'error'); return; }
+      setRates(res.data || []); setRate({ ...rate, rate_per_minute: '', note: '' }); showToast?.('Rate saved.', 'success'); load();
+    });
+  };
+  const removeRate = (id) => voiceAdminFetch(`/voice/admin/voice-usage/rates/${id}/`, { method: 'DELETE' }, onLogout).then(() => { loadRatesAndRequests(); load(); });
+  const answerRequest = (r, action) => {
+    voiceAdminFetch(`/voice/admin/voice-usage/requests/${r.id}/resolve/`, { method: 'POST', body: JSON.stringify({ action, minutes: Number(grant[r.id] || r.minutes) }) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(errText(res, 'Could not answer the request.'), 'error'); return; }
+      showToast?.(action === 'approve' ? 'Approved: the minutes were added.' : 'Declined.', 'success'); loadRatesAndRequests(); load();
+    });
+  };
   useEffect(() => {
     if (!orgId) { setOrg(null); return; }
     voiceAdminFetch(`/voice/admin/voice-usage/organization/${orgId}/`, {}, onLogout).then(res => { if (res.success) setOrg(res.data); });
@@ -12823,7 +12845,7 @@ function VoiceUsageTab() {
   const fmtN = (n, d = 0) => (n === null || n === undefined) ? '—' : Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
   const fmtT = (t) => t ? new Date(t).toLocaleString() : '—';
   const cost = (obj) => { const e = Object.entries(obj || {}); return e.length ? e.map(([c, v]) => `${c} ${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`).join(' · ') : '—'; };
-  const RECON = { matched:['Matched','#15803d'], duration_mismatch:['Duration mismatch','#b91c1c'], pending_provider_data:['Pending provider data','#b45309'], missing_provider_record:['Missing provider record','#b91c1c'], needs_review:['Needs review','#b91c1c'] };
+  const RECON = { matched:['Matched','#15803d'], duration_mismatch:['Duration mismatch','#b91c1c'], pending_provider_data:['Pending provider data','#b45309'], missing_provider_record:['Missing provider record','#b91c1c'], needs_review:['Needs review','#b91c1c'], cost_mismatch:['Cost mismatch','#b91c1c'] };
   const card = (label, value, onClick, tone = '#0f172a', sub) => (
     <button key={label} onClick={onClick} disabled={!onClick}
       style={{textAlign:'left',background:'#fff',border:'1px solid #eef2f7',borderRadius:10,padding:'10px 14px',minWidth:150,cursor:onClick ? 'pointer' : 'default'}}>
@@ -12886,6 +12908,9 @@ function VoiceUsageTab() {
             {card('Customer-billable minutes', fmtN(T.customer_billable_minutes, 1), null, '#0f172a', "by each plan's billing policy")}
             {card('Provider-billable minutes', T.provider_billable_minutes === null ? 'not set' : fmtN(T.provider_billable_minutes, 1), null, T.provider_billable_minutes === null ? '#b45309' : '#0f172a', data.provider_billing_step_known ? `${T.calls_with_provider_report} calls with a provider report` : "set the provider's billing step below")}
             {card('Provider-reported cost', cost(T.provider_cost), null, '#0f172a', `${T.calls_with_provider_cost} of ${T.calls_total} calls report an amount`)}
+            {card('Expected provider cost', cost(T.expected_provider_cost), null, '#0f172a', T.calls_with_expected_cost ? `${T.calls_with_expected_cost} calls with a rate` : 'enter the provider rates below')}
+            {card('Cost variance', cost(T.cost_variance), () => setFilter({ recon: 'cost_mismatch' }), '#0f172a', 'expected minus reported')}
+            {card('Minute requests waiting', fmtN(T.pending_minute_requests), null, T.pending_minute_requests ? '#b45309' : '#0f172a')}
             {card('Duration variance', T.duration_variance_minutes === null ? '—' : `${T.duration_variance_minutes > 0 ? '+' : ''}${fmtN(T.duration_variance_minutes, 2)} min`, () => setFilter({ recon: 'issues' }), Math.abs(T.duration_variance_minutes || 0) > 0 ? '#b45309' : '#0f172a', 'customer-billable minus provider-billable')}
             {card('Near their limit', fmtN(T.orgs_approaching_limit), null, '#b45309', '80% or more used')}
             {card('Allowance used up', fmtN(T.orgs_exhausted), null, '#b91c1c')}
@@ -12952,15 +12977,16 @@ function VoiceUsageTab() {
         </div>
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Time</th><th style={th}>Organization</th><th style={th}>Dir</th><th style={th}>Handled</th><th style={th}>Call s</th><th style={th}>Connected s</th><th style={th}>Customer min</th><th style={th}>Provider s</th><th style={th}>Provider min</th><th style={th}>Cost</th><th style={th}>Reconciliation</th></tr></thead>
+            <thead><tr style={{background:'#f8fafc'}}><th style={th}>Time</th><th style={th}>Organization</th><th style={th}>Dir</th><th style={th}>Handled</th><th style={th}>Call s</th><th style={th}>Connected s</th><th style={th}>Customer min</th><th style={th}>Provider s</th><th style={th}>Provider min</th><th style={th}>Cost</th><th style={th}>Expected</th><th style={th}>Reconciliation</th></tr></thead>
             <tbody>
-              {calls.results.length === 0 && <tr><td colSpan={11} style={{...td,color:'#94a3b8'}}>No calls match.</td></tr>}
+              {calls.results.length === 0 && <tr><td colSpan={12} style={{...td,color:'#94a3b8'}}>No calls match.</td></tr>}
               {calls.results.map(r => { const [label, color] = RECON[r.recon_status] || [r.recon_status, '#64748b']; return (
                 <tr key={r.call_id} style={{borderTop:'1px solid #f1f5f9'}} title={r.provider_session_id}>
                   <td style={td}>{fmtT(r.started_at)}</td><td style={td}>{r.tenant}</td><td style={td}>{r.direction === 'inbound' ? 'In' : 'Out'}</td><td style={td}>{r.handled_by}</td>
                   <td style={td}>{r.call_seconds}</td><td style={td}>{r.connected_seconds}</td><td style={td}>{r.customer_billable_minutes}</td>
                   <td style={td}>{r.provider_duration_seconds ?? '—'}</td><td style={td}>{r.provider_billable_minutes ?? '—'}</td>
                   <td style={td}>{r.provider_amount ? `${r.provider_currency} ${r.provider_amount}` : '—'}</td>
+                  <td style={td}>{r.expected_cost ?? '—'}</td>
                   <td style={{...td,color,fontWeight:700}}>{label}{r.recon_note ? <div style={{fontWeight:500,fontSize:11,color:'#94a3b8'}}>{r.recon_note}</div> : null}</td>
                 </tr>); })}
             </tbody>
@@ -13004,9 +13030,51 @@ function VoiceUsageTab() {
             {numInput(cfg, setCfg, 'provider_increment_seconds', "Provider billing step (s)", 'e.g. 60')}
             {numInput(cfg, setCfg, 'recon_tolerance_seconds', 'Match tolerance (s)')}
             {numInput(cfg, setCfg, 'recon_window_minutes', 'Wait for provider report (min)')}
+            {numInput(cfg, setCfg, 'recon_cost_tolerance_percent', 'Cost tolerance (%)')}
             <button className="senda-btn senda-btn-sm" onClick={saveCfg}>Save</button>
           </div>
         )}
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Provider rates (from the provider's price list)</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>With a rate for a direction and currency, the provider's billing step above and a reported amount, SENDA works out the cost it expected and flags calls that differ. Rates are only added: a new one applies from its date, so past calls keep theirs. Nothing is guessed: without a rate there is no expected cost.</p>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end',marginBottom:8}}>
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Direction
+            <select className="senda-input" style={{...sel,height:32}} value={rate.direction} onChange={e => setRate({ ...rate, direction: e.target.value })}><option value="inbound">Incoming</option><option value="outbound">Outgoing</option></select></label>
+          {numInput(rate, setRate, 'currency', 'Currency', 'KES')}
+          {numInput(rate, setRate, 'rate_per_minute', 'Rate per minute', '1.50')}
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>From
+            <input type="date" className="senda-input" style={{...sel,height:32,minWidth:140}} value={rate.effective_from} onChange={e => setRate({ ...rate, effective_from: e.target.value })}/></label>
+          {numInput(rate, setRate, 'note', 'Note', 'price list 2026')}
+          <button className="senda-btn senda-btn-sm" disabled={!rate.currency || !rate.rate_per_minute} onClick={addRate}>Add rate</button>
+        </div>
+        {rates.length === 0 && <div style={{fontSize:12.5,color:'#94a3b8'}}>No rates yet.</div>}
+        {rates.map(r => (
+          <div key={r.id} style={{display:'flex',justifyContent:'space-between',gap:8,border:'1px solid #eef2f7',borderRadius:8,padding:'5px 10px',marginBottom:4,fontSize:12.5}}>
+            <span><b>{r.direction === 'inbound' ? 'Incoming' : 'Outgoing'}</b> · {r.currency} {r.rate_per_minute} per minute · from {r.effective_from}{r.note ? ` · ${r.note}` : ''}</span>
+            <button onClick={() => removeRate(r.id)} style={{border:'none',background:'none',color:'#b91c1c',fontWeight:700,cursor:'pointer'}}>Remove</button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Requests for more minutes</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 8px'}}>Approving adds the minutes to that organization's allowance as an audited adjustment. There is no online payment here: confirm payment first.</p>
+        {requests.length === 0 && <div style={{fontSize:12.5,color:'#94a3b8'}}>No requests.</div>}
+        {requests.map(r => (
+          <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap',border:'1px solid #eef2f7',borderRadius:8,padding:'6px 10px',marginBottom:4,fontSize:12.5}}>
+            <span><b>{r.tenant}</b> asks for <b>{r.minutes}</b> {r.meter} minutes · {fmtT(r.created_at)} · {r.requested_by}{r.note ? ` · “${r.note}”` : ''}
+              <b style={{marginLeft:8,color:r.status === 'approved' ? '#15803d' : (r.status === 'declined' ? '#b91c1c' : '#b45309')}}>{r.status}{r.status === 'approved' ? ` (+${r.granted_minutes})` : ''}</b></span>
+            {r.status === 'pending' && (
+              <span style={{display:'flex',gap:6,alignItems:'center'}}>
+                <input className="senda-input" style={{height:30,width:90,fontSize:12}} value={grant[r.id] ?? r.minutes} onChange={e => setGrant({ ...grant, [r.id]: e.target.value })}/>
+                <button className="senda-btn senda-btn-sm" onClick={() => answerRequest(r, 'approve')}>Approve</button>
+                <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => answerRequest(r, 'decline')}>Decline</button>
+              </span>
+            )}
+          </div>
+        ))}
       </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'12px 16px'}}>

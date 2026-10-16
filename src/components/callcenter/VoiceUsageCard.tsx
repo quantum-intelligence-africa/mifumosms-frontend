@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -19,6 +20,8 @@ interface MeterUsage {
   percent: number | null;
   exhausted: boolean;
 }
+interface CallRow { call_id: string; direction: string; started_at: string; call_seconds: number; billable_minutes: number; from_number?: string; to_number?: string }
+interface MinuteRequestRow { id: string; meter: string; minutes: number; note: string; status: "pending" | "approved" | "declined"; response: string; granted_minutes: number | null; created_at: string }
 interface UsagePayload {
   meters: MeterUsage[];
   active_calls: number;
@@ -30,6 +33,41 @@ export function VoiceUsageCard() {
   const { t, language } = useLanguage();
   const [data, setData] = useState<UsagePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [calls, setCalls] = useState<CallRow[]>([]);
+  const [callCount, setCallCount] = useState(0);
+  const [callPage, setCallPage] = useState(1);
+  const [requests, setRequests] = useState<MinuteRequestRow[]>([]);
+  const [reqMeter, setReqMeter] = useState("");
+  const [reqMinutes, setReqMinutes] = useState("");
+  const [reqNote, setReqNote] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const loadCalls = useCallback(async (page: number) => {
+    const res = await voiceApi.get<{ count: number; results: CallRow[] }>(`/voice/usage/calls/?page=${page}`);
+    if (res.success && res.data) {
+      setCalls((prev) => (page === 1 ? res.data!.results : [...prev, ...res.data!.results]));
+      setCallCount(res.data.count);
+      setCallPage(page);
+    }
+  }, []);
+  const loadRequests = useCallback(async () => {
+    const res = await voiceApi.get<MinuteRequestRow[]>("/voice/usage/requests/");
+    if (res.success && res.data) setRequests(res.data);
+  }, []);
+  const sendRequest = async () => {
+    setSending(true);
+    const res = await voiceApi.post("/voice/usage/requests/", { meter: reqMeter, minutes: Number(reqMinutes), note: reqNote });
+    setSending(false);
+    if (res.success) {
+      toast({ title: t(ccKey("cc.usage.request_sent")) });
+      setReqMinutes("");
+      setReqNote("");
+      void loadRequests();
+    } else {
+      toast({ title: t(ccKey("cc.usage.request_failed")), description: res.error || undefined, variant: "destructive" });
+    }
+  };
 
   const load = useCallback(async () => {
     const res = await voiceApi.get<UsagePayload>("/voice/usage/");
@@ -43,7 +81,9 @@ export function VoiceUsageCard() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadCalls(1);
+    void loadRequests();
+  }, [load, loadCalls, loadRequests]);
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!data) return null;
@@ -95,7 +135,7 @@ export function VoiceUsageCard() {
             );
           })}
         </div>
-        {data.recent_calls.length > 0 && (
+        {calls.length > 0 && (
           <div className="overflow-x-auto">
             <p className="mb-1 text-sm font-medium">{t(ccKey("cc.usage.recent"))}</p>
             <table className="w-full text-sm">
@@ -108,7 +148,7 @@ export function VoiceUsageCard() {
                 </tr>
               </thead>
               <tbody>
-                {data.recent_calls.map((c) => (
+                {calls.map((c) => (
                   <tr key={c.call_id} className="border-t">
                     <td className="py-1 pr-3">{when(c.started_at)}</td>
                     <td className="py-1 pr-3">{t(ccKey(c.direction === "outbound" ? "cc.usage.out" : "cc.usage.in"))}</td>
@@ -120,6 +160,44 @@ export function VoiceUsageCard() {
             </table>
           </div>
         )}
+        {calls.length < callCount && (
+          <Button size="sm" variant="outline" onClick={() => loadCalls(callPage + 1)}>{t(ccKey("cc.usage.show_more"))}</Button>
+        )}
+        <div className="space-y-2 rounded-md border p-3">
+          <p className="text-sm font-medium">{t(ccKey("cc.usage.request_title"))}</p>
+          <p className="text-xs text-muted-foreground">{t(ccKey("cc.usage.request_help"))}</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-muted-foreground">
+              {t(ccKey("cc.usage.request_meter"))}
+              <select value={reqMeter || data.meters[0]?.meter} onChange={(e) => setReqMeter(e.target.value)} className="mt-1 block h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground">
+                {data.meters.map((m) => <option key={m.meter} value={m.meter}>{t(ccKey(`cc.usage.meter_${m.meter}`))}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-muted-foreground">
+              {t(ccKey("cc.usage.request_minutes"))}
+              <input value={reqMinutes} onChange={(e) => setReqMinutes(e.target.value.replace(/\D/g, ""))} inputMode="numeric" className="mt-1 block h-9 w-28 rounded-md border border-input bg-background px-2 text-sm text-foreground" />
+            </label>
+            <label className="min-w-[180px] flex-1 text-xs text-muted-foreground">
+              {t(ccKey("cc.usage.request_note"))}
+              <input value={reqNote} onChange={(e) => setReqNote(e.target.value)} maxLength={300} className="mt-1 block h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" />
+            </label>
+            <Button size="sm" onClick={sendRequest} disabled={sending || !reqMinutes}>{t(ccKey("cc.usage.request_send"))}</Button>
+          </div>
+          {requests.length > 0 && (
+            <div className="space-y-1 pt-1">
+              <p className="text-xs font-medium">{t(ccKey("cc.usage.your_requests"))}</p>
+              {requests.map((r) => (
+                <p key={r.id} className="text-xs text-muted-foreground">
+                  {t(ccKey(`cc.usage.meter_${r.meter}`))} · {r.minutes} min · {when(r.created_at)} ·{" "}
+                  <span className="font-medium text-foreground">
+                    {r.status === "pending" ? t(ccKey("cc.usage.request_pending")) : r.status === "approved" ? t(ccKey("cc.usage.request_approved"), { n: r.granted_minutes ?? 0 }) : t(ccKey("cc.usage.request_declined"))}
+                  </span>
+                  {r.response ? ` — ${r.response}` : ""}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">{t(ccKey("cc.usage.note"))}</p>
       </CardContent>
     </Card>
