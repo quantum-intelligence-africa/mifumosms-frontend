@@ -62,7 +62,7 @@ import {
   UserX,
   Users,
   Wallet,
-  Workflow,
+  Workflow, ListChecks,
   X,
   XCircle,
   Zap,
@@ -12453,6 +12453,210 @@ function IvrFlowsTab() {
   );
 }
 
+// SENDA staff's read-only view of every organization's call logs: IVR path, queue and routing events, who was rung, recordings,
+// AI summary. Calls an organization deleted stay here, marked deleted (the organization no longer sees them).
+function VoiceCallLogsTab() {
+  const { onLogout } = React.useContext(AppContext);
+  const [org, setOrg]         = useState(null);        // null = every organization
+  const [orgQ, setOrgQ]       = useState('');
+  const [orgHits, setOrgHits] = useState([]);
+  const [q, setQ]             = useState('');
+  const [direction, setDirection] = useState('');
+  const [outcome, setOutcome] = useState('');
+  const [deleted, setDeleted] = useState('any');
+  const [days, setDays]       = useState('30');
+  const [page, setPage]       = useState(1);
+  const [data, setData]       = useState({ count: 0, results: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [openId, setOpenId]   = useState(null);
+  const [detail, setDetail]   = useState({});          // id -> detail payload | 'loading' | { error }
+  const PAGE = 50;
+
+  useEffect(() => {
+    if (org || orgQ.trim().length < 2) { setOrgHits([]); return; }
+    const id = setTimeout(() => {
+      voiceAdminFetch(`/voice/admin/tenants/?q=${encodeURIComponent(orgQ.trim())}`, {}, onLogout).then(res => { if (res.success) setOrgHits(res.data || []); });
+    }, 300);
+    return () => clearTimeout(id);
+  }, [orgQ, org, onLogout]);
+
+  useEffect(() => { setPage(1); }, [org, q, direction, outcome, deleted, days]);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE), deleted });
+    if (org) params.set('tenant', org.id);
+    if (q.trim()) params.set('q', q.trim());
+    if (direction) params.set('direction', direction);
+    if (outcome) params.set('outcome', outcome);
+    if (days) params.set('days', days);
+    const id = setTimeout(() => {
+      voiceAdminFetch(`/voice/admin/call-logs/?${params}`, {}, onLogout).then(res => {
+        if (!live) return;
+        setLoading(false);
+        if (!res.success) { setError(typeof res.error === 'string' ? res.error : (res.error?.message || 'Could not load the call logs.')); return; }
+        setError(null); setData(res.data || { count: 0, results: [] });
+      });
+    }, q ? 300 : 0);
+    return () => { live = false; clearTimeout(id); };
+  }, [org, q, direction, outcome, deleted, days, page, onLogout]);
+
+  const toggle = (row) => {
+    if (openId === row.id) { setOpenId(null); return; }
+    setOpenId(row.id);
+    if (detail[row.id] && detail[row.id] !== 'loading') return;
+    setDetail(d => ({ ...d, [row.id]: 'loading' }));
+    voiceAdminFetch(`/voice/admin/call-logs/${row.id}/`, {}, onLogout).then(res => {
+      setDetail(d => ({ ...d, [row.id]: res.success ? res.data : { error: typeof res.error === 'string' ? res.error : 'Could not load this call.' } }));
+    });
+  };
+
+  const fmt = (t) => t ? new Date(t).toLocaleString() : '—';
+  const dur = (sec) => { sec = sec || 0; return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`; };
+  const OUTCOME = { answered:'#15803d', missed:'#b91c1c', voicemail:'#b45309', abandoned:'#b91c1c', rejected:'#64748b', failed:'#b91c1c' };
+  const th = {padding:'10px 12px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
+  const td = {padding:'10px 12px',verticalAlign:'top',fontSize:13};
+  const sel = {height:36,fontSize:13,minWidth:120,width:'auto'};
+  const csv = () => {
+    const head = ['organization','direction','from','to','status','outcome','agent','team','started','seconds','deleted','deleted_by'];
+    const lines = [head.join(',')].concat(data.results.map(r => [r.tenant, r.direction, r.from_number, r.to_number, r.status, r.outcome, r.agent_name, r.team, r.started_at, r.duration_seconds, r.deleted ? 'yes' : '', r.deleted_by]
+      .map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    a.download = 'call-logs.csv'; a.click();
+  };
+
+  const renderDetail = (d) => {
+    if (d === 'loading') return <div style={{color:'#94a3b8'}}>Loading…</div>;
+    if (d?.error) return <div style={{color:'#b91c1c'}}>{d.error}</div>;
+    const box = {border:'1px solid #eef2f7',borderRadius:8,padding:'8px 10px',background:'#fff'};
+    const h = {fontSize:11,fontWeight:800,color:'#64748b',textTransform:'uppercase',letterSpacing:'.05em',margin:'0 0 4px'};
+    return (
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:10}}>
+        <div style={box}>
+          <p style={h}>Call</p>
+          <div>Provider status: <b>{d.provider_status || '—'}</b></div>
+          <div>Answered: {fmt(d.answered_at)} · Ended: {fmt(d.ended_at)}</div>
+          <div>Ring {d.ring_seconds ?? '—'}s · Talk {d.connected_seconds ?? '—'}s</div>
+          {d.ivr_flow && <div>IVR flow: <b>{d.ivr_flow}</b></div>}
+          {d.deleted && <div style={{color:'#b91c1c',fontWeight:700}}>Deleted by {d.deleted_by} · {fmt(d.deleted_at)}</div>}
+        </div>
+        <div style={box}>
+          <p style={h}>IVR steps ({d.ivr_steps.length})</p>
+          {d.ivr_steps.length === 0 && <span style={{color:'#94a3b8'}}>None recorded.</span>}
+          {d.ivr_steps.map((st, i) => <div key={i} style={{fontFamily:'monospace',fontSize:12,wordBreak:'break-word'}}>{typeof st === 'string' ? st : JSON.stringify(st)}</div>)}
+        </div>
+        <div style={box}>
+          <p style={h}>Queue and routing events ({d.events.length})</p>
+          {d.events.length === 0 && <span style={{color:'#94a3b8'}}>None.</span>}
+          {d.events.map((e, i) => <div key={i} style={{fontSize:12}}><span style={{color:'#94a3b8'}}>{fmt(e.at)}</span> <b>{e.type}</b>{e.detail && Object.keys(e.detail).length ? <span style={{color:'#64748b'}}> {JSON.stringify(e.detail)}</span> : null}</div>)}
+        </div>
+        <div style={box}>
+          <p style={h}>Who was rung ({d.attempts.length})</p>
+          {d.attempts.length === 0 && <span style={{color:'#94a3b8'}}>Nobody.</span>}
+          {d.attempts.map((a, i) => <div key={i} style={{fontSize:12}}><b>{a.agent || '—'}</b> · {a.endpoint} · round {a.round} · {a.outcome}</div>)}
+        </div>
+        <div style={box}>
+          <p style={h}>Notes ({d.notes.length}) · Recordings ({d.recordings.length})</p>
+          {d.notes.map((n, i) => <div key={i} style={{fontSize:12,whiteSpace:'pre-wrap'}}>{n.category ? <b>{n.category}: </b> : null}{n.text}{n.follow_up ? ` — follow-up: ${n.follow_up}` : ''}</div>)}
+          {d.recordings.map(r => <div key={r.id} style={{fontSize:12,color:'#64748b'}}>Recording · {dur(r.duration_seconds)} · {fmt(r.created_at)}</div>)}
+        </div>
+        {(d.summary || d.transcript) && (
+          <div style={{...box,gridColumn:'1 / -1'}}>
+            <p style={h}>AI summary and transcript</p>
+            {d.summary && <p style={{margin:'0 0 6px',whiteSpace:'pre-wrap'}}>{d.summary}</p>}
+            {d.transcript && <p style={{margin:0,whiteSpace:'pre-wrap',color:'#64748b',fontSize:12}}>{d.transcript}</p>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{padding:24}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a',margin:0}}>Call logs</h2>
+          <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 0'}}>
+            Every organization's calls, read-only. Calls an organization deleted stay here, marked deleted. Click a call for its IVR path, queue events, agents, notes and AI summary.
+          </p>
+        </div>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={csv} disabled={!data.results.length}>Download this page (CSV)</button>
+      </div>
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-start',marginBottom:12}}>
+        <div style={{position:'relative',minWidth:230}}>
+          {org ? (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,border:'1px solid #e2e8f0',borderRadius:10,padding:'7px 12px',fontSize:13,height:36,boxSizing:'border-box',background:'#fff'}}>
+              <b>{org.name}</b>
+              <button onClick={() => { setOrg(null); setOrgQ(''); }} style={{border:'none',background:'none',color:BRAND,fontWeight:700,fontSize:12,cursor:'pointer'}}>All</button>
+            </div>
+          ) : (
+            <>
+              <input className="senda-input" value={orgQ} onChange={e => setOrgQ(e.target.value)} placeholder="All organizations — type to pick one…" style={{height:36,fontSize:13}}/>
+              {orgHits.length > 0 && (
+                <div style={{position:'absolute',top:40,left:0,right:0,background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,zIndex:20,maxHeight:220,overflowY:'auto',boxShadow:'0 6px 20px rgba(15,23,42,.12)'}}>
+                  {orgHits.map(h => (
+                    <button key={h.id} onClick={() => { setOrg(h); setOrgHits([]); }} style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',border:'none',background:'none',fontSize:13,cursor:'pointer'}}>
+                      <b>{h.name}</b> <span style={{color:'#94a3b8'}}>· {h.subdomain}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <input className="senda-input" value={q} onChange={e => setQ(e.target.value)} placeholder="Number, organization or agent" style={{height:36,fontSize:13,flex:1,minWidth:200}}/>
+        <select className="senda-input" value={direction} onChange={e => setDirection(e.target.value)} style={sel} aria-label="Direction">
+          <option value="">Incoming + outgoing</option><option value="inbound">Incoming</option><option value="outbound">Outgoing</option>
+        </select>
+        <select className="senda-input" value={outcome} onChange={e => setOutcome(e.target.value)} style={sel} aria-label="Outcome">
+          <option value="">Any outcome</option><option value="answered">Answered</option><option value="missed">Missed</option>
+          <option value="abandoned">Abandoned in queue</option><option value="voicemail">Voicemail</option><option value="rejected">Rejected</option><option value="failed">Failed</option>
+        </select>
+        <select className="senda-input" value={deleted} onChange={e => setDeleted(e.target.value)} style={sel} aria-label="Deleted calls">
+          <option value="any">Deleted calls: shown</option><option value="only">Only deleted</option><option value="no">Hide deleted</option>
+        </select>
+        <select className="senda-input" value={days} onChange={e => setDays(e.target.value)} style={sel} aria-label="Period">
+          <option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="">All time</option>
+        </select>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden'}}>
+        {error && <div style={{padding:16,color:'#b91c1c',fontSize:13}}>{error}</div>}
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#f8fafc'}}>
+              <th style={th}>Time</th><th style={th}>Organization</th><th style={th}>Direction</th><th style={th}>From → To</th><th style={th}>Outcome</th><th style={th}>Agent / team</th><th style={th}>Length</th>
+            </tr></thead>
+            <tbody>
+              {loading && data.results.length === 0 && <tr><td colSpan={7} style={{...td,color:'#94a3b8'}}>Loading…</td></tr>}
+              {!loading && !error && data.results.length === 0 && <tr><td colSpan={7} style={{...td,color:'#94a3b8'}}>No calls match.</td></tr>}
+              {data.results.map(r => (
+                <React.Fragment key={r.id}>
+                  <tr onClick={() => toggle(r)} style={{cursor:'pointer',borderTop:'1px solid #f1f5f9',background:openId === r.id ? '#f8fafc' : 'transparent'}}>
+                    <td style={td}>{fmt(r.started_at)}</td>
+                    <td style={td}><b>{r.tenant}</b>{r.deleted && <span style={{marginLeft:6,fontSize:11,fontWeight:800,color:'#b91c1c',border:'1px solid #fecaca',borderRadius:6,padding:'1px 6px'}}>Deleted</span>}</td>
+                    <td style={td}>{r.direction === 'inbound' ? 'Incoming' : 'Outgoing'}</td>
+                    <td style={td}>{r.from_number || '—'} → {r.to_number || '—'}</td>
+                    <td style={{...td,fontWeight:700,color:OUTCOME[r.outcome] || '#64748b'}}>{r.outcome || r.status}</td>
+                    <td style={td}>{r.agent_name || '—'}{r.team ? <span style={{color:'#94a3b8'}}> · {r.team}</span> : null}</td>
+                    <td style={td}>{dur(r.duration_seconds)}</td>
+                  </tr>
+                  {openId === r.id && <tr><td colSpan={7} style={{padding:'10px 12px 14px',background:'#f8fafc',fontSize:13}}>{renderDetail(detail[r.id])}</td></tr>}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < data.count} count={data.count} label="calls" />
+      </div>
+    </div>
+  );
+}
+
 function VoiceNumbersTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [rows, setRows]       = useState([]);
@@ -16905,6 +17109,7 @@ const NAV_GROUPS = [
   { title: 'Voice / IVR', items: [
     { id:'ivrflows',       Icon:Workflow,    label:'IVR Flows'        },
     { id:'voicenumbers',   Icon:Phone,       label:'Voice Numbers'    },
+    { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
     { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
@@ -21106,6 +21311,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     operations:   <OperationsTab/>,
     ivrflows:       <IvrFlowsTab/>,
     voicenumbers:   <VoiceNumbersTab/>,
+    calllogs:       <VoiceCallLogsTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,
