@@ -70,7 +70,7 @@ export default function LiveCallCenter() {
             <Stat label={t("cc.status.away")} value={snap.by_status.away} tone="text-amber-600" />
             <Stat label={t("cc.board.calls_waiting")} value={snap.calls_waiting} tone={snap.calls_waiting > 0 ? "text-red-600" : undefined} />
             <Link to="/call-center/missed" className="min-w-[88px] flex-1 rounded-md hover:bg-accent/40" title={t("cc.board.follow_up", { n: snap.open_missed })}>
-              <Stat label={t("cc.missed.sum_attention")} value={snap.open_missed} tone={snap.open_missed > 0 ? "text-red-600" : undefined} />
+              <Stat label={t("cc.board.callbacks_waiting")} value={snap.open_missed} tone={snap.open_missed > 0 ? "text-red-600" : undefined} />
             </Link>
           </div>
 

@@ -34,6 +34,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
+import { useAccess } from "@/hooks/useCallAnalytics";
 import { hasSmsAccess, hasIvrAccess, canUseCallCenter, isCallCenterSupervisor } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -204,7 +205,11 @@ const Dashboard = () => {
       ]
     : [];
 
-  const voiceMetricCards: MetricProps[] = showIvr
+  // People who can see call analytics get the call figures there (one period, one definition). The tiles below are only for
+  // voice users without it, so the same number is never shown twice with two different answers.
+  const callAnalytics = useAccess();
+  const analyticsShown = showIvr && !!callAnalytics.data?.voice && !!callAnalytics.data?.reporting;
+  const voiceMetricCards: MetricProps[] = showIvr && !analyticsShown
     ? [
         {
           title: t("dashboard.metric.total_calls"),

@@ -19,17 +19,18 @@ const RANGES: RangePreset[] = ["today", "last_7", "last_30"];
 function MiniKpis({ filters }: { filters: AnalyticsFilters }) {
   const { t } = useLanguage();
   const q = useSummary(filters);
-  if (q.isLoading) return <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
+  if (q.isLoading) return <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
   if (!q.data) return null;
   const k = q.data.kpis;
   const cards = [
+    { label: t("an.k_total"), value: fmtNum(k.total_calls.value), change: k.total_calls.change, tone: "", good: true, points: false },
     { label: t("an.k_answered"), value: fmtNum(k.answered.value), change: k.answered.change, tone: "text-green-600", good: true, points: false },
     { label: t("an.k_missed"), value: fmtNum(k.missed.value), change: k.missed.change, tone: "text-red-600", good: false, points: false },
     { label: t("an.k_answer_rate"), value: fmtPct(k.answer_rate.value, 1), change: k.answer_rate.change, tone: "", good: true, points: true },
     { label: t("an.k_wait"), value: fmtSeconds(k.avg_wait_seconds.value), change: k.avg_wait_seconds.change, tone: "", good: false, points: false },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
       {cards.map((c) => (
         <Card key={c.label}>
           <CardContent className="space-y-1 p-3.5">

@@ -440,6 +440,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.missed.copied": "Namba {{count}} zimenakiliwa",
   "cc.missed.copy_failed": "Imeshindwa kunakili. Tumia Pakua CSV.",
   "cc.missed.sum_attention": "Zinahitaji umakini",
+  "cc.board.callbacks_waiting": "Zinazosubiri kupigiwa",
   "cc.missed.result": "Jinsi ilivyoisha",
   "cc.missed.result_any": "Matokeo yoyote",
   "cc.missed.waited_abandoned": "alisubiri {{time}}, kisha akakata",
