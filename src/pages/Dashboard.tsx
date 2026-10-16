@@ -161,6 +161,9 @@ const Dashboard = () => {
   const showIvr = hasIvrAccess(user);
   const showTutorial = showSms || !showIvr; // the video is the SMS tutorial; voice-only users never see it
   const voiceStats = useVoiceDashboardStats(showIvr);
+  // A hook, so it must run on every render, before the loading return below (otherwise React counts a different number of hooks
+  // when loading ends and the page crashes with error #310).
+  const callAnalytics = useAccess();
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -207,7 +210,6 @@ const Dashboard = () => {
 
   // People who can see call analytics get the call figures there (one period, one definition). The tiles below are only for
   // voice users without it, so the same number is never shown twice with two different answers.
-  const callAnalytics = useAccess();
   const analyticsShown = showIvr && !!callAnalytics.data?.voice && !!callAnalytics.data?.reporting;
   const voiceMetricCards: MetricProps[] = showIvr && !analyticsShown
     ? [
