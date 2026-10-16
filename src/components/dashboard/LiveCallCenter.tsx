@@ -16,10 +16,10 @@ import { callCenterApi, type LiveSnapshot } from "@/services/callCenterApi";
 
 const POLL_MS = 15_000;
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function Stat({ label, value, tone, unit }: { label: string; value: number; tone?: string; unit?: string }) {
   return (
     <div className="min-w-[88px] flex-1">
-      <p className={`text-2xl font-bold leading-none tabular-nums ${tone ?? ""}`}>{value}</p>
+      <p className={`text-2xl font-bold leading-none tabular-nums ${tone ?? ""}`}>{value}{unit ? <span className="ml-0.5 text-sm font-medium">{unit}</span> : null}</p>
       <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </div>
   );
@@ -69,10 +69,25 @@ export default function LiveCallCenter() {
             <Stat label={t("cc.status.busy")} value={snap.by_status.busy} tone="text-red-600" />
             <Stat label={t("cc.status.away")} value={snap.by_status.away} tone="text-amber-600" />
             <Stat label={t("cc.board.calls_waiting")} value={snap.calls_waiting} tone={snap.calls_waiting > 0 ? "text-red-600" : undefined} />
+            <Stat label={t("cc.board.longest_wait")} value={snap.longest_wait_seconds ?? 0} unit="s" tone={(snap.longest_wait_seconds ?? 0) >= 60 ? "text-red-600" : undefined} />
             <Link to="/call-center/missed" className="min-w-[88px] flex-1 rounded-md hover:bg-accent/40" title={t("cc.board.follow_up", { n: snap.open_missed })}>
               <Stat label={t("cc.board.callbacks_waiting")} value={snap.open_missed} tone={snap.open_missed > 0 ? "text-red-600" : undefined} />
             </Link>
+            <Link to="/call-center/missed?focus=overdue" className="min-w-[88px] flex-1 rounded-md hover:bg-accent/40">
+              <Stat label={t("cc.board.overdue_callbacks")} value={snap.overdue_callbacks ?? 0} tone={(snap.overdue_callbacks ?? 0) > 0 ? "text-red-600" : undefined} />
+            </Link>
+            <Link to="/call-center/missed?focus=voicemail" className="min-w-[88px] flex-1 rounded-md hover:bg-accent/40">
+              <Stat label={t("cc.board.new_voicemails")} value={snap.new_voicemails ?? 0} />
+            </Link>
           </div>
+
+          {(snap.teams.some((x) => x.queue_near_full) || (snap.overdue_callbacks ?? 0) > 0) && (
+            <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+              {snap.teams.filter((x) => x.queue_near_full).map((x) => t("cc.board.queue_near_full", { team: x.name, waiting: x.waiting, max: x.queue_max_callers ?? 0 })).join(" · ")}
+              {snap.teams.some((x) => x.queue_near_full) && (snap.overdue_callbacks ?? 0) > 0 ? " · " : ""}
+              {(snap.overdue_callbacks ?? 0) > 0 ? t("cc.board.callbacks_overdue_warn", { n: snap.overdue_callbacks ?? 0 }) : ""}
+            </div>
+          )}
 
           {(snap.live_calls.length > 0 || waitingTeams.length > 0) && (
             <div className="grid gap-3 border-t border-border pt-3 md:grid-cols-2">

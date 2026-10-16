@@ -70,6 +70,7 @@ export interface Team {
   hold_music_url: string;
   waiting_message: string;
   callback_offer: boolean;
+  queue_operator_option?: boolean;
   waiting_now: number;
   is_active: boolean;
   members: TeamMemberSummary[];
@@ -94,6 +95,7 @@ export interface TeamInput {
   hold_music_url?: string;
   waiting_message?: string;
   callback_offer?: boolean;
+  queue_operator_option?: boolean;
   is_active?: boolean;
   agent_ids?: string[];
 }
@@ -203,11 +205,15 @@ export interface RecentCall {
 export interface LiveSnapshot {
   today: { inbound: number; answered: number; missed: number; outbound: number; avg_talk_seconds: number };
   open_missed: number;
+  /** The longest any caller has been waiting right now, over all queues. */
+  longest_wait_seconds?: number;
+  overdue_callbacks?: number;
+  new_voicemails?: number;
   recent_calls: RecentCall[];
   agents_online: number;
   by_status: Record<AgentStatus, number>;
   calls_waiting: number;
-  teams: Array<TeamCounts & { id: string; name: string; waiting: number; longest_wait_seconds: number; queue_enabled: boolean }>;
+  teams: Array<TeamCounts & { id: string; name: string; waiting: number; longest_wait_seconds: number; queue_enabled: boolean; queue_max_callers?: number; queue_near_full?: boolean }>;
   agents: Array<{
     id: string;
     name: string;

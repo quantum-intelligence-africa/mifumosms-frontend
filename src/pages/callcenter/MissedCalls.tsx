@@ -3,7 +3,7 @@
 // Nothing here changes a status by itself: only a person (or a real call outcome recorded elsewhere) does.
 import { appLocale } from "@/utils/appLocale";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AlertCircle, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Copy, Download, Mic, MoreHorizontal, NotebookPen, PhoneCall, PhoneMissed, RefreshCw, Repeat, Search, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,10 @@ export default function MissedCalls() {
   const [summary, setSummary] = useState<MissedSummary | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [agents, setAgents] = useState<CCAgent[]>([]);
-  const [status, setStatus] = useState<string>("attention");
+  // A card on the dashboard opens this list already narrowed (?focus=overdue | voicemail | new).
+  const [searchParams] = useSearchParams();
+  const focus = searchParams.get("focus");
+  const [status, setStatus] = useState<string>(focus === "voicemail" ? "voicemail" : focus === "new" ? "new" : focus === "overdue" ? "open" : "attention");
   const [team, setTeam] = useState<string>("all");
   const [range, setRange] = useState<Range>("all");
   const [from, setFrom] = useState("");
@@ -79,7 +82,7 @@ export default function MissedCalls() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<string>("any");
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [onlyOverdue, setOnlyOverdue] = useState(focus === "overdue");
   const [onlyRepeated, setOnlyRepeated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

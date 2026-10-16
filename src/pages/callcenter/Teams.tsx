@@ -47,6 +47,7 @@ interface Draft {
   hold_music_url: string;
   waiting_message: string;
   callback_offer: boolean;
+  queue_operator_option: boolean;
   is_active: boolean;
   agent_ids: string[];
 }
@@ -55,7 +56,7 @@ const EMPTY: Draft = {
   name: "", description: "", extension: "", routing_strategy: "round_robin",
   alwaysOpen: true, days: [0, 1, 2, 3, 4], start: "08:00", end: "17:00", timezone: "Africa/Dar_es_Salaam",
   after_hours_action: "voicemail", after_hours_message: "", overflow_team: "",
-  queue_enabled: false, queue_max_callers: 10, queue_max_wait_seconds: 180, hold_music_url: "", waiting_message: "", callback_offer: true,
+  queue_enabled: false, queue_max_callers: 10, queue_max_wait_seconds: 180, hold_music_url: "", waiting_message: "", callback_offer: true, queue_operator_option: false,
   is_active: true, agent_ids: [],
 };
 
@@ -68,7 +69,7 @@ function toDraft(team: Team): Draft {
     timezone: team.timezone, after_hours_action: team.after_hours_action, after_hours_message: team.after_hours_message,
     overflow_team: team.overflow_team ?? "", is_active: team.is_active, agent_ids: team.members.map((m) => m.id),
     queue_enabled: team.queue_enabled, queue_max_callers: team.queue_max_callers, queue_max_wait_seconds: team.queue_max_wait_seconds,
-    hold_music_url: team.hold_music_url, waiting_message: team.waiting_message, callback_offer: team.callback_offer,
+    hold_music_url: team.hold_music_url, waiting_message: team.waiting_message, callback_offer: team.callback_offer, queue_operator_option: !!team.queue_operator_option,
   };
 }
 
@@ -80,7 +81,7 @@ function toInput(d: Draft): TeamInput {
     timezone: d.timezone.trim(), after_hours_action: d.after_hours_action, after_hours_message: d.after_hours_message.trim(),
     overflow_team: d.overflow_team || null, is_active: d.is_active, agent_ids: d.agent_ids,
     queue_enabled: d.queue_enabled, queue_max_callers: d.queue_max_callers, queue_max_wait_seconds: d.queue_max_wait_seconds,
-    hold_music_url: d.hold_music_url.trim(), waiting_message: d.waiting_message.trim(), callback_offer: d.callback_offer,
+    hold_music_url: d.hold_music_url.trim(), waiting_message: d.waiting_message.trim(), callback_offer: d.callback_offer, queue_operator_option: d.queue_operator_option,
   };
 }
 
@@ -395,6 +396,10 @@ export default function Teams() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="q-cb">{t("cc.queue.callback")}</Label>
                     <Switch id="q-cb" checked={draft.callback_offer} onCheckedChange={(v) => setDraft({ ...draft, callback_offer: v })} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="q-op">{t("cc.queue.operator")}</Label>
+                    <Switch id="q-op" checked={draft.queue_operator_option} disabled={!draft.overflow_team} onCheckedChange={(v) => setDraft({ ...draft, queue_operator_option: v })} />
                   </div>
                   <p className="text-xs text-muted-foreground">{t("cc.queue.after_wait_hint")}</p>
                 </>
