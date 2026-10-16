@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Fingerprint, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Fingerprint, KeyRound, Loader2 } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
-import { passkeysAvailable, signInWithPasskey, type PasskeyFailure } from "@/services/passkeys";
+import { passkeysAvailable, platformAuthenticatorAvailable, signInWithPasskey, type PasskeyFailure } from "@/services/passkeys";
 import type { AccountVerificationState } from "@/components/auth/AccountVerification";
 
 interface Props {
+  /** "device": this device's own fingerprint, face, Windows Hello or screen-lock. "passkey": any passkey, including a phone or security key. */
+  mode: "device" | "passkey";
   /** Called only after the server verified the signed passkey assertion and issued tokens. */
   onSignedIn: (tokens: { access: string; refresh: string }, user: unknown) => void;
   /** The account still has to finish first-time verification; no tokens exist yet. */
@@ -16,19 +17,26 @@ interface Props {
 }
 
 /**
- * "Sign in with a passkey". It starts a real WebAuthn ceremony (the OS shows fingerprint, face, Windows Hello or PIN) and is
- * hidden when the browser or this address can't do passkeys, so it never appears as a button that cannot work.
+ * One "Continue with ..." button, styled like "Continue with Google". Both start a real WebAuthn ceremony: the "device" one asks the
+ * browser to use this device's own fingerprint / face / Windows Hello / PIN straight away; the "passkey" one lets the person pick any
+ * saved passkey (this device, a phone through a QR code, or a security key). A button is hidden when it cannot work here: a browser or
+ * address without passkeys shows neither, and a device with no fingerprint/face/Hello shows only the passkey one.
  */
-export function PasskeyButton({ onSignedIn, onNeedsVerification, onError, roundedClassName = "rounded-lg" }: Props) {
+export function PasskeyButton({ mode, onSignedIn, onNeedsVerification, onError, roundedClassName = "rounded-lg" }: Props) {
   const { t } = useLanguage();
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    void passkeysAvailable().then((ok) => alive && setAvailable(ok));
-    return () => { alive = false; };
-  }, []);
+    void (async () => {
+      const ok = (await passkeysAvailable()) && (mode === "passkey" || (await platformAuthenticatorAvailable()));
+      if (alive) setAvailable(ok);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
 
   if (!available) return null;
 
@@ -45,7 +53,7 @@ export function PasskeyButton({ onSignedIn, onNeedsVerification, onError, rounde
 
   const start = async () => {
     setBusy(true);
-    const res = await signInWithPasskey();
+    const res = await signInWithPasskey(undefined, mode === "device" ? "device" : "any");
     setBusy(false);
     if (!res.ok || !res.data) {
       // A 403 carries the organization's own wording (e.g. "only for members of …"); other failures use ours.
@@ -69,24 +77,17 @@ export function PasskeyButton({ onSignedIn, onNeedsVerification, onError, rounde
     }
   };
 
+  const Icon = mode === "device" ? Fingerprint : KeyRound;
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs text-gray-400">{t("pk.or")}</span>
-        <span className="h-px flex-1 bg-gray-200" />
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={busy}
-        onClick={() => void start()}
-        className={`h-11 w-full gap-2 border-blue-200 bg-white text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50 hover:text-blue-800 ${roundedClassName}`}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-5 w-5 text-blue-600" />}
-        {busy ? t("pk.signing_in") : t("pk.signin")}
-      </Button>
-      <p className="text-center text-[11px] text-gray-500">{t("pk.hint")}</p>
-    </div>
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => void start()}
+      title={t(mode === "device" ? "pk.hint_device" : "pk.hint_passkey")}
+      className={`flex w-full items-center justify-center gap-3 border border-[#dadce0] bg-white py-3 text-center text-sm font-medium text-[#3c4043] shadow-sm transition hover:bg-[#f8faff] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 disabled:opacity-60 ${roundedClassName}`}
+    >
+      {busy ? <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> : <Icon className="h-5 w-5 text-blue-600" />}
+      <span>{busy ? t("pk.signing_in") : t(mode === "device" ? "pk.btn_device" : "pk.btn_passkey")}</span>
+    </button>
   );
 }

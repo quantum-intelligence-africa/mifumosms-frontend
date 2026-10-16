@@ -1,6 +1,10 @@
 // Strings for passkey sign-in and the Security card (English). Kiswahili is in passkeysSw.ts, typed against these keys.
 export const pkEn = {
   "pk.signin": "Sign in with fingerprint, face or passkey",
+  "pk.btn_device": "Continue with fingerprint or face",
+  "pk.btn_passkey": "Continue with a passkey",
+  "pk.hint_device": "Use this device's fingerprint, face, Windows Hello or PIN. Nothing biometric leaves your device.",
+  "pk.hint_passkey": "Choose a saved passkey: on this device, on your phone (scan a QR code) or on a security key.",
   "pk.cancelled_login": "No passkey was used. If this device has none yet, sign in with your password, then set one up: Settings → Security → Passkeys → Add a passkey.",
   "pk.prompt_title": "Sign in faster with your fingerprint or face",
   "pk.prompt_body": "Set up a passkey on this device. Next time you sign in with your fingerprint, face, Windows Hello or device PIN, with no password to type. It takes a few seconds.",

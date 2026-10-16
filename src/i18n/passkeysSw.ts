@@ -2,6 +2,10 @@ import type { pkEn } from "@/i18n/passkeys";
 
 export const pkSw: Record<keyof typeof pkEn, string> = {
   "pk.signin": "Ingia kwa alama ya kidole, uso au passkey",
+  "pk.btn_device": "Endelea na alama ya kidole au uso",
+  "pk.btn_passkey": "Endelea na passkey",
+  "pk.hint_device": "Tumia alama ya kidole, uso, Windows Hello au PIN ya kifaa hiki. Hakuna data ya kibayometriki inayoondoka kwenye kifaa chako.",
+  "pk.hint_passkey": "Chagua passkey iliyohifadhiwa: kwenye kifaa hiki, kwenye simu yako (changanua msimbo wa QR) au kwenye kifaa cha usalama.",
   "pk.cancelled_login": "Hakuna passkey iliyotumika. Kama kifaa hiki hakina bado, ingia kwa nenosiri, kisha uiweke: Mipangilio → Usalama → Passkeys → Ongeza passkey.",
   "pk.prompt_title": "Ingia haraka kwa alama ya kidole au uso",
   "pk.prompt_body": "Weka passkey kwenye kifaa hiki. Wakati ujao utaingia kwa alama ya kidole, uso, Windows Hello au PIN ya kifaa, bila kuandika nenosiri. Inachukua sekunde chache.",

@@ -111,9 +111,12 @@ function creationOptions(o: Json, attachment?: PasskeyAttachment): PublicKeyCred
   } as PublicKeyCredentialCreationOptions;
 }
 
-function requestOptions(o: Json): PublicKeyCredentialRequestOptions {
+function requestOptions(o: Json, mode: "device" | "any" = "any"): PublicKeyCredentialRequestOptions {
   return {
     ...o,
+    // "device": ask the browser to go straight to this device's own fingerprint / face / Windows Hello / PIN. Browsers that do not know
+    // the hint ignore it and show their usual chooser, so the worst case is the same as the plain passkey button.
+    ...(mode === "device" ? { hints: ["client-device"] } : {}),
     challenge: toBuffer(o.challenge),
     allowCredentials: (o.allowCredentials || []).map((c: Json) => ({ ...c, id: toBuffer(c.id) })),
   } as PublicKeyCredentialRequestOptions;
@@ -185,13 +188,13 @@ export async function registerPasskey(name: string, attachment?: PasskeyAttachme
  * Sign in with a passkey (discoverable: no email needed; the browser lists the user's passkeys for this site).
  * On success `data` is the server's login response: `{ tokens, user }`, or an account-verification payload (status 202).
  */
-export async function signInWithPasskey(signal?: AbortSignal): Promise<PasskeyResult<Json>> {
+export async function signInWithPasskey(signal?: AbortSignal, mode: "device" | "any" = "any"): Promise<PasskeyResult<Json>> {
   if (!isPasskeySupported()) return { ok: false, status: 0, failure: "unsupported" };
   const opts = await call("login/options/", "POST", {});
   if (opts.status !== 200) return fail(opts.status, opts.data);
   let assertion: PublicKeyCredential | null;
   try {
-    assertion = (await navigator.credentials.get({ publicKey: requestOptions(opts.data.options), signal })) as PublicKeyCredential | null;
+    assertion = (await navigator.credentials.get({ publicKey: requestOptions(opts.data.options, mode), signal })) as PublicKeyCredential | null;
   } catch (err) {
     return { ok: false, status: 0, failure: ceremonyFailure(err) };
   }

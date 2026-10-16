@@ -251,13 +251,20 @@ const Login = () => {
   const passkeyError = (description: string) =>
     toast({ title: t("auth.login.toast_login_failed_title"), description, variant: "destructive" });
 
-  const passkeyButton = (rounded: string) => (
-    <PasskeyButton
-      roundedClassName={rounded}
-      onSignedIn={handleTwoFactorVerified}
-      onNeedsVerification={setVerification}
-      onError={passkeyError}
-    />
+  // Two separate ways, shown right under "Continue with Google": this device's fingerprint/face, and a passkey of any kind.
+  const passkeyButtons = (rounded: string) => (
+    <>
+      {(["device", "passkey"] as const).map((mode) => (
+        <PasskeyButton
+          key={mode}
+          mode={mode}
+          roundedClassName={rounded}
+          onSignedIn={handleTwoFactorVerified}
+          onNeedsVerification={setVerification}
+          onError={passkeyError}
+        />
+      ))}
+    </>
   );
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -395,9 +402,12 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-full">
-              {t("pg.InviteAccept.0945")}
-            </GoogleButton>
+            <div className="space-y-2.5">
+              <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-full">
+                {t("pg.InviteAccept.0945")}
+              </GoogleButton>
+              {passkeyButtons("rounded-full")}
+            </div>
             {/* Email Input */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
@@ -471,8 +481,6 @@ const Login = () => {
               </Button>
             </motion.div>
           </form>
-
-          <div className="mt-5">{passkeyButton("rounded-full")}</div>
 
           {/* Links (hidden on a white-label host) */}
           {!whiteLabelHost && (
@@ -601,9 +609,12 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-lg">
-                {t("pg.InviteAccept.0945")}
-              </GoogleButton>
+              <div className="space-y-2.5">
+                <GoogleButton href={googleLoginUrl(whiteLabelHost, nextPath)} roundedClassName="rounded-lg">
+                  {t("pg.InviteAccept.0945")}
+                </GoogleButton>
+                {passkeyButtons("rounded-lg")}
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-gray-700">{t("email_address")}</Label>
                 <Input
@@ -673,8 +684,6 @@ const Login = () => {
                 {isLoading ? t("auth.common.signing_in") : t("auth.common.sign_in")}
               </Button>
             </form>
-
-            {passkeyButton("rounded-lg")}
 
             {!whiteLabelHost && (
             <div className="text-center space-y-2 sm:space-y-1">
