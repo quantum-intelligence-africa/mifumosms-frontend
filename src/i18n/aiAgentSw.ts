@@ -15,6 +15,7 @@ export const aiSw: Record<keyof typeof aiEn, string> = {
   "ai.teach.failed": "Imeshindikana kumfundisha msaidizi.",
   "ai.teach.ai": "AI inayotumika kufundisha",
   "ai.teach.ai_same": "Ile ile ya msaidizi",
+  "ai.teach.ai_off": "{{name}} (imezimwa kwenye admin portal)",
   "ai.teach.ai_missing": "Ni watoa huduma walio hai wanaoweza kuandika maandishi tu ndio wanaoorodheshwa. Kama wako hayupo, uwashe kwenye admin portal chini ya AI Provider (aina: Hugging Face au inayolingana na OpenAI), kisha pakia ukurasa upya.",
   "ai.teach.model": "Modeli (si lazima)",
   "ai.teach.model_ph": "Acha wazi kutumia modeli ya mtoa huduma, au chagua moja",

@@ -16,6 +16,7 @@ export const aiEn = {
   "ai.teach.failed": "Could not teach the assistant.",
   "ai.teach.ai": "AI used for teaching",
   "ai.teach.ai_same": "Same as the assistant",
+  "ai.teach.ai_off": "{{name}} (switched off in the admin portal)",
   "ai.teach.ai_missing": "Only active providers that can write text are listed. If yours is missing, switch it on in the admin portal under AI Provider (kind: Hugging Face or OpenAI-compatible), then reload this page.",
   "ai.teach.model": "Model (optional)",
   "ai.teach.model_ph": "Leave empty for the provider's own model, or pick one",

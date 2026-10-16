@@ -202,7 +202,9 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
                 <Label htmlFor="teach-ai">{t(aiKey("ai.teach.ai"))}</Label>
                 <select id="teach-ai" value={aiProvider} onChange={(e) => remember(e.target.value, e.target.value === aiProvider ? aiModel : "")} disabled={working} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
                   <option value={SAME}>{t(aiKey("ai.teach.ai_same"))}</option>
-                  {reasoningProviders.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {reasoningProviders.map((p) => (
+                    <option key={p.id} value={p.id} disabled={p.is_active === false}>{p.is_active === false ? t(aiKey("ai.teach.ai_off"), { name: p.name }) : p.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="min-w-[220px] flex-1 space-y-1.5">
@@ -217,7 +219,7 @@ export function AITeachPanel({ config, settings, meta, onChanged, providers }: P
             )}
             {modelsError && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.models_failed"), { reason: modelsError })}</p>}
             <p className="text-xs text-muted-foreground">{t(aiKey("ai.teach.ai_help"))}</p>
-            {reasoningProviders.length < 2 && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.ai_missing"))}</p>}
+            {reasoningProviders.filter((p) => p.is_active !== false).length < 2 && <p className="text-xs text-amber-700">{t(aiKey("ai.teach.ai_missing"))}</p>}
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
             {(["replace", "merge"] as const).map((m) => (

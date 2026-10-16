@@ -60,6 +60,8 @@ export interface ProviderInfo {
   type: "openai" | "huggingface" | "elevenlabs";
   is_default: boolean;
   roles: Array<"reasoning" | "listening" | "voice">;
+  /** Only sent as false to SENDA staff, so a switched-off provider can be explained instead of silently missing. */
+  is_active?: boolean;
 }
 
 export interface ProviderCheck {
