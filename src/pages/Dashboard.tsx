@@ -26,6 +26,7 @@ const PerformanceOverview = lazy(() =>
 );
 import { SenderIds } from "@/components/dashboard/SenderIds";
 // Loaded only for voice users: it pulls in the chart library, which SMS-only accounts never need.
+const LiveCallCenter = lazy(() => import("@/components/dashboard/LiveCallCenter"));
 const CallAnalyticsPreview = lazy(() => import("@/components/dashboard/CallAnalyticsPreview"));
 import { useBranding } from "@/contexts/BrandingContext";
 import { MobileHomeHero } from "@/components/layout/MobileHomeHero";
@@ -33,7 +34,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
-import { hasSmsAccess, hasIvrAccess } from "@/utils/roleUtils";
+import { hasSmsAccess, hasIvrAccess, canUseCallCenter, isCallCenterSupervisor } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -299,6 +300,13 @@ const Dashboard = () => {
                     <div className="md:hidden grid grid-cols-2 gap-2 overflow-x-hidden">
                       {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
+                    )}
+
+                    {/* Who is available and what is ringing or waiting right now: for the people who run the call center. */}
+                    {showIvr && canUseCallCenter(user) && isCallCenterSupervisor(user) && (
+                      <Suspense fallback={<Skeleton className="h-28 rounded-xl" />}>
+                        <LiveCallCenter />
+                      </Suspense>
                     )}
 
                     {/* Call analytics for voice customers, right after login. The component asks the server whether this

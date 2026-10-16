@@ -30,6 +30,7 @@ import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCallCenter } from "@/contexts/CallCenterContext";
 import { useDialer } from "@/contexts/DialerContext";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -64,6 +65,7 @@ interface MenuSection {
 export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const cc = useCallCenter();
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { updateTheme } = usePreferences();
@@ -141,9 +143,8 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
   const callCenterSection: MenuSection = {
     title: t("cc.nav.section"),
     items: [
-      { key: "cc-workspace", label: t("cc.nav.workspace"), icon: Phone, onClick: () => go("/call-center") },
-      ...(isCallCenterSupervisor(user)
-        ? [{ key: "cc-live", label: t("cc.nav.live"), icon: BarChart3, onClick: () => go("/call-center/live") }]
+      ...(cc.isAgent || !isCallCenterSupervisor(user)
+        ? [{ key: "cc-workspace", label: t("cc.nav.workspace"), icon: Phone, onClick: () => go("/call-center") }]
         : []),
       { key: "cc-missed", label: t("cc.nav.missed"), icon: PhoneMissed, onClick: () => go("/call-center/missed") },
       { key: "cc-history", label: t("cc.nav.history"), icon: History, onClick: () => go("/call-center/history") },

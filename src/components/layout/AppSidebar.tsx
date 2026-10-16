@@ -46,6 +46,7 @@ import { ccKey } from "@/i18n/callCenter";
 import { getCallCenterSections, pathMatches } from "@/components/layout/callCenterSections";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
+import { useCallCenter } from "@/contexts/CallCenterContext";
 import { callCenterApi } from "@/services/callCenterApi";
 import { useDialer } from "@/contexts/DialerContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -101,6 +102,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
   const { user, logout, isLoading } = useAuth();
+  const cc = useCallCenter();
   const { data: missedSummary } = useQuery({
     queryKey: ["cc", "missed-summary"],
     queryFn: async () => {
@@ -157,7 +159,8 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   }));
   const callCenterItems: NavItem[] = canUseCallCenter(user)
     ? [
-        { name: t("cc.nav.workspace"), href: "/call-center", icon: Phone },
+        // Agents (and anyone with an agent profile) take calls here; owners, admins and supervisors use the Dashboard.
+        ...(cc.isAgent || !isCallCenterSupervisor(user) ? [{ name: t("cc.nav.workspace"), href: "/call-center", icon: Phone }] : []),
         { name: t("cc.nav.missed"), href: "/call-center/missed", icon: PhoneMissed, badge: missedSummary?.needs_attention ?? 0 },
       ]
     : [];

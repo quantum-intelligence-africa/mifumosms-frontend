@@ -353,7 +353,7 @@ const translations = {
     "dashboard.metric.total_calls": "Total Calls",
     "dashboard.metric.calls_last_30_days": "Calls in the last 30 days",
     "dashboard.metric.missed_calls": "Missed Calls",
-    "dashboard.metric.missed_last_30_days": "Missed in the last 30 days",
+    "dashboard.metric.missed_last_30_days": "Missed in the last 30 days, voicemail included",
     "dashboard.metric.active_numbers": "Active Numbers",
     "dashboard.metric.connected_phone_numbers": "Connected phone numbers",
     "dashboard.error.title": "Dashboard Error",

@@ -80,7 +80,6 @@ const VoiceOverview = lazy(() => import("./pages/voice/VoiceOverview"));
 const IvrFlowBuilder = lazy(() => import("./pages/voice/IvrFlowBuilder"));
 const CallCenterHome = lazy(() => import("./pages/callcenter/Home"));
 const CallCenterAnalytics = lazy(() => import("./pages/callcenter/Analytics"));
-const CallCenterOverview = lazy(() => import("./pages/callcenter/Overview"));
 const CallCenterTeams = lazy(() => import("./pages/callcenter/Teams"));
 const CallCenterAgents = lazy(() => import("./pages/callcenter/CallCenterAgents"));
 const CallCenterMissed = lazy(() => import("./pages/callcenter/MissedCalls"));
@@ -285,7 +284,7 @@ const AppContent = () => {
               } />
               <Route path="/call-center/live" element={
                 <ProtectedRoute requireCallCenter="supervisor" comingSoonKey="voice_ivr">
-                  <CallCenterOverview />
+                  <Navigate to="/dashboard" replace />
                 </ProtectedRoute>
               } />
               <Route path="/call-center/analytics" element={

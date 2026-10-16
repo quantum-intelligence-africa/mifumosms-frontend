@@ -254,7 +254,7 @@ const sw: Record<string, string> = {
   "dashboard.metric.total_calls": "Jumla ya Simu",
   "dashboard.metric.calls_last_30_days": "Simu za siku 30 zilizopita",
   "dashboard.metric.missed_calls": "Simu Zilizokosekana",
-  "dashboard.metric.missed_last_30_days": "Zilizokosekana siku 30 zilizopita",
+  "dashboard.metric.missed_last_30_days": "Zilizokosekana siku 30 zilizopita, pamoja na ujumbe wa sauti",
   "dashboard.metric.active_numbers": "Namba Hai",
   "dashboard.metric.connected_phone_numbers": "Namba za simu zilizounganishwa",
   "dashboard.error.title": "Hitilafu ya Dashibodi",
