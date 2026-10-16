@@ -34,8 +34,9 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useVoiceDashboardStats } from "@/hooks/useVoiceDashboardStats";
+import { usePlanMinutes } from "@/hooks/usePlanMinutes";
 import { useAccess } from "@/hooks/useCallAnalytics";
-import { hasSmsAccess, hasIvrAccess, canUseCallCenter, isCallCenterSupervisor } from "@/utils/roleUtils";
+import { hasSmsAccess, hasIvrAccess, canUseCallCenter, isCallCenterSupervisor, isCallCenterAdmin } from "@/utils/roleUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -161,6 +162,8 @@ const Dashboard = () => {
   const showIvr = hasIvrAccess(user);
   const showTutorial = showSms || !showIvr; // the video is the SMS tutorial; voice-only users never see it
   const voiceStats = useVoiceDashboardStats(showIvr);
+  // The call minutes against the plan (owners/admins). Also a hook: it runs on every render, before the loading return below.
+  const planMinutes = usePlanMinutes(showIvr && isCallCenterAdmin(user));
   // A hook, so it must run on every render, before the loading return below (otherwise React counts a different number of hooks
   // when loading ends and the page crashes with error #310).
   const callAnalytics = useAccess();
@@ -232,6 +235,30 @@ const Dashboard = () => {
       ]
     : [];
 
+  // Voice customers see their plan usage (minutes used of the plan's allowance), as on Plan & usage. SMS credits are an SMS thing: they
+  // appear only for people who have SMS, never as a "0 credits" card on a call-center account.
+  const minuteCard = (meter: NonNullable<typeof planMinutes.inbound>, titleKey: string): MetricProps => {
+    const plan = planMinutes.planName || "";
+    const used = Math.round(meter.used);
+    const hasLimit = meter.limit !== null;
+    return {
+      title: t(titleKey as never),
+      value: hasLimit ? `${used.toLocaleString(appLocale())} / ${(meter.limit as number).toLocaleString(appLocale())}` : used.toLocaleString(appLocale()),
+      description: !hasLimit
+        ? t("dashboard.metric.minutes_no_limit" as never, { plan })
+        : meter.exceeded
+          ? t("dashboard.metric.minutes_over" as never, { plan, over: Math.max(0, used - (meter.limit as number)).toLocaleString(appLocale()) })
+          : t("dashboard.metric.minutes_left" as never, { plan, left: Math.max(0, (meter.limit as number) - used).toLocaleString(appLocale()) }),
+      icon: Phone,
+      accentBg: meter.exceeded ? "bg-rose-50" : "bg-sky-50",
+      accentText: meter.exceeded ? "text-rose-600" : "text-sky-600",
+    };
+  };
+  const planCards: MetricProps[] = [
+    ...(planMinutes.inbound ? [minuteCard(planMinutes.inbound, "dashboard.metric.minutes_in")] : []),
+    ...(planMinutes.outbound && (planMinutes.outbound.limit !== null || planMinutes.outbound.used > 0) ? [minuteCard(planMinutes.outbound, "dashboard.metric.minutes_out")] : []),
+  ];
+
   const creditsCard: MetricProps = {
     title: t("dashboard.metric.current_credits"),
     value: metrics?.current_credits?.value?.toLocaleString(appLocale()) || "0",
@@ -244,7 +271,8 @@ const Dashboard = () => {
   const metricCards: MetricProps[] = [
     ...smsMetricCards,
     ...voiceMetricCards,
-    creditsCard,
+    ...planCards,
+    ...(showSms || !showIvr ? [creditsCard] : []),
     ...(showSms
       ? [
           {
