@@ -19,7 +19,7 @@ export type AfterHoursAction = "voicemail" | "message";
 export type MissedCallStatus = "new" | "assigned" | "called_back" | "scheduled" | "contacted" | "unreachable" | "resolved" | "unresolved";
 
 /** The counts behind the "needs attention" badge, from the same records the list shows. */
-export interface MissedSummary { needs_attention: number; new: number; overdue: number; scheduled: number; today: number }
+export interface MissedSummary { needs_attention: number; new: number; overdue: number; scheduled: number; abandoned: number; today: number }
 export type CallOutcome =
   | "resolved"
   | "follow_up_required"
@@ -250,6 +250,8 @@ export interface MissedCall {
   callback_at: string | null;
   /** Untouched for too long, or a scheduled callback whose time has passed (decided by the server). */
   is_overdue: boolean;
+  /** How the call ended: missed, abandoned (left the queue), voicemail, rejected, failed. */
+  call_outcome: string;
   /** How many missed calls this number has in total, this one included. */
   repeat_count: number;
   waited_seconds: number;

@@ -78,6 +78,7 @@ export default function MissedCalls() {
   const [to, setTo] = useState("");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [result, setResult] = useState<string>("any");
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyRepeated, setOnlyRepeated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -99,11 +100,12 @@ export default function MissedCalls() {
     if (status === "voicemail") p.voicemail = "true";
     else if (status !== "all") p.status = status;
     if (team !== "all") p.team = team;
+    if (result !== "any") p.result = result;
     if (query) p.q = query;
     if (onlyOverdue) p.overdue = "true";
     if (onlyRepeated) p.repeated = "true";
     return { ...p, ...rangeDates(range, from, to) };
-  }, [status, team, query, onlyOverdue, onlyRepeated, range, from, to]);
+  }, [status, team, result, query, onlyOverdue, onlyRepeated, range, from, to]);
 
   // Typing in the search box waits a moment before asking the server.
   useEffect(() => {
@@ -293,9 +295,10 @@ export default function MissedCalls() {
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {card("attention", t("cc.missed.sum_attention"), summary?.needs_attention, status === "attention" && !onlyOverdue && !onlyRepeated, () => { setStatus("attention"); setOnlyOverdue(false); setOnlyRepeated(false); })}
         {card("new", t("cc.missed.sum_new"), summary?.new, status === "new", () => { setStatus("new"); setOnlyOverdue(false); })}
+        {card("abandoned", t("cc.history.outcome_abandoned"), summary?.abandoned, result === "abandoned", () => { setResult(result === "abandoned" ? "any" : "abandoned"); setStatus("attention"); setOnlyOverdue(false); })}
         {card("overdue", t("cc.missed.sum_overdue"), summary?.overdue, onlyOverdue, () => { setStatus("open"); setOnlyOverdue(true); }, summary && summary.overdue > 0 ? "text-destructive" : undefined)}
         {card("scheduled", t("cc.missed.sum_scheduled"), summary?.scheduled, status === "scheduled", () => { setStatus("scheduled"); setOnlyOverdue(false); })}
       </div>
@@ -313,6 +316,15 @@ export default function MissedCalls() {
             <SelectItem value="all">{t("cc.missed.filter_all")}</SelectItem>
             <SelectItem value="voicemail">{t("cc.missed.filter_voicemail")}</SelectItem>
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{t(`cc.missed.status_${s}` as const)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={result} onValueChange={setResult}>
+          <SelectTrigger className="h-9 w-44" aria-label={t("cc.missed.result")}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">{t("cc.missed.result_any")}</SelectItem>
+            <SelectItem value="abandoned">{t("cc.history.outcome_abandoned")}</SelectItem>
+            <SelectItem value="missed">{t("cc.history.outcome_missed")}</SelectItem>
+            <SelectItem value="voicemail">{t("cc.history.outcome_voicemail")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={range} onValueChange={(v) => setRange(v as Range)}>
@@ -362,8 +374,8 @@ export default function MissedCalls() {
             <CheckCircle2 className="h-10 w-10 text-green-600" />
             <h3 className="text-base font-semibold">{t("cc.missed.empty_title")}</h3>
             <p className="max-w-md text-sm text-muted-foreground">{t("cc.missed.empty_desc")}</p>
-            {(status !== "all" || query || range !== "all" || onlyOverdue || onlyRepeated) && (
-              <Button variant="outline" size="sm" onClick={() => { showAll(); setSearch(""); setRange("all"); setTeam("all"); }}>{t("cc.missed.clear_filters")}</Button>
+            {(status !== "all" || result !== "any" || query || range !== "all" || onlyOverdue || onlyRepeated) && (
+              <Button variant="outline" size="sm" onClick={() => { showAll(); setResult("any"); setSearch(""); setRange("all"); setTeam("all"); }}>{t("cc.missed.clear_filters")}</Button>
             )}
           </CardContent>
         </Card>
@@ -392,6 +404,11 @@ export default function MissedCalls() {
                     <TableRow className={r.is_overdue ? "bg-destructive/5" : undefined}>
                       <TableCell className="whitespace-nowrap font-mono text-sm">
                         <span className="inline-flex items-center gap-1.5"><PhoneMissed className="h-3.5 w-3.5 text-red-500" />{r.caller_number}</span>
+                        {r.call_outcome && (
+                          <Badge variant={r.call_outcome === "abandoned" ? "destructive" : "outline"} className="ml-2 px-1.5 py-0 font-sans text-[10px]">
+                            {t(`cc.history.outcome_${r.call_outcome}` as never)}
+                          </Badge>
+                        )}
                         {(r.repeat_count ?? 1) > 1 && (
                           <Badge variant="outline" className="ml-2 gap-1 px-1.5 py-0 font-sans text-[10px]" title={t("cc.missed.repeat_hint", { count: r.repeat_count })}>
                             <Repeat className="h-2.5 w-2.5" />×{r.repeat_count}
@@ -423,7 +440,7 @@ export default function MissedCalls() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                         {new Date(r.call_started_at).toLocaleString(appLocale())}
-                        {r.waited_seconds > 0 && <span className="block text-[11px]">{t("cc.missed.waited", { time: formatClock(r.waited_seconds) })}</span>}
+                        {r.waited_seconds > 0 && <span className="block text-[11px]">{t(r.call_outcome === "abandoned" ? "cc.missed.waited_abandoned" : "cc.missed.waited", { time: formatClock(r.waited_seconds) })}</span>}
                       </TableCell>
                       <TableCell className="text-sm">{r.team_name || "—"}</TableCell>
                       <TableCell className="text-sm">{r.assigned_to_name || "—"}</TableCell>

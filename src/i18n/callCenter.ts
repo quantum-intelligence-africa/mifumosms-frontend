@@ -453,6 +453,9 @@ export const ccEn = {
   // ── missed calls ─────────────────────────────────────────────────────────
   "cc.missed.title": "Missed calls",
   "cc.missed.sum_attention": "Need attention",
+  "cc.missed.result": "How it ended",
+  "cc.missed.result_any": "Any result",
+  "cc.missed.waited_abandoned": "waited {{time}}, then hung up",
   "cc.missed.sum_new": "New",
   "cc.missed.sum_overdue": "Overdue",
   "cc.missed.sum_scheduled": "Callbacks scheduled",
