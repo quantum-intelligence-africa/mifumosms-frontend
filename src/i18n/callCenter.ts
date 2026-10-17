@@ -659,7 +659,7 @@ export const ccEn = {
   "cc.incoming.transferred_from": "Transferred to you by {{name}}",
   "cc.queue.badge": "Queue",
   "cc.queue.enable": "Let callers wait in a queue",
-  "cc.queue.enable_hint": "When every agent is busy, callers hear a message and wait their turn instead of going straight to voicemail.",
+  "cc.queue.enable_hint": "On: when every agent is busy, callers hear a message and wait their turn. Off: they are told every agent is busy and asked to leave a message right away; each message appears under Missed calls as a follow-up request for your team to call back.",
   "cc.queue.max_callers": "Most callers waiting at once",
   "cc.queue.max_wait": "Longest wait (seconds)",
   "cc.queue.message": "Message for waiting callers",

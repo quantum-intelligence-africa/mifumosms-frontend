@@ -639,7 +639,7 @@ export const ccSw: Record<keyof typeof ccEn, string> = {
   "cc.incoming.transferred_from": "Amehamishiwa kwako na {{name}}",
   "cc.queue.badge": "Foleni",
   "cc.queue.enable": "Ruhusu wapigaji kusubiri kwenye foleni",
-  "cc.queue.enable_hint": "Wahudumu wote wakiwa na shughuli, wapigaji wanasikia ujumbe na kusubiri zamu yao badala ya kwenda moja kwa moja kwenye ujumbe wa sauti.",
+  "cc.queue.enable_hint": "Imewashwa: wahudumu wote wakiwa na shughuli, wapigaji wanasikia ujumbe na kusubiri zamu yao. Imezimwa: wanaambiwa wahudumu wote wana shughuli na wanaombwa kuacha ujumbe mara moja; kila ujumbe unaonekana kwenye Simu zisizopokelewa kama ombi la ufuatiliaji ili timu yako impigie tena.",
   "cc.queue.max_callers": "Wapigaji wengi zaidi wanaosubiri kwa wakati mmoja",
   "cc.queue.max_wait": "Muda mrefu zaidi wa kusubiri (sekunde)",
   "cc.queue.message": "Ujumbe kwa wapigaji wanaosubiri",
