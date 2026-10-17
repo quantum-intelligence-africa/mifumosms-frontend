@@ -12560,6 +12560,7 @@ function AnalysisEmailsTab() {
   const [fDays, setFDays]     = useState('30');
   const [page, setPage]       = useState(1);
   const [log, setLog]         = useState({ count: 0, results: [] });
+  const [logTick, setLogTick] = useState(0);
   const PAGE = 50;
   const errText = (res, fallback) => {
     if (typeof res.error === 'string') return res.error;
@@ -12584,7 +12585,7 @@ function AnalysisEmailsTab() {
       voiceAdminFetch(`/audio/admin/deliveries/?${params}`, {}, onLogout).then(res => { if (res.success) setLog(res.data); });
     }, fRecipient ? 300 : 0);
     return () => clearTimeout(id);
-  }, [fOrg, fRecipient, fStatus, fDays, page, onLogout]);
+  }, [fOrg, fRecipient, fStatus, fDays, page, onLogout, logTick]);
 
   const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
@@ -12595,12 +12596,26 @@ function AnalysisEmailsTab() {
     window.open(URL.createObjectURL(await res.blob()), '_blank');
   };
   // Opens the report exactly as it would be sent, without sending anything.
-  const preview = async (output, days = 1) => {
+  const preview = async (output, days = 1, hours = 0) => {
     const token = getToken();
-    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${edit.tenant_id}/?output=${output}&days=${days}&lang=${edit.language}&date=${new Date().toISOString().slice(0, 10)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${edit.tenant_id}/?output=${output}&days=${days}&lang=${edit.language}&date=${new Date().toISOString().slice(0, 10)}${hours ? `&hours=${hours}` : ''}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) { showToast?.(res.status === 501 ? 'The PDF library is not installed on the server yet.' : 'Could not build the preview.', 'error'); return; }
     const blob = await res.blob();
     window.open(URL.createObjectURL(blob), '_blank');
+  };
+  // Sends the report now (a one-page PDF plus an email) to the addresses assigned to this organization, for the last 24 hours or the last 7 days.
+  const sendNow = (period) => {
+    const label = period === '24h' ? 'the last 24 hours' : 'the last 7 days';
+    if (!window.confirm(`Send ${edit.tenant}'s report for ${label} now, as a PDF, to the addresses assigned to receive it?\n\nIf you changed the addresses above, press Save first.`)) return;
+    setBusy(true);
+    voiceAdminFetch(`/audio/admin/send-report/${edit.tenant_id}/`, { method: 'POST', body: JSON.stringify({ period }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(errText(res, 'Could not send the report.'), 'error'); return; }
+      const sent = res.data?.sent ?? 0;
+      showToast?.(sent ? `Sent to ${(res.data.recipients || []).join(', ')}.` : 'Nothing was sent.', sent ? 'success' : 'error');
+      loadOrgs();
+      setLogTick(t => t + 1);
+    });
   };
   const save = () => {
     setBusy(true);
@@ -12615,7 +12630,7 @@ function AnalysisEmailsTab() {
   const th = {padding:'8px 10px',fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',textAlign:'left'};
   const td = {padding:'8px 10px',fontSize:13,verticalAlign:'top'};
   const sel = {height:36,fontSize:13,width:'auto',minWidth:120};
-  const KIND = { instant:'After the call', digest:'Digest', daily:'Daily report', weekly:'Weekly report', voicemail:'Voicemail alert', test:'Test' };
+  const KIND = { instant:'After the call', digest:'Digest', daily:'Daily report', weekly:'Weekly report', voicemail:'Voicemail alert', manual:'Sent on request', test:'Test' };
 
   return (
     <div style={{padding:24}}>
@@ -12710,6 +12725,18 @@ function AnalysisEmailsTab() {
             <div style={{display:'flex',gap:8,marginTop:6}}>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('html', 7)}>Preview weekly email</button>
               <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7)}>Preview weekly PDF</button>
+            </div>
+          </div>
+          <div style={{borderTop:'1px solid #eef2f7',paddingTop:10,marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>Send the report now</div>
+            <p style={{fontSize:11.5,color:'#94a3b8',margin:'3px 0 6px'}}>
+              One-page PDF plus an email, in the language chosen above, to the assigned addresses only. It covers the last 24 hours or the last 7 days up to this moment, from the real call records. The link in the email opens this organization's own domain. Preview first: nothing is sent.
+            </p>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 1, 24)}>Preview last 24 hours (PDF)</button>
+              <button className="senda-btn senda-btn-sm" disabled={busy} onClick={() => sendNow('24h')}>Send last 24 hours now</button>
+              <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={() => preview('pdf', 7, 168)}>Preview last 7 days (PDF)</button>
+              <button className="senda-btn senda-btn-sm" disabled={busy} onClick={() => sendNow('7d')}>Send last 7 days now</button>
             </div>
           </div>
           <p style={{fontSize:11.5,color:'#94a3b8',margin:'0 0 8px'}}>Nobody receives the analysis just for being an owner or an admin: an address gets it only when it is assigned (here, or by the organization in its AI settings under "Send the analysis to"). The same addresses receive the daily and weekly reports. English uses the analysis' English version. If a call has none yet, that email is sent in Swahili and says so. Nothing is sent to anyone until the next call analysis finishes.</p>
