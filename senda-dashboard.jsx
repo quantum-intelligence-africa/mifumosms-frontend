@@ -13405,6 +13405,7 @@ function VoiceNumbersTab() {
   const [error, setError]     = useState(null);
   const [search, setSearch]   = useState('');
   const [busyId, setBusyId]   = useState(null);
+  const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
   const [voices, setVoices] = useState([]);               // the voices that can read the message
@@ -13470,6 +13471,7 @@ function VoiceNumbersTab() {
   useEffect(() => {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
       if (res.success) {
+        setBuiltInMusic(res.data?.built_in_waiting_music !== false);
         setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
         setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
         const mode = res.data?.summary_mode || 'instant', times = res.data?.summary_digest_times || [], tz = res.data?.summary_timezone || 'Africa/Dar_es_Salaam';
@@ -13479,6 +13481,15 @@ function VoiceNumbersTab() {
     });
   }, [onLogout]);
 
+  // Takes effect on the next call, without restarting anything.
+  const saveBuiltInMusic = (on) => {
+    const before = builtInMusic;
+    setBuiltInMusic(on);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ built_in_waiting_music: on }) }, onLogout).then(res => {
+      if (!res.success) { setBuiltInMusic(before); showToast?.(res.error || 'Could not save the waiting-music setting.', 'error'); return; }
+      showToast?.(on ? "SENDA's waiting music is on." : "SENDA's waiting music is off: the provider's own tone is used.", 'success');
+    });
+  };
   const saveDefault = () => {
     voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ inactive_message: defaultDraft, inactive_voice: voiceDraft }) }, onLogout).then(res => {
       if (!res.success) { showToast?.(res.error || 'Could not save the message.', 'error'); return; }
@@ -13749,6 +13760,19 @@ function VoiceNumbersTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Waiting music</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={builtInMusic} onChange={e => saveBuiltInMusic(e.target.checked)} style={{marginTop:3}}/>
+          <span><b>Play SENDA's built-in waiting music</b> to callers while an agent's phone rings and while they wait in line.</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          Switch it off to send the provider no audio file from SENDA at all: a ringing phone then uses Africa's Talking's own default tone, and a caller waiting in line hears the
+          announcement only (no music). A team's own music link, if it has one, is still used. It applies from the next call; nothing needs restarting. Use this if the provider
+          reports it could not download the music file.
+        </p>
       </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
