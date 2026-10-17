@@ -3,7 +3,7 @@
 // password that is shown exactly once and must be replaced at first sign-in.
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Copy, KeyRound, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldAlert, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
+import { AlertCircle, Bot, Copy, KeyRound, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldAlert, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import { useAdminTenantId } from "@/hooks/useAdminTenantId";
 import { useLanguage } from "@/hooks/useLanguage";
 import { apiClient } from "@/lib/api";
 import { ccKey } from "@/i18n/callCenter";
+import { aiKey } from "@/i18n/aiAgent";
+import { aiAgentApi, type AgentConfigSummary } from "@/services/aiAgentApi";
 import { appLocale } from "@/utils/appLocale";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { CallHandlingSettingsCard } from "@/components/callcenter/CallHandlingSettingsCard";
@@ -66,6 +68,7 @@ export default function CallCenterAgents() {
   const tenantId = useAdminTenantId();
 
   const [agents, setAgents] = useState<CCAgent[]>([]);
+  const [assistants, setAssistants] = useState<AgentConfigSummary[]>([]);
   const [removedAgents, setRemovedAgents] = useState<CCAgent[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +102,8 @@ export default function CallCenterAgents() {
       callCenterApi.agents.list(), callCenterApi.teams.list(), callCenterApi.plan(), callCenterApi.members(), callCenterApi.agents.list({ removed: true }),
     ]);
     if (rr.success && rr.data) setRemovedAgents(rr.data);
+    // AI assistants answer calls like agents do, so they are listed beside the people (they are not counted against the plan's agent limit)
+    void aiAgentApi.agents.list().then((r) => setAssistants(r.success && r.data ? r.data.results.filter((x) => x.status !== "archived") : [])).catch(() => setAssistants([]));
     if (ar.success && ar.data) setAgents(ar.data);
     else setError(ar.error || t("cc.agents.load_failed"));
     if (tr.success && tr.data) setTeams(tr.data);
@@ -436,6 +441,24 @@ export default function CallCenterAgents() {
                           </>
                         )}
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {assistants.map((x) => (
+                  <TableRow key={x.id} className={x.status === "published" ? "bg-fuchsia-50/40" : "bg-fuchsia-50/20 opacity-80"}>
+                    <TableCell>
+                      <p className="flex items-center gap-1.5 font-medium text-foreground"><Bot className="h-4 w-4 text-fuchsia-600" />{x.name}</p>
+                      <p className="text-xs text-muted-foreground">{x.purpose || t(aiKey("ai.agents.ai_row"))}</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{t(aiKey("ai.agents.via_flow"))}</TableCell>
+                    <TableCell><Badge className="bg-fuchsia-600 text-white">AI</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{t(aiKey(`ai.status.${x.status}`))}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{t(aiKey("ai.agents.phone_ai"))}</TableCell>
+                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" asChild><Link to="/call-center/ai-assistant">{t(aiKey("ai.agents.manage"))}</Link></Button>
                     </TableCell>
                   </TableRow>
                 ))}

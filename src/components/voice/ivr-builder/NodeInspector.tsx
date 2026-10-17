@@ -20,8 +20,11 @@ import { aiAgentApi, type AgentConfigSummary } from "@/services/aiAgentApi";
 import { aiKey } from "@/i18n/aiAgent";
 import type { AppNodeData, IvrNodeType } from "./types";
 
-/** Shows which AI assistant answers calls at an AI Agent step (the organization's published one), so the link is visible, not implicit. */
-function AiAssistantLink() {
+/** Which AI assistant answers at an AI Agent step. An organization can have several live ones (one per department); the step names its own.
+ *  Blank = the organization's longest-published one, which is what flows built before this choice existed use. */
+const DEFAULT_ASSISTANT = "__default__";
+
+function AiAssistantLink({ value, onPick }: { value: string; onPick: (id: string) => void }) {
   const { t } = useLanguage();
   const [agents, setAgents] = useState<AgentConfigSummary[] | null>(null);
   useEffect(() => {
@@ -30,16 +33,29 @@ function AiAssistantLink() {
     return () => { alive = false; };
   }, []);
   if (agents === null) return null;
-  const live = agents.find((a) => a.status === "published" || a.status === "paused");
+  const liveOnes = agents.filter((a) => a.status === "published" || a.status === "paused");
+  const chosen = value ? agents.find((a) => a.id === value) : liveOnes.slice().sort((a, b) => String(a.published_at).localeCompare(String(b.published_at)))[0];
+  const isLive = chosen && (chosen.status === "published" || chosen.status === "paused");
   const draft = agents.find((a) => a.status === "draft" || a.status === "test");
-  const shown = live ?? draft;
-  const key = live ? (live.status === "published" ? "ai.link.live" : "ai.link.paused") : draft ? "ai.link.draft" : "ai.link.none";
-  const tone = live?.status === "published" ? "border-green-300 bg-green-50 text-green-900" : "border-amber-300 bg-amber-50 text-amber-900";
+  const shown = chosen ?? draft;
+  const key = isLive ? (chosen.status === "published" ? "ai.link.live" : "ai.link.paused") : shown ? "ai.link.draft" : "ai.link.none";
+  const tone = chosen?.status === "published" ? "border-green-300 bg-green-50 text-green-900" : "border-amber-300 bg-amber-50 text-amber-900";
   return (
-    <div className={`rounded-md border p-2 text-xs ${tone}`}>
+    <div className={`space-y-1.5 rounded-md border p-2 text-xs ${tone}`}>
       <p className="font-medium">{t(aiKey("ai.link.title"))}</p>
-      <p className="mt-0.5">{t(aiKey(key), { name: shown?.name ?? "" })}</p>
-      <a className="mt-1 inline-block underline" href="/call-center/ai-assistant" target="_blank" rel="noreferrer">{t(aiKey("ai.link.open"))}</a>
+      {agents.filter((a) => a.status !== "archived").length > 0 && (
+        <Select value={value || DEFAULT_ASSISTANT} onValueChange={(v) => onPick(v === DEFAULT_ASSISTANT ? "" : v)}>
+          <SelectTrigger className="h-8 bg-white text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={DEFAULT_ASSISTANT} className="text-xs">{t(aiKey("ai.link.default"))}</SelectItem>
+            {agents.filter((a) => a.status !== "archived").map((a) => (
+              <SelectItem key={a.id} value={a.id} className="text-xs">{a.name} ({t(aiKey(`ai.status.${a.status}`))})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <p>{t(aiKey(key), { name: shown?.name ?? "" })}</p>
+      <a className="inline-block underline" href="/call-center/ai-assistant" target="_blank" rel="noreferrer">{t(aiKey("ai.link.open"))}</a>
     </div>
   );
 }
@@ -521,7 +537,7 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
         </Button>
       </CardHeader>
       <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto pb-3">
-        {nodeType === "ai_agent" && <AiAssistantLink />}
+        {nodeType === "ai_agent" && <AiAssistantLink value={String(fields.ai_agent_id ?? "")} onPick={(id) => onChange({ ai_agent_id: id })} />}
         {meta.fields.length === 0 && (
           <p className="text-xs text-muted-foreground">{t("voice.ivr_builder.inspector.no_settings")}</p>
         )}
