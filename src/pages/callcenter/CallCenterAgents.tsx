@@ -450,7 +450,7 @@ export default function CallCenterAgents() {
                       <p className="flex items-center gap-1.5 font-medium text-foreground"><Bot className="h-4 w-4 text-fuchsia-600" />{x.name}</p>
                       <p className="text-xs text-muted-foreground">{x.purpose || t(aiKey("ai.agents.ai_row"))}</p>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{t(aiKey("ai.agents.via_flow"))}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{x.teams && x.teams.length > 0 ? x.teams.join(", ") : t(aiKey("ai.agents.via_flow"))}</TableCell>
                     <TableCell><Badge className="bg-fuchsia-600 text-white">AI</Badge></TableCell>
                     <TableCell>
                       <Badge variant="outline">{t(aiKey(`ai.status.${x.status}`))}</Badge>

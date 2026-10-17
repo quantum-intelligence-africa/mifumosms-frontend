@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isCallCenterAdmin } from "@/utils/roleUtils";
 import { ccKey } from "@/i18n/callCenter";
+import { aiKey } from "@/i18n/aiAgent";
+import { aiAgentApi, type AgentConfigSummary } from "@/services/aiAgentApi";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { StatusDot } from "@/components/callcenter/StatusDot";
 import {
@@ -49,6 +51,8 @@ interface Draft {
   callback_offer: boolean;
   queue_operator_option: boolean;
   queue_ai_option: boolean;
+  ai_answers_first: boolean;
+  ai_assistant_id: string;
   queue_language: "sw" | "en";
   callback_max_attempts: number;
   callback_retry_minutes: number;
@@ -61,7 +65,7 @@ const EMPTY: Draft = {
   alwaysOpen: true, days: [0, 1, 2, 3, 4], start: "08:00", end: "17:00", timezone: "Africa/Dar_es_Salaam",
   after_hours_action: "voicemail", after_hours_message: "", overflow_team: "",
   queue_enabled: false, queue_max_callers: 10, queue_max_wait_seconds: 180, hold_music_url: "", waiting_message: "", callback_offer: true, queue_operator_option: false,
-  queue_ai_option: false, queue_language: "sw", callback_max_attempts: 3, callback_retry_minutes: 60,
+  queue_ai_option: false, ai_answers_first: false, ai_assistant_id: "", queue_language: "sw", callback_max_attempts: 3, callback_retry_minutes: 60,
   is_active: true, agent_ids: [],
 };
 
@@ -75,7 +79,7 @@ function toDraft(team: Team): Draft {
     overflow_team: team.overflow_team ?? "", is_active: team.is_active, agent_ids: team.members.map((m) => m.id),
     queue_enabled: team.queue_enabled, queue_max_callers: team.queue_max_callers, queue_max_wait_seconds: team.queue_max_wait_seconds,
     hold_music_url: team.hold_music_url, waiting_message: team.waiting_message, callback_offer: team.callback_offer, queue_operator_option: !!team.queue_operator_option,
-    queue_ai_option: !!team.queue_ai_option, queue_language: team.queue_language ?? "sw",
+    queue_ai_option: !!team.queue_ai_option, ai_answers_first: !!team.ai_answers_first, ai_assistant_id: team.ai_assistant_id ?? "", queue_language: team.queue_language ?? "sw",
     callback_max_attempts: team.callback_max_attempts ?? 3, callback_retry_minutes: team.callback_retry_minutes ?? 60,
   };
 }
@@ -89,7 +93,7 @@ function toInput(d: Draft): TeamInput {
     overflow_team: d.overflow_team || null, is_active: d.is_active, agent_ids: d.agent_ids,
     queue_enabled: d.queue_enabled, queue_max_callers: d.queue_max_callers, queue_max_wait_seconds: d.queue_max_wait_seconds,
     hold_music_url: d.hold_music_url.trim(), waiting_message: d.waiting_message.trim(), callback_offer: d.callback_offer, queue_operator_option: d.queue_operator_option,
-    queue_ai_option: d.queue_ai_option, queue_language: d.queue_language,
+    queue_ai_option: d.queue_ai_option, ai_answers_first: d.ai_answers_first, ai_assistant_id: d.ai_answers_first && d.ai_assistant_id ? d.ai_assistant_id : null, queue_language: d.queue_language,
     callback_max_attempts: d.callback_max_attempts, callback_retry_minutes: d.callback_retry_minutes,
   };
 }
@@ -102,6 +106,7 @@ export default function Teams() {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [agents, setAgents] = useState<CCAgent[]>([]);
+  const [assistants, setAssistants] = useState<AgentConfigSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Team | null>(null);
@@ -120,6 +125,7 @@ export default function Teams() {
     if (tr.success && tr.data) setTeams(tr.data);
     else setError(tr.error || t("cc.teams.load_failed"));
     if (ar.success && ar.data) setAgents(ar.data);
+    void aiAgentApi.agents.list().then((r) => setAssistants(r.success && r.data ? r.data.results.filter((x) => x.status === "published") : [])).catch(() => setAssistants([]));
     if (pr.success && pr.data && pr.data.enforcing) {
       setFlags({ smart_routing: !!pr.data.flags.smart_routing, working_hours: !!pr.data.flags.working_hours });
     }
@@ -372,6 +378,26 @@ export default function Teams() {
                     </div>
                   </div>
                 </>
+              )}
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label htmlFor="team-ai-first">{t(aiKey("ai.team.first"))}</Label>
+                  <p className="text-xs text-muted-foreground">{t(aiKey("ai.team.first_hint"))}</p>
+                </div>
+                <Switch id="team-ai-first" checked={draft.ai_answers_first} disabled={assistants.length === 0 && !draft.ai_answers_first} onCheckedChange={(v) => setDraft({ ...draft, ai_answers_first: v })} />
+              </div>
+              {assistants.length === 0 && <p className="text-xs text-amber-700">{t(aiKey("ai.team.first_none"))}</p>}
+              {draft.ai_answers_first && assistants.length > 0 && (
+                <Select value={draft.ai_assistant_id || "__default__"} onValueChange={(v) => setDraft({ ...draft, ai_assistant_id: v === "__default__" ? "" : v })}>
+                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">{t(aiKey("ai.link.default"))}</SelectItem>
+                    {assistants.map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 

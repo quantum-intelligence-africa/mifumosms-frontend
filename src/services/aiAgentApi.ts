@@ -47,6 +47,8 @@ export interface AgentConfigSummary {
   published_at: string | null;
   updated_at: string;
   has_unpublished_changes: boolean;
+  /** Names of the teams this assistant answers for or hands callers to. */
+  teams?: string[];
 }
 
 export interface AgentConfig extends AgentConfigSummary {

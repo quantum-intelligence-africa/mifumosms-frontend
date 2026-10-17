@@ -72,6 +72,8 @@ export interface Team {
   callback_offer: boolean;
   queue_operator_option?: boolean;
   queue_ai_option?: boolean;
+  ai_answers_first?: boolean;
+  ai_assistant_id?: string | null;
   queue_language?: "sw" | "en";
   callback_max_attempts?: number;
   callback_retry_minutes?: number;
@@ -101,6 +103,8 @@ export interface TeamInput {
   callback_offer?: boolean;
   queue_operator_option?: boolean;
   queue_ai_option?: boolean;
+  ai_answers_first?: boolean;
+  ai_assistant_id?: string | null;
   queue_language?: "sw" | "en";
   callback_max_attempts?: number;
   callback_retry_minutes?: number;
