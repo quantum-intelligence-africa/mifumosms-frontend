@@ -17,6 +17,7 @@ import { appLocale } from "@/utils/appLocale";
 import { aiEn, aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { AITeachPanel } from "@/components/callcenter/AITeachPanel";
+import { OpeningPreview } from "@/components/callcenter/OpeningPreview";
 import { VoicePicker } from "@/components/voice/VoicePicker";
 import {
   aiAgentApi, DEPARTMENTS, type AgentConfig, type AgentConfigSummary, type AgentSettings, type AgentStatus, type AuditRow, type Department,
@@ -275,7 +276,8 @@ export default function AIAssistant() {
               <AITeachPanel config={current} settings={settings} meta={meta} providers={providers} onChanged={() => void pick(current.id)} />
             </TabsContent>
 
-            <TabsContent value="general" className="mt-3">
+            <TabsContent value="general" className="mt-3 space-y-3">
+              <OpeningPreview agentId={current.id} refreshKey={`${current.version}-${current.updated_at}`} />
               <Card><CardContent className="space-y-4 p-4">
                 <Field label={t("ai.name")}><Input value={meta.name} onChange={(e) => { setMeta({ ...meta, name: e.target.value }); setDirty(true); }} placeholder={t("ai.name_placeholder")} /></Field>
                 <Field label={t("ai.purpose")}><Input value={meta.purpose} onChange={(e) => { setMeta({ ...meta, purpose: e.target.value }); setDirty(true); }} placeholder={t("ai.purpose_placeholder")} /></Field>
@@ -466,7 +468,8 @@ export default function AIAssistant() {
               </CardContent></Card>
             </TabsContent>
 
-            <TabsContent value="privacy" className="mt-3">
+            <TabsContent value="privacy" className="mt-3 space-y-3">
+              <OpeningPreview agentId={current.id} refreshKey={`${current.version}-${current.updated_at}-${policy?.recording_notice_enabled}-${policy?.recording_notice_text}`} />
               {policy && <PolicyCard policy={policy} onChange={setPolicy} />}
             </TabsContent>
 

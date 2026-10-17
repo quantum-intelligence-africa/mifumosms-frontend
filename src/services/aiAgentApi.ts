@@ -51,6 +51,17 @@ export interface AgentConfigSummary {
   teams?: string[];
 }
 
+export interface OpeningPreview {
+  language: string;
+  company: string;
+  /** The recording notice, "" when it is switched off. */
+  notice: string;
+  /** "I am an AI" sentence the system adds when the greeting does not say it, "" otherwise. */
+  disclosure: string;
+  greeting: string;
+  text: string;
+}
+
 export interface AgentConfig extends AgentConfigSummary {
   settings: AgentSettings;
   live_settings: AgentSettings | null;
@@ -251,6 +262,7 @@ export const aiAgentApi = {
     simulate: (id: string, body: { text: string; history: Array<{ role: "user" | "assistant"; content: string }>; language?: string; settings?: AgentSettings }) =>
       voiceApi.post<SimulationResult>(`${BASE}/agents/${id}/simulate/`, body),
     history: (id: string) => voiceApi.get<{ results: AuditRow[] }>(`${BASE}/agents/${id}/history/`),
+    opening: (id: string) => voiceApi.get<OpeningPreview>(`${BASE}/agents/${id}/opening/`),
   },
   policy: {
     get: () => voiceApi.get<Policy>(`${BASE}/policy/`),
