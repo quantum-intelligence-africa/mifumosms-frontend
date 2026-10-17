@@ -310,6 +310,9 @@ export default function AIAssistant() {
                 </div>
                 <Field label={t("ai.f.greeting")} help={t("ai.f.greeting_help")}>
                   <Textarea rows={2} value={settings.greeting} onChange={(e) => edit((d) => { d.greeting = e.target.value; })} />
+                  <div className="mt-2">
+                    <ToggleRow label={t(aiKey("ai.f.announce_ai"))} help={t(aiKey("ai.f.announce_ai_help"))} checked={settings.announce_ai !== false} onChange={(v) => edit((d) => { d.announce_ai = v; })} />
+                  </div>
                   {fieldErrors.greeting && <p className="text-xs text-red-700">{fieldErrors.greeting}</p>}
                 </Field>
                 <Field label={t("ai.f.closing")}><Textarea rows={2} value={settings.closing} onChange={(e) => edit((d) => { d.closing = e.target.value; })} /></Field>

@@ -12,6 +12,8 @@ export interface AgentSettings {
   default_language: "sw" | "en";
   greeting: string;
   closing: string;
+  /** Say "I am an AI" at the start (a sentence the system adds when the greeting does not already say it). */
+  announce_ai: boolean;
   knowledge: string;
   inbound_enabled: boolean;
   outbound_enabled: boolean;
