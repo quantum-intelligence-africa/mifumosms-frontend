@@ -76,6 +76,8 @@ interface CallSummary {
   /** Follow-up status of this missed call (same as the Missed calls page); null when it was not missed. */
   followup_status?: string | null;
   call_outcome?: string;
+  /** Why the call ended this way (queue timeout, asked for a callback, ...); "" when there is nothing more to say. */
+  outcome_detail?: string;
   agent_name?: string;
   is_simulated: boolean;
   started_at: string;
@@ -593,7 +595,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                 <p className="mt-0.5 pl-5 text-xs text-muted-foreground">
                                   {call.analysis?.intent ||
                                     (missed
-                                      ? `${outcomeLabel(call, t)}${call.followup_status ? ` · ${t("cc.calls.followup", { status: t(`cc.missed.status_${call.followup_status}` as never) })}` : ""}`
+                                      ? `${outcomeLabel(call, t)}${call.outcome_detail ? ` · ${t(`cc.history.detail_${call.outcome_detail}` as never)}` : ""}${call.followup_status ? ` · ${t("cc.calls.followup", { status: t(`cc.missed.status_${call.followup_status}` as never) })}` : ""}`
                                       : call.direction === "outbound"
                                         ? t("voice.calls.outbound_call")
                                         : t("voice.calls.inbound_call"))}

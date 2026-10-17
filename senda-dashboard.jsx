@@ -13255,6 +13255,7 @@ function VoiceCallLogsTab() {
   const dur = (sec) => { sec = sec || 0; return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`; };
   const OUTCOME_TEXT = { answered:'Answered', missed:'Missed', voicemail:'Voicemail', abandoned:'Abandoned in queue', rejected:'Rejected', failed:'Failed' };
   const FOLLOWUP_TEXT = { new:'New request', assigned:'Assigned', called_back:'Callback attempted', scheduled:'Callback scheduled', contacted:'Customer reached', unreachable:'Retry limit reached', resolved:'Resolved', unresolved:'Cancelled' };
+  const DETAIL_TEXT = { answered_by_human:'Answered by an agent', answered_by_ai:'Handled by the AI assistant', voicemail_left:'Left a voice message', callback_requested:'Asked to be called back', left_while_waiting:'Hung up while waiting in the queue', queue_timeout:'Waited too long in the queue', queue_full:'Queue was full', no_agent_answered:'Agents were rung and nobody answered', rejected_by_agents:'Every agent declined', failed:'The call failed' };
   const STATUS_TEXT = { ringing:'Ringing', in_progress:'In progress', completed:'Completed', failed:'Failed', simulated:'Test' };
   const outcomeText = (r) => OUTCOME_TEXT[r.outcome] || STATUS_TEXT[r.status] || r.status;
   const OUTCOME = { answered:'#15803d', missed:'#b91c1c', voicemail:'#b45309', abandoned:'#b91c1c', rejected:'#64748b', failed:'#b91c1c' };
@@ -13381,7 +13382,7 @@ function VoiceCallLogsTab() {
                     <td style={td}><b>{r.tenant}</b>{r.deleted && <span style={{marginLeft:6,fontSize:11,fontWeight:800,color:'#b91c1c',border:'1px solid #fecaca',borderRadius:6,padding:'1px 6px'}}>Deleted</span>}</td>
                     <td style={td}>{r.direction === 'inbound' ? 'Incoming' : 'Outgoing'}</td>
                     <td style={td}>{r.from_number || '—'} → {r.to_number || '—'}</td>
-                    <td style={{...td,fontWeight:700,color:OUTCOME[r.outcome] || '#64748b'}}>{outcomeText(r)}{r.followup_status ? <div style={{fontWeight:500,fontSize:11.5,color:'#94a3b8'}}>Follow-up: {FOLLOWUP_TEXT[r.followup_status] || r.followup_status}</div> : null}</td>
+                    <td style={{...td,fontWeight:700,color:OUTCOME[r.outcome] || '#64748b'}}>{outcomeText(r)}{r.outcome_detail && DETAIL_TEXT[r.outcome_detail] ? <div style={{fontWeight:500,fontSize:11.5,color:'#94a3b8'}}>{DETAIL_TEXT[r.outcome_detail]}</div> : null}{r.followup_status ? <div style={{fontWeight:500,fontSize:11.5,color:'#94a3b8'}}>Follow-up: {FOLLOWUP_TEXT[r.followup_status] || r.followup_status}</div> : null}</td>
                     <td style={td}>{r.agent_name || '—'}{r.team ? <span style={{color:'#94a3b8'}}> · {r.team}</span> : null}</td>
                     <td style={td}>{dur(r.duration_seconds)}</td>
                   </tr>

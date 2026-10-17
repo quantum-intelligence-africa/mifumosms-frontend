@@ -116,6 +116,13 @@ export default function LiveCallCenter() {
                     </span>
                   </div>
                 ))}
+                {(snap.waiting_callers ?? []).map((w) => (
+                  <div key={w.call_id} className="flex items-center justify-between gap-2 rounded-md bg-red-50 px-2 py-1 text-xs">
+                    <span className="font-mono">#{w.position} {w.from_number}</span>
+                    <span className="text-muted-foreground">{w.team}</span>
+                    <b className="tabular-nums text-red-700">{formatDuration(w.waited_seconds)}</b>
+                  </div>
+                ))}
               </div>
             </div>
           )}

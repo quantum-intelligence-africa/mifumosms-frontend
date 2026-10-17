@@ -228,6 +228,8 @@ export interface LiveSnapshot {
   agents_online: number;
   by_status: Record<AgentStatus, number>;
   calls_waiting: number;
+  /** Each caller waiting right now, longest wait first. */
+  waiting_callers?: Array<{ call_id: string; team: string; from_number: string; position: number; waited_seconds: number }>;
   teams: Array<TeamCounts & { id: string; name: string; waiting: number; longest_wait_seconds: number; queue_enabled: boolean; queue_max_callers?: number; queue_near_full?: boolean }>;
   agents: Array<{
     id: string;
