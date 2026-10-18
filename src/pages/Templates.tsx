@@ -47,6 +47,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { cleanTextareaInput } from "@/utils/smsInput";
+import { SmsTextHint } from "@/components/sms/SmsTextHint";
 import type { Template, TemplateFilterParams, CreateTemplateRequest } from "@/lib/api";
 
 import { appLocale } from "@/utils/appLocale";
@@ -582,10 +584,19 @@ const Templates = () => {
                           id="content"
                           placeholder={t("templates.placeholder_message_content")}
                           value={createFormData.body_text}
-                          onChange={(e) => setCreateFormData(prev => ({ ...prev, body_text: e.target.value }))}
+                          onChange={(e) => {
+                            // SMS templates: invisible characters from pasted text are removed as it is typed
+                            if (createFormData.channel === "sms") {
+                              const r = cleanTextareaInput(e);
+                              setCreateFormData(prev => ({ ...prev, body_text: r.value }));
+                            } else {
+                              setCreateFormData(prev => ({ ...prev, body_text: e.target.value }));
+                            }
+                          }}
                           className="glass-subtle border-0"
                           rows={4}
                         />
+                        {createFormData.channel === "sms" && <SmsTextHint text={createFormData.body_text} />}
                       </div>
                       <div className="flex gap-2">
                         <Button

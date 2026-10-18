@@ -38,6 +38,8 @@ import {
 } from '@/utils/campaignUtils';
 import { apiClient, SenderNameRequest, UnifiedSenderName } from '@/lib/api';
 import { useLanguage } from '@/hooks/useLanguage';
+import { cleanTextareaInput, finalizeSmsText } from '@/utils/smsInput';
+import { SmsTextHint } from '@/components/sms/SmsTextHint';
 
 import { appLocale } from "@/utils/appLocale";
 interface CreateCampaignDialogProps {
@@ -477,6 +479,18 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
       )
     : 0;
 
+  // SMS text: invisible characters are removed as the user types or pastes (WhatsApp campaigns keep their text as typed).
+  const [messageCleaned, setMessageCleaned] = useState(false);
+  const handleMessageInput = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    if (formData.campaign_type === 'whatsapp') {
+      handleInputChange('message_text', e.target.value);
+      return;
+    }
+    const r = cleanTextareaInput(e);
+    if (r.changed) setMessageCleaned(true);
+    handleInputChange('message_text', r.value);
+  };
+
   const handleInputChange = (field: string, value: unknown): void => {
     let finalValue = value;
     if (field === 'description' || field === 'message_text') {
@@ -528,6 +542,24 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.message_text.trim()) return;
 
+    // The exact outgoing SMS text. If the final tidy changes the number of SMS, show the new estimate and ask again.
+    let outgoingText = formData.message_text.trim();
+    if (formData.campaign_type !== 'whatsapp') {
+      const finalText = finalizeSmsText(formData.message_text);
+      outgoingText = finalText.text;
+      if (finalText.changed) {
+        handleInputChange('message_text', finalText.text);
+        setMessageCleaned(true);
+        if (finalText.estimateChanged) {
+          toast({
+            title: 'Message cleaned',
+            description: `The estimate changed from ${finalText.segmentsBefore} to ${finalText.segmentsAfter} SMS. Check it and submit again.`,
+          });
+          return;
+        }
+      }
+    }
+
     if (formData.is_recurring) {
       const validation = validateRecurringSchedule(formData.recurring_schedule);
       if (!validation.isValid) {
@@ -563,7 +595,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         sender_id: formData.sender_id || undefined,
-        message_text: formData.message_text.trim(),
+        message_text: outgoingText,
         template: formData.template || null,
         scheduled_at: formData.scheduled_at || null,
         target_contact_ids: audienceMode === 'individual' && formData.target_contact_ids.length > 0
@@ -762,7 +794,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   id="qs_message_text"
                   placeholder={t('campaigns.create_dialog.message_placeholder')}
                   value={formData.message_text}
-                  onChange={(e) => handleInputChange('message_text', e.target.value)}
+                  onChange={handleMessageInput}
                   rows={5}
                   className="text-sm resize-none"
                   maxLength={formData.campaign_type === 'whatsapp' ? undefined : 160}
@@ -776,6 +808,14 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                       {formData.message_text.length}/160
                     </span>
                   </div>
+                )}
+                {formData.campaign_type !== 'whatsapp' && (
+                  <SmsTextHint
+                    text={formData.message_text}
+                    cleaned={messageCleaned}
+                    recipientCount={effectiveRecipientCount || 1}
+                    onConvert={(converted) => { handleInputChange('message_text', converted); setMessageCleaned(false); }}
+                  />
                 )}
               </div>
 
@@ -890,7 +930,7 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                   id="message_text"
                   placeholder={t('campaigns.create_dialog.message_placeholder')}
                   value={formData.message_text}
-                  onChange={(e) => handleInputChange('message_text', e.target.value)}
+                  onChange={handleMessageInput}
                   rows={3}
                   className="text-sm resize-none"
                   maxLength={160}
@@ -903,6 +943,12 @@ export function CreateCampaignDialog({ children, onSuccess, open: externalOpen, 
                     {formData.message_text.length}/160
                   </span>
                 </div>
+                <SmsTextHint
+                  text={formData.message_text}
+                  cleaned={messageCleaned}
+                  recipientCount={effectiveRecipientCount || 1}
+                  onConvert={(converted) => { handleInputChange('message_text', converted); setMessageCleaned(false); }}
+                />
               </div>
 
               <div className="space-y-1.5">

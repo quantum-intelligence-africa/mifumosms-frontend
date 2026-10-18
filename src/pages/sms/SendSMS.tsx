@@ -52,7 +52,9 @@ import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
 import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
-import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay, sanitizeSmsText, analyzeSms, applyGsmReplacements } from "@/utils/smsUtils";
+import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay, sanitizeSmsText } from "@/utils/smsUtils";
+import { cleanTextareaInput, finalizeSmsText } from "@/utils/smsInput";
+import { SmsTextHint } from "@/components/sms/SmsTextHint";
 import { parseExcelFile } from "@/utils/excelParser";
 import { SmsMessagePreview } from "@/components/sms/SmsMessagePreview";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
@@ -497,21 +499,13 @@ const SendSMS = () => {
   // SMS segment calculation using proper formula
   const segmentInfo = getSegmentInfo(message);
   const segmentCount = segmentInfo.segments;
-  const smsAnalysis = analyzeSms(message);
 
   // Typing / pasting: take invisible characters out right away (the caret stays where the user is), keep the user's own
   // spaces. The full tidy (trim, repeated spaces) happens when the box loses focus and when sending.
   const handleMessageInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const raw = e.target.value;
-    const cleaned = sanitizeSmsText(raw, { live: true });
-    if (cleaned === raw) {
-      setMessage(raw);
-      return;
-    }
-    const caret = Math.max(0, (e.target.selectionStart ?? raw.length) - (raw.length - cleaned.length));
-    setMessage(cleaned);
-    setMessageCleaned(true);
-    requestAnimationFrame(() => messageBoxRef.current?.setSelectionRange(caret, caret));
+    const r = cleanTextareaInput(e);
+    setMessage(r.value);
+    if (r.changed) setMessageCleaned(true);
   };
 
   const handleMessageBlur = () => {
@@ -714,6 +708,23 @@ const SendSMS = () => {
   };
 
   const handleSendSMS = async () => {
+    // The exact outgoing text. If the final tidy changes the number of SMS, show the new estimate and ask again, so a
+    // message is never sent at a different cost than the one on screen.
+    const finalText = finalizeSmsText(message);
+    if (finalText.changed) {
+      setMessage(finalText.text);
+      setMessageCleaned(true);
+      if (finalText.estimateChanged) {
+        toast({
+          title: language === "sw" ? "Ujumbe umesafishwa" : "Message cleaned",
+          description: language === "sw"
+            ? `Makadirio yamebadilika kutoka SMS ${finalText.segmentsBefore} hadi ${finalText.segmentsAfter}. Hakiki kisha bonyeza Tuma tena.`
+            : `The estimate changed from ${finalText.segmentsBefore} to ${finalText.segmentsAfter} SMS. Check it and press Send again.`,
+        });
+        return;
+      }
+    }
+
     if (!selectedSender) {
       toast({
         title: "Sender name required",
@@ -1557,43 +1568,12 @@ const SendSMS = () => {
                     ].join(" ")}
                     maxLength={800}
                   />
-                  {message.length > 0 && (
-                    <div className="mt-2 space-y-1 text-[11.5px]" aria-live="polite">
-                      <p className="text-foreground/70">
-                        {smsAnalysis.encoding === "GSM-7"
-                          ? "GSM-7"
-                          : language === "sw" ? "Unicode (herufi maalum)" : "Unicode"}
-                        {" · "}
-                        {smsAnalysis.units}/{smsAnalysis.singlePartLimit}
-                        {" · "}
-                        {smsAnalysis.segments} SMS
-                        {recipients.length > 1 ? ` · ${smsAnalysis.segments * recipients.length} ${language === "sw" ? "mikopo" : "credits"}` : ""}
-                      </p>
-                      {smsAnalysis.encoding === "UCS-2" && (
-                        <p className="text-amber-600 dark:text-amber-400">
-                          {language === "sw"
-                            ? `Ujumbe huu unatumia herufi zinazobadilisha usimbaji kuwa Unicode (${smsAnalysis.unicodeCharacters.join(" ")}), hivyo kila SMS inabeba herufi 70 tu badala ya 160.`
-                            : `This message uses characters that switch it to Unicode (${smsAnalysis.unicodeCharacters.join(" ")}), so each SMS holds 70 characters instead of 160.`}
-                          {smsAnalysis.replaceable.length > 0 && (
-                            <button
-                              type="button"
-                              className="ml-2 underline font-semibold"
-                              onClick={() => { setMessage(applyGsmReplacements(message)); setMessageCleaned(false); }}
-                            >
-                              {language === "sw" ? "Badilisha kuwa alama za kawaida" : "Convert to plain characters"}
-                            </button>
-                          )}
-                        </p>
-                      )}
-                      {messageCleaned && (
-                        <p className="text-foreground/55">
-                          {language === "sw"
-                            ? "Ujumbe wako umesafishwa kutoa herufi zisizoonekana. Makadirio ya SMS yamesasishwa."
-                            : "Your message was cleaned to remove invisible formatting characters. SMS estimate updated."}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <SmsTextHint
+                    text={message}
+                    cleaned={messageCleaned}
+                    recipientCount={recipients.length}
+                    onConvert={(converted) => { setMessage(converted); setMessageCleaned(false); }}
+                  />
                   <div className="flex items-center justify-between mt-2 text-[11.5px]">
                     <p className="text-foreground/55">
                       {segmentCount > 1 && `${segmentCount} SMS`}
