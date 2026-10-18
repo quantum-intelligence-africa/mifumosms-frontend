@@ -52,7 +52,7 @@ import { useSenderNames } from "@/hooks/useSenderNames";
 import { useContactSegments } from "@/hooks/useContactSegments";
 import { useContacts } from "@/hooks/useContacts";
 import { usePurchaseHistory, PurchaseRecord } from "@/hooks/usePurchaseHistory";
-import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay } from "@/utils/smsUtils";
+import { calculateSMSegments, validateMessageLength, getSegmentInfo, calculateSMSCost, getCharacterCountDisplay, sanitizeSmsText, analyzeSms, applyGsmReplacements } from "@/utils/smsUtils";
 import { parseExcelFile } from "@/utils/excelParser";
 import { SmsMessagePreview } from "@/components/sms/SmsMessagePreview";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
@@ -111,6 +111,9 @@ const SendSMS = () => {
   const [recipients, setRecipients] = useState<string[]>(() => readSmsDraft().recipients ?? []);
   const [newRecipient, setNewRecipient] = useState("");
   const [message, setMessage] = useState(() => readSmsDraft().message ?? "");
+  // The composer cleans invisible characters out of pasted/typed text (same rules as the backend) and says so once.
+  const [messageCleaned, setMessageCleaned] = useState(false);
+  const messageBoxRef = useRef<HTMLTextAreaElement>(null);
   const [selectedSender, setSelectedSender] = useState(() => readSmsDraft().selectedSender ?? "");
   const [selectedSegment, setSelectedSegment] = useState("");
   const [selectedTagGroup, setSelectedTagGroup] = useState("");
@@ -494,6 +497,30 @@ const SendSMS = () => {
   // SMS segment calculation using proper formula
   const segmentInfo = getSegmentInfo(message);
   const segmentCount = segmentInfo.segments;
+  const smsAnalysis = analyzeSms(message);
+
+  // Typing / pasting: take invisible characters out right away (the caret stays where the user is), keep the user's own
+  // spaces. The full tidy (trim, repeated spaces) happens when the box loses focus and when sending.
+  const handleMessageInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const raw = e.target.value;
+    const cleaned = sanitizeSmsText(raw, { live: true });
+    if (cleaned === raw) {
+      setMessage(raw);
+      return;
+    }
+    const caret = Math.max(0, (e.target.selectionStart ?? raw.length) - (raw.length - cleaned.length));
+    setMessage(cleaned);
+    setMessageCleaned(true);
+    requestAnimationFrame(() => messageBoxRef.current?.setSelectionRange(caret, caret));
+  };
+
+  const handleMessageBlur = () => {
+    const tidy = sanitizeSmsText(message);
+    if (tidy !== message) {
+      setMessage(tidy);
+      setMessageCleaned(true);
+    }
+  };
 
   // Use cost from API if available, otherwise use local calculation
   const estimatedCost = costCalculation?.total_cost ?? calculateSMSCost(segmentCount, getRecipientCount(), costPerSMS);
@@ -832,7 +859,7 @@ const SendSMS = () => {
 
       // Prepare the data for the SMS API - send sender_id name and record id for backend lookup
       const smsData: Record<string, unknown> = {
-        message: message.trim(),
+        message: sanitizeSmsText(message),
         recipients: apiRecipients,
         sender_id: cleanSenderId // Alphanumeric branding name (e.g., "Mifumosms")
       };
@@ -1518,8 +1545,10 @@ const SendSMS = () => {
                 >
                   <Textarea
                     placeholder={language === "sw" ? "Andika ujumbe wako…" : "Type your message…"}
+                    ref={messageBoxRef}
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={handleMessageInput}
+                    onBlur={handleMessageBlur}
                     className={[
                       "min-h-[120px] rounded-xl border-transparent",
                       "bg-muted/60 dark:bg-muted/30 focus-visible:!ring-1 focus-visible:!ring-primary/30 focus-visible:!ring-offset-0 transition-colors",
@@ -1528,6 +1557,43 @@ const SendSMS = () => {
                     ].join(" ")}
                     maxLength={800}
                   />
+                  {message.length > 0 && (
+                    <div className="mt-2 space-y-1 text-[11.5px]" aria-live="polite">
+                      <p className="text-foreground/70">
+                        {smsAnalysis.encoding === "GSM-7"
+                          ? "GSM-7"
+                          : language === "sw" ? "Unicode (herufi maalum)" : "Unicode"}
+                        {" · "}
+                        {smsAnalysis.units}/{smsAnalysis.singlePartLimit}
+                        {" · "}
+                        {smsAnalysis.segments} SMS
+                        {recipients.length > 1 ? ` · ${smsAnalysis.segments * recipients.length} ${language === "sw" ? "mikopo" : "credits"}` : ""}
+                      </p>
+                      {smsAnalysis.encoding === "UCS-2" && (
+                        <p className="text-amber-600 dark:text-amber-400">
+                          {language === "sw"
+                            ? `Ujumbe huu unatumia herufi zinazobadilisha usimbaji kuwa Unicode (${smsAnalysis.unicodeCharacters.join(" ")}), hivyo kila SMS inabeba herufi 70 tu badala ya 160.`
+                            : `This message uses characters that switch it to Unicode (${smsAnalysis.unicodeCharacters.join(" ")}), so each SMS holds 70 characters instead of 160.`}
+                          {smsAnalysis.replaceable.length > 0 && (
+                            <button
+                              type="button"
+                              className="ml-2 underline font-semibold"
+                              onClick={() => { setMessage(applyGsmReplacements(message)); setMessageCleaned(false); }}
+                            >
+                              {language === "sw" ? "Badilisha kuwa alama za kawaida" : "Convert to plain characters"}
+                            </button>
+                          )}
+                        </p>
+                      )}
+                      {messageCleaned && (
+                        <p className="text-foreground/55">
+                          {language === "sw"
+                            ? "Ujumbe wako umesafishwa kutoa herufi zisizoonekana. Makadirio ya SMS yamesasishwa."
+                            : "Your message was cleaned to remove invisible formatting characters. SMS estimate updated."}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-2 text-[11.5px]">
                     <p className="text-foreground/55">
                       {segmentCount > 1 && `${segmentCount} SMS`}
