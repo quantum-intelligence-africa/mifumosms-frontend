@@ -1,6 +1,7 @@
 // Missed calls never just disappear: each one is a task with an owner and a follow-up status
 // (new -> pending callback -> called back / scheduled -> contacted / unreachable -> resolved / gave up).
 // Nothing here changes a status by itself: only a person (or a real call outcome recorded elsewhere) does.
+import { PageSizeSelect, usePageSize } from "@/components/ui/ListPager";
 import { appLocale } from "@/utils/appLocale";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -28,7 +29,6 @@ import { voiceApi } from "@/services/voiceApi";
 import { callCenterApi, describeError, type AnalysisJobFull, type CCAgent, type MissedCall, type MissedCallStatus, type MissedSummary, type Team, type Voicemail } from "@/services/callCenterApi";
 
 const STATUSES: MissedCallStatus[] = ["new", "assigned", "called_back", "scheduled", "contacted", "unreachable", "resolved", "unresolved"];
-const PAGE_SIZE = 25;
 
 const STATUS_TONE: Record<MissedCallStatus, "default" | "secondary" | "outline" | "destructive"> = {
   new: "destructive",
@@ -68,6 +68,7 @@ export default function MissedCalls() {
   const [rows, setRows] = useState<MissedCall[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("cc-missed", 20);
   const [summary, setSummary] = useState<MissedSummary | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [agents, setAgents] = useState<CCAgent[]>([]);
@@ -118,7 +119,7 @@ export default function MissedCalls() {
 
   useEffect(() => setPage(1), [params]);
 
-  const fetchPage = useCallback(() => callCenterApi.missed.list({ ...params, page, page_size: PAGE_SIZE }), [params, page]);
+  const fetchPage = useCallback(() => callCenterApi.missed.list({ ...params, page, page_size: pageSize }), [params, page, pageSize]);
 
   const loadSummary = useCallback(async () => {
     const res = await callCenterApi.missed.summary();
@@ -160,7 +161,7 @@ export default function MissedCalls() {
   // A new missed call arrives over the socket: show it without a refresh.
   useEffect(() => cc.subscribe((e) => e.event === "missed_call" && void load()), [cc, load]);
 
-  const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(count / pageSize));
 
   // Every record matching the filters (not just this page), for copy and export.
   const fetchAll = async (): Promise<MissedCall[]> => {
@@ -518,6 +519,7 @@ export default function MissedCalls() {
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground">
             <span>{t("cc.missed.showing", { count })}</span>
+            <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1); }} disabled={loading} />
             <span className="flex items-center gap-1">
               <Button size="icon" variant="ghost" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t("cc.missed.prev")}><ChevronLeft className="h-4 w-4" /></Button>
               <span className="tabular-nums">{page} / {pages}</span>

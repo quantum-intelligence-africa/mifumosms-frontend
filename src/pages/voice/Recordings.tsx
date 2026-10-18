@@ -1,3 +1,4 @@
+import { PageSizeSelect, usePageSize } from "@/components/ui/ListPager";
 import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState } from "react";
 import { Voicemail, AlertCircle, RefreshCw, PhoneIncoming, PhoneOutgoing, Search } from "lucide-react";
@@ -68,6 +69,7 @@ export default function Recordings() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("voice-recordings");
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -93,7 +95,7 @@ export default function Recordings() {
       if (append) setIsLoadingMore(true);
       else setIsLoading(true);
       setError(null);
-      const params = new URLSearchParams({ page: String(pageNum) });
+      const params = new URLSearchParams({ page: String(pageNum), page_size: String(pageSize) });
       if (search) params.set("q", search);
       if (agentId !== "all") params.set("agent", agentId);
       const res = await voiceApi.get<PaginatedResponse<Recording>>(`/voice/recordings/?${params}`);
@@ -108,7 +110,7 @@ export default function Recordings() {
       setIsLoading(false);
       setIsLoadingMore(false);
     },
-    [search, agentId, t],
+    [search, agentId, pageSize, t],
   );
 
   useEffect(() => {
@@ -266,11 +268,14 @@ export default function Recordings() {
               </Card>
             )}
 
-            {!error && !isLoading && recordings.length > 0 && hasNext && (
-              <div className="flex justify-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => fetchRecordings(page + 1, true)} disabled={isLoadingMore}>
-                  {isLoadingMore ? t("voice.calls.loading") : t("voice.calls.load_more")}
-                </Button>
+            {!error && !isLoading && recordings.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <PageSizeSelect value={pageSize} onChange={setPageSize} disabled={isLoadingMore} />
+                {hasNext && (
+                  <Button variant="outline" size="sm" onClick={() => fetchRecordings(page + 1, true)} disabled={isLoadingMore}>
+                    {isLoadingMore ? t("voice.calls.loading") : t("voice.calls.load_more")}
+                  </Button>
+                )}
               </div>
             )}
           </div>

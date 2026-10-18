@@ -1,6 +1,7 @@
 // Call history for the call center. An agent sees only the calls they handled;
 // a supervisor or admin sees the whole organization's — enforced by the
 // backend, so the filters below only narrow what the server already allows.
+import { PageSizeSelect, usePageSize } from "@/components/ui/ListPager";
 import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, NotebookPen, PhoneIncoming, PhoneOutgoing, RefreshCw, Sparkles } from "lucide-react";
@@ -58,6 +59,7 @@ export default function History() {
   const [rows, setRows] = useState<CallRow[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("cc-history");
   const [direction, setDirection] = useState("all");
   const [team, setTeam] = useState("all");
   const [agent, setAgent] = useState("all");
@@ -146,6 +148,7 @@ export default function History() {
       outcome: outcome === "all" ? undefined : outcome,
       endpoint: endpoint === "all" ? undefined : endpoint,
       page,
+      page_size: pageSize,
     });
     if (res.success && res.data) {
       setRows(res.data.results);
@@ -154,7 +157,7 @@ export default function History() {
       setError(res.error || t("cc.history.load_failed"));
     }
     setLoading(false);
-  }, [direction, team, agent, days, query, outcome, endpoint, page, t]);
+  }, [direction, team, agent, days, query, outcome, endpoint, page, pageSize, t]);
 
   useEffect(() => {
     void load();
@@ -179,7 +182,6 @@ export default function History() {
     else setTimelineError(true);
   };
 
-  const pageSize = 20;
   const pages = Math.max(1, Math.ceil(count / pageSize));
 
   return (
@@ -338,6 +340,7 @@ export default function History() {
           </div>
           <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
             <span>{t("cc.history.showing", { count })}</span>
+            <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1); }} disabled={loading} />
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t("cc.history.prev")}><ChevronLeft className="h-4 w-4" /></Button>
               <span>{page} / {pages}</span>

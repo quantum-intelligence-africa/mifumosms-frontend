@@ -815,6 +815,8 @@ const translations = {
     "sms.common.previous": "Previous",
     "sms.common.next": "Next",
     "sms.common.page_of": "Page {{current}} of {{total}}",
+    "sms.common.rows_per_page": "Rows per page",
+    "sms.common.showing_range": "{{start}}–{{end}} of {{total}}",
     "sms.common.col_recipient": "Recipient",
     "sms.common.col_message": "Message",
     "sms.common.col_sender": "Sender",

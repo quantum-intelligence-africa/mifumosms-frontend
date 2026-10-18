@@ -11483,11 +11483,12 @@ function usePagedList(basePath, extraParams, onLogout) {
   const [hasNext, setHasNext] = useState(false);
   const [count, setCount]     = useState(0);
   const [summary, setSummary] = useState(null);
+  const [pageSize, setPageSize] = useAdminPageSize(`list:${basePath}`, 20);
   const paramsKey = JSON.stringify(extraParams);
 
   const fetchPage = useCallback((p) => {
     setLoading(true); setError(null);
-    const qs = new URLSearchParams({ ...extraParams, page: String(p), limit: '20' });
+    const qs = new URLSearchParams({ ...extraParams, page: String(p), limit: String(pageSize) });
     return adminFetch(`${basePath}?${qs.toString()}`, {}, onLogout)
       .then(res => {
         if (res.success) {
@@ -11502,19 +11503,43 @@ function usePagedList(basePath, extraParams, onLogout) {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basePath, paramsKey, onLogout]);
+  }, [basePath, paramsKey, onLogout, pageSize]);
 
   useEffect(() => { setPage(1); }, [paramsKey]);
   useEffect(() => { fetchPage(page); }, [fetchPage, page]);
 
-  return { rows, loading, error, page, setPage, hasNext, count, summary, reload: () => fetchPage(page) };
+  return { rows, loading, error, page, setPage, hasNext, count, summary, pageSize, setPageSize, reload: () => fetchPage(page) };
 }
 
-function PagerFooter({ page, setPage, hasNext, count, label }) {
+// Rows-per-page choices for every admin list; the servers accept up to 1000 per request.
+const PAGE_SIZE_CHOICES = [20, 50, 100, 200, 500, 1000];
+
+// A page size the admin picked, remembered in this browser per list (storage trouble just means the default).
+function useAdminPageSize(key, fallback = 50) {
+  const storageKey = `senda.admin.pageSize.${key}`;
+  const [size, setSizeState] = useState(() => {
+    try { const n = Number(localStorage.getItem(storageKey)); return PAGE_SIZE_CHOICES.includes(n) ? n : fallback; } catch { return fallback; }
+  });
+  const setSize = useCallback((n) => {
+    setSizeState(n);
+    try { localStorage.setItem(storageKey, String(n)); } catch { /* keep it for this visit only */ }
+  }, [storageKey]);
+  return [size, setSize];
+}
+
+function PagerFooter({ page, setPage, hasNext, count, label, pageSize, setPageSize }) {
   if (count === 0 && page === 1) return null;
   return (
     <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
       <span style={{fontSize:12,color:'#94a3b8'}}>Page {page} · {count.toLocaleString()} {label}</span>
+      {setPageSize && (
+        <label style={{fontSize:12,color:'#94a3b8',display:'flex',alignItems:'center',gap:6}}>
+          Rows per page
+          <select className="senda-input" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} style={{height:30,padding:'0 8px',fontSize:12}}>
+            {PAGE_SIZE_CHOICES.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      )}
       <div style={{display:'flex',gap:4}}>
         <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} style={{opacity:page<=1?0.5:1}}>‹ Prev</button>
         <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={!hasNext} onClick={()=>setPage(p=>p+1)} style={{opacity:!hasNext?0.5:1}}>Next ›</button>
@@ -11538,7 +11563,7 @@ function AllBalancesPanel() {
   const { onLogout } = React.useContext(AppContext);
   const [search, setSearch] = useState('');
   const [type, setType] = useState('direct');
-  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, reload } =
     usePagedList('/api/admin/v1/sms-balances/customers', { search, type }, onLogout);
 
   return (
@@ -11586,7 +11611,7 @@ function AllBalancesPanel() {
             </table>
           </div>
           {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers with an approved sender ID yet.</div>}
-          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+          <PagerFooter pageSize={pageSize} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
         </div>
       )}
     </div>
@@ -11600,7 +11625,7 @@ function LowBalanceCustomersPanel() {
   const [type, setType] = useState('direct');
   const [resending, setResending] = useState(null);
   const [broadcasting, setBroadcasting] = useState(false);
-  const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, summary, reload } =
     usePagedList('/api/admin/v1/low-credit-warning/customers', { search, status: statusFilter, type }, onLogout);
 
   const resend = async (tenantId) => {
@@ -11706,7 +11731,7 @@ function LowBalanceCustomersPanel() {
             </table>
           </div>
           {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers at or below the low-balance threshold.</div>}
-          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+          <PagerFooter pageSize={pageSize} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
         </div>
       )}
     </div>
@@ -11726,7 +11751,7 @@ function FreeCreditExpiryCustomersPanel() {
   const [search, setSearch] = useState('');
   const [resending, setResending] = useState(null);
   const [syncing, setSyncing] = useState(false);
-  const { rows, loading, error, page, setPage, hasNext, count, summary, reload } =
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, summary, reload } =
     usePagedList('/api/admin/v1/free-credit-expiry/customers', { search, status, source }, onLogout);
 
   const resend = async (grantId, type) => {
@@ -11882,7 +11907,7 @@ function FreeCreditExpiryCustomersPanel() {
             </table>
           </div>
           {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No customers match this filter. If you expect direct customers here, try "Sync missing grants" above.</div>}
-          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="grants"/>
+          <PagerFooter pageSize={pageSize} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={hasNext} count={count} label="grants"/>
         </div>
       )}
     </div>
@@ -11904,7 +11929,7 @@ function SmsAlertsHistoryPanel() {
   const [status, setStatus] = useState('');
   const params = { category };
   if (status) params.status = status;
-  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, reload } =
     usePagedList('/api/admin/v1/system-sms-logs', params, onLogout);
 
   return (
@@ -11947,7 +11972,7 @@ function SmsAlertsHistoryPanel() {
             </table>
           </div>
           {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No notifications logged yet.</div>}
-          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="notifications"/>
+          <PagerFooter pageSize={pageSize} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={hasNext} count={count} label="notifications"/>
         </div>
       )}
     </div>
@@ -11957,7 +11982,7 @@ function SmsAlertsHistoryPanel() {
 function PendingPaymentCustomersPanel() {
   const { onLogout } = React.useContext(AppContext);
   const [search, setSearch] = useState('');
-  const { rows, loading, error, page, setPage, hasNext, count, reload } =
+  const { rows, loading, error, page, setPage, hasNext, count, pageSize, setPageSize, reload } =
     usePagedList('/api/admin/v1/pending-payment-reminder/customers', { search }, onLogout);
 
   return (
@@ -12000,7 +12025,7 @@ function PendingPaymentCustomersPanel() {
             </table>
           </div>
           {rows.length === 0 && <div style={{padding:'32px 20px',textAlign:'center',color:'#94a3b8',fontSize:13}}>No reminders sent yet within the current max-age window.</div>}
-          <PagerFooter page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
+          <PagerFooter pageSize={pageSize} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={hasNext} count={count} label="customers"/>
         </div>
       )}
     </div>
@@ -12561,7 +12586,7 @@ function AnalysisEmailsTab() {
   const [page, setPage]       = useState(1);
   const [log, setLog]         = useState({ count: 0, results: [] });
   const [logTick, setLogTick] = useState(0);
-  const PAGE = 50;
+  const [PAGE, setPageSize] = useAdminPageSize('deliveries');
   const errText = (res, fallback) => {
     if (typeof res.error === 'string') return res.error;
     const e = res.error || res.data;
@@ -12585,7 +12610,7 @@ function AnalysisEmailsTab() {
       voiceAdminFetch(`/audio/admin/deliveries/?${params}`, {}, onLogout).then(res => { if (res.success) setLog(res.data); });
     }, fRecipient ? 300 : 0);
     return () => clearTimeout(id);
-  }, [fOrg, fRecipient, fStatus, fDays, page, onLogout, logTick]);
+  }, [fOrg, fRecipient, fStatus, fDays, page, PAGE, onLogout, logTick]);
 
   const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
@@ -12772,7 +12797,7 @@ function AnalysisEmailsTab() {
             </tbody>
           </table>
         </div>
-        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < log.count} count={log.count} label="emails" />
+        <PagerFooter pageSize={PAGE} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={page * PAGE < log.count} count={log.count} label="emails" />
       </div>
     </div>
   );
@@ -12802,7 +12827,7 @@ function VoiceUsageTab() {
   const [rate, setRate]       = useState({ direction: 'inbound', currency: '', rate_per_minute: '', effective_from: '', note: '' });
   const [requests, setRequests] = useState([]);
   const [grant, setGrant]     = useState({});           // request id -> minutes to approve
-  const PAGE = 50;
+  const [PAGE, setPageSize] = useAdminPageSize('voice-usage-calls');
 
   const q = (extra = {}) => {
     const params = new URLSearchParams({ range, ...extra });
@@ -12826,7 +12851,7 @@ function VoiceUsageTab() {
   useEffect(() => {
     if (range === 'custom' && (!from || !to)) return;
     voiceAdminFetch(`/voice/admin/voice-usage/calls/?${q({ page: String(page), page_size: String(PAGE) })}`, {}, onLogout).then(res => { if (res.success) setCalls(res.data); });
-  }, [range, from, to, filter, page]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [range, from, to, filter, page, PAGE]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     voiceAdminFetch('/voice/admin/voice-usage/policies/', {}, onLogout).then(res => { if (res.success) setPolicies(res.data || []); });
     voiceAdminFetch('/voice/admin/voice-usage/settings/', {}, onLogout).then(res => { if (res.success) setCfg(res.data); });
@@ -13041,7 +13066,7 @@ function VoiceUsageTab() {
             </tbody>
           </table>
         </div>
-        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < calls.count} count={calls.count} label="calls" />
+        <PagerFooter pageSize={PAGE} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={page * PAGE < calls.count} count={calls.count} label="calls" />
       </div>
 
       {org && (
@@ -13213,7 +13238,7 @@ function VoiceCallLogsTab() {
   const [error, setError]     = useState(null);
   const [openId, setOpenId]   = useState(null);
   const [detail, setDetail]   = useState({});          // id -> detail payload | 'loading' | { error }
-  const PAGE = 50;
+  const [PAGE, setPageSize] = useAdminPageSize('call-logs');
 
   useEffect(() => {
     voiceAdminFetch('/voice/admin/call-logs/organizations/', {}, onLogout).then(res => { if (res.success) setOrgs(res.data || []); });
@@ -13239,7 +13264,7 @@ function VoiceCallLogsTab() {
       });
     }, q ? 300 : 0);
     return () => { live = false; clearTimeout(id); };
-  }, [orgId, q, direction, outcome, deleted, days, page, onLogout]);
+  }, [orgId, q, direction, outcome, deleted, days, page, PAGE, onLogout]);
 
   const toggle = (row) => {
     if (openId === row.id) { setOpenId(null); return; }
@@ -13392,7 +13417,7 @@ function VoiceCallLogsTab() {
             </tbody>
           </table>
         </div>
-        <PagerFooter page={page} setPage={setPage} hasNext={page * PAGE < data.count} count={data.count} label="calls" />
+        <PagerFooter pageSize={PAGE} setPageSize={setPageSize} page={page} setPage={setPage} hasNext={page * PAGE < data.count} count={data.count} label="calls" />
       </div>
     </div>
   );

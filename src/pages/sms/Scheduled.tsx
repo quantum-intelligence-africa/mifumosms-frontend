@@ -17,10 +17,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { ListPager, usePageSize } from "@/components/ui/ListPager";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, Clock, CalendarClock, X } from "lucide-react";
-
-const PAGE_SIZE = 20;
 
 const Scheduled = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -29,11 +28,10 @@ const Scheduled = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("scheduled");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const { toast } = useToast();
   const { t } = useLanguage();
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -41,6 +39,7 @@ const Scheduled = () => {
       const response = await apiClient.getSMSMessages({
         status: "scheduled",
         page: currentPage,
+        page_size: pageSize,
         search: search || undefined,
       });
       if (response.success && response.data) {
@@ -60,11 +59,11 @@ const Scheduled = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast, t]);
+  }, [currentPage, pageSize, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -266,31 +265,17 @@ const Scheduled = () => {
                         </Table>
                       </div>
 
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={currentPage === 1 || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.previous")}
-                          </Button>
-                          <span className="text-xs text-text-subtle">
-                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.next")}
-                          </Button>
-                        </div>
-                      )}
+                      <ListPager
+                        page={currentPage}
+                        pageSize={pageSize}
+                        total={total}
+                        isLoading={isLoading}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => {
+                          setPageSize(size);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </>
                   )}
                 </CardContent>

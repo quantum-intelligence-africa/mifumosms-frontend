@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLanguage } from "@/hooks/useLanguage";
+import { PAGE_SIZE_CHOICES } from "@/components/ui/ListPager";
 
 interface DataTablePaginationProps {
   currentPage: number;
@@ -29,7 +30,7 @@ export function DataTablePagination({
   onPageChange,
   onPageSizeChange,
   isLoading = false,
-  pageSizeOptions = [10, 20, 30, 50],
+  pageSizeOptions = PAGE_SIZE_CHOICES,
   showPageSizeSelector = true,
 }: DataTablePaginationProps) {
   const { t } = useLanguage();

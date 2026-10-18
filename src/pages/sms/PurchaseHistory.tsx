@@ -771,6 +771,9 @@ const PurchaseHistory = () => {
                       <SelectItem value="20" className="text-xs">{t("pg.PurchaseHistory.0840")}</SelectItem>
                       <SelectItem value="50" className="text-xs">{t("pg.PurchaseHistory.0841")}</SelectItem>
                       <SelectItem value="100" className="text-xs">{t("pg.PurchaseHistory.0842")}</SelectItem>
+                      <SelectItem value="200" className="text-xs">200</SelectItem>
+                      <SelectItem value="500" className="text-xs">500</SelectItem>
+                      <SelectItem value="1000" className="text-xs">1000</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

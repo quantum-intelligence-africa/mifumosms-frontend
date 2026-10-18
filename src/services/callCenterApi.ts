@@ -725,6 +725,7 @@ export const callCenterApi = {
     days?: number;
     missed?: boolean;
     page?: number;
+    page_size?: number;
     outcome?: string;
     endpoint?: string;
     date_from?: string;

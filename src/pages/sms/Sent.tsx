@@ -24,10 +24,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { ListPager, usePageSize } from "@/components/ui/ListPager";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, CheckCircle2, MessageSquare, Copy, Check } from "lucide-react";
-
-const PAGE_SIZE = 20;
 
 const Sent = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,12 +35,11 @@ const Sent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("sent");
   const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const handleCopy = async (text: string) => {
     try {
@@ -64,6 +62,7 @@ const Sent = () => {
       const response = await apiClient.getSMSMessages({
         status__in: "sent,delivered",
         page: currentPage,
+        page_size: pageSize,
         search: search || undefined,
       });
       if (response.success && response.data) {
@@ -83,11 +82,11 @@ const Sent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast, t]);
+  }, [currentPage, pageSize, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -249,63 +248,48 @@ const Sent = () => {
                       </div>
 
                       {/* Mobile card list */}
-                      <div className="md:hidden space-y-3">
+                      <div className="md:hidden divide-y divide-border/60 rounded-lg border border-border/60 bg-background/40">
                         {messages.map((m) => (
-                          <Card
+                          <div
                             key={m.id}
                             onClick={() => m.message && setViewMessage(m)}
-                            className={`glass-subtle border-0 ${m.message ? "cursor-pointer active:opacity-80" : ""}`}
+                            className={`space-y-1.5 p-3 ${m.message ? "cursor-pointer active:bg-muted/50" : ""}`}
                           >
-                            <CardContent className="p-3 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="text-sm font-medium break-all">
-                                  {recipientOf(m)}
-                                  {extraRecipients(m) > 0 && (
-                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
-                                    </span>
-                                  )}
-                                </span>
-                                <Badge variant={statusVariant(m.status)} className="text-xs flex-shrink-0">
-                                  {statusLabel(m.status)}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-text-subtle line-clamp-2 break-words">
-                                {m.message || "—"}
-                              </p>
-                              <span className="block text-[11px] text-text-subtle truncate">
-                                {m.sender_name || "—"} · {formatDate(m.sent_at || m.created_at)}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[15px] font-semibold tabular-nums break-all">
+                                {recipientOf(m)}
+                                {extraRecipients(m) > 0 && (
+                                  <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                    {t("sms.common.more_recipients", { count: extraRecipients(m) })}
+                                  </span>
+                                )}
                               </span>
-                            </CardContent>
-                          </Card>
+                              <Badge variant={statusVariant(m.status)} className="flex-shrink-0 px-2 py-0.5 text-[11px]">
+                                {statusLabel(m.status)}
+                              </Badge>
+                            </div>
+                            <p className="line-clamp-3 break-words text-[13px] leading-snug text-foreground/80">
+                              {m.message || "—"}
+                            </p>
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-text-subtle">
+                              <span className="truncate font-medium">{m.sender_name || "—"}</span>
+                              <span className="flex-shrink-0">{formatDate(m.sent_at || m.created_at)}</span>
+                            </div>
+                          </div>
                         ))}
                       </div>
 
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={currentPage === 1 || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.previous")}
-                          </Button>
-                          <span className="text-xs text-text-subtle">
-                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.next")}
-                          </Button>
-                        </div>
-                      )}
+                      <ListPager
+                        page={currentPage}
+                        pageSize={pageSize}
+                        total={total}
+                        isLoading={isLoading}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => {
+                          setPageSize(size);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </>
                   )}
                 </CardContent>

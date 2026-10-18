@@ -60,6 +60,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
+import { PAGE_SIZE_CHOICES } from "@/components/ui/ListPager";
 
 import { appLocale } from "@/utils/appLocale";
 type SenderStatus = "approved" | "pending" | "verifying" | "rejected" | "suspended" | "requires_changes" | "active" | "awaiting_payment" | "cancelled" | "inactive";
@@ -1682,7 +1683,7 @@ const SenderNames = () => {
                   onPageChange={handlePageChange}
                   onPageSizeChange={handlePageSizeChange}
                   isLoading={loading}
-                  pageSizeOptions={[10, 20, 30, 50]}
+                  pageSizeOptions={PAGE_SIZE_CHOICES}
                 />
               )}
             </Card>
@@ -1843,7 +1844,7 @@ const SenderNames = () => {
                         onPageChange={handlePageChange}
                         onPageSizeChange={handlePageSizeChange}
                         isLoading={loading}
-                        pageSizeOptions={[10, 20, 30, 50]}
+                        pageSizeOptions={PAGE_SIZE_CHOICES}
                       />
                     </div>
                   )}

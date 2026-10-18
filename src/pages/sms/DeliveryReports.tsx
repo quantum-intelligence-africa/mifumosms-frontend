@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { useLanguage } from "@/hooks/useLanguage";
+import { ListPager, usePageSize } from "@/components/ui/ListPager";
 import { Search, Filter, Download, RefreshCw, Calendar, MessageSquare, Users, Clock } from "lucide-react";
 
 interface DeliveryReport {
@@ -51,6 +52,7 @@ const DeliveryReports = () => {
     search: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("delivery-reports");
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -62,7 +64,7 @@ const DeliveryReports = () => {
         end_date: filters.end_date || undefined,
         status: filters.status === "all" ? undefined : filters.status,
         page: currentPage,
-        per_page: 20,
+        per_page: pageSize,
       });
 
       if (response.success && response.data) {
@@ -83,7 +85,7 @@ const DeliveryReports = () => {
 
   useEffect(() => {
     loadReports();
-  }, [currentPage]);
+  }, [currentPage, pageSize]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -365,30 +367,19 @@ const DeliveryReports = () => {
                       </div>
 
                       {/* Pagination */}
-                      {pagination && pagination.pages > 1 && (
-                        <div className="flex items-center justify-between mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1 || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.previous")}
-                          </Button>
-                          <span className="text-xs text-text-subtle">
-                            {t("sms.common.page_of", { current: currentPage, total: pagination.pages })}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
-                            disabled={currentPage === pagination.pages || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.next")}
-                          </Button>
-                        </div>
+                      {pagination && (
+                        <ListPager
+                          page={currentPage}
+                          // The server may cap the size it honours; page maths must follow what it really used.
+                          pageSize={pagination.per_page || pageSize}
+                          total={pagination.total ?? reports.length}
+                          isLoading={isLoading}
+                          onPageChange={setCurrentPage}
+                          onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                          }}
+                        />
                       )}
                     </>
                   )}

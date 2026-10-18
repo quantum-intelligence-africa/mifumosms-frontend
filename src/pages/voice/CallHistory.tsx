@@ -2,6 +2,7 @@
 // call-centre console: who called, which agent took it, when, how long, and
 // what the AI made of it. One play button per row; playback lives in the
 // bar at the bottom of the page.
+import { PageSizeSelect, usePageSize } from "@/components/ui/ListPager";
 import { appLocale } from "@/utils/appLocale";
 import { useCallback, useEffect, useState, Fragment } from "react";
 import { Trash2, ChevronDown, ChevronUp, PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, AlertCircle, RefreshCw, Search, Sparkles } from "lucide-react";
@@ -176,6 +177,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   const [calls, setCalls] = useState<CallSummary[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("voice-calls");
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -235,7 +237,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
       if (append) setIsLoadingMore(true);
       else setIsLoading(true);
       setError(null);
-      const params = new URLSearchParams({ page: String(pageNum) });
+      const params = new URLSearchParams({ page: String(pageNum), page_size: String(pageSize) });
       if (tab === "inbound" || tab === "outbound") params.set("direction", tab);
       if (tab === "answered") params.set("outcome", "answered");
       if (tab === "missed") params.set("missed", "true");
@@ -255,7 +257,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
       setIsLoading(false);
       setIsLoadingMore(false);
     },
-    [tab, range, search, agentId, sentiment, t],
+    [tab, range, search, agentId, sentiment, pageSize, t],
   );
 
   useEffect(() => {
@@ -764,11 +766,14 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
               </Card>
             )}
 
-            {!error && !isLoading && calls.length > 0 && hasNext && (
-              <div className="flex justify-center pt-2">
-                <Button variant="outline" size="sm" onClick={() => fetchCalls(page + 1, true)} disabled={isLoadingMore}>
-                  {isLoadingMore ? t("voice.calls.loading") : t("voice.calls.load_more")}
-                </Button>
+            {!error && !isLoading && calls.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <PageSizeSelect value={pageSize} onChange={setPageSize} disabled={isLoadingMore} />
+                {hasNext && (
+                  <Button variant="outline" size="sm" onClick={() => fetchCalls(page + 1, true)} disabled={isLoadingMore}>
+                    {isLoadingMore ? t("voice.calls.loading") : t("voice.calls.load_more")}
+                  </Button>
+                )}
               </div>
             )}
           </div>

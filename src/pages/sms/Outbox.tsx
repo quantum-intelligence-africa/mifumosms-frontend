@@ -25,10 +25,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, type SMSMessageItem } from "@/lib/api";
 import { MessagesSubNav } from "@/components/layout/MessagesSubNav";
+import { ListPager, usePageSize } from "@/components/ui/ListPager";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Search, RefreshCw, AlertCircle, Send, Pencil, Inbox, Copy, Check } from "lucide-react";
-
-const PAGE_SIZE = 20;
 
 const Outbox = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,14 +36,13 @@ const Outbox = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize("outbox");
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [viewMessage, setViewMessage] = useState<SMSMessageItem | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
   const navigate = useNavigate();
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const handleCopy = async (text: string) => {
     try {
@@ -67,6 +65,7 @@ const Outbox = () => {
       const response = await apiClient.getSMSMessages({
         status: "failed",
         page: currentPage,
+        page_size: pageSize,
         search: search || undefined,
       });
       if (response.success && response.data) {
@@ -86,11 +85,11 @@ const Outbox = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, toast, t]);
+  }, [currentPage, pageSize, search, toast, t]);
 
   useEffect(() => {
     loadMessages();
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -191,8 +190,8 @@ const Outbox = () => {
                         className="glass-subtle border-0 text-sm pl-8"
                       />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button onClick={handleSearch} disabled={isLoading} className="text-xs">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                      <Button onClick={handleSearch} disabled={isLoading} className="h-10 text-xs sm:h-9">
                         <Search className="w-3 h-3 mr-2" />
                         {t("sms.common.search")}
                       </Button>
@@ -200,7 +199,7 @@ const Outbox = () => {
                         variant="outline"
                         onClick={() => loadMessages()}
                         disabled={isLoading}
-                        className="text-xs"
+                        className="h-10 text-xs sm:h-9"
                       >
                         <RefreshCw className={`w-3 h-3 mr-2 ${isLoading ? "animate-spin" : ""}`} />
                         {t("sms.common.refresh")}
@@ -310,91 +309,72 @@ const Outbox = () => {
                       </div>
 
                       {/* Mobile card list */}
-                      <div className="md:hidden space-y-3">
+                      <div className="md:hidden divide-y divide-border/60 rounded-lg border border-border/60 bg-background/40">
                         {messages.map((m) => (
-                          <Card
+                          <div
                             key={m.id}
                             onClick={() => m.message && setViewMessage(m)}
-                            className={`glass-subtle border-0 ${m.message ? "cursor-pointer active:opacity-80" : ""}`}
+                            className={`space-y-2 p-3 ${m.message ? "cursor-pointer active:bg-muted/50" : ""}`}
                           >
-                            <CardContent className="p-3 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="text-sm font-medium break-all">
-                                  {recipientOf(m)}
-                                  {extraRecipients(m) > 0 && (
-                                    <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
-                                      {t("sms.common.more_recipients", { count: extraRecipients(m) })}
-                                    </span>
-                                  )}
-                                </span>
-                                <Badge variant="destructive" className="text-xs flex-shrink-0">
-                                  {t("status.failed")}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-text-subtle line-clamp-2 break-words">
-                                {m.message || "—"}
-                              </p>
-                              <span className="block text-[11px] text-text-subtle truncate">
-                                {m.sender_name || "—"} · {formatDate(m.failed_at || m.created_at)}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[15px] font-semibold tabular-nums break-all">
+                                {recipientOf(m)}
+                                {extraRecipients(m) > 0 && (
+                                  <span className="ml-1.5 text-[11px] font-normal text-text-subtle">
+                                    {t("sms.common.more_recipients", { count: extraRecipients(m) })}
+                                  </span>
+                                )}
                               </span>
-                              <div className="flex items-center gap-1.5 pt-1">
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRetry(m);
-                                  }}
-                                  disabled={retryingId === m.id}
-                                  className="text-xs h-7 flex-1"
-                                >
-                                  <Send
-                                    className={`w-3 h-3 mr-1.5 ${retryingId === m.id ? "animate-pulse" : ""}`}
-                                  />
-                                  {retryingId === m.id ? t("sms.outbox.sending") : t("sms.outbox.retry")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditResend(m);
-                                  }}
-                                  className="text-xs h-7 flex-1"
-                                >
-                                  <Pencil className="w-3 h-3 mr-1.5" />
-                                  {t("sms.outbox.edit_short")}
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
+                              <Badge variant="destructive" className="flex-shrink-0 px-2 py-0.5 text-[11px]">
+                                {t("status.failed")}
+                              </Badge>
+                            </div>
+                            <p className="line-clamp-3 break-words text-[13px] leading-snug text-foreground/80">
+                              {m.message || "—"}
+                            </p>
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-text-subtle">
+                              <span className="truncate font-medium">{m.sender_name || "—"}</span>
+                              <span className="flex-shrink-0">{formatDate(m.failed_at || m.created_at)}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRetry(m);
+                                }}
+                                disabled={retryingId === m.id}
+                                className="h-10 text-sm"
+                              >
+                                <Send className={`mr-1.5 h-4 w-4 ${retryingId === m.id ? "animate-pulse" : ""}`} />
+                                {retryingId === m.id ? t("sms.outbox.sending") : t("sms.outbox.retry")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditResend(m);
+                                }}
+                                className="h-10 text-sm"
+                              >
+                                <Pencil className="mr-1.5 h-4 w-4" />
+                                {t("sms.outbox.edit_short")}
+                              </Button>
+                            </div>
+                          </div>
                         ))}
                       </div>
 
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            disabled={currentPage === 1 || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.previous")}
-                          </Button>
-                          <span className="text-xs text-text-subtle">
-                            {t("sms.common.page_of", { current: currentPage, total: totalPages })}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages || isLoading}
-                            className="text-xs"
-                          >
-                            {t("sms.common.next")}
-                          </Button>
-                        </div>
-                      )}
+                      <ListPager
+                        page={currentPage}
+                        pageSize={pageSize}
+                        total={total}
+                        isLoading={isLoading}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => {
+                          setPageSize(size);
+                          setCurrentPage(1);
+                        }}
+                      />
                     </>
                   )}
                 </CardContent>

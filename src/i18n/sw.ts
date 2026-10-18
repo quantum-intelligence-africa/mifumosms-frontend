@@ -716,6 +716,8 @@ const sw: Record<string, string> = {
   "sms.common.previous": "Iliyotangulia",
   "sms.common.next": "Inayofuata",
   "sms.common.page_of": "Ukurasa {{current}} kati ya {{total}}",
+  "sms.common.rows_per_page": "Mistari kwa ukurasa",
+  "sms.common.showing_range": "{{start}}–{{end}} kati ya {{total}}",
   "sms.common.col_recipient": "Mpokeaji",
   "sms.common.col_message": "Ujumbe",
   "sms.common.col_sender": "Mtumaji",

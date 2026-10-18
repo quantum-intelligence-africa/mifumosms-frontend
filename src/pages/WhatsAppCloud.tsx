@@ -1191,6 +1191,9 @@ function SingleSendTab({
                 <SelectItem value="25">25</SelectItem>
                 <SelectItem value="50">50</SelectItem>
                 <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+                <SelectItem value="1000">1000</SelectItem>
               </SelectContent>
             </Select>
             {audienceTotal !== null && <span className="text-[11px] text-muted-foreground ml-1">{t("whatsapp.cloud.total_count", { count: audienceTotal })}</span>}
@@ -2189,6 +2192,9 @@ function BulkSendTab({
                 <SelectItem value="25">25</SelectItem>
                 <SelectItem value="50">50</SelectItem>
                 <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+                <SelectItem value="1000">1000</SelectItem>
               </SelectContent>
             </Select>
             {audienceTotal !== null && <span className="text-[11px] text-muted-foreground">{t("whatsapp.cloud.total_count", { count: audienceTotal })}</span>}
@@ -2363,6 +2369,9 @@ function ByCategoryTab({ waAccountId }: { waAccountId: string }) {
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+              <SelectItem value="1000">1000</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2501,6 +2510,9 @@ function ByUserIdsTab({ waAccountId }: { waAccountId: string }) {
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+              <SelectItem value="1000">1000</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2687,6 +2699,9 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+              <SelectItem value="1000">1000</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2719,6 +2734,9 @@ function ByDateRangeTab({ waAccountId }: { waAccountId: string }) {
                   <SelectItem value="25">25</SelectItem>
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="500">500</SelectItem>
+                  <SelectItem value="1000">1000</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2926,6 +2944,9 @@ function AudienceTab({ waAccountId }: { waAccountId: string }) {
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+              <SelectItem value="1000">1000</SelectItem>
             </SelectContent>
           </Select>
         </div>
