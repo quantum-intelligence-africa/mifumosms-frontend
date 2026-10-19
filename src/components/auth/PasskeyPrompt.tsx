@@ -4,6 +4,7 @@ import { Fingerprint, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { SHOW_PASSKEY_SIGNIN } from "@/config/authUi";
 import { listPasskeys, passkeysAvailable, platformAuthenticatorAvailable, registerPasskey } from "@/services/passkeys";
 
 const SNOOZE_MS = 7 * 24 * 3600 * 1000;
@@ -46,6 +47,7 @@ export function PasskeyPrompt() {
   const inSettings = location.pathname.startsWith("/settings");
 
   useEffect(() => {
+    if (!SHOW_PASSKEY_SIGNIN) return; // hidden: no need to ask the server about passkeys either
     const saved = read();
     if (saved.never || (saved.until && saved.until > Date.now())) return;
     let alive = true;
@@ -60,7 +62,7 @@ export function PasskeyPrompt() {
     };
   }, []);
 
-  if (!show || inSettings) return null;
+  if (!SHOW_PASSKEY_SIGNIN || !show || inSettings) return null;
 
   const setup = async () => {
     setBusy(true);

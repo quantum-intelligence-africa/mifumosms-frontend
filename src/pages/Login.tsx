@@ -21,6 +21,7 @@ import { getRecaptchaToken } from "@/lib/recaptcha";
 import GoogleButton from "@/components/auth/GoogleButton";
 import { PasskeyButton } from "@/components/auth/PasskeyButton";
 import { isPasskeySupported } from "@/services/passkeys";
+import { SHOW_PASSKEY_SIGNIN } from "@/config/authUi";
 
 // Hidden admin gate: an email suffixed with ".admin" (e.g. "admin@example.com.admin")
 // routes the login attempt to the admin endpoint and drops the user on /admin
@@ -255,7 +256,7 @@ const Login = () => {
       : toast({ title: t("auth.login.toast_login_failed_title"), description, variant: "destructive" });
 
   // Two separate ways, shown right under "Continue with Google": this device's fingerprint/face, and a passkey of any kind.
-  const passkeyButtons = (rounded: string) => (
+  const passkeyButtons = (rounded: string) => !SHOW_PASSKEY_SIGNIN ? null : (
     <>
       {(["device", "passkey"] as const).map((mode) => (
         <PasskeyButton

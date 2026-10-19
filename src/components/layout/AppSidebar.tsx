@@ -91,12 +91,28 @@ interface AppSidebarProps {
   onClose?: () => void;
 }
 
+// Whether the sidebar is showing the Voice/IVR menu (which hides Messaging, AI Copilots and Voice Copilots). Settings and
+// Notifications belong to no area, so they keep whichever one the user came from instead of flipping the menu: before, opening
+// Settings from a call-center page suddenly brought AI Copilots and Voice Copilots into the menu.
+const AREA_KEY = "senda_nav_area";
+function inVoiceArea(pathname: string): boolean {
+  const voice = pathname.startsWith("/voice") || pathname.startsWith("/call-center");
+  const neutral = pathname.startsWith("/settings") || pathname.startsWith("/notifications");
+  try {
+    if (!neutral) sessionStorage.setItem(AREA_KEY, voice ? "voice" : "other");
+    else return sessionStorage.getItem(AREA_KEY) === "voice";
+  } catch {
+    /* storage blocked: fall back to the path alone */
+  }
+  return voice;
+}
+
 export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     messaging: true,
-    "voice-ivr": location.pathname.startsWith("/voice") || location.pathname.startsWith("/call-center"),
+    "voice-ivr": inVoiceArea(location.pathname),
   });
   // Live counts for the Outbox (failed), Sent and Scheduled badges: one cached query shared by every page.
   const { outboxCount, sentCount, scheduledCount } = useMessageBadgeCounts();
@@ -129,7 +145,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // While working inside Voice/IVR, hide the unrelated top-level sections
   // (Messaging, AI Copilots) and "Voice Copilots" so the sidebar stays
   // focused — Dashboard and Voice/IVR itself always stay visible.
-  const inVoiceSection = location.pathname.startsWith("/voice") || location.pathname.startsWith("/call-center");
+  const inVoiceSection = inVoiceArea(location.pathname);
 
   // Call-center-only agents get a deliberately small menu: their workspace, their
   // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).

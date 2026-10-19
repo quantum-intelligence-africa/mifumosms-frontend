@@ -268,7 +268,16 @@ const Dashboard = () => {
     accentText: "text-amber-600",
   };
 
-  const metricCards: MetricProps[] = [
+  const activeNumbersCard: MetricProps = {
+    title: t("dashboard.metric.active_numbers"),
+    value: voiceStats.activeNumbers.toLocaleString(appLocale()),
+    description: t("dashboard.metric.connected_phone_numbers"),
+    icon: Phone,
+    accentBg: "bg-indigo-50",
+    accentText: "text-indigo-600",
+  };
+
+  const allMetricCards: MetricProps[] = [
     ...smsMetricCards,
     ...voiceMetricCards,
     ...planCards,
@@ -285,19 +294,24 @@ const Dashboard = () => {
           },
         ]
       : []),
-    ...(showIvr
-      ? [
-          {
-            title: t("dashboard.metric.active_numbers"),
-            value: voiceStats.activeNumbers.toLocaleString(appLocale()),
-            description: t("dashboard.metric.connected_phone_numbers"),
-            icon: Phone,
-            accentBg: "bg-indigo-50",
-            accentText: "text-indigo-600",
-          },
-        ]
-      : []),
+    ...(showIvr ? [activeNumbersCard] : []),
   ];
+
+  // With call analytics, the minute cards and Active numbers belong to that section (same numbers, shown once); the grid at the
+  // top keeps everything else. Without it (no analytics access) nothing moves.
+  // While the access check is still running the voice layout is assumed, so the page does not jump when it answers.
+  const callLayout = analyticsShown || (showIvr && callAnalytics.isLoading);
+  const callSectionCards: MetricProps[] = callLayout ? [...planCards, activeNumbersCard] : [];
+  const metricCards: MetricProps[] = allMetricCards.filter((c) => !callSectionCards.includes(c));
+
+  // Live call center: for the people who run the call center. It sits under the activity chart when call analytics is shown,
+  // and where it always was (above the Quick Actions row) otherwise.
+  const liveNode = showIvr && canUseCallCenter(user) && isCallCenterSupervisor(user) ? (
+    <Suspense fallback={<Skeleton className="h-16 rounded-xl" />}>
+      <LiveCallCenter />
+    </Suspense>
+  ) : null;
+  const quickActionsNode = widgetOn("quick_actions") ? <QuickActions /> : null;
 
   try {
     return (
@@ -313,7 +327,7 @@ const Dashboard = () => {
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* Mobile-only colored hero */}
-            <MobileHomeHero metricCards={metricCards.slice(0, 2)} />
+            <MobileHomeHero metricCards={allMetricCards.slice(0, 2)} />
 
             <div className="p-1.5 sm:p-2.5 md:p-3.5 w-full overflow-x-hidden">
               <div className="max-w-full px-1 mx-auto space-y-2 sm:space-y-2.5">
@@ -323,47 +337,51 @@ const Dashboard = () => {
                     {/* Welcome Section — hidden on mobile (already shown in the top bar) */}
                     <h1 className="hidden md:block text-sm sm:text-base font-bold text-foreground dark:text-foreground">{t("pg.Dashboard.0998")} {user?.first_name || user?.full_name || t("pg.Dashboard.0999")}! 👋</h1>
 
-                    {/* Desktop: full metrics grid (4 cards). */}
-                    {widgetOn("metrics") && (
+                    {/* 1-3. Call analytics first: its KPIs, the minute cards and Active numbers, then Call Activity Over Time with
+                        Quick Actions beside it (stacked on tablets and phones), then the Live Call Center. The component asks the
+                        server whether this person may see it and renders nothing otherwise; SMS-only users never mount it. */}
+                    {showIvr && widgetOn("call_analytics") && (
+                      <Suspense fallback={<Skeleton className="h-72 rounded-xl" />}>
+                        <CallAnalyticsPreview
+                          minuteCards={callSectionCards.length > 0 && widgetOn("metrics") ? (
+                            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+                              {callSectionCards.map((card) => <Metric key={card.title} {...card} />)}
+                            </div>
+                          ) : null}
+                          aside={quickActionsNode}
+                          live={liveNode}
+                        />
+                      </Suspense>
+                    )}
+
+                    {/* Desktop: the remaining metric cards (SMS, credits). */}
+                    {widgetOn("metrics") && metricCards.length > 0 && (
                     <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-2.5 overflow-x-hidden">
                       {metricCards.map((card) => <Metric key={card.title} {...card} />)}
                     </div>
                     )}
 
-                    {/* Mobile: remaining 2 metric cards below the hero. */}
+                    {/* Mobile: remaining metric cards below the hero. */}
                     {widgetOn("metrics") && (
                     <div className="md:hidden grid grid-cols-2 gap-2 overflow-x-hidden">
-                      {metricCards.slice(2).map((card) => <Metric key={card.title} {...card} />)}
+                      {metricCards.slice(callLayout ? 0 : 2).map((card) => <Metric key={card.title} {...card} />)}
                     </div>
                     )}
 
-                    {/* Who is available and what is ringing or waiting right now: for the people who run the call center. */}
-                    {showIvr && canUseCallCenter(user) && isCallCenterSupervisor(user) && (
-                      <Suspense fallback={<Skeleton className="h-28 rounded-xl" />}>
-                        <LiveCallCenter />
-                      </Suspense>
-                    )}
+                    {/* No call analytics for this person: the call center board and Quick Actions stay where they were. */}
+                    {!callLayout && liveNode}
 
-                    {/* Call analytics for voice customers, right after login. The component asks the server whether this
-                        person may see it and renders nothing otherwise; SMS-only users never mount it. */}
-                    {showIvr && widgetOn("call_analytics") && (
-                      <Suspense fallback={<Skeleton className="h-72 rounded-xl" />}>
-                        <CallAnalyticsPreview />
-                      </Suspense>
-                    )}
-
-                    {/* Middle Section: Quick Actions + Performance. Performance
-                        (message volume / delivery rate) is an SMS concept —
-                        an IVR-only account gets Quick Actions at full width
-                        instead of an empty/irrelevant messaging chart. */}
-                    <div className={`grid grid-cols-1 ${showSms ? "lg:grid-cols-3" : ""} gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden`}>
-                      {widgetOn("quick_actions") && (
+                    {/* Quick Actions (when not beside the activity chart) + Performance. Performance (message volume / delivery rate)
+                        is an SMS concept, so an IVR-only account gets Quick Actions at full width instead. */}
+                    {(!callLayout || (showSms && widgetOn("performance"))) && (
+                    <div className={`grid grid-cols-1 ${showSms && !callLayout ? "lg:grid-cols-3" : ""} gap-1.5 sm:gap-2 md:gap-2.5 overflow-x-hidden`}>
+                      {!callLayout && quickActionsNode && (
                       <div className={`${showSms ? "lg:col-span-1" : ""} h-full min-w-0`}>
-                        <QuickActions />
+                        {quickActionsNode}
                       </div>
                       )}
                       {showSms && widgetOn("performance") && (
-                        <div className="lg:col-span-2 h-full min-w-0">
+                        <div className={`${callLayout ? "" : "lg:col-span-2 "}h-full min-w-0`}>
                           <Card>
                             <Suspense fallback={<Skeleton className="m-4 h-64 rounded-xl" />}>
                               <PerformanceOverview performance={performanceOverview} />
@@ -372,6 +390,7 @@ const Dashboard = () => {
                         </div>
                       )}
                     </div>
+                    )}
 
                     {/* Bottom Section: Activity + Campaigns — both SMS/WhatsApp
                         messaging concepts (message activity feed, campaigns). */}

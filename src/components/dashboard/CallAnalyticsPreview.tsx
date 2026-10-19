@@ -1,7 +1,7 @@
 // Call analytics on the home dashboard: what a voice customer sees right after logging in. It reuses the same charts and the
 // same endpoints as the full analytics page, so the two can never disagree. It renders nothing unless the server says this
 // person may see voice analytics (the endpoints refuse everyone else), and SMS-only users never even load it.
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,7 +44,16 @@ function MiniKpis({ filters }: { filters: AnalyticsFilters }) {
   );
 }
 
-export default function CallAnalyticsPreview() {
+interface CallAnalyticsPreviewProps {
+  /** Incoming minutes, outgoing minutes and active numbers, shown as part of this section (rendered by the dashboard). */
+  minuteCards?: ReactNode;
+  /** Quick Actions: sits beside the activity chart on wide screens, below it on tablets and phones. */
+  aside?: ReactNode;
+  /** Live call center: sits right under the activity chart row. */
+  live?: ReactNode;
+}
+
+export default function CallAnalyticsPreview({ minuteCards, aside, live }: CallAnalyticsPreviewProps = {}) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const access = useAccess();
@@ -76,7 +85,14 @@ export default function CallAnalyticsPreview() {
         </div>
       </div>
       <MiniKpis filters={filters} />
-      <ActivityChart filters={filters} drillDown={drillDown} />
+      {minuteCards}
+      <div className={aside ? "grid items-start gap-2.5 lg:grid-cols-3" : ""}>
+        <div className={aside ? "min-w-0 lg:col-span-2" : ""}>
+          <ActivityChart filters={filters} drillDown={drillDown} />
+        </div>
+        {aside && <div className="min-w-0 lg:col-span-1">{aside}</div>}
+      </div>
+      {live}
       <div className="grid gap-2.5 lg:grid-cols-2">
         <OutcomeDonut filters={filters} drillDown={drillDown} />
         <InsightsPanel filters={filters} drillDown={drillDown} />
