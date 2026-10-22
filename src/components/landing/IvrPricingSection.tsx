@@ -134,6 +134,11 @@ const IvrPricingSection = () => {
                         <span className="text-sm font-medium text-gray-500">{plan.suffix}</span>
                       )}
                     </div>
+                    {/* One-time setup fee on the priced plans. Custom is quoted by sales, so it keeps an empty line of the same height
+                        and the buttons stay level across the four cards. */}
+                    <p className={cn("mt-2 text-[12.5px] font-medium text-gray-600", plan.price === "Custom" && "invisible")} aria-hidden={plan.price === "Custom"}>
+                      {t("landing.ivr_pricing.setup_fee")}
+                    </p>
                   </div>
 
                   <div className="px-6 pb-6 pt-1">

@@ -2066,6 +2066,7 @@ const translations = {
     "landing.ivr_pricing.get_started": "Get started",
     "landing.ivr_pricing.contact_sales": "Contact sales",
     "landing.ivr_pricing.whats_included": "What's included",
+    "landing.ivr_pricing.setup_fee": "+ TZS 150,000 one-time setup fee",
     "landing.ivr_pricing.starter.name": "Starter",
     "landing.ivr_pricing.starter.tagline": "Your first business line, without the chaos of seven staff mobiles.",
     "landing.ivr_pricing.starter.feature1": "1 business number",

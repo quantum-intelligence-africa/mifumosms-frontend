@@ -2065,6 +2065,7 @@ const sw: Record<string, string> = {
   "landing.ivr_pricing.get_started": "Anza sasa",
   "landing.ivr_pricing.contact_sales": "Wasiliana na mauzo",
   "landing.ivr_pricing.whats_included": "Kinajumuisha",
+  "landing.ivr_pricing.setup_fee": "+ TZS 150,000 ada ya kusanidi (mara moja)",
   "landing.ivr_pricing.starter.name": "Rahisi",
   "landing.ivr_pricing.starter.tagline": "Namba yako ya kwanza ya biashara, bila fujo za simu saba za wafanyakazi.",
   "landing.ivr_pricing.starter.feature1": "Namba 1 ya biashara",
