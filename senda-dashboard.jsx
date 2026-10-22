@@ -11053,7 +11053,7 @@ function SenderIdNudgeSettingsCard() {
         </div>
       </div>
       <p style={{fontSize:13,color:'#64748b',lineHeight:1.55,margin:'10px 0 4px'}}>
-        One-time SMS (from the platform's <strong>SENDA</strong> sender ID) sent right after a new user
+        One-time SMS (from the platform's <strong>system sender</strong>, set in "Platform messaging" below) sent right after a new user
         verifies their phone number, telling them to register a Sender ID (their business name) so
         their messages don't send under the shared default.
       </p>
@@ -11128,6 +11128,85 @@ function SenderIdNudgeSettingsCard() {
                 Reset message
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Platform messaging switches ────────────────────────────────────────────
+// The platform's own sender NAME for system messages (welcome nudge, low-credit notices, verification codes) and the switch that cleans
+// hidden characters out of SMS text. Both take effect within about 30 seconds, with no restart and no .env edit. The provider that
+// carries the sender always comes from that sender's own assignment (Sender IDs), never from here.
+function PlatformMessagingCard() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [data, setData]       = useState(null);
+  const [name, setName]       = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [busy, setBusy]       = useState(false);
+
+  const apply = (d) => { setData(d); setName(d?.system_sender_name || ''); };
+  useEffect(() => {
+    let alive = true;
+    adminFetch('/api/admin/v1/platform-messaging', {}, onLogout).then(res => {
+      if (!alive) return;
+      if (res.success) apply(res.data); else setError(res.error?.message || 'Failed to load settings.');
+    }).catch(e => { if (alive) setError(e.message); }).finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [onLogout]);
+
+  const patch = (payload, okMessage) => {
+    setBusy(true);
+    return adminFetch('/api/admin/v1/platform-messaging/update', { method: 'PATCH', body: JSON.stringify(payload) }, onLogout).then(res => {
+      if (res.success) { apply(res.data); showToast(okMessage, 'success'); }
+      else showToast(res.error?.message || 'Could not save.', 'error');
+    }).catch(() => showToast('Network error while saving.', 'error')).finally(() => setBusy(false));
+  };
+
+  const assignment = data?.system_sender_assignment;
+  const dirty = (name || '').trim() !== (data?.system_sender_name || '');
+  return (
+    <div className="senda-card" style={{padding:24, marginBottom:20}}>
+      <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.08em',margin:0}}>Settings</p>
+      <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',margin:'3px 0 0'}}>Platform messaging</h3>
+      {loading ? <p style={{fontSize:13,color:'#94a3b8',margin:'16px 0 0'}}>Loading…</p>
+        : error ? <p style={{fontSize:13,color:RED,margin:'16px 0 0'}}>{error}</p> : (
+        <div style={{marginTop:8}}>
+          <div style={{padding:'14px 0',borderTop:'1px solid #f1f5f9'}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>System sender name</label>
+            <p style={{fontSize:12,color:'#64748b',margin:'0 0 8px',lineHeight:1.5}}>
+              The platform's own sender for system messages (welcome nudge, low-credit notices, verification codes). Leave blank to use the default.
+              The SMS provider is taken from this sender's assignment in Sender IDs, never guessed.
+            </p>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+              <input className="senda-input" value={name} maxLength={11} onChange={e => setName(e.target.value)} placeholder="e.g. SENDA" aria-label="System sender name"
+                style={{height:36,fontSize:13,width:180}}/>
+              <button className="senda-btn senda-btn-primary senda-btn-sm" disabled={!dirty || busy}
+                onClick={() => patch({ system_sender_name: (name || '').trim() }, 'System sender saved.')} style={{opacity:(!dirty||busy)?0.5:1}}>
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            <p style={{fontSize:12,margin:'8px 0 0',color: assignment ? '#15803d' : '#b45309'}}>
+              In use: <b>{data?.system_sender_in_use}</b> · {assignment
+                ? 'assigned to ' + assignment.provider_name + ' (' + assignment.provider_type + ')'
+                : 'no approved sender of this name is assigned to a provider yet: system messages will use the platform default provider, which may reject it. Approve it under Sender IDs and assign its provider.'}
+            </p>
+          </div>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,padding:'14px 0 0',borderTop:'1px solid #f1f5f9'}}>
+            <div>
+              <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Clean hidden characters from SMS text</p>
+              <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>
+                Removes invisible characters (from Word, WhatsApp, websites) before a message is counted and sent, so it keeps the cheaper 160-character size. Letters, accents,
+                emoji and normal punctuation are never changed. Applies to new sends within about 30 seconds.
+              </p>
+            </div>
+            <button role="switch" aria-checked={!!data?.sms_text_sanitize} aria-label="Clean hidden characters" disabled={busy}
+              onClick={() => patch({ sms_text_sanitize: !data.sms_text_sanitize }, !data.sms_text_sanitize ? 'Hidden-character cleaning is on.' : 'Hidden-character cleaning is off.')}
+              style={{position:'relative',width:46,height:26,borderRadius:13,flexShrink:0,border:'none',cursor:busy?'wait':'pointer',background:data?.sms_text_sanitize?BRAND:'#cbd5e1',transition:'background .2s ease',opacity:busy?0.7:1}}>
+              <span style={{position:'absolute',top:3,left:data?.sms_text_sanitize?23:3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+            </button>
           </div>
         </div>
       )}
@@ -15606,6 +15685,7 @@ function SettingsTab() {
       <FreeCreditExpirySettings />
       <PendingPaymentReminderSettingsCard />
       <SenderIdNudgeSettingsCard />
+      <PlatformMessagingCard />
     </div>
   );
 }
