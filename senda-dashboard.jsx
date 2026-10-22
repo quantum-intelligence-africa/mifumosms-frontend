@@ -13430,6 +13430,8 @@ function VoiceNumbersTab() {
   const [error, setError]     = useState(null);
   const [search, setSearch]   = useState('');
   const [busyId, setBusyId]   = useState(null);
+  const [callSummaryEmails, setCallSummaryEmails] = useState(false); // per-call / digest "Muhtasari wa simu" emails; off = only the 24-hour and 7-day PDF reports
+  const [diarizeMono, setDiarizeMono] = useState(false);              // speaker separation on short single-channel recordings
   const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
   const [defaultDraft, setDefaultDraft] = useState('');
@@ -13497,6 +13499,8 @@ function VoiceNumbersTab() {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => {
       if (res.success) {
         setBuiltInMusic(res.data?.built_in_waiting_music !== false);
+        setCallSummaryEmails(res.data?.call_summary_emails === true);
+        setDiarizeMono(res.data?.diarize_mono_calls === true);
         setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
         setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
         const mode = res.data?.summary_mode || 'instant', times = res.data?.summary_digest_times || [], tz = res.data?.summary_timezone || 'Africa/Dar_es_Salaam';
@@ -13513,6 +13517,14 @@ function VoiceNumbersTab() {
     voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ built_in_waiting_music: on }) }, onLogout).then(res => {
       if (!res.success) { setBuiltInMusic(before); showToast?.(res.error || 'Could not save the waiting-music setting.', 'error'); return; }
       showToast?.(on ? "SENDA's waiting music is on." : "SENDA's waiting music is off: the provider's own tone is used.", 'success');
+    });
+  };
+  // A platform switch: saved the moment it is clicked, effective from the next job or email, nothing to restart.
+  const saveFlag = (key, on, setter, before, messages) => {
+    setter(on);
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ [key]: on }) }, onLogout).then(res => {
+      if (!res.success) { setter(before); showToast?.(res.error || 'Could not save the setting.', 'error'); return; }
+      showToast?.(on ? messages[0] : messages[1], 'success');
     });
   };
   const saveDefault = () => {
@@ -13735,19 +13747,25 @@ function VoiceNumbersTab() {
       </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call summary emails</div>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Report and summary emails</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px'}}>
-          Every finished call gets a short Swahili summary: who called, what it was about and what happens next. Choose whether each organization's
-          owners, admins and agents get one email per call, or one email with all their calls at the times you set. This applies to all organizations.
+          Organizations with the daily report switched on get the <b>24-hour report</b> (a PDF) at the times you set below, and the <b>7-day report</b> (a PDF) on Monday morning.
+          These are the only emails unless you also switch on the call summaries here. This applies to all organizations.
         </p>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'0 0 12px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={callSummaryEmails} onChange={e => saveFlag('call_summary_emails', e.target.checked, setCallSummaryEmails, callSummaryEmails,
+            ['Call summary emails are on.', 'Call summary emails are off: only the 24-hour and 7-day reports are sent.'])} style={{marginTop:3}}/>
+          <span><b>Also email call summaries</b> (Muhtasari wa simu): who called, what it was about and what happens next, for owners, admins and agents.<br/>
+            <span style={{fontSize:12,color:'#64748b'}}>Off = no per-call or digest summary emails. The settings below then only decide <b>when the 24-hour report is sent</b> (choose "One summary at set times").</span></span>
+        </label>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,cursor:'pointer'}}>
             <input type="radio" name="sum-mode" checked={sumMode === 'instant'} onChange={() => setSumMode('instant')} style={{marginTop:3}}/>
-            <span><b>Right after each call</b><br/><span style={{fontSize:12,color:'#64748b'}}>One email per finished call.</span></span>
+            <span><b>{callSummaryEmails ? 'Right after each call' : 'No set times'}</b><br/><span style={{fontSize:12,color:'#64748b'}}>{callSummaryEmails ? 'One email per finished call.' : 'The 24-hour report is sent once a day at the standard time (20:00).'}</span></span>
           </label>
           <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,cursor:'pointer'}}>
             <input type="radio" name="sum-mode" checked={sumMode === 'digest'} onChange={() => { setSumMode('digest'); if (sumTimes.length === 0) setSumTimes(['18:00']); }} style={{marginTop:3}}/>
-            <span><b>One summary at set times</b><br/><span style={{fontSize:12,color:'#64748b'}}>All calls since the last summary arrive together in one email per person.</span></span>
+            <span><b>{callSummaryEmails ? 'One summary at set times' : 'The 24-hour report at set times'}</b><br/><span style={{fontSize:12,color:'#64748b'}}>{callSummaryEmails ? 'All calls since the last summary arrive together in one email per person.' : 'The report PDF for the last 24 hours is sent at each time you choose below.'}</span></span>
           </label>
           {sumMode === 'digest' && (
             <div style={{marginLeft:24,display:'flex',flexDirection:'column',gap:8}}>
@@ -13785,6 +13803,19 @@ function VoiceNumbersTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
+        <label style={{display:'flex',alignItems:'flex-start',gap:10,margin:'8px 0 4px',fontSize:13,color:'#0f172a',cursor:'pointer'}}>
+          <input type="checkbox" checked={diarizeMono} onChange={e => saveFlag('diarize_mono_calls', e.target.checked, setDiarizeMono, diarizeMono,
+            ['Speaker separation is on for new transcriptions.', 'Speaker separation is off.'])} style={{marginTop:3}}/>
+          <span><b>Separate the speakers</b> on short single-channel recordings (labels and timestamps in the transcript).</span>
+        </label>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 2px'}}>
+          Applies to new transcriptions only, and only to recordings of about 30 seconds or less; longer ones keep the plain transcript. Recordings with a voice on each channel are always labelled.
+          Earlier results are not changed. Not yet measured on SENDA recordings: try it on a few test calls first.
+        </p>
       </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
