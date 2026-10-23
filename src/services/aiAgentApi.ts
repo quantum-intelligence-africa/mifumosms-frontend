@@ -30,6 +30,8 @@ export interface AgentSettings {
   };
   hours: { after_hours: "take_message" | "voicemail" };
   limits: { max_turns: number; max_call_seconds: number; max_tool_calls: number; daily_call_cap: number };
+  /** What the assistant may do. The server refuses the rest whatever the AI writes. Missing = both allowed (older assistants). */
+  permissions?: { transfers: boolean; create_requests: boolean };
   notifications: {
     internal_emails: Record<Department, string[]>;
     default_internal: string[];
@@ -108,6 +110,8 @@ export interface SimulationResult {
   model: string;
   latency_ms: number;
   used_fallback: boolean;
+  /** The passages from the organization's documents the answer was given (administrators only). */
+  sources?: Array<{ source_id: string; source_title: string; score: number; text: string }>;
 }
 
 export interface HandoffSummary {
@@ -242,7 +246,70 @@ export interface TeachJob<T = TeachProposal | LearnResult> {
   progress?: { done: number; total: number } | null;
 }
 
+export type KnowledgeKind = "text" | "faq" | "file" | "url";
+export type KnowledgeStatus = "pending" | "processing" | "ready" | "failed";
+
+export interface KnowledgeSourceInfo {
+  id: string;
+  title: string;
+  kind: KnowledgeKind;
+  status: KnowledgeStatus;
+  enabled: boolean;
+  error: string;
+  /** A warning for the owner, e.g. the text contains instruction-like sentences. */
+  notes: string;
+  filename: string;
+  size_bytes: number;
+  source_url: string;
+  version: number;
+  chunks: number;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  preview: string;
+  in_use: boolean;
+  text?: string;
+  editable?: boolean;
+}
+
+export interface KnowledgeOverview {
+  summary: {
+    total: number;
+    ready: number;
+    processing: number;
+    failed: number;
+    disabled: number;
+    in_use: number;
+    last_indexed_at: string | null;
+    knowledge_version: number;
+    ready_for_testing: boolean;
+    active: boolean;
+  };
+  /** Which upload kinds this server can really read; an option is only shown as working when it is true here. */
+  capabilities: { text: boolean; faq: boolean; url: boolean; txt: boolean; md: boolean; csv: boolean; docx: boolean; pdf: boolean; max_file_mb: number };
+  sources: KnowledgeSourceInfo[];
+}
+
 export const aiAgentApi = {
+  knowledge: {
+    list: (id: string) => voiceApi.get<KnowledgeOverview>(`${BASE}/agents/${id}/knowledge/`),
+    add: (id: string, body: { kind: "text" | "faq" | "url"; title?: string; text?: string; url?: string; items?: Array<{ q: string; a: string }> }) =>
+      voiceApi.post<KnowledgeSourceInfo>(`${BASE}/agents/${id}/knowledge/`, body),
+    upload: (id: string, file: File, title?: string) => {
+      const form = new FormData();
+      form.append("kind", "file");
+      form.append("file", file);
+      if (title) form.append("title", title);
+      return voiceApi.postForm<KnowledgeSourceInfo>(`${BASE}/agents/${id}/knowledge/`, form);
+    },
+    get: (sourceId: string) => voiceApi.get<KnowledgeSourceInfo>(`${BASE}/knowledge-sources/${sourceId}/`),
+    update: (sourceId: string, body: { title?: string; text?: string; items?: Array<{ q: string; a: string }>; enabled?: boolean }) =>
+      voiceApi.patch<KnowledgeSourceInfo>(`${BASE}/knowledge-sources/${sourceId}/`, body),
+    remove: (sourceId: string) => voiceApi.delete(`${BASE}/knowledge-sources/${sourceId}/`),
+    reprocess: (sourceId: string) => voiceApi.post<KnowledgeSourceInfo>(`${BASE}/knowledge-sources/${sourceId}/reprocess/`),
+    search: (id: string, query: string) =>
+      voiceApi.post<{ query: string; passages: Array<{ source_id: string; source_title: string; text: string; score: number }> }>(`${BASE}/agents/${id}/knowledge/search/`, { query }),
+  },
   teach: {
     models: (id: string, providerId?: string) =>
       voiceApi.get<{ provider: string; type: string; models: string[]; current: string }>(`${BASE}/agents/${id}/models/${providerId ? `?provider_id=${encodeURIComponent(providerId)}` : ""}`),

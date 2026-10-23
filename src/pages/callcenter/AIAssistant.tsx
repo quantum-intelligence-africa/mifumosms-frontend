@@ -17,6 +17,9 @@ import { appLocale } from "@/utils/appLocale";
 import { aiEn, aiKey } from "@/i18n/aiAgent";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { AITeachPanel } from "@/components/callcenter/AITeachPanel";
+import { AIKnowledgePanel } from "@/components/callcenter/AIKnowledgePanel";
+import { useAuth } from "@/contexts/AuthContext";
+import { isCallCenterAdmin } from "@/utils/roleUtils";
 import { OpeningPreview } from "@/components/callcenter/OpeningPreview";
 import { VoicePicker } from "@/components/voice/VoicePicker";
 import {
@@ -63,6 +66,8 @@ const parseEmails = (text: string) => text.split(/[,;\s]+/).map((s) => s.trim())
 export default function AIAssistant() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canEditKnowledge = isCallCenterAdmin(user);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,13 +272,17 @@ export default function AIAssistant() {
 
           <Tabs defaultValue={settings.knowledge.trim() ? "general" : "teach"}>
             <TabsList className="flex h-auto flex-wrap justify-start gap-1">
-              {(["teach", "general", "providers", "handoff", "email", "limits", "privacy", "test", "activity"] as const).map((tab) => (
+              {(["teach", "knowledge", "general", "providers", "handoff", "email", "limits", "privacy", "test", "activity"] as const).map((tab) => (
                 <TabsTrigger key={tab} value={tab}>{t(aiKey(`ai.tab.${tab}`))}</TabsTrigger>
               ))}
             </TabsList>
 
             <TabsContent value="teach" className="mt-3">
               <AITeachPanel config={current} settings={settings} meta={meta} providers={providers} onChanged={() => void pick(current.id)} />
+            </TabsContent>
+
+            <TabsContent value="knowledge" className="mt-3">
+              <AIKnowledgePanel config={current} canEdit={canEditKnowledge} />
             </TabsContent>
 
             <TabsContent value="general" className="mt-3 space-y-3">
@@ -398,6 +407,13 @@ export default function AIAssistant() {
 
             <TabsContent value="handoff" className="mt-3">
               <Card><CardContent className="space-y-5 p-4">
+                <div className="space-y-2">
+                  <p className="font-medium">{t(aiKey("ai.perm.title"))}</p>
+                  <p className="text-xs text-muted-foreground">{t(aiKey("ai.perm.help"))}</p>
+                  <ToggleRow label={t(aiKey("ai.perm.transfers"))} checked={settings.permissions?.transfers !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: v, create_requests: d.permissions?.create_requests !== false }; })} />
+                  <ToggleRow label={t(aiKey("ai.perm.requests"))} checked={settings.permissions?.create_requests !== false} onChange={(v) => edit((d) => { d.permissions = { transfers: d.permissions?.transfers !== false, create_requests: v }; })} />
+                  {fieldErrors.permissions && <p className="text-xs text-red-700">{fieldErrors.permissions}</p>}
+                </div>
                 <div>
                   <p className="font-medium">{t("ai.f.dept_heading")}</p>
                   <p className="text-xs text-muted-foreground">{t("ai.f.dept_help")}</p>
@@ -640,6 +656,11 @@ function Simulator({ agentId, settings, dirty }: { agentId: string; settings: Ag
                 {outcome(l.meta)}
                 {l.meta.guarded && <p className="text-amber-700">{t("ai.test.guarded")}</p>}
                 {l.meta.used_fallback && <p className="text-amber-700">{t("ai.test.fallback_used")}</p>}
+                <p>
+                  {l.meta.sources && l.meta.sources.length > 0
+                    ? `${t(aiKey("ai.kn.sources_used"))}: ${Array.from(new Set(l.meta.sources.map((x) => x.source_title))).join(", ")}`
+                    : t(aiKey("ai.kn.no_sources"))}
+                </p>
                 <p>{t("ai.test.meta", { ms: l.meta.latency_ms, model: l.meta.model })}</p>
               </div>
             )}
