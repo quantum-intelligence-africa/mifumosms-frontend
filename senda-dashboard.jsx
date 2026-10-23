@@ -12690,6 +12690,11 @@ function AnalysisEmailsTab() {
   const [log, setLog]         = useState({ count: 0, results: [] });
   const [logTick, setLogTick] = useState(0);
   const [PAGE, setPageSize] = useAdminPageSize('deliveries');
+  // "Send a report now": any organization, the last 24 hours / 7 days or a day or week in the past, to any address typed here.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [sn, setSn]         = useState({ tenant_id: '', period: '24h', date: todayIso, to: '', lang: '' });
+  const [snBusy, setSnBusy] = useState(false);
+  const [snNote, setSnNote] = useState(null);
   const errText = (res, fallback) => {
     if (typeof res.error === 'string') return res.error;
     const e = res.error || res.data;
@@ -12715,6 +12720,37 @@ function AnalysisEmailsTab() {
     return () => clearTimeout(id);
   }, [fOrg, fRecipient, fStatus, fDays, page, PAGE, onLogout, logTick]);
 
+  const snOrg = orgs.find(o => o.tenant_id === sn.tenant_id);
+  const snNeedsDate = sn.period === 'day' || sn.period === 'week';
+  const snLang = sn.lang || (snOrg ? snOrg.language : 'sw');
+  const snPreview = async () => {
+    if (!sn.tenant_id) { showToast?.('Choose an organization first.', 'error'); return; }
+    const token = getToken();
+    const q = snNeedsDate
+      ? `days=${sn.period === 'week' ? 7 : 1}&date=${sn.date}`
+      : `days=${sn.period === '7d' ? 7 : 1}&hours=${sn.period === '7d' ? 168 : 24}&date=${todayIso}`;
+    const res = await fetch(`${VOICE_BASE_URL}/audio/admin/daily-report/${sn.tenant_id}/?output=pdf&lang=${snLang}&${q}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) { showToast?.(res.status === 501 ? 'The PDF library is not installed on the server yet.' : 'Could not build the preview.', 'error'); return; }
+    window.open(URL.createObjectURL(await res.blob()), '_blank');
+  };
+  const snSend = () => {
+    if (!sn.tenant_id) { showToast?.('Choose an organization first.', 'error'); return; }
+    if (snNeedsDate && !sn.date) { showToast?.('Choose the date.', 'error'); return; }
+    const where = sn.to.trim() ? sn.to.trim() : 'the addresses assigned to ' + (snOrg?.tenant || 'the organization');
+    if (!window.confirm(`Send ${snOrg?.tenant}'s report now, as a PDF, to ${where}?`)) return;
+    const body = { period: sn.period, lang: snLang };
+    if (snNeedsDate) body.date = sn.date;
+    if (sn.to.trim()) body.to = sn.to.trim();
+    setSnBusy(true); setSnNote(null);
+    voiceAdminFetch(`/audio/admin/send-report/${sn.tenant_id}/`, { method: 'POST', body: JSON.stringify(body) }, onLogout).then(res => {
+      setSnBusy(false);
+      if (!res.success) { const m = errText(res, 'Could not send the report.'); setSnNote({ ok: false, text: m }); showToast?.(m, 'error'); return; }
+      const sent = res.data?.sent ?? 0;
+      const m = sent ? `Sent to ${(res.data.recipients || []).join(', ')}. Check the inbox, and the log below.` : 'Nothing was sent.';
+      setSnNote({ ok: !!sent, text: m }); showToast?.(m, sent ? 'success' : 'error');
+      loadOrgs(); setLogTick(t => t + 1);
+    });
+  };
   const startEdit = (o) => setEdit({ tenant_id: o.tenant_id, tenant: o.tenant, language: o.language, recipient_mode: o.recipient_mode, text: (o.assigned_recipients || []).join('\n'), defaults: o.owners_and_admins, extras: o.tenant_extra_addresses, daily: !!o.daily_report_enabled, weekly: !!o.weekly_report_enabled });
   // Opens the call-analysis email exactly as the organization receives it (its latest real analysis, or a marked sample). Nothing is sent.
   const previewAnalysisEmail = async (kind) => {
@@ -12766,9 +12802,53 @@ function AnalysisEmailsTab() {
       <p style={{fontSize:12.5,color:'#94a3b8',margin:'4px 0 14px'}}>
         For each organization, choose the language of its call-analysis emails and exactly who receives them. Below is a log of every email sent: who, when and for which organization.
         When you choose "Only the assigned addresses", nobody else gets the analysis, not even the organization's owner.
-        When it is sent (after each call or as a digest) is set under Voice Numbers → Call summary emails.
+        When the reports are sent, and whether call summaries are emailed at all, is set under Voice Numbers → Report and summary emails.
       </p>
       {error && <div style={{color:'#b91c1c',fontSize:13,marginBottom:10}}>{error}</div>}
+
+      <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
+        <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Send a report now</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px',lineHeight:1.5}}>
+          Send any organization's report (the PDF plus the email) right now, for the last 24 hours, the last 7 days, or a day or week in the past, to any address you type here. Use it to check a change on your own
+          address first. Leave "Send to" empty to use the addresses assigned to the organization. Every send is written to the log below.
+        </p>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Organization
+            <select className="senda-input" style={{...sel,height:36,minWidth:200}} value={sn.tenant_id} onChange={e => setSn({ ...sn, tenant_id: e.target.value })}>
+              <option value="">Choose…</option>{orgs.map(o => <option key={o.tenant_id} value={o.tenant_id}>{o.tenant}</option>)}
+            </select>
+          </label>
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Report
+            <select className="senda-input" style={{...sel,height:36,minWidth:190}} value={sn.period} onChange={e => setSn({ ...sn, period: e.target.value })}>
+              <option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option>
+              <option value="day">A day in the past</option><option value="week">A week in the past (ending on a day)</option>
+            </select>
+          </label>
+          {snNeedsDate && (
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>{sn.period === 'week' ? 'Week ending on' : 'Day'}
+              <input type="date" className="senda-input" style={{height:36,fontSize:13}} max={todayIso} value={sn.date} onChange={e => setSn({ ...sn, date: e.target.value })}/>
+            </label>
+          )}
+          <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Language
+            <select className="senda-input" style={{...sel,height:36}} value={snLang} onChange={e => setSn({ ...sn, lang: e.target.value })}>
+              <option value="sw">Swahili</option><option value="en">English</option>
+            </select>
+          </label>
+        </div>
+        <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2,marginTop:10}}>Send to (one or more addresses, separated by commas, up to 5)
+          <input className="senda-input" style={{height:36,fontSize:13}} value={sn.to} onChange={e => setSn({ ...sn, to: e.target.value })} placeholder="you@example.com"/>
+        </label>
+        {snOrg && snOrg.effective_recipients?.length > 0 && (
+          <div style={{fontSize:11.5,color:'#94a3b8',marginTop:4}}>
+            Assigned to {snOrg.tenant}: {snOrg.effective_recipients.join(', ')} <button onClick={() => setSn({ ...sn, to: snOrg.effective_recipients.join(', ') })} style={{border:'none',background:'none',color:BRAND,fontWeight:700,cursor:'pointer',fontSize:11.5}}>use these</button>
+          </div>
+        )}
+        <div style={{display:'flex',gap:8,marginTop:12,alignItems:'center',flexWrap:'wrap'}}>
+          <button className="senda-btn senda-btn-sm senda-btn-ghost" onClick={snPreview}>Preview the PDF</button>
+          <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={snBusy} onClick={snSend}>{snBusy ? 'Sending…' : 'Send now'}</button>
+          {snNote && <span style={{fontSize:12.5,fontWeight:600,color:snNote.ok ? '#15803d' : '#b91c1c'}}>{snNote.text}</span>}
+        </div>
+      </div>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,overflow:'hidden',marginBottom:16}}>
         <div style={{overflowX:'auto'}}>
