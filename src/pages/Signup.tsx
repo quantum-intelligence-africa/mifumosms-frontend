@@ -46,6 +46,8 @@ const Signup = () => {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // Came from the call center sign-up link (/call-center/signup): after sign-up they land in the call center, not the SMS dashboard.
+  const fromCallCenterLink = new URLSearchParams(location.search).get("service") === "call-center";
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -97,7 +99,7 @@ const Signup = () => {
             duration: 5000
           });
 
-          navigate('/dashboard', { replace: true });
+          navigate(fromCallCenterLink || userData.ivr_access_enabled === true && userData.sms_access_enabled === false ? '/call-center' : '/dashboard', { replace: true });
         } else {
           toast({
             title: t("auth.signup.toast_phone_verified_title"),
@@ -134,10 +136,10 @@ const Signup = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || "/dashboard";
+      const from = location.state?.from?.pathname || (fromCallCenterLink ? "/call-center" : "/dashboard");
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, location, fromCallCenterLink]);
 
   const referralSources = [
     { value: "tiktok", label: t("auth.signup.referral_source_tiktok") },
@@ -311,7 +313,7 @@ const Signup = () => {
             title: t("auth.common.account_created_title"),
             description: result.message || t("auth.signup.toast_account_created_dashboard")
           });
-          const from = location.state?.from?.pathname || "/dashboard";
+          const from = location.state?.from?.pathname || (fromCallCenterLink ? "/call-center" : "/dashboard");
           navigate(from, { replace: true });
         }
       } else {

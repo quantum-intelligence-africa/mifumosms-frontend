@@ -189,7 +189,8 @@ const HistoryEntry = () => {
 
 const DashboardGate = () => {
   const { user } = useAuth();
-  if (getCallCenterRole(user) === "agent" && !hasSmsAccess(user)) {
+  // Call-center-only accounts (agents, and people who signed up through the call center link) have no SMS dashboard.
+  if (!hasSmsAccess(user) && (getCallCenterRole(user) === "agent" || hasIvrAccess(user))) {
     return <Navigate to="/call-center" replace />;
   }
   return <Dashboard />;
