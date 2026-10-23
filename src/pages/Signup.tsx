@@ -46,7 +46,7 @@ const Signup = () => {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Came from the call center sign-up link (/call-center/signup): after sign-up they land in the call center, not the SMS dashboard.
+  // Came from the call center sign-up link (/call-center/signup): the server grants call center access; the dashboard then shows the call center view.
   const fromCallCenterLink = new URLSearchParams(location.search).get("service") === "call-center";
   // "Continue with Google" carries the same request, so a new Google account gets call center access too.
   const googleUrl = fromCallCenterLink ? `${GOOGLE_SIGNUP_URL}?service=call-center` : GOOGLE_SIGNUP_URL;
@@ -101,7 +101,7 @@ const Signup = () => {
             duration: 5000
           });
 
-          navigate(fromCallCenterLink || userData.ivr_access_enabled === true && userData.sms_access_enabled === false ? '/call-center' : '/dashboard', { replace: true });
+          navigate('/dashboard', { replace: true });
         } else {
           toast({
             title: t("auth.signup.toast_phone_verified_title"),
@@ -138,7 +138,7 @@ const Signup = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || (fromCallCenterLink ? "/call-center" : "/dashboard");
+      const from = location.state?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location, fromCallCenterLink]);
@@ -315,7 +315,7 @@ const Signup = () => {
             title: t("auth.common.account_created_title"),
             description: result.message || t("auth.signup.toast_account_created_dashboard")
           });
-          const from = location.state?.from?.pathname || (fromCallCenterLink ? "/call-center" : "/dashboard");
+          const from = location.state?.from?.pathname || "/dashboard";
           navigate(from, { replace: true });
         }
       } else {
