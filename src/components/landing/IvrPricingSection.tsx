@@ -155,7 +155,7 @@ const IvrPricingSection = () => {
                         </Button>
                       </a>
                     ) : (
-                      <Link to="/signup" className="block">
+                      <Link to="/signup?service=call-center" className="block">
                         <Button
                           className={cn(
                             "w-full h-11 text-sm font-semibold rounded-xl transition-all",

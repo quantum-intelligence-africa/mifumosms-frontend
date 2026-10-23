@@ -150,6 +150,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   // Call-center-only agents get a deliberately small menu: their workspace, their
   // calls, and settings — not the rest of SENDA (spec §9: don't overload the agent).
   const agentOnly = getCallCenterRole(user) === "agent";
+  const callCenterOnly = hasIvrAccess(user) && !hasSmsAccess(user);
 
   // Call center and Voice/IVR are one product: a single menu group. The call-center pages come
   // first (what people do day to day), then the IVR tools. Each half appears only for people
@@ -216,8 +217,10 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
             ],
           },
         ]),
-    ...(inVoiceSection || agentOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
-    ...(hasIvrAccess(user) && !inVoiceSection ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
+    // A call-center-only account (call center on, SMS off: the people who signed up through the call center link) never sees the AI / voice
+    // copilot entries; they are not part of what it signed up for.
+    ...(inVoiceSection || agentOnly || callCenterOnly ? [] : [{ name: t("nav.ai_copilots"), href: "/ai-copilots", icon: Bot, comingSoon: isComingSoon("ai_copilots") }]),
+    ...(hasIvrAccess(user) && !inVoiceSection && !callCenterOnly ? [{ name: t("nav.voice_copilots"), href: "/voice-copilots", icon: Mic }] : []),
     ...(isPartina()
       ? [
           { name: t("nav.partner_insights"), href: "/partner-insights", icon: BarChart3 },

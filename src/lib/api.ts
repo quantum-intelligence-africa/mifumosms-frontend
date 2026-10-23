@@ -130,6 +130,8 @@ export interface RegisterRequest {
   country?: string;
   referral_source?: string; // How the user found Senda (tiktok, instagram, friends_referral, other)
   recaptcha_token?: string;
+  /** "call_center" when the person signed up through the call center link: the server turns call center access on for them. */
+  service?: "call_center";
 }
 
 export interface LoginResponse {

@@ -232,6 +232,7 @@ const Signup = () => {
         referral_source?: string;
         country?: string;
         recaptcha_token?: string;
+        service?: "call_center";
       } = {
         email: formData.email.trim(),
         password: formData.password,
@@ -244,6 +245,11 @@ const Signup = () => {
 
       if (formData.referralSource) {
         registerData.referral_source = formData.referralSource;
+      }
+
+      // The call center sign-up link (/call-center/signup): the server grants call center access to these accounts.
+      if (new URLSearchParams(location.search).get("service") === "call-center") {
+        registerData.service = "call_center";
       }
 
       if (formData.country) {

@@ -104,6 +104,7 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
     navigate("/login");
   };
 
+  const callCenterOnly = hasIvrAccess(user) && !hasSmsAccess(user);
   const messagingSection: MenuSection = {
     title: "Messaging",
     items: [
@@ -132,8 +133,9 @@ export function MobileOverflowMenu({ open, onClose }: MobileOverflowMenuProps) {
             },
           ]
         : []),
-      { key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined },
-      ...(hasIvrAccess(user)
+      // A call-center-only account (call center on, SMS off) does not see the copilot entries.
+      ...(callCenterOnly ? [] : [{ key: "ai", label: "AI Copilots", icon: Bot, onClick: () => go("/ai-copilots"), badge: isComingSoon("ai_copilots") ? "Soon" : undefined }]),
+      ...(hasIvrAccess(user) && !callCenterOnly
         ? [{ key: "voice", label: "Voice Copilots", icon: Mic, onClick: () => go("/voice-copilots") }]
         : []),
     ],

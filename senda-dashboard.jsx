@@ -11194,6 +11194,30 @@ function PlatformMessagingCard() {
                 : 'no approved sender of this name is assigned to a provider yet: system messages will use the platform default provider, which may reject it. Approve it under Sender IDs and assign its provider.'}
             </p>
           </div>
+          <div style={{padding:'14px 0',borderTop:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}}>
+              <div>
+                <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Call center sign-up link</p>
+                <p style={{fontSize:12,color:'#64748b',margin:'3px 0 0',lineHeight:1.5}}>
+                  Give this link to people who want the call center service. They register with the normal sign-up and, while this is on, get call center access straight away
+                  (and no SMS menu). They still need a number assigned to you before they can take calls. Off = they register normally and you switch their access on yourself.
+                </p>
+              </div>
+              <button role="switch" aria-checked={!!data?.call_center_signup_grants_access} aria-label="Call center sign-up grants access" disabled={busy}
+                onClick={() => patch({ call_center_signup_grants_access: !data.call_center_signup_grants_access }, !data.call_center_signup_grants_access ? 'Call center sign-up now grants access.' : 'Call center sign-up no longer grants access.')}
+                style={{position:'relative',width:46,height:26,borderRadius:13,flexShrink:0,border:'none',cursor:busy?'wait':'pointer',background:data?.call_center_signup_grants_access?BRAND:'#cbd5e1',transition:'background .2s ease',opacity:busy?0.7:1}}>
+                <span style={{position:'absolute',top:3,left:data?.call_center_signup_grants_access?23:3,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left .2s ease',boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+              </button>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginTop:10}}>
+              <input className="senda-input" readOnly value={window.location.origin + '/call-center/signup'} aria-label="Call center sign-up link" onFocus={e => e.target.select()}
+                style={{height:36,fontSize:13,flex:'1 1 280px',minWidth:240}}/>
+              <button className="senda-btn senda-btn-primary senda-btn-sm"
+                onClick={() => navigator.clipboard?.writeText(window.location.origin + '/call-center/signup').then(() => showToast('Link copied.', 'success'), () => showToast('Could not copy: select the link and copy it.', 'error'))}>
+                Copy link
+              </button>
+            </div>
+          </div>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16,padding:'14px 0 0',borderTop:'1px solid #f1f5f9'}}>
             <div>
               <p style={{fontSize:14,fontWeight:700,color:'#0f172a',margin:0}}>Clean hidden characters from SMS text</p>

@@ -271,6 +271,8 @@ const AppContent = () => {
         <Route path="/invitations/accept/:token" element={<InviteAccept />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
+        {/* The link to give people who want the call center service: the normal sign-up, flagged for call center access. */}
+        <Route path="/call-center/signup" element={<Navigate to="/signup?service=call-center" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/smsactivation" element={<PublicOnly><Smsactivation /></PublicOnly>} />
