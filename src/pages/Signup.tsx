@@ -48,6 +48,8 @@ const Signup = () => {
   const location = useLocation();
   // Came from the call center sign-up link (/call-center/signup): after sign-up they land in the call center, not the SMS dashboard.
   const fromCallCenterLink = new URLSearchParams(location.search).get("service") === "call-center";
+  // "Continue with Google" carries the same request, so a new Google account gets call center access too.
+  const googleUrl = fromCallCenterLink ? `${GOOGLE_SIGNUP_URL}?service=call-center` : GOOGLE_SIGNUP_URL;
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -452,7 +454,7 @@ const Signup = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-                <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
+                <GoogleButton href={googleUrl} roundedClassName="rounded-lg">
                   {t("pg.InviteAccept.0945")}
                 </GoogleButton>
                 {/* Name Fields */}
@@ -784,7 +786,7 @@ const Signup = () => {
 
             {!showVerification ? (
               <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-                <GoogleButton href={GOOGLE_SIGNUP_URL} roundedClassName="rounded-lg">
+                <GoogleButton href={googleUrl} roundedClassName="rounded-lg">
                   {t("pg.InviteAccept.0945")}
                 </GoogleButton>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
