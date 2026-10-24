@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 import type { IvrFlowSummary } from "@/components/voice/ivr-builder/types";
+import { WebCallCard } from "@/components/voice/WebCallCard";
 
 interface VoiceAccount {
   id: string;
@@ -509,6 +510,8 @@ export default function VoiceNumbers() {
                           disabled={savingId === account.id}
                         />
                       </div>
+
+                      <WebCallCard accountId={account.id} />
 
                       {account.active_flow_detail && (
                         <Link

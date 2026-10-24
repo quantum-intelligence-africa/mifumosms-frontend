@@ -71,6 +71,7 @@ const AIAgents = lazy(() => import("./pages/AIAgents"));
 const VoiceAgents = lazy(() => import("./pages/VoiceAgents"));
 const IvrFlowList = lazy(() => import("./pages/voice/IvrFlowList"));
 const VoiceNumbers = lazy(() => import("./pages/voice/VoiceNumbers"));
+const WebCall = lazy(() => import("./pages/WebCall"));
 const CallHistory = lazy(() => import("./pages/voice/CallHistory"));
 const Recordings = lazy(() => import("./pages/voice/Recordings"));
 const VoiceAgentDirectory = lazy(() => import("./pages/voice/Agents"));
@@ -274,6 +275,8 @@ const AppContent = () => {
         <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
         {/* The link to give people who want the call center service: the normal sign-up, flagged for call center access. */}
         <Route path="/call-center/signup" element={<Navigate to="/signup?service=call-center" replace />} />
+        {/* A business shares this link so customers can call its number from the browser; public on purpose. */}
+        <Route path="/call/:key" element={<WebCall />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/smsactivation" element={<PublicOnly><Smsactivation /></PublicOnly>} />
