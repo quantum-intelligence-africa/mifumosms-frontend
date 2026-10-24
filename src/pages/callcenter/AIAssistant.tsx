@@ -369,6 +369,7 @@ export default function AIAssistant() {
                     {fieldErrors["reasoning.fallback_credential_id"] && <p className="text-xs text-red-700">{fieldErrors["reasoning.fallback_credential_id"]}</p>}
                   </Field>
                 )}
+                <ToggleRow label={t(aiKey("ai.f.beep"))} help={t(aiKey("ai.f.beep_help"))} checked={settings.listening.beep !== false} onChange={(v) => edit((d) => { d.listening.beep = v; })} />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("ai.f.listening")}>
                     <Select value={settings.listening.provider} onValueChange={(v) => edit((d) => { d.listening.provider = v as "default" | "elevenlabs"; })}>

@@ -397,6 +397,8 @@ export const aiEn = {
   "ai.kn.no_match": "No passage matches. The assistant would say it does not know and offer a person.",
   "ai.kn.sources_used": "Answered using",
   "ai.kn.no_sources": "No document passage was used for this answer.",
+  "ai.f.beep": "Play a beep before it listens",
+  "ai.f.beep_help": "Off: the assistant asks its question and starts listening straight away, like a person, so a caller who answers at once is heard. On: callers hear a beep and are told to wait for it. Try it with a few test calls first.",
   "ai.perm.title": "What it is allowed to do",
   "ai.perm.help": "The server enforces this even if the AI asks for something else. Keep at least one way for callers to reach a person.",
   "ai.perm.transfers": "May transfer the call to a person",

@@ -384,6 +384,8 @@ export const aiSw: Record<keyof typeof aiEn, string> = {
   "ai.kn.no_match": "Hakuna kipengele kinacholingana. Msaidizi angesema hajui na kutoa mhudumu.",
   "ai.kn.sources_used": "Alijibu kwa kutumia",
   "ai.kn.no_sources": "Hakuna kipengele cha nyaraka kilichotumika kwa jibu hili.",
+  "ai.f.beep": "Piga mlio kabla ya kusikiliza",
+  "ai.f.beep_help": "Imezimwa: msaidizi anauliza swali na kuanza kusikiliza mara moja, kama mtu, kwa hiyo mpigaji anayejibu haraka anasikika. Imewashwa: wapigaji wanasikia mlio na kuambiwa wasubiri. Jaribu kwa simu chache kwanza.",
   "ai.perm.title": "Anachoruhusiwa kufanya",
   "ai.perm.help": "Seva inalazimisha hili hata AI ikiomba kitu kingine. Acha angalau njia moja ya wapigaji kufikia mtu.",
   "ai.perm.transfers": "Anaweza kuhamisha simu kwa mtu",
