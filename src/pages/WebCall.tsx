@@ -28,6 +28,10 @@ const TEXT = {
     failed: "Hatukuweza kuunganisha simu. Tafadhali jaribu tena baadaye.",
     busy: "Majaribio ni mengi sana. Tafadhali jaribu tena baadaye.",
     help: "Unaweza kubonyeza namba kwenye kibodi kwa ajili ya menyu, kama kwenye simu ya kawaida.",
+    phone: "Namba yako ya simu",
+    phonePlaceholder: "0712 345 678",
+    phoneWhy: "Inahitajika ili tukupigie tena kama simu itakatika au hakuna atakayepokea.",
+    phoneInvalid: "Tafadhali weka namba sahihi ya simu, kwa mfano 0712 345 678.",
   },
   en: {
     loading: "Loading…",
@@ -48,6 +52,10 @@ const TEXT = {
     failed: "We could not connect the call. Please try again later.",
     busy: "Too many attempts. Please try again later.",
     help: "You can press keys on the keypad for menus, as on a normal phone.",
+    phone: "Your phone number",
+    phonePlaceholder: "0712 345 678",
+    phoneWhy: "Needed so we can call you back if the call drops or nobody can answer.",
+    phoneInvalid: "Please enter a valid phone number, for example 0712 345 678.",
   },
 } as const;
 
@@ -60,6 +68,8 @@ export default function WebCall() {
   const [name, setName] = useState("");
   const [phase, setPhase] = useState<Phase>("loading");
   const [note, setNote] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState(false);
   const [muted, setMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const clientRef = useRef<AtClient | null>(null);
@@ -90,6 +100,8 @@ export default function WebCall() {
   const fail = (message: string) => { setNote(message); setPhase("error"); leave(); };
 
   const start = async () => {
+    if (phone.replace(/\D/g, "").length < 9) { setPhoneError(true); return; }
+    setPhoneError(false);
     setNote("");
     setMuted(false);
     setPhase("connecting");
@@ -101,8 +113,8 @@ export default function WebCall() {
       fail(T.mic);
       return;
     }
-    const res = await voiceApi.post<{ token: string; phone_number: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/token/`);
-    if (!res.success || !res.data) { fail(res.status === 429 ? T.busy : T.failed); return; }
+    const res = await voiceApi.post<{ token: string; phone_number: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/token/`, { phone: phone.trim() });
+    if (!res.success || !res.data) { fail(res.status === 429 ? T.busy : res.status === 400 ? T.phoneInvalid : T.failed); return; }
     const { phone_number: number, token } = res.data;
     try {
       const { default: Africastalking } = await import("africastalking-client");
@@ -145,9 +157,28 @@ export default function WebCall() {
             {phase === "error" && <p className="rounded-md bg-red-50 p-2 text-sm text-red-800">{note}</p>}
 
             {(phase === "idle" || phase === "ended" || phase === "error") && (
-              <Button size="lg" className="w-full" onClick={() => void start()}>
-                <Phone className="mr-2 h-5 w-5" />{phase === "idle" ? T.call : T.again}
-              </Button>
+              <>
+                <div className="space-y-1 text-left">
+                  <label htmlFor="web-call-phone" className="text-sm font-medium text-slate-800">{T.phone}</label>
+                  <input
+                    id="web-call-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    placeholder={T.phonePlaceholder}
+                    onChange={(e) => { setPhone(e.target.value); setPhoneError(false); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") void start(); }}
+                    aria-invalid={phoneError}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <p className={`text-xs ${phoneError ? "text-red-700" : "text-slate-500"}`}>{phoneError ? T.phoneInvalid : T.phoneWhy}</p>
+                </div>
+                <Button size="lg" className="w-full" onClick={() => void start()}>
+                  <Phone className="mr-2 h-5 w-5" />{phase === "idle" ? T.call : T.again}
+                </Button>
+              </>
             )}
 
             {live && (
