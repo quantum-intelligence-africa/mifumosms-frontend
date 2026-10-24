@@ -369,6 +369,17 @@ export default function AIAssistant() {
                     {fieldErrors["reasoning.fallback_credential_id"] && <p className="text-xs text-red-700">{fieldErrors["reasoning.fallback_credential_id"]}</p>}
                   </Field>
                 )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t(aiKey("ai.f.silence"))} help={t(aiKey("ai.f.listen_help"))}>
+                    <Input type="number" min={2} max={15} value={settings.listening.silence_seconds ?? 4} onChange={(e) => edit((d) => { d.listening.silence_seconds = Number(e.target.value); })} />
+                    {fieldErrors["listening.silence_seconds"] && <p className="text-xs text-red-700">{fieldErrors["listening.silence_seconds"]}</p>}
+                  </Field>
+                  <Field label={t(aiKey("ai.f.max_listen"))}>
+                    <Input type="number" min={5} max={60} value={settings.listening.max_seconds ?? 8} onChange={(e) => edit((d) => { d.listening.max_seconds = Number(e.target.value); })} />
+                    {fieldErrors["listening.max_seconds"] && <p className="text-xs text-red-700">{fieldErrors["listening.max_seconds"]}</p>}
+                  </Field>
+                </div>
+                <ToggleRow label={t(aiKey("ai.f.trim"))} checked={settings.listening.trim_silence !== false} onChange={(v) => edit((d) => { d.listening.trim_silence = v; })} />
                 <ToggleRow label={t(aiKey("ai.f.beep"))} help={t(aiKey("ai.f.beep_help"))} checked={settings.listening.beep !== false} onChange={(v) => edit((d) => { d.listening.beep = v; })} />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("ai.f.listening")}>

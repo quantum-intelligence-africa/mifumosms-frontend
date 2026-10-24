@@ -19,7 +19,7 @@ export interface AgentSettings {
   outbound_enabled: boolean;
   reasoning: { credential_id: string; model: string; temperature: number; timeout_seconds: number; fallback_credential_id: string; allow_fallback: boolean };
   voice: { provider: "africas_talking" | "elevenlabs"; voice: string; eleven_voice_id: string; eleven_model: string; tts_timeout_seconds: number };
-  listening: { provider: "default" | "elevenlabs"; /** Play a beep before listening (default). Off = the assistant asks and starts listening at once. */ beep?: boolean };
+  listening: { provider: "default" | "elevenlabs"; /** Play a beep before listening (default). Off = the assistant asks and starts listening at once. */ beep?: boolean; /** Seconds of silence that end one listening window (2 to 15, default 4). */ silence_seconds?: number; /** Longest one listening window lasts (5 to 60, default 8). */ max_seconds?: number; /** Let Africa's Talking cut silence from the recording (default on). */ trim_silence?: boolean };
   handoff: {
     departments: Record<Department, string>;
     default_department: Department;
