@@ -13614,6 +13614,8 @@ function VoiceNumbersTab() {
   const [search, setSearch]   = useState('');
   const [busyId, setBusyId]   = useState(null);
   const [callSummaryEmails, setCallSummaryEmails] = useState(false); // per-call / digest "Muhtasari wa simu" emails; off = only the 24-hour and 7-day PDF reports
+  const [helpNumber, setHelpNumber] = useState('');                   // the number on the website's "Need help? Call us" button
+  const [helpSaved, setHelpSaved]   = useState('');
   const [diarizeMono, setDiarizeMono] = useState(false);              // speaker separation on short single-channel recordings
   const [builtInMusic, setBuiltInMusic] = useState(true);   // SENDA's own waiting-music file on or off for the whole platform
   const [defaultMsg, setDefaultMsg] = useState('');   // what callers hear on any switched-off number without its own message
@@ -13684,6 +13686,7 @@ function VoiceNumbersTab() {
         setBuiltInMusic(res.data?.built_in_waiting_music !== false);
         setCallSummaryEmails(res.data?.call_summary_emails === true);
         setDiarizeMono(res.data?.diarize_mono_calls === true);
+        setHelpNumber(res.data?.help_call_number || ''); setHelpSaved(res.data?.help_call_number || '');
         setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
         setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
         const mode = res.data?.summary_mode || 'instant', times = res.data?.summary_digest_times || [], tz = res.data?.summary_timezone || 'Africa/Dar_es_Salaam';
@@ -13708,6 +13711,13 @@ function VoiceNumbersTab() {
     voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ [key]: on }) }, onLogout).then(res => {
       if (!res.success) { setter(before); showToast?.(res.error || 'Could not save the setting.', 'error'); return; }
       showToast?.(on ? messages[0] : messages[1], 'success');
+    });
+  };
+  const saveHelpNumber = () => {
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ help_call_number: helpNumber }) }, onLogout).then(res => {
+      if (!res.success) { showToast?.(res.data?.help_call_number || res.error || 'Could not save the number.', 'error'); return; }
+      setHelpNumber(res.data.help_call_number || ''); setHelpSaved(res.data.help_call_number || '');
+      showToast?.(res.data.help_call_number ? 'The website button now shows this number.' : 'The website button is hidden.', 'success');
     });
   };
   const saveDefault = () => {
@@ -13985,6 +13995,17 @@ function VoiceNumbersTab() {
               {sumBusy ? 'Saving…' : 'Save'}
             </button>
           </div>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Website help button</div>
+        <p style={{fontSize:12,color:'#94a3b8',margin:'4px 0 8px',lineHeight:1.5}}>
+          The "Need help? Call us" button on the public website shows this number. If web calling is switched on for it (Voice, Phone Numbers), visitors can also call it from their browser. Leave empty to hide the button.
+        </p>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <input className="senda-input" style={{height:34,fontSize:13,width:220}} value={helpNumber} onChange={e => setHelpNumber(e.target.value)} placeholder="0699 997 919"/>
+          <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={helpNumber === helpSaved} onClick={saveHelpNumber}>Save</button>
         </div>
       </div>
 
