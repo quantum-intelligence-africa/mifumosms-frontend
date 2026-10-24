@@ -44,14 +44,14 @@ export function WebCallCard({ accountId }: { accountId: string }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await voiceApi.get<State>(`/accounts/${accountId}/web-call/`);
+    const res = await voiceApi.get<State>(`/voice/accounts/${accountId}/web-call/`);
     if (res.success && res.data) setState(res.data);
   }, [accountId]);
   useEffect(() => { void load(); }, [load]);
 
   const change = async (body: { enabled?: boolean; rotate?: boolean }) => {
     setBusy(true);
-    const res = await voiceApi.post<State>(`/accounts/${accountId}/web-call/`, body);
+    const res = await voiceApi.post<State>(`/voice/accounts/${accountId}/web-call/`, body);
     setBusy(false);
     if (res.success && res.data) setState(res.data);
     else toast({ title: res.error || T.failed, variant: "destructive" });

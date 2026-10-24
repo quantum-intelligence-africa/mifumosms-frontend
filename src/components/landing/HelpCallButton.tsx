@@ -46,7 +46,7 @@ export function HelpCallButton() {
 
   useEffect(() => {
     let alive = true;
-    void voiceApi.get<{ phone: string; web_path: string }>("/public/help-call/").then((res) => {
+    void voiceApi.get<{ phone: string; web_path: string }>("/voice/public/help-call/").then((res) => {
       if (alive && res.success && res.data?.phone) setInfo(res.data);
     });
     return () => { alive = false; };

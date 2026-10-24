@@ -67,7 +67,7 @@ export default function WebCall() {
   useEffect(() => {
     document.documentElement.classList.remove("dark");
     let alive = true;
-    void voiceApi.get<{ name: string }>(`/public/web-call/${encodeURIComponent(key)}/`).then((res) => {
+    void voiceApi.get<{ name: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/`).then((res) => {
       if (!alive) return;
       if (res.success && res.data) { setName(res.data.name); setPhase("idle"); } else setPhase("unavailable");
     });
@@ -101,7 +101,7 @@ export default function WebCall() {
       fail(T.mic);
       return;
     }
-    const res = await voiceApi.post<{ token: string; phone_number: string }>(`/public/web-call/${encodeURIComponent(key)}/token/`);
+    const res = await voiceApi.post<{ token: string; phone_number: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/token/`);
     if (!res.success || !res.data) { fail(res.status === 429 ? T.busy : T.failed); return; }
     const { phone_number: number, token } = res.data;
     try {
