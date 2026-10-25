@@ -1,8 +1,8 @@
 // "Call us" page: a customer opens the link an organization shares, presses Call, and talks to that organization's phone number from the
 // browser's microphone. Public (no sign-in): the server only lets this link call this one number, and the call is answered like any phone call.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import type { Client as AtClient } from "africastalking-client";
 import { Button } from "@/components/ui/button";
 import { voiceApi } from "@/services/voiceApi";
@@ -28,6 +28,7 @@ const TEXT = {
     failed: "Hatukuweza kuunganisha simu. Tafadhali jaribu tena baadaye.",
     busy: "Majaribio ni mengi sana. Tafadhali jaribu tena baadaye.",
     help: "Unaweza kubonyeza namba kwenye kibodi kwa ajili ya menyu, kama kwenye simu ya kawaida.",
+    back: "Rudi nyumbani",
     phone: "Namba yako ya simu",
     phonePlaceholder: "0712 345 678",
     phoneWhy: "Inahitajika ili tukupigie tena kama simu itakatika au hakuna atakayepokea.",
@@ -52,6 +53,7 @@ const TEXT = {
     failed: "We could not connect the call. Please try again later.",
     busy: "Too many attempts. Please try again later.",
     help: "You can press keys on the keypad for menus, as on a normal phone.",
+    back: "Back to home",
     phone: "Your phone number",
     phonePlaceholder: "0712 345 678",
     phoneWhy: "Needed so we can call you back if the call drops or nobody can answer.",
@@ -142,7 +144,7 @@ export default function WebCall() {
   const live = phase === "connecting" || phase === "ringing" || phase === "incall";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 py-10">
       <div className="w-full max-w-sm space-y-5 rounded-2xl border bg-white p-6 text-center shadow-sm">
         {phase === "loading" && <p className="text-sm text-muted-foreground">{T.loading}</p>}
         {phase === "unavailable" && <p className="text-sm text-slate-700">{T.unavailable}</p>}
@@ -205,6 +207,9 @@ export default function WebCall() {
           </>
         )}
       </div>
+      <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
+        <ArrowLeft className="h-4 w-4" />{T.back}
+      </Link>
     </main>
   );
 }
