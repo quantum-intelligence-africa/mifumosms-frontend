@@ -157,7 +157,13 @@ export default function WebCall() {
           const text = (await reader.readAll()).trim();
           if (!text) return;
           const mine = participant.identity === room.localParticipant.identity;
-          setLines((prev) => [...prev, { id: `${Date.now()}-${prev.length}`, who: mine ? "you" : "assistant", text }]);
+          // What the caller says arrives first as a guess and then as the final text, both with the same segment id: one line, updated in place.
+          const segment = reader.info.attributes?.["lk.segment_id"];
+          setLines((prev) => {
+            const at = segment ? prev.findIndex((l) => l.id === segment) : -1;
+            if (at >= 0) return prev.map((l, i) => (i === at ? { ...l, text } : l));
+            return [...prev, { id: segment || `${Date.now()}-${prev.length}`, who: mine ? "you" : "assistant", text }];
+          });
         } catch { /* a line that did not arrive is not worth stopping the conversation for */ }
       });
       await room.connect(res.data.url, res.data.token);
