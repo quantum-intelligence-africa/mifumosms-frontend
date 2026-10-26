@@ -17,6 +17,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { voiceApi } from "@/services/voiceApi";
 import type { IvrFlowSummary } from "@/components/voice/ivr-builder/types";
 import { WebCallCard } from "@/components/voice/WebCallCard";
+import { PhoneAiCard } from "@/components/voice/PhoneAiCard";
 
 interface VoiceAccount {
   id: string;
@@ -512,6 +513,7 @@ export default function VoiceNumbers() {
                       </div>
 
                       <WebCallCard accountId={account.id} />
+                      <PhoneAiCard accountId={account.id} />
 
                       {account.active_flow_detail && (
                         <Link

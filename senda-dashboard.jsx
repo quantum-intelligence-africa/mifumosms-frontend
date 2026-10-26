@@ -13617,7 +13617,9 @@ const LIVE_VOICE_MODELS = [
 function LiveVoiceCard() {
   const { onLogout, showToast } = React.useContext(AppContext);
   const [saved, setSaved]   = useState(null);        // what the server returned (never contains the secret)
-  const [form, setForm]     = useState({ url: '', api_key: '', api_secret: '', tts_model: '', tts_voice: '', stt_model: '', llm_model: '' });
+  const [form, setForm]     = useState({ url: '', api_key: '', api_secret: '', tts_model: '', tts_voice: '', stt_model: '', llm_model: '', sip_host: '' });
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneResult, setPhoneResult] = useState(null);
   const [busy, setBusy]     = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState(null);
@@ -13627,19 +13629,19 @@ function LiveVoiceCard() {
 
   const apply = (lk) => {
     setSaved(lk);
-    setForm({ url: lk.url || '', api_key: lk.api_key || '', api_secret: '', tts_model: lk.tts_model || '', tts_voice: lk.tts_voice || '', stt_model: lk.stt_model || '', llm_model: lk.llm_model || '' });
+    setForm({ url: lk.url || '', api_key: lk.api_key || '', api_secret: '', tts_model: lk.tts_model || '', tts_voice: lk.tts_voice || '', stt_model: lk.stt_model || '', llm_model: lk.llm_model || '', sip_host: lk.sip_host || '' });
   };
   useEffect(() => {
     voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => { if (res.success && res.data?.livekit) apply(res.data.livekit); });
   }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key, value) => { setForm(f => ({ ...f, [key]: value })); setResult(null); };
-  const changed = !!saved && (form.api_secret !== '' || ['url', 'api_key', 'tts_model', 'tts_voice', 'stt_model', 'llm_model'].some(k => (form[k] || '') !== (saved[k] || '')));
+  const changed = !!saved && (form.api_secret !== '' || ['url', 'api_key', 'tts_model', 'tts_voice', 'stt_model', 'llm_model', 'sip_host'].some(k => (form[k] || '') !== (saved[k] || '')));
   const preset = LIVE_VOICE_MODELS.find(m => m.model === form.tts_model);
 
   const save = () => {
     setBusy(true);
-    const body = { url: form.url, api_key: form.api_key, tts_model: form.tts_model, tts_voice: form.tts_voice, stt_model: form.stt_model, llm_model: form.llm_model };
+    const body = { url: form.url, api_key: form.api_key, tts_model: form.tts_model, tts_voice: form.tts_voice, stt_model: form.stt_model, llm_model: form.llm_model, sip_host: form.sip_host };
     if (form.api_secret) body.api_secret = form.api_secret;   // empty = keep the saved secret
     voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ livekit: body }) }, onLogout).then(res => {
       setBusy(false);
@@ -13653,6 +13655,14 @@ function LiveVoiceCard() {
     voiceAdminFetch('/voice/admin/livekit/test/', { method: 'POST' }, onLogout).then(res => {
       setTesting(false);
       setResult(res.success ? res.data : { ok: false, message: res.error || 'The test could not run.' });
+    });
+  };
+
+  const syncPhone = () => {
+    setPhoneBusy(true); setPhoneResult(null);
+    voiceAdminFetch('/voice/admin/livekit/phone/sync/', { method: 'POST' }, onLogout).then(res => {
+      setPhoneBusy(false);
+      setPhoneResult(res.success ? res.data : { ok: false, message: res.error || 'Could not update the phone connection.' });
     });
   };
 
@@ -13682,6 +13692,13 @@ function LiveVoiceCard() {
           <label style={label}>API secret {saved.secret_set && <span style={{color:'#15803d'}}>· saved</span>}</label>
           <input className="senda-input" style={{height:36,fontSize:13}} type="password" value={form.api_secret} onChange={e => set('api_secret', e.target.value)} autoComplete="new-password"
             placeholder={saved.secret_set ? 'Saved. Leave empty to keep it' : 'Paste the secret'}/>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:10}}>
+        <div style={box}>
+          <label style={label}>SIP address (for real phone calls)</label>
+          <input className="senda-input" style={{height:36,fontSize:13}} value={form.sip_host} placeholder="xxxx.sip.livekit.cloud" onChange={e => set('sip_host', e.target.value)} autoComplete="off"/>
+          <span style={{fontSize:11,color:'#94a3b8'}}>LiveKit Cloud, Project settings, "SIP URI". Owners then set a number's callback in Africa's Talking to <b>trunk:</b> followed by this address.</span>
         </div>
       </div>
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:10}}>
@@ -13722,6 +13739,12 @@ function LiveVoiceCard() {
         <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={testing || changed || !saved.available} onClick={test}
           title={changed ? 'Save first: the test uses the saved settings' : ''}>{testing ? 'Testing…' : 'Test connection'}</button>
         {result && <span style={{fontSize:12.5,fontWeight:600,color:result.ok ? '#15803d' : '#b91c1c'}}>{result.message}</span>}
+      </div>
+      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:10,paddingTop:10,borderTop:'1px solid #f1f5f9'}}>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={phoneBusy || changed || !saved.available} onClick={syncPhone}
+          title="Makes LiveKit accept phone calls for the numbers whose owners switched the live assistant on">{phoneBusy ? 'Updating…' : 'Update phone connection'}</button>
+        <span style={{fontSize:12,color:'#94a3b8'}}>{saved.phone_ready ? 'LiveKit is set to accept phone calls for the switched-on numbers.' : 'No number is connected yet. Owners switch a number on under Voice, Phone Numbers.'}</span>
+        {phoneResult && <span style={{fontSize:12.5,fontWeight:600,color:phoneResult.ok ? '#15803d' : '#b91c1c'}}>{phoneResult.message}</span>}
       </div>
     </div>
   );
