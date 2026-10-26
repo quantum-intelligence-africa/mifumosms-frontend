@@ -27,6 +27,7 @@ import {
   type Policy, type ProviderCheck, type ProviderInfo, type SimulationResult, type Usage,
 } from "@/services/aiAgentApi";
 import { callCenterApi, describeError, type Team } from "@/services/callCenterApi";
+import { AILiveTalk } from "@/components/callcenter/AILiveTalk";
 
 const STATUS_STYLE: Record<AgentStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -505,7 +506,8 @@ export default function AIAssistant() {
             </TabsContent>
 
             <TabsContent value="test" className="mt-3">
-              <Simulator agentId={current.id} settings={settings} dirty={dirty} />
+              <AILiveTalk agentId={current.id} dirty={dirty} />
+              <div className="mt-3"><Simulator agentId={current.id} settings={settings} dirty={dirty} /></div>
             </TabsContent>
 
             <TabsContent value="activity" className="mt-3">
