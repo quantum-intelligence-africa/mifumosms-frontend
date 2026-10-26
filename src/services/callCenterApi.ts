@@ -686,6 +686,9 @@ export const callCenterApi = {
     list: (params: Record<string, string | number | undefined> = {}) =>
       voiceApi.get<Paged<MissedCall>>(`${BASE}/missed-calls/${qs(params)}`),
     summary: () => voiceApi.get<MissedSummary>(`${BASE}/missed-calls/summary/`),
+    /** Owners/admins: close the old, never-followed-up ones. Without `confirm` it only counts them. */
+    closeOld: (body: { older_than_days: number; status: "resolved" | "unresolved"; confirm?: boolean }) =>
+      voiceApi.post<{ calls: number; customers: number; closed: number; oldest: string | null }>(`${BASE}/missed-calls/close-old/`, body),
     update: (id: string, body: { status?: MissedCallStatus; assigned_to?: string | null; notes?: string; callback_at?: string | null }) =>
       voiceApi.patch<MissedCall>(`${BASE}/missed-calls/${id}/`, body),
   },

@@ -21,7 +21,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCallCenter } from "@/contexts/CallCenterContext";
 import { useDialer } from "@/contexts/DialerContext";
 import { useLanguage } from "@/hooks/useLanguage";
-import { isCallCenterSupervisor } from "@/utils/roleUtils";
+import { isCallCenterAdmin, isCallCenterSupervisor } from "@/utils/roleUtils";
+import { CloseOldMissed } from "@/components/callcenter/CloseOldMissed";
 import { PageFrame } from "@/components/callcenter/PageFrame";
 import { PlayButton, RecordingPlayerBar, formatClock, useRecordingPlayer } from "@/components/voice/RecordingPlayerBar";
 import { CallAnalysisPanel } from "@/components/callcenter/CallAnalysisPanel";
@@ -295,6 +296,7 @@ export default function MissedCalls() {
         <>
           <Button variant="outline" size="sm" onClick={copyNumbers} disabled={exporting || count === 0}><Copy className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.copy_numbers")}</Button>
           <Button variant="outline" size="sm" onClick={downloadCsv} disabled={exporting || count === 0}><Download className="mr-1.5 h-3.5 w-3.5" />{t("cc.missed.download")}</Button>
+          {isCallCenterAdmin(user) && <CloseOldMissed onDone={load} />}
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />{t("common.refresh")}</Button>
         </>
       }
