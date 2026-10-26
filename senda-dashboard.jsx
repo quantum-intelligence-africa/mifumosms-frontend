@@ -13606,6 +13606,127 @@ function VoiceCallLogsTab() {
   );
 }
 
+// ─── Live voice assistant (LiveKit) ───────────────────────────────────────────────
+// The address, keys and voice of the real-time voice assistant (the one that hears the caller while it speaks). Saved here instead of in a
+// server file: the secret is stored encrypted and is never shown again (the box stays empty; "saved" tells you one exists).
+const LIVE_VOICE_MODELS = [
+  { model: 'google/gemini-3.8-flash-tts', label: 'Gemini voices (female: Zephyr, Aoede, Kore, Leda)', voices: ['Zephyr', 'Aoede', 'Kore', 'Leda'] },
+  { model: 'inworld/inworld-tts-2', label: 'Inworld (default voice)', voices: [] },
+];
+
+function LiveVoiceCard() {
+  const { onLogout, showToast } = React.useContext(AppContext);
+  const [saved, setSaved]   = useState(null);        // what the server returned (never contains the secret)
+  const [form, setForm]     = useState({ url: '', api_key: '', api_secret: '', tts_model: '', tts_voice: '', stt_model: '', llm_model: '' });
+  const [busy, setBusy]     = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [advanced, setAdvanced] = useState(false);
+  const label = { fontSize: 11, fontWeight: 700, color: '#475569' };
+  const box = { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 260px' };
+
+  const apply = (lk) => {
+    setSaved(lk);
+    setForm({ url: lk.url || '', api_key: lk.api_key || '', api_secret: '', tts_model: lk.tts_model || '', tts_voice: lk.tts_voice || '', stt_model: lk.stt_model || '', llm_model: lk.llm_model || '' });
+  };
+  useEffect(() => {
+    voiceAdminFetch('/voice/admin/settings/', {}, onLogout).then(res => { if (res.success && res.data?.livekit) apply(res.data.livekit); });
+  }, [onLogout]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const set = (key, value) => { setForm(f => ({ ...f, [key]: value })); setResult(null); };
+  const changed = !!saved && (form.api_secret !== '' || ['url', 'api_key', 'tts_model', 'tts_voice', 'stt_model', 'llm_model'].some(k => (form[k] || '') !== (saved[k] || '')));
+  const preset = LIVE_VOICE_MODELS.find(m => m.model === form.tts_model);
+
+  const save = () => {
+    setBusy(true);
+    const body = { url: form.url, api_key: form.api_key, tts_model: form.tts_model, tts_voice: form.tts_voice, stt_model: form.stt_model, llm_model: form.llm_model };
+    if (form.api_secret) body.api_secret = form.api_secret;   // empty = keep the saved secret
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ livekit: body }) }, onLogout).then(res => {
+      setBusy(false);
+      if (!res.success) { showToast?.(Object.values(res.data?.livekit || {}).join(' ') || res.error || 'Could not save.', 'error'); return; }
+      apply(res.data.livekit); setResult(null);
+      showToast?.('Live voice settings saved.', 'success');
+    });
+  };
+  const test = () => {
+    setTesting(true); setResult(null);
+    voiceAdminFetch('/voice/admin/livekit/test/', { method: 'POST' }, onLogout).then(res => {
+      setTesting(false);
+      setResult(res.success ? res.data : { ok: false, message: res.error || 'The test could not run.' });
+    });
+  };
+
+  if (!saved) return null;
+  return (
+    <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Live voice assistant (LiveKit)</div>
+        <span style={{padding:'3px 10px',borderRadius:99,fontSize:11,fontWeight:700,background:saved.available ? '#d1fae5' : '#f1f5f9',color:saved.available ? '#065f46' : '#64748b'}}>
+          {saved.available ? 'Set up' : 'Not set up'}
+        </span>
+      </div>
+      <p style={{fontSize:12,color:'#94a3b8',margin:'4px 0 10px',lineHeight:1.5}}>
+        The assistant that hears the caller while it speaks and stops when they talk. Create a project at cloud.livekit.io, then copy its address, an API key and the secret (LiveKit shows the secret once, so create a new key if you lost it).
+        Until these are saved, customers do not see the "Talk live" test button. The secret is stored encrypted and never shown again. Changing the address or keys restarts the voice agent by itself within a minute, when no conversation is in progress. The voice applies from the next conversation.
+      </p>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+        <div style={box}>
+          <label style={label}>LiveKit address</label>
+          <input className="senda-input" style={{height:36,fontSize:13}} value={form.url} placeholder="wss://your-project.livekit.cloud" onChange={e => set('url', e.target.value)} autoComplete="off"/>
+        </div>
+        <div style={box}>
+          <label style={label}>API key</label>
+          <input className="senda-input" style={{height:36,fontSize:13}} value={form.api_key} placeholder="API…" onChange={e => set('api_key', e.target.value)} autoComplete="off"/>
+        </div>
+        <div style={box}>
+          <label style={label}>API secret {saved.secret_set && <span style={{color:'#15803d'}}>· saved</span>}</label>
+          <input className="senda-input" style={{height:36,fontSize:13}} type="password" value={form.api_secret} onChange={e => set('api_secret', e.target.value)} autoComplete="new-password"
+            placeholder={saved.secret_set ? 'Saved. Leave empty to keep it' : 'Paste the secret'}/>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:10}}>
+        <div style={box}>
+          <label style={label}>Voice</label>
+          <select className="senda-input" style={{height:36,fontSize:13}} value={preset ? preset.model : (form.tts_model ? '__custom__' : '')}
+            onChange={e => { const m = e.target.value; if (m === '__custom__') return; const p = LIVE_VOICE_MODELS.find(x => x.model === m); setForm(f => ({ ...f, tts_model: m, tts_voice: p?.voices[0] || '' })); setResult(null); }}>
+            <option value="">Server default{saved.using?.tts_model ? ` (${saved.using.tts_model}${saved.using.tts_voice ? ' · ' + saved.using.tts_voice : ''})` : ''}</option>
+            {LIVE_VOICE_MODELS.map(m => <option key={m.model} value={m.model}>{m.label}</option>)}
+            {form.tts_model && !preset && <option value="__custom__">{form.tts_model} (custom)</option>}
+          </select>
+        </div>
+        {preset && preset.voices.length > 0 && (
+          <div style={box}>
+            <label style={label}>Voice name</label>
+            <select className="senda-input" style={{height:36,fontSize:13}} value={form.tts_voice} onChange={e => set('tts_voice', e.target.value)}>
+              {preset.voices.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      <button type="button" onClick={() => setAdvanced(a => !a)} style={{marginTop:8,background:'none',border:'none',color:BRAND,fontSize:12,fontWeight:700,cursor:'pointer',padding:0}}>
+        {advanced ? '▾ Hide advanced settings' : '▸ Advanced settings (rarely needed)'}
+      </button>
+      {advanced && (
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:8}}>
+          {[['stt_model', 'Speech-to-text model', 'cartesia/ink-whisper'], ['llm_model', 'Language model', 'openai/gpt-4.1-mini'], ['tts_model', 'Voice model (exact name)', 'google/gemini-3.8-flash-tts'], ['tts_voice', 'Voice name (exact)', 'Zephyr']].map(([key, text, ph]) => (
+            <div key={key} style={box}>
+              <label style={label}>{text}</label>
+              <input className="senda-input" style={{height:36,fontSize:13}} value={form[key]} placeholder={ph} onChange={e => set(key, e.target.value)} autoComplete="off"/>
+            </div>
+          ))}
+          <div style={{flexBasis:'100%',fontSize:11,color:'#94a3b8'}}>Leave a box empty to use the server default. Swahili quality differs a lot between models: try a voice before using it with customers.</div>
+        </div>
+      )}
+      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:12}}>
+        <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={busy || !changed} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        <button className="senda-btn senda-btn-sm senda-btn-ghost" disabled={testing || changed || !saved.available} onClick={test}
+          title={changed ? 'Save first: the test uses the saved settings' : ''}>{testing ? 'Testing…' : 'Test connection'}</button>
+        {result && <span style={{fontSize:12.5,fontWeight:600,color:result.ok ? '#15803d' : '#b91c1c'}}>{result.message}</span>}
+      </div>
+    </div>
+  );
+}
+
 function VoiceNumbersTab() {
   const { showToast, onLogout } = React.useContext(AppContext);
   const [rows, setRows]       = useState([]);
@@ -14021,6 +14142,8 @@ function VoiceNumbersTab() {
           <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={helpNumber === helpSaved} onClick={saveHelpNumber}>Save</button>
         </div>
       </div>
+
+      <LiveVoiceCard/>
 
       <div style={{background:'#fff',border:'1px solid #eef2f7',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'#0f172a'}}>Call transcription</div>
