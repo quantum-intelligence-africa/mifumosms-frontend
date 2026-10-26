@@ -12809,7 +12809,7 @@ function AnalysisEmailsTab() {
       <div style={{background:'#fff',border:'2px solid #dbeafe',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
         <div style={{fontSize:14,fontWeight:800,color:'#0f172a'}}>Send a report now</div>
         <p style={{fontSize:12,color:'#94a3b8',margin:'3px 0 10px',lineHeight:1.5}}>
-          Send any organization's report (the PDF plus the email) right now, for the last 24 hours, the last 7 days, or a day or week in the past, to any address you type here. Use it to check a change on your own
+          Send any organization's report (the PDF plus the email) right now, for the last 24 hours, the last 7 days, or a specific date (choose "A specific date" under Report, then pick the day), to any address you type here. Use it to check a change on your own
           address first. Leave "Send to" empty to use the addresses assigned to the organization. Every send is written to the log below.
         </p>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
@@ -12821,11 +12821,11 @@ function AnalysisEmailsTab() {
           <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>Report
             <select className="senda-input" style={{...sel,height:36,minWidth:190}} value={sn.period} onChange={e => setSn({ ...sn, period: e.target.value })}>
               <option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option>
-              <option value="day">A day in the past</option><option value="week">A week in the past (ending on a day)</option>
+              <option value="day">A specific date (pick a day)</option><option value="week">A specific week (pick its last day)</option>
             </select>
           </label>
           {snNeedsDate && (
-            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>{sn.period === 'week' ? 'Week ending on' : 'Day'}
+            <label style={{fontSize:12,color:'#64748b',display:'flex',flexDirection:'column',gap:2}}>{sn.period === 'week' ? 'Week ending on (last day of the 7)' : 'Pick the date'}
               <input type="date" className="senda-input" style={{height:36,fontSize:13}} max={todayIso} value={sn.date} onChange={e => setSn({ ...sn, date: e.target.value })}/>
             </label>
           )}
