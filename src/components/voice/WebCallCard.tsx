@@ -20,6 +20,10 @@ const TEXT = {
     notConnected: "Namba hii bado haijaunganishwa na huduma ya simu, kwa hiyo haiwezi kupokea simu za wavuti.",
     cost: "Simu za wavuti zinatumia dakika za huduma ya simu kama simu za kawaida.",
     failed: "Imeshindikana kubadilisha.",
+    aiTitle: "Jibu na msaidizi wa AI wa moja kwa moja",
+    aiDesc: "Wageni wanaongea moja kwa moja na msaidizi wako wa AI aliyechapishwa. Anakusikia hata wakati anaongea, anaacha ukimkatiza, na anajibu kutokana na maarifa uliyomfundisha. Kila mazungumzo yanaonekana kwenye historia ya simu kama maandishi. Hayahusishi mtandao wa simu.",
+    aiNeeds: "Inahitaji msaidizi wa AI aliyechapishwa na sauti ya moja kwa moja iliyowekwa na SENDA.",
+    aiCost: "Kila dakika ya mazungumzo ina gharama. Idadi ya mazungumzo kwa siku imewekewa kikomo.",
   },
   en: {
     title: "Calls from the web",
@@ -32,10 +36,14 @@ const TEXT = {
     notConnected: "This number is not connected to the calling service yet, so it cannot take web calls.",
     cost: "Web calls use voice minutes from your calling service like normal calls.",
     failed: "Could not change that.",
+    aiTitle: "Answer with the live AI assistant",
+    aiDesc: "Visitors talk live with your published AI assistant. It hears them even while it is speaking, stops when they talk over it, and answers from the knowledge you taught it. Every conversation appears in your call history as text. It does not use the phone network.",
+    aiNeeds: "Needs a published AI assistant, and live voice set up by SENDA.",
+    aiCost: "Every minute of conversation has a cost, so the number of conversations a day is limited.",
   },
 } as const;
 
-interface State { enabled: boolean; path: string; connected: boolean }
+interface State { enabled: boolean; path: string; connected: boolean; ai_live: boolean; ai_available: boolean }
 
 export function WebCallCard({ accountId }: { accountId: string }) {
   const T = TEXT[appLanguage()];
@@ -49,7 +57,7 @@ export function WebCallCard({ accountId }: { accountId: string }) {
   }, [accountId]);
   useEffect(() => { void load(); }, [load]);
 
-  const change = async (body: { enabled?: boolean; rotate?: boolean }) => {
+  const change = async (body: { enabled?: boolean; rotate?: boolean; ai_live?: boolean }) => {
     setBusy(true);
     const res = await voiceApi.post<State>(`/voice/accounts/${accountId}/web-call/`, body);
     setBusy(false);
@@ -88,6 +96,17 @@ export function WebCallCard({ accountId }: { accountId: string }) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">{T.cost}</p>
+        </div>
+      )}
+      {state.enabled && (
+        <div className="flex items-start justify-between gap-3 border-t border-border pt-2">
+          <div className="text-xs">
+            <span className="font-medium">{T.aiTitle}</span>
+            <br />
+            <span className="text-muted-foreground">{T.aiDesc}</span>
+            {state.ai_available ? <p className="mt-1 text-muted-foreground">{T.aiCost}</p> : <p className="mt-1 text-amber-700">{T.aiNeeds}</p>}
+          </div>
+          <Switch checked={state.ai_live} disabled={busy || (!state.ai_available && !state.ai_live)} onCheckedChange={(v) => void change({ ai_live: v })} aria-label={T.aiTitle} />
         </div>
       )}
     </div>

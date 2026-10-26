@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import type { Client as AtClient } from "africastalking-client";
+import type { Room } from "livekit-client";
 import { Button } from "@/components/ui/button";
 import { voiceApi } from "@/services/voiceApi";
 import { appLanguage } from "@/utils/appLocale";
@@ -33,6 +34,14 @@ const TEXT = {
     phonePlaceholder: "0712 345 678",
     phoneWhy: "Inahitajika ili tukupigie tena kama simu itakatika au hakuna atakayepokea.",
     phoneInvalid: "Tafadhali weka namba sahihi ya simu, kwa mfano 0712 345 678.",
+    liveIntro: "Ongea moja kwa moja na msaidizi wetu wa AI. Anakusikia hata wakati anaongea, na anaacha ukimkatiza.",
+    liveCall: "Ongea na msaidizi",
+    liveListening: "Anakusikiliza. Ongea sasa.",
+    liveSpeaking: "Msaidizi anaongea… (unaweza kumkatiza)",
+    you: "Wewe",
+    assistant: "Msaidizi",
+    liveNotice: "Unaongea na msaidizi wa AI. Mazungumzo yanahifadhiwa kama maandishi ili tukusaidie vizuri.",
+    noAgent: "Msaidizi hajajiunga. Tafadhali jaribu tena baadaye.",
   },
   en: {
     loading: "Loading…",
@@ -58,6 +67,14 @@ const TEXT = {
     phonePlaceholder: "0712 345 678",
     phoneWhy: "Needed so we can call you back if the call drops or nobody can answer.",
     phoneInvalid: "Please enter a valid phone number, for example 0712 345 678.",
+    liveIntro: "Talk live with our AI assistant. It hears you even while it is speaking, and stops when you talk over it.",
+    liveCall: "Talk to the assistant",
+    liveListening: "Listening. Speak now.",
+    liveSpeaking: "The assistant is speaking… (you can interrupt)",
+    you: "You",
+    assistant: "Assistant",
+    liveNotice: "You are speaking with an AI assistant. The conversation is saved as text so we can help you properly.",
+    noAgent: "The assistant has not joined. Please try again later.",
   },
 } as const;
 
@@ -75,13 +92,20 @@ export default function WebCall() {
   const [muted, setMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const clientRef = useRef<AtClient | null>(null);
+  // "ai_live": the page talks to the organization's AI assistant through live voice; "phone": a call through the phone network.
+  const [mode, setMode] = useState<"phone" | "ai_live">("phone");
+  const [speaking, setSpeaking] = useState(false);
+  const [lines, setLines] = useState<Array<{ id: string; who: "you" | "assistant"; text: string }>>([]);
+  const roomRef = useRef<Room | null>(null);
+  const audioRefs = useRef<HTMLElement[]>([]);
+  const joinTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
     let alive = true;
-    void voiceApi.get<{ name: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/`).then((res) => {
+    void voiceApi.get<{ name: string; mode?: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/`).then((res) => {
       if (!alive) return;
-      if (res.success && res.data) { setName(res.data.name); setPhase("idle"); } else setPhase("unavailable");
+      if (res.success && res.data) { setName(res.data.name); setMode(res.data.mode === "ai_live" ? "ai_live" : "phone"); setPhase("idle"); } else setPhase("unavailable");
     });
     return () => { alive = false; };
   }, [key]);
@@ -96,10 +120,54 @@ export default function WebCall() {
   const leave = useCallback(() => {
     try { clientRef.current?.hangup(); } catch { /* not in a call */ }
     clientRef.current = null;
+    window.clearTimeout(joinTimer.current);
+    audioRefs.current.forEach((el) => el.remove());
+    audioRefs.current = [];
+    const room = roomRef.current;
+    roomRef.current = null;
+    if (room) void room.disconnect();
   }, []);
   useEffect(() => leave, [leave]);
 
   const fail = (message: string) => { setNote(message); setPhase("error"); leave(); };
+
+  /** Talk to the organization's AI assistant through live voice: our server gives this browser a short-lived token for one private room. */
+  const startLive = async () => {
+    setLines([]);
+    const res = await voiceApi.post<{ url: string; token: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/live/`, { phone: phone.trim() });
+    if (!res.success || !res.data) { fail(res.status === 429 ? T.busy : res.status === 400 ? T.phoneInvalid : T.failed); return; }
+    try {
+      const { Room, RoomEvent, Track } = await import("livekit-client");
+      const room = new Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      roomRef.current = room;
+      let agentHere = false;
+      room.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind !== Track.Kind.Audio) return;
+        agentHere = true;
+        window.clearTimeout(joinTimer.current);
+        const el = track.attach();
+        el.style.display = "none";
+        document.body.appendChild(el);
+        audioRefs.current.push(el);
+      });
+      room.on(RoomEvent.ActiveSpeakersChanged, (active) => setSpeaking(active.some((p) => !p.isLocal)));
+      room.on(RoomEvent.Disconnected, () => { roomRef.current = null; setSpeaking(false); setPhase((p) => (p === "error" ? p : "ended")); });
+      room.registerTextStreamHandler("lk.transcription", async (reader, participant) => {
+        try {
+          const text = (await reader.readAll()).trim();
+          if (!text) return;
+          const mine = participant.identity === room.localParticipant.identity;
+          setLines((prev) => [...prev, { id: `${Date.now()}-${prev.length}`, who: mine ? "you" : "assistant", text }]);
+        } catch { /* a line that did not arrive is not worth stopping the conversation for */ }
+      });
+      await room.connect(res.data.url, res.data.token);
+      await room.localParticipant.setMicrophoneEnabled(true);
+      setPhase("incall");
+      joinTimer.current = window.setTimeout(() => { if (!agentHere) fail(T.noAgent); }, 15000);
+    } catch {
+      fail(T.failed);
+    }
+  };
 
   const start = async () => {
     if (phone.replace(/\D/g, "").length < 9) { setPhoneError(true); return; }
@@ -115,6 +183,7 @@ export default function WebCall() {
       fail(T.mic);
       return;
     }
+    if (mode === "ai_live") { await startLive(); return; }
     const res = await voiceApi.post<{ token: string; phone_number: string }>(`/voice/public/web-call/${encodeURIComponent(key)}/token/`, { phone: phone.trim() });
     if (!res.success || !res.data) { fail(res.status === 429 ? T.busy : res.status === 400 ? T.phoneInvalid : T.failed); return; }
     const { phone_number: number, token } = res.data;
@@ -134,6 +203,11 @@ export default function WebCall() {
   };
 
   const toggleMute = () => {
+    if (mode === "ai_live") {
+      void roomRef.current?.localParticipant.setMicrophoneEnabled(muted);
+      setMuted(!muted);
+      return;
+    }
     const client = clientRef.current;
     if (!client) return;
     if (muted) client.unmuteAudio(); else client.muteAudio();
@@ -151,10 +225,10 @@ export default function WebCall() {
         {phase !== "loading" && phase !== "unavailable" && (
           <>
             <h1 className="text-xl font-semibold text-slate-900">{name}</h1>
-            {phase === "idle" && <p className="text-sm text-slate-600">{T.intro}</p>}
+            {phase === "idle" && <p className="text-sm text-slate-600">{mode === "ai_live" ? T.liveIntro : T.intro}</p>}
             {phase === "connecting" && <p className="text-sm text-slate-600">{T.connecting}</p>}
             {phase === "ringing" && <p className="text-sm text-slate-600">{T.ringing}</p>}
-            {phase === "incall" && <p className="text-sm font-medium text-green-700">{T.inCall} · {clock}</p>}
+            {phase === "incall" && <p className="text-sm font-medium text-green-700">{mode === "ai_live" ? (speaking ? T.liveSpeaking : T.liveListening) : T.inCall} · {clock}</p>}
             {phase === "ended" && <p className="text-sm text-slate-600">{T.ended}</p>}
             {phase === "error" && <p className="rounded-md bg-red-50 p-2 text-sm text-red-800">{note}</p>}
 
@@ -178,14 +252,30 @@ export default function WebCall() {
                   <p className={`text-xs ${phoneError ? "text-red-700" : "text-slate-500"}`}>{phoneError ? T.phoneInvalid : T.phoneWhy}</p>
                 </div>
                 <Button size="lg" className="w-full" onClick={() => void start()}>
-                  <Phone className="mr-2 h-5 w-5" />{phase === "idle" ? T.call : T.again}
+                  <Phone className="mr-2 h-5 w-5" />{phase === "idle" ? (mode === "ai_live" ? T.liveCall : T.call) : T.again}
                 </Button>
               </>
             )}
 
             {live && (
               <div className="space-y-3">
-                {phase === "incall" && (
+                {phase === "incall" && mode === "ai_live" && (
+                  <>
+                    {lines.length > 0 && (
+                      <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border bg-slate-50 p-3 text-left text-sm">
+                        {lines.map((l) => (
+                          <p key={l.id} className={l.who === "you" ? "text-right" : ""}>
+                            <span className="mr-1.5 text-[11px] font-medium text-slate-500">{l.who === "you" ? T.you : T.assistant}</span>{l.text}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <Button type="button" variant="outline" className="w-full" onClick={toggleMute}>
+                      {muted ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}{muted ? T.unmute : T.mute}
+                    </Button>
+                  </>
+                )}
+                {phase === "incall" && mode !== "ai_live" && (
                   <>
                     <div className="grid grid-cols-3 gap-2" aria-label={T.keypad}>
                       {KEYS.map((k) => (
@@ -203,7 +293,7 @@ export default function WebCall() {
                 </Button>
               </div>
             )}
-            <p className="text-xs text-slate-500">{T.recorded}</p>
+            <p className="text-xs text-slate-500">{mode === "ai_live" ? T.liveNotice : T.recorded}</p>
           </>
         )}
       </div>
