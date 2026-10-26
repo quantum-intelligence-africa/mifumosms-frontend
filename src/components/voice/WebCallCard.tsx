@@ -22,7 +22,8 @@ const TEXT = {
     failed: "Imeshindikana kubadilisha.",
     aiTitle: "Jibu na msaidizi wa AI wa moja kwa moja",
     aiDesc: "Wageni wanaongea moja kwa moja na msaidizi wako wa AI aliyechapishwa. Anakusikia hata wakati anaongea, anaacha ukimkatiza, na anajibu kutokana na maarifa uliyomfundisha. Kila mazungumzo yanaonekana kwenye historia ya simu kama maandishi. Hayahusishi mtandao wa simu.",
-    aiNeeds: "Inahitaji msaidizi wa AI aliyechapishwa na sauti ya moja kwa moja iliyowekwa na SENDA.",
+    aiNeeds: "Bado haijawa tayari:",
+    aiFlow: (name: string, on: boolean) => `Mtiririko wa namba hii: "${name}". AI ya moja kwa moja ${on ? "imewashwa" : "imezimwa"} kwa mtiririko huo (Sauti, Mitiririko ya IVR).`,
     aiCost: "Kila dakika ya mazungumzo ina gharama. Idadi ya mazungumzo kwa siku imewekewa kikomo.",
   },
   en: {
@@ -38,12 +39,14 @@ const TEXT = {
     failed: "Could not change that.",
     aiTitle: "Answer with the live AI assistant",
     aiDesc: "Visitors talk live with your published AI assistant. It hears them even while it is speaking, stops when they talk over it, and answers from the knowledge you taught it. Every conversation appears in your call history as text. It does not use the phone network.",
-    aiNeeds: "Needs a published AI assistant, and live voice set up by SENDA.",
+    aiNeeds: "Not ready yet:",
+    aiFlow: (name: string, on: boolean) => `This number's flow: "${name}". Live AI is ${on ? "on" : "off"} for that flow (Voice, IVR Flows).`,
     aiCost: "Every minute of conversation has a cost, so the number of conversations a day is limited.",
   },
 } as const;
 
-interface State { enabled: boolean; path: string; connected: boolean; ai_live: boolean; ai_available: boolean }
+interface Flow { id: string; name: string; live_ai: boolean }
+interface State { enabled: boolean; path: string; connected: boolean; ai_live: boolean; ai_available: boolean; flow?: Flow | null; ai_needs?: string[] }
 
 export function WebCallCard({ accountId }: { accountId: string }) {
   const T = TEXT[appLanguage()];
@@ -104,7 +107,8 @@ export function WebCallCard({ accountId }: { accountId: string }) {
             <span className="font-medium">{T.aiTitle}</span>
             <br />
             <span className="text-muted-foreground">{T.aiDesc}</span>
-            {state.ai_available ? <p className="mt-1 text-muted-foreground">{T.aiCost}</p> : <p className="mt-1 text-amber-700">{T.aiNeeds}</p>}
+            {state.flow && <p className="mt-1 text-muted-foreground">{T.aiFlow(state.flow.name, state.flow.live_ai)}</p>}
+            {state.ai_available ? <p className="mt-1 text-muted-foreground">{T.aiCost}</p> : <p className="mt-1 text-amber-700">{T.aiNeeds}{state.ai_needs && state.ai_needs.length > 0 ? ` ${state.ai_needs.join("; ")}.` : ""}</p>}
           </div>
           <Switch checked={state.ai_live} disabled={busy || (!state.ai_available && !state.ai_live)} onCheckedChange={(v) => void change({ ai_live: v })} aria-label={T.aiTitle} />
         </div>

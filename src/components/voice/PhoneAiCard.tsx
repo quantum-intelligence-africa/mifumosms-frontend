@@ -18,6 +18,7 @@ const TEXT = {
     copied: "Imenakiliwa",
     warn: "Muhimu: callback ikibadilishwa, menyu na timu ya namba hii havitaita tena: simu zote zinaenda kwa msaidizi. Kabla ya kubadilisha, nakili Webhook URL iliyo juu. Ukitaka kurudi, weka callback kuwa Webhook URL hiyo.",
     needs: "Bado haijawa tayari:",
+    flow: (name: string, on: boolean) => `Mtiririko wa namba hii: "${name}". AI ya moja kwa moja ${on ? "imewashwa" : "imezimwa"} kwa mtiririko huo.`,
     cost: "Kila dakika ya simu ina gharama.",
     failed: "Imeshindikana kubadilisha.",
     on: "Imewashwa. Sasa weka callback kwenye Africa's Talking (hatua 2).",
@@ -32,6 +33,7 @@ const TEXT = {
     copied: "Copied",
     warn: "Important: once the callback is changed, this number's menu and team no longer ring: every call goes to the assistant. Before you change it, copy the Webhook URL shown above. To go back, set the callback to that Webhook URL.",
     needs: "Not ready yet:",
+    flow: (name: string, on: boolean) => `This number's flow: "${name}". Live AI is ${on ? "on" : "off"} for that flow.`,
     cost: "Every minute of a call has a cost.",
     failed: "Could not change that.",
     on: "Switched on. Now set the callback in Africa's Talking (step 2).",
@@ -39,7 +41,7 @@ const TEXT = {
   },
 } as const;
 
-interface State { enabled: boolean; available: boolean; sip_host: string; callback: string; needs: string[]; warning?: string }
+interface State { enabled: boolean; available: boolean; sip_host: string; callback: string; needs: string[]; warning?: string; flow?: { id: string; name: string; live_ai: boolean } | null }
 
 export function PhoneAiCard({ accountId }: { accountId: string }) {
   const T = TEXT[appLanguage()];
@@ -79,6 +81,9 @@ export function PhoneAiCard({ accountId }: { accountId: string }) {
         </div>
         <Switch checked={state.enabled} disabled={busy || (!state.available && !state.enabled)} onCheckedChange={(v) => void change(v)} aria-label={T.title} />
       </div>
+      {state.flow && (
+        <p className="text-xs text-muted-foreground">{T.flow(state.flow.name, state.flow.live_ai)}</p>
+      )}
       {!state.available && !state.enabled && state.needs.length > 0 && (
         <p className="text-xs text-amber-700">{T.needs} {state.needs.join("; ")}.</p>
       )}

@@ -73,6 +73,8 @@ export interface IvrFlowSummary {
    * the backend resolves at call time; the builder never substitutes a
    * default of its own. */
   company_name?: string;
+  /** Live AI voice is a setting of the flow: on = numbers running it are answered by the live assistant. Changed only through its own endpoint. */
+  live_ai_enabled?: boolean;
   updated_at: string;
 }
 

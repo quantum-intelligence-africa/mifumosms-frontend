@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FlowLiveAi } from "@/components/voice/FlowLiveAi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -342,6 +343,8 @@ export default function IvrFlowList() {
                             {LANGUAGE_LABELS[flow.language]}
                           </Badge>
                         </div>
+
+                        <FlowLiveAi flowId={flow.id} />
 
                         {connectedAccounts.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
