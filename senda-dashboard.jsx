@@ -13625,6 +13625,7 @@ function VoiceNumbersTab() {
   const [voiceDraft, setVoiceDraft] = useState('');
   // When call summaries are emailed to organizations: after each call, or one digest at chosen times of the day.
   const [sumMode, setSumMode]   = useState('instant');
+  const [covers, setCovers]       = useState('last_24h');   // what the report sent at the set times covers
   const [sumTimes, setSumTimes] = useState([]);
   const [sumTz, setSumTz]       = useState('Africa/Dar_es_Salaam');
   const [sumTzList, setSumTzList] = useState(['Africa/Dar_es_Salaam']);
@@ -13690,8 +13691,9 @@ function VoiceNumbersTab() {
         setDefaultMsg(res.data?.inactive_message || ''); setDefaultDraft(res.data?.inactive_message || '');
         setVoices(res.data?.voices || []); setDefaultVoice(res.data?.inactive_voice || ''); setVoiceDraft(res.data?.inactive_voice || '');
         const mode = res.data?.summary_mode || 'instant', times = res.data?.summary_digest_times || [], tz = res.data?.summary_timezone || 'Africa/Dar_es_Salaam';
-        setSumMode(mode); setSumTimes(times); setSumTz(tz); setSumTzList(res.data?.summary_timezones || [tz]);
-        setSumSaved(JSON.stringify([mode, times, tz]));
+        const cov = res.data?.timed_report_covers || 'last_24h';
+        setSumMode(mode); setSumTimes(times); setSumTz(tz); setCovers(cov); setSumTzList(res.data?.summary_timezones || [tz]);
+        setSumSaved(JSON.stringify([mode, times, tz, cov]));
       }
     });
   }, [onLogout]);
@@ -13754,16 +13756,17 @@ function VoiceNumbersTab() {
     });
   };
   const showDeletedLog = () => voiceAdminFetch('/voice/admin/call-deletion/log/', {}, onLogout).then(res => { if (res.success) setDelLog(res.data || []); });
-  const sumNow = JSON.stringify([sumMode, [...sumTimes].sort(), sumTz]);
+  const sumNow = JSON.stringify([sumMode, [...sumTimes].sort(), sumTz, covers]);
   const sumValid = sumMode === 'instant' || (sumTimes.length > 0 && sumTimes.every(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)));
   const saveSummary = () => {
     setSumBusy(true);
-    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ summary_mode: sumMode, summary_digest_times: sumTimes, summary_timezone: sumTz }) }, onLogout).then(res => {
+    voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ summary_mode: sumMode, summary_digest_times: sumTimes, summary_timezone: sumTz, timed_report_covers: covers }) }, onLogout).then(res => {
       setSumBusy(false);
       if (!res.success) { showToast?.(res.error || 'Could not save the summary schedule.', 'error'); return; }
       const times = res.data?.summary_digest_times || [];
-      setSumMode(res.data.summary_mode); setSumTimes(times); setSumTz(res.data.summary_timezone);
-      setSumSaved(JSON.stringify([res.data.summary_mode, times, res.data.summary_timezone]));
+      const cov = res.data?.timed_report_covers || 'last_24h';
+      setSumMode(res.data.summary_mode); setSumTimes(times); setSumTz(res.data.summary_timezone); setCovers(cov);
+      setSumSaved(JSON.stringify([res.data.summary_mode, times, res.data.summary_timezone, cov]));
       showToast?.(res.data.summary_mode === 'digest' ? 'Summaries will be sent at the times you chose.' : 'Summaries will be sent right after each call.', 'success');
     });
   };
@@ -13980,6 +13983,16 @@ function VoiceNumbersTab() {
                   </button>
                 )}
               </div>
+              {!callSummaryEmails && (
+                <div style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'#64748b'}}>
+                  <span style={{fontWeight:700,color:'#0f172a'}}>What the report covers</span>
+                  <select className="senda-input" value={covers} onChange={e => setCovers(e.target.value)} aria-label="What the report covers" style={{height:34,fontSize:13,maxWidth:380}}>
+                    <option value="last_24h">The last 24 hours up to the send time</option>
+                    <option value="previous_day">The previous full day (midnight to midnight)</option>
+                  </select>
+                  <span>For a morning report (for example 06:00) choose <b>the previous full day</b>: you get yesterday's complete report. Each organization's own time zone decides where the day starts and ends.</span>
+                </div>
+              )}
               <div style={{display:'flex',gap:8,alignItems:'center',fontSize:12,color:'#64748b'}}>
                 Time zone
                 <select className="senda-input" value={sumTz} onChange={e => setSumTz(e.target.value)} aria-label="Time zone" style={{height:34,fontSize:13,minWidth:200}}>
