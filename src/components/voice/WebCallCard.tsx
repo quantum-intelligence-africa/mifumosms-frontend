@@ -95,7 +95,7 @@ export function WebCallCard({ accountId }: { accountId: string }) {
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">{T.cost}</p>
+          {!state.ai_live && <p className="text-xs text-muted-foreground">{T.cost}</p>}
         </div>
       )}
       {state.enabled && (
