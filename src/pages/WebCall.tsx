@@ -40,7 +40,7 @@ const TEXT = {
     liveSpeaking: "Msaidizi anaongea… (unaweza kumkatiza)",
     you: "Wewe",
     assistant: "Msaidizi",
-    liveNotice: "Unaongea na msaidizi wa AI. Mazungumzo yanahifadhiwa kama maandishi ili tukusaidie vizuri.",
+    liveNotice: "Unaongea na msaidizi wa AI. Mazungumzo yanahifadhiwa kama maandishi, na kama sauti pale biashara inaporekodi simu zake, ili tukusaidie vizuri.",
     noAgent: "Msaidizi hajajiunga. Tafadhali jaribu tena baadaye.",
   },
   en: {
@@ -73,7 +73,7 @@ const TEXT = {
     liveSpeaking: "The assistant is speaking… (you can interrupt)",
     you: "You",
     assistant: "Assistant",
-    liveNotice: "You are speaking with an AI assistant. The conversation is saved as text so we can help you properly.",
+    liveNotice: "You are speaking with an AI assistant. The conversation is saved as text, and as audio when the business records its calls, so we can help you properly.",
     noAgent: "The assistant has not joined. Please try again later.",
   },
 } as const;
