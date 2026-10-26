@@ -537,7 +537,17 @@ export function NodeInspector({ nodeId, nodeType, data, onChange, onClose, onDel
         </Button>
       </CardHeader>
       <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto pb-3">
-        {nodeType === "ai_agent" && <AiAssistantLink value={String(fields.ai_agent_id ?? "")} onPick={(id) => onChange({ ai_agent_id: id })} />}
+        {nodeType === "ai_agent" && (
+          <label className="flex items-start gap-2 rounded-md border p-2 text-xs">
+            <Checkbox checked={Boolean(fields.ai_off)} onCheckedChange={(v) => onChange({ ai_off: v === true })} className="mt-0.5" />
+            <span>
+              <span className="font-medium">Do not use AI on this step</span>
+              <br />
+              <span className="text-muted-foreground">The step plays its own message below, then the call carries on to the next step, as an ordinary flow. No AI listens or decides.</span>
+            </span>
+          </label>
+        )}
+        {nodeType === "ai_agent" && !fields.ai_off && <AiAssistantLink value={String(fields.ai_agent_id ?? "")} onPick={(id) => onChange({ ai_agent_id: id })} />}
         {meta.fields.length === 0 && (
           <p className="text-xs text-muted-foreground">{t("voice.ivr_builder.inspector.no_settings")}</p>
         )}
