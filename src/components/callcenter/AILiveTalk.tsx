@@ -63,6 +63,15 @@ export function AILiveTalk({ agentId, dirty }: { agentId: string; dirty: boolean
   const roomRef = useRef<Room | null>(null);
   const audioRefs = useRef<HTMLElement[]>([]);
   const joinTimer = useRef<number | undefined>(undefined);
+  // Shown only when the server has live voice switched on, so nobody is offered a button that cannot work.
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void voiceApi.get<{ available: boolean }>(`/ai-agent/agents/${agentId}/live-test/`).then((res) => {
+      if (alive) setAvailable(!!(res.success && res.data?.available));
+    });
+    return () => { alive = false; };
+  }, [agentId]);
 
   const cleanup = useCallback(() => {
     window.clearTimeout(joinTimer.current);
@@ -127,6 +136,7 @@ export function AILiveTalk({ agentId, dirty }: { agentId: string; dirty: boolean
   };
 
   const live = phase === "connecting" || phase === "live";
+  if (!available) return null;
   return (
     <Card><CardContent className="space-y-3 p-4">
       <p className="font-medium">{T.title}</p>
