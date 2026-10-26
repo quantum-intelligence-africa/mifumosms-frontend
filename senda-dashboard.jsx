@@ -13645,7 +13645,8 @@ function LiveVoiceCard() {
     if (form.api_secret) body.api_secret = form.api_secret;   // empty = keep the saved secret
     voiceAdminFetch('/voice/admin/settings/', { method: 'PATCH', body: JSON.stringify({ livekit: body }) }, onLogout).then(res => {
       setBusy(false);
-      if (!res.success) { showToast?.(Object.values(res.data?.livekit || {}).join(' ') || res.error || 'Could not save.', 'error'); return; }
+      // On a refusal the server's field messages arrive in res.errors (this helper puts a joined text in res.error, which is "[object Object]" for a nested reply).
+      if (!res.success) { showToast?.(Object.values(res.errors?.livekit || {}).join(' ') || (typeof res.error === 'string' && !res.error.includes('[object') ? res.error : '') || 'Could not save.', 'error'); return; }
       apply(res.data.livekit); setResult(null);
       showToast?.('Live voice settings saved.', 'success');
     });
