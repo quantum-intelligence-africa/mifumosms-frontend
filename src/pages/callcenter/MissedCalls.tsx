@@ -90,6 +90,8 @@ export default function MissedCalls() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // A number with several missed calls is one row; its calls are listed under it once opened.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [exporting, setExporting] = useState(false);
   const [scheduling, setScheduling] = useState<MissedCall | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -120,7 +122,7 @@ export default function MissedCalls() {
 
   useEffect(() => setPage(1), [params]);
 
-  const fetchPage = useCallback(() => callCenterApi.missed.list({ ...params, page, page_size: pageSize }), [params, page, pageSize]);
+  const fetchPage = useCallback(() => callCenterApi.missed.list({ ...params, group: "caller", page, page_size: pageSize }), [params, page, pageSize]);
 
   const loadSummary = useCallback(async () => {
     const res = await callCenterApi.missed.summary();
@@ -231,9 +233,14 @@ export default function MissedCalls() {
       durationSeconds: vm.duration_seconds,
     }, seconds);
 
-  const update = async (row: MissedCall, body: Parameters<typeof callCenterApi.missed.update>[1]): Promise<boolean> => {
+  // A row that stands for several missed calls changes all of its OPEN calls together (optionally only those in `only` statuses), so a
+  // number is followed up once, not once per call. A note stays on the row's own call. Closed calls are never reopened by accident.
+  const update = async (row: MissedCall, body: Parameters<typeof callCenterApi.missed.update>[1], only?: MissedCallStatus[]): Promise<boolean> => {
+    const items = row.group && body.notes === undefined ? row.group.open_items.filter((i) => !only || only.includes(i.status)) : null;
+    if (items && items.length === 0) return true; // nothing in the group needs this change
+    if (!row.group && only && !only.includes(row.status)) return true; // a single call keeps its status unless it is one of these
     setBusyId(row.id);
-    const res = await callCenterApi.missed.update(row.id, body);
+    const res = items && items.length > 1 ? await callCenterApi.missed.bulk(items.map((i) => i.id), body) : await callCenterApi.missed.update(items?.[0]?.id ?? row.id, body);
     setBusyId(null);
     if (!res.success || !res.data) {
       toast({ title: t("cc.missed.update_failed"), description: describeError(res), variant: "destructive" });
@@ -253,7 +260,7 @@ export default function MissedCalls() {
     } else {
       openDialer(row.caller_number);
     }
-    if (row.status === "new" || row.status === "assigned" || row.status === "scheduled") await update(row, { status: "called_back" });
+    await update(row, { status: "called_back" }, ["new", "assigned", "scheduled"]);
   };
 
   const saveSchedule = async () => {
@@ -266,12 +273,12 @@ export default function MissedCalls() {
   };
   const saveAssign = async () => {
     if (!assigning || !assignTo) return;
-    const body: Parameters<typeof callCenterApi.missed.update>[1] = { assigned_to: assignTo };
-    if (assigning.status === "new") body.status = "assigned";
-    if (await update(assigning, body)) setAssigning(null);
+    // Assign everything open to this person, then mark the ones nobody had looked at yet as assigned.
+    if (!(await update(assigning, { assigned_to: assignTo }))) return;
+    if (await update(assigning, { status: "assigned" }, ["new"])) setAssigning(null);
   };
 
-  const card = (key: string, label: string, value: number | undefined, active: boolean, onClick: () => void, tone?: string) => (
+  const card = (key: string, label: string, value: number | undefined, active: boolean, onClick: () => void, tone?: string, sub?: string) => (
     <button
       key={key}
       type="button"
@@ -281,6 +288,7 @@ export default function MissedCalls() {
     >
       <span className={`block text-xl font-bold leading-tight tabular-nums ${tone ?? ""}`}>{value ?? "—"}</span>
       <span className="block text-[11px] text-muted-foreground">{label}</span>
+      {sub && <span className="block text-[10px] text-muted-foreground/80">{sub}</span>}
     </button>
   );
 
@@ -302,7 +310,7 @@ export default function MissedCalls() {
       }
     >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {card("attention", t("cc.missed.sum_attention"), summary?.needs_attention, status === "attention" && !onlyOverdue && !onlyRepeated, () => { setStatus("attention"); setOnlyOverdue(false); setOnlyRepeated(false); })}
+        {card("attention", t("cc.missed.sum_attention"), summary?.needs_attention, status === "attention" && !onlyOverdue && !onlyRepeated, () => { setStatus("attention"); setOnlyOverdue(false); setOnlyRepeated(false); }, undefined, summary?.needs_attention_numbers != null ? t("cc.missed.from_numbers", { count: summary.needs_attention_numbers }) : undefined)}
         {card("new", t("cc.missed.sum_new"), summary?.new, status === "new", () => { setStatus("new"); setOnlyOverdue(false); })}
         {card("abandoned", t("cc.history.outcome_abandoned"), summary?.abandoned, result === "abandoned", () => { setResult(result === "abandoned" ? "any" : "abandoned"); setStatus("attention"); setOnlyOverdue(false); })}
         {card("overdue", t("cc.missed.sum_overdue"), summary?.overdue, onlyOverdue, () => { setStatus("open"); setOnlyOverdue(true); }, summary && summary.overdue > 0 ? "text-destructive" : undefined)}
@@ -416,7 +424,18 @@ export default function MissedCalls() {
                             {t(`cc.history.outcome_${r.call_outcome}` as never)}
                           </Badge>
                         )}
-                        {(r.repeat_count ?? 1) > 1 && (
+                        {r.group ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpenGroups((g) => ({ ...g, [r.id]: !g[r.id] }))}
+                            aria-expanded={!!openGroups[r.id]}
+                            title={t("cc.missed.group_hint", { count: r.group.count, total: r.repeat_count })}
+                            className="ml-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 font-sans text-[11px] font-semibold hover:bg-muted"
+                          >
+                            <Repeat className="h-3 w-3" />{t("cc.missed.group_calls", { count: r.group.count })}
+                            <ChevronDown className={`h-3 w-3 transition-transform ${openGroups[r.id] ? "rotate-180" : ""}`} />
+                          </button>
+                        ) : (r.repeat_count ?? 1) > 1 && (
                           <Badge variant="outline" className="ml-2 gap-1 px-1.5 py-0 font-sans text-[10px]" title={t("cc.missed.repeat_hint", { count: r.repeat_count })}>
                             <Repeat className="h-2.5 w-2.5" />×{r.repeat_count}
                           </Badge>
@@ -447,6 +466,7 @@ export default function MissedCalls() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                         {new Date(r.call_started_at).toLocaleString(appLocale())}
+                        {r.group && <span className="block text-[11px]">{t("cc.missed.group_since", { time: new Date(r.group.first_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" }) })}</span>}
                         {r.waited_seconds > 0 && <span className="block text-[11px]">{t(r.call_outcome === "abandoned" ? "cc.missed.waited_abandoned" : "cc.missed.waited", { time: formatClock(r.waited_seconds) })}</span>}
                       </TableCell>
                       <TableCell className="text-sm">{r.team_name || "—"}</TableCell>
@@ -468,6 +488,7 @@ export default function MissedCalls() {
                       <TableCell className="whitespace-nowrap">
                         <Badge variant={STATUS_TONE[r.status]}>{t(`cc.missed.status_${r.status}` as const)}</Badge>
                         {r.is_overdue && <span className="ml-1.5 text-[11px] font-medium text-destructive">{t("cc.missed.overdue")}</span>}
+                        {r.group && r.group.open < r.group.count && <span className="block text-[11px] text-muted-foreground">{t("cc.missed.group_open", { open: r.group.open, count: r.group.count })}</span>}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -477,7 +498,7 @@ export default function MissedCalls() {
                             </Button>
                           )}
                           {!closed && r.status === "new" && (
-                            <Button size="sm" variant="ghost" className="h-8 gap-1.5" disabled={busyId === r.id} onClick={() => update(r, { status: "assigned" })} title={t("cc.missed.claim_hint")}>
+                            <Button size="sm" variant="ghost" className="h-8 gap-1.5" disabled={busyId === r.id} onClick={() => update(r, { status: "assigned" }, ["new"])} title={t("cc.missed.claim_hint")}>
                               <UserCheck className="h-3.5 w-3.5" />{t("cc.missed.claim")}
                             </Button>
                           )}
@@ -506,6 +527,32 @@ export default function MissedCalls() {
                         </div>
                       </TableCell>
                     </TableRow>
+                    {r.group && openGroups[r.id] && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={7}>
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("cc.missed.group_title", { count: r.group.count })}</p>
+                            {r.group.records.map((sub) => (
+                              <div key={sub.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                                <span className="font-mono text-xs text-muted-foreground">{new Date(sub.call_started_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" })}</span>
+                                {sub.call_outcome && (
+                                  <Badge variant={sub.call_outcome === "abandoned" ? "destructive" : "outline"} className="px-1.5 py-0 text-[10px]">{t(`cc.history.outcome_${sub.call_outcome}` as never)}</Badge>
+                                )}
+                                {sub.waited_seconds > 0 && <span className="text-xs text-muted-foreground">{t(sub.call_outcome === "abandoned" ? "cc.missed.waited_abandoned" : "cc.missed.waited", { time: formatClock(sub.waited_seconds) })}</span>}
+                                <Badge variant={STATUS_TONE[sub.status]}>{t(`cc.missed.status_${sub.status}` as const)}</Badge>
+                                {sub.voicemail && (
+                                  <button type="button" onClick={() => listen(sub, sub.voicemail!)} className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90">
+                                    <Mic className="h-3 w-3" />{t("cc.missed.voicemail")}{sub.voicemail.duration_seconds ? ` · ${formatClock(sub.voicemail.duration_seconds)}` : ""}
+                                  </button>
+                                )}
+                                {sub.notes && <span className="line-clamp-1 min-w-0 flex-1 text-xs italic text-muted-foreground" title={sub.notes}>{sub.notes}</span>}
+                              </div>
+                            ))}
+                            {r.group.count > r.group.records.length && <p className="text-xs text-muted-foreground">{t("cc.missed.group_more", { count: r.group.count - r.group.records.length })}</p>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {r.voicemail && expanded[r.id] !== false && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={7}>
@@ -520,7 +567,7 @@ export default function MissedCalls() {
             </Table>
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            <span>{t("cc.missed.showing", { count })}</span>
+            <span>{t("cc.missed.showing_numbers", { count })}</span>
             <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1); }} disabled={loading} />
             <span className="flex items-center gap-1">
               <Button size="icon" variant="ghost" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t("cc.missed.prev")}><ChevronLeft className="h-4 w-4" /></Button>

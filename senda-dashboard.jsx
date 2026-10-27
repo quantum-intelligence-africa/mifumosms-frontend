@@ -12886,6 +12886,96 @@ function IvrFlowsTab() {
   );
 }
 
+// Analysis Alerts (SENDA staff): internal alerts that call analyses are failing (provider balance/quota, refused key, lost recordings...).
+// Each alert groups every failure of that kind, is emailed to staff once (with reminders), and clears itself when analyses succeed again.
+function useAnalysisAlertCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => voiceAdminFetch('/audio/admin/alerts/')
+      .then(res => { if (alive && res && typeof res.open_count === 'number') setCount(res.open_count); })
+      .catch(() => {});
+    load();
+    const timer = setInterval(load, 60000);
+    window.addEventListener('senda:alerts-changed', load);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener('senda:alerts-changed', load); };
+  }, []);
+  return count;
+}
+
+function AnalysisAlertsTab() {
+  const { showToast, onLogout } = React.useContext(AppContext);
+  const [data, setData]   = useState(null);
+  const [error, setError] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const [busy, setBusy]   = useState(null);
+
+  const load = useCallback(() => {
+    voiceAdminFetch(`/audio/admin/alerts/?status=${showAll ? 'all' : 'open'}`, {}, onLogout)
+      .then(res => { if (res && Array.isArray(res.results)) { setData(res); setError(null); } else setError('Could not load alerts.'); })
+      .catch(() => setError('Could not load alerts.'));
+  }, [showAll, onLogout]);
+  useEffect(() => { load(); }, [load]);
+
+  const act = (alert, action, okMessage) => {
+    setBusy(alert.id);
+    voiceAdminFetch(`/audio/admin/alerts/${alert.id}/${action}/`, { method: 'POST' }, onLogout)
+      .then(() => { showToast?.(okMessage, 'success'); load(); window.dispatchEvent(new Event('senda:alerts-changed')); })
+      .catch(() => showToast?.('That did not work. Try again.', 'error'))
+      .finally(() => setBusy(null));
+  };
+
+  const tone = (a) => a.status === 'resolved' ? { bg:'#f1f5f9', fg:'#64748b', label:'Resolved' }
+    : a.severity === 'critical' ? { bg:'#fee2e2', fg:'#dc2626', label:'Critical' } : { bg:'#fef3c7', fg:'#b45309', label:'Warning' };
+
+  return (
+    <div style={{display:'grid',gap:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,color:'#0f172a'}}>Analysis Alerts</h2>
+          <p style={{fontSize:13,color:'#64748b',marginTop:2}}>Call analyses that failed in a way someone should act on. Each one is also emailed to SENDA staff.</p>
+        </div>
+        <label style={{fontSize:13,color:'#475569',display:'flex',alignItems:'center',gap:6}}>
+          <input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/> Show resolved
+        </label>
+      </div>
+      {error && <p style={{fontSize:13,color:'#dc2626'}}>{error}</p>}
+      {!data && !error && <p style={{fontSize:13,color:'#94a3b8'}}>Loading…</p>}
+      {data && data.results.length === 0 && (
+        <div className="senda-card" style={{padding:24,textAlign:'center',color:'#64748b',fontSize:14}}>No open alerts. Call analyses are running normally.</div>
+      )}
+      {data && data.results.map(a => {
+        const t = tone(a);
+        return (
+          <div key={a.id} className="senda-card" style={{padding:18,borderLeft:`4px solid ${t.fg}`}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'flex-start'}}>
+              <div style={{minWidth:0}}>
+                <span style={{background:t.bg,color:t.fg,fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:999}}>{t.label}</span>
+                <h3 style={{fontSize:15,fontWeight:700,color:'#0f172a',marginTop:8}}>{a.title}</h3>
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <button className="senda-btn senda-btn-sm" disabled={busy===a.id} onClick={()=>act(a,'resend-email','Email queued.')}>Resend email</button>
+                {a.status === 'open' && <button className="senda-btn senda-btn-sm senda-btn-primary" disabled={busy===a.id} onClick={()=>act(a,'resolve','Marked as handled.')}>Mark handled</button>}
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:14,margin:'14px 0'}}>
+              <Field label="Failed analyses" value={a.occurrences.toLocaleString()}/>
+              <Field label="First seen" value={new Date(a.first_seen_at).toLocaleString()}/>
+              <Field label="Last seen" value={new Date(a.last_seen_at).toLocaleString()}/>
+              <Field label="Email to staff" value={a.email_status === 'sent' ? `Sent ${a.last_emailed_at ? new Date(a.last_emailed_at).toLocaleString() : ''}` : a.email_status === 'failed' ? 'Failed to send' : 'Pending'}/>
+            </div>
+            <p style={{fontSize:13,color:'#0f172a'}}><strong>What to do:</strong> {a.advice}</p>
+            {a.tenants.length > 0 && <p style={{fontSize:12.5,color:'#475569',marginTop:8}}><strong>Organizations:</strong> {a.tenants.map(x => x.name || x.id).join(', ')}</p>}
+            {a.detail && <p style={{fontSize:12,color:'#94a3b8',marginTop:8,wordBreak:'break-word'}}>Latest error: {a.detail}</p>}
+            {a.email_status === 'failed' && <p style={{fontSize:12,color:'#dc2626',marginTop:6}}>The email could not be sent ({a.email_error}). Check the mail settings, then press Resend email.</p>}
+            {a.status === 'resolved' && <p style={{fontSize:12,color:'#64748b',marginTop:6}}>Resolved {a.resolved_at ? new Date(a.resolved_at).toLocaleString() : ''} {a.resolved_by === 'auto' ? '(automatically: analyses are working again)' : `by ${a.resolved_by}`}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Analysis Emails (SENDA staff): per organization, the language of its call-analysis emails and exactly who receives them,
 // and the log of every email sent (who, when, which organization). The organization cannot change or see any of this.
 function AnalysisEmailsTab() {
@@ -18511,6 +18601,7 @@ const NAV_GROUPS = [
     { id:'calllogs',       Icon:ListChecks,  label:'Call Logs'        },
     { id:'voiceusage',     Icon:BarChart3,   label:'Voice Usage'      },
     { id:'analysisemails', Icon:Mail,        label:'Analysis Emails'  },
+    { id:'analysisalerts', Icon:AlertTriangle, label:'Analysis Alerts'  },
     { id:'voiceproviders', Icon:Phone,       label:'Voice Providers'  },
     { id:'aiproviders',    Icon:Sparkles,    label:'AI Provider'      },
     { id:'callcenterplans', Icon:CreditCard, label:'Call Center Plans' },
@@ -18522,6 +18613,7 @@ const NAV = NAV_GROUPS.flatMap(g => g.items);
 
 function Sidebar({ active, setActive, onLogout, mode }) {
   // mode: 'full' | 'icon' | 'hidden'
+  const alertCount = useAnalysisAlertCount();
   if (mode === 'hidden') return null;
   const collapsed = mode === 'icon';
   const w = collapsed ? 60 : 220;
@@ -18563,6 +18655,9 @@ function Sidebar({ active, setActive, onLogout, mode }) {
                 style={{justifyContent:collapsed?'center':'flex-start', borderLeft:active===n.id&&!collapsed?`3px solid ${BRAND}`:'3px solid transparent', paddingLeft:collapsed?undefined:9}}>
                 <n.Icon className="senda-nav-icon" strokeWidth={2.2} />
                 {!collapsed && <span>{n.label}</span>}
+                {n.id === 'analysisalerts' && alertCount > 0 && (
+                  <span title={`${alertCount} open alert(s)`} style={{marginLeft:collapsed?0:'auto',background:'#dc2626',color:'#fff',fontSize:10,fontWeight:800,borderRadius:999,padding:'1px 6px',minWidth:16,textAlign:'center'}}>{alertCount}</span>
+                )}
               </button>
             ))}
           </div>
@@ -22716,6 +22811,7 @@ function Dashboard({ onLogout, adminInfo, showToast }) {
     calllogs:       <VoiceCallLogsTab/>,
     voiceusage:     <VoiceUsageTab/>,
     analysisemails: <AnalysisEmailsTab/>,
+    analysisalerts: <AnalysisAlertsTab/>,
     featureaccess:  <FeatureAccessTab/>,
     voiceproviders: <VoiceProvidersTab/>,
     aiproviders:    <AIProvidersTab/>,

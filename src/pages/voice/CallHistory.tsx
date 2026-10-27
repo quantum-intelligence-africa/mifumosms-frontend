@@ -86,6 +86,8 @@ interface CallSummary {
   duration_seconds: number | null;
   recording: RowRecording | null;
   analysis: RowAnalysis | null;
+  /** Set when this caller rang the same line more than once that day: this row is the latest call, `calls` has every one of them. */
+  group?: { count: number; answered: number; calls: CallSummary[] } | null;
 }
 
 type AnalysisJob = AnalysisJobFull;
@@ -237,7 +239,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
       if (append) setIsLoadingMore(true);
       else setIsLoading(true);
       setError(null);
-      const params = new URLSearchParams({ page: String(pageNum), page_size: String(pageSize) });
+      const params = new URLSearchParams({ page: String(pageNum), page_size: String(pageSize), group: "caller" });
       if (tab === "inbound" || tab === "outbound") params.set("direction", tab);
       if (tab === "answered") params.set("outcome", "answered");
       if (tab === "missed") params.set("missed", "true");
@@ -372,8 +374,17 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
   };
 
   const filtered = search || tab !== "all" || range !== "all" || agentId !== "all" || sentiment !== "any";
+  // A grouped row stands for every call in it: selecting the row selects them all.
+  const idsOf = (call: CallSummary) => (call.group ? call.group.calls.map((c) => c.id) : [call.id]);
   const selectableCalls = calls.filter((call) => Boolean(call.recording) || deletionAllowed);
-  const allSelectableSelected = selectableCalls.length > 0 && selectableCalls.every((call) => selectedCallIds.has(call.id));
+  const allSelectableSelected = selectableCalls.length > 0 && selectableCalls.every((call) => idsOf(call).every((id) => selectedCallIds.has(id)));
+  const toggleMany = (ids: string[]) =>
+    setSelectedCallIds((previous) => {
+      const next = new Set(previous);
+      const all = ids.every((id) => next.has(id));
+      ids.forEach((id) => (all ? next.delete(id) : next.add(id)));
+      return next;
+    });
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -538,7 +549,7 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                             checked={allSelectableSelected}
                             onChange={() => {
                               setSelectedCallIds(
-                                allSelectableSelected ? new Set() : new Set(selectableCalls.map((call) => call.id)),
+                                allSelectableSelected ? new Set() : new Set(selectableCalls.flatMap(idsOf)),
                               );
                             }}
                             disabled={!selectableCalls.length}
@@ -574,8 +585,8 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                 <input
                                   type="checkbox"
                                   aria-label={t("voice.calls.select_call")}
-                                  checked={selectedCallIds.has(call.id)}
-                                  onChange={() => toggleSelected(call.id)}
+                                  checked={idsOf(call).every((id) => selectedCallIds.has(id))}
+                                  onChange={() => toggleMany(idsOf(call))}
                                   disabled={!rec && !deletionAllowed}
                                   className="h-4 w-4 rounded border-border accent-primary"
                                 />
@@ -602,6 +613,17 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                                         ? t("voice.calls.outbound_call")
                                         : t("voice.calls.inbound_call"))}
                                 </p>
+                                {call.group && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="ml-5 mt-1"
+                                    title={t("voice.calls.group_hint", { total: call.group.count, answered: call.group.answered })}
+                                  >
+                                    {call.group.answered > 0
+                                      ? t("voice.calls.group_answered", { count: call.group.answered })
+                                      : t("voice.calls.group_calls", { count: call.group.count })}
+                                  </Badge>
+                                )}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
                                 <AgentChip name={call.agent?.name} department={call.agent?.department} />
@@ -655,6 +677,34 @@ export default function CallHistory({ initialTab = "all" }: { initialTab?: Tab }
                             {expanded && (
                               <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={9} className="bg-muted/30 p-4">
+                                  {call.group && (
+                                    <div className="mb-4 space-y-1.5">
+                                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                        {t("voice.calls.group_title", { total: call.group.count, answered: call.group.answered })}
+                                      </p>
+                                      {call.group.calls.map((sub) => {
+                                        const subMissed = isMissed(sub);
+                                        const subRec = sub.recording;
+                                        return (
+                                          <div key={sub.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                                            {subRec ? (
+                                              <PlayButton active={player.isCurrent(subRec.id)} playing={player.isPlaying(subRec.id)} onClick={() => playCall(sub, subRec)} />
+                                            ) : (
+                                              <span className="h-8 w-8 shrink-0" />
+                                            )}
+                                            <span className="font-mono text-xs text-muted-foreground">
+                                              {new Date(sub.started_at).toLocaleString(appLocale(), { dateStyle: "short", timeStyle: "short" })}
+                                            </span>
+                                            <span className="font-mono tabular-nums">{formatLength(sub.duration_seconds)}</span>
+                                            <Badge variant={subMissed ? "destructive" : "default"}>{outcomeLabel(sub, t)}</Badge>
+                                            {sub.analysis?.summary && (
+                                              <span className="line-clamp-1 min-w-0 flex-1 text-xs text-foreground/80" title={sub.analysis.summary}>{sub.analysis.summary}</span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                   {detailLoading === call.id && <Skeleton className="h-20" />}
                                   {detail && (
                                     <div className="grid gap-4 lg:grid-cols-2">

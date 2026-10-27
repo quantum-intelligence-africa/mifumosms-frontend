@@ -19,7 +19,7 @@ export type AfterHoursAction = "voicemail" | "message";
 export type MissedCallStatus = "new" | "assigned" | "called_back" | "scheduled" | "contacted" | "unreachable" | "resolved" | "unresolved";
 
 /** The counts behind the "needs attention" badge, from the same records the list shows. */
-export interface MissedSummary { needs_attention: number; new: number; overdue: number; scheduled: number; abandoned: number; today: number }
+export interface MissedSummary { needs_attention: number; needs_attention_numbers?: number; new: number; overdue: number; scheduled: number; abandoned: number; today: number }
 export type CallOutcome =
   | "resolved"
   | "follow_up_required"
@@ -279,6 +279,22 @@ export interface MissedCall {
   repeat_count: number;
   waited_seconds: number;
   last_followup_at: string | null;
+  /** Set when this number has more than one missed call in the current filter: this row is its latest open call and `records` are all of them. */
+  group?: MissedGroup | null;
+}
+
+export interface MissedGroup {
+  /** Missed calls from this number matching the filter. */
+  count: number;
+  /** How many of them still need follow-up (not resolved / given up). */
+  open: number;
+  overdue: number;
+  first_at: string;
+  last_at: string;
+  /** Every open call with its status, so an action touches only the calls it applies to. */
+  open_items: Array<{ id: string; status: MissedCallStatus }>;
+  /** Newest first, at most 50 (`count` is the true total). */
+  records: MissedCall[];
 }
 
 /** One piece of the machine transcript. Never edited in place: corrections are separate reviews. */
@@ -691,6 +707,9 @@ export const callCenterApi = {
       voiceApi.post<{ calls: number; customers: number; closed: number; oldest: string | null }>(`${BASE}/missed-calls/close-old/`, body),
     update: (id: string, body: { status?: MissedCallStatus; assigned_to?: string | null; notes?: string; callback_at?: string | null }) =>
       voiceApi.patch<MissedCall>(`${BASE}/missed-calls/${id}/`, body),
+    /** The same change for several missed calls at once (all of a number's open calls); all change or none do. */
+    bulk: (ids: string[], body: { status?: MissedCallStatus; assigned_to?: string | null; notes?: string; callback_at?: string | null }) =>
+      voiceApi.post<{ updated: number; skipped: number }>(`${BASE}/missed-calls/bulk/`, { ids, ...body }),
   },
   audit: (action?: string) => voiceApi.get<AuditEntry[]>(`${BASE}/audit-log/${qs({ action })}`),
   transferTargets: () => voiceApi.get<TransferTargets>(`${BASE}/transfer-targets/`),
