@@ -27,7 +27,7 @@ const TEXT = {
     window: "Zaidi ya saa 24 zimepita tangu mteja aandike mara ya mwisho. WhatsApp inaruhusu ujumbe wa kiolezo kilichoidhinishwa pekee sasa.",
     noReply: "Huna ruhusa ya kujibu mazungumzo haya.", contact: "Taarifa za mteja", noContact: "Hakuna taarifa zaidi za mteja zilizohifadhiwa.", notes: "Madokezo ya ndani", noNotes: "Hakuna madokezo.",
     reconnecting: "Inaunganisha upya...", you: "Wewe", unread: "Hayajasomwa", forbidden: "Huna ruhusa.", claimed: "Mazungumzo yamechukuliwa.", assignedOk: "Mazungumzo yamepewa.", statusOk: "Hali imebadilishwa.",
-    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
+    noAccess: "Akaunti yako haina ufikiaji wa sanduku hili.", back: "Rudi", fromPhone: "Imetumwa kwa simu", mediaLoading: "Inapakia faili...", mediaFailed: "Faili hii haiwezi kupakiwa sasa.",
   },
   en: {
     title: "Team Inbox", all: "All conversations", mine: "My conversations", unassigned: "Unassigned", open: "Open", pending: "Pending", resolved: "Resolved", archived: "Archived",
@@ -39,7 +39,7 @@ const TEXT = {
     window: "More than 24 hours have passed since the customer last wrote. WhatsApp only allows an approved template message now.",
     noReply: "You do not have permission to reply to this conversation.", contact: "Customer", noContact: "No further customer details are saved.", notes: "Internal notes", noNotes: "No notes yet.",
     reconnecting: "Reconnecting...", you: "You", unread: "Unread", forbidden: "You do not have permission.", claimed: "Conversation claimed.", assignedOk: "Conversation assigned.", statusOk: "Status changed.",
-    noAccess: "Your account does not have access to this inbox.", back: "Back", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
+    noAccess: "Your account does not have access to this inbox.", back: "Back", fromPhone: "Sent from the phone", mediaLoading: "Loading file...", mediaFailed: "This file cannot be loaded right now.",
   },
 } as const;
 
@@ -371,7 +371,7 @@ const TeamInbox = () => {
     return (
       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
         <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"} ${m.status === "failed" ? "ring-2 ring-destructive" : ""}`}>
-          {mine && m.sent_by && <p className="mb-0.5 text-[11px] opacity-80">{m.sent_by.name}</p>}
+          {mine && <p className="mb-0.5 text-[11px] opacity-80">{m.sent_by ? m.sent_by.name : T.fromPhone}</p>}
           {m.has_media && activeId && <MessageMedia threadId={activeId} message={m} failed={T.mediaFailed} loading={T.mediaLoading} />}
           {!(m.has_media && /^\[[A-Za-z ]+\]$/.test(m.text)) && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
           <p className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${mine ? "opacity-80" : "text-muted-foreground"}`}>
